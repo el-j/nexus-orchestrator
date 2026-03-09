@@ -4,12 +4,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"nexus-ai/internal/adapters/inbound/httpapi"
+	"nexus-ai/internal/adapters/inbound/mcp"
 	"nexus-ai/internal/adapters/outbound/fs_writer"
 	"nexus-ai/internal/adapters/outbound/llm_lmstudio"
 	"nexus-ai/internal/adapters/outbound/llm_ollama"
@@ -37,20 +40,33 @@ func main() {
 
 	// 2. Core services
 	discoverySvc := services.NewDiscoveryService(lmStudio, ollama)
-	orchestratorSvc := services.NewOrchestrator(discoverySvc, repo, writer)
+	sessionRepo := repo_sqlite.NewSessionRepo(repo)
+	orchestratorSvc := services.NewOrchestrator(discoverySvc, repo, writer, sessionRepo)
 	defer orchestratorSvc.Stop()
 
-	// 3. Start HTTP API in background
+	// 3. Context that cancels on SIGINT / SIGTERM — drives HTTP graceful shutdown
 	addr := os.Getenv("NEXUS_LISTEN_ADDR")
 	if addr == "" {
 		addr = ":9999"
 	}
-	go httpapi.StartServer(orchestratorSvc, addr)
 
-	// 4. Block until SIGINT / SIGTERM
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	mcpAddr := os.Getenv("NEXUS_MCP_ADDR")
+	if mcpAddr == "" {
+		mcpAddr = ":9998"
+	}
+	go func() {
+		if err := mcp.StartMCPServer(ctx, orchestratorSvc, mcpAddr); err != nil {
+			log.Printf("daemon: mcp: %v", err)
+		}
+	}()
+
+	// StartServer blocks until ctx is cancelled, then gracefully shuts down
+	if err := httpapi.StartServer(ctx, orchestratorSvc, addr); err != nil {
+		log.Printf("daemon: httpapi: %v", err)
+	}
 
 	fmt.Println("NexusAI daemon shutting down.")
 }

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"nexus-ai/internal/core/domain"
 )
 
 // Adapter implements ports.LLMClient for LM Studio's OpenAI-compatible REST API.
@@ -98,6 +100,48 @@ func (a *Adapter) GenerateCode(prompt string) (string, error) {
 	}
 	if len(result.Choices) == 0 {
 		return "", fmt.Errorf("lmstudio: no choices in response")
+	}
+	return result.Choices[0].Message.Content, nil
+}
+
+// Chat sends a multi-turn conversation history to LM Studio and returns the
+// assistant reply. This is the preferred method for session-isolated generation.
+func (a *Adapter) Chat(messages []domain.Message) (string, error) {
+	msgs := make([]map[string]string, len(messages))
+	for i, m := range messages {
+		msgs[i] = map[string]string{"role": m.Role, "content": m.Content}
+	}
+	reqBody, err := json.Marshal(map[string]interface{}{
+		"model":       "local-model",
+		"messages":    msgs,
+		"temperature": 0.2,
+	})
+	if err != nil {
+		return "", fmt.Errorf("lmstudio: marshal chat request: %w", err)
+	}
+
+	resp, err := a.httpClient.Post(
+		a.baseURL+"/chat/completions",
+		"application/json",
+		bytes.NewReader(reqBody),
+	)
+	if err != nil {
+		return "", fmt.Errorf("lmstudio: chat request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("lmstudio: decode chat response: %w", err)
+	}
+	if len(result.Choices) == 0 {
+		return "", fmt.Errorf("lmstudio: no choices in chat response")
 	}
 	return result.Choices[0].Message.Content, nil
 }

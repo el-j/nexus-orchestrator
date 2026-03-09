@@ -22,3 +22,16 @@ func (s *DiscoveryService) DetectActive() ports.LLMClient {
 	}
 	return nil
 }
+
+// ListProviders returns the liveness status of every registered LLM backend
+// without modifying internal state.
+func (s *DiscoveryService) ListProviders() []ports.ProviderInfo {
+	result := make([]ports.ProviderInfo, 0, len(s.availableClients))
+	for _, c := range s.availableClients {
+		result = append(result, ports.ProviderInfo{
+			Name:   c.ProviderName(),
+			Active: c.Ping(),
+		})
+	}
+	return result
+}

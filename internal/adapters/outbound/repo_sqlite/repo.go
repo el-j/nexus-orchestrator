@@ -3,6 +3,7 @@ package repo_sqlite
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -40,6 +41,13 @@ func migrate(db *sql.DB) error {
 			updated_at    INTEGER NOT NULL,
 			logs          TEXT    NOT NULL DEFAULT ''
 		);
+		CREATE TABLE IF NOT EXISTS sessions (
+			id           TEXT    PRIMARY KEY,
+			project_path TEXT    NOT NULL UNIQUE,
+			messages     TEXT    NOT NULL DEFAULT '[]',
+			created_at   INTEGER NOT NULL,
+			updated_at   INTEGER NOT NULL
+		);
 	`)
 	return err
 }
@@ -65,9 +73,14 @@ func (r *Repository) Save(t domain.Task) error {
 }
 
 // GetByID retrieves a single task by its ID.
+// Returns domain.ErrNotFound when no row matches.
 func (r *Repository) GetByID(id string) (domain.Task, error) {
 	row := r.db.QueryRow(`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs FROM tasks WHERE id = ?`, id)
-	return scanTask(row)
+	t, err := scanTask(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.Task{}, fmt.Errorf("sqlite: get task: %w", domain.ErrNotFound)
+	}
+	return t, err
 }
 
 // GetPending returns all tasks in QUEUED or PROCESSING state.
@@ -100,6 +113,18 @@ func (r *Repository) UpdateStatus(id string, status domain.TaskStatus) error {
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: update status: %w", err)
+	}
+	return nil
+}
+
+// UpdateLogs replaces the logs field for the task identified by id.
+func (r *Repository) UpdateLogs(id, logs string) error {
+	_, err := r.db.Exec(
+		`UPDATE tasks SET logs = ?, updated_at = ? WHERE id = ?`,
+		logs, time.Now().UnixMilli(), id,
+	)
+	if err != nil {
+		return fmt.Errorf("sqlite: update logs: %w", err)
 	}
 	return nil
 }

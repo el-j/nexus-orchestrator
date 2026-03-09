@@ -1,6 +1,12 @@
 package domain
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+// ErrNotFound is returned when a task cannot be found by its ID.
+var ErrNotFound = errors.New("task not found")
 
 // TaskStatus represents the lifecycle state of a Task.
 type TaskStatus string
@@ -15,13 +21,13 @@ const (
 
 // Task is the central domain entity that represents a single unit of AI work.
 type Task struct {
-	ID           string
-	ProjectPath  string
-	TargetFile   string
-	Instruction  string
-	ContextFiles []string
-	Status       TaskStatus
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	Logs         string
+	ID           string     `json:"id"`
+	ProjectPath  string     `json:"projectPath"`
+	TargetFile   string     `json:"targetFile"`
+	Instruction  string     `json:"instruction"`
+	ContextFiles []string   `json:"contextFiles"`
+	Status       TaskStatus `json:"status"`
+	CreatedAt    time.Time  `json:"createdAt"`
+	UpdatedAt    time.Time  `json:"updatedAt"`
+	Logs         string     `json:"logs,omitempty"`
 }

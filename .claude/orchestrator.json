@@ -1,12 +1,596 @@
 {
   "version": "2",
-  "updatedAt": "2026-03-10T00:00:00.000Z",
+  "updatedAt": "2026-03-09T12:00:00.000Z",
   "counters": {
-    "nextTaskId": 116,
-    "nextPlanId": 22
+    "nextTaskId": 39,
+    "nextPlanId": 4
   },
-  "activePlanId": null,
-  "notes": "PLAN-001 through PLAN-021 archived to .claude/plans/. See orchestrator-index.md for history.",
-  "plans": {},
-  "tasks": {}
+  "activePlanId": "PLAN-003",
+  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 active (orchestrator hardening + Wails GUI + writeback). PLAN-003 active (dogfood: use nexusOrchestrator to implement itself, embedded web dashboard, nexus-submit tool).",
+  "plans": {
+    "PLAN-001": {
+      "id": "PLAN-001",
+      "goal": "Add MCP server inbound adapter and per-project session isolation to nexusOrchestrator",
+      "status": "completed",
+      "createdAt": "2026-03-09T00:00:00.000Z",
+      "completedAt": "2026-03-09T10:00:00.000Z",
+      "taskIds": [
+        "TASK-001",
+        "TASK-002",
+        "TASK-003",
+        "TASK-004",
+        "TASK-005",
+        "TASK-006",
+        "TASK-007",
+        "TASK-008",
+        "TASK-009",
+        "TASK-010",
+        "TASK-011",
+        "TASK-012"
+      ]
+    },
+    "PLAN-002": {
+      "id": "PLAN-002",
+      "goal": "Harden the orchestrator against crashes/data-races and build the Wails 2 GUI dashboard with full cross-platform support",
+      "status": "active",
+      "createdAt": "2026-03-09T12:00:00.000Z",
+      "taskIds": [
+        "TASK-013",
+        "TASK-014",
+        "TASK-015",
+        "TASK-016",
+        "TASK-017",
+        "TASK-018",
+        "TASK-019",
+        "TASK-020",
+        "TASK-021",
+        "TASK-022",
+        "TASK-023",
+        "TASK-024",
+        "TASK-025",
+        "TASK-026",
+        "TASK-027",
+        "TASK-028",
+        "TASK-029",
+        "TASK-030",
+        "TASK-031"
+      ]
+    },
+    "PLAN-003": {
+      "id": "PLAN-003",
+      "goal": "Dogfood PLAN-002: use nexusOrchestrator to implement its own backlog, with live progress in an embedded web dashboard",
+      "status": "done",
+      "createdAt": "2026-03-09T15:00:00.000Z",
+      "taskIds": [
+        "TASK-032",
+        "TASK-033",
+        "TASK-034",
+        "TASK-035",
+        "TASK-036",
+        "TASK-037",
+        "TASK-038"
+      ]
+    }
+  },
+  "tasks": {
+    "TASK-001": {
+      "id": "TASK-001",
+      "title": "Domain: Session + Message types",
+      "status": "done",
+      "role": "architecture",
+      "planId": "PLAN-001",
+      "dependencies": [],
+      "createdAt": "2026-03-09T00:00:00.000Z",
+      "updatedAt": "2026-03-09T10:00:00.000Z",
+      "startedAt": "2026-03-09T00:00:00.000Z",
+      "completedAt": "2026-03-09T10:00:00.000Z"
+    },
+    "TASK-002": {
+      "id": "TASK-002",
+      "title": "Ports: SessionRepository + Chat() on LLMClient",
+      "status": "done",
+      "role": "architecture",
+      "planId": "PLAN-001",
+      "dependencies": [
+        "TASK-001"
+      ],
+      "createdAt": "2026-03-09T00:00:00.000Z",
+      "updatedAt": "2026-03-09T10:00:00.000Z",
+      "startedAt": "2026-03-09T00:00:00.000Z",
+      "completedAt": "2026-03-09T10:00:00.000Z"
+    },
+    "TASK-003": {
+      "id": "TASK-003",
+      "title": "SQLite: session repository impl + migration",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-001",
+      "dependencies": [
+        "TASK-002"
+      ],
+      "createdAt": "2026-03-09T00:00:00.000Z",
+      "updatedAt": "2026-03-09T10:00:00.000Z",
+      "startedAt": "2026-03-09T00:00:00.000Z",
+      "completedAt": "2026-03-09T10:00:00.000Z"
+    },
+    "TASK-004": {
+      "id": "TASK-004",
+      "title": "LLM adapters: implement Chat() for LMStudio + Ollama",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-001",
+      "dependencies": [
+        "TASK-002"
+      ],
+      "createdAt": "2026-03-09T00:00:00.000Z",
+      "updatedAt": "2026-03-09T10:00:00.000Z",
+      "startedAt": "2026-03-09T00:00:00.000Z",
+      "completedAt": "2026-03-09T10:00:00.000Z"
+    },
+    "TASK-005": {
+      "id": "TASK-005",
+      "title": "OrchestratorService: session-isolated task processing",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-001",
+      "dependencies": [
+        "TASK-003",
+        "TASK-004"
+      ],
+      "createdAt": "2026-03-09T00:00:00.000Z",
+      "updatedAt": "2026-03-09T10:00:00.000Z",
+      "startedAt": "2026-03-09T00:00:00.000Z",
+      "completedAt": "2026-03-09T10:00:00.000Z"
+    },
+    "TASK-006": {
+      "id": "TASK-006",
+      "title": "MCP server inbound adapter (JSON-RPC 2.0)",
+      "status": "done",
+      "role": "mcp",
+      "planId": "PLAN-001",
+      "dependencies": [
+        "TASK-002"
+      ],
+      "createdAt": "2026-03-09T00:00:00.000Z",
+      "updatedAt": "2026-03-09T10:00:00.000Z",
+      "startedAt": "2026-03-09T00:00:00.000Z",
+      "completedAt": "2026-03-09T10:00:00.000Z"
+    },
+    "TASK-007": {
+      "id": "TASK-007",
+      "title": "Wire MCP server into all entry points",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-001",
+      "dependencies": [
+        "TASK-006"
+      ],
+      "createdAt": "2026-03-09T00:00:00.000Z",
+      "updatedAt": "2026-03-09T10:00:00.000Z",
+      "startedAt": "2026-03-09T00:00:00.000Z",
+      "completedAt": "2026-03-09T10:00:00.000Z"
+    },
+    "TASK-008": {
+      "id": "TASK-008",
+      "title": "Tests: SQLite session repository",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-001",
+      "dependencies": [
+        "TASK-003"
+      ],
+      "createdAt": "2026-03-09T00:00:00.000Z",
+      "updatedAt": "2026-03-09T10:00:00.000Z",
+      "startedAt": "2026-03-09T00:00:00.000Z",
+      "completedAt": "2026-03-09T10:00:00.000Z"
+    },
+    "TASK-009": {
+      "id": "TASK-009",
+      "title": "Tests: OrchestratorService session isolation",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-001",
+      "dependencies": [
+        "TASK-005"
+      ],
+      "createdAt": "2026-03-09T00:00:00.000Z",
+      "updatedAt": "2026-03-09T10:00:00.000Z",
+      "startedAt": "2026-03-09T00:00:00.000Z",
+      "completedAt": "2026-03-09T10:00:00.000Z"
+    },
+    "TASK-010": {
+      "id": "TASK-010",
+      "title": "Tests: MCP server handler",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-001",
+      "dependencies": [
+        "TASK-006"
+      ],
+      "createdAt": "2026-03-09T00:00:00.000Z",
+      "updatedAt": "2026-03-09T10:00:00.000Z",
+      "startedAt": "2026-03-09T00:00:00.000Z",
+      "completedAt": "2026-03-09T10:00:00.000Z"
+    },
+    "TASK-011": {
+      "id": "TASK-011",
+      "title": "Rewrite .github/agents for nexusOrchestrator",
+      "status": "done",
+      "role": "planning",
+      "planId": "PLAN-001",
+      "dependencies": [],
+      "createdAt": "2026-03-09T00:00:00.000Z",
+      "updatedAt": "2026-03-09T10:00:00.000Z",
+      "startedAt": "2026-03-09T00:00:00.000Z",
+      "completedAt": "2026-03-09T10:00:00.000Z"
+    },
+    "TASK-012": {
+      "id": "TASK-012",
+      "title": "Update copilot-instructions.md + README",
+      "status": "done",
+      "role": "planning",
+      "planId": "PLAN-001",
+      "dependencies": [
+        "TASK-005",
+        "TASK-006"
+      ],
+      "createdAt": "2026-03-09T00:00:00.000Z",
+      "updatedAt": "2026-03-09T10:00:00.000Z",
+      "startedAt": "2026-03-09T00:00:00.000Z",
+      "completedAt": "2026-03-09T10:00:00.000Z"
+    },
+    "TASK-013": {
+      "id": "TASK-013",
+      "title": "Orchestrator: startup recovery + Stop() idempotency",
+      "status": "todo",
+      "role": "backend",
+      "planId": "PLAN-002",
+      "dependencies": [],
+      "createdAt": "2026-03-09T12:00:00.000Z",
+      "updatedAt": "2026-03-09T12:00:00.000Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "TASK-014": {
+      "id": "TASK-014",
+      "title": "Orchestrator: retry limits + path normalization + queue cap",
+      "status": "todo",
+      "role": "backend",
+      "planId": "PLAN-002",
+      "dependencies": [],
+      "createdAt": "2026-03-09T12:00:00.000Z",
+      "updatedAt": "2026-03-09T12:00:00.000Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "TASK-015": {
+      "id": "TASK-015",
+      "title": "HTTP API: history endpoint + session management",
+      "status": "todo",
+      "role": "api",
+      "planId": "PLAN-002",
+      "dependencies": [],
+      "createdAt": "2026-03-09T12:00:00.000Z",
+      "updatedAt": "2026-03-09T12:00:00.000Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "TASK-016": {
+      "id": "TASK-016",
+      "title": "CLI: queue submit + session + providers configure",
+      "status": "todo",
+      "role": "cli",
+      "planId": "PLAN-002",
+      "dependencies": [
+        "TASK-015"
+      ],
+      "createdAt": "2026-03-09T12:00:00.000Z",
+      "updatedAt": "2026-03-09T12:00:00.000Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "TASK-017": {
+      "id": "TASK-017",
+      "title": "Frontend: scaffold Vue3+PrimeVue4+TW4 Wails app",
+      "status": "todo",
+      "role": "devops",
+      "planId": "PLAN-002",
+      "dependencies": [
+        "TASK-015"
+      ],
+      "createdAt": "2026-03-09T12:00:00.000Z",
+      "updatedAt": "2026-03-09T12:00:00.000Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "TASK-018": {
+      "id": "TASK-018",
+      "title": "Wails binding: extend app.go with history/session/stats",
+      "status": "todo",
+      "role": "backend",
+      "planId": "PLAN-002",
+      "dependencies": [
+        "TASK-015"
+      ],
+      "createdAt": "2026-03-09T12:00:00.000Z",
+      "updatedAt": "2026-03-09T12:00:00.000Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "TASK-019": {
+      "id": "TASK-019",
+      "title": "GUI: Dashboard + Provider status view",
+      "status": "todo",
+      "role": "devops",
+      "planId": "PLAN-002",
+      "dependencies": [
+        "TASK-017",
+        "TASK-018"
+      ],
+      "createdAt": "2026-03-09T12:00:00.000Z",
+      "updatedAt": "2026-03-09T12:00:00.000Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "TASK-020": {
+      "id": "TASK-020",
+      "title": "GUI: Task Queue page with submit drawer",
+      "status": "todo",
+      "role": "devops",
+      "planId": "PLAN-002",
+      "dependencies": [
+        "TASK-017",
+        "TASK-018"
+      ],
+      "createdAt": "2026-03-09T12:00:00.000Z",
+      "updatedAt": "2026-03-09T12:00:00.000Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "TASK-021": {
+      "id": "TASK-021",
+      "title": "GUI: Task History + Detail page with logs",
+      "status": "todo",
+      "role": "devops",
+      "planId": "PLAN-002",
+      "dependencies": [
+        "TASK-017",
+        "TASK-018"
+      ],
+      "createdAt": "2026-03-09T12:00:00.000Z",
+      "updatedAt": "2026-03-09T12:00:00.000Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "TASK-022": {
+      "id": "TASK-022",
+      "title": "GUI: Settings page (provider URLs, MCP addr, queue cap)",
+      "status": "todo",
+      "role": "devops",
+      "planId": "PLAN-002",
+      "dependencies": [
+        "TASK-017",
+        "TASK-018"
+      ],
+      "createdAt": "2026-03-09T12:00:00.000Z",
+      "updatedAt": "2026-03-09T12:00:00.000Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "TASK-023": {
+      "id": "TASK-023",
+      "title": "System tray: show/hide, quick stats, task notifications",
+      "status": "todo",
+      "role": "devops",
+      "planId": "PLAN-002",
+      "dependencies": [
+        "TASK-019",
+        "TASK-020"
+      ],
+      "createdAt": "2026-03-09T12:00:00.000Z",
+      "updatedAt": "2026-03-09T12:00:00.000Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "TASK-024": {
+      "id": "TASK-024",
+      "title": "QA: Orchestrator hardening tests + GUI smoke tests",
+      "status": "todo",
+      "role": "qa",
+      "planId": "PLAN-002",
+      "dependencies": [
+        "TASK-013",
+        "TASK-014",
+        "TASK-019",
+        "TASK-020",
+        "TASK-021",
+        "TASK-022"
+      ],
+      "createdAt": "2026-03-09T12:00:00.000Z",
+      "updatedAt": "2026-03-09T12:00:00.000Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "TASK-025": {
+      "id": "TASK-025",
+      "title": "Verify: cross-platform build check + updated README",
+      "status": "todo",
+      "role": "verify",
+      "planId": "PLAN-002",
+      "dependencies": [
+        "TASK-024"
+      ],
+      "createdAt": "2026-03-09T12:00:00.000Z",
+      "updatedAt": "2026-03-09T12:00:00.000Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "TASK-026": {
+      "id": "TASK-026",
+      "title": "Domain: add source writeback fields to Task",
+      "status": "todo",
+      "role": "architecture",
+      "planId": "PLAN-002",
+      "dependencies": [],
+      "createdAt": "2026-03-09T13:00:00.000Z",
+      "updatedAt": "2026-03-09T13:00:00.000Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "TASK-027": {
+      "id": "TASK-027",
+      "title": "Port + adapter: Writeback outbound (fs_writeback)",
+      "status": "todo",
+      "role": "backend",
+      "planId": "PLAN-002",
+      "dependencies": [
+        "TASK-026"
+      ],
+      "createdAt": "2026-03-09T13:00:00.000Z",
+      "updatedAt": "2026-03-09T13:00:00.000Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "TASK-028": {
+      "id": "TASK-028",
+      "title": "OrchestratorService: invoke writeback on completion",
+      "status": "todo",
+      "role": "backend",
+      "planId": "PLAN-002",
+      "dependencies": [
+        "TASK-027",
+        "TASK-013"
+      ],
+      "createdAt": "2026-03-09T13:00:00.000Z",
+      "updatedAt": "2026-03-09T13:00:00.000Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "TASK-029": {
+      "id": "TASK-029",
+      "title": "HTTP API + MCP: expose source fields in submit",
+      "status": "todo",
+      "role": "api",
+      "planId": "PLAN-002",
+      "dependencies": [
+        "TASK-026"
+      ],
+      "createdAt": "2026-03-09T13:00:00.000Z",
+      "updatedAt": "2026-03-09T13:00:00.000Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "TASK-030": {
+      "id": "TASK-030",
+      "title": "New command: .claude/commands/push-to-nexus.md",
+      "status": "todo",
+      "role": "planning",
+      "planId": "PLAN-002",
+      "dependencies": [
+        "TASK-029"
+      ],
+      "createdAt": "2026-03-09T13:00:00.000Z",
+      "updatedAt": "2026-03-09T13:00:00.000Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "TASK-031": {
+      "id": "TASK-031",
+      "title": "New command: .claude/commands/sync-from-nexus.md",
+      "status": "todo",
+      "role": "planning",
+      "planId": "PLAN-002",
+      "dependencies": [
+        "TASK-030"
+      ],
+      "createdAt": "2026-03-09T13:00:00.000Z",
+      "updatedAt": "2026-03-09T13:00:00.000Z",
+      "startedAt": null,
+      "completedAt": null
+    },
+    "TASK-032": {
+      "id": "TASK-032",
+      "title": "Add JSON struct tags to domain types (Task, Message, Session)",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-003",
+      "dependencies": [],
+      "createdAt": "2026-03-09T15:00:00.000Z",
+      "updatedAt": "2026-03-10T00:30:00.000Z",
+      "startedAt": "2026-03-10T00:00:00.000Z",
+      "completedAt": "2026-03-10T00:30:00.000Z"
+    },
+    "TASK-033": {
+      "id": "TASK-033",
+      "title": "cmd/nexus-submit: feed TASK-NNN.md files to daemon via HTTP",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-003",
+      "dependencies": ["TASK-032"],
+      "createdAt": "2026-03-09T15:00:00.000Z",
+      "updatedAt": "2026-03-10T00:30:00.000Z",
+      "startedAt": "2026-03-10T00:00:00.000Z",
+      "completedAt": "2026-03-10T00:30:00.000Z"
+    },
+    "TASK-034": {
+      "id": "TASK-034",
+      "title": "Embedded web dashboard at GET /ui (no build tooling required)",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-003",
+      "dependencies": ["TASK-032"],
+      "createdAt": "2026-03-09T15:00:00.000Z",
+      "updatedAt": "2026-03-10T00:30:00.000Z",
+      "startedAt": "2026-03-10T00:00:00.000Z",
+      "completedAt": "2026-03-10T00:30:00.000Z"
+    },
+    "TASK-035": {
+      "id": "TASK-035",
+      "title": "SSE events endpoint GET /api/events + OrchestratorService event fan-out",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-003",
+      "dependencies": [],
+      "createdAt": "2026-03-09T15:00:00.000Z",
+      "updatedAt": "2026-03-10T00:30:00.000Z",
+      "startedAt": "2026-03-10T00:00:00.000Z",
+      "completedAt": "2026-03-10T00:30:00.000Z"
+    },
+    "TASK-036": {
+      "id": "TASK-036",
+      "title": "Dogfood scripts + .claude/commands/dogfood-plan002.md",
+      "status": "done",
+      "role": "planning",
+      "planId": "PLAN-003",
+      "dependencies": ["TASK-033"],
+      "createdAt": "2026-03-09T15:00:00.000Z",
+      "updatedAt": "2026-03-10T00:30:00.000Z",
+      "startedAt": "2026-03-10T00:00:00.000Z",
+      "completedAt": "2026-03-10T00:30:00.000Z"
+    },
+    "TASK-037": {
+      "id": "TASK-037",
+      "title": "Integration tests: full pipeline (daemon, mock LLM, real SQLite)",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-003",
+      "dependencies": ["TASK-033", "TASK-034"],
+      "createdAt": "2026-03-09T15:00:00.000Z",
+      "updatedAt": "2026-03-10T00:30:00.000Z",
+      "startedAt": "2026-03-10T00:00:00.000Z",
+      "completedAt": "2026-03-10T00:30:00.000Z"
+    },
+    "TASK-038": {
+      "id": "TASK-038",
+      "title": "PLAN-003 verification + README Dogfooding section",
+      "status": "done",
+      "role": "planning",
+      "planId": "PLAN-003",
+      "dependencies": ["TASK-034", "TASK-036"],
+      "createdAt": "2026-03-09T15:00:00.000Z",
+      "updatedAt": "2026-03-10T00:30:00.000Z",
+      "startedAt": "2026-03-10T00:00:00.000Z",
+      "completedAt": "2026-03-10T00:30:00.000Z"
+    }
+  }
 }

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/wailsapp/wails/v2"
@@ -10,6 +12,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 
 	"nexus-ai/internal/adapters/inbound/httpapi"
+	"nexus-ai/internal/adapters/inbound/mcp"
 	"nexus-ai/internal/adapters/outbound/fs_writer"
 	"nexus-ai/internal/adapters/outbound/llm_lmstudio"
 	"nexus-ai/internal/adapters/outbound/llm_ollama"
@@ -40,11 +43,22 @@ func main() {
 
 	// 2. Core services (Hexagonal wiring)
 	discoverySvc := services.NewDiscoveryService(lmStudio, ollama)
-	orchestratorSvc := services.NewOrchestrator(discoverySvc, repo, writer)
+	sessionRepo := repo_sqlite.NewSessionRepo(repo)
+	orchestratorSvc := services.NewOrchestrator(discoverySvc, repo, writer, sessionRepo)
 	defer orchestratorSvc.Stop()
 
-	// 3. Start VS Code HTTP API in the background
-	go httpapi.StartServer(orchestratorSvc, ":9999")
+	// 3. Start HTTP API and MCP server with a cancellable context
+	httpCtx, cancelHTTP := context.WithCancel(context.Background())
+	go func() {
+		if err := httpapi.StartServer(httpCtx, orchestratorSvc, ":9999"); err != nil {
+			log.Printf("httpapi: %v", err)
+		}
+	}()
+	go func() {
+		if err := mcp.StartMCPServer(httpCtx, orchestratorSvc, ":9998"); err != nil {
+			log.Printf("mcp: %v", err)
+		}
+	}()
 
 	// 4. Initialise Wails app binding
 	app := NewApp(orchestratorSvc)
@@ -57,7 +71,8 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		OnStartup: app.startup,
+		OnStartup:  app.startup,
+		OnShutdown: func(_ context.Context) { cancelHTTP() },
 		Bind: []interface{}{
 			app,
 		},

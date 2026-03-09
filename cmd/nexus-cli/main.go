@@ -7,10 +7,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 
 	"nexus-ai/internal/adapters/inbound/cli"
 	"nexus-ai/internal/core/domain"
+	"nexus-ai/internal/core/ports"
 )
 
 func main() {
@@ -28,18 +30,46 @@ func main() {
 type remoteOrchestrator struct{ baseURL string }
 
 func (r *remoteOrchestrator) SubmitTask(task domain.Task) (string, error) {
-	body, _ := json.Marshal(task)
+	body, err := json.Marshal(task)
+	if err != nil {
+		return "", fmt.Errorf("remote: marshal task: %w", err)
+	}
 	resp, err := http.Post(r.baseURL+"/api/tasks", "application/json", bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("remote: submit task: %w", err)
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusCreated {
+		return "", fmt.Errorf("remote: submit task: unexpected status %d", resp.StatusCode)
+	}
+
 	var result map[string]string
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return "", fmt.Errorf("remote: decode response: %w", err)
 	}
 	return result["task_id"], nil
+}
+
+func (r *remoteOrchestrator) GetTask(id string) (domain.Task, error) {
+	resp, err := http.Get(r.baseURL + "/api/tasks/" + url.PathEscape(id))
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("remote: get task: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return domain.Task{}, fmt.Errorf("remote: get task: %w", domain.ErrNotFound)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return domain.Task{}, fmt.Errorf("remote: get task: unexpected status %d", resp.StatusCode)
+	}
+
+	var task domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&task); err != nil {
+		return domain.Task{}, fmt.Errorf("remote: decode task: %w", err)
+	}
+	return task, nil
 }
 
 func (r *remoteOrchestrator) GetQueue() ([]domain.Task, error) {
@@ -49,6 +79,10 @@ func (r *remoteOrchestrator) GetQueue() ([]domain.Task, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("remote: get queue: unexpected status %d", resp.StatusCode)
+	}
+
 	var tasks []domain.Task
 	if err := json.NewDecoder(resp.Body).Decode(&tasks); err != nil {
 		return nil, fmt.Errorf("remote: decode queue: %w", err)
@@ -56,8 +90,26 @@ func (r *remoteOrchestrator) GetQueue() ([]domain.Task, error) {
 	return tasks, nil
 }
 
+func (r *remoteOrchestrator) GetProviders() ([]ports.ProviderInfo, error) {
+	resp, err := http.Get(r.baseURL + "/api/providers")
+	if err != nil {
+		return nil, fmt.Errorf("remote: get providers: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("remote: get providers: unexpected status %d", resp.StatusCode)
+	}
+
+	var providers []ports.ProviderInfo
+	if err := json.NewDecoder(resp.Body).Decode(&providers); err != nil {
+		return nil, fmt.Errorf("remote: decode providers: %w", err)
+	}
+	return providers, nil
+}
+
 func (r *remoteOrchestrator) CancelTask(id string) error {
-	req, err := http.NewRequest(http.MethodDelete, r.baseURL+"/api/tasks/"+id, nil)
+	req, err := http.NewRequest(http.MethodDelete, r.baseURL+"/api/tasks/"+url.PathEscape(id), nil)
 	if err != nil {
 		return fmt.Errorf("remote: build cancel request: %w", err)
 	}
@@ -67,7 +119,7 @@ func (r *remoteOrchestrator) CancelTask(id string) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("remote: cancel task: status %d", resp.StatusCode)
+		return fmt.Errorf("remote: cancel task: unexpected status %d", resp.StatusCode)
 	}
 	return nil
 }

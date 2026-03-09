@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"nexus-ai/internal/core/domain"
 )
 
 // Adapter implements ports.LLMClient for Ollama's REST API.
@@ -92,4 +94,41 @@ func (a *Adapter) GenerateCode(prompt string) (string, error) {
 		return "", fmt.Errorf("ollama: decode response: %w", err)
 	}
 	return result.Response, nil
+}
+
+// Chat sends a multi-turn conversation history to Ollama using the /api/chat
+// endpoint and returns the assistant reply.
+func (a *Adapter) Chat(messages []domain.Message) (string, error) {
+	msgs := make([]map[string]string, len(messages))
+	for i, m := range messages {
+		msgs[i] = map[string]string{"role": m.Role, "content": m.Content}
+	}
+	reqBody, err := json.Marshal(map[string]interface{}{
+		"model":    a.model,
+		"messages": msgs,
+		"stream":   false,
+	})
+	if err != nil {
+		return "", fmt.Errorf("ollama: marshal chat request: %w", err)
+	}
+
+	resp, err := a.httpClient.Post(
+		a.baseURL+"/api/chat",
+		"application/json",
+		bytes.NewReader(reqBody),
+	)
+	if err != nil {
+		return "", fmt.Errorf("ollama: chat request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("ollama: decode chat response: %w", err)
+	}
+	return result.Message.Content, nil
 }

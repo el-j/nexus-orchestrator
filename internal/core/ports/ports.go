@@ -9,7 +9,12 @@ type LLMClient interface {
 	Ping() bool
 	ProviderName() string
 	GetAvailableModels() ([]string, error)
+	// GenerateCode sends a single prompt and returns generated text.
+	// Prefer Chat for multi-turn session-aware generation.
 	GenerateCode(prompt string) (string, error)
+	// Chat sends a full conversation history and returns the assistant reply.
+	// Used by OrchestratorService for per-project session isolation.
+	Chat(messages []domain.Message) (string, error)
 }
 
 // TaskRepository is the port for persisting and querying Tasks.
@@ -18,6 +23,8 @@ type TaskRepository interface {
 	GetByID(id string) (domain.Task, error)
 	GetPending() ([]domain.Task, error)
 	UpdateStatus(id string, status domain.TaskStatus) error
+	// UpdateLogs replaces the Logs field on the task identified by id.
+	UpdateLogs(id, logs string) error
 }
 
 // FileWriter is the port for reading context from disk and writing generated code back.
@@ -28,9 +35,43 @@ type FileWriter interface {
 
 // --- Inbound Ports (Driving Adapters) ---
 
+// ProviderInfo summarises the liveness status of a single LLM backend.
+type ProviderInfo struct {
+	Name   string `json:"name"`
+	Active bool   `json:"active"`
+}
+
+// SessionRepository is the port for persisting per-project conversation history.
+// ProjectPath (filepath.Clean'd) is the isolation key.
+type SessionRepository interface {
+	Save(s domain.Session) error
+	// GetByProjectPath returns the session for the given project, or domain.ErrNotFound.
+	GetByProjectPath(projectPath string) (domain.Session, error)
+	// AppendMessage adds a message to the session for projectPath.
+	// If no session exists for that path, one is created automatically.
+	AppendMessage(projectPath string, msg domain.Message) error
+}
+
 // Orchestrator is the primary inbound port that the UI, CLI, and HTTP API call.
 type Orchestrator interface {
 	SubmitTask(task domain.Task) (string, error)
+	// GetTask returns the task with the given ID, or domain.ErrNotFound.
+	GetTask(id string) (domain.Task, error)
 	GetQueue() ([]domain.Task, error)
+	// GetProviders returns a snapshot of all registered LLM backends and their liveness.
+	GetProviders() ([]ProviderInfo, error)
 	CancelTask(id string) error
+}
+
+// TaskEvent is emitted by OrchestratorService on task lifecycle changes.
+type TaskEvent struct {
+	Type   string            `json:"type"`   // "task.queued", "task.processing", "task.completed", "task.failed", "task.cancelled"
+	TaskID string            `json:"taskId"`
+	Status domain.TaskStatus `json:"status"`
+}
+
+// EventBroadcaster is the optional outbound port for publishing task lifecycle events.
+// It must be safe for concurrent use. Implementations must be non-blocking.
+type EventBroadcaster interface {
+	Broadcast(event TaskEvent)
 }

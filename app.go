@@ -30,9 +30,19 @@ func (a *App) SubmitTask(task domain.Task) (string, error) {
 	return a.orchestrator.SubmitTask(task)
 }
 
+// GetTask retrieves a specific task by ID.
+func (a *App) GetTask(id string) (domain.Task, error) {
+	return a.orchestrator.GetTask(id)
+}
+
 // GetQueue returns all pending tasks for the dashboard.
 func (a *App) GetQueue() ([]domain.Task, error) {
 	return a.orchestrator.GetQueue()
+}
+
+// GetProviders returns the status of all registered LLM backends.
+func (a *App) GetProviders() ([]ports.ProviderInfo, error) {
+	return a.orchestrator.GetProviders()
 }
 
 // CancelTask cancels a queued task.

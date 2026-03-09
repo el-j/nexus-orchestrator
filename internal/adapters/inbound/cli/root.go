@@ -18,7 +18,7 @@ func NewRootCmd(orch ports.Orchestrator) *cobra.Command {
 	}
 
 	root.AddCommand(newQueueCmd(orch))
-	root.AddCommand(newProvidersCmd())
+	root.AddCommand(newProvidersCmd(orch))
 
 	return root
 }
@@ -50,6 +50,21 @@ func newQueueCmd(orch ports.Orchestrator) *cobra.Command {
 		},
 	}
 
+	get := &cobra.Command{
+		Use:   "get <task-id>",
+		Short: "Fetch details for a specific task by ID",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			task, err := orch.GetTask(args[0])
+			if err != nil {
+				return fmt.Errorf("queue get: %w", err)
+			}
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(task)
+		},
+	}
+
 	cancel := &cobra.Command{
 		Use:   "cancel <task-id>",
 		Short: "Cancel a queued task by ID",
@@ -63,25 +78,28 @@ func newQueueCmd(orch ports.Orchestrator) *cobra.Command {
 		},
 	}
 
-	queue.AddCommand(list, cancel)
+	queue.AddCommand(list, get, cancel)
 	return queue
 }
 
-// newProvidersCmd returns the `nexus providers` command.
-func newProvidersCmd() *cobra.Command {
+// newProvidersCmd returns the `nexus providers` command which queries the live
+// daemon for the status of each registered LLM backend.
+func newProvidersCmd(orch ports.Orchestrator) *cobra.Command {
 	return &cobra.Command{
 		Use:   "providers",
-		Short: "Show detected LLM providers",
+		Short: "Show the status of all registered LLM backends",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// In a full implementation these are read from a status endpoint.
-			// For now we surface a user-friendly placeholder.
-			status := []map[string]string{
-				{"provider": "LM Studio", "url": "http://127.0.0.1:1234", "note": "auto-detected on port 1234"},
-				{"provider": "Ollama", "url": "http://127.0.0.1:11434", "note": "auto-detected on port 11434"},
+			providers, err := orch.GetProviders()
+			if err != nil {
+				return fmt.Errorf("providers: %w", err)
+			}
+			if len(providers) == 0 {
+				fmt.Println("No providers registered.")
+				return nil
 			}
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
-			return enc.Encode(status)
+			return enc.Encode(providers)
 		},
 	}
 }
