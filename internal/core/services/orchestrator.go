@@ -71,7 +71,7 @@ func (o *OrchestratorService) CancelTask(id string) error {
 	for i, t := range o.queue {
 		if t.ID == id {
 			o.queue = append(o.queue[:i], o.queue[i+1:]...)
-			return o.repo.UpdateStatus(id, domain.StatusFailed)
+			return o.repo.UpdateStatus(id, domain.StatusCancelled)
 		}
 	}
 	return errors.New("orchestrator: task not found in queue")
