@@ -3,6 +3,7 @@ package fs_writer_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"nexus-ai/internal/adapters/outbound/fs_writer"
@@ -59,7 +60,7 @@ func TestWriter_ReadContextFiles(t *testing.T) {
 		t.Error("expected non-empty context")
 	}
 	for _, want := range []string{"a.go", "package a", "b.go", "package b"} {
-		if !containsStr(ctx, want) {
+		if !strings.Contains(ctx, want) {
 			t.Errorf("context missing %q", want)
 		}
 	}
@@ -73,15 +74,4 @@ func TestWriter_ReadContextFiles_MissingFileReturnsError(t *testing.T) {
 	if err == nil {
 		t.Error("expected error for missing file, got nil")
 	}
-}
-
-func containsStr(s, sub string) bool {
-	return len(s) >= len(sub) && (s == sub || len(s) > 0 && func() bool {
-		for i := 0; i <= len(s)-len(sub); i++ {
-			if s[i:i+len(sub)] == sub {
-				return true
-			}
-		}
-		return false
-	}())
 }

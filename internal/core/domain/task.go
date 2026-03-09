@@ -10,6 +10,7 @@ const (
 	StatusProcessing TaskStatus = "PROCESSING"
 	StatusCompleted  TaskStatus = "COMPLETED"
 	StatusFailed     TaskStatus = "FAILED"
+	StatusCancelled  TaskStatus = "CANCELLED"
 )
 
 // Task is the central domain entity that represents a single unit of AI work.
