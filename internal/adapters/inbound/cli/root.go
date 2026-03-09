@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
 	"nexus-ai/internal/core/ports"
+
+	"github.com/spf13/cobra"
 )
 
 // NewRootCmd builds and returns the root Cobra command tree.

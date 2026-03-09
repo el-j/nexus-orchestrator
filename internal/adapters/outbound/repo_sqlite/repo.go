@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
 	"nexus-ai/internal/core/domain"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // Repository implements ports.TaskRepository using a local SQLite database.

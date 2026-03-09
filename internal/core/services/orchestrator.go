@@ -8,9 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"nexus-ai/internal/core/domain"
 	"nexus-ai/internal/core/ports"
+
+	"github.com/google/uuid"
 )
 
 // OrchestratorService implements ports.Orchestrator and drives the worker loop.

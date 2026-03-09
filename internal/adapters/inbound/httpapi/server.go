@@ -8,10 +8,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"nexus-ai/internal/core/domain"
 	"nexus-ai/internal/core/ports"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 // Server holds the HTTP API dependencies.

@@ -8,8 +8,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/google/uuid"
 	"nexus-ai/internal/core/domain"
+
+	"github.com/google/uuid"
 )
 
 // SessionRepo implements ports.SessionRepository using the shared SQLite database.
