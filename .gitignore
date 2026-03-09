@@ -1,7 +1,7 @@
 # Binaries & build output
-nexus-ai
-nexus-cli
-nexus-daemon
+/nexus-ai
+/nexus-cli
+/nexus-daemon
 build/bin/
 *.exe
 
