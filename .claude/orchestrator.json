@@ -1,0 +1,12 @@
+{
+  "version": "2",
+  "updatedAt": "2026-03-10T00:00:00.000Z",
+  "counters": {
+    "nextTaskId": 116,
+    "nextPlanId": 22
+  },
+  "activePlanId": null,
+  "notes": "PLAN-001 through PLAN-021 archived to .claude/plans/. See orchestrator-index.md for history.",
+  "plans": {},
+  "tasks": {}
+}
