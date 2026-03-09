@@ -1,0 +1,23 @@
+# Binaries & build output
+/nexus-ai
+/nexus-cli
+/nexus-daemon
+build/bin/
+*.exe
+
+# SQLite databases
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Go module cache / vendor
+vendor/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Frontend build cache
+frontend/node_modules/
+frontend/.vite/
