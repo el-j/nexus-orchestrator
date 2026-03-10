@@ -1,12 +1,12 @@
 {
   "version": "2",
-  "updatedAt": "2026-03-10T10:00:00.000Z",
+  "updatedAt": "2026-03-10T14:00:00.000Z",
   "counters": {
-    "nextTaskId": 68,
-    "nextPlanId": 8
+    "nextTaskId": 74,
+    "nextPlanId": 9
   },
   "activePlanId": null,
-  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale (orchestrator hardening + Wails GUI + writeback — partially superseded by later plans). PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening: security, data integrity, concurrency, type safety, tests).",
+  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale (orchestrator hardening + Wails GUI + writeback — partially superseded by later plans). PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening: security, data integrity, concurrency, type safety, tests). PLAN-008 active (comprehensive E2E testing + self-dogfood command).",
   "plans": {
     "PLAN-001": {
       "id": "PLAN-001",
@@ -118,6 +118,14 @@
       "createdAt": "2026-03-10T10:00:00.000Z",
       "completedAt": "2026-03-10T12:00:00.000Z",
       "taskIds": ["TASK-060","TASK-061","TASK-062","TASK-063","TASK-064","TASK-065","TASK-066","TASK-067"]
+    },
+    "PLAN-008": {
+      "id": "PLAN-008",
+      "goal": "Comprehensive E2E testing: MCP integration tests, HTTP API coverage (provider CRUD, cancel, errors), SSE event lifecycle, process-level smoke test script, and a new self-dogfood .claude/command",
+      "status": "completed",
+      "createdAt": "2026-03-10T14:00:00.000Z",
+      "completedAt": "2026-03-10T14:40:00.000Z",
+      "taskIds": ["TASK-068","TASK-069","TASK-070","TASK-071","TASK-072","TASK-073"]
     }
   },
   "tasks": {
@@ -970,6 +978,72 @@
       "createdAt": "2026-03-10T10:00:00.000Z",
       "startedAt": "2026-03-10T11:30:00.000Z",
       "completedAt": "2026-03-10T11:45:00.000Z"
+    },
+    "TASK-068": {
+      "id": "TASK-068",
+      "title": "MCP protocol integration test (all 6 tools via JSON-RPC)",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-008",
+      "dependencies": [],
+      "createdAt": "2026-03-10T14:00:00.000Z",
+      "startedAt": "2026-03-10T14:10:00.000Z",
+      "completedAt": "2026-03-10T14:20:00.000Z"
+    },
+    "TASK-069": {
+      "id": "TASK-069",
+      "title": "HTTP API comprehensive tests (provider CRUD, cancel, errors)",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-008",
+      "dependencies": [],
+      "createdAt": "2026-03-10T14:00:00.000Z",
+      "startedAt": "2026-03-10T14:10:00.000Z",
+      "completedAt": "2026-03-10T14:20:00.000Z"
+    },
+    "TASK-070": {
+      "id": "TASK-070",
+      "title": "SSE event lifecycle test (submit → events → verify order)",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-008",
+      "dependencies": [],
+      "createdAt": "2026-03-10T14:00:00.000Z",
+      "startedAt": "2026-03-10T14:10:00.000Z",
+      "completedAt": "2026-03-10T14:20:00.000Z"
+    },
+    "TASK-071": {
+      "id": "TASK-071",
+      "title": "Process-level E2E smoke test script (build+run daemon)",
+      "status": "done",
+      "role": "verify",
+      "planId": "PLAN-008",
+      "dependencies": ["TASK-068","TASK-069","TASK-070"],
+      "createdAt": "2026-03-10T14:00:00.000Z",
+      "startedAt": "2026-03-10T14:25:00.000Z",
+      "completedAt": "2026-03-10T14:30:00.000Z"
+    },
+    "TASK-072": {
+      "id": "TASK-072",
+      "title": "New .claude/commands/execute-via-nexus.md (self-dogfood)",
+      "status": "done",
+      "role": "planning",
+      "planId": "PLAN-008",
+      "dependencies": ["TASK-068","TASK-069","TASK-070"],
+      "createdAt": "2026-03-10T14:00:00.000Z",
+      "startedAt": "2026-03-10T14:25:00.000Z",
+      "completedAt": "2026-03-10T14:30:00.000Z"
+    },
+    "TASK-073": {
+      "id": "TASK-073",
+      "title": "QA verification: full test suite + build + smoke pass",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-008",
+      "dependencies": ["TASK-071","TASK-072"],
+      "createdAt": "2026-03-10T14:00:00.000Z",
+      "startedAt": "2026-03-10T14:35:00.000Z",
+      "completedAt": "2026-03-10T14:40:00.000Z"
     }
   }
 }
