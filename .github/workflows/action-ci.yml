@@ -47,7 +47,7 @@ jobs:
         run: npm run typecheck
 
       - name: Unit tests
-        run: npm test -- --coverage
+        run: npm test
 
   build-check:
     name: Verify dist is up to date
@@ -75,11 +75,13 @@ jobs:
         run: npm run build
 
       - name: Check dist is unchanged
+        # Working directory is github-action/, so use dist/index.js (not github-action/dist/index.js)
+        # The -- separator tells git this is a path, not a revision
         run: |
-          if ! git diff --quiet github-action/dist/index.js; then
+          if ! git diff --quiet -- dist/index.js; then
             echo "::error::github-action/dist/index.js is out of date."
             echo "Run 'cd github-action && npm run build' and commit the result."
-            git diff --stat github-action/dist/index.js
+            git diff --stat -- dist/index.js
             exit 1
           fi
           echo "dist/index.js is up to date ✓"

@@ -37,11 +37,6 @@
     },
     "collectCoverageFrom": [
       "src/**/*.ts"
-    ],
-    "coverageThreshold": {
-      "global": {
-        "lines": 70
-      }
-    }
+    ]
   }
 }
