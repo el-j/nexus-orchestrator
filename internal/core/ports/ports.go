@@ -29,6 +29,8 @@ type TaskRepository interface {
 	Save(t domain.Task) error
 	GetByID(id string) (domain.Task, error)
 	GetPending() ([]domain.Task, error)
+	// GetByProjectPath returns all tasks for the given project path.
+	GetByProjectPath(projectPath string) ([]domain.Task, error)
 	UpdateStatus(id string, status domain.TaskStatus) error
 	// UpdateLogs replaces the Logs field on the task identified by id.
 	UpdateLogs(id, logs string) error

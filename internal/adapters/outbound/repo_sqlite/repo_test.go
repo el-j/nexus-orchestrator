@@ -278,3 +278,104 @@ func TestRepository_UpdateLogs_NotFound(t *testing.T) {
 		t.Errorf("expected domain.ErrNotFound, got %v", err)
 	}
 }
+
+func TestRepository_GetByProjectPath(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	now := time.Now().Truncate(time.Millisecond)
+	tasks := []domain.Task{
+		{ID: "pp-1", ProjectPath: "/proj/alpha", TargetFile: "a.go", Instruction: "one", Status: domain.StatusQueued, CreatedAt: now, UpdatedAt: now},
+		{ID: "pp-2", ProjectPath: "/proj/alpha", TargetFile: "b.go", Instruction: "two", Status: domain.StatusCompleted, CreatedAt: now.Add(time.Second), UpdatedAt: now.Add(time.Second)},
+		{ID: "pp-3", ProjectPath: "/proj/beta", TargetFile: "c.go", Instruction: "three", Status: domain.StatusQueued, CreatedAt: now, UpdatedAt: now},
+	}
+	for _, task := range tasks {
+		if err := repo.Save(task); err != nil {
+			t.Fatalf("Save %q: %v", task.ID, err)
+		}
+	}
+
+	got, err := repo.GetByProjectPath("/proj/alpha")
+	if err != nil {
+		t.Fatalf("GetByProjectPath: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected 2 tasks, got %d", len(got))
+	}
+	// Ordered by created_at DESC — pp-2 first
+	if got[0].ID != "pp-2" {
+		t.Errorf("expected first task ID pp-2, got %q", got[0].ID)
+	}
+	if got[1].ID != "pp-1" {
+		t.Errorf("expected second task ID pp-1, got %q", got[1].ID)
+	}
+}
+
+func TestRepository_GetByProjectPath_Empty(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	got, err := repo.GetByProjectPath("/proj/nonexistent")
+	if err != nil {
+		t.Fatalf("GetByProjectPath: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected 0 tasks, got %d", len(got))
+	}
+}
+
+func TestRepository_Save_CommandField_RoundTrip(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	now := time.Now().Truncate(time.Millisecond)
+	task := domain.Task{
+		ID:          "cmd-1",
+		ProjectPath: "/proj/cmd",
+		TargetFile:  "main.go",
+		Instruction: "plan it",
+		Command:     domain.CommandPlan,
+		Status:      domain.StatusQueued,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	if err := repo.Save(task); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	got, err := repo.GetByID("cmd-1")
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.Command != domain.CommandPlan {
+		t.Errorf("Command: got %q, want %q", got.Command, domain.CommandPlan)
+	}
+}
+
+func TestRepository_Save_EmptyCommand_RoundTrip(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	now := time.Now().Truncate(time.Millisecond)
+	task := domain.Task{
+		ID:          "cmd-empty",
+		ProjectPath: "/proj/cmd",
+		TargetFile:  "main.go",
+		Instruction: "auto route",
+		Command:     "",
+		Status:      domain.StatusQueued,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	if err := repo.Save(task); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	got, err := repo.GetByID("cmd-empty")
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.Command != "" {
+		t.Errorf("Command: got %q, want empty", got.Command)
+	}
+}

@@ -2,11 +2,11 @@
   "version": "2",
   "updatedAt": "2026-03-10T14:00:00.000Z",
   "counters": {
-    "nextTaskId": 74,
-    "nextPlanId": 9
+    "nextTaskId": 85,
+    "nextPlanId": 10
   },
   "activePlanId": null,
-  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale (orchestrator hardening + Wails GUI + writeback — partially superseded by later plans). PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening: security, data integrity, concurrency, type safety, tests). PLAN-008 active (comprehensive E2E testing + self-dogfood command).",
+  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale (orchestrator hardening + Wails GUI + writeback — partially superseded by later plans). PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening: security, data integrity, concurrency, type safety, tests). PLAN-008 completed (comprehensive E2E testing + self-dogfood command). PLAN-009 completed (GitHub Pages site + command-aware task routing: CommandType domain types, smart execute validation with ErrNoPlan, GetByProjectPath port, Jekyll docs site with 5 pages, GitHub Actions CI).",
   "plans": {
     "PLAN-001": {
       "id": "PLAN-001",
@@ -126,6 +126,14 @@
       "createdAt": "2026-03-10T14:00:00.000Z",
       "completedAt": "2026-03-10T14:40:00.000Z",
       "taskIds": ["TASK-068","TASK-069","TASK-070","TASK-071","TASK-072","TASK-073"]
+    },
+    "PLAN-009": {
+      "id": "PLAN-009",
+      "goal": "GitHub Pages documentation site + command-aware task routing: add CommandType to domain (plan/execute/auto), smart validation in orchestrator, API/MCP support, and a polished Jekyll-based GitHub Pages site with architecture docs, API reference, and getting started guide",
+      "status": "completed",
+      "createdAt": "2026-03-10T15:00:00.000Z",
+      "completedAt": "2026-03-10T15:45:00.000Z",
+      "taskIds": ["TASK-074","TASK-075","TASK-076","TASK-077","TASK-078","TASK-079","TASK-080","TASK-081","TASK-082","TASK-083","TASK-084"]
     }
   },
   "tasks": {
@@ -1044,6 +1052,127 @@
       "createdAt": "2026-03-10T14:00:00.000Z",
       "startedAt": "2026-03-10T14:35:00.000Z",
       "completedAt": "2026-03-10T14:40:00.000Z"
+    },
+    "TASK-074": {
+      "id": "TASK-074",
+      "title": "Domain: Add CommandType (plan/execute/auto) to Task",
+      "status": "done",
+      "role": "architecture",
+      "planId": "PLAN-009",
+      "dependencies": [],
+      "createdAt": "2026-03-10T15:00:00.000Z",
+      "startedAt": "2026-03-10T15:00:00.000Z",
+      "completedAt": "2026-03-10T15:05:00.000Z"
+    },
+    "TASK-075": {
+      "id": "TASK-075",
+      "title": "Service: Command-aware validation in orchestrator",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-009",
+      "dependencies": ["TASK-074"],
+      "createdAt": "2026-03-10T15:00:00.000Z",
+      "startedAt": "2026-03-10T15:05:00.000Z",
+      "completedAt": "2026-03-10T15:15:00.000Z"
+    },
+    "TASK-076": {
+      "id": "TASK-076",
+      "title": "HTTP API + MCP: Accept command param on submit",
+      "status": "done",
+      "role": "api",
+      "planId": "PLAN-009",
+      "dependencies": ["TASK-074"],
+      "createdAt": "2026-03-10T15:00:00.000Z",
+      "startedAt": "2026-03-10T15:05:00.000Z",
+      "completedAt": "2026-03-10T15:15:00.000Z"
+    },
+    "TASK-077": {
+      "id": "TASK-077",
+      "title": "Tests: command-aware routing + validation",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-009",
+      "dependencies": ["TASK-075","TASK-076"],
+      "createdAt": "2026-03-10T15:00:00.000Z",
+      "startedAt": "2026-03-10T15:25:00.000Z",
+      "completedAt": "2026-03-10T15:35:00.000Z"
+    },
+    "TASK-078": {
+      "id": "TASK-078",
+      "title": "Scaffold docs/ with Jekyll config + theme",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-009",
+      "dependencies": [],
+      "createdAt": "2026-03-10T15:00:00.000Z",
+      "startedAt": "2026-03-10T15:00:00.000Z",
+      "completedAt": "2026-03-10T15:05:00.000Z"
+    },
+    "TASK-079": {
+      "id": "TASK-079",
+      "title": "Pages: Landing page with hero + features",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-009",
+      "dependencies": ["TASK-078"],
+      "createdAt": "2026-03-10T15:00:00.000Z",
+      "startedAt": "2026-03-10T15:05:00.000Z",
+      "completedAt": "2026-03-10T15:15:00.000Z"
+    },
+    "TASK-080": {
+      "id": "TASK-080",
+      "title": "Pages: Architecture + API Reference docs",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-009",
+      "dependencies": ["TASK-078"],
+      "createdAt": "2026-03-10T15:00:00.000Z",
+      "startedAt": "2026-03-10T15:05:00.000Z",
+      "completedAt": "2026-03-10T15:15:00.000Z"
+    },
+    "TASK-081": {
+      "id": "TASK-081",
+      "title": "Pages: Getting Started + MCP Integration guide",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-009",
+      "dependencies": ["TASK-078"],
+      "createdAt": "2026-03-10T15:00:00.000Z",
+      "startedAt": "2026-03-10T15:05:00.000Z",
+      "completedAt": "2026-03-10T15:15:00.000Z"
+    },
+    "TASK-082": {
+      "id": "TASK-082",
+      "title": "GitHub Actions workflow for Pages deployment",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-009",
+      "dependencies": ["TASK-079","TASK-080","TASK-081"],
+      "createdAt": "2026-03-10T15:00:00.000Z",
+      "startedAt": "2026-03-10T15:15:00.000Z",
+      "completedAt": "2026-03-10T15:20:00.000Z"
+    },
+    "TASK-083": {
+      "id": "TASK-083",
+      "title": "QA: Full test suite + build verification",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-009",
+      "dependencies": ["TASK-077","TASK-082"],
+      "createdAt": "2026-03-10T15:00:00.000Z",
+      "startedAt": "2026-03-10T15:35:00.000Z",
+      "completedAt": "2026-03-10T15:40:00.000Z"
+    },
+    "TASK-084": {
+      "id": "TASK-084",
+      "title": "Verify: Pages build + complete pipeline check",
+      "status": "done",
+      "role": "verify",
+      "planId": "PLAN-009",
+      "dependencies": ["TASK-083"],
+      "createdAt": "2026-03-10T15:00:00.000Z",
+      "startedAt": "2026-03-10T15:40:00.000Z",
+      "completedAt": "2026-03-10T15:45:00.000Z"
     }
   }
 }

@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"nexus-orchestrator/internal/adapters/inbound/httpapi"
@@ -713,5 +714,31 @@ func TestDashboard_CSPHeader(t *testing.T) {
 	}
 	if got := resp.Header.Get("X-Frame-Options"); got != "DENY" {
 		t.Errorf("expected X-Frame-Options DENY on /ui, got %q", got)
+	}
+}
+
+// TestPostTask_ErrNoPlan_Returns422 verifies that an ErrNoPlan from the orchestrator
+// results in a 422 Unprocessable Entity response.
+func TestPostTask_ErrNoPlan_Returns422(t *testing.T) {
+	mock := &mockOrchestrator{
+		submitTaskErr: fmt.Errorf("orchestrator: submit task: %w", domain.ErrNoPlan),
+	}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	body := bytes.NewBufferString(`{"instruction":"execute now","command":"execute","projectPath":"/proj/x"}`)
+	resp, err := http.Post(ts.URL+"/api/tasks", "application/json", body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("expected 422, got %d", resp.StatusCode)
+	}
+	b, _ := io.ReadAll(resp.Body)
+	if got := string(b); !strings.Contains(got, "planning required") {
+		t.Errorf("expected 'planning required' in body, got: %s", got)
 	}
 }

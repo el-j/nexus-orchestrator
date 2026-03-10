@@ -128,6 +128,10 @@ func (s *Server) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 	}
 	taskID, err := s.orch.SubmitTask(req)
 	if err != nil {
+		if errors.Is(err, domain.ErrNoPlan) {
+			http.Error(w, "planning required before execution; submit a 'plan' task first", http.StatusUnprocessableEntity)
+			return
+		}
 		log.Printf("httpapi: create task: %v", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return

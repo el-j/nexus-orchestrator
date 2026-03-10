@@ -240,6 +240,7 @@ func (s *Server) toolSubmitTask(args json.RawMessage) (callToolResult, error) {
 		TargetFile   string   `json:"targetFile"`
 		Instruction  string   `json:"instruction"`
 		ContextFiles []string `json:"contextFiles"`
+		Command      string   `json:"command"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: submit_task: invalid arguments: %w", err)
@@ -249,6 +250,7 @@ func (s *Server) toolSubmitTask(args json.RawMessage) (callToolResult, error) {
 		TargetFile:   p.TargetFile,
 		Instruction:  p.Instruction,
 		ContextFiles: p.ContextFiles,
+		Command:      domain.CommandType(p.Command),
 	}
 	id, err := s.orch.SubmitTask(t)
 	if err != nil {
@@ -346,6 +348,7 @@ func toolList() []toolDef {
 					"targetFile":   {Type: "string", Description: "Relative path of the file to generate or modify."},
 					"instruction":  {Type: "string", Description: "Natural-language instruction for the LLM."},
 					"contextFiles": {Type: "array", Description: "Optional list of relative file paths to include as context."},
+					"command":      {Type: "string", Description: "Task type: plan, execute, or auto (default: auto)."},
 				},
 				Required: []string{"projectPath", "targetFile", "instruction"},
 			},

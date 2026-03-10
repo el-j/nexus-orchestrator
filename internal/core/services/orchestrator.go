@@ -63,6 +63,32 @@ func (o *OrchestratorService) SubmitTask(task domain.Task) (string, error) {
 	}
 	o.mu.Unlock()
 
+	// Command validation
+	if !task.Command.IsValid() {
+		return "", fmt.Errorf("orchestrator: submit task: invalid command type %q", task.Command)
+	}
+	if task.Command == "" {
+		task.Command = domain.CommandAuto
+	}
+
+	// If execute is requested, verify a completed plan task exists for this project
+	if task.Command == domain.CommandExecute {
+		existing, err := o.repo.GetByProjectPath(task.ProjectPath)
+		if err != nil {
+			return "", fmt.Errorf("orchestrator: submit task: %w", err)
+		}
+		hasPlan := false
+		for _, t := range existing {
+			if t.Command == domain.CommandPlan && t.Status == domain.StatusCompleted {
+				hasPlan = true
+				break
+			}
+		}
+		if !hasPlan {
+			return "", fmt.Errorf("orchestrator: submit task: %w", domain.ErrNoPlan)
+		}
+	}
+
 	task.ID = uuid.NewString()
 	task.Status = domain.StatusQueued
 	task.CreatedAt = time.Now()

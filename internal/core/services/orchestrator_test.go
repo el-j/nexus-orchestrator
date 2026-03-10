@@ -74,6 +74,18 @@ func (r *memRepo) UpdateLogs(id, logs string) error {
 	return nil
 }
 
+func (r *memRepo) GetByProjectPath(projectPath string) ([]domain.Task, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var out []domain.Task
+	for _, t := range r.tasks {
+		if t.ProjectPath == projectPath {
+			out = append(out, t)
+		}
+	}
+	return out, nil
+}
+
 type noopWriter struct{}
 
 func (w *noopWriter) WriteCodeToFile(_, _, _ string) error                  { return nil }
@@ -577,6 +589,156 @@ func TestOrchestrator_GetProviderModels_Success(t *testing.T) {
 	}
 	if models[0] != "model-a" || models[1] != "model-b" {
 		t.Errorf("unexpected models: %v", models)
+	}
+}
+
+// --- Command-aware routing tests ---------------------------------------------
+
+func TestOrchestrator_CommandPlan_Succeeds(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.SubmitTask(domain.Task{
+		ProjectPath: "/proj/cmd",
+		Instruction: "create plan",
+		Command:     domain.CommandPlan,
+	})
+	if err != nil {
+		t.Fatalf("SubmitTask with CommandPlan: %v", err)
+	}
+	saved, err := repo.GetByID(id)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if saved.Command != domain.CommandPlan {
+		t.Errorf("expected command %q, got %q", domain.CommandPlan, saved.Command)
+	}
+}
+
+func TestOrchestrator_CommandExecute_NoPlan_ReturnsErrNoPlan(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	_, err := orch.SubmitTask(domain.Task{
+		ProjectPath: "/proj/no-plan",
+		Instruction: "execute now",
+		Command:     domain.CommandExecute,
+	})
+	if err == nil {
+		t.Fatal("expected ErrNoPlan, got nil")
+	}
+	if !errors.Is(err, domain.ErrNoPlan) {
+		t.Errorf("expected ErrNoPlan, got: %v", err)
+	}
+}
+
+func TestOrchestrator_CommandExecute_WithPlan_Succeeds(t *testing.T) {
+	repo := newMemRepo()
+	llm := &mockLLMClient{alive: true, name: "mock", code: "done"}
+	discovery := services.NewDiscoveryService(llm)
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	// Submit a plan task first
+	planID, err := orch.SubmitTask(domain.Task{
+		ProjectPath: "/proj/has-plan",
+		Instruction: "plan the work",
+		Command:     domain.CommandPlan,
+	})
+	if err != nil {
+		t.Fatalf("SubmitTask plan: %v", err)
+	}
+
+	// Wait for plan to complete
+	waitCompleted(t, repo, planID, 10*time.Second)
+
+	// Now submit execute — should succeed
+	execID, err := orch.SubmitTask(domain.Task{
+		ProjectPath: "/proj/has-plan",
+		Instruction: "do the work",
+		Command:     domain.CommandExecute,
+	})
+	if err != nil {
+		t.Fatalf("SubmitTask execute: %v", err)
+	}
+	if execID == "" {
+		t.Fatal("expected non-empty task ID")
+	}
+}
+
+func TestOrchestrator_InvalidCommand_ReturnsError(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	_, err := orch.SubmitTask(domain.Task{
+		ProjectPath: "/proj/bad",
+		Instruction: "bad command",
+		Command:     domain.CommandType("bogus"),
+	})
+	if err == nil {
+		t.Fatal("expected error for invalid command, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid command type") {
+		t.Errorf("expected 'invalid command type' in error, got: %v", err)
+	}
+}
+
+func TestOrchestrator_EmptyCommand_DefaultsToAuto(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.SubmitTask(domain.Task{
+		ProjectPath: "/proj/default",
+		Instruction: "auto route",
+		Command:     "",
+	})
+	if err != nil {
+		t.Fatalf("SubmitTask: %v", err)
+	}
+	saved, err := repo.GetByID(id)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if saved.Command != domain.CommandAuto {
+		t.Errorf("expected command %q, got %q", domain.CommandAuto, saved.Command)
+	}
+}
+
+func TestOrchestrator_CommandExecute_PlanNotCompleted_ReturnsErrNoPlan(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	// Submit a plan task but DON'T wait for it to complete — it stays QUEUED
+	_, err := orch.SubmitTask(domain.Task{
+		ProjectPath: "/proj/pending-plan",
+		Instruction: "plan the work",
+		Command:     domain.CommandPlan,
+	})
+	if err != nil {
+		t.Fatalf("SubmitTask plan: %v", err)
+	}
+
+	// Now submit execute — should fail because plan is not completed
+	_, err = orch.SubmitTask(domain.Task{
+		ProjectPath: "/proj/pending-plan",
+		Instruction: "execute now",
+		Command:     domain.CommandExecute,
+	})
+	if err == nil {
+		t.Fatal("expected ErrNoPlan, got nil")
+	}
+	if !errors.Is(err, domain.ErrNoPlan) {
+		t.Errorf("expected ErrNoPlan, got: %v", err)
 	}
 }
 

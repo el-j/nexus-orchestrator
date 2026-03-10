@@ -76,6 +76,7 @@ func migrate(db *sql.DB) error {
 	for _, col := range []struct{ name, def string }{
 		{"model_id", "TEXT NOT NULL DEFAULT ''"},
 		{"provider_hint", "TEXT NOT NULL DEFAULT ''"},
+		{"command", "TEXT NOT NULL DEFAULT ''"},
 	} {
 		_, _ = db.Exec(fmt.Sprintf("ALTER TABLE tasks ADD COLUMN %s %s", col.name, col.def))
 	}
@@ -90,12 +91,12 @@ func (r *Repository) Save(t domain.Task) error {
 		return fmt.Errorf("sqlite: marshal context files: %w", err)
 	}
 	_, err = r.db.Exec(
-		`INSERT INTO tasks (id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO tasks (id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		t.ID, t.ProjectPath, t.TargetFile, t.Instruction,
 		string(ctxJSON), string(t.Status),
 		t.CreatedAt.UnixMilli(), t.UpdatedAt.UnixMilli(),
-		t.Logs, t.ModelID, t.ProviderHint,
+		t.Logs, t.ModelID, t.ProviderHint, string(t.Command),
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: insert task: %w", err)
@@ -106,7 +107,7 @@ func (r *Repository) Save(t domain.Task) error {
 // GetByID retrieves a single task by its ID.
 // Returns domain.ErrNotFound when no row matches.
 func (r *Repository) GetByID(id string) (domain.Task, error) {
-	row := r.db.QueryRow(`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint FROM tasks WHERE id = ?`, id)
+	row := r.db.QueryRow(`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command FROM tasks WHERE id = ?`, id)
 	t, err := scanTask(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Task{}, fmt.Errorf("sqlite: get task: %w", domain.ErrNotFound)
@@ -117,7 +118,7 @@ func (r *Repository) GetByID(id string) (domain.Task, error) {
 // GetPending returns all tasks in QUEUED or PROCESSING state.
 func (r *Repository) GetPending() ([]domain.Task, error) {
 	rows, err := r.db.Query(
-		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint
+		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command
 		 FROM tasks WHERE status IN ('QUEUED','PROCESSING') ORDER BY created_at ASC`,
 	)
 	if err != nil {
@@ -168,6 +169,30 @@ func (r *Repository) UpdateLogs(id, logs string) error {
 	return nil
 }
 
+// GetByProjectPath returns all tasks for the given project path, ordered by creation time descending.
+func (r *Repository) GetByProjectPath(projectPath string) ([]domain.Task, error) {
+	projectPath = filepath.Clean(projectPath)
+	rows, err := r.db.Query(
+		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command
+		 FROM tasks WHERE project_path = ? ORDER BY created_at DESC`,
+		projectPath,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: query by project path: %w", err)
+	}
+	defer rows.Close()
+
+	var tasks []domain.Task
+	for rows.Next() {
+		t, err := scanTask(rows)
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, t)
+	}
+	return tasks, rows.Err()
+}
+
 // Close releases the underlying database connection.
 func (r *Repository) Close() error { return r.db.Close() }
 
@@ -179,18 +204,20 @@ type scanner interface {
 func scanTask(s scanner) (domain.Task, error) {
 	var t domain.Task
 	var status string
+	var command string
 	var ctxJSON string
 	var createdMS, updatedMS int64
 
 	if err := s.Scan(
 		&t.ID, &t.ProjectPath, &t.TargetFile, &t.Instruction,
 		&ctxJSON, &status, &createdMS, &updatedMS, &t.Logs,
-		&t.ModelID, &t.ProviderHint,
+		&t.ModelID, &t.ProviderHint, &command,
 	); err != nil {
 		return t, fmt.Errorf("sqlite: scan task: %w", err)
 	}
 
 	t.Status = domain.TaskStatus(status)
+	t.Command = domain.CommandType(command)
 	t.CreatedAt = time.UnixMilli(createdMS)
 	t.UpdatedAt = time.UnixMilli(updatedMS)
 

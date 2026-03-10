@@ -16,18 +16,22 @@ import (
 // --- Mock orchestrator ---
 
 type mockOrch struct {
-	submitID  string
-	submitErr error
-	getTask   domain.Task
-	getErr    error
-	queue     []domain.Task
-	queueErr  error
-	cancelErr error
-	providers []ports.ProviderInfo
-	provErr   error
+	submitID   string
+	submitErr  error
+	submitTask domain.Task // captures the most recent SubmitTask argument
+	getTask    domain.Task
+	getErr     error
+	queue      []domain.Task
+	queueErr   error
+	cancelErr  error
+	providers  []ports.ProviderInfo
+	provErr    error
 }
 
-func (m *mockOrch) SubmitTask(_ domain.Task) (string, error) { return m.submitID, m.submitErr }
+func (m *mockOrch) SubmitTask(t domain.Task) (string, error) {
+	m.submitTask = t
+	return m.submitID, m.submitErr
+}
 func (m *mockOrch) GetTask(_ string) (domain.Task, error)    { return m.getTask, m.getErr }
 func (m *mockOrch) GetQueue() ([]domain.Task, error)         { return m.queue, m.queueErr }
 func (m *mockOrch) CancelTask(_ string) error                { return m.cancelErr }
@@ -277,6 +281,60 @@ func TestMCP_SubmitTask_PropagatesOrchestratorError(t *testing.T) {
 	})
 	if r.Error == nil {
 		t.Fatal("expected error from orchestrator")
+	}
+	if r.Error.Code != -32603 {
+		t.Errorf("code: want -32603, got %d", r.Error.Code)
+	}
+}
+
+func TestMCP_SubmitTask_WithCommand(t *testing.T) {
+	orch := &mockOrch{submitID: "task-cmd"}
+	srv := newServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      9,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "submit_task",
+			"arguments": map[string]any{
+				"projectPath": "/project",
+				"targetFile":  "main.go",
+				"instruction": "plan this",
+				"command":     "plan",
+			},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+
+	// Verify the command was passed through to the orchestrator
+	if orch.submitTask.Command != domain.CommandPlan {
+		t.Errorf("expected command %q, got %q", domain.CommandPlan, orch.submitTask.Command)
+	}
+}
+
+func TestMCP_SubmitTask_ErrNoPlan_PropagatesError(t *testing.T) {
+	orch := &mockOrch{submitErr: domain.ErrNoPlan}
+	srv := newServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      10,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "submit_task",
+			"arguments": map[string]any{
+				"projectPath": "/project",
+				"targetFile":  "main.go",
+				"instruction": "execute now",
+				"command":     "execute",
+			},
+		},
+	})
+	if r.Error == nil {
+		t.Fatal("expected error for ErrNoPlan")
 	}
 	if r.Error.Code != -32603 {
 		t.Errorf("code: want -32603, got %d", r.Error.Code)
