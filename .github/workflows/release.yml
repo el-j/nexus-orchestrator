@@ -5,6 +5,11 @@ on:
     tags:
       - "v*.*.*"
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version tag (e.g. v0.1.0). Creates the tag and publishes a release."
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -131,7 +136,8 @@ jobs:
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
         run: |
-          VERSION="${GITHUB_REF_NAME:-dev}"
+          VERSION="${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}"
+          VERSION="${VERSION:-dev}"
           LDFLAGS="-s -w -X main.version=${VERSION} ${{ matrix.static_flags }}"
 
           mkdir -p dist
@@ -233,7 +239,8 @@ jobs:
         env:
           CGO_ENABLED: "1"
         run: |
-          VERSION="${GITHUB_REF_NAME:-dev}"
+          VERSION="${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}"
+          VERSION="${VERSION:-dev}"
           EXTRA_TAGS="${{ matrix.wails_tags }}"
           TAGS_FLAG=${EXTRA_TAGS:+"-tags ${EXTRA_TAGS}"}
           wails build -platform ${{ matrix.platform }} ${TAGS_FLAG} -ldflags "-s -w -X main.version=${VERSION}"
@@ -262,7 +269,7 @@ jobs:
     needs: [build, build-desktop]
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v8
@@ -281,6 +288,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
           generate_release_notes: true
           files: |
             nexus-orchestrator-*.tar.gz

@@ -47,6 +47,10 @@
               </RouterLink>
               <a
                 href="https://github.com/el-j/nexus-orchestrator"
+                target="_blank"
+                rel="noopener"
+                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/10
+                       hover:border-violet-500/40 text-slate-300 hover:text-white font-semibold text-sm transition-all"
               >
                 <i class="pi pi-github text-xs"></i>
                 View on GitHub

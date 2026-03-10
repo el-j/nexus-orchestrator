@@ -1,6 +1,6 @@
 #!/bin/sh
 # scripts/install.sh — Install nexus-cli and nexus-daemon binaries.
-# Usage: curl -sSfL https://raw.githubusercontent.com/el-j/nexusOrchestrator/main/scripts/install.sh | sh
+# Usage: curl -sSfL https://raw.githubusercontent.com/el-j/nexus-orchestrator/main/scripts/install.sh | sh
 #
 # Environment variables:
 #   NEXUS_INSTALL_DIR  — Override install directory (default: /usr/local/bin or ~/.local/bin)
@@ -8,7 +8,7 @@
 
 set -eu
 
-GITHUB_REPO="el-j/nexusOrchestrator"
+GITHUB_REPO="el-j/nexus-orchestrator"
 BINARIES="nexus-cli nexus-daemon"
 OPTIONAL_BINARIES="nexus-submit"
 TMPDIR_PREFIX="nexus-install"
@@ -134,11 +134,11 @@ main() {
     VERSION=$(resolve_version)
     INSTALL_DIR=$(resolve_install_dir)
 
-    log "Installing nexusOrchestrator ${VERSION} (${OS}/${ARCH})"
+    log "Installing nexus-orchestrator ${VERSION} (${OS}/${ARCH})"
 
     ensure_install_dir "$INSTALL_DIR"
 
-    ARCHIVE="nexusOrchestrator-${OS}-${ARCH}.tar.gz"
+    ARCHIVE="nexus-orchestrator-${OS}-${ARCH}.tar.gz"
     BASE_URL="https://github.com/${GITHUB_REPO}/releases/download/${VERSION}"
     ARCHIVE_URL="${BASE_URL}/${ARCHIVE}"
     CHECKSUM_URL="${BASE_URL}/SHA256SUMS.txt"
@@ -196,7 +196,7 @@ main() {
 
     # Done
     log ""
-    log "Successfully installed nexusOrchestrator ${VERSION}"
+    log "Successfully installed nexus-orchestrator ${VERSION}"
     log "  nexus-cli    → ${INSTALL_DIR}/nexus-cli"
     log "  nexus-daemon → ${INSTALL_DIR}/nexus-daemon"
     if [ -f "$INSTALL_DIR/nexus-submit" ]; then
