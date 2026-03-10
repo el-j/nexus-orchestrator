@@ -1,0 +1,323 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.claude/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      semVer: ${{ steps.gitversion.outputs.semVer }}
+      tag: ${{ steps.check_tag.outputs.tag }}
+      exists: ${{ steps.check_tag.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: gittools/actions/gitversion/setup@v4.3.3
+        with:
+          versionSpec: '6.x'
+
+      - id: gitversion
+        uses: gittools/actions/gitversion/execute@v4.3.3
+        with:
+          configFilePath: GitVersion.yml
+
+      - id: check_tag
+        shell: bash
+        run: |
+          TAG="v${{ steps.gitversion.outputs.semVer }}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          if git rev-parse "${TAG}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  test:
+    needs: version
+    if: needs.version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Install zig
+        shell: bash
+        run: |
+          ZIG_VERSION="0.14.0"
+          curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz" -o zig.tar.xz
+          tar xf zig.tar.xz
+          sudo mv "zig-linux-x86_64-${ZIG_VERSION}/zig" /usr/local/bin/
+          sudo mv "zig-linux-x86_64-${ZIG_VERSION}/lib" /usr/local/lib/zig
+          rm -rf zig.tar.xz "zig-linux-x86_64-${ZIG_VERSION}"
+          zig version
+
+      - name: Run tests
+        shell: bash
+        run: CGO_ENABLED=1 go test -race -count=1 ./...
+
+  build-cli:
+    name: Build CLI ${{ matrix.os }}-${{ matrix.arch }}
+    needs: [version, test]
+    if: needs.version.outputs.exists == 'false'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            runner: ubuntu-latest
+            goarch: amd64
+            cc: "zig cc -target x86_64-linux-musl"
+            cxx: "zig c++ -target x86_64-linux-musl"
+            ext: tar.gz
+            bin_ext: ""
+            static_flags: -extldflags=-static
+
+          - os: linux
+            arch: arm64
+            runner: ubuntu-latest
+            goarch: arm64
+            cc: "zig cc -target aarch64-linux-musl"
+            cxx: "zig c++ -target aarch64-linux-musl"
+            ext: tar.gz
+            bin_ext: ""
+            static_flags: -extldflags=-static
+
+          - os: darwin
+            arch: amd64
+            runner: macos-latest
+            goarch: amd64
+            cc: ""
+            cxx: ""
+            ext: tar.gz
+            bin_ext: ""
+            static_flags: ""
+
+          - os: darwin
+            arch: arm64
+            runner: macos-latest
+            goarch: arm64
+            cc: ""
+            cxx: ""
+            ext: tar.gz
+            bin_ext: ""
+            static_flags: ""
+
+          - os: windows
+            arch: amd64
+            runner: ubuntu-latest
+            goarch: amd64
+            cc: "zig cc -target x86_64-windows-gnu"
+            cxx: "zig c++ -target x86_64-windows-gnu"
+            ext: zip
+            bin_ext: ".exe"
+            static_flags: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+
+      - name: Install zig
+        if: matrix.runner == 'ubuntu-latest'
+        shell: bash
+        run: |
+          ZIG_VERSION="0.14.0"
+          curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz" -o zig.tar.xz
+          tar xf zig.tar.xz
+          sudo mv "zig-linux-x86_64-${ZIG_VERSION}/zig" /usr/local/bin/
+          sudo mv "zig-linux-x86_64-${ZIG_VERSION}/lib" /usr/local/lib/zig
+          rm -rf zig.tar.xz "zig-linux-x86_64-${ZIG_VERSION}"
+          zig version
+
+      - name: Build binaries
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.goarch }}
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          VERSION="${{ needs.version.outputs.tag }}"
+          LDFLAGS="-s -w -X main.version=${VERSION} ${{ matrix.static_flags }}"
+          mkdir -p dist
+          go build -trimpath -ldflags "${LDFLAGS}" -o dist/nexus-cli${{ matrix.bin_ext }} ./cmd/nexus-cli/...
+          go build -trimpath -ldflags "${LDFLAGS}" -o dist/nexus-daemon${{ matrix.bin_ext }} ./cmd/nexus-daemon/...
+          go build -trimpath -ldflags "${LDFLAGS}" -o dist/nexus-submit${{ matrix.bin_ext }} ./cmd/nexus-submit/...
+
+      - name: Create archive
+        shell: bash
+        run: |
+          ARCHIVE_NAME="nexusOrchestrator-${{ matrix.os }}-${{ matrix.arch }}"
+          cd dist
+          if [ "${{ matrix.ext }}" = "zip" ]; then
+            zip "../${ARCHIVE_NAME}.zip" nexus-cli${{ matrix.bin_ext }} nexus-daemon${{ matrix.bin_ext }} nexus-submit${{ matrix.bin_ext }}
+          else
+            tar czf "../${ARCHIVE_NAME}.tar.gz" nexus-cli${{ matrix.bin_ext }} nexus-daemon${{ matrix.bin_ext }} nexus-submit${{ matrix.bin_ext }}
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexusOrchestrator-${{ matrix.os }}-${{ matrix.arch }}.${{ matrix.ext }}
+          path: nexusOrchestrator-${{ matrix.os }}-${{ matrix.arch }}.${{ matrix.ext }}
+
+  build-desktop:
+    name: Build Desktop ${{ matrix.os }}-${{ matrix.arch }}
+    needs: [version, test]
+    if: needs.version.outputs.exists == 'false'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        include:
+          - os: darwin
+            arch: arm64
+            runner: macos-latest
+            platform: darwin/arm64
+            archive_ext: tar.gz
+            archive_name: nexusOrchestrator-desktop-darwin-arm64
+
+          - os: darwin
+            arch: amd64
+            runner: macos-latest
+            platform: darwin/amd64
+            archive_ext: tar.gz
+            archive_name: nexusOrchestrator-desktop-darwin-amd64
+
+          - os: windows
+            arch: amd64
+            runner: windows-latest
+            platform: windows/amd64
+            archive_ext: zip
+            archive_name: nexusOrchestrator-desktop-windows-amd64
+
+          - os: linux
+            arch: amd64
+            runner: ubuntu-latest
+            platform: linux/amd64
+            archive_ext: tar.gz
+            archive_name: nexusOrchestrator-desktop-linux-amd64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev pkg-config
+
+      - name: Install Wails CLI
+        shell: bash
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
+
+      - name: Build desktop app
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+        run: |
+          VERSION="${{ needs.version.outputs.tag }}"
+          wails build -platform ${{ matrix.platform }} -ldflags "-s -w -X main.version=${VERSION}"
+
+      - name: Package (tar.gz)
+        if: matrix.archive_ext == 'tar.gz'
+        shell: bash
+        run: |
+          cd build/bin
+          tar czf "../../${{ matrix.archive_name }}.tar.gz" *
+          cd ../..
+
+      - name: Package (zip)
+        if: matrix.archive_ext == 'zip'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "build/bin/*" -DestinationPath "${{ matrix.archive_name }}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.archive_name }}.${{ matrix.archive_ext }}
+          path: ${{ matrix.archive_name }}.${{ matrix.archive_ext }}
+
+  release:
+    name: Create Release
+    needs: [version, build-cli, build-desktop]
+    if: needs.version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create and push tag
+        shell: bash
+        run: |
+          TAG="${{ needs.version.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${TAG}" -m "Release ${TAG}"
+          git push origin "${TAG}"
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          cd artifacts
+          find . -name 'nexusOrchestrator-*' ! -name 'nexusOrchestrator-desktop-*' -exec sha256sum {} + > ../SHA256SUMS.txt
+          find . -name 'nexusOrchestrator-desktop-*' -exec sha256sum {} + > ../SHA256SUMS-desktop.txt
+          cd ..
+          mv artifacts/* .
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            nexusOrchestrator-*.tar.gz
+            nexusOrchestrator-*.zip
+            SHA256SUMS.txt
+            SHA256SUMS-desktop.txt

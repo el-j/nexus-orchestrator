@@ -175,7 +175,7 @@ Full GUI with built-in HTTP API and MCP server. Recommended for most users.
     <div class="dl-platform">macOS</div>
     <div class="dl-arch">Apple Silicon (M1/M2/M3/M4)</div>
     <div class="dl-size">~15 MB</div>
-    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-darwin-arm64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-desktop-darwin-arm64.tar.gz">Download .tar.gz</a>
   </div>
 
   <div class="dl-card" data-os="mac-intel">
@@ -183,7 +183,7 @@ Full GUI with built-in HTTP API and MCP server. Recommended for most users.
     <div class="dl-platform">macOS</div>
     <div class="dl-arch">Intel (x86_64)</div>
     <div class="dl-size">~15 MB</div>
-    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-darwin-amd64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-desktop-darwin-amd64.tar.gz">Download .tar.gz</a>
   </div>
 
   <div class="dl-card" data-os="win">
@@ -191,7 +191,7 @@ Full GUI with built-in HTTP API and MCP server. Recommended for most users.
     <div class="dl-platform">Windows</div>
     <div class="dl-arch">64-bit (x86_64)</div>
     <div class="dl-size">~15 MB</div>
-    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-windows-amd64.zip">Download .zip</a>
+    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-desktop-windows-amd64.zip">Download .zip</a>
   </div>
 
   <div class="dl-card" data-os="linux">
@@ -199,7 +199,7 @@ Full GUI with built-in HTTP API and MCP server. Recommended for most users.
     <div class="dl-platform">Linux</div>
     <div class="dl-arch">64-bit (x86_64)</div>
     <div class="dl-size">~15 MB</div>
-    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-linux-amd64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-desktop-linux-amd64.tar.gz">Download .tar.gz</a>
   </div>
 
 </div>
