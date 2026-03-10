@@ -8,6 +8,9 @@ import "nexus-orchestrator/internal/core/domain"
 type LLMClient interface {
 	Ping() bool
 	ProviderName() string
+	// ActiveModel returns the model ID currently loaded or configured on this
+	// provider.  Returns empty string when unknown.
+	ActiveModel() string
 	GetAvailableModels() ([]string, error)
 	// ContextLimit returns the maximum number of input tokens the currently
 	// loaded model can accept.  Returns 0 if unknown; when 0, no pre-flight
@@ -41,8 +44,10 @@ type FileWriter interface {
 
 // ProviderInfo summarises the liveness status of a single LLM backend.
 type ProviderInfo struct {
-	Name   string `json:"name"`
-	Active bool   `json:"active"`
+	Name        string   `json:"name"`
+	Active      bool     `json:"active"`
+	ActiveModel string   `json:"activeModel,omitempty"`
+	Models      []string `json:"models,omitempty"`
 }
 
 // SessionRepository is the port for persisting per-project conversation history.

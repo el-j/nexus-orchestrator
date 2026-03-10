@@ -5,8 +5,8 @@
     "nextTaskId": 44,
     "nextPlanId": 5
   },
-  "activePlanId": "PLAN-004",
-  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 active (orchestrator hardening + Wails GUI + writeback). PLAN-003 done (dogfood). PLAN-004 active (context-window guard: token pre-flight check to surface TOO_LARGE status before wasting LLM time).",
+  "activePlanId": "PLAN-005",
+  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 active (orchestrator hardening + Wails GUI + writeback). PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 active (smart multi-provider routing: ModelID/ProviderHint on Task, ActiveModel() port, FindForModel() in Discovery, StatusNoProvider, llm_openaicompat + llm_anthropic adapters, env-var provider config).",
   "plans": {
     "PLAN-001": {
       "id": "PLAN-001",
@@ -84,6 +84,23 @@
         "TASK-043"
       ],
       "completedAt": "2026-03-10T00:30:00.000Z"
+    },
+    "PLAN-005": {
+      "id": "PLAN-005",
+      "goal": "Smart multi-provider routing: per-task ModelID/ProviderHint, ActiveModel() on all adapters, FindForModel() with failover in DiscoveryService, StatusNoProvider domain constant, llm_openaicompat (OpenAI/GitHub Copilot/Azure) and llm_anthropic adapters, env-var provider config in both entry points",
+      "status": "active",
+      "createdAt": "2026-03-10T06:00:00.000Z",
+      "taskIds": [
+        "TASK-044",
+        "TASK-045",
+        "TASK-046",
+        "TASK-047",
+        "TASK-048",
+        "TASK-049",
+        "TASK-050",
+        "TASK-051",
+        "TASK-052"
+      ]
     }
   },
   "tasks": {
@@ -688,6 +705,87 @@
       "updatedAt": "2026-03-10T00:30:00.000Z",
       "startedAt": "2026-03-10T00:30:00.000Z",
       "completedAt": "2026-03-10T00:30:00.000Z"
+    },
+    "TASK-044": {
+      "id": "TASK-044",
+      "title": "Architecture: ModelID/ProviderHint on Task, ActiveModel() port, StatusNoProvider, ProviderInfo extended",
+      "status": "todo",
+      "role": "architecture",
+      "planId": "PLAN-005",
+      "dependencies": [],
+      "createdAt": "2026-03-10T06:00:00.000Z"
+    },
+    "TASK-045": {
+      "id": "TASK-045",
+      "title": "LM Studio: fix ContextLimit() via native /api/v0/model + ActiveModel()",
+      "status": "todo",
+      "role": "backend",
+      "planId": "PLAN-005",
+      "dependencies": ["TASK-044"],
+      "createdAt": "2026-03-10T06:00:00.000Z"
+    },
+    "TASK-046": {
+      "id": "TASK-046",
+      "title": "Ollama adapter: implement ActiveModel() + cache GetAvailableModels()",
+      "status": "todo",
+      "role": "backend",
+      "planId": "PLAN-005",
+      "dependencies": ["TASK-044"],
+      "createdAt": "2026-03-10T06:00:00.000Z"
+    },
+    "TASK-047": {
+      "id": "TASK-047",
+      "title": "New llm_openaicompat adapter: generic OpenAI-compatible provider",
+      "status": "todo",
+      "role": "backend",
+      "planId": "PLAN-005",
+      "dependencies": ["TASK-044"],
+      "createdAt": "2026-03-10T06:00:00.000Z"
+    },
+    "TASK-048": {
+      "id": "TASK-048",
+      "title": "New llm_anthropic adapter: Anthropic Claude native API",
+      "status": "todo",
+      "role": "backend",
+      "planId": "PLAN-005",
+      "dependencies": ["TASK-044"],
+      "createdAt": "2026-03-10T06:00:00.000Z"
+    },
+    "TASK-049": {
+      "id": "TASK-049",
+      "title": "DiscoveryService: FindForModel() with failover + extended ListProviders()",
+      "status": "todo",
+      "role": "backend",
+      "planId": "PLAN-005",
+      "dependencies": ["TASK-044"],
+      "createdAt": "2026-03-10T06:00:00.000Z"
+    },
+    "TASK-050": {
+      "id": "TASK-050",
+      "title": "Orchestrator + SQLite: model-aware dispatch + StatusNoProvider + schema migration",
+      "status": "todo",
+      "role": "backend",
+      "planId": "PLAN-005",
+      "dependencies": ["TASK-044", "TASK-049"],
+      "createdAt": "2026-03-10T06:00:00.000Z"
+    },
+    "TASK-051": {
+      "id": "TASK-051",
+      "title": "Entry-point wiring: env-var provider config for daemon + desktop",
+      "status": "todo",
+      "role": "devops",
+      "planId": "PLAN-005",
+      "dependencies": ["TASK-047", "TASK-048", "TASK-049", "TASK-050"],
+      "createdAt": "2026-03-10T06:00:00.000Z"
+    },
+    "TASK-052": {
+      "id": "TASK-052",
+      "title": "QA: tests for model routing, FindForModel, StatusNoProvider",
+      "status": "todo",
+      "role": "qa",
+      "planId": "PLAN-005",
+      "dependencies": ["TASK-044","TASK-045","TASK-046","TASK-047","TASK-048","TASK-049","TASK-050","TASK-051"],
+      "createdAt": "2026-03-10T06:00:00.000Z"
     }
   }
 }

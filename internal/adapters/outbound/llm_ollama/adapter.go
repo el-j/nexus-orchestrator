@@ -35,6 +35,9 @@ func NewOllamaAdapter(baseURL, model string) *Adapter {
 // ProviderName identifies this adapter.
 func (a *Adapter) ProviderName() string { return "Ollama" }
 
+// ActiveModel returns the configured default model name for this Ollama instance.
+func (a *Adapter) ActiveModel() string { return a.model }
+
 // Ping checks whether Ollama is reachable.
 func (a *Adapter) Ping() bool {
 	resp, err := a.httpClient.Get(a.baseURL + "/api/tags")

@@ -50,7 +50,17 @@ func migrate(db *sql.DB) error {
 			updated_at   INTEGER NOT NULL
 		);
 	`)
-	return err
+	if err != nil {
+		return err
+	}
+	// Additive column migrations — safe to re-run; errors are ignored if columns already exist.
+	for _, col := range []struct{ name, def string }{
+		{"model_id", "TEXT NOT NULL DEFAULT ''"},
+		{"provider_hint", "TEXT NOT NULL DEFAULT ''"},
+	} {
+		_, _ = db.Exec(fmt.Sprintf("ALTER TABLE tasks ADD COLUMN %s %s", col.name, col.def))
+	}
+	return nil
 }
 
 // Save inserts a new Task record.
@@ -60,12 +70,12 @@ func (r *Repository) Save(t domain.Task) error {
 		return fmt.Errorf("sqlite: marshal context files: %w", err)
 	}
 	_, err = r.db.Exec(
-		`INSERT INTO tasks (id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO tasks (id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		t.ID, t.ProjectPath, t.TargetFile, t.Instruction,
 		string(ctxJSON), string(t.Status),
 		t.CreatedAt.UnixMilli(), t.UpdatedAt.UnixMilli(),
-		t.Logs,
+		t.Logs, t.ModelID, t.ProviderHint,
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: insert task: %w", err)
@@ -76,7 +86,7 @@ func (r *Repository) Save(t domain.Task) error {
 // GetByID retrieves a single task by its ID.
 // Returns domain.ErrNotFound when no row matches.
 func (r *Repository) GetByID(id string) (domain.Task, error) {
-	row := r.db.QueryRow(`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs FROM tasks WHERE id = ?`, id)
+	row := r.db.QueryRow(`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint FROM tasks WHERE id = ?`, id)
 	t, err := scanTask(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Task{}, fmt.Errorf("sqlite: get task: %w", domain.ErrNotFound)
@@ -87,7 +97,7 @@ func (r *Repository) GetByID(id string) (domain.Task, error) {
 // GetPending returns all tasks in QUEUED or PROCESSING state.
 func (r *Repository) GetPending() ([]domain.Task, error) {
 	rows, err := r.db.Query(
-		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs
+		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint
 		 FROM tasks WHERE status IN ('QUEUED','PROCESSING') ORDER BY created_at ASC`,
 	)
 	if err != nil {
@@ -147,6 +157,7 @@ func scanTask(s scanner) (domain.Task, error) {
 	if err := s.Scan(
 		&t.ID, &t.ProjectPath, &t.TargetFile, &t.Instruction,
 		&ctxJSON, &status, &createdMS, &updatedMS, &t.Logs,
+		&t.ModelID, &t.ProviderHint,
 	); err != nil {
 		return t, fmt.Errorf("sqlite: scan task: %w", err)
 	}

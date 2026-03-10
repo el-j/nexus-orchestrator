@@ -374,3 +374,33 @@ func TestOrchestrator_PreFlight_WithinLimit_Completes(t *testing.T) {
 	id, _ := orch.SubmitTask(domain.Task{Instruction: "short instruction"})
 	waitCompleted(t, repo, id, 10*time.Second)
 }
+
+func TestOrchestrator_StatusNoProvider_WhenModelUnavailable(t *testing.T) {
+	repo := newMemRepo()
+	// Provider is alive but only has "llama3" — "gpt-4o" will not be found.
+	llm := &mockLLMClient{alive: true, name: "Ollama", activeModel: "llama3", models: []string{"llama3"}}
+	discovery := services.NewDiscoveryService(llm)
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.SubmitTask(domain.Task{
+		Instruction: "do something",
+		ModelID:     "gpt-4o",
+	})
+	if err != nil {
+		t.Fatalf("SubmitTask: %v", err)
+	}
+
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		time.Sleep(200 * time.Millisecond)
+		saved, _ := repo.GetByID(id)
+		if saved.Status == domain.StatusNoProvider {
+			return // success
+		}
+		if saved.Status == domain.StatusCompleted || saved.Status == domain.StatusFailed {
+			t.Fatalf("expected StatusNoProvider but got %s", saved.Status)
+		}
+	}
+	t.Fatal("task did not reach StatusNoProvider within timeout")
+}

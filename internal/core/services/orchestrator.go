@@ -176,12 +176,12 @@ func (o *OrchestratorService) processNext() {
 	o.queue = o.queue[1:]
 	o.mu.Unlock()
 
-	llm := o.discovery.DetectActive()
-	if llm == nil {
-		log.Printf("orchestrator: no LLM available, re-queuing task %s", task.ID)
-		o.mu.Lock()
-		o.queue = append([]domain.Task{task}, o.queue...)
-		o.mu.Unlock()
+	llm, err := o.discovery.FindForModel(task.ModelID, task.ProviderHint)
+	if err != nil {
+		log.Printf("orchestrator: no provider for task %s (model=%q): %v", task.ID, task.ModelID, err)
+		_ = o.repo.UpdateLogs(task.ID, err.Error())
+		_ = o.repo.UpdateStatus(task.ID, domain.StatusNoProvider)
+		o.emit(task.ID, domain.StatusNoProvider)
 		return
 	}
 
