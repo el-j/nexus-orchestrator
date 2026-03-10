@@ -70,12 +70,12 @@ type Task struct {
 	ModelID string `json:"modelId,omitempty"`
 	// ProviderHint is a preference (provider name) when multiple providers carry
 	// the same model.  Empty means no preference.
-	ProviderHint string     `json:"providerHint,omitempty"`
+	ProviderHint string `json:"providerHint,omitempty"`
 	// Command classifies the task as planning, execution, or auto-routed.
 	// Empty is treated as CommandAuto.
-	Command    CommandType `json:"command,omitempty"`
-	Status       TaskStatus `json:"status"`
-	CreatedAt    time.Time  `json:"createdAt"`
-	UpdatedAt    time.Time  `json:"updatedAt"`
-	Logs         string     `json:"logs,omitempty"`
+	Command   CommandType `json:"command,omitempty"`
+	Status    TaskStatus  `json:"status"`
+	CreatedAt time.Time   `json:"createdAt"`
+	UpdatedAt time.Time   `json:"updatedAt"`
+	Logs      string      `json:"logs,omitempty"`
 }

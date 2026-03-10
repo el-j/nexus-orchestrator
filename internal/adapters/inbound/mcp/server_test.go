@@ -32,9 +32,9 @@ func (m *mockOrch) SubmitTask(t domain.Task) (string, error) {
 	m.submitTask = t
 	return m.submitID, m.submitErr
 }
-func (m *mockOrch) GetTask(_ string) (domain.Task, error)    { return m.getTask, m.getErr }
-func (m *mockOrch) GetQueue() ([]domain.Task, error)         { return m.queue, m.queueErr }
-func (m *mockOrch) CancelTask(_ string) error                { return m.cancelErr }
+func (m *mockOrch) GetTask(_ string) (domain.Task, error) { return m.getTask, m.getErr }
+func (m *mockOrch) GetQueue() ([]domain.Task, error)      { return m.queue, m.queueErr }
+func (m *mockOrch) CancelTask(_ string) error             { return m.cancelErr }
 func (m *mockOrch) GetProviders() ([]ports.ProviderInfo, error) {
 	return m.providers, m.provErr
 }
