@@ -4,3 +4,5 @@ _site/
 Gemfile.lock
 .bundle/
 .sass-cache/
+node_modules/
+dist/

@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Architecture — nexusOrchestrator</title>
+  <meta name="description" content="Deep dive into nexusOrchestrator's hexagonal architecture, domain types, TaskStatus lifecycle, port contracts, and adapter implementations.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="./assets/css/style.css">
+</head>
+<body>
+
+<!-- ── Navigation ────────────────────────────────────────────── -->
+<nav class="navbar" role="navigation" aria-label="Main navigation">
+  <div class="navbar-inner">
+    <a href="./index.html" class="navbar-logo">nexus<span class="logo-accent">Orchestrator</span></a>
+    <ul class="navbar-nav" role="list">
+      <li><a href="./index.html">Home</a></li>
+      <li><a href="./architecture.html">Architecture</a></li>
+      <li><a href="./downloads.html">Downloads</a></li>
+      <li><a href="./api-reference.html">API Reference</a></li>
+      <li><a href="./getting-started.html">Getting Started</a></li>
+      <li><a href="./mcp-integration.html">MCP Integration</a></li>
+    </ul>
+    <div class="navbar-actions">
+      <a href="https://github.com/el-j/nexusOrchestrator" class="nav-github" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        Star on GitHub
+      </a>
+      <a href="./downloads.html" class="nav-download">Download</a>
+    </div>
+    <button class="nav-hamburger" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobile-menu">
+  <a href="./index.html">Home</a>
+  <a href="./architecture.html">Architecture</a>
+  <a href="./downloads.html">Downloads</a>
+  <a href="./api-reference.html">API Reference</a>
+  <a href="./getting-started.html">Getting Started</a>
+  <a href="./mcp-integration.html">MCP Integration</a>
+  <div class="mobile-menu-actions">
+    <a href="https://github.com/el-j/nexusOrchestrator" class="btn btn-outline btn-sm" target="_blank" rel="noopener">GitHub</a>
+    <a href="./downloads.html" class="btn btn-primary btn-sm">Download</a>
+  </div>
+</div>
+
+<!-- ── Page Header ────────────────────────────────────────────── -->
+<header class="page-header">
+  <div class="container">
+    <div class="page-header-content">
+      <div class="page-header-breadcrumb">
+        <a href="./index.html">Home</a>
+        <span>›</span>
+        <span>Architecture</span>
+      </div>
+      <h1>Architecture</h1>
+      <p>Hexagonal architecture (ports &amp; adapters) with strict inward dependency flow. The core business logic never imports adapter code.</p>
+    </div>
+  </div>
+</header>
+
+<!-- ── Content ────────────────────────────────────────────────── -->
+<main class="content-area">
+
+  <!-- Hexagonal Architecture -->
+  <section class="content-section" id="hexagonal">
+    <h2>Hexagonal Architecture</h2>
+    <p>nexusOrchestrator follows a <strong>hexagonal architecture</strong> (ports &amp; adapters) with a strict inward dependency rule. Core services are isolated from infrastructure concerns — all external dependencies are behind interfaces (ports).</p>
+
+    <div class="mt-4 animate-on-scroll" style="max-width: 800px;">
+      <div class="arch-diagram" role="img" aria-label="Hexagonal architecture layers diagram">
+        <div class="arch-layer inbound" style="padding: 1rem 1.5rem; font-size: 0.875rem;">
+          <strong>Inbound Adapters</strong><br>
+          <span style="opacity: 0.85;">HTTP API (chi router) &nbsp;·&nbsp; MCP Server (JSON-RPC 2.0) &nbsp;·&nbsp; CLI &nbsp;·&nbsp; Wails Desktop GUI</span>
+        </div>
+        <div class="arch-arrow" style="font-size: 1.5rem; padding: 0.25rem 0;">↕</div>
+        <div class="arch-layer core" style="padding: 1rem 1.5rem; font-size: 0.875rem;">
+          <strong>Core Services</strong><br>
+          <span style="opacity: 0.85;">OrchestratorService &nbsp;·&nbsp; DiscoveryService &nbsp;·&nbsp; ContextGuard</span>
+        </div>
+        <div class="arch-arrow" style="font-size: 1.5rem; padding: 0.25rem 0;">↕</div>
+        <div class="arch-layer ports" style="padding: 1rem 1.5rem; font-size: 0.875rem;">
+          <strong>Port Interfaces (Go interfaces)</strong><br>
+          <span style="opacity: 0.85;">OrchestratorPort &nbsp;·&nbsp; LLMClientPort &nbsp;·&nbsp; TaskRepositoryPort &nbsp;·&nbsp; FileWriterPort &nbsp;·&nbsp; SessionPort</span>
+        </div>
+        <div class="arch-arrow" style="font-size: 1.5rem; padding: 0.25rem 0;">↕</div>
+        <div class="arch-layer outbound" style="padding: 1rem 1.5rem; font-size: 0.875rem;">
+          <strong>Outbound Adapters</strong><br>
+          <span style="opacity: 0.85;">LM Studio &nbsp;·&nbsp; Ollama &nbsp;·&nbsp; OpenAI &nbsp;·&nbsp; Anthropic &nbsp;·&nbsp; GitHub Copilot &nbsp;·&nbsp; SQLite &nbsp;·&nbsp; Filesystem</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-tip mt-4">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <p><strong>Dependency rule:</strong> Inbound adapters → Core services → Ports ← Outbound adapters. The core never imports from adapters. All wiring happens in <code>main.go</code> via dependency injection.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Domain Layer -->
+  <section class="content-section" id="domain">
+    <h2>Domain Layer</h2>
+    <p>Pure Go types with no framework imports. These are the entities that flow through the entire system.</p>
+
+    <h3>Task</h3>
+    <p>The central entity representing a single unit of AI work:</p>
+
+    <div class="table-wrapper mt-3 animate-on-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>ID</code></td>
+            <td><span class="badge badge-cyan">string</span></td>
+            <td>UUID, generated on submission</td>
+          </tr>
+          <tr>
+            <td><code>ProjectPath</code></td>
+            <td><span class="badge badge-cyan">string</span></td>
+            <td>Absolute path to the project directory</td>
+          </tr>
+          <tr>
+            <td><code>TargetFile</code></td>
+            <td><span class="badge badge-cyan">string</span></td>
+            <td>Relative path for generated code output</td>
+          </tr>
+          <tr>
+            <td><code>Instruction</code></td>
+            <td><span class="badge badge-cyan">string</span></td>
+            <td>Natural language prompt sent to the LLM</td>
+          </tr>
+          <tr>
+            <td><code>ContextFiles</code></td>
+            <td><span class="badge badge-cyan">[]string</span></td>
+            <td>Files included as context in the prompt</td>
+          </tr>
+          <tr>
+            <td><code>ModelID</code></td>
+            <td><span class="badge badge-cyan">string</span></td>
+            <td>Constrain to a specific model (optional)</td>
+          </tr>
+          <tr>
+            <td><code>ProviderHint</code></td>
+            <td><span class="badge badge-cyan">string</span></td>
+            <td>Prefer a specific provider by name (optional)</td>
+          </tr>
+          <tr>
+            <td><code>Command</code></td>
+            <td><span class="badge badge-purple">CommandType</span></td>
+            <td>Task classification: <code>plan</code>, <code>execute</code>, or <code>auto</code></td>
+          </tr>
+          <tr>
+            <td><code>Status</code></td>
+            <td><span class="badge badge-purple">TaskStatus</span></td>
+            <td>Current lifecycle state</td>
+          </tr>
+          <tr>
+            <td><code>CreatedAt</code></td>
+            <td><span class="badge badge-gray">time.Time</span></td>
+            <td>Creation timestamp</td>
+          </tr>
+          <tr>
+            <td><code>UpdatedAt</code></td>
+            <td><span class="badge badge-gray">time.Time</span></td>
+            <td>Last update timestamp</td>
+          </tr>
+          <tr>
+            <td><code>Logs</code></td>
+            <td><span class="badge badge-cyan">string</span></td>
+            <td>LLM-generated output or error details</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top: 2.5rem;">Provider</h3>
+    <p>Represents an LLM backend with health state:</p>
+
+    <div class="table-wrapper mt-3 animate-on-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>Name</code></td>
+            <td><span class="badge badge-cyan">string</span></td>
+            <td>Human-readable provider name (e.g. "LM Studio")</td>
+          </tr>
+          <tr>
+            <td><code>BaseURL</code></td>
+            <td><span class="badge badge-cyan">string</span></td>
+            <td>API endpoint base URL</td>
+          </tr>
+          <tr>
+            <td><code>Active</code></td>
+            <td><span class="badge badge-gray">bool</span></td>
+            <td>Whether the provider passed the last health check</td>
+          </tr>
+          <tr>
+            <td><code>ActiveModel</code></td>
+            <td><span class="badge badge-cyan">string</span></td>
+            <td>Currently loaded/preferred model ID</td>
+          </tr>
+          <tr>
+            <td><code>Models</code></td>
+            <td><span class="badge badge-cyan">[]string</span></td>
+            <td>Available models (from /v1/models or equivalent)</td>
+          </tr>
+          <tr>
+            <td><code>APIKey</code></td>
+            <td><span class="badge badge-cyan">string</span></td>
+            <td>Authentication key (redacted in API responses)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- TaskStatus Lifecycle -->
+  <section class="content-section" id="lifecycle">
+    <h2>TaskStatus Lifecycle</h2>
+    <p>A task moves through a well-defined set of states from submission to completion:</p>
+
+    <div class="status-flow mt-4 animate-on-scroll" role="img" aria-label="TaskStatus state machine">
+      <span class="status-node status-queued">QUEUED</span>
+      <span class="status-arrow">→</span>
+      <span class="status-node status-processing">PROCESSING</span>
+      <span class="status-arrow">→</span>
+      <span class="status-node status-completed">COMPLETED</span>
+      <div style="width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border);">
+        <span style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono);">PROCESSING →</span>
+        <span class="status-node status-failed">FAILED</span>
+        <span class="status-node status-too-large">TOO_LARGE</span>
+        <span class="status-node status-no-prov">NO_PROVIDER</span>
+        <span style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); margin-left: 0.75rem;">QUEUED →</span>
+        <span class="status-node status-cancelled">CANCELLED</span>
+      </div>
+    </div>
+
+    <div class="table-wrapper mt-4 animate-on-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Description</th>
+            <th>Terminal?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="status-node status-queued" style="display: inline-block;">QUEUED</span></td>
+            <td>Task is waiting in the queue for a free worker</td>
+            <td><span class="badge badge-gray">No</span></td>
+          </tr>
+          <tr>
+            <td><span class="status-node status-processing" style="display: inline-block;">PROCESSING</span></td>
+            <td>Task is being processed by an LLM backend</td>
+            <td><span class="badge badge-gray">No</span></td>
+          </tr>
+          <tr>
+            <td><span class="status-node status-completed" style="display: inline-block;">COMPLETED</span></td>
+            <td>LLM generated output successfully; result stored in <code>Logs</code></td>
+            <td><span class="badge badge-green">Yes</span></td>
+          </tr>
+          <tr>
+            <td><span class="status-node status-failed" style="display: inline-block;">FAILED</span></td>
+            <td>LLM call failed (network error, API error, etc.)</td>
+            <td><span class="badge badge-green">Yes</span></td>
+          </tr>
+          <tr>
+            <td><span class="status-node status-cancelled" style="display: inline-block;">CANCELLED</span></td>
+            <td>Task was cancelled by the client before processing started</td>
+            <td><span class="badge badge-green">Yes</span></td>
+          </tr>
+          <tr>
+            <td><span class="status-node status-too-large" style="display: inline-block;">TOO_LARGE</span></td>
+            <td>Prompt exceeds the model's context window limit</td>
+            <td><span class="badge badge-green">Yes</span></td>
+          </tr>
+          <tr>
+            <td><span class="status-node status-no-prov" style="display: inline-block;">NO_PROVIDER</span></td>
+            <td>No active provider available for the requested model</td>
+            <td><span class="badge badge-green">Yes</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Port Contracts -->
+  <section class="content-section" id="ports">
+    <h2>Port Contracts</h2>
+    <p>All ports are Go interfaces defined in the <code>internal/ports/</code> package. Adapters implement these interfaces — the core never imports adapters directly.</p>
+
+    <div class="grid-2 mt-4">
+
+      <div class="animate-on-scroll">
+        <h3>OrchestratorPort</h3>
+        <p>The primary inbound port — what the HTTP and MCP adapters call:</p>
+        <div class="code-panel">
+          <div class="code-panel-header">
+            <span class="code-panel-title">ports/orchestrator.go</span>
+            <span class="code-panel-lang">Go</span>
+          </div>
+          <pre><code class="language-go">type OrchestratorPort interface {
+    SubmitTask(ctx context.Context,
+               req SubmitRequest) (domain.Task, error)
+    GetTask(ctx context.Context,
+            id string) (domain.Task, error)
+    ListPendingTasks(ctx context.Context) ([]domain.Task, error)
+    CancelTask(ctx context.Context,
+               id string) error
+    GetProviders(ctx context.Context) ([]domain.Provider, error)
+    RegisterProvider(ctx context.Context,
+                     p domain.Provider) error
+    DeleteProvider(ctx context.Context,
+                   name string) error
+}</code></pre>
+        </div>
+      </div>
+
+      <div class="animate-on-scroll delay-1">
+        <h3>LLMClientPort</h3>
+        <p>The outbound port for LLM backends — all providers implement this:</p>
+        <div class="code-panel">
+          <div class="code-panel-header">
+            <span class="code-panel-title">ports/llm.go</span>
+            <span class="code-panel-lang">Go</span>
+          </div>
+          <pre><code class="language-go">type LLMClientPort interface {
+    Complete(ctx context.Context,
+             req CompletionRequest) (string, error)
+    ListModels(ctx context.Context) ([]string, error)
+    Health(ctx context.Context) error
+    Name() string
+}</code></pre>
+        </div>
+      </div>
+
+      <div class="animate-on-scroll">
+        <h3>TaskRepositoryPort</h3>
+        <p>Persistence port for task storage (SQLite adapter):</p>
+        <div class="code-panel">
+          <div class="code-panel-header">
+            <span class="code-panel-title">ports/repository.go</span>
+            <span class="code-panel-lang">Go</span>
+          </div>
+          <pre><code class="language-go">type TaskRepositoryPort interface {
+    Save(ctx context.Context,
+         task domain.Task) error
+    FindByID(ctx context.Context,
+             id string) (domain.Task, error)
+    FindPending(ctx context.Context) ([]domain.Task, error)
+    UpdateStatus(ctx context.Context,
+                 id string,
+                 status domain.TaskStatus,
+                 logs string) error
+}</code></pre>
+        </div>
+      </div>
+
+      <div class="animate-on-scroll delay-1">
+        <h3>SessionPort</h3>
+        <p>Per-project conversation history port:</p>
+        <div class="code-panel">
+          <div class="code-panel-header">
+            <span class="code-panel-title">ports/session.go</span>
+            <span class="code-panel-lang">Go</span>
+          </div>
+          <pre><code class="language-go">type SessionPort interface {
+    GetHistory(ctx context.Context,
+               projectPath string) ([]Message, error)
+    AppendMessage(ctx context.Context,
+                  projectPath string,
+                  msg Message) error
+    ClearHistory(ctx context.Context,
+                 projectPath string) error
+}</code></pre>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Adapters -->
+  <section class="content-section" id="adapters">
+    <h2>Adapters</h2>
+
+    <h3>Inbound Adapters</h3>
+    <div class="table-wrapper mt-3 animate-on-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Adapter</th>
+            <th>Package</th>
+            <th>Port(s) Used</th>
+            <th>Transport</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>HTTP API</td>
+            <td><code>internal/adapters/http</code></td>
+            <td>OrchestratorPort</td>
+            <td><span class="badge badge-cyan">REST / chi</span></td>
+          </tr>
+          <tr>
+            <td>MCP Server</td>
+            <td><code>internal/adapters/mcp</code></td>
+            <td>OrchestratorPort</td>
+            <td><span class="badge badge-purple">JSON-RPC 2.0</span></td>
+          </tr>
+          <tr>
+            <td>Wails GUI</td>
+            <td><code>app.go</code></td>
+            <td>OrchestratorPort</td>
+            <td><span class="badge badge-green">Wails bindings</span></td>
+          </tr>
+          <tr>
+            <td>CLI (nexus-submit)</td>
+            <td><code>cmd/nexus-submit</code></td>
+            <td>HTTP client</td>
+            <td><span class="badge badge-gray">HTTP REST</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top: 2.5rem;">Outbound Adapters</h3>
+    <div class="table-wrapper mt-3 animate-on-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Adapter</th>
+            <th>Package</th>
+            <th>Port</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>LM Studio</td>
+            <td><code>internal/adapters/llm/lmstudio</code></td>
+            <td>LLMClientPort</td>
+            <td><span class="badge badge-green">Auto-discovered :1234</span></td>
+          </tr>
+          <tr>
+            <td>Ollama</td>
+            <td><code>internal/adapters/llm/ollama</code></td>
+            <td>LLMClientPort</td>
+            <td><span class="badge badge-green">Auto-discovered :11434</span></td>
+          </tr>
+          <tr>
+            <td>OpenAI</td>
+            <td><code>internal/adapters/llm/openai</code></td>
+            <td>LLMClientPort</td>
+            <td><span class="badge badge-gray">OPENAI_API_KEY required</span></td>
+          </tr>
+          <tr>
+            <td>Anthropic</td>
+            <td><code>internal/adapters/llm/anthropic</code></td>
+            <td>LLMClientPort</td>
+            <td><span class="badge badge-gray">ANTHROPIC_API_KEY required</span></td>
+          </tr>
+          <tr>
+            <td>GitHub Copilot</td>
+            <td><code>internal/adapters/llm/copilot</code></td>
+            <td>LLMClientPort</td>
+            <td><span class="badge badge-gray">GITHUB_TOKEN required</span></td>
+          </tr>
+          <tr>
+            <td>SQLite Task Repo</td>
+            <td><code>internal/adapters/sqlite</code></td>
+            <td>TaskRepositoryPort</td>
+            <td><span class="badge badge-gray">CGO required</span></td>
+          </tr>
+          <tr>
+            <td>SQLite Session Store</td>
+            <td><code>internal/adapters/sqlite</code></td>
+            <td>SessionPort</td>
+            <td><span class="badge badge-gray">Per-project isolation</span></td>
+          </tr>
+          <tr>
+            <td>Filesystem Writer</td>
+            <td><code>internal/adapters/fs</code></td>
+            <td>FileWriterPort</td>
+            <td><span class="badge badge-gray">Writes generated files</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- CommandType -->
+  <section class="content-section" id="command-type">
+    <h2>CommandType &amp; Task Routing</h2>
+    <p>Tasks can be classified to enable command-aware routing and enforcement:</p>
+
+    <div class="grid-3 mt-4">
+      <div class="card animate-on-scroll">
+        <div class="mb-2"><span class="badge badge-purple">plan</span></div>
+        <h3>Plan Tasks</h3>
+        <p>Orchestration, documentation, architecture decisions. These tasks produce plans that execute tasks must reference.</p>
+      </div>
+      <div class="card animate-on-scroll delay-1">
+        <div class="mb-2"><span class="badge badge-red">execute</span></div>
+        <h3>Execute Tasks</h3>
+        <p>Code implementation tasks. The orchestrator enforces that a prior plan task exists for the project before allowing execution.</p>
+      </div>
+      <div class="card animate-on-scroll delay-2">
+        <div class="mb-2"><span class="badge badge-gray">auto</span></div>
+        <h3>Auto (default)</h3>
+        <p>The orchestrator infers the command type from the instruction content. Safe fallback for simple use cases.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Next steps -->
+  <div class="divider"></div>
+  <section class="content-section" id="nav-links" style="margin-bottom: 0;">
+    <div class="grid-3">
+      <a href="./getting-started.html" class="card" style="text-decoration: none;">
+        <span class="card-icon" aria-hidden="true">🚀</span>
+        <h3>Getting Started</h3>
+        <p>Install and run nexusOrchestrator in minutes.</p>
+        <div class="mt-2" style="color: var(--accent-light); font-size: 0.875rem; font-weight: 600;">Start here →</div>
+      </a>
+      <a href="./api-reference.html" class="card" style="text-decoration: none;">
+        <span class="card-icon" aria-hidden="true">📡</span>
+        <h3>API Reference</h3>
+        <p>Full HTTP and MCP endpoint documentation.</p>
+        <div class="mt-2" style="color: var(--accent-light); font-size: 0.875rem; font-weight: 600;">Explore →</div>
+      </a>
+      <a href="./mcp-integration.html" class="card" style="text-decoration: none;">
+        <span class="card-icon" aria-hidden="true">🔌</span>
+        <h3>MCP Integration</h3>
+        <p>Connect Claude Desktop via the MCP server.</p>
+        <div class="mt-2" style="color: var(--accent-light); font-size: 0.875rem; font-weight: 600;">Set up →</div>
+      </a>
+    </div>
+  </section>
+
+</main>
+
+<!-- ── Footer ────────────────────────────────────────────────── -->
+<footer class="footer" role="contentinfo">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <span class="footer-logo">nexus<span class="logo-accent">Orchestrator</span></span>
+      <p class="footer-tagline">Local AI task orchestration with multi-provider routing, session memory, and MCP support.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Docs</h4>
+      <ul>
+        <li><a href="./getting-started.html">Getting Started</a></li>
+        <li><a href="./architecture.html">Architecture</a></li>
+        <li><a href="./api-reference.html">API Reference</a></li>
+        <li><a href="./mcp-integration.html">MCP Integration</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Download</h4>
+      <ul>
+        <li><a href="./downloads.html">All Releases</a></li>
+        <li><a href="./downloads.html#desktop">Desktop App</a></li>
+        <li><a href="./downloads.html#cli">CLI &amp; Daemon</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Community</h4>
+      <ul>
+        <li><a href="https://github.com/el-j/nexusOrchestrator" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://github.com/el-j/nexusOrchestrator/issues" target="_blank" rel="noopener">Issues</a></li>
+        <li><a href="https://github.com/el-j/nexusOrchestrator/releases" target="_blank" rel="noopener">Releases</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>Built with Go 🔷 + Wails &nbsp;·&nbsp; MIT License &nbsp;·&nbsp; &copy; 2025 nexusOrchestrator contributors</p>
+    <p><a href="https://github.com/el-j/nexusOrchestrator/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></p>
+  </div>
+</footer>
+
+<script src="./assets/js/main.js"></script>
+</body>
+</html>

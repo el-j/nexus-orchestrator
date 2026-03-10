@@ -3,7 +3,7 @@
 /nexus-cli
 /nexus-daemon
 build/bin/
-dist/
+/dist/
 *.exe
 
 # SQLite databases
@@ -23,3 +23,4 @@ Thumbs.db
 frontend/node_modules/
 frontend/.vite/
 coverage.out
+docs/node_modules/

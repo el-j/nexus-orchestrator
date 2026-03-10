@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP Integration — nexusOrchestrator</title>
+  <meta name="description" content="Connect Claude Desktop or any MCP client to nexusOrchestrator. Configuration, available tools, usage examples, and troubleshooting.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="./assets/css/style.css">
+</head>
+<body>
+
+<!-- ── Navigation ────────────────────────────────────────────── -->
+<nav class="navbar" role="navigation" aria-label="Main navigation">
+  <div class="navbar-inner">
+    <a href="./index.html" class="navbar-logo">nexus<span class="logo-accent">Orchestrator</span></a>
+    <ul class="navbar-nav" role="list">
+      <li><a href="./index.html">Home</a></li>
+      <li><a href="./architecture.html">Architecture</a></li>
+      <li><a href="./downloads.html">Downloads</a></li>
+      <li><a href="./api-reference.html">API Reference</a></li>
+      <li><a href="./getting-started.html">Getting Started</a></li>
+      <li><a href="./mcp-integration.html">MCP Integration</a></li>
+    </ul>
+    <div class="navbar-actions">
+      <a href="https://github.com/el-j/nexusOrchestrator" class="nav-github" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        Star on GitHub
+      </a>
+      <a href="./downloads.html" class="nav-download">Download</a>
+    </div>
+    <button class="nav-hamburger" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobile-menu">
+  <a href="./index.html">Home</a>
+  <a href="./architecture.html">Architecture</a>
+  <a href="./downloads.html">Downloads</a>
+  <a href="./api-reference.html">API Reference</a>
+  <a href="./getting-started.html">Getting Started</a>
+  <a href="./mcp-integration.html">MCP Integration</a>
+  <div class="mobile-menu-actions">
+    <a href="https://github.com/el-j/nexusOrchestrator" class="btn btn-outline btn-sm" target="_blank" rel="noopener">GitHub</a>
+    <a href="./downloads.html" class="btn btn-primary btn-sm">Download</a>
+  </div>
+</div>
+
+<!-- ── Page Header ────────────────────────────────────────────── -->
+<header class="page-header">
+  <div class="container">
+    <div class="page-header-content">
+      <div class="page-header-breadcrumb">
+        <a href="./index.html">Home</a>
+        <span>›</span>
+        <span>MCP Integration</span>
+      </div>
+      <h1>MCP Integration</h1>
+      <p>Connect Claude Desktop or any MCP client to nexusOrchestrator using the built-in JSON-RPC 2.0 server on port 9998.</p>
+    </div>
+  </div>
+</header>
+
+<!-- ── Content ────────────────────────────────────────────────── -->
+<main class="content-area">
+
+  <!-- What is MCP -->
+  <section class="content-section" id="what-is-mcp">
+    <h2>What is MCP?</h2>
+    <p>The <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener">Model Context Protocol</a> (MCP) is an open standard for connecting AI assistants to external tools and data sources. nexusOrchestrator implements an MCP server using JSON-RPC 2.0, making it compatible with Claude Desktop and any MCP-aware client.</p>
+
+    <div class="grid-3 mt-4">
+      <div class="card animate-on-scroll">
+        <span class="card-icon" aria-hidden="true">🔌</span>
+        <h3>JSON-RPC 2.0</h3>
+        <p>The MCP server uses the industry-standard JSON-RPC 2.0 protocol over HTTP, making it easy to integrate with any language or framework.</p>
+      </div>
+      <div class="card animate-on-scroll delay-1">
+        <span class="card-icon" aria-hidden="true">🤖</span>
+        <h3>Claude Desktop</h3>
+        <p>Add nexusOrchestrator as a tool provider in Claude Desktop with a single config change. All six tools become available in Claude's tool palette.</p>
+      </div>
+      <div class="card animate-on-scroll delay-2">
+        <span class="card-icon" aria-hidden="true">🛠️</span>
+        <h3>6 Tools Ready</h3>
+        <p>Submit tasks, check status, list the queue, cancel tasks, inspect providers, and check health — all via MCP tool calls.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Claude Desktop Setup -->
+  <section class="content-section" id="claude-setup">
+    <h2>Claude Desktop Setup</h2>
+    <p>Add nexusOrchestrator to your Claude Desktop configuration file. The location depends on your operating system:</p>
+
+    <div class="callout callout-warning mt-3">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-content">
+        <p><strong>Start the daemon first.</strong> Make sure <code>nexus-daemon</code> is running before starting Claude Desktop. The MCP server must be listening on port 9998.</p>
+      </div>
+    </div>
+
+    <!-- OS Tabs -->
+    <div class="tabs mt-4" role="tablist" aria-label="Operating system configuration">
+      <button class="tab-btn active" role="tab" aria-selected="true" data-tab="macos">🍎 macOS</button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-tab="windows">🪟 Windows</button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-tab="linux">🐧 Linux</button>
+    </div>
+    <div>
+      <div class="tab-content active" data-tab="macos">
+        <div class="code-panel-header" style="padding: 0.75rem 1.25rem; background: rgba(255,255,255,0.02); border-top: none; font-size: 0.8125rem; color: var(--text-muted);">
+          ~/Library/Application Support/Claude/claude_desktop_config.json
+        </div>
+        <pre style="margin: 0; border-radius: 0 0 var(--radius-md) var(--radius-md);"><code class="language-json">{
+  "mcpServers": {
+    "nexusOrchestrator": {
+      "url": "http://localhost:9998/mcp"
+    }
+  }
+}</code></pre>
+      </div>
+      <div class="tab-content" data-tab="windows">
+        <div class="code-panel-header" style="padding: 0.75rem 1.25rem; background: rgba(255,255,255,0.02); border-top: none; font-size: 0.8125rem; color: var(--text-muted);">
+          %APPDATA%\Claude\claude_desktop_config.json
+        </div>
+        <pre style="margin: 0; border-radius: 0 0 var(--radius-md) var(--radius-md);"><code class="language-json">{
+  "mcpServers": {
+    "nexusOrchestrator": {
+      "url": "http://localhost:9998/mcp"
+    }
+  }
+}</code></pre>
+      </div>
+      <div class="tab-content" data-tab="linux">
+        <div class="code-panel-header" style="padding: 0.75rem 1.25rem; background: rgba(255,255,255,0.02); border-top: none; font-size: 0.8125rem; color: var(--text-muted);">
+          ~/.config/Claude/claude_desktop_config.json
+        </div>
+        <pre style="margin: 0; border-radius: 0 0 var(--radius-md) var(--radius-md);"><code class="language-json">{
+  "mcpServers": {
+    "nexusOrchestrator": {
+      "url": "http://localhost:9998/mcp"
+    }
+  }
+}</code></pre>
+      </div>
+    </div>
+
+    <div class="steps-list mt-4">
+      <div class="step-item animate-on-scroll">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h4>Start the daemon</h4>
+          <p>Make sure nexus-daemon is running before configuring Claude.</p>
+          <pre><code class="language-bash">./nexus-daemon
+# MCP Server → http://localhost:9998/mcp</code></pre>
+        </div>
+      </div>
+      <div class="step-item animate-on-scroll delay-1">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h4>Edit the config file</h4>
+          <p>Open your Claude Desktop config at the path shown above and add the <code>mcpServers</code> block.</p>
+        </div>
+      </div>
+      <div class="step-item animate-on-scroll delay-2">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h4>Restart Claude Desktop</h4>
+          <p>Quit and reopen Claude Desktop. The nexusOrchestrator tools should appear in the tool palette (🔧 icon).</p>
+        </div>
+      </div>
+      <div class="step-item animate-on-scroll delay-3">
+        <div class="step-number">4</div>
+        <div class="step-content">
+          <h4>Test the connection</h4>
+          <p>Ask Claude to check the orchestrator health or list providers:</p>
+          <pre><code>"Use the nexusOrchestrator health tool to check if the daemon is running"</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Available Tools -->
+  <section class="content-section" id="tools">
+    <h2>Available Tools</h2>
+
+    <div class="table-wrapper mt-4 animate-on-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Tool</th>
+            <th>Description</th>
+            <th>Arguments</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>submit_task</code></td>
+            <td>Submit a code-generation task to the orchestrator queue</td>
+            <td><code>projectPath</code>*, <code>targetFile</code>*, <code>instruction</code>*, <code>command</code>, <code>modelId</code>, <code>providerHint</code></td>
+          </tr>
+          <tr>
+            <td><code>get_task</code></td>
+            <td>Retrieve the status and output of a task by its ID</td>
+            <td><code>id</code>*</td>
+          </tr>
+          <tr>
+            <td><code>get_queue</code></td>
+            <td>List all pending (QUEUED/PROCESSING) tasks</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td><code>cancel_task</code></td>
+            <td>Cancel a queued task before it is processed</td>
+            <td><code>id</code>*</td>
+          </tr>
+          <tr>
+            <td><code>get_providers</code></td>
+            <td>List all registered LLM providers with health status</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td><code>health</code></td>
+            <td>Check if the orchestrator daemon is running</td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.5rem;">* Required argument</p>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Usage Examples -->
+  <section class="content-section" id="examples">
+    <h2>Usage Examples</h2>
+    <p>Raw JSON-RPC 2.0 request/response examples for each tool:</p>
+
+    <h3>submit_task</h3>
+    <div class="grid-2 mt-3 animate-on-scroll">
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-panel-title">Request</span>
+          <span class="code-panel-lang">JSON-RPC</span>
+        </div>
+        <pre><code class="language-json">{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "submit_task",
+    "arguments": {
+      "projectPath": "/Users/me/myapp",
+      "targetFile":  "auth/middleware.go",
+      "instruction": "Add JWT authentication middleware",
+      "command":     "execute",
+      "providerHint":"LM Studio"
+    }
+  }
+}</code></pre>
+      </div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-panel-title">Response</span>
+          <span class="code-panel-lang">JSON-RPC</span>
+        </div>
+        <pre><code class="language-json">{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [{
+      "type": "text",
+      "text": "{\"id\":\"task-abc-123\",\"status\":\"QUEUED\",\"createdAt\":\"2025-01-01T00:00:00Z\"}"
+    }]
+  }
+}</code></pre>
+      </div>
+    </div>
+
+    <h3 style="margin-top: 2.5rem;">get_task</h3>
+    <div class="grid-2 mt-3 animate-on-scroll">
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-panel-title">Request</span>
+          <span class="code-panel-lang">JSON-RPC</span>
+        </div>
+        <pre><code class="language-json">{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "get_task",
+    "arguments": {
+      "id": "task-abc-123"
+    }
+  }
+}</code></pre>
+      </div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-panel-title">Response (COMPLETED)</span>
+          <span class="code-panel-lang">JSON-RPC</span>
+        </div>
+        <pre><code class="language-json">{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "content": [{
+      "type": "text",
+      "text": "{\"id\":\"task-abc-123\",\"status\":\"COMPLETED\",\"logs\":\"package auth\\n\\nfunc JWTMiddleware(next http.Handler) http.Handler {...}\"}"
+    }]
+  }
+}</code></pre>
+      </div>
+    </div>
+
+    <h3 style="margin-top: 2.5rem;">get_providers</h3>
+    <div class="grid-2 mt-3 animate-on-scroll">
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-panel-title">Request</span>
+          <span class="code-panel-lang">JSON-RPC</span>
+        </div>
+        <pre><code class="language-json">{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "get_providers",
+    "arguments": {}
+  }
+}</code></pre>
+      </div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-panel-title">Response</span>
+          <span class="code-panel-lang">JSON-RPC</span>
+        </div>
+        <pre><code class="language-json">{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [{
+      "type": "text",
+      "text": "[{\"name\":\"LM Studio\",\"active\":true,\"activeModel\":\"codellama\"},{\"name\":\"Ollama\",\"active\":false}]"
+    }]
+  }
+}</code></pre>
+      </div>
+    </div>
+
+    <h3 style="margin-top: 2.5rem;">health</h3>
+    <div class="grid-2 mt-3 animate-on-scroll">
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-panel-title">Request</span>
+          <span class="code-panel-lang">JSON-RPC</span>
+        </div>
+        <pre><code class="language-json">{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "health",
+    "arguments": {}
+  }
+}</code></pre>
+      </div>
+      <div class="code-panel">
+        <div class="code-panel-header">
+          <span class="code-panel-title">Response</span>
+          <span class="code-panel-lang">JSON-RPC</span>
+        </div>
+        <pre><code class="language-json">{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "result": {
+    "content": [{
+      "type": "text",
+      "text": "{\"status\":\"ok\"}"
+    }]
+  }
+}</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Troubleshooting -->
+  <section class="content-section" id="troubleshooting">
+    <h2>Troubleshooting</h2>
+
+    <div class="table-wrapper mt-4 animate-on-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Problem</th>
+            <th>Cause</th>
+            <th>Solution</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Tools don't appear in Claude</td>
+            <td>Daemon not running when Claude started</td>
+            <td>Start <code>nexus-daemon</code> first, then restart Claude Desktop</td>
+          </tr>
+          <tr>
+            <td>Connection refused on :9998</td>
+            <td>Daemon crashed or wrong port</td>
+            <td>Check daemon logs; verify <code>NEXUS_MCP_PORT</code> matches config URL</td>
+          </tr>
+          <tr>
+            <td><code>health</code> returns error</td>
+            <td>SQLite not initialized or CGO missing</td>
+            <td>Rebuild with <code>CGO_ENABLED=1</code>; check write permissions for DB path</td>
+          </tr>
+          <tr>
+            <td>Tasks stuck in QUEUED</td>
+            <td>No active LLM provider</td>
+            <td>Start LM Studio / Ollama or set API keys; call <code>get_providers</code> to check status</td>
+          </tr>
+          <tr>
+            <td>TOO_LARGE status</td>
+            <td>Prompt exceeds context window</td>
+            <td>Reduce <code>contextFiles</code>, shorten instruction, or increase <code>NEXUS_CONTEXT_LIMIT</code></td>
+          </tr>
+          <tr>
+            <td>JSON parse error in response</td>
+            <td>Malformed request</td>
+            <td>Ensure <code>jsonrpc: "2.0"</code> and required <code>id</code>, <code>method</code>, <code>params</code> fields are present</td>
+          </tr>
+          <tr>
+            <td>Method not found</td>
+            <td>Wrong method name</td>
+            <td>Use exactly <code>tools/call</code> for tool invocation; check tool name spelling</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-tip mt-4">
+      <span class="callout-icon">💡</span>
+      <div class="callout-content">
+        <p><strong>Debug mode:</strong> Start the daemon with <code>NEXUS_LOG_LEVEL=debug ./nexus-daemon</code> to see detailed request/response logging for all MCP calls.</p>
+      </div>
+    </div>
+
+    <div class="callout callout-note mt-3">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-content">
+        <p><strong>Verify MCP is listening:</strong> <code>curl http://localhost:9998/mcp -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'</code></p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Other MCP Clients -->
+  <section class="content-section" id="other-clients">
+    <h2>Using Other MCP Clients</h2>
+    <p>nexusOrchestrator's MCP server is standards-compliant and works with any JSON-RPC 2.0 client. You can also call it directly from scripts:</p>
+
+    <pre class="animate-on-scroll"><code class="language-bash"># Test MCP health from the command line
+curl -s -X POST http://localhost:9998/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "health",
+      "arguments": {}
+    }
+  }' | jq '.result.content[0].text | fromjson'</code></pre>
+
+    <pre class="animate-on-scroll"><code class="language-bash"># Submit a task via MCP from the command line
+curl -s -X POST http://localhost:9998/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/call",
+    "params": {
+      "name": "submit_task",
+      "arguments": {
+        "projectPath": "'$(pwd)'",
+        "targetFile": "generated.go",
+        "instruction": "Write a Hello World HTTP handler"
+      }
+    }
+  }' | jq '.result.content[0].text | fromjson'</code></pre>
+  </section>
+
+</main>
+
+<!-- ── Footer ────────────────────────────────────────────────── -->
+<footer class="footer" role="contentinfo">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <span class="footer-logo">nexus<span class="logo-accent">Orchestrator</span></span>
+      <p class="footer-tagline">Local AI task orchestration with multi-provider routing, session memory, and MCP support.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Docs</h4>
+      <ul>
+        <li><a href="./getting-started.html">Getting Started</a></li>
+        <li><a href="./architecture.html">Architecture</a></li>
+        <li><a href="./api-reference.html">API Reference</a></li>
+        <li><a href="./mcp-integration.html">MCP Integration</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Download</h4>
+      <ul>
+        <li><a href="./downloads.html">All Releases</a></li>
+        <li><a href="./downloads.html#desktop">Desktop App</a></li>
+        <li><a href="./downloads.html#cli">CLI &amp; Daemon</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Community</h4>
+      <ul>
+        <li><a href="https://github.com/el-j/nexusOrchestrator" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://github.com/el-j/nexusOrchestrator/issues" target="_blank" rel="noopener">Issues</a></li>
+        <li><a href="https://github.com/el-j/nexusOrchestrator/releases" target="_blank" rel="noopener">Releases</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>Built with Go 🔷 + Wails &nbsp;·&nbsp; MIT License &nbsp;·&nbsp; &copy; 2025 nexusOrchestrator contributors</p>
+    <p><a href="https://github.com/el-j/nexusOrchestrator/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></p>
+  </div>
+</footer>
+
+<script src="./assets/js/main.js"></script>
+</body>
+</html>

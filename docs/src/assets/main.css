@@ -1,0 +1,138 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-nexus-900: #050508;
+  --color-nexus-800: #0d0d14;
+  --color-nexus-700: #14141f;
+  --color-nexus-600: #1a1a2e;
+  --color-nexus-500: #252540;
+  --color-accent: #7c3aed;
+  --color-accent-light: #a78bfa;
+  --color-cyan: #06b6d4;
+  --color-cyan-light: #67e8f9;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #050508;
+  color: #f0f0f8;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0d0d14; }
+::-webkit-scrollbar-thumb { background: #7c3aed; border-radius: 3px; }
+
+/* PrimeVue dark theme overrides */
+.p-component { font-family: var(--font-sans) !important; }
+
+/* Terminal cursor blink */
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+.terminal-cursor { animation: blink 1s infinite; }
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #a78bfa 0%, #06b6d4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow effects */
+.glow-purple { box-shadow: 0 0 20px rgba(124, 58, 237, 0.3); }
+.glow-cyan { box-shadow: 0 0 20px rgba(6, 182, 212, 0.3); }
+
+/* Animated gradient border */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animated-border {
+  position: relative;
+}
+.animated-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, #7c3aed, #06b6d4, #7c3aed);
+  background-size: 200% 200%;
+  animation: gradient-shift 4s ease infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Code block */
+pre, code {
+  font-family: var(--font-mono) !important;
+}
+pre {
+  background: #0d0d14 !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+  border-radius: 8px !important;
+  padding: 1rem 1.25rem !important;
+  overflow-x: auto;
+  font-size: 0.875rem !important;
+  line-height: 1.7 !important;
+}
+
+/* Scroll reveal */
+.reveal { opacity: 0; transform: translateY(20px); transition: all 0.6s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* PrimeVue Tabs override for dark mode */
+.p-tabs .p-tablist {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+}
+.p-tabs .p-tab {
+  background: transparent !important;
+  color: #94a3b8 !important;
+  border-bottom: 2px solid transparent !important;
+}
+.p-tabs .p-tab-active {
+  color: #a78bfa !important;
+  border-bottom-color: #7c3aed !important;
+}
+.p-tabs .p-tabpanels {
+  background: transparent !important;
+  padding: 1rem 0 !important;
+}
+
+/* PrimeVue Drawer overrides */
+.p-drawer {
+  background: #0d0d14 !important;
+}
+.p-drawer-header {
+  background: #0d0d14 !important;
+  border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+}
+
+/* Table overrides */
+.p-datatable .p-datatable-thead > tr > th {
+  background: #0d0d14 !important;
+  color: #94a3b8 !important;
+  border-color: rgba(255,255,255,0.06) !important;
+}
+.p-datatable .p-datatable-tbody > tr > td {
+  background: transparent !important;
+  color: #e2e8f0 !important;
+  border-color: rgba(255,255,255,0.04) !important;
+}
+.p-datatable .p-datatable-tbody > tr:hover > td {
+  background: rgba(255,255,255,0.02) !important;
+}
