@@ -1,0 +1,41 @@
+{
+  "name": "nexus-orchestrator-action",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GitHub Action runner for nexus-orchestrator",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "ncc build src/index.ts -o dist --minify --license licenses.txt",
+    "typecheck": "tsc --noEmit",
+    "test": "jest --runInBand --forceExit",
+    "test:coverage": "jest --runInBand --forceExit --coverage"
+  },
+  "dependencies": {
+    "@actions/core": "3.0.0",
+    "@actions/exec": "3.0.0",
+    "@actions/http-client": "4.0.0",
+    "@actions/tool-cache": "4.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "30.0.0",
+    "@types/node": "22.0.0",
+    "@vercel/ncc": "0.38.4",
+    "jest": "30.3.0",
+    "ts-jest": "29.4.6",
+    "typescript": "5.9.3"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": ["**/__tests__/**/*.test.ts"],
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.+)\\.js$": "$1",
+      "^@actions/(.+)$": "<rootDir>/__mocks__/@actions/$1.js"
+    },
+    "collectCoverageFrom": ["src/**/*.ts"],
+    "coverageThreshold": {
+      "global": { "lines": 70 }
+    }
+  }
+}
