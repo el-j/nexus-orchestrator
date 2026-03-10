@@ -447,10 +447,14 @@ func TestHealthEndpoint(t *testing.T) {
 // cancels the second (still queued) task, and verifies it is marked CANCELLED.
 func TestCancelTaskHTTP(t *testing.T) {
 	release := make(chan struct{})
-	defer close(release)
 
 	ts := newTestStackWithLLM(t, &blockingMockLLM{releaseCh: release})
+	// close(release) must run before ts.cleanup() so the blocking worker goroutine
+	// is unblocked and can finish its current task before Stop() waits for it and
+	// the database is closed. Defers run LIFO, so register cleanup first (runs last)
+	// and release second (runs first).
 	defer ts.cleanup()
+	defer close(release)
 
 	srv := httptest.NewServer(ts.server.Handler())
 	defer srv.Close()

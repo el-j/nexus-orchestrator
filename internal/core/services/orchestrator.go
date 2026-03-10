@@ -30,6 +30,7 @@ type OrchestratorService struct {
 	stopCh      chan struct{}
 	stopped     bool
 	stopOnce    sync.Once
+	workerWg    sync.WaitGroup // tracks the background worker goroutine
 	// providerFactory builds a concrete LLMClient from a ProviderConfig.
 	// Injected by entry points to keep service layer free of adapter imports.
 	providerFactory func(domain.ProviderConfig) (ports.LLMClient, error)
@@ -53,6 +54,7 @@ func NewOrchestrator(
 		workCh:      make(chan struct{}, 1),
 		stopCh:      make(chan struct{}),
 	}
+	svc.workerWg.Add(1)
 	go svc.runWorker()
 	return svc
 }
@@ -149,7 +151,8 @@ func (o *OrchestratorService) CancelTask(id string) error {
 	return fmt.Errorf("orchestrator: cancel task: %w", domain.ErrNotFound)
 }
 
-// Stop signals the worker goroutine to exit.
+// Stop signals the worker goroutine to exit and waits for it to finish.
+// It is safe to close the backing repository only after Stop returns.
 func (o *OrchestratorService) Stop() {
 	o.stopOnce.Do(func() {
 		o.mu.Lock()
@@ -157,6 +160,7 @@ func (o *OrchestratorService) Stop() {
 		o.mu.Unlock()
 		close(o.stopCh)
 	})
+	o.workerWg.Wait()
 }
 
 // WithProviderFactory sets the factory used by RegisterCloudProvider to construct
@@ -253,6 +257,7 @@ func statusEventType(s domain.TaskStatus) ports.EventType {
 // It blocks on workCh until a task is submitted, then drains the entire queue
 // before waiting again — guaranteeing only one LLM call is ever in flight.
 func (o *OrchestratorService) runWorker() {
+	defer o.workerWg.Done()
 	for {
 		select {
 		case <-o.stopCh:
