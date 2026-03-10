@@ -1,3 +1,5 @@
+// Command nexus-orchestrator is the NexusAI desktop application.
+// It runs a native GUI via Wails with an embedded HTTP API on :9999 and MCP server on :9998.
 package main
 
 import (
@@ -23,6 +25,8 @@ import (
 	"nexus-orchestrator/internal/core/ports"
 	"nexus-orchestrator/internal/core/services"
 )
+
+var version = "dev"
 
 //go:embed all:frontend/dist
 var assets embed.FS

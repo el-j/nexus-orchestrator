@@ -15,11 +15,14 @@ import (
 	"nexus-orchestrator/internal/core/ports"
 )
 
+var version = "dev"
+
 func main() {
 	// Use a lightweight HTTP-backed orchestrator stub that talks to the daemon.
 	orch := &remoteOrchestrator{baseURL: "http://127.0.0.1:9999"}
 
 	root := cli.NewRootCmd(orch)
+	root.Version = version
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

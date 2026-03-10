@@ -2,11 +2,11 @@
   "version": "2",
   "updatedAt": "2026-03-10T14:00:00.000Z",
   "counters": {
-    "nextTaskId": 91,
-    "nextPlanId": 11
+    "nextTaskId": 98,
+    "nextPlanId": 12
   },
   "activePlanId": null,
-  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page).",
+  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening).",
   "plans": {
     "PLAN-001": {
       "id": "PLAN-001",
@@ -142,6 +142,14 @@
       "createdAt": "2026-03-10T16:00:00.000Z",
       "completedAt": "2026-03-10T17:00:00.000Z",
       "taskIds": ["TASK-085","TASK-086","TASK-087","TASK-088","TASK-089","TASK-090"]
+    },
+    "PLAN-011": {
+      "id": "PLAN-011",
+      "goal": "Industry-grade hardening: fix CI/CD workflows, add version injection, harden install script, add package doc comments, fix downloads page",
+      "status": "completed",
+      "createdAt": "2026-03-10T18:00:00.000Z",
+      "completedAt": "2026-03-10T19:00:00.000Z",
+      "taskIds": ["TASK-091","TASK-092","TASK-093","TASK-094","TASK-095","TASK-096","TASK-097"]
     }
   },
   "tasks": {
@@ -1247,6 +1255,13 @@
       "createdAt": "2026-03-10T16:00:00.000Z",
       "startedAt": "2026-03-10T16:45:00.000Z",
       "completedAt": "2026-03-10T17:00:00.000Z"
-    }
+    },
+    "TASK-091": {"id":"TASK-091","title":"Fix release.yml: static flags, cache, concurrency, timeouts, drop win/arm64","status":"done","role":"devops","planId":"PLAN-011","dependencies":[],"createdAt":"2026-03-10T18:00:00.000Z","startedAt":"2026-03-10T18:10:00.000Z","completedAt":"2026-03-10T18:25:00.000Z"},
+    "TASK-092": {"id":"TASK-092","title":"Fix desktop.yml: concurrency, timeouts, linux deps, release notes","status":"done","role":"devops","planId":"PLAN-011","dependencies":[],"createdAt":"2026-03-10T18:00:00.000Z","startedAt":"2026-03-10T18:10:00.000Z","completedAt":"2026-03-10T18:25:00.000Z"},
+    "TASK-093": {"id":"TASK-093","title":"Add var version to all entry points for ldflags injection","status":"done","role":"backend","planId":"PLAN-011","dependencies":[],"createdAt":"2026-03-10T18:00:00.000Z","startedAt":"2026-03-10T18:10:00.000Z","completedAt":"2026-03-10T18:20:00.000Z"},
+    "TASK-094": {"id":"TASK-094","title":"Harden install.sh: fatal checksum, binary validation, nexus-submit","status":"done","role":"devops","planId":"PLAN-011","dependencies":[],"createdAt":"2026-03-10T18:00:00.000Z","startedAt":"2026-03-10T18:10:00.000Z","completedAt":"2026-03-10T18:25:00.000Z"},
+    "TASK-095": {"id":"TASK-095","title":"Fix downloads.md: SHA256 split, Windows clarification, nexus-submit","status":"done","role":"frontend","planId":"PLAN-011","dependencies":[],"createdAt":"2026-03-10T18:00:00.000Z","startedAt":"2026-03-10T18:10:00.000Z","completedAt":"2026-03-10T18:25:00.000Z"},
+    "TASK-096": {"id":"TASK-096","title":"Add package-level doc comments to all 16 Go packages","status":"done","role":"backend","planId":"PLAN-011","dependencies":[],"createdAt":"2026-03-10T18:00:00.000Z","startedAt":"2026-03-10T18:10:00.000Z","completedAt":"2026-03-10T18:30:00.000Z"},
+    "TASK-097": {"id":"TASK-097","title":"QA: build, test -race, vet, YAML validate, version verify","status":"done","role":"qa","planId":"PLAN-011","dependencies":["TASK-091","TASK-092","TASK-093","TASK-094","TASK-095","TASK-096"],"createdAt":"2026-03-10T18:00:00.000Z","startedAt":"2026-03-10T18:35:00.000Z","completedAt":"2026-03-10T19:00:00.000Z"}
   }
 }

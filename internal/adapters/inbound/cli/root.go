@@ -1,3 +1,5 @@
+// Package cli provides the Cobra-based CLI inbound adapter for NexusAI.
+// It is a thin HTTP client that forwards commands to the daemon API.
 package cli
 
 import (

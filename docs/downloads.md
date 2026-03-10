@@ -175,7 +175,7 @@ Full GUI with built-in HTTP API and MCP server. Recommended for most users.
     <div class="dl-platform">macOS</div>
     <div class="dl-arch">Apple Silicon (M1/M2/M3/M4)</div>
     <div class="dl-size">~15 MB</div>
-    <a class="dl-btn" href="https://github.com/nexus-orchestrator/nexusOrchestrator/releases/latest/download/NexusAI-darwin-arm64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/NexusAI-darwin-arm64.tar.gz">Download .tar.gz</a>
   </div>
 
   <div class="dl-card" data-os="mac-intel">
@@ -183,7 +183,7 @@ Full GUI with built-in HTTP API and MCP server. Recommended for most users.
     <div class="dl-platform">macOS</div>
     <div class="dl-arch">Intel (x86_64)</div>
     <div class="dl-size">~15 MB</div>
-    <a class="dl-btn" href="https://github.com/nexus-orchestrator/nexusOrchestrator/releases/latest/download/NexusAI-darwin-amd64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/NexusAI-darwin-amd64.tar.gz">Download .tar.gz</a>
   </div>
 
   <div class="dl-card" data-os="win">
@@ -191,7 +191,7 @@ Full GUI with built-in HTTP API and MCP server. Recommended for most users.
     <div class="dl-platform">Windows</div>
     <div class="dl-arch">64-bit (x86_64)</div>
     <div class="dl-size">~15 MB</div>
-    <a class="dl-btn" href="https://github.com/nexus-orchestrator/nexusOrchestrator/releases/latest/download/NexusAI-windows-amd64.zip">Download .zip</a>
+    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/NexusAI-windows-amd64.zip">Download .zip</a>
   </div>
 
   <div class="dl-card" data-os="linux">
@@ -199,7 +199,7 @@ Full GUI with built-in HTTP API and MCP server. Recommended for most users.
     <div class="dl-platform">Linux</div>
     <div class="dl-arch">64-bit (x86_64)</div>
     <div class="dl-size">~15 MB</div>
-    <a class="dl-btn" href="https://github.com/nexus-orchestrator/nexusOrchestrator/releases/latest/download/NexusAI-linux-amd64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/NexusAI-linux-amd64.tar.gz">Download .tar.gz</a>
   </div>
 
 </div>
@@ -217,7 +217,7 @@ Headless daemon and thin CLI client. Ideal for servers, CI pipelines, and script
     <div class="dl-platform">macOS</div>
     <div class="dl-arch">Apple Silicon (arm64)</div>
     <div class="dl-size">~12 MB</div>
-    <a class="dl-btn-outline" href="https://github.com/nexus-orchestrator/nexusOrchestrator/releases/latest/download/nexusOrchestrator-darwin-arm64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn-outline" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-darwin-arm64.tar.gz">Download .tar.gz</a>
   </div>
 
   <div class="dl-card" data-os="mac-intel">
@@ -225,7 +225,7 @@ Headless daemon and thin CLI client. Ideal for servers, CI pipelines, and script
     <div class="dl-platform">macOS</div>
     <div class="dl-arch">Intel (amd64)</div>
     <div class="dl-size">~12 MB</div>
-    <a class="dl-btn-outline" href="https://github.com/nexus-orchestrator/nexusOrchestrator/releases/latest/download/nexusOrchestrator-darwin-amd64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn-outline" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-darwin-amd64.tar.gz">Download .tar.gz</a>
   </div>
 
   <div class="dl-card" data-os="win">
@@ -233,15 +233,7 @@ Headless daemon and thin CLI client. Ideal for servers, CI pipelines, and script
     <div class="dl-platform">Windows</div>
     <div class="dl-arch">64-bit (amd64)</div>
     <div class="dl-size">~12 MB</div>
-    <a class="dl-btn-outline" href="https://github.com/nexus-orchestrator/nexusOrchestrator/releases/latest/download/nexusOrchestrator-windows-amd64.zip">Download .zip</a>
-  </div>
-
-  <div class="dl-card" data-os="win-arm">
-    <span class="dl-icon">🪟</span>
-    <div class="dl-platform">Windows</div>
-    <div class="dl-arch">ARM64</div>
-    <div class="dl-size">~12 MB</div>
-    <a class="dl-btn-outline" href="https://github.com/nexus-orchestrator/nexusOrchestrator/releases/latest/download/nexusOrchestrator-windows-arm64.zip">Download .zip</a>
+    <a class="dl-btn-outline" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-windows-amd64.zip">Download .zip</a>
   </div>
 
   <div class="dl-card" data-os="linux">
@@ -249,7 +241,7 @@ Headless daemon and thin CLI client. Ideal for servers, CI pipelines, and script
     <div class="dl-platform">Linux</div>
     <div class="dl-arch">64-bit (amd64)</div>
     <div class="dl-size">~12 MB</div>
-    <a class="dl-btn-outline" href="https://github.com/nexus-orchestrator/nexusOrchestrator/releases/latest/download/nexusOrchestrator-linux-amd64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn-outline" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-linux-amd64.tar.gz">Download .tar.gz</a>
   </div>
 
   <div class="dl-card" data-os="linux-arm">
@@ -257,7 +249,7 @@ Headless daemon and thin CLI client. Ideal for servers, CI pipelines, and script
     <div class="dl-platform">Linux</div>
     <div class="dl-arch">ARM64</div>
     <div class="dl-size">~12 MB</div>
-    <a class="dl-btn-outline" href="https://github.com/nexus-orchestrator/nexusOrchestrator/releases/latest/download/nexusOrchestrator-linux-arm64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn-outline" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-linux-arm64.tar.gz">Download .tar.gz</a>
   </div>
 
 </div>
@@ -268,7 +260,7 @@ Headless daemon and thin CLI client. Ideal for servers, CI pipelines, and script
 
 <div class="dl-install-box">
   Install the latest CLI + Daemon with a single command:
-  <code>curl -sSfL https://raw.githubusercontent.com/nexus-orchestrator/nexusOrchestrator/main/scripts/install.sh | sh</code>
+  <code>curl -sSfL https://raw.githubusercontent.com/el-j/nexusOrchestrator/main/scripts/install.sh | sh</code>
   <p style="font-size:0.82rem; color: var(--grey-dk-000); margin-top: 0.5rem;">
     Detects your OS and architecture automatically. Installs to <code style="display:inline; background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:3px;">~/.local/bin</code>.
   </p>
@@ -282,7 +274,7 @@ Each release includes `SHA256SUMS.txt` and `SHA256SUMS-desktop.txt` with SHA-256
 
 ```sh
 # 1. Download the checksums file
-curl -sSfLO https://github.com/nexus-orchestrator/nexusOrchestrator/releases/latest/download/SHA256SUMS.txt
+curl -sSfLO https://github.com/el-j/nexusOrchestrator/releases/latest/download/SHA256SUMS.txt
 
 # 2. Verify your archive (example for macOS Apple Silicon desktop)
 shasum -a 256 -c SHA256SUMS.txt --ignore-missing
@@ -395,7 +387,7 @@ Get-FileHash .\NexusAI-windows-amd64.zip -Algorithm SHA256
 
 <p style="text-align:center; margin-top:2rem;">
   <a href="/nexusOrchestrator/getting-started" class="dl-btn" style="margin-right:0.5rem;">Getting Started Guide →</a>
-  <a href="https://github.com/nexus-orchestrator/nexusOrchestrator" class="dl-btn-outline">View Source on GitHub</a>
+  <a href="https://github.com/el-j/nexusOrchestrator" class="dl-btn-outline">View Source on GitHub</a>
 </p>
 
 <!-- ─── OS Detection Script ────────────────────────────── -->
@@ -425,7 +417,7 @@ Get-FileHash .\NexusAI-windows-amd64.zip -Algorithm SHA256
     label = 'Windows';
     if (/ARM/i.test(ua) || /WOA/i.test(ua)) {
       arch = 'arm64';
-      label = 'Windows (ARM)';
+      label = 'Windows (ARM — use x64 build)';
     }
   } else if (/Linux/i.test(platform)) {
     os = 'linux';
@@ -447,7 +439,6 @@ Get-FileHash .\NexusAI-windows-amd64.zip -Algorithm SHA256
   var key = os;
   if (os === 'mac' && arch === 'arm64')  key = 'mac-arm';
   if (os === 'mac' && arch === 'amd64')  key = 'mac-intel';
-  if (os === 'win' && arch === 'arm64')  key = 'win-arm';
   if (os === 'linux' && arch === 'arm64') key = 'linux-arm';
 
   var cards = document.querySelectorAll('.dl-card');

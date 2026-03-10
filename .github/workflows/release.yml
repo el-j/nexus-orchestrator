@@ -9,10 +9,15 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -33,6 +38,7 @@ jobs:
     name: Build ${{ matrix.os }}-${{ matrix.arch }}
     needs: test
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -45,7 +51,7 @@ jobs:
             cxx: "zig c++ -target x86_64-linux-musl"
             ext: tar.gz
             bin_ext: ""
-            static_flags: '-extldflags "-static"'
+            static_flags: -extldflags=-static
 
           - os: linux
             arch: arm64
@@ -55,7 +61,7 @@ jobs:
             cxx: "zig c++ -target aarch64-linux-musl"
             ext: tar.gz
             bin_ext: ""
-            static_flags: '-extldflags "-static"'
+            static_flags: -extldflags=-static
 
           - os: darwin
             arch: amd64
@@ -87,22 +93,18 @@ jobs:
             bin_ext: ".exe"
             static_flags: ""
 
-          - os: windows
-            arch: arm64
-            runner: ubuntu-latest
-            goarch: arm64
-            cc: "zig cc -target aarch64-windows-gnu"
-            cxx: "zig c++ -target aarch64-windows-gnu"
-            ext: zip
-            bin_ext: ".exe"
-            static_flags: ""
-
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
           go-version: "1.24"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
 
       - name: Install zig
         if: matrix.runner == 'ubuntu-latest'
@@ -127,15 +129,18 @@ jobs:
           go build -trimpath -ldflags "${LDFLAGS}" \
             -o dist/nexus-daemon${{ matrix.bin_ext }} ./cmd/nexus-daemon/...
 
+          go build -trimpath -ldflags "${LDFLAGS}" \
+            -o dist/nexus-submit${{ matrix.bin_ext }} ./cmd/nexus-submit/...
+
       - name: Create archive
         run: |
           ARCHIVE_NAME="nexusOrchestrator-${{ matrix.os }}-${{ matrix.arch }}"
           cd dist
 
           if [ "${{ matrix.ext }}" = "zip" ]; then
-            zip "../${ARCHIVE_NAME}.zip" nexus-cli${{ matrix.bin_ext }} nexus-daemon${{ matrix.bin_ext }}
+            zip "../${ARCHIVE_NAME}.zip" nexus-cli${{ matrix.bin_ext }} nexus-daemon${{ matrix.bin_ext }} nexus-submit${{ matrix.bin_ext }}
           else
-            tar czf "../${ARCHIVE_NAME}.tar.gz" nexus-cli${{ matrix.bin_ext }} nexus-daemon${{ matrix.bin_ext }}
+            tar czf "../${ARCHIVE_NAME}.tar.gz" nexus-cli${{ matrix.bin_ext }} nexus-daemon${{ matrix.bin_ext }} nexus-submit${{ matrix.bin_ext }}
           fi
 
       - name: Upload archive
@@ -148,6 +153,7 @@ jobs:
     name: Publish Release
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Download all artifacts

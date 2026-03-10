@@ -1,3 +1,5 @@
+// Package domain contains the pure domain types for NexusAI: Task, Session,
+// Message, and their associated enumerations. No framework imports.
 package domain
 
 import (

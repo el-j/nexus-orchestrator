@@ -1,3 +1,4 @@
+// Command nexus-submit submits task files to a running NexusAI daemon for LLM code generation.
 package main
 
 import (
@@ -10,6 +11,8 @@ import (
 	"strings"
 	"time"
 )
+
+var version = "dev"
 
 func main() {
 	var (

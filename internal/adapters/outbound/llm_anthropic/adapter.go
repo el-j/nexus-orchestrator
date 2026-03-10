@@ -1,3 +1,4 @@
+// Package llm_anthropic implements the LLMClient port for the Anthropic Messages API.
 package llm_anthropic
 
 import (

@@ -1,3 +1,5 @@
+// Package fs_writer implements the FileWriter port, writing LLM-generated
+// code to the local filesystem.
 package fs_writer
 
 import (

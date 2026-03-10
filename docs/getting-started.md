@@ -28,7 +28,7 @@ nav_order: 4
 
 ```sh
 # Clone the repository
-git clone https://github.com/nexus-orchestrator/nexusOrchestrator.git
+git clone https://github.com/el-j/nexusOrchestrator.git
 cd nexusOrchestrator
 
 # Build all binaries

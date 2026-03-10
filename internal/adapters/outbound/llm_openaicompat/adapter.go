@@ -1,3 +1,5 @@
+// Package llm_openaicompat implements the LLMClient port for generic
+// OpenAI-compatible API endpoints.
 package llm_openaicompat
 
 import (

@@ -1,3 +1,6 @@
+// Package httpapi provides the REST API inbound adapter for NexusAI.
+// It serves task management endpoints under /api/tasks, provider discovery,
+// and a Server-Sent Events stream for real-time updates.
 package httpapi
 
 import (

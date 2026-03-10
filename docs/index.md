@@ -13,7 +13,7 @@ Route AI code-generation tasks to any LLM backend — locally or in the cloud.
 
 [Download](/nexusOrchestrator/downloads){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
 [Get Started](/nexusOrchestrator/getting-started){: .btn .fs-5 .mb-4 .mb-md-0 .mr-2 }
-[View on GitHub](https://github.com/nexus-orchestrator/nexusOrchestrator){: .btn .fs-5 .mb-4 .mb-md-0 }
+[View on GitHub](https://github.com/el-j/nexusOrchestrator){: .btn .fs-5 .mb-4 .mb-md-0 }
 
 ---
 

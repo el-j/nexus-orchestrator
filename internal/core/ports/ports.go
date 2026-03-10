@@ -1,3 +1,6 @@
+// Package ports defines the hexagonal architecture port interfaces for NexusAI.
+// Inbound ports (Orchestrator) are implemented by core services.
+// Outbound ports (LLMClient, TaskRepository, FileWriter, SessionRepository) are implemented by adapters.
 package ports
 
 import "nexus-orchestrator/internal/core/domain"

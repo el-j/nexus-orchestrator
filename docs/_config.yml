@@ -15,7 +15,7 @@ nav_sort: case_insensitive
 
 aux_links:
   "View on GitHub":
-    - "https://github.com/nexus-orchestrator/nexusOrchestrator"
+    - "https://github.com/el-j/nexusOrchestrator"
 
 footer_content: >-
   nexusOrchestrator &mdash; Local AI task orchestration with multi-provider routing.

@@ -1,3 +1,5 @@
+// Package repo_sqlite implements the TaskRepository and SessionRepository
+// ports using SQLite via mattn/go-sqlite3.
 package repo_sqlite
 
 import (

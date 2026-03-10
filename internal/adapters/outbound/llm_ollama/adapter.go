@@ -1,3 +1,4 @@
+// Package llm_ollama implements the LLMClient port for Ollama's API at 127.0.0.1:11434.
 package llm_ollama
 
 import (

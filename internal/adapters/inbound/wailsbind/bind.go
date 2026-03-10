@@ -1,3 +1,5 @@
+// Package wailsbind provides the Wails GUI binding adapter, exposing
+// orchestrator methods to the JavaScript frontend.
 package wailsbind
 
 import (

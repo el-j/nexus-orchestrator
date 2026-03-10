@@ -1,3 +1,6 @@
+// Package mcp provides a JSON-RPC 2.0 Model Context Protocol server as an
+// inbound adapter. It exposes task management tools compatible with Claude
+// Desktop and other MCP clients.
 package mcp
 
 import (

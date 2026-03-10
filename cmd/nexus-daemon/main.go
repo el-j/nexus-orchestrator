@@ -24,6 +24,8 @@ import (
 	"nexus-orchestrator/internal/core/services"
 )
 
+var version = "dev"
+
 func main() {
 	dbPath := os.Getenv("NEXUS_DB_PATH")
 	if dbPath == "" {
@@ -60,6 +62,7 @@ func main() {
 	if mcpAddr == "" {
 		mcpAddr = "127.0.0.1:9998"
 	}
+	log.Printf("nexus-daemon %s starting...", version)
 	go func() {
 		if err := mcp.StartMCPServer(ctx, orchestratorSvc, mcpAddr); err != nil {
 			log.Printf("daemon: mcp: %v", err)

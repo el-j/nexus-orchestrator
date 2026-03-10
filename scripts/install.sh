@@ -1,6 +1,6 @@
 #!/bin/sh
 # scripts/install.sh — Install nexus-cli and nexus-daemon binaries.
-# Usage: curl -sSfL https://raw.githubusercontent.com/nexus-orchestrator/nexusOrchestrator/main/scripts/install.sh | sh
+# Usage: curl -sSfL https://raw.githubusercontent.com/el-j/nexusOrchestrator/main/scripts/install.sh | sh
 #
 # Environment variables:
 #   NEXUS_INSTALL_DIR  — Override install directory (default: /usr/local/bin or ~/.local/bin)
@@ -8,8 +8,9 @@
 
 set -eu
 
-GITHUB_REPO="nexus-orchestrator/nexusOrchestrator"
+GITHUB_REPO="el-j/nexusOrchestrator"
 BINARIES="nexus-cli nexus-daemon"
+OPTIONAL_BINARIES="nexus-submit"
 TMPDIR_PREFIX="nexus-install"
 
 # --- helpers ----------------------------------------------------------------
@@ -70,6 +71,7 @@ verify_checksum() {
         actual=$(shasum -a 256 "$2" | awk '{print $1}')
     else
         warn "Neither sha256sum nor shasum found — skipping checksum verification."
+        warn "*** UNVERIFIED INSTALL — integrity of the downloaded archive was NOT checked ***"
         return 0
     fi
 
@@ -90,7 +92,7 @@ resolve_version() {
                 | grep -i '^location:' | sed 's|.*/tag/||;s/[[:space:]]*$//')
         elif has_cmd wget; then
             version=$(wget --spider -S "https://github.com/${GITHUB_REPO}/releases/latest" 2>&1 \
-                | grep -i 'Location:' | tail -1 | sed 's|.*/tag/||;s/[[:space:]]*$//')
+                | grep -i '^ *location:' | tail -1 | sed 's|.*/tag/||;s/[[:space:]]*$//')
         fi
         if [ -z "$version" ]; then
             fatal "Unable to determine latest release version."
@@ -154,17 +156,17 @@ main() {
         if [ -n "$expected" ]; then
             verify_checksum "$expected" "${TMPDIR_INSTALL}/${ARCHIVE}"
         else
-            warn "Archive not found in SHA256SUMS.txt — skipping checksum verification."
+            fatal "Archive not found in SHA256SUMS.txt — cannot verify integrity of ${ARCHIVE}."
         fi
     else
-        warn "Could not download SHA256SUMS.txt — skipping checksum verification."
+        fatal "Could not download SHA256SUMS.txt — cannot verify integrity of ${ARCHIVE}."
     fi
 
     # Extract
     log "Extracting archive"
     tar -xzf "${TMPDIR_INSTALL}/${ARCHIVE}" -C "${TMPDIR_INSTALL}"
 
-    # Install binaries
+    # Install required binaries
     for bin in ${BINARIES}; do
         src="${TMPDIR_INSTALL}/${bin}"
         if [ ! -f "$src" ]; then
@@ -175,11 +177,31 @@ main() {
         log "Installed ${INSTALL_DIR}/${bin}"
     done
 
+    # Install optional binaries
+    for bin in ${OPTIONAL_BINARIES}; do
+        src="${TMPDIR_INSTALL}/${bin}"
+        if [ -f "$src" ]; then
+            chmod +x "$src"
+            mv "$src" "${INSTALL_DIR}/${bin}"
+            log "Installed ${INSTALL_DIR}/${bin}"
+        fi
+    done
+
+    # Verify binaries work
+    "$INSTALL_DIR/nexus-cli" --version >/dev/null 2>&1 || fatal "Binary verification failed: nexus-cli is not executable or corrupted"
+    "$INSTALL_DIR/nexus-daemon" --version >/dev/null 2>&1 || warn "nexus-daemon could not self-verify (may require CGO runtime)"
+    if [ -f "$INSTALL_DIR/nexus-submit" ]; then
+        "$INSTALL_DIR/nexus-submit" --version >/dev/null 2>&1 || warn "nexus-submit could not self-verify"
+    fi
+
     # Done
     log ""
     log "Successfully installed nexusOrchestrator ${VERSION}"
     log "  nexus-cli    → ${INSTALL_DIR}/nexus-cli"
     log "  nexus-daemon → ${INSTALL_DIR}/nexus-daemon"
+    if [ -f "$INSTALL_DIR/nexus-submit" ]; then
+        log "  nexus-submit → ${INSTALL_DIR}/nexus-submit"
+    fi
     log ""
 
     # Check if install dir is in PATH

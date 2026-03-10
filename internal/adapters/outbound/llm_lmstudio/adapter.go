@@ -1,3 +1,5 @@
+// Package llm_lmstudio implements the LLMClient port for LM Studio's
+// OpenAI-compatible API at 127.0.0.1:1234.
 package llm_lmstudio
 
 import (
