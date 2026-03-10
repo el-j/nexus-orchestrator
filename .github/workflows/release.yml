@@ -67,7 +67,7 @@ jobs:
             cxx: "zig c++ -target aarch64-linux-musl"
             ext: tar.gz
             bin_ext: ""
-            static_flags: -extldflags=-static
+            static_flags: ""
 
           - os: darwin
             arch: amd64
@@ -162,9 +162,104 @@ jobs:
           name: nexusOrchestrator-${{ matrix.os }}-${{ matrix.arch }}.${{ matrix.ext }}
           path: nexusOrchestrator-${{ matrix.os }}-${{ matrix.arch }}.${{ matrix.ext }}
 
+  build-desktop:
+    name: Build Desktop ${{ matrix.os }}-${{ matrix.arch }}
+    needs: test
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: darwin
+            arch: arm64
+            runner: macos-latest
+            platform: darwin/arm64
+            archive_ext: tar.gz
+            archive_name: nexusOrchestrator-desktop-darwin-arm64
+            wails_tags: ""
+
+          - os: darwin
+            arch: amd64
+            runner: macos-13
+            platform: darwin/amd64
+            archive_ext: tar.gz
+            archive_name: nexusOrchestrator-desktop-darwin-amd64
+            wails_tags: ""
+
+          - os: windows
+            arch: amd64
+            runner: windows-latest
+            platform: windows/amd64
+            archive_ext: zip
+            archive_name: nexusOrchestrator-desktop-windows-amd64
+            wails_tags: ""
+
+          - os: linux
+            arch: amd64
+            runner: ubuntu-latest
+            platform: linux/amd64
+            archive_ext: tar.gz
+            archive_name: nexusOrchestrator-desktop-linux-amd64
+            wails_tags: "webkit2_41"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev pkg-config
+
+      - name: Install Wails CLI
+        shell: bash
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
+
+      - name: Build desktop app
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+        run: |
+          VERSION="${GITHUB_REF_NAME:-dev}"
+          EXTRA_TAGS="${{ matrix.wails_tags }}"
+          TAGS_FLAG=${EXTRA_TAGS:+"-tags ${EXTRA_TAGS}"}
+          wails build -platform ${{ matrix.platform }} ${TAGS_FLAG} -ldflags "-s -w -X main.version=${VERSION}"
+
+      - name: Package (tar.gz)
+        if: matrix.archive_ext == 'tar.gz'
+        shell: bash
+        run: |
+          cd build/bin
+          tar czf "../../${{ matrix.archive_name }}.tar.gz" *
+          cd ../..
+
+      - name: Package (zip)
+        if: matrix.archive_ext == 'zip'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "build/bin/*" -DestinationPath "${{ matrix.archive_name }}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.archive_name }}.${{ matrix.archive_ext }}
+          path: ${{ matrix.archive_name }}.${{ matrix.archive_ext }}
+
   release:
     name: Publish Release
-    needs: build
+    needs: [build, build-desktop]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: startsWith(github.ref, 'refs/tags/v')
@@ -178,7 +273,8 @@ jobs:
       - name: Generate checksums
         run: |
           cd artifacts
-          sha256sum nexusOrchestrator-*.* > ../SHA256SUMS.txt
+          find . -name 'nexusOrchestrator-*' ! -name 'nexusOrchestrator-desktop-*' -exec sha256sum {} + > ../SHA256SUMS.txt
+          find . -name 'nexusOrchestrator-desktop-*' -exec sha256sum {} + > ../SHA256SUMS-desktop.txt
           cd ..
           mv artifacts/* .
 
@@ -190,3 +286,4 @@ jobs:
             nexusOrchestrator-*.tar.gz
             nexusOrchestrator-*.zip
             SHA256SUMS.txt
+            SHA256SUMS-desktop.txt
