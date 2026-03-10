@@ -3,6 +3,7 @@
 /nexus-cli
 /nexus-daemon
 build/bin/
+dist/
 *.exe
 
 # SQLite databases

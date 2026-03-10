@@ -10,6 +10,7 @@ branches:
       - feature
       - hotfix
       - release
+      - copilot
   feature:
     regex: ^feature[/-]
     label: alpha
@@ -30,3 +31,9 @@ branches:
       - main
       - feature
       - hotfix
+  copilot:
+    regex: ^copilot[/-]
+    label: alpha
+    increment: Patch
+    source-branches:
+      - main
