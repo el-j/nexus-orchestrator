@@ -1,12 +1,12 @@
 {
   "version": "2",
-  "updatedAt": "2026-03-10T20:00:00.000Z",
+  "updatedAt": "2026-03-10T21:00:00.000Z",
   "counters": {
-    "nextTaskId": 104,
-    "nextPlanId": 13
+    "nextTaskId": 108,
+    "nextPlanId": 14
   },
   "activePlanId": null,
-  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix).",
+  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix). PLAN-013 completed (update CI to latest action versions).",
   "plans": {
     "PLAN-001": {
       "id": "PLAN-001",
@@ -158,6 +158,14 @@
       "createdAt": "2026-03-10T20:00:00.000Z",
       "completedAt": "2026-03-10T20:20:00.000Z",
       "taskIds": ["TASK-098","TASK-099","TASK-100","TASK-101","TASK-102","TASK-103"]
+    },
+    "PLAN-013": {
+      "id": "PLAN-013",
+      "goal": "Update CI to latest GitHub Action versions: gittools/actions v3.1.11→v4.3.3, zig 0.13.0→0.14.0, GitVersion.yml v6 compat",
+      "status": "completed",
+      "createdAt": "2026-03-10T21:00:00.000Z",
+      "completedAt": "2026-03-10T22:00:00.000Z",
+      "taskIds": ["TASK-104","TASK-105","TASK-106","TASK-107"]
     }
   },
   "tasks": {
@@ -1276,6 +1284,10 @@
     "TASK-100": {"id":"TASK-100","title":"Create semantic-release CI workflow","status":"done","role":"devops","planId":"PLAN-012","dependencies":["TASK-099"],"createdAt":"2026-03-10T20:00:00.000Z","startedAt":"2026-03-10T20:09:00.000Z","completedAt":"2026-03-10T20:12:00.000Z"},
     "TASK-101": {"id":"TASK-101","title":"Update release.yml + desktop.yml for GitVersion + zig fix","status":"done","role":"devops","planId":"PLAN-012","dependencies":["TASK-100"],"createdAt":"2026-03-10T20:00:00.000Z","startedAt":"2026-03-10T20:12:00.000Z","completedAt":"2026-03-10T20:14:00.000Z"},
     "TASK-102": {"id":"TASK-102","title":"Add license and version badges to README","status":"done","role":"devops","planId":"PLAN-012","dependencies":["TASK-098"],"createdAt":"2026-03-10T20:00:00.000Z","startedAt":"2026-03-10T20:12:00.000Z","completedAt":"2026-03-10T20:14:00.000Z"},
-    "TASK-103": {"id":"TASK-103","title":"QA verify all PLAN-012 changes","status":"done","role":"verify","planId":"PLAN-012","dependencies":["TASK-101","TASK-102"],"createdAt":"2026-03-10T20:00:00.000Z","startedAt":"2026-03-10T20:15:00.000Z","completedAt":"2026-03-10T20:20:00.000Z"}
+    "TASK-103": {"id":"TASK-103","title":"QA verify all PLAN-012 changes","status":"done","role":"verify","planId":"PLAN-012","dependencies":["TASK-101","TASK-102"],"createdAt":"2026-03-10T20:00:00.000Z","startedAt":"2026-03-10T20:15:00.000Z","completedAt":"2026-03-10T20:20:00.000Z"},
+    "TASK-104": {"id":"TASK-104","title":"Update gittools/actions from v3.1.11 to v4.3.3","status":"done","role":"devops","planId":"PLAN-013","dependencies":[],"createdAt":"2026-03-10T21:00:00.000Z"},
+    "TASK-105": {"id":"TASK-105","title":"Update GitVersion.yml for v6.x compatibility","status":"done","role":"devops","planId":"PLAN-013","dependencies":[],"createdAt":"2026-03-10T21:00:00.000Z"},
+    "TASK-106": {"id":"TASK-106","title":"Update zig from 0.13.0 to 0.14.0 in release.yml","status":"done","role":"devops","planId":"PLAN-013","dependencies":[],"createdAt":"2026-03-10T21:00:00.000Z"},
+    "TASK-107": {"id":"TASK-107","title":"QA verify all PLAN-013 workflow changes","status":"done","role":"verify","planId":"PLAN-013","dependencies":["TASK-104","TASK-105","TASK-106"],"createdAt":"2026-03-10T21:00:00.000Z"}
   }
 }

@@ -6,33 +6,30 @@ branches:
   main:
     regex: ^main$
     mode: ContinuousDelivery
-    tag: ''
+    label: ''
     increment: Patch
-    prevent-increment-of-merged-branch-version: true
-    track-merge-target: false
     source-branches:
-      - develop
       - feature
       - hotfix
       - release
   feature:
     regex: ^feature[/-]
     mode: ContinuousDelivery
-    tag: alpha
+    label: alpha
     increment: Minor
     source-branches:
       - main
   hotfix:
     regex: ^hotfix[/-]
     mode: ContinuousDelivery
-    tag: beta
+    label: beta
     increment: Patch
     source-branches:
       - main
   release:
     regex: ^release[/-]
     mode: ContinuousDelivery
-    tag: rc
+    label: rc
     increment: None
     source-branches:
       - main
