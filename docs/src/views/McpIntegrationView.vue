@@ -182,6 +182,52 @@
             </table>
           </div>
         </section>
+
+        <!-- GitHub Actions -->
+        <section id="github-actions" class="reveal">
+          <h2 class="text-2xl font-black mb-4 flex items-center gap-2">
+            <span class="text-violet-400">#</span> GitHub Actions
+          </h2>
+          <p class="text-slate-400 text-sm mb-6">
+            Use nexus-orchestrator directly inside any GitHub Actions workflow. The composite action downloads a
+            local daemon, submits your task to the LLM, polls until completion, and returns the result as step
+            outputs — all in a single step.
+          </p>
+
+          <!-- Basic usage -->
+          <h3 class="text-lg font-bold mb-3 text-slate-200">Basic Usage</h3>
+          <CodeBlock language="yaml" :code="ghActionBasic" class="mb-8" />
+
+          <!-- Agency agents integration -->
+          <h3 class="text-lg font-bold mb-3 text-slate-200">With Agent Identities (el-j/agency-agents)</h3>
+          <p class="text-slate-400 text-sm mb-4">
+            Chain with
+            <a href="https://github.com/el-j/agency-agents" target="_blank" rel="noopener" class="text-violet-400 hover:text-violet-300">el-j/agency-agents</a>
+            to inject a specialist system prompt — a backend architect, security engineer, DevOps automator, and more.
+          </p>
+          <CodeBlock language="yaml" :code="ghActionAgents" class="mb-8" />
+
+          <!-- Action inputs reference -->
+          <h3 class="text-lg font-bold mb-3 text-slate-200">Key Inputs</h3>
+          <div class="overflow-x-auto rounded-xl border border-white/8">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-[#0d0d14]">
+                  <th class="px-4 py-3 text-left text-slate-400">Input</th>
+                  <th class="px-4 py-3 text-left text-slate-400">Default</th>
+                  <th class="px-4 py-3 text-left text-slate-400">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(inp, i) in actionInputs" :key="inp.name" :class="i % 2 === 0 ? 'bg-[#0a0a10]' : 'bg-[#0d0d14]'">
+                  <td class="px-4 py-2.5 font-mono text-violet-300 text-xs">{{ inp.name }}</td>
+                  <td class="px-4 py-2.5 font-mono text-slate-500 text-xs">{{ inp.default }}</td>
+                  <td class="px-4 py-2.5 text-slate-400 text-xs">{{ inp.desc }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
       </main>
     </div>
   </div>
@@ -202,6 +248,7 @@ const toc = [
   { id: 'examples', label: 'Usage Examples' },
   { id: 'protocol', label: 'Protocol Details' },
   { id: 'troubleshooting', label: 'Troubleshooting' },
+  { id: 'github-actions', label: 'GitHub Actions' },
 ]
 
 const claudeConfig = `{
@@ -315,5 +362,83 @@ const troubleshootingRows = [
   { issue: 'Port conflict', solution: 'Use <code class="text-slate-300">NEXUS_MCP_ADDR=:9090</code> to change the MCP port' },
   { issue: 'No tools in Claude', solution: 'Check URL ends with <code class="text-slate-300">/mcp</code>, restart Claude Desktop' },
   { issue: 'Task stuck in QUEUED', solution: 'Check <code class="text-slate-300">GET /api/providers</code> — ensure at least one LLM provider is active' },
+]
+
+const ghActionBasic = `# .github/workflows/ai-task.yml
+name: AI Code Generation
+
+on:
+  workflow_dispatch:
+    inputs:
+      instruction:
+        description: 'What should the LLM implement?'
+        required: true
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Submit AI task
+        id: nexus
+        uses: el-j/nexus-orchestrator@v1
+        with:
+          instruction: \${{ github.event.inputs.instruction }}
+          target_file: 'output.go'
+          command: execute
+          openai_api_key: \${{ secrets.OPENAI_API_KEY }}
+
+      - name: Show result
+        run: echo "\${{ steps.nexus.outputs.logs }}"`
+
+const ghActionAgents = `# Use a specialist agent identity from el-j/agency-agents
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Load a specialist agent system prompt
+      - name: Load backend architect identity
+        id: agent
+        uses: el-j/agency-agents@main
+        with:
+          agent: backend-architect
+
+      # Submit task with the agent's system prompt
+      - name: Submit AI task
+        id: nexus
+        uses: el-j/nexus-orchestrator@v1
+        with:
+          system_prompt: \${{ steps.agent.outputs.system_prompt }}
+          instruction: 'Add JWT authentication middleware to the HTTP handler'
+          target_file: 'internal/middleware/auth.go'
+          command: execute
+          anthropic_api_key: \${{ secrets.ANTHROPIC_API_KEY }}
+
+      # Commit the generated file
+      - name: Commit generated code
+        if: steps.nexus.outputs.status == 'COMPLETED'
+        run: |
+          git config user.name "nexus-bot"
+          git config user.email "nexus-bot@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: AI-generated auth middleware" || echo "nothing to commit"
+          git push`
+
+const actionInputs = [
+  { name: 'instruction', default: '—', desc: 'Task text sent to the LLM (required unless task_file is set)' },
+  { name: 'task_file', default: '—', desc: 'Path to a .md/.txt file whose content becomes the instruction' },
+  { name: 'system_prompt', default: '""', desc: 'Agent identity prepended to the instruction (from el-j/agency-agents)' },
+  { name: 'target_file', default: '""', desc: 'Relative path the LLM should write (e.g. src/utils.go)' },
+  { name: 'command', default: 'execute', desc: '"plan" (orchestration) or "execute" (code generation)' },
+  { name: 'openai_api_key', default: '""', desc: 'OpenAI API key — enables GPT models on the local daemon' },
+  { name: 'anthropic_api_key', default: '""', desc: 'Anthropic API key — enables Claude models on the local daemon' },
+  { name: 'github_copilot_token', default: '""', desc: 'GitHub Copilot token — enables GPT-4o via Copilot' },
+  { name: 'timeout_seconds', default: '300', desc: 'Seconds to wait for task completion before failing' },
+  { name: 'nexus_version', default: 'latest', desc: 'Release version to install (e.g. v0.2.0)' },
+  { name: 'start_daemon', default: 'true', desc: 'Download + start a local daemon; set false to use daemon_url' },
+  { name: 'daemon_url', default: 'http://127.0.0.1:9999', desc: 'URL of existing daemon (only when start_daemon=false)' },
 ]
 </script>

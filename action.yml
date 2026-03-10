@@ -1,0 +1,410 @@
+name: 'nexus-orchestrator — Submit AI Task'
+description: >
+  Submit a code-generation task to a nexus-orchestrator daemon and stream
+  the result back as step outputs. Optionally downloads and starts a local
+  daemon for the job duration. Integrates with el-j/agency-agents for
+  specialist agent system prompts (swarm or single-agent mode).
+
+branding:
+  icon: 'cpu'
+  color: 'purple'
+
+# ── Inputs ────────────────────────────────────────────────────────────────────
+inputs:
+  # Task content
+  instruction:
+    description: >
+      Task instruction text sent to the LLM.
+      Mutually exclusive with task_file — use one or the other.
+    required: false
+    default: ''
+
+  task_file:
+    description: >
+      Path to a task file (.md / .txt) whose content is used as the instruction.
+      Useful for multi-line prompts stored as repository files.
+    required: false
+    default: ''
+
+  project_path:
+    description: >
+      Absolute project root for per-project session memory isolation.
+      Defaults to $GITHUB_WORKSPACE (the checked-out repository root).
+    required: false
+    default: ''
+
+  target_file:
+    description: >
+      Relative path of the file the LLM should write or update
+      (e.g. "src/utils/helpers.go"). Optional — omit for plan/analysis tasks.
+    required: false
+    default: ''
+
+  context_files:
+    description: >
+      Comma-separated list of relative file paths to include as read context
+      alongside the instruction (e.g. "go.mod,internal/core/domain/task.go").
+    required: false
+    default: ''
+
+  command:
+    description: >
+      Task command type: "plan" (orchestration / documentation) or
+      "execute" (code implementation). Default: execute.
+    required: false
+    default: 'execute'
+
+  # Routing
+  model:
+    description: >
+      LLM model override sent with the task
+      (e.g. "gpt-4o", "claude-3-5-sonnet-20241022", "llama3").
+    required: false
+    default: ''
+
+  provider:
+    description: >
+      Provider hint for routing the task
+      (e.g. "openai", "anthropic", "ollama", "lmstudio").
+    required: false
+    default: ''
+
+  # Agent identity — integrates with el-j/agency-agents
+  system_prompt:
+    description: >
+      Agent system prompt prepended to the instruction.
+      Chain with el-j/agency-agents to inject a specialist identity:
+
+        - uses: el-j/agency-agents@main
+          id: agent
+          with:
+            agent: backend-architect
+
+        - uses: el-j/nexus-orchestrator@v1
+          with:
+            system_prompt: ${{ steps.agent.outputs.system_prompt }}
+            instruction: 'Refactor the authentication layer to use JWT'
+    required: false
+    default: ''
+
+  # Daemon connection
+  daemon_url:
+    description: >
+      HTTP base URL of a running nexus-daemon.
+      Used only when start_daemon is "false".
+    required: false
+    default: 'http://127.0.0.1:9999'
+
+  start_daemon:
+    description: >
+      Download and start a local nexus-daemon for the duration of this job.
+      Set to "false" to connect to an existing remote daemon via daemon_url.
+    required: false
+    default: 'true'
+
+  nexus_version:
+    description: >
+      nexus-orchestrator release version to install
+      (e.g. "v0.2.0"; defaults to "latest").
+    required: false
+    default: 'latest'
+
+  timeout_seconds:
+    description: >
+      Maximum seconds to wait for the task to reach a terminal status
+      before the step fails.
+    required: false
+    default: '300'
+
+  # LLM provider credentials (used when start_daemon=true)
+  openai_api_key:
+    description: 'OpenAI API key — enables GPT models on the local daemon.'
+    required: false
+    default: ''
+
+  openai_model:
+    description: 'OpenAI model override (default: gpt-4o-mini). Requires openai_api_key.'
+    required: false
+    default: ''
+
+  anthropic_api_key:
+    description: 'Anthropic API key — enables Claude models on the local daemon.'
+    required: false
+    default: ''
+
+  anthropic_model:
+    description: >
+      Anthropic model override (default: claude-3-5-sonnet-20241022).
+      Requires anthropic_api_key.
+    required: false
+    default: ''
+
+  github_copilot_token:
+    description: 'GitHub Copilot token — enables GPT-4o via Copilot on the local daemon.'
+    required: false
+    default: ''
+
+  github_copilot_model:
+    description: 'Copilot model override (default: gpt-4o). Requires github_copilot_token.'
+    required: false
+    default: ''
+
+# ── Outputs ───────────────────────────────────────────────────────────────────
+outputs:
+  task_id:
+    description: 'UUID of the submitted task.'
+    value: ${{ steps.submit.outputs.task_id }}
+
+  status:
+    description: 'Final task status: COMPLETED, FAILED, CANCELLED, or TOO_LARGE.'
+    value: ${{ steps.wait.outputs.status }}
+
+  logs:
+    description: 'LLM output and execution logs for the completed task.'
+    value: ${{ steps.wait.outputs.logs }}
+
+# ── Implementation ────────────────────────────────────────────────────────────
+runs:
+  using: 'composite'
+  steps:
+
+    # ── 1. Download nexus-daemon binary ───────────────────────────────────────
+    - name: Install nexus-daemon
+      if: inputs.start_daemon == 'true'
+      id: install
+      shell: bash
+      env:
+        _NEXUS_VERSION: ${{ inputs.nexus_version }}
+        _NEXUS_BIN_DIR: ${{ runner.temp }}/nexus-bin
+      run: |
+        set -euo pipefail
+        mkdir -p "${_NEXUS_BIN_DIR}"
+
+        _OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+        _ARCH="$(uname -m)"
+        case "${_ARCH}" in
+          x86_64|amd64)   _ARCH="amd64" ;;
+          aarch64|arm64)  _ARCH="arm64" ;;
+          *) echo "::error::nexus-orchestrator action: unsupported architecture: ${_ARCH}"; exit 1 ;;
+        esac
+
+        _VER="${_NEXUS_VERSION:-latest}"
+        if [ "${_VER}" = "latest" ]; then
+          _BASE="https://github.com/el-j/nexus-orchestrator/releases/latest/download"
+        else
+          _BASE="https://github.com/el-j/nexus-orchestrator/releases/download/${_VER}"
+        fi
+
+        _ARCHIVE="nexus-orchestrator-${_OS}-${_ARCH}.tar.gz"
+        echo "::group::Downloading ${_ARCHIVE} from ${_BASE}"
+        curl -sSfL "${_BASE}/${_ARCHIVE}" -o "${_NEXUS_BIN_DIR}/${_ARCHIVE}"
+        tar -xzf "${_NEXUS_BIN_DIR}/${_ARCHIVE}" -C "${_NEXUS_BIN_DIR}"
+        chmod +x "${_NEXUS_BIN_DIR}/nexus-daemon"
+        echo "::endgroup::"
+
+        echo "NEXUS_BIN_DIR=${_NEXUS_BIN_DIR}" >> "${GITHUB_ENV}"
+        echo "Installed nexus-daemon from ${_BASE}/${_ARCHIVE}"
+
+    # ── 2. Start daemon ───────────────────────────────────────────────────────
+    - name: Start nexus-daemon
+      if: inputs.start_daemon == 'true'
+      id: daemon
+      shell: bash
+      env:
+        NEXUS_LISTEN_ADDR: '127.0.0.1:9999'
+        NEXUS_MCP_ADDR: '127.0.0.1:9998'
+        NEXUS_DB_PATH: ${{ runner.temp }}/nexus-action.db
+        NEXUS_OPENAI_API_KEY: ${{ inputs.openai_api_key }}
+        NEXUS_OPENAI_MODEL: ${{ inputs.openai_model }}
+        NEXUS_ANTHROPIC_API_KEY: ${{ inputs.anthropic_api_key }}
+        NEXUS_ANTHROPIC_MODEL: ${{ inputs.anthropic_model }}
+        NEXUS_GITHUBCOPILOT_TOKEN: ${{ inputs.github_copilot_token }}
+        NEXUS_GITHUBCOPILOT_MODEL: ${{ inputs.github_copilot_model }}
+        _LOG_FILE: ${{ runner.temp }}/nexus-daemon.log
+        _PID_FILE: ${{ runner.temp }}/nexus-daemon.pid
+      run: |
+        set -euo pipefail
+        "${NEXUS_BIN_DIR}/nexus-daemon" > "${_LOG_FILE}" 2>&1 &
+        echo $! > "${_PID_FILE}"
+        echo "NEXUS_DAEMON_PID_FILE=${_PID_FILE}" >> "${GITHUB_ENV}"
+        echo "NEXUS_DAEMON_LOG=${_LOG_FILE}" >> "${GITHUB_ENV}"
+
+        # Wait for daemon to pass its health check (up to 20s)
+        printf 'Waiting for nexus-daemon'
+        for i in $(seq 1 20); do
+          if curl -sf "http://127.0.0.1:9999/api/health" >/dev/null 2>&1; then
+            echo " ready (pid=$(cat "${_PID_FILE}"))"
+            break
+          fi
+          if [ "${i}" -eq 20 ]; then
+            echo "::error::nexus-daemon did not become ready within 20s"
+            cat "${_LOG_FILE}" >&2 || true
+            exit 1
+          fi
+          sleep 1
+          printf '.'
+        done
+
+    # ── 3. Submit task ────────────────────────────────────────────────────────
+    - name: Submit task
+      id: submit
+      shell: python3 {0}
+      env:
+        _DAEMON_URL: ${{ inputs.start_daemon == 'true' && 'http://127.0.0.1:9999' || inputs.daemon_url }}
+        _INSTRUCTION: ${{ inputs.instruction }}
+        _TASK_FILE: ${{ inputs.task_file }}
+        _PROJECT_PATH: ${{ inputs.project_path || github.workspace }}
+        _TARGET_FILE: ${{ inputs.target_file }}
+        _CONTEXT_FILES: ${{ inputs.context_files }}
+        _COMMAND: ${{ inputs.command }}
+        _MODEL: ${{ inputs.model }}
+        _PROVIDER: ${{ inputs.provider }}
+        _SYSTEM_PROMPT: ${{ inputs.system_prompt }}
+      run: |
+        import json, os, sys, urllib.request, urllib.error
+
+        def fail(msg: str) -> None:
+            print(f"::error::{msg}", file=sys.stderr)
+            sys.exit(1)
+
+        def set_output(key: str, value: str) -> None:
+            delim = f"NEXUS_EOF_{key}_{int(time.time())}"
+            with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+                fh.write(f"{key}<<{delim}\n{value}\n{delim}\n")
+
+        # Build instruction text ------------------------------------------------
+        instruction = os.environ.get("_INSTRUCTION", "").strip()
+        task_file   = os.environ.get("_TASK_FILE", "").strip()
+        if task_file:
+            try:
+                with open(task_file) as fh:
+                    instruction = fh.read().strip()
+            except OSError as exc:
+                fail(f"Cannot read task_file '{task_file}': {exc}")
+
+        if not instruction:
+            fail("Either the 'instruction' or 'task_file' input is required.")
+
+        # Prepend agent system prompt if provided ------------------------------
+        system_prompt = os.environ.get("_SYSTEM_PROMPT", "").strip()
+        if system_prompt:
+            instruction = f"<system>\n{system_prompt}\n</system>\n\n{instruction}"
+
+        # Build JSON payload ---------------------------------------------------
+        payload: dict = {
+            "projectPath": os.environ.get("_PROJECT_PATH", ""),
+            "instruction": instruction,
+            "targetFile":  os.environ.get("_TARGET_FILE", ""),
+            "command":     os.environ.get("_COMMAND", "execute"),
+        }
+
+        cf = os.environ.get("_CONTEXT_FILES", "").strip()
+        if cf:
+            payload["contextFiles"] = [f.strip() for f in cf.split(",") if f.strip()]
+
+        model = os.environ.get("_MODEL", "").strip()
+        if model:
+            payload["modelId"] = model
+
+        provider = os.environ.get("_PROVIDER", "").strip()
+        if provider:
+            payload["providerHint"] = provider
+
+        # POST to daemon -------------------------------------------------------
+        url  = os.environ["_DAEMON_URL"].rstrip("/") + "/api/tasks"
+        data = json.dumps(payload).encode()
+        req  = urllib.request.Request(
+            url, data=data, headers={"Content-Type": "application/json"}
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                body = json.loads(resp.read())
+        except urllib.error.HTTPError as exc:
+            fail(f"POST {url} returned HTTP {exc.code}: {exc.read().decode()}")
+        except Exception as exc:
+            fail(f"Failed to submit task to {url}: {exc}")
+
+        task_id = body.get("task_id") or body.get("id", "")
+        if not task_id:
+            fail(f"Unexpected response — no task_id found: {body}")
+
+        set_output("task_id", task_id)
+        print(f"Task submitted: {task_id}")
+        print(f"Dashboard:      {os.environ['_DAEMON_URL'].rstrip('/')}/ui")
+
+    # ── 4. Wait for task completion ───────────────────────────────────────────
+    - name: Wait for task completion
+      id: wait
+      shell: python3 {0}
+      env:
+        _DAEMON_URL: ${{ inputs.start_daemon == 'true' && 'http://127.0.0.1:9999' || inputs.daemon_url }}
+        _TASK_ID: ${{ steps.submit.outputs.task_id }}
+        _TIMEOUT: ${{ inputs.timeout_seconds }}
+      run: |
+        import json, os, sys, time, urllib.request, urllib.error
+
+        TERMINAL = {"COMPLETED", "FAILED", "CANCELLED", "TOO_LARGE"}
+
+        def fail(msg: str) -> None:
+            print(f"::error::{msg}", file=sys.stderr)
+            sys.exit(1)
+
+        def set_output(key: str, value: str) -> None:
+            delim = f"NEXUS_EOF_{key}_{int(time.time())}"
+            with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+                fh.write(f"{key}<<{delim}\n{value}\n{delim}\n")
+
+        daemon_url = os.environ["_DAEMON_URL"].rstrip("/")
+        task_id    = os.environ["_TASK_ID"]
+        timeout    = int(os.environ.get("_TIMEOUT", "300"))
+        deadline   = time.time() + timeout
+        url        = f"{daemon_url}/api/tasks/{task_id}"
+
+        status = ""
+        logs   = ""
+
+        while time.time() < deadline:
+            try:
+                with urllib.request.urlopen(url, timeout=15) as resp:
+                    body   = json.loads(resp.read())
+                    status = body.get("status", "")
+                    logs   = body.get("logs", "")
+                    ts     = time.strftime("%H:%M:%S")
+                    print(f"  [{ts}] task={task_id} status={status}")
+                    if status in TERMINAL:
+                        break
+            except Exception as exc:
+                print(f"  [poll] {exc}", file=sys.stderr)
+            time.sleep(5)
+        else:
+            set_output("status", "TIMEOUT")
+            set_output("logs", logs)
+            fail(f"Task {task_id} did not complete within {timeout}s.")
+
+        set_output("status", status)
+        set_output("logs", logs)
+
+        if status == "FAILED":
+            fail(f"Task {task_id} failed.\n{logs}")
+        elif status == "TOO_LARGE":
+            fail(f"Task {task_id} rejected — instruction exceeds the model context window.")
+        elif status == "CANCELLED":
+            print(f"::warning::Task {task_id} was cancelled.")
+        else:
+            print(f"Task {task_id} completed successfully.")
+
+    # ── 5. Stop daemon (always runs so it cleans up on failure too) ───────────
+    - name: Stop nexus-daemon
+      if: always() && inputs.start_daemon == 'true'
+      shell: bash
+      run: |
+        if [ -n "${NEXUS_DAEMON_PID_FILE:-}" ] && [ -f "${NEXUS_DAEMON_PID_FILE}" ]; then
+          _PID="$(cat "${NEXUS_DAEMON_PID_FILE}")"
+          kill "${_PID}" 2>/dev/null && echo "Stopped nexus-daemon (pid=${_PID})" || true
+        fi
+        if [ -n "${NEXUS_DAEMON_LOG:-}" ] && [ -f "${NEXUS_DAEMON_LOG}" ]; then
+          echo "::group::nexus-daemon startup log"
+          cat "${NEXUS_DAEMON_LOG}"
+          echo "::endgroup::"
+        fi

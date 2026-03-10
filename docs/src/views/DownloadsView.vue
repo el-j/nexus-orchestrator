@@ -250,10 +250,10 @@ function isRecommended(osKey: string) {
 const baseURL = 'https://github.com/el-j/nexus-orchestrator/releases/latest/download'
 
 const desktopCards = [
-  { icon: '🍎', platform: 'macOS', arch: 'Apple Silicon (M1/M2/M3/M4)', ext: '.tar.gz', osKey: 'mac-arm', url: `${baseURL}/nexus-orchestrator-darwin-arm64.tar.gz` },
-  { icon: '🍎', platform: 'macOS', arch: 'Intel (x86_64)', ext: '.tar.gz', osKey: 'mac-intel', url: `${baseURL}/nexus-orchestrator-darwin-amd64.tar.gz` },
-  { icon: '🪟', platform: 'Windows', arch: '64-bit (x86_64)', ext: '.zip', osKey: 'win', url: `${baseURL}/nexus-orchestrator-windows-amd64.zip` },
-  { icon: '🐧', platform: 'Linux', arch: '64-bit (x86_64)', ext: '.tar.gz', osKey: 'linux', url: `${baseURL}/nexus-orchestrator-linux-amd64.tar.gz` },
+  { icon: '🍎', platform: 'macOS', arch: 'Apple Silicon (M1/M2/M3/M4)', ext: '.tar.gz', osKey: 'mac-arm', url: `${baseURL}/nexus-orchestrator-desktop-darwin-arm64.tar.gz` },
+  { icon: '🍎', platform: 'macOS', arch: 'Intel (x86_64)', ext: '.tar.gz', osKey: 'mac-intel', url: `${baseURL}/nexus-orchestrator-desktop-darwin-amd64.tar.gz` },
+  { icon: '🪟', platform: 'Windows', arch: '64-bit (x86_64)', ext: '.zip', osKey: 'win', url: `${baseURL}/nexus-orchestrator-desktop-windows-amd64.zip` },
+  { icon: '🐧', platform: 'Linux', arch: '64-bit (x86_64)', ext: '.tar.gz', osKey: 'linux', url: `${baseURL}/nexus-orchestrator-desktop-linux-amd64.tar.gz` },
 ]
 
 const cliCards = [
