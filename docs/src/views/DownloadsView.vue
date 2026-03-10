@@ -7,7 +7,7 @@
         Latest release always available on GitHub
       </div>
       <h1 class="text-4xl sm:text-5xl font-black mb-4">
-        Download <span class="gradient-text">nexusOrchestrator</span>
+        Download <span class="gradient-text">nexus-orchestrator</span>
       </h1>
       <p class="text-xl text-slate-400 mb-6">Get the desktop app or CLI tools for your platform</p>
 
@@ -196,7 +196,7 @@
         Getting Started Guide <i class="pi pi-arrow-right text-xs"></i>
       </RouterLink>
       <a
-        href="https://github.com/el-j/nexusOrchestrator"
+        href="https://github.com/el-j/nexus-orchestrator"
         target="_blank"
         rel="noopener"
         class="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/10 hover:border-violet-500/40 text-slate-300 hover:text-white font-bold transition-all"
@@ -247,39 +247,39 @@ function isRecommended(osKey: string) {
   return detectedKey.value && detectedKey.value === osKey
 }
 
-const baseURL = 'https://github.com/el-j/nexusOrchestrator/releases/latest/download'
+const baseURL = 'https://github.com/el-j/nexus-orchestrator/releases/latest/download'
 
 const desktopCards = [
-  { icon: '🍎', platform: 'macOS', arch: 'Apple Silicon (M1/M2/M3/M4)', ext: '.tar.gz', osKey: 'mac-arm', url: `${baseURL}/nexusOrchestrator-darwin-arm64.tar.gz` },
-  { icon: '🍎', platform: 'macOS', arch: 'Intel (x86_64)', ext: '.tar.gz', osKey: 'mac-intel', url: `${baseURL}/nexusOrchestrator-darwin-amd64.tar.gz` },
-  { icon: '🪟', platform: 'Windows', arch: '64-bit (x86_64)', ext: '.zip', osKey: 'win', url: `${baseURL}/nexusOrchestrator-windows-amd64.zip` },
-  { icon: '🐧', platform: 'Linux', arch: '64-bit (x86_64)', ext: '.tar.gz', osKey: 'linux', url: `${baseURL}/nexusOrchestrator-linux-amd64.tar.gz` },
+  { icon: '🍎', platform: 'macOS', arch: 'Apple Silicon (M1/M2/M3/M4)', ext: '.tar.gz', osKey: 'mac-arm', url: `${baseURL}/nexus-orchestrator-darwin-arm64.tar.gz` },
+  { icon: '🍎', platform: 'macOS', arch: 'Intel (x86_64)', ext: '.tar.gz', osKey: 'mac-intel', url: `${baseURL}/nexus-orchestrator-darwin-amd64.tar.gz` },
+  { icon: '🪟', platform: 'Windows', arch: '64-bit (x86_64)', ext: '.zip', osKey: 'win', url: `${baseURL}/nexus-orchestrator-windows-amd64.zip` },
+  { icon: '🐧', platform: 'Linux', arch: '64-bit (x86_64)', ext: '.tar.gz', osKey: 'linux', url: `${baseURL}/nexus-orchestrator-linux-amd64.tar.gz` },
 ]
 
 const cliCards = [
-  { icon: '🍎', platform: 'macOS', arch: 'Apple Silicon (arm64)', ext: '.tar.gz', osKey: 'mac-arm', url: `${baseURL}/nexusOrchestrator-darwin-arm64.tar.gz` },
-  { icon: '🍎', platform: 'macOS', arch: 'Intel (amd64)', ext: '.tar.gz', osKey: 'mac-intel', url: `${baseURL}/nexusOrchestrator-darwin-amd64.tar.gz` },
-  { icon: '🪟', platform: 'Windows', arch: '64-bit (amd64)', ext: '.zip', osKey: 'win', url: `${baseURL}/nexusOrchestrator-windows-amd64.zip` },
-  { icon: '🐧', platform: 'Linux', arch: '64-bit (amd64)', ext: '.tar.gz', osKey: 'linux', url: `${baseURL}/nexusOrchestrator-linux-amd64.tar.gz` },
-  { icon: '🐧', platform: 'Linux', arch: 'ARM64', ext: '.tar.gz', osKey: 'linux-arm', url: `${baseURL}/nexusOrchestrator-linux-arm64.tar.gz` },
+  { icon: '🍎', platform: 'macOS', arch: 'Apple Silicon (arm64)', ext: '.tar.gz', osKey: 'mac-arm', url: `${baseURL}/nexus-orchestrator-darwin-arm64.tar.gz` },
+  { icon: '🍎', platform: 'macOS', arch: 'Intel (amd64)', ext: '.tar.gz', osKey: 'mac-intel', url: `${baseURL}/nexus-orchestrator-darwin-amd64.tar.gz` },
+  { icon: '🪟', platform: 'Windows', arch: '64-bit (amd64)', ext: '.zip', osKey: 'win', url: `${baseURL}/nexus-orchestrator-windows-amd64.zip` },
+  { icon: '🐧', platform: 'Linux', arch: '64-bit (amd64)', ext: '.tar.gz', osKey: 'linux', url: `${baseURL}/nexus-orchestrator-linux-amd64.tar.gz` },
+  { icon: '🐧', platform: 'Linux', arch: 'ARM64', ext: '.tar.gz', osKey: 'linux-arm', url: `${baseURL}/nexus-orchestrator-linux-arm64.tar.gz` },
 ]
 
-const installScript = `curl -sSfL https://raw.githubusercontent.com/el-j/nexusOrchestrator/main/scripts/install.sh | sh`
+const installScript = `curl -sSfL https://raw.githubusercontent.com/el-j/nexus-orchestrator/main/scripts/install.sh | sh`
 
 const verifyMac = `# Download checksums
-curl -sSfLO https://github.com/el-j/nexusOrchestrator/releases/latest/download/SHA256SUMS.txt
+curl -sSfLO https://github.com/el-j/nexus-orchestrator/releases/latest/download/SHA256SUMS.txt
 
 # Verify (macOS)
 shasum -a 256 -c SHA256SUMS.txt --ignore-missing`
 
 const verifyLinux = `# Download checksums
-curl -sSfLO https://github.com/el-j/nexusOrchestrator/releases/latest/download/SHA256SUMS.txt
+curl -sSfLO https://github.com/el-j/nexus-orchestrator/releases/latest/download/SHA256SUMS.txt
 
 # Verify (Linux)
 sha256sum -c SHA256SUMS.txt --ignore-missing`
 
 const verifyWin = `# PowerShell
-Get-FileHash .\\nexusOrchestrator-windows-amd64.zip -Algorithm SHA256
+Get-FileHash .\\nexus-orchestrator-windows-amd64.zip -Algorithm SHA256
 # Compare with SHA256SUMS.txt`
 
 const requirements = [

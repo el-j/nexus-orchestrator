@@ -25,7 +25,7 @@
             Ports &amp; Adapters
           </div>
           <h1 class="text-4xl font-black mb-4"><span class="gradient-text">Architecture</span></h1>
-          <p class="text-lg text-slate-400">nexusOrchestrator follows hexagonal architecture with strict inward dependency rules.</p>
+          <p class="text-lg text-slate-400">nexus-orchestrator follows hexagonal architecture with strict inward dependency rules.</p>
         </div>
 
         <!-- Hexagonal Architecture -->

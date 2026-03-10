@@ -4,7 +4,7 @@
       <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
         <div class="md:col-span-1">
           <div class="text-lg font-bold mb-2">
-            <span class="text-white">nexus</span><span class="gradient-text">Orchestrator</span>
+            <span class="text-white">nexus-</span><span class="gradient-text">orchestrator</span>
           </div>
           <p class="text-sm text-slate-500">
             Local AI task orchestration with multi-provider routing and MCP support.
@@ -32,13 +32,10 @@
       </div>
       <div class="mt-10 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
         <p class="text-xs text-slate-600">
-          Built with Go 🔷 + Wails · MIT License · © {{ year }} nexusOrchestrator contributors
+          Built with Go 🔷 + Wails · MIT License · © {{ year }} nexus-orchestrator contributors
         </p>
         <a
-          href="https://github.com/el-j/nexusOrchestrator"
-          target="_blank"
-          rel="noopener"
-          class="text-xs text-slate-600 hover:text-violet-400 transition-colors flex items-center gap-1"
+          href="https://github.com/el-j/nexus-orchestrator"
         >
           <i class="pi pi-github"></i> View on GitHub
         </a>
@@ -78,15 +75,15 @@ const footerCols: FooterCol[] = [
     links: [
       { label: 'Desktop App', to: '/downloads' },
       { label: 'CLI + Daemon', to: '/downloads' },
-      { label: 'GitHub Releases', href: 'https://github.com/el-j/nexusOrchestrator/releases' },
+      { label: 'GitHub Releases', href: 'https://github.com/el-j/nexus-orchestrator/releases' },
     ],
   },
   {
     heading: 'Community',
     links: [
-      { label: 'GitHub', href: 'https://github.com/el-j/nexusOrchestrator' },
-      { label: 'Issues', href: 'https://github.com/el-j/nexusOrchestrator/issues' },
-      { label: 'Releases', href: 'https://github.com/el-j/nexusOrchestrator/releases' },
+      { label: 'GitHub', href: 'https://github.com/el-j/nexus-orchestrator' },
+      { label: 'Issues', href: 'https://github.com/el-j/nexus-orchestrator/issues' },
+      { label: 'Releases', href: 'https://github.com/el-j/nexus-orchestrator/releases' },
     ],
   },
 ]

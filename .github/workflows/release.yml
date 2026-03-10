@@ -147,7 +147,7 @@ jobs:
 
       - name: Create archive
         run: |
-          ARCHIVE_NAME="nexusOrchestrator-${{ matrix.os }}-${{ matrix.arch }}"
+          ARCHIVE_NAME="nexus-orchestrator-${{ matrix.os }}-${{ matrix.arch }}"
           cd dist
 
           if [ "${{ matrix.ext }}" = "zip" ]; then
@@ -159,8 +159,8 @@ jobs:
       - name: Upload archive
         uses: actions/upload-artifact@v4
         with:
-          name: nexusOrchestrator-${{ matrix.os }}-${{ matrix.arch }}.${{ matrix.ext }}
-          path: nexusOrchestrator-${{ matrix.os }}-${{ matrix.arch }}.${{ matrix.ext }}
+          name: nexus-orchestrator-${{ matrix.os }}-${{ matrix.arch }}.${{ matrix.ext }}
+          path: nexus-orchestrator-${{ matrix.os }}-${{ matrix.arch }}.${{ matrix.ext }}
 
   build-desktop:
     name: Build Desktop ${{ matrix.os }}-${{ matrix.arch }}
@@ -176,7 +176,7 @@ jobs:
             runner: macos-latest
             platform: darwin/arm64
             archive_ext: tar.gz
-            archive_name: nexusOrchestrator-desktop-darwin-arm64
+            archive_name: nexus-orchestrator-desktop-darwin-arm64
             wails_tags: ""
 
           - os: darwin
@@ -184,7 +184,7 @@ jobs:
             runner: macos-13
             platform: darwin/amd64
             archive_ext: tar.gz
-            archive_name: nexusOrchestrator-desktop-darwin-amd64
+            archive_name: nexus-orchestrator-desktop-darwin-amd64
             wails_tags: ""
 
           - os: windows
@@ -192,7 +192,7 @@ jobs:
             runner: windows-latest
             platform: windows/amd64
             archive_ext: zip
-            archive_name: nexusOrchestrator-desktop-windows-amd64
+            archive_name: nexus-orchestrator-desktop-windows-amd64
             wails_tags: ""
 
           - os: linux
@@ -200,7 +200,7 @@ jobs:
             runner: ubuntu-latest
             platform: linux/amd64
             archive_ext: tar.gz
-            archive_name: nexusOrchestrator-desktop-linux-amd64
+            archive_name: nexus-orchestrator-desktop-linux-amd64
             wails_tags: "webkit2_41"
 
     steps:
@@ -273,8 +273,8 @@ jobs:
       - name: Generate checksums
         run: |
           cd artifacts
-          find . -name 'nexusOrchestrator-*' ! -name 'nexusOrchestrator-desktop-*' -exec sha256sum {} + > ../SHA256SUMS.txt
-          find . -name 'nexusOrchestrator-desktop-*' -exec sha256sum {} + > ../SHA256SUMS-desktop.txt
+          find . -name 'nexus-orchestrator-*' ! -name 'nexus-orchestrator-desktop-*' -exec sha256sum {} + > ../SHA256SUMS.txt
+          find . -name 'nexus-orchestrator-desktop-*' -exec sha256sum {} + > ../SHA256SUMS-desktop.txt
           cd ..
           mv artifacts/* .
 
@@ -283,7 +283,7 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            nexusOrchestrator-*.tar.gz
-            nexusOrchestrator-*.zip
+            nexus-orchestrator-*.tar.gz
+            nexus-orchestrator-*.zip
             SHA256SUMS.txt
             SHA256SUMS-desktop.txt

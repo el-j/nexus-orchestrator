@@ -4,7 +4,7 @@
       <div class="flex items-center justify-between h-16">
         <!-- Logo -->
         <RouterLink to="/" class="flex items-center gap-2 text-lg font-bold">
-          <span class="text-white">nexus</span><span class="gradient-text">Orchestrator</span>
+          <span class="text-white">nexus-</span><span class="gradient-text">orchestrator</span>
         </RouterLink>
 
         <!-- Desktop Nav -->
@@ -23,7 +23,7 @@
         <!-- Actions -->
         <div class="flex items-center gap-3">
           <a
-            href="https://github.com/el-j/nexusOrchestrator"
+            href="https://github.com/el-j/nexus-orchestrator"
             target="_blank"
             rel="noopener"
             class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm border border-white/10 rounded-lg text-slate-300 hover:border-violet-500/50 hover:text-white transition-all"
@@ -52,7 +52,7 @@
     <!-- Mobile drawer -->
     <Drawer v-model:visible="mobileOpen" position="right" style="width: 18rem; background: #0d0d14;">
       <template #header>
-        <span class="text-white font-bold">nexus<span class="gradient-text">Orchestrator</span></span>
+        <span class="text-white font-bold">nexus-<span class="gradient-text">orchestrator</span></span>
       </template>
       <nav class="flex flex-col gap-1 mt-4">
         <RouterLink

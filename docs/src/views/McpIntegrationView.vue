@@ -25,7 +25,7 @@
             JSON-RPC 2.0 · MCP 2024-11-05
           </div>
           <h1 class="text-4xl font-black mb-4"><span class="gradient-text">MCP Integration</span></h1>
-          <p class="text-lg text-slate-400">Connect nexusOrchestrator to Claude Desktop and any MCP-compatible client.</p>
+          <p class="text-lg text-slate-400">Connect nexus-orchestrator to Claude Desktop and any MCP-compatible client.</p>
         </div>
 
         <!-- What is MCP -->
@@ -37,7 +37,7 @@
             <p class="text-slate-400 text-sm leading-relaxed">
               The <a href="https://modelcontextprotocol.io/" target="_blank" rel="noopener" class="text-violet-400 hover:text-violet-300">Model Context Protocol</a> (MCP)
               is an open standard for connecting AI assistants to external tools and data sources.
-              nexusOrchestrator implements an MCP server using JSON-RPC 2.0, making it compatible with Claude Desktop and any MCP-aware client.
+              nexus-orchestrator implements an MCP server using JSON-RPC 2.0, making it compatible with Claude Desktop and any MCP-aware client.
             </p>
           </div>
         </section>
@@ -76,7 +76,7 @@
           <div class="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-start gap-3">
             <i class="pi pi-info-circle text-amber-400 text-sm mt-0.5 flex-shrink-0"></i>
             <p class="text-sm text-amber-300">
-              Restart Claude Desktop after editing the configuration. The nexusOrchestrator tools will appear in Claude's tool palette.
+              Restart Claude Desktop after editing the configuration. The nexus-orchestrator tools will appear in Claude's tool palette.
               Make sure the nexus-daemon is running before starting Claude Desktop.
             </p>
           </div>
@@ -206,7 +206,7 @@ const toc = [
 
 const claudeConfig = `{
   "mcpServers": {
-    "nexusOrchestrator": {
+    "nexus-orchestrator": {
       "url": "http://localhost:9998/mcp"
     }
   }

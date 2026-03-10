@@ -31,7 +31,7 @@
             </h1>
 
             <p class="text-lg text-slate-400 leading-relaxed mb-8 max-w-lg">
-              nexusOrchestrator is a headless Go daemon with MCP server, REST API,
+              nexus-orchestrator is a headless Go daemon with MCP server, REST API,
               and per-project session memory. Connect Claude Desktop, route to Ollama,
               LM Studio, OpenAI, or Anthropic — your AI workflows, your rules.
             </p>
@@ -46,11 +46,7 @@
                 Download free
               </RouterLink>
               <a
-                href="https://github.com/el-j/nexusOrchestrator"
-                target="_blank"
-                rel="noopener"
-                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/10
-                       text-slate-300 hover:border-violet-500/40 hover:text-white font-semibold text-sm transition-all"
+                href="https://github.com/el-j/nexus-orchestrator"
               >
                 <i class="pi pi-github text-xs"></i>
                 View on GitHub
@@ -100,7 +96,7 @@
           Everything you need to<br><span class="gradient-text">orchestrate AI at scale</span>
         </h2>
         <p class="text-slate-500 max-w-2xl mx-auto">
-          From local LLMs to cloud providers, single tasks to complex pipelines — nexusOrchestrator handles the routing, memory, and orchestration so you can focus on building.
+          From local LLMs to cloud providers, single tasks to complex pipelines — nexus-orchestrator handles the routing, memory, and orchestration so you can focus on building.
         </p>
       </div>
 
@@ -225,7 +221,7 @@
             Download for free →
           </RouterLink>
           <a
-            href="https://github.com/el-j/nexusOrchestrator"
+            href="https://github.com/el-j/nexus-orchestrator"
             target="_blank"
             rel="noopener"
             class="px-6 py-3 rounded-xl border border-white/10 hover:border-violet-500/40 text-slate-300 hover:text-white font-bold text-sm transition-all"

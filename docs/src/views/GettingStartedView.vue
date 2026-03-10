@@ -25,7 +25,7 @@
             Step-by-step guide
           </div>
           <h1 class="text-4xl font-black mb-4">Getting <span class="gradient-text">Started</span></h1>
-          <p class="text-lg text-slate-400">Be up and running with nexusOrchestrator in under 5 minutes.</p>
+          <p class="text-lg text-slate-400">Be up and running with nexus-orchestrator in under 5 minutes.</p>
         </div>
 
         <!-- Prerequisites -->
@@ -179,8 +179,8 @@ const toc = [
 ]
 
 const codeInstall = `# Clone the repository
-git clone https://github.com/el-j/nexusOrchestrator.git
-cd nexusOrchestrator
+git clone https://github.com/el-j/nexus-orchestrator.git
+cd nexus-orchestrator
 
 # Build all binaries
 CGO_ENABLED=1 go build ./...

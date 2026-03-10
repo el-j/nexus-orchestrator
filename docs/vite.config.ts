@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { resolve } from 'path'
 
 export default defineConfig({
-  base: '/nexusOrchestrator/',
+  base: '/nexus-orchestrator/',
   plugins: [
     vue(),
     tailwindcss(),
