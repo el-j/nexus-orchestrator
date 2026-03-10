@@ -104,7 +104,7 @@ jobs:
             cxx: "zig c++ -target aarch64-linux-musl"
             ext: tar.gz
             bin_ext: ""
-            static_flags: -extldflags=-static
+            static_flags: ""
 
           - os: darwin
             arch: amd64
@@ -207,6 +207,7 @@ jobs:
             platform: darwin/arm64
             archive_ext: tar.gz
             archive_name: nexusOrchestrator-desktop-darwin-arm64
+            wails_tags: ""
 
           - os: darwin
             arch: amd64
@@ -214,6 +215,7 @@ jobs:
             platform: darwin/amd64
             archive_ext: tar.gz
             archive_name: nexusOrchestrator-desktop-darwin-amd64
+            wails_tags: ""
 
           - os: windows
             arch: amd64
@@ -221,6 +223,7 @@ jobs:
             platform: windows/amd64
             archive_ext: zip
             archive_name: nexusOrchestrator-desktop-windows-amd64
+            wails_tags: ""
 
           - os: linux
             arch: amd64
@@ -228,6 +231,7 @@ jobs:
             platform: linux/amd64
             archive_ext: tar.gz
             archive_name: nexusOrchestrator-desktop-linux-amd64
+            wails_tags: "webkit2_41"
 
     steps:
       - uses: actions/checkout@v4
@@ -246,7 +250,7 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev pkg-config
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev pkg-config
 
       - name: Install Wails CLI
         shell: bash
@@ -259,7 +263,9 @@ jobs:
           CGO_ENABLED: "1"
         run: |
           VERSION="${{ needs.version.outputs.tag }}"
-          wails build -platform ${{ matrix.platform }} -ldflags "-s -w -X main.version=${VERSION}"
+          EXTRA_TAGS="${{ matrix.wails_tags }}"
+          TAGS_FLAG=${EXTRA_TAGS:+"-tags ${EXTRA_TAGS}"}
+          wails build -platform ${{ matrix.platform }} ${TAGS_FLAG} -ldflags "-s -w -X main.version=${VERSION}"
 
       - name: Package (tar.gz)
         if: matrix.archive_ext == 'tar.gz'

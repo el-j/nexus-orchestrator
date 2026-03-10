@@ -67,7 +67,7 @@ jobs:
             cxx: "zig c++ -target aarch64-linux-musl"
             ext: tar.gz
             bin_ext: ""
-            static_flags: -extldflags=-static
+            static_flags: ""
 
           - os: darwin
             arch: amd64
