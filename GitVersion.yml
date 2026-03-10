@@ -1,5 +1,5 @@
 assembly-versioning-scheme: MajorMinorPatch
-tag-prefix: '[vV]'
+tag-prefix: '[vV]?'
 next-version: 0.2.0
 branches:
   main:
