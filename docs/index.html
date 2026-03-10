@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>nexusOrchestrator — Route AI Tasks to Any LLM, Locally</title>
+  <meta name="description" content="nexusOrchestrator is a headless Go daemon with MCP server, REST API, and per-project session memory. Connect Claude Desktop, route to Ollama, LM Studio, OpenAI, or Anthropic.">
+  <meta property="og:title" content="nexusOrchestrator — Local AI Task Orchestrator">
+  <meta property="og:description" content="Route AI code-generation tasks to any LLM backend with session memory and MCP support.">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="./assets/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+</head>
+<body>
+
+<!-- ── Navigation ────────────────────────────────────────────── -->
+<nav class="navbar" role="navigation" aria-label="Main navigation">
+  <div class="navbar-inner">
+    <a href="./index.html" class="navbar-logo">nexus<span class="logo-accent">Orchestrator</span></a>
+
+    <ul class="navbar-nav" role="list">
+      <li><a href="./index.html">Home</a></li>
+      <li><a href="./architecture.html">Architecture</a></li>
+      <li><a href="./downloads.html">Downloads</a></li>
+      <li><a href="./api-reference.html">API Reference</a></li>
+      <li><a href="./getting-started.html">Getting Started</a></li>
+      <li><a href="./mcp-integration.html">MCP Integration</a></li>
+    </ul>
+
+    <div class="navbar-actions">
+      <a href="https://github.com/el-j/nexusOrchestrator" class="nav-github" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        Star on GitHub
+      </a>
+      <a href="./downloads.html" class="nav-download">Download</a>
+    </div>
+
+    <button class="nav-hamburger" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobile-menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobile-menu" role="navigation" aria-label="Mobile navigation">
+  <a href="./index.html">Home</a>
+  <a href="./architecture.html">Architecture</a>
+  <a href="./downloads.html">Downloads</a>
+  <a href="./api-reference.html">API Reference</a>
+  <a href="./getting-started.html">Getting Started</a>
+  <a href="./mcp-integration.html">MCP Integration</a>
+  <div class="mobile-menu-actions">
+    <a href="https://github.com/el-j/nexusOrchestrator" class="btn btn-outline btn-sm" target="_blank" rel="noopener">GitHub</a>
+    <a href="./downloads.html" class="btn btn-primary btn-sm">Download</a>
+  </div>
+</div>
+
+<!-- ── Hero ───────────────────────────────────────────────────── -->
+<section class="hero" aria-label="Hero">
+  <div class="hero-bg">
+    <div class="hero-gradient"></div>
+    <div class="hero-grid-lines"></div>
+    <div class="hero-noise"></div>
+  </div>
+
+  <div class="hero-content">
+    <!-- Left column -->
+    <div class="hero-left">
+      <div class="hero-badge">
+        <span class="dot" aria-hidden="true"></span>
+        v1.x &nbsp;·&nbsp; MIT License &nbsp;·&nbsp; Go 1.24+
+      </div>
+
+      <h1 class="hero-title">
+        Route AI tasks to<br>
+        <span class="gradient-text">any LLM</span> —<br>
+        locally or in the cloud.
+      </h1>
+
+      <p class="hero-subtitle">
+        nexusOrchestrator is a headless Go daemon with MCP server, REST API, and per-project session memory. Connect Claude Desktop, route to Ollama, LM Studio, OpenAI, or Anthropic — your AI workflows, your rules.
+      </p>
+
+      <div class="hero-actions">
+        <a href="./downloads.html" class="btn btn-primary btn-lg">
+          Download for free
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M3 8H13M13 8L9 4M13 8L9 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a href="https://github.com/el-j/nexusOrchestrator" class="btn btn-outline btn-lg" target="_blank" rel="noopener">
+          View on GitHub
+        </a>
+        <a href="./getting-started.html" class="btn btn-ghost btn-lg">Get Started →</a>
+      </div>
+
+      <div class="hero-trust">
+        <span class="trust-item"><span class="check" aria-hidden="true">✓</span> Open Source</span>
+        <span class="trust-item"><span class="check" aria-hidden="true">✓</span> Zero Telemetry</span>
+        <span class="trust-item"><span class="check" aria-hidden="true">✓</span> Local-first</span>
+        <span class="trust-item"><span class="check" aria-hidden="true">✓</span> MIT License</span>
+      </div>
+    </div>
+
+    <!-- Right column — Terminal -->
+    <div class="hero-right">
+      <div class="terminal" role="img" aria-label="Terminal demo showing nexusOrchestrator in action">
+        <div class="terminal-header">
+          <div class="terminal-dots" aria-hidden="true">
+            <div class="terminal-dot red"></div>
+            <div class="terminal-dot yellow"></div>
+            <div class="terminal-dot green"></div>
+          </div>
+          <div class="terminal-title">nexus-daemon — zsh</div>
+        </div>
+        <div class="terminal-body">
+          <div id="hero-terminal-output" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Stats Bar ─────────────────────────────────────────────── -->
+<div class="stats-bar" role="region" aria-label="Key statistics">
+  <div class="container">
+    <div class="stat-item animate-on-scroll">
+      <span class="stat-value">6+</span>
+      <span class="stat-label">LLM Providers</span>
+    </div>
+    <div class="stat-item animate-on-scroll delay-1">
+      <span class="stat-value">3</span>
+      <span class="stat-label">Interfaces (HTTP / MCP / GUI)</span>
+    </div>
+    <div class="stat-item animate-on-scroll delay-2">
+      <span class="stat-value">SQLite</span>
+      <span class="stat-label">Per-project Session Memory</span>
+    </div>
+    <div class="stat-item animate-on-scroll delay-3">
+      <span class="stat-value">Guard</span>
+      <span class="stat-label">Context-Window Protection</span>
+    </div>
+    <div class="stat-item animate-on-scroll delay-4">
+      <span class="stat-value">Zero</span>
+      <span class="stat-label">Telemetry</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Features ──────────────────────────────────────────────── -->
+<section class="section" id="features" aria-label="Features">
+  <div class="container">
+    <div class="section-header animate-on-scroll">
+      <span class="section-label">Capabilities</span>
+      <h2>Everything you need to orchestrate AI at scale</h2>
+      <p>From multi-backend routing to session memory — nexusOrchestrator handles the infrastructure so you focus on building.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card animate-on-scroll">
+        <span class="feature-icon" aria-hidden="true">🔀</span>
+        <h3>Multi-Backend Routing</h3>
+        <p>Automatically discovers and routes tasks to LM Studio, Ollama, OpenAI, Anthropic, or any OpenAI-compatible endpoint. Per-task model selection with provider hints.</p>
+      </div>
+
+      <div class="feature-card animate-on-scroll delay-1">
+        <span class="feature-icon" aria-hidden="true">🧠</span>
+        <h3>Session Memory</h3>
+        <p>Every project path gets its own SQLite-backed conversation history. Multi-turn interactions maintain context so your LLM always knows what came before.</p>
+      </div>
+
+      <div class="feature-card animate-on-scroll delay-2">
+        <span class="feature-icon" aria-hidden="true">🔌</span>
+        <h3>MCP Server</h3>
+        <p>Built-in JSON-RPC 2.0 server on port 9998, compatible with Claude Desktop and any MCP client. Six tools ready to use out of the box.</p>
+      </div>
+
+      <div class="feature-card animate-on-scroll">
+        <span class="feature-icon" aria-hidden="true">🌐</span>
+        <h3>Full REST API</h3>
+        <p>Complete task management on port 9999 — submit, list, cancel, monitor. Real-time updates via Server-Sent Events for live progress tracking.</p>
+      </div>
+
+      <div class="feature-card animate-on-scroll delay-1">
+        <span class="feature-icon" aria-hidden="true">🛡️</span>
+        <h3>Context Guard</h3>
+        <p>Pre-flight token estimation prevents prompt overflow. Tasks exceeding context limits are flagged as TOO_LARGE immediately — before reaching the LLM.</p>
+      </div>
+
+      <div class="feature-card animate-on-scroll delay-2">
+        <span class="feature-icon" aria-hidden="true">⚡</span>
+        <h3>Smart Discovery</h3>
+        <p>Auto-detect running LLM backends with health checks and automatic failover. If your preferred provider goes down, the orchestrator finds an alternative.</p>
+      </div>
+
+      <div class="feature-card animate-on-scroll">
+        <span class="feature-icon" aria-hidden="true">🎯</span>
+        <h3>Command Routing</h3>
+        <p>Classify tasks as "plan" or "execute". The orchestrator enforces that execution tasks have a prior plan, preventing uncoordinated AI-generated changes.</p>
+      </div>
+
+      <div class="feature-card animate-on-scroll delay-1">
+        <span class="feature-icon" aria-hidden="true">🖥️</span>
+        <h3>Desktop GUI</h3>
+        <p>Native Wails desktop app with embedded HTTP API, real-time task monitoring, system tray integration, and a live provider health dashboard.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Providers ─────────────────────────────────────────────── -->
+<section class="section" style="background: var(--bg-surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);" aria-label="Supported providers">
+  <div class="container">
+    <div class="section-header animate-on-scroll">
+      <span class="section-label">Providers</span>
+      <h2>Works with the models you already use</h2>
+      <p>nexusOrchestrator discovers and routes to whatever LLM backend you're running — local or cloud.</p>
+    </div>
+
+    <div class="provider-grid animate-on-scroll">
+      <div class="provider-chip">
+        <span aria-hidden="true">🏠</span> LM Studio
+        <span class="badge badge-green" style="margin-left: 0.25rem;">Local</span>
+      </div>
+      <div class="provider-chip">
+        <span aria-hidden="true">🦙</span> Ollama
+        <span class="badge badge-green" style="margin-left: 0.25rem;">Local</span>
+      </div>
+      <div class="provider-chip">
+        <span aria-hidden="true">🤖</span> OpenAI
+        <span class="badge badge-cyan" style="margin-left: 0.25rem;">Cloud</span>
+      </div>
+      <div class="provider-chip">
+        <span aria-hidden="true">🌟</span> Anthropic
+        <span class="badge badge-cyan" style="margin-left: 0.25rem;">Cloud</span>
+      </div>
+      <div class="provider-chip">
+        <span aria-hidden="true">🐙</span> GitHub Copilot
+        <span class="badge badge-cyan" style="margin-left: 0.25rem;">Cloud</span>
+      </div>
+      <div class="provider-chip">
+        <span aria-hidden="true">⚙️</span> Any OpenAI-compatible
+        <span class="badge badge-purple" style="margin-left: 0.25rem;">Custom</span>
+      </div>
+    </div>
+
+    <div class="mt-4 animate-on-scroll" style="overflow-x: auto; border-radius: var(--radius-md); border: 1px solid var(--border);">
+      <table>
+        <thead>
+          <tr>
+            <th>Provider</th>
+            <th>Type</th>
+            <th>Default Address</th>
+            <th>Auto-Discovery</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>LM Studio</td>
+            <td><span class="badge badge-green">Local</span></td>
+            <td><code>127.0.0.1:1234</code></td>
+            <td><span class="badge badge-green">✓ Yes</span></td>
+          </tr>
+          <tr>
+            <td>Ollama</td>
+            <td><span class="badge badge-green">Local</span></td>
+            <td><code>127.0.0.1:11434</code></td>
+            <td><span class="badge badge-green">✓ Yes</span></td>
+          </tr>
+          <tr>
+            <td>OpenAI</td>
+            <td><span class="badge badge-cyan">Cloud</span></td>
+            <td><code>api.openai.com</code></td>
+            <td><span class="badge badge-gray">API Key</span></td>
+          </tr>
+          <tr>
+            <td>Anthropic</td>
+            <td><span class="badge badge-cyan">Cloud</span></td>
+            <td><code>api.anthropic.com</code></td>
+            <td><span class="badge badge-gray">API Key</span></td>
+          </tr>
+          <tr>
+            <td>GitHub Copilot</td>
+            <td><span class="badge badge-cyan">Cloud</span></td>
+            <td><code>api.githubcopilot.com</code></td>
+            <td><span class="badge badge-gray">Token</span></td>
+          </tr>
+          <tr>
+            <td>Any OpenAI-compatible</td>
+            <td><span class="badge badge-purple">Custom</span></td>
+            <td>Configurable</td>
+            <td><span class="badge badge-gray">Manual</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ── Quick Start ────────────────────────────────────────────── -->
+<section class="section" id="quickstart" aria-label="Quick start">
+  <div class="container">
+    <div class="section-header animate-on-scroll">
+      <span class="section-label">Quick Start</span>
+      <h2>Up and running in 60 seconds</h2>
+      <p>Build the daemon, start it, and submit your first task.</p>
+    </div>
+
+    <div class="qs-grid">
+      <!-- Left: steps -->
+      <div class="steps-list">
+        <div class="step-item animate-on-scroll">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>Clone &amp; build</h4>
+            <p>Requires Go 1.24+ and CGO enabled for SQLite.</p>
+            <pre><code class="language-bash">git clone https://github.com/el-j/nexusOrchestrator
+cd nexusOrchestrator
+CGO_ENABLED=1 go build -o nexus-daemon ./cmd/nexus-daemon/...</code></pre>
+          </div>
+        </div>
+
+        <div class="step-item animate-on-scroll delay-1">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>Start the daemon</h4>
+            <p>The daemon starts the HTTP API, MCP server, and auto-discovers local LLM backends.</p>
+            <pre><code class="language-bash">./nexus-daemon
+# HTTP API  →  http://localhost:9999
+# MCP       →  http://localhost:9998/mcp
+# Dashboard →  http://localhost:9999/ui</code></pre>
+          </div>
+        </div>
+
+        <div class="step-item animate-on-scroll delay-2">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h4>Submit your first task</h4>
+            <p>Send a POST request with your project path and instruction.</p>
+            <pre><code class="language-bash">curl -X POST http://localhost:9999/api/tasks \
+  -H "Content-Type: application/json" \
+  -d '{
+    "projectPath": "/path/to/your/project",
+    "targetFile":  "output.go",
+    "instruction": "Write a function that sorts strings"
+  }'</code></pre>
+          </div>
+        </div>
+
+        <div class="step-item animate-on-scroll delay-3">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <h4>Check task status</h4>
+            <p>Poll the task endpoint or use Server-Sent Events for real-time updates.</p>
+            <pre><code class="language-bash">curl http://localhost:9999/api/tasks/{id}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: code panel -->
+      <div class="animate-on-scroll delay-2" style="position: sticky; top: calc(var(--nav-height) + 1.5rem);">
+        <div class="code-panel">
+          <div class="code-panel-header">
+            <span class="code-panel-title">Response</span>
+            <span class="code-panel-lang">JSON</span>
+          </div>
+          <pre><code class="language-json">{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "projectPath": "/path/to/your/project",
+  "targetFile": "output.go",
+  "instruction": "Write a function that sorts strings",
+  "status": "QUEUED",
+  "command": "auto",
+  "createdAt": "2025-01-01T00:00:00Z",
+  "updatedAt": "2025-01-01T00:00:00Z"
+}</code></pre>
+        </div>
+
+        <div class="code-panel mt-3">
+          <div class="code-panel-header">
+            <span class="code-panel-title">Status after completion</span>
+            <span class="code-panel-lang">JSON</span>
+          </div>
+          <pre><code class="language-json">{
+  "id": "a1b2c3d4-...",
+  "status": "COMPLETED",
+  "logs": "func sortStrings(s []string) []string {\n  sort.Strings(s)\n  return s\n}",
+  "updatedAt": "2025-01-01T00:00:04Z"
+}</code></pre>
+        </div>
+
+        <div class="mt-3 text-center">
+          <a href="./getting-started.html" class="btn btn-secondary">
+            Full Getting Started Guide →
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Architecture Teaser ────────────────────────────────────── -->
+<section class="section" style="background: var(--bg-surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);" aria-label="Architecture overview">
+  <div class="container">
+    <div class="section-header animate-on-scroll">
+      <span class="section-label">Architecture</span>
+      <h2>Hexagonal architecture, strictly enforced</h2>
+      <p>Core business logic never imports adapter code. All external concerns are abstracted behind interfaces.</p>
+    </div>
+
+    <div class="animate-on-scroll" style="max-width: 700px; margin: 0 auto;">
+      <div class="arch-diagram" role="img" aria-label="Hexagonal architecture diagram">
+        <div class="arch-layer inbound">
+          Inbound Adapters &nbsp;|&nbsp; HTTP API (chi) &nbsp;·&nbsp; MCP (JSON-RPC) &nbsp;·&nbsp; CLI &nbsp;·&nbsp; Wails GUI
+        </div>
+        <div class="arch-arrow">↓ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; ↓</div>
+        <div class="arch-layer core">
+          Core Services &nbsp;|&nbsp; OrchestratorService &nbsp;·&nbsp; DiscoveryService
+        </div>
+        <div class="arch-arrow">↓ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; ↓</div>
+        <div class="arch-layer ports">
+          Port Interfaces &nbsp;|&nbsp; Orchestrator &nbsp;·&nbsp; LLMClient &nbsp;·&nbsp; TaskRepo &nbsp;·&nbsp; FileWriter &nbsp;·&nbsp; Session
+        </div>
+        <div class="arch-arrow">↓ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; ↓</div>
+        <div class="arch-layer outbound">
+          Outbound Adapters &nbsp;|&nbsp; LM Studio &nbsp;·&nbsp; Ollama &nbsp;·&nbsp; OpenAI &nbsp;·&nbsp; Anthropic &nbsp;·&nbsp; SQLite &nbsp;·&nbsp; FS
+        </div>
+      </div>
+
+      <div class="text-center mt-4">
+        <a href="./architecture.html" class="btn btn-secondary">
+          Deep dive into the architecture →
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ────────────────────────────────────────────────────── -->
+<section class="cta-section" aria-label="Call to action">
+  <div class="container">
+    <div class="cta-card animate-on-scroll">
+      <h2>Ready to orchestrate your AI workflows?</h2>
+      <p>Download nexusOrchestrator, connect it to your LLM backends, and start routing tasks in minutes.</p>
+      <div class="cta-actions">
+        <a href="./downloads.html" class="btn btn-primary btn-lg">Download for Free</a>
+        <a href="https://github.com/el-j/nexusOrchestrator" class="btn btn-outline btn-lg" target="_blank" rel="noopener">View on GitHub</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ────────────────────────────────────────────────── -->
+<footer class="footer" role="contentinfo">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <span class="footer-logo">nexus<span class="logo-accent">Orchestrator</span></span>
+      <p class="footer-tagline">A local AI task orchestrator that routes code-generation tasks to any LLM backend with session memory and MCP support.</p>
+    </div>
+
+    <div class="footer-col">
+      <h4>Docs</h4>
+      <ul>
+        <li><a href="./getting-started.html">Getting Started</a></li>
+        <li><a href="./architecture.html">Architecture</a></li>
+        <li><a href="./api-reference.html">API Reference</a></li>
+        <li><a href="./mcp-integration.html">MCP Integration</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-col">
+      <h4>Download</h4>
+      <ul>
+        <li><a href="./downloads.html">All Releases</a></li>
+        <li><a href="./downloads.html#desktop">Desktop App</a></li>
+        <li><a href="./downloads.html#cli">CLI &amp; Daemon</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-col">
+      <h4>Community</h4>
+      <ul>
+        <li><a href="https://github.com/el-j/nexusOrchestrator" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://github.com/el-j/nexusOrchestrator/issues" target="_blank" rel="noopener">Issues</a></li>
+        <li><a href="https://github.com/el-j/nexusOrchestrator/releases" target="_blank" rel="noopener">Releases</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <p>Built with Go 🔷 + Wails &nbsp;·&nbsp; MIT License &nbsp;·&nbsp; &copy; 2025 nexusOrchestrator contributors</p>
+    <p>
+      <a href="https://github.com/el-j/nexusOrchestrator/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+    </p>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+<script src="./assets/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Reference — nexusOrchestrator</title>
+  <meta name="description" content="Complete HTTP REST API and MCP endpoint documentation for nexusOrchestrator, including all task, provider, and streaming endpoints.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="./assets/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+</head>
+<body>
+
+<!-- ── Navigation ────────────────────────────────────────────── -->
+<nav class="navbar" role="navigation" aria-label="Main navigation">
+  <div class="navbar-inner">
+    <a href="./index.html" class="navbar-logo">nexus<span class="logo-accent">Orchestrator</span></a>
+    <ul class="navbar-nav" role="list">
+      <li><a href="./index.html">Home</a></li>
+      <li><a href="./architecture.html">Architecture</a></li>
+      <li><a href="./downloads.html">Downloads</a></li>
+      <li><a href="./api-reference.html">API Reference</a></li>
+      <li><a href="./getting-started.html">Getting Started</a></li>
+      <li><a href="./mcp-integration.html">MCP Integration</a></li>
+    </ul>
+    <div class="navbar-actions">
+      <a href="https://github.com/el-j/nexusOrchestrator" class="nav-github" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        Star on GitHub
+      </a>
+      <a href="./downloads.html" class="nav-download">Download</a>
+    </div>
+    <button class="nav-hamburger" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobile-menu">
+  <a href="./index.html">Home</a>
+  <a href="./architecture.html">Architecture</a>
+  <a href="./downloads.html">Downloads</a>
+  <a href="./api-reference.html">API Reference</a>
+  <a href="./getting-started.html">Getting Started</a>
+  <a href="./mcp-integration.html">MCP Integration</a>
+  <div class="mobile-menu-actions">
+    <a href="https://github.com/el-j/nexusOrchestrator" class="btn btn-outline btn-sm" target="_blank" rel="noopener">GitHub</a>
+    <a href="./downloads.html" class="btn btn-primary btn-sm">Download</a>
+  </div>
+</div>
+
+<!-- ── Page Header ────────────────────────────────────────────── -->
+<header class="page-header">
+  <div class="container">
+    <div class="page-header-content">
+      <div class="page-header-breadcrumb">
+        <a href="./index.html">Home</a>
+        <span>›</span>
+        <span>API Reference</span>
+      </div>
+      <h1>API Reference</h1>
+      <p>Complete HTTP REST API and MCP endpoint documentation. Base URL: <code>http://localhost:9999</code> &nbsp;·&nbsp; MCP: <code>http://localhost:9998/mcp</code></p>
+    </div>
+  </div>
+</header>
+
+<!-- ── Content ────────────────────────────────────────────────── -->
+<main class="content-area">
+
+  <!-- HTTP REST API -->
+  <section class="content-section" id="http-api">
+    <h2>HTTP REST API</h2>
+    <p>All endpoints accept and return <code>application/json</code> unless stated otherwise. The API runs on port <code>9999</code> by default.</p>
+
+    <div class="callout callout-note mt-3">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-content">
+        <p><strong>Base URL:</strong> <code>http://localhost:9999</code> &nbsp;—&nbsp; Override the port with the <code>NEXUS_HTTP_PORT</code> environment variable.</p>
+      </div>
+    </div>
+
+    <!-- Tasks -->
+    <h3 style="margin-top: 2.5rem;" id="tasks">Tasks</h3>
+
+    <!-- POST /api/tasks -->
+    <div class="endpoint-card animate-on-scroll">
+      <div class="endpoint-header">
+        <span class="method-badge method-post">POST</span>
+        <span class="endpoint-path">/api/tasks</span>
+        <span class="endpoint-desc">Submit a new code-generation task</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-panel">
+          <h4>Request Body</h4>
+          <pre><code class="language-json">{
+  "projectPath": "/path/to/project",
+  "targetFile":  "output.go",
+  "instruction": "Write a function that sorts strings",
+  "contextFiles": ["main.go", "utils.go"],
+  "modelId":      "codellama",
+  "providerHint": "LM Studio",
+  "command":      "execute"
+}</code></pre>
+          <div class="table-wrapper" style="margin-top: 1rem; border-radius: var(--radius-sm);">
+            <table style="font-size: 0.8rem;">
+              <thead><tr><th>Field</th><th>Required</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td><code>projectPath</code></td><td><span class="badge badge-red">Yes</span></td><td>Absolute path to project directory</td></tr>
+                <tr><td><code>targetFile</code></td><td><span class="badge badge-red">Yes</span></td><td>Relative path for the generated output file</td></tr>
+                <tr><td><code>instruction</code></td><td><span class="badge badge-red">Yes</span></td><td>Natural language prompt for the LLM</td></tr>
+                <tr><td><code>contextFiles</code></td><td><span class="badge badge-gray">No</span></td><td>Files to include as context</td></tr>
+                <tr><td><code>modelId</code></td><td><span class="badge badge-gray">No</span></td><td>Constrain to a specific model</td></tr>
+                <tr><td><code>providerHint</code></td><td><span class="badge badge-gray">No</span></td><td>Prefer a specific provider</td></tr>
+                <tr><td><code>command</code></td><td><span class="badge badge-gray">No</span></td><td><code>plan</code>, <code>execute</code>, or <code>auto</code> (default)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="endpoint-panel">
+          <h4>Response — <span class="badge badge-green">201 Created</span></h4>
+          <pre><code class="language-json">{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "projectPath": "/path/to/project",
+  "targetFile": "output.go",
+  "instruction": "Write a function that sorts strings",
+  "status": "QUEUED",
+  "command": "execute",
+  "createdAt": "2025-01-01T00:00:00Z",
+  "updatedAt": "2025-01-01T00:00:00Z"
+}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET /api/tasks -->
+    <div class="endpoint-card animate-on-scroll">
+      <div class="endpoint-header">
+        <span class="method-badge method-get">GET</span>
+        <span class="endpoint-path">/api/tasks</span>
+        <span class="endpoint-desc">List all pending tasks (QUEUED or PROCESSING)</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-panel">
+          <h4>Query Parameters</h4>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">None — returns all QUEUED and PROCESSING tasks.</p>
+        </div>
+        <div class="endpoint-panel">
+          <h4>Response — <span class="badge badge-green">200 OK</span></h4>
+          <pre><code class="language-json">[
+  {
+    "id": "...",
+    "status": "QUEUED",
+    "instruction": "...",
+    "projectPath": "...",
+    "createdAt": "2025-01-01T00:00:00Z"
+  }
+]</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET /api/tasks/{id} -->
+    <div class="endpoint-card animate-on-scroll">
+      <div class="endpoint-header">
+        <span class="method-badge method-get">GET</span>
+        <span class="endpoint-path">/api/tasks/<code>{id}</code></span>
+        <span class="endpoint-desc">Retrieve a single task by ID</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-panel">
+          <h4>Path Parameters</h4>
+          <p style="font-size: 0.85rem;"><code>id</code> — the UUID of the task</p>
+        </div>
+        <div class="endpoint-panel">
+          <h4>Response — <span class="badge badge-green">200 OK</span> / <span class="badge badge-red">404</span></h4>
+          <pre><code class="language-json">{
+  "id": "a1b2c3d4-...",
+  "status": "COMPLETED",
+  "logs": "func sortStrings(s []string) []string {\n  sort.Strings(s)\n  return s\n}",
+  "updatedAt": "2025-01-01T00:00:04Z"
+}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- DELETE /api/tasks/{id} -->
+    <div class="endpoint-card animate-on-scroll">
+      <div class="endpoint-header">
+        <span class="method-badge method-delete">DELETE</span>
+        <span class="endpoint-path">/api/tasks/<code>{id}</code></span>
+        <span class="endpoint-desc">Cancel a queued task</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-panel">
+          <h4>Path Parameters</h4>
+          <p style="font-size: 0.85rem;"><code>id</code> — the UUID of the task to cancel. Task must be in QUEUED state.</p>
+        </div>
+        <div class="endpoint-panel">
+          <h4>Response</h4>
+          <p style="font-size: 0.85rem;"><span class="badge badge-green">204 No Content</span> on success</p>
+          <p style="font-size: 0.85rem; margin-top: 0.5rem;"><span class="badge badge-red">404 Not Found</span> if task doesn't exist or is already in a terminal state</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET /api/tasks/{id}/stream -->
+    <div class="endpoint-card animate-on-scroll">
+      <div class="endpoint-header">
+        <span class="method-badge method-get">GET</span>
+        <span class="endpoint-path">/api/tasks/<code>{id}</code>/stream</span>
+        <span class="endpoint-desc">Stream task status updates via Server-Sent Events</span>
+        <span class="badge badge-cyan">SSE</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-panel">
+          <h4>Headers</h4>
+          <pre><code>Accept: text/event-stream
+Cache-Control: no-cache</code></pre>
+        </div>
+        <div class="endpoint-panel">
+          <h4>Event Stream</h4>
+          <pre><code>data: {"status":"PROCESSING","updatedAt":"..."}
+
+data: {"status":"COMPLETED","logs":"...","updatedAt":"..."}</code></pre>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem;">The stream closes automatically when the task reaches a terminal state.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Providers -->
+    <h3 style="margin-top: 3rem;" id="providers">Providers</h3>
+
+    <!-- GET /api/providers -->
+    <div class="endpoint-card animate-on-scroll">
+      <div class="endpoint-header">
+        <span class="method-badge method-get">GET</span>
+        <span class="endpoint-path">/api/providers</span>
+        <span class="endpoint-desc">List all registered providers with health status</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-panel">
+          <h4>No Parameters</h4>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">Returns all registered providers and their current liveness status.</p>
+        </div>
+        <div class="endpoint-panel">
+          <h4>Response — <span class="badge badge-green">200 OK</span></h4>
+          <pre><code class="language-json">[
+  {
+    "name": "LM Studio",
+    "baseUrl": "http://127.0.0.1:1234",
+    "active": true,
+    "activeModel": "codellama:latest",
+    "models": ["codellama:latest", "deepseek-coder:6.7b"]
+  },
+  {
+    "name": "Ollama",
+    "baseUrl": "http://127.0.0.1:11434",
+    "active": false
+  }
+]</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- POST /api/providers -->
+    <div class="endpoint-card animate-on-scroll">
+      <div class="endpoint-header">
+        <span class="method-badge method-post">POST</span>
+        <span class="endpoint-path">/api/providers</span>
+        <span class="endpoint-desc">Register a new LLM provider</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-panel">
+          <h4>Request Body</h4>
+          <pre><code class="language-json">{
+  "name":    "My Custom LLM",
+  "baseUrl": "http://192.168.1.100:8080",
+  "apiKey":  "optional-key",
+  "models":  ["llama3", "mistral"]
+}</code></pre>
+        </div>
+        <div class="endpoint-panel">
+          <h4>Response — <span class="badge badge-green">201 Created</span></h4>
+          <pre><code class="language-json">{
+  "name":    "My Custom LLM",
+  "baseUrl": "http://192.168.1.100:8080",
+  "active":  false
+}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- DELETE /api/providers/{name} -->
+    <div class="endpoint-card animate-on-scroll">
+      <div class="endpoint-header">
+        <span class="method-badge method-delete">DELETE</span>
+        <span class="endpoint-path">/api/providers/<code>{name}</code></span>
+        <span class="endpoint-desc">Unregister a provider</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-panel">
+          <h4>Path Parameters</h4>
+          <p style="font-size: 0.85rem;"><code>name</code> — URL-encoded provider name (e.g. <code>LM%20Studio</code>)</p>
+        </div>
+        <div class="endpoint-panel">
+          <h4>Response</h4>
+          <p style="font-size: 0.85rem;"><span class="badge badge-green">204 No Content</span> on success</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Health -->
+    <h3 style="margin-top: 3rem;" id="health">Health &amp; Utilities</h3>
+
+    <div class="endpoint-card animate-on-scroll">
+      <div class="endpoint-header">
+        <span class="method-badge method-get">GET</span>
+        <span class="endpoint-path">/health</span>
+        <span class="endpoint-desc">Daemon health check</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-panel">
+          <h4>No Parameters</h4>
+        </div>
+        <div class="endpoint-panel">
+          <h4>Response — <span class="badge badge-green">200 OK</span></h4>
+          <pre><code class="language-json">{"status": "ok"}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="endpoint-card animate-on-scroll">
+      <div class="endpoint-header">
+        <span class="method-badge method-get">GET</span>
+        <span class="endpoint-path">/api/session/<code>{projectPath}</code></span>
+        <span class="endpoint-desc">Get conversation history for a project</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="endpoint-panel">
+          <h4>Path Parameters</h4>
+          <p style="font-size: 0.85rem;"><code>projectPath</code> — base64-encoded absolute project path</p>
+        </div>
+        <div class="endpoint-panel">
+          <h4>Response — <span class="badge badge-green">200 OK</span></h4>
+          <pre><code class="language-json">[
+  {"role": "user",      "content": "Write a sort function"},
+  {"role": "assistant", "content": "func Sort(...)..."}
+]</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- MCP API -->
+  <section class="content-section" id="mcp-api">
+    <h2>MCP Server API</h2>
+    <p>The MCP server runs on port <code>9998</code> and implements JSON-RPC 2.0. It exposes six tools compatible with Claude Desktop and any MCP client.</p>
+
+    <div class="callout callout-note mt-3">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-content">
+        <p><strong>MCP Endpoint:</strong> <code>http://localhost:9998/mcp</code> — See the <a href="./mcp-integration.html">MCP Integration page</a> for Claude Desktop configuration.</p>
+      </div>
+    </div>
+
+    <div class="table-wrapper mt-4 animate-on-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Tool</th>
+            <th>Description</th>
+            <th>Required Args</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>submit_task</code></td>
+            <td>Submit a code-generation task with project path, target file, and instruction</td>
+            <td><code>projectPath</code>, <code>targetFile</code>, <code>instruction</code></td>
+          </tr>
+          <tr>
+            <td><code>get_task</code></td>
+            <td>Retrieve the status and output of a task by its ID</td>
+            <td><code>id</code></td>
+          </tr>
+          <tr>
+            <td><code>get_queue</code></td>
+            <td>List all pending (QUEUED/PROCESSING) tasks in the queue</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td><code>cancel_task</code></td>
+            <td>Cancel a queued task before it is processed</td>
+            <td><code>id</code></td>
+          </tr>
+          <tr>
+            <td><code>get_providers</code></td>
+            <td>List all registered LLM providers and their health status</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td><code>health</code></td>
+            <td>Check if the orchestrator daemon is running and responsive</td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- submit_task example -->
+    <h3 style="margin-top: 2.5rem;">Example: submit_task</h3>
+    <div class="grid-2 mt-3">
+      <div class="animate-on-scroll">
+        <div class="code-panel">
+          <div class="code-panel-header">
+            <span class="code-panel-title">Request</span>
+            <span class="code-panel-lang">JSON-RPC 2.0</span>
+          </div>
+          <pre><code class="language-json">{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "submit_task",
+    "arguments": {
+      "projectPath": "/path/to/project",
+      "targetFile":  "handler.go",
+      "instruction": "Add error handling to the HTTP handler",
+      "command":     "execute"
+    }
+  }
+}</code></pre>
+        </div>
+      </div>
+      <div class="animate-on-scroll delay-1">
+        <div class="code-panel">
+          <div class="code-panel-header">
+            <span class="code-panel-title">Response</span>
+            <span class="code-panel-lang">JSON-RPC 2.0</span>
+          </div>
+          <pre><code class="language-json">{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"id\":\"abc-123\",\"status\":\"QUEUED\"}"
+      }
+    ]
+  }
+}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- get_task example -->
+    <h3 style="margin-top: 2.5rem;">Example: get_task</h3>
+    <div class="grid-2 mt-3">
+      <div class="animate-on-scroll">
+        <div class="code-panel">
+          <div class="code-panel-header">
+            <span class="code-panel-title">Request</span>
+            <span class="code-panel-lang">JSON-RPC 2.0</span>
+          </div>
+          <pre><code class="language-json">{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "get_task",
+    "arguments": {
+      "id": "abc-123"
+    }
+  }
+}</code></pre>
+        </div>
+      </div>
+      <div class="animate-on-scroll delay-1">
+        <div class="code-panel">
+          <div class="code-panel-header">
+            <span class="code-panel-title">Response</span>
+            <span class="code-panel-lang">JSON-RPC 2.0</span>
+          </div>
+          <pre><code class="language-json">{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"id\":\"abc-123\",\"status\":\"COMPLETED\",\"logs\":\"...\"}"
+      }
+    ]
+  }
+}</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Environment Variables -->
+  <section class="content-section" id="env-vars">
+    <h2>Environment Variables</h2>
+
+    <div class="table-wrapper mt-4 animate-on-scroll">
+      <table class="env-table">
+        <thead>
+          <tr>
+            <th>Variable</th>
+            <th>Default</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>NEXUS_HTTP_PORT</code></td>
+            <td><code>9999</code></td>
+            <td>HTTP API and dashboard port</td>
+          </tr>
+          <tr>
+            <td><code>NEXUS_MCP_PORT</code></td>
+            <td><code>9998</code></td>
+            <td>MCP JSON-RPC server port</td>
+          </tr>
+          <tr>
+            <td><code>NEXUS_DB_PATH</code></td>
+            <td><code>~/.nexus/sessions.db</code></td>
+            <td>SQLite database path</td>
+          </tr>
+          <tr>
+            <td><code>NEXUS_LOG_LEVEL</code></td>
+            <td><code>info</code></td>
+            <td>Log verbosity: <code>debug</code>, <code>info</code>, <code>warn</code>, <code>error</code></td>
+          </tr>
+          <tr>
+            <td><code>OPENAI_API_KEY</code></td>
+            <td>—</td>
+            <td>Enables OpenAI provider</td>
+          </tr>
+          <tr>
+            <td><code>ANTHROPIC_API_KEY</code></td>
+            <td>—</td>
+            <td>Enables Anthropic provider</td>
+          </tr>
+          <tr>
+            <td><code>GITHUB_TOKEN</code></td>
+            <td>—</td>
+            <td>Enables GitHub Copilot provider</td>
+          </tr>
+          <tr>
+            <td><code>NEXUS_CONTEXT_LIMIT</code></td>
+            <td><code>128000</code></td>
+            <td>Default token limit for context guard</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<!-- ── Footer ────────────────────────────────────────────────── -->
+<footer class="footer" role="contentinfo">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <span class="footer-logo">nexus<span class="logo-accent">Orchestrator</span></span>
+      <p class="footer-tagline">Local AI task orchestration with multi-provider routing, session memory, and MCP support.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Docs</h4>
+      <ul>
+        <li><a href="./getting-started.html">Getting Started</a></li>
+        <li><a href="./architecture.html">Architecture</a></li>
+        <li><a href="./api-reference.html">API Reference</a></li>
+        <li><a href="./mcp-integration.html">MCP Integration</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Download</h4>
+      <ul>
+        <li><a href="./downloads.html">All Releases</a></li>
+        <li><a href="./downloads.html#desktop">Desktop App</a></li>
+        <li><a href="./downloads.html#cli">CLI &amp; Daemon</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Community</h4>
+      <ul>
+        <li><a href="https://github.com/el-j/nexusOrchestrator" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://github.com/el-j/nexusOrchestrator/issues" target="_blank" rel="noopener">Issues</a></li>
+        <li><a href="https://github.com/el-j/nexusOrchestrator/releases" target="_blank" rel="noopener">Releases</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>Built with Go 🔷 + Wails &nbsp;·&nbsp; MIT License &nbsp;·&nbsp; &copy; 2025 nexusOrchestrator contributors</p>
+    <p><a href="https://github.com/el-j/nexusOrchestrator/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></p>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+<script src="./assets/js/main.js"></script>
+</body>
+</html>
