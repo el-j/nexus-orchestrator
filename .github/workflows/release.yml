@@ -19,9 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.24"
 
@@ -100,13 +100,13 @@ jobs:
             static_flags: ""
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.24"
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -157,7 +157,7 @@ jobs:
           fi
 
       - name: Upload archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: nexus-orchestrator-${{ matrix.os }}-${{ matrix.arch }}.${{ matrix.ext }}
           path: nexus-orchestrator-${{ matrix.os }}-${{ matrix.arch }}.${{ matrix.ext }}
@@ -204,13 +204,13 @@ jobs:
             wails_tags: "webkit2_41"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.24"
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -252,102 +252,7 @@ jobs:
         run: |
           Compress-Archive -Path "build/bin/*" -DestinationPath "${{ matrix.archive_name }}.zip"
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.archive_name }}.${{ matrix.archive_ext }}
-          path: ${{ matrix.archive_name }}.${{ matrix.archive_ext }}
-
-  build-desktop:
-    name: Build Desktop ${{ matrix.os }}-${{ matrix.arch }}
-    needs: test
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: darwin
-            arch: arm64
-            runner: macos-latest
-            platform: darwin/arm64
-            archive_ext: tar.gz
-            archive_name: nexusOrchestrator-desktop-darwin-arm64
-            wails_tags: ""
-
-          - os: darwin
-            arch: amd64
-            runner: macos-13
-            platform: darwin/amd64
-            archive_ext: tar.gz
-            archive_name: nexusOrchestrator-desktop-darwin-amd64
-            wails_tags: ""
-
-          - os: windows
-            arch: amd64
-            runner: windows-latest
-            platform: windows/amd64
-            archive_ext: zip
-            archive_name: nexusOrchestrator-desktop-windows-amd64
-            wails_tags: ""
-
-          - os: linux
-            arch: amd64
-            runner: ubuntu-latest
-            platform: linux/amd64
-            archive_ext: tar.gz
-            archive_name: nexusOrchestrator-desktop-linux-amd64
-            wails_tags: "webkit2_41"
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.24"
-
-      - uses: actions/cache@v4
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-go-
-
-      - name: Install Linux dependencies
-        if: matrix.os == 'linux'
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev pkg-config
-
-      - name: Install Wails CLI
-        shell: bash
-        run: |
-          go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
-
-      - name: Build desktop app
-        shell: bash
-        env:
-          CGO_ENABLED: "1"
-        run: |
-          VERSION="${GITHUB_REF_NAME:-dev}"
-          EXTRA_TAGS="${{ matrix.wails_tags }}"
-          TAGS_FLAG=${EXTRA_TAGS:+"-tags ${EXTRA_TAGS}"}
-          wails build -platform ${{ matrix.platform }} ${TAGS_FLAG} -ldflags "-s -w -X main.version=${VERSION}"
-
-      - name: Package (tar.gz)
-        if: matrix.archive_ext == 'tar.gz'
-        shell: bash
-        run: |
-          cd build/bin
-          tar czf "../../${{ matrix.archive_name }}.tar.gz" *
-          cd ../..
-
-      - name: Package (zip)
-        if: matrix.archive_ext == 'zip'
-        shell: pwsh
-        run: |
-          Compress-Archive -Path "build/bin/*" -DestinationPath "${{ matrix.archive_name }}.zip"
-
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.archive_name }}.${{ matrix.archive_ext }}
           path: ${{ matrix.archive_name }}.${{ matrix.archive_ext }}
@@ -360,7 +265,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true

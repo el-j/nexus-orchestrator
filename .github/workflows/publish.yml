@@ -26,7 +26,7 @@ jobs:
       tag: ${{ steps.check_tag.outputs.tag }}
       exists: ${{ steps.check_tag.outputs.exists }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -56,9 +56,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.24"
 
@@ -138,13 +138,13 @@ jobs:
             static_flags: ""
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.24"
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -188,7 +188,7 @@ jobs:
             tar czf "../${ARCHIVE_NAME}.tar.gz" nexus-cli${{ matrix.bin_ext }} nexus-daemon${{ matrix.bin_ext }} nexus-submit${{ matrix.bin_ext }}
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: nexus-orchestrator-${{ matrix.os }}-${{ matrix.arch }}.${{ matrix.ext }}
           path: nexus-orchestrator-${{ matrix.os }}-${{ matrix.arch }}.${{ matrix.ext }}
@@ -236,13 +236,13 @@ jobs:
             wails_tags: "webkit2_41"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.24"
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -283,7 +283,7 @@ jobs:
         run: |
           Compress-Archive -Path "build/bin/*" -DestinationPath "${{ matrix.archive_name }}.zip"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.archive_name }}.${{ matrix.archive_ext }}
           path: ${{ matrix.archive_name }}.${{ matrix.archive_ext }}
@@ -295,7 +295,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Create and push tag
         shell: bash
@@ -306,7 +306,7 @@ jobs:
           git tag -a "${TAG}" -m "Release ${TAG}"
           git push origin "${TAG}"
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
