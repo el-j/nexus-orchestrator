@@ -2,7 +2,7 @@
 layout: default
 title: Downloads
 nav_order: 2
-description: "Download NexusAI desktop app and CLI tools for macOS, Windows, and Linux"
+description: "Download nexusOrchestrator desktop app and CLI tools for macOS, Windows, and Linux"
 ---
 
 <style>
@@ -155,7 +155,7 @@ description: "Download NexusAI desktop app and CLI tools for macOS, Windows, and
 </style>
 
 <div class="dl-hero">
-  <h1>Download NexusAI</h1>
+  <h1>Download nexusOrchestrator</h1>
   <p class="subtitle">Get the desktop app or CLI tools for your platform</p>
   <div class="dl-detect" id="os-detect">
     Detecting your platform…
@@ -175,7 +175,7 @@ Full GUI with built-in HTTP API and MCP server. Recommended for most users.
     <div class="dl-platform">macOS</div>
     <div class="dl-arch">Apple Silicon (M1/M2/M3/M4)</div>
     <div class="dl-size">~15 MB</div>
-    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/NexusAI-darwin-arm64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-darwin-arm64.tar.gz">Download .tar.gz</a>
   </div>
 
   <div class="dl-card" data-os="mac-intel">
@@ -183,7 +183,7 @@ Full GUI with built-in HTTP API and MCP server. Recommended for most users.
     <div class="dl-platform">macOS</div>
     <div class="dl-arch">Intel (x86_64)</div>
     <div class="dl-size">~15 MB</div>
-    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/NexusAI-darwin-amd64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-darwin-amd64.tar.gz">Download .tar.gz</a>
   </div>
 
   <div class="dl-card" data-os="win">
@@ -191,7 +191,7 @@ Full GUI with built-in HTTP API and MCP server. Recommended for most users.
     <div class="dl-platform">Windows</div>
     <div class="dl-arch">64-bit (x86_64)</div>
     <div class="dl-size">~15 MB</div>
-    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/NexusAI-windows-amd64.zip">Download .zip</a>
+    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-windows-amd64.zip">Download .zip</a>
   </div>
 
   <div class="dl-card" data-os="linux">
@@ -199,7 +199,7 @@ Full GUI with built-in HTTP API and MCP server. Recommended for most users.
     <div class="dl-platform">Linux</div>
     <div class="dl-arch">64-bit (x86_64)</div>
     <div class="dl-size">~15 MB</div>
-    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/NexusAI-linux-amd64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-linux-amd64.tar.gz">Download .tar.gz</a>
   </div>
 
 </div>
@@ -279,7 +279,7 @@ curl -sSfLO https://github.com/el-j/nexusOrchestrator/releases/latest/download/S
 # 2. Verify your archive (example for macOS Apple Silicon desktop)
 shasum -a 256 -c SHA256SUMS.txt --ignore-missing
 # or check a specific file:
-shasum -a 256 NexusAI-darwin-arm64.tar.gz
+shasum -a 256 nexusOrchestrator-darwin-arm64.tar.gz
 ```
 
 On Linux, use `sha256sum` instead of `shasum -a 256`:
@@ -291,7 +291,7 @@ sha256sum -c SHA256SUMS.txt --ignore-missing
 On Windows (PowerShell):
 
 ```powershell
-Get-FileHash .\NexusAI-windows-amd64.zip -Algorithm SHA256
+Get-FileHash .\nexusOrchestrator-windows-amd64.zip -Algorithm SHA256
 # Compare the output hash against the value in SHA256SUMS.txt or SHA256SUMS-desktop.txt
 ```
 

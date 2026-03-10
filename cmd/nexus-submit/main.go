@@ -1,4 +1,4 @@
-// Command nexus-submit submits task files to a running NexusAI daemon for LLM code generation.
+// Command nexus-submit submits task files to a running nexusOrchestrator daemon for LLM code generation.
 package main
 
 import (

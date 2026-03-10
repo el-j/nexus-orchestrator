@@ -67,5 +67,5 @@ func (a *App) GetProviderModels(providerName string) ([]string, error) {
 
 // Greet is the default Wails example method — kept for scaffolding compatibility.
 func (a *App) Greet(name string) string {
-	return fmt.Sprintf("Hello, %s! NexusAI is running.", name)
+	return fmt.Sprintf("Hello, %s! nexusOrchestrator is running.", name)
 }

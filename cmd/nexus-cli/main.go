@@ -1,5 +1,5 @@
 // Package main is the entry point for the nexus CLI binary.
-// It connects to a running NexusAI daemon via the HTTP API.
+// It connects to a running nexusOrchestrator daemon via the HTTP API.
 package main
 
 import (
@@ -29,7 +29,7 @@ func main() {
 	}
 }
 
-// remoteOrchestrator forwards calls to the running NexusAI HTTP API.
+// remoteOrchestrator forwards calls to the running nexusOrchestrator HTTP API.
 type remoteOrchestrator struct{ baseURL string }
 
 func (r *remoteOrchestrator) SubmitTask(task domain.Task) (string, error) {

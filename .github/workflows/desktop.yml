@@ -27,32 +27,32 @@ jobs:
             runner: macos-latest
             platform: darwin/arm64
             archive_ext: tar.gz
-            bin_path: build/bin/NexusAI.app
-            archive_name: NexusAI-darwin-arm64
+            bin_path: build/bin/nexusOrchestrator.app
+            archive_name: nexusOrchestrator-darwin-arm64
 
           - os: darwin
             arch: amd64
             runner: macos-latest
             platform: darwin/amd64
             archive_ext: tar.gz
-            bin_path: build/bin/NexusAI.app
-            archive_name: NexusAI-darwin-amd64
+            bin_path: build/bin/nexusOrchestrator.app
+            archive_name: nexusOrchestrator-darwin-amd64
 
           - os: windows
             arch: amd64
             runner: windows-latest
             platform: windows/amd64
             archive_ext: zip
-            bin_path: build/bin/NexusAI.exe
-            archive_name: NexusAI-windows-amd64
+            bin_path: build/bin/nexusOrchestrator.exe
+            archive_name: nexusOrchestrator-windows-amd64
 
           - os: linux
             arch: amd64
             runner: ubuntu-latest
             platform: linux/amd64
             archive_ext: tar.gz
-            bin_path: build/bin/NexusAI
-            archive_name: NexusAI-linux-amd64
+            bin_path: build/bin/nexusOrchestrator
+            archive_name: nexusOrchestrator-linux-amd64
 
     steps:
       - uses: actions/checkout@v4
@@ -123,7 +123,7 @@ jobs:
       - name: Generate checksums
         run: |
           cd artifacts
-          sha256sum NexusAI-*.* > ../SHA256SUMS-desktop.txt
+          sha256sum nexusOrchestrator-*.* > ../SHA256SUMS-desktop.txt
           cd ..
           mv artifacts/* .
 
@@ -133,6 +133,6 @@ jobs:
           tag_name: ${{ github.ref_name }}
           generate_release_notes: false
           files: |
-            NexusAI-*.tar.gz
-            NexusAI-*.zip
+            nexusOrchestrator-*.tar.gz
+            nexusOrchestrator-*.zip
             SHA256SUMS-desktop.txt

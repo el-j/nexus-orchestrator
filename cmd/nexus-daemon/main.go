@@ -1,5 +1,5 @@
 // Package main is the entry point for the nexus-daemon binary.
-// It runs the full NexusAI orchestration engine without the desktop GUI,
+// It runs the full nexusOrchestrator orchestration engine without the desktop GUI,
 // suitable for headless server environments or automated workflows.
 package main
 
@@ -74,7 +74,7 @@ func main() {
 		log.Printf("daemon: httpapi: %v", err)
 	}
 
-	fmt.Println("NexusAI daemon shutting down.")
+	fmt.Println("nexusOrchestrator daemon shutting down.")
 }
 
 // buildProviders assembles all configured LLM adapters.

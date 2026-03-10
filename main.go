@@ -1,4 +1,4 @@
-// Command nexus-orchestrator is the NexusAI desktop application.
+// Command nexus-orchestrator is the nexusOrchestrator desktop application.
 // It runs a native GUI via Wails with an embedded HTTP API on :9999 and MCP server on :9998.
 package main
 
@@ -80,7 +80,7 @@ func main() {
 
 	// 5. Launch Wails desktop window
 	if err := wails.Run(&options.App{
-		Title:  "NexusAI",
+		Title:  "nexusOrchestrator",
 		Width:  1024,
 		Height: 768,
 		AssetServer: &assetserver.Options{

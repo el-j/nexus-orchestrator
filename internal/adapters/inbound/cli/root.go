@@ -1,4 +1,4 @@
-// Package cli provides the Cobra-based CLI inbound adapter for NexusAI.
+// Package cli provides the Cobra-based CLI inbound adapter for nexusOrchestrator.
 // It is a thin HTTP client that forwards commands to the daemon API.
 package cli
 
@@ -16,8 +16,8 @@ import (
 func NewRootCmd(orch ports.Orchestrator) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "nexus",
-		Short: "NexusAI — Local-first AI orchestrator CLI",
-		Long:  "Control the NexusAI daemon: list the queue, submit tasks, and check provider status.",
+		Short: "nexusOrchestrator — Local-first AI orchestrator CLI",
+		Long:  "Control the nexusOrchestrator daemon: list the queue, submit tasks, and check provider status.",
 	}
 
 	root.AddCommand(newQueueCmd(orch))
