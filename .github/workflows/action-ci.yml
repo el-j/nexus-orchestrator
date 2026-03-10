@@ -13,6 +13,9 @@ on:
       - 'github-action/**'
       - '!github-action/dist/**'
 
+permissions:
+  contents: read
+
 concurrency:
   group: action-ci-${{ github.ref }}
   cancel-in-progress: true
@@ -22,6 +25,8 @@ jobs:
     name: Typecheck + Unit Tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: github-action
@@ -48,6 +53,8 @@ jobs:
     name: Verify dist is up to date
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: github-action

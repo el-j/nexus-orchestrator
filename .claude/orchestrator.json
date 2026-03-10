@@ -5,8 +5,8 @@
     "nextTaskId": 118,
     "nextPlanId": 16
   },
-  "activePlanId": "PLAN-015",
-  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix). PLAN-013 completed (update CI to latest action versions). PLAN-014 completed (unified publish.yml pipeline, fixed GITHUB_TOKEN cross-trigger bug, fixed CLI/desktop artifact naming collision, updated downloads.md).",
+  "activePlanId": null,
+  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix). PLAN-013 completed (update CI to latest action versions). PLAN-014 completed (unified publish.yml pipeline, fixed GITHUB_TOKEN cross-trigger bug, fixed CLI/desktop artifact naming collision, updated downloads.md). PLAN-015 completed (production-grade Node20 GitHub Action with TypeScript, built-in agent identity loading from el-j/agency-agents, 24 unit tests, action-ci.yml CI workflow).",
   "plans": {
     "PLAN-001": {
       "id": "PLAN-001",
@@ -246,7 +246,7 @@
     "PLAN-015": {
       "id": "PLAN-015",
       "goal": "Production-grade GitHub Action (Node20/TypeScript) with built-in agent identity loading from el-j/agency-agents, unit tests, CI workflow, and updated docs",
-      "status": "in-progress",
+      "status": "completed",
       "createdAt": "2026-03-10T22:43:07.000Z",
       "taskIds": [
         "TASK-112",
@@ -255,7 +255,8 @@
         "TASK-115",
         "TASK-116",
         "TASK-117"
-      ]
+      ],
+      "completedAt": "2026-03-10T22:43:07.000Z"
     }
   },
   "tasks": {
@@ -1710,7 +1711,7 @@
       "planId": "PLAN-015",
       "title": "Scaffold github-action/ TypeScript project (package.json, tsconfig, types.ts)",
       "role": "engineering",
-      "status": "todo",
+      "status": "done",
       "deps": []
     },
     "TASK-113": {
@@ -1718,7 +1719,7 @@
       "planId": "PLAN-015",
       "title": "Implement action TypeScript source: installer, daemon, agents, submit, index",
       "role": "engineering",
-      "status": "todo",
+      "status": "done",
       "deps": [
         "TASK-112"
       ]
@@ -1728,7 +1729,7 @@
       "planId": "PLAN-015",
       "title": "Write unit tests for agents.ts and submit.ts with jest/ts-jest",
       "role": "testing",
-      "status": "todo",
+      "status": "done",
       "deps": [
         "TASK-113"
       ]
@@ -1738,7 +1739,7 @@
       "planId": "PLAN-015",
       "title": "Build dist/index.js via @vercel/ncc, update root action.yml to node20",
       "role": "engineering",
-      "status": "todo",
+      "status": "done",
       "deps": [
         "TASK-113"
       ]
@@ -1748,7 +1749,7 @@
       "planId": "PLAN-015",
       "title": "Add .github/workflows/action-ci.yml \u2014 lint, typecheck, build-check CI",
       "role": "engineering",
-      "status": "todo",
+      "status": "done",
       "deps": [
         "TASK-115"
       ]
@@ -1758,7 +1759,7 @@
       "planId": "PLAN-015",
       "title": "Update McpIntegrationView docs with agent input examples",
       "role": "frontend",
-      "status": "todo",
+      "status": "done",
       "deps": [
         "TASK-115"
       ]
