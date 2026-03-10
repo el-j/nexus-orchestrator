@@ -1,7 +1,89 @@
 /**
  * nexusOrchestrator — main.js
  * Shared frontend JS for all documentation pages
+ * Self-contained: no CDN dependencies at runtime.
  */
+
+/* ── Minimal Syntax Highlighter ─────────────────────────────── */
+/**
+ * Very lightweight syntax highlighter for bash, json, go, powershell.
+ * Applied to all <code class="language-*"> blocks on DOMContentLoaded.
+ */
+(function initHighlight() {
+  const escHtml = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  /** Wrap matched text with a span of the given class. */
+  const span = (cls, txt) => `<span class="${cls}">${txt}</span>`;
+
+  function highlightBash(code) {
+    return code
+      .replace(/(&lt;[^&]*&gt;)/g, (_, m) => span('hl-type', m))
+      .replace(/(#.*)$/gm, (_, c) => span('hl-comment', c))
+      .replace(/\b(export|source|if|then|fi|else|elif|for|do|done|while|function|return|echo|set|unset|cd|mkdir|chmod|curl|git|go|wails|docker|sudo|apt|brew|open|cat|grep|sed|awk|kill|pkill|jq|openssl|shasum|sha256sum|Get-FileHash|Write-Host)\b/g,
+        (_, k) => span('hl-keyword', k))
+      .replace(/(["'`])([^"'`]*)\1/g,
+        (_, q, c) => span('hl-string', escHtml(q + c + q)))
+      .replace(/\b(\d+)\b/g, (_, n) => span('hl-number', n));
+  }
+
+  function highlightJson(code) {
+    return code
+      .replace(/(["'])([^"']*)\1(\s*:)/g,
+        (_, q, k, colon) => span('hl-property', q + k + q) + colon)
+      .replace(/:(\s*)(["'])([^"']*)\2/g,
+        (_, sp, q, v) => ':' + sp + span('hl-string', q + v + q))
+      .replace(/:\s*(true|false|null)\b/g,
+        (m, v) => m.replace(v, span('hl-keyword', v)))
+      .replace(/:\s*(-?\d+\.?\d*)/g,
+        (m, n) => m.replace(n, span('hl-number', n)));
+  }
+
+  function highlightGo(code) {
+    return code
+      .replace(/(\/\/.*$)/gm, (_, c) => span('hl-comment', c))
+      .replace(/\b(package|import|func|type|struct|interface|var|const|return|if|else|for|range|switch|case|default|go|defer|chan|map|error|string|int|int64|bool|context\.Context|error)\b/g,
+        (_, k) => span('hl-keyword', k))
+      .replace(/(["'`])([^"'`]*)\1/g,
+        (_, q, c) => span('hl-string', q + c + q))
+      .replace(/\b([A-Z][a-zA-Z0-9]+)\b/g,
+        (_, t) => span('hl-type', t))
+      .replace(/\b(\d+)\b/g, (_, n) => span('hl-number', n));
+  }
+
+  function highlightPowershell(code) {
+    return code
+      .replace(/(#.*)$/gm, (_, c) => span('hl-comment', c))
+      .replace(/\b(Get-FileHash|Write-Host|param|function|return|if|else|foreach|while|do)\b/g,
+        (_, k) => span('hl-keyword', k))
+      .replace(/\$[a-zA-Z_][a-zA-Z0-9_]*/g, v => span('hl-variable', v))
+      .replace(/(["'])([^"']*)\1/g,
+        (_, q, c) => span('hl-string', q + c + q))
+      .replace(/\b(\d+)\b/g, (_, n) => span('hl-number', n));
+  }
+
+  const highlighters = {
+    bash: highlightBash,
+    shell: highlightBash,
+    sh: highlightBash,
+    json: highlightJson,
+    go: highlightGo,
+    powershell: highlightPowershell,
+    ps1: highlightPowershell,
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('code[class]').forEach(el => {
+      const cls = Array.from(el.classList).find(c => c.startsWith('language-'));
+      if (!cls) return;
+      const lang = cls.replace('language-', '');
+      const fn = highlighters[lang];
+      if (!fn) return;
+      // Already escaped by browser; work with textContent then re-set innerHTML
+      const raw = escHtml(el.textContent);
+      el.innerHTML = fn(raw);
+    });
+  });
+})();
 
 /* ── Navigation ─────────────────────────────────────────────── */
 (function initNav() {

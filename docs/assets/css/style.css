@@ -1898,3 +1898,16 @@ pre[class*="language-"] {
 @media (max-width: 768px) {
   .qs-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Built-in Syntax Highlight (no CDN) ────────────────────── */
+/* Applied by docs/assets/js/main.js highlight() */
+.hl-keyword  { color: var(--accent-light); }
+.hl-string   { color: #a3e635; }
+.hl-comment  { color: #6b7280; font-style: italic; }
+.hl-number   { color: #f87171; }
+.hl-func     { color: var(--accent-cyan); }
+.hl-type     { color: #fbbf24; }
+.hl-variable { color: var(--text-primary); }
+.hl-property { color: var(--accent-cyan); }
+.hl-value    { color: #f87171; }
+.hl-punct    { color: var(--text-secondary); }
