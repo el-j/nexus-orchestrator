@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"nexus-ai/internal/core/domain"
+	"nexus-orchestrator/internal/core/domain"
 
 	"github.com/google/uuid"
 )

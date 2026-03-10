@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"nexus-ai/internal/adapters/inbound/cli"
-	"nexus-ai/internal/core/domain"
-	"nexus-ai/internal/core/ports"
+	"nexus-orchestrator/internal/adapters/inbound/cli"
+	"nexus-orchestrator/internal/core/domain"
+	"nexus-orchestrator/internal/core/ports"
 )
 
 // mockOrchestrator implements ports.Orchestrator with configurable responses.

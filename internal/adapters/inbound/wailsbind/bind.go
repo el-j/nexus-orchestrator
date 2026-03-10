@@ -1,8 +1,8 @@
 package wailsbind
 
 import (
-	"nexus-ai/internal/core/domain"
-	"nexus-ai/internal/core/ports"
+	"nexus-orchestrator/internal/core/domain"
+	"nexus-orchestrator/internal/core/ports"
 )
 
 // NexusApp exposes orchestrator methods to the Wails/JS frontend.

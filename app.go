@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"nexus-ai/internal/core/domain"
-	"nexus-ai/internal/core/ports"
+	"nexus-orchestrator/internal/core/domain"
+	"nexus-orchestrator/internal/core/ports"
 )
 
 // App is the Wails application struct. Its exported methods are bound to the

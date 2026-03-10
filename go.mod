@@ -1,4 +1,4 @@
-module nexus-ai
+module nexus-orchestrator
 
 go 1.24.13
 

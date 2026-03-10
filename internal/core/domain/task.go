@@ -17,6 +17,10 @@ const (
 	StatusCompleted  TaskStatus = "COMPLETED"
 	StatusFailed     TaskStatus = "FAILED"
 	StatusCancelled  TaskStatus = "CANCELLED"
+	// StatusTooLarge is set when the assembled prompt exceeds the loaded model's
+	// context window.  The task is never sent to the LLM; the user should shorten
+	// the instruction or reduce the number of context files.
+	StatusTooLarge TaskStatus = "TOO_LARGE"
 )
 
 // Task is the central domain entity that represents a single unit of AI work.

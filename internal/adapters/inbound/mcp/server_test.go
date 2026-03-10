@@ -8,9 +8,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"nexus-ai/internal/adapters/inbound/mcp"
-	"nexus-ai/internal/core/domain"
-	"nexus-ai/internal/core/ports"
+	"nexus-orchestrator/internal/adapters/inbound/mcp"
+	"nexus-orchestrator/internal/core/domain"
+	"nexus-orchestrator/internal/core/ports"
 )
 
 // --- Mock orchestrator ---

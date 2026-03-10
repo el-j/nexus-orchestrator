@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"nexus-ai/internal/core/ports"
+	"nexus-orchestrator/internal/core/ports"
 
 	"github.com/spf13/cobra"
 )

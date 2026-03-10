@@ -5,16 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
-	"nexus-ai/internal/core/domain"
+	"nexus-orchestrator/internal/core/domain"
 )
 
 // Adapter implements ports.LLMClient for Ollama's REST API.
 type Adapter struct {
-	baseURL    string
-	model      string
-	httpClient *http.Client
+	baseURL      string
+	model        string
+	httpClient   *http.Client
+	contextLimit int       // cached value; 0 = unknown
+	limitOnce    sync.Once // ensures the network query runs at most once
 }
 
 // NewOllamaAdapter creates an Adapter pointing at the given Ollama base URL
@@ -94,6 +97,37 @@ func (a *Adapter) GenerateCode(prompt string) (string, error) {
 		return "", fmt.Errorf("ollama: decode response: %w", err)
 	}
 	return result.Response, nil
+}
+
+// ContextLimit queries Ollama's /api/show endpoint for the model's context
+// window size. Returns 0 on any error (safe fallback — caller skips pre-flight).
+func (a *Adapter) ContextLimit() int {
+	a.limitOnce.Do(func() {
+		body, err := json.Marshal(map[string]string{"name": a.model})
+		if err != nil {
+			return
+		}
+		resp, err := a.httpClient.Post(a.baseURL+"/api/show", "application/json", bytes.NewReader(body))
+		if err != nil {
+			return
+		}
+		defer resp.Body.Close()
+		var result struct {
+			ModelInfo map[string]interface{} `json:"model_info"`
+		}
+		if json.NewDecoder(resp.Body).Decode(&result) != nil {
+			return
+		}
+		if v, ok := result.ModelInfo["llama.context_length"]; ok {
+			switch n := v.(type) {
+			case float64:
+				a.contextLimit = int(n)
+			case int:
+				a.contextLimit = n
+			}
+		}
+	})
+	return a.contextLimit
 }
 
 // Chat sends a multi-turn conversation history to Ollama using the /api/chat

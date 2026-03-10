@@ -24,7 +24,7 @@ There is a duplicate `internal/adapters/inbound/wailsbind/bind.go` that is never
 
 ## Implementation Steps
 
-1. **Verify `wailsbind/bind.go` is unused**: search for any import of `nexus-ai/internal/adapters/inbound/wailsbind` in all Go files. If confirmed unused, delete the file.
+1. **Verify `wailsbind/bind.go` is unused**: search for any import of `nexus-orchestrator/internal/adapters/inbound/wailsbind` in all Go files. If confirmed unused, delete the file.
 
 2. **Add `sessionRepo ports.SessionRepository` field** to the `App` struct in `app.go`:
    ```go

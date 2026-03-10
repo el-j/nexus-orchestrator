@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"nexus-ai/internal/adapters/outbound/fs_writer"
+	"nexus-orchestrator/internal/adapters/outbound/fs_writer"
 )
 
 func TestWriter_WriteAndRead(t *testing.T) {

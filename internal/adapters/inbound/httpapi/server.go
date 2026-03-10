@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"time"
 
-	"nexus-ai/internal/core/domain"
-	"nexus-ai/internal/core/ports"
+	"nexus-orchestrator/internal/core/domain"
+	"nexus-orchestrator/internal/core/ports"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -172,6 +172,6 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status":  "ok",
-		"service": "nexus-ai",
+		"service": "nexus-orchestrator",
 	})
 }

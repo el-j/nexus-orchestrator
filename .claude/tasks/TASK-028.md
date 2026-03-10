@@ -74,7 +74,7 @@ The WritebackClient is optional — when nil (or using NoopClient), the orchestr
 
 5. **Update all entry points** (`main.go`, `cmd/nexus-daemon/main.go`) to pass the `fs_writeback.New()` adapter:
    ```go
-   import "nexus-ai/internal/adapters/outbound/fs_writeback"
+   import "nexus-orchestrator/internal/adapters/outbound/fs_writeback"
    // ...
    wb := fs_writeback.New()
    orch, err := services.NewOrchestrator(repo, llmClient, fileWriter, sessionRepo, wb)

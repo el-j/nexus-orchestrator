@@ -82,7 +82,7 @@ The Settings page shows the current nexusOrchestrator configuration in a read-on
    `copyEnvVars` uses `navigator.clipboard.writeText(envVarsText)` with toast feedback.
 
 6. **Section "About"**:
-   - Module: `nexus-ai` (Go 1.24)
+   - Module: `nexus-orchestrator` (Go 1.24)
    - Protocol: HTTP API `:9999` + MCP JSON-RPC 2.0 `:9998`
    - Wails: v2.11.0
    - Vue: 3.x + PrimeVue 4

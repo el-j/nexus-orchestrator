@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"sync"
 
-	"nexus-ai/internal/core/ports"
+	"nexus-orchestrator/internal/core/ports"
 )
 
 // Hub manages SSE subscriber connections and broadcasts TaskEvents to all of them.

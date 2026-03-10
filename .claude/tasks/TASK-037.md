@@ -33,12 +33,12 @@ import (
     "testing"
     "time"
 
-    "nexus-ai/internal/adapters/inbound/httpapi"
-    "nexus-ai/internal/adapters/outbound/fs_writer"
-    "nexus-ai/internal/adapters/outbound/repo_sqlite"
-    "nexus-ai/internal/core/domain"
-    "nexus-ai/internal/core/ports"
-    "nexus-ai/internal/core/services"
+    "nexus-orchestrator/internal/adapters/inbound/httpapi"
+    "nexus-orchestrator/internal/adapters/outbound/fs_writer"
+    "nexus-orchestrator/internal/adapters/outbound/repo_sqlite"
+    "nexus-orchestrator/internal/core/domain"
+    "nexus-orchestrator/internal/core/ports"
+    "nexus-orchestrator/internal/core/services"
 )
 ```
 

@@ -1,6 +1,6 @@
 package services
 
-import "nexus-ai/internal/core/ports"
+import "nexus-orchestrator/internal/core/ports"
 
 // DiscoveryService probes registered LLM clients and returns the first active one.
 type DiscoveryService struct {

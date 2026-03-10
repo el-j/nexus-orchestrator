@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"nexus-ai/internal/core/domain"
-	"nexus-ai/internal/core/ports"
+	"nexus-orchestrator/internal/core/domain"
+	"nexus-orchestrator/internal/core/ports"
 )
 
 // JSON-RPC 2.0 error codes.

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"nexus-ai/internal/core/domain"
+	"nexus-orchestrator/internal/core/domain"
 
 	_ "github.com/mattn/go-sqlite3"
 )

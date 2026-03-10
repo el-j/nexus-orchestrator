@@ -52,7 +52,7 @@ When the orchestrator completes a task that has `SourceProjectPath` set, it need
        "path/filepath"
        "time"
 
-       "nexus-ai/internal/core/ports"
+       "nexus-orchestrator/internal/core/ports"
    )
 
    type Client struct{}

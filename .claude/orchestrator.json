@@ -1,12 +1,12 @@
 {
   "version": "2",
-  "updatedAt": "2026-03-09T12:00:00.000Z",
+  "updatedAt": "2026-03-10T00:30:00.000Z",
   "counters": {
-    "nextTaskId": 39,
-    "nextPlanId": 4
+    "nextTaskId": 44,
+    "nextPlanId": 5
   },
-  "activePlanId": "PLAN-003",
-  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 active (orchestrator hardening + Wails GUI + writeback). PLAN-003 active (dogfood: use nexusOrchestrator to implement itself, embedded web dashboard, nexus-submit tool).",
+  "activePlanId": "PLAN-004",
+  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 active (orchestrator hardening + Wails GUI + writeback). PLAN-003 done (dogfood). PLAN-004 active (context-window guard: token pre-flight check to surface TOO_LARGE status before wasting LLM time).",
   "plans": {
     "PLAN-001": {
       "id": "PLAN-001",
@@ -70,6 +70,20 @@
         "TASK-037",
         "TASK-038"
       ]
+    },
+    "PLAN-004": {
+      "id": "PLAN-004",
+      "goal": "Context-window guard: token pre-flight check blocks tasks that would overflow the loaded model, surfacing StatusTooLarge before wasting LLM time",
+      "status": "completed",
+      "createdAt": "2026-03-10T00:00:00.000Z",
+      "taskIds": [
+        "TASK-039",
+        "TASK-040",
+        "TASK-041",
+        "TASK-042",
+        "TASK-043"
+      ],
+      "completedAt": "2026-03-10T00:30:00.000Z"
     }
   },
   "tasks": {
@@ -526,7 +540,9 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-003",
-      "dependencies": ["TASK-032"],
+      "dependencies": [
+        "TASK-032"
+      ],
       "createdAt": "2026-03-09T15:00:00.000Z",
       "updatedAt": "2026-03-10T00:30:00.000Z",
       "startedAt": "2026-03-10T00:00:00.000Z",
@@ -538,7 +554,9 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-003",
-      "dependencies": ["TASK-032"],
+      "dependencies": [
+        "TASK-032"
+      ],
       "createdAt": "2026-03-09T15:00:00.000Z",
       "updatedAt": "2026-03-10T00:30:00.000Z",
       "startedAt": "2026-03-10T00:00:00.000Z",
@@ -562,7 +580,9 @@
       "status": "done",
       "role": "planning",
       "planId": "PLAN-003",
-      "dependencies": ["TASK-033"],
+      "dependencies": [
+        "TASK-033"
+      ],
       "createdAt": "2026-03-09T15:00:00.000Z",
       "updatedAt": "2026-03-10T00:30:00.000Z",
       "startedAt": "2026-03-10T00:00:00.000Z",
@@ -574,7 +594,10 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-003",
-      "dependencies": ["TASK-033", "TASK-034"],
+      "dependencies": [
+        "TASK-033",
+        "TASK-034"
+      ],
       "createdAt": "2026-03-09T15:00:00.000Z",
       "updatedAt": "2026-03-10T00:30:00.000Z",
       "startedAt": "2026-03-10T00:00:00.000Z",
@@ -586,10 +609,84 @@
       "status": "done",
       "role": "planning",
       "planId": "PLAN-003",
-      "dependencies": ["TASK-034", "TASK-036"],
+      "dependencies": [
+        "TASK-034",
+        "TASK-036"
+      ],
       "createdAt": "2026-03-09T15:00:00.000Z",
       "updatedAt": "2026-03-10T00:30:00.000Z",
       "startedAt": "2026-03-10T00:00:00.000Z",
+      "completedAt": "2026-03-10T00:30:00.000Z"
+    },
+    "TASK-039": {
+      "id": "TASK-039",
+      "title": "Architecture: ContextLimit() port + StatusTooLarge domain constant",
+      "status": "done",
+      "role": "architecture",
+      "planId": "PLAN-004",
+      "dependencies": [],
+      "createdAt": "2026-03-10T00:00:00.000Z",
+      "updatedAt": "2026-03-10T00:30:00.000Z",
+      "startedAt": "2026-03-10T00:30:00.000Z",
+      "completedAt": "2026-03-10T00:30:00.000Z"
+    },
+    "TASK-040": {
+      "id": "TASK-040",
+      "title": "LM Studio adapter: ContextLimit() via /v1/models",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-004",
+      "dependencies": [
+        "TASK-039"
+      ],
+      "createdAt": "2026-03-10T00:00:00.000Z",
+      "updatedAt": "2026-03-10T00:30:00.000Z",
+      "startedAt": "2026-03-10T00:30:00.000Z",
+      "completedAt": "2026-03-10T00:30:00.000Z"
+    },
+    "TASK-041": {
+      "id": "TASK-041",
+      "title": "Ollama adapter: ContextLimit() via /api/show",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-004",
+      "dependencies": [
+        "TASK-039"
+      ],
+      "createdAt": "2026-03-10T00:00:00.000Z",
+      "updatedAt": "2026-03-10T00:30:00.000Z",
+      "startedAt": "2026-03-10T00:30:00.000Z",
+      "completedAt": "2026-03-10T00:30:00.000Z"
+    },
+    "TASK-042": {
+      "id": "TASK-042",
+      "title": "Orchestrator: pre-flight token guard + estimateTokens()",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-004",
+      "dependencies": [
+        "TASK-039"
+      ],
+      "createdAt": "2026-03-10T00:00:00.000Z",
+      "updatedAt": "2026-03-10T00:30:00.000Z",
+      "startedAt": "2026-03-10T00:30:00.000Z",
+      "completedAt": "2026-03-10T00:30:00.000Z"
+    },
+    "TASK-043": {
+      "id": "TASK-043",
+      "title": "QA: tests for token guard, StatusTooLarge, and adapter ContextLimit()",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-004",
+      "dependencies": [
+        "TASK-039",
+        "TASK-040",
+        "TASK-041",
+        "TASK-042"
+      ],
+      "createdAt": "2026-03-10T00:00:00.000Z",
+      "updatedAt": "2026-03-10T00:30:00.000Z",
+      "startedAt": "2026-03-10T00:30:00.000Z",
       "completedAt": "2026-03-10T00:30:00.000Z"
     }
   }

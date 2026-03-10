@@ -5,15 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
-	"nexus-ai/internal/core/domain"
+	"nexus-orchestrator/internal/core/domain"
 )
 
 // Adapter implements ports.LLMClient for LM Studio's OpenAI-compatible REST API.
 type Adapter struct {
-	baseURL    string
-	httpClient *http.Client
+	baseURL      string
+	httpClient   *http.Client
+	contextLimit int       // cached value; 0 = unknown
+	limitOnce    sync.Once // ensures the network query runs at most once
 }
 
 // NewLMStudioAdapter creates an Adapter pointing at the given LM Studio base URL
@@ -22,13 +25,35 @@ func NewLMStudioAdapter(baseURL string) *Adapter {
 	return &Adapter{
 		baseURL: baseURL,
 		httpClient: &http.Client{
-			Timeout: 60 * time.Second,
+			Timeout: 300 * time.Second, // large models can take 2-3 min for complex prompts
 		},
 	}
 }
 
 // ProviderName identifies this adapter.
 func (a *Adapter) ProviderName() string { return "LM Studio" }
+
+// ContextLimit returns the context-window size of the first loaded model.
+// Returns 0 if the value cannot be determined; callers must treat 0 as "unknown".
+func (a *Adapter) ContextLimit() int {
+	a.limitOnce.Do(func() {
+		resp, err := a.httpClient.Get(a.baseURL + "/models")
+		if err != nil {
+			return
+		}
+		defer resp.Body.Close()
+		var result struct {
+			Data []struct {
+				ContextLength int `json:"context_length"`
+			} `json:"data"`
+		}
+		if json.NewDecoder(resp.Body).Decode(&result) != nil || len(result.Data) == 0 {
+			return
+		}
+		a.contextLimit = result.Data[0].ContextLength
+	})
+	return a.contextLimit
+}
 
 // Ping checks whether LM Studio is reachable by hitting the /models endpoint.
 func (a *Adapter) Ping() bool {

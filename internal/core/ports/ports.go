@@ -1,6 +1,6 @@
 package ports
 
-import "nexus-ai/internal/core/domain"
+import "nexus-orchestrator/internal/core/domain"
 
 // --- Outbound Ports (Driven Adapters) ---
 
@@ -9,6 +9,10 @@ type LLMClient interface {
 	Ping() bool
 	ProviderName() string
 	GetAvailableModels() ([]string, error)
+	// ContextLimit returns the maximum number of input tokens the currently
+	// loaded model can accept.  Returns 0 if unknown; when 0, no pre-flight
+	// token check is performed.
+	ContextLimit() int
 	// GenerateCode sends a single prompt and returns generated text.
 	// Prefer Chat for multi-turn session-aware generation.
 	GenerateCode(prompt string) (string, error)

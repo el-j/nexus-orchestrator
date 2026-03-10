@@ -6,7 +6,7 @@ Full history of completed plans for the nexusOrchestrator project.
 
 ## Project
 
-**nexusOrchestrator** is a Go 1.24 application (module: `nexus-ai`) with hexagonal architecture.
+**nexusOrchestrator** is a Go 1.24 application (module: `nexus-orchestrator`) with hexagonal architecture.
 
 | Property | Value |
 |----------|-------|

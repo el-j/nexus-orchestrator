@@ -9,10 +9,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"nexus-orchestrator/internal/core/domain"
+	"nexus-orchestrator/internal/core/ports"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"nexus-ai/internal/core/domain"
-	"nexus-ai/internal/core/ports"
 )
 
 // mockOrchestrator implements ports.Orchestrator with configurable responses.
@@ -127,7 +128,7 @@ func newTestHandler(orch ports.Orchestrator) http.Handler {
 
 	r.Get("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok", "service": "nexus-ai"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok", "service": "nexus-orchestrator"})
 	})
 
 	return r
@@ -428,7 +429,7 @@ func TestGetHealth(t *testing.T) {
 	if result["status"] != "ok" {
 		t.Errorf("expected status %q, got %q", "ok", result["status"])
 	}
-	if result["service"] != "nexus-ai" {
-		t.Errorf("expected service %q, got %q", "nexus-ai", result["service"])
+	if result["service"] != "nexus-orchestrator" {
+		t.Errorf("expected service %q, got %q", "nexus-orchestrator", result["service"])
 	}
 }

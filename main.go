@@ -11,13 +11,13 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 
-	"nexus-ai/internal/adapters/inbound/httpapi"
-	"nexus-ai/internal/adapters/inbound/mcp"
-	"nexus-ai/internal/adapters/outbound/fs_writer"
-	"nexus-ai/internal/adapters/outbound/llm_lmstudio"
-	"nexus-ai/internal/adapters/outbound/llm_ollama"
-	"nexus-ai/internal/adapters/outbound/repo_sqlite"
-	"nexus-ai/internal/core/services"
+	"nexus-orchestrator/internal/adapters/inbound/httpapi"
+	"nexus-orchestrator/internal/adapters/inbound/mcp"
+	"nexus-orchestrator/internal/adapters/outbound/fs_writer"
+	"nexus-orchestrator/internal/adapters/outbound/llm_lmstudio"
+	"nexus-orchestrator/internal/adapters/outbound/llm_ollama"
+	"nexus-orchestrator/internal/adapters/outbound/repo_sqlite"
+	"nexus-orchestrator/internal/core/services"
 )
 
 //go:embed all:frontend/dist

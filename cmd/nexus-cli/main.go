@@ -10,9 +10,9 @@ import (
 	"net/url"
 	"os"
 
-	"nexus-ai/internal/adapters/inbound/cli"
-	"nexus-ai/internal/core/domain"
-	"nexus-ai/internal/core/ports"
+	"nexus-orchestrator/internal/adapters/inbound/cli"
+	"nexus-orchestrator/internal/core/domain"
+	"nexus-orchestrator/internal/core/ports"
 )
 
 func main() {

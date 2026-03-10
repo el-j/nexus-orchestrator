@@ -60,7 +60,7 @@ import (
     "net/http"
     "sync"
 
-    "nexus-ai/internal/core/ports"
+    "nexus-orchestrator/internal/core/ports"
 )
 
 // Hub manages SSE connections and broadcasts events to all subscribers.

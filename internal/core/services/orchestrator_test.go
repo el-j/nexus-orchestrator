@@ -2,12 +2,13 @@ package services_test
 
 import (
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"nexus-ai/internal/core/domain"
-	"nexus-ai/internal/core/services"
+	"nexus-orchestrator/internal/core/domain"
+	"nexus-orchestrator/internal/core/services"
 )
 
 // --- In-memory stubs ----------------------------------------------------------
@@ -314,4 +315,62 @@ func waitCompleted(t *testing.T, repo *memRepo, id string, timeout time.Duration
 		}
 	}
 	t.Fatalf("task %s did not reach COMPLETED within %s", id, timeout)
+}
+
+// --- Pre-flight context-window guard tests -----------------------------------
+
+func TestOrchestrator_PreFlight_TooLarge(t *testing.T) {
+	repo := newMemRepo()
+	// contextLimit=10 means limit-512 = -502; any non-empty instruction overflows
+	llm := &mockLLMClient{alive: true, name: "mock", code: "ok", contextLimit: 10}
+	discovery := services.NewDiscoveryService(llm)
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.SubmitTask(domain.Task{
+		Instruction: strings.Repeat("x", 200), // ~50 tokens
+	})
+	if err != nil {
+		t.Fatalf("SubmitTask: %v", err)
+	}
+
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		time.Sleep(200 * time.Millisecond)
+		saved, _ := repo.GetByID(id)
+		if saved.Status == domain.StatusTooLarge {
+			if !strings.Contains(saved.Logs, "context too large") {
+				t.Errorf("expected 'context too large' in Logs, got: %s", saved.Logs)
+			}
+			return
+		}
+		if saved.Status == domain.StatusCompleted || saved.Status == domain.StatusFailed {
+			t.Fatalf("expected StatusTooLarge but got %s (logs: %s)", saved.Status, saved.Logs)
+		}
+	}
+	t.Fatal("task did not reach StatusTooLarge within timeout")
+}
+
+func TestOrchestrator_PreFlight_NoLimitSkipsCheck(t *testing.T) {
+	repo := newMemRepo()
+	// contextLimit=0 means no pre-flight check; large instruction must still complete
+	llm := &mockLLMClient{alive: true, name: "mock", code: "package main", contextLimit: 0}
+	discovery := services.NewDiscoveryService(llm)
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, _ := orch.SubmitTask(domain.Task{Instruction: strings.Repeat("x", 10000)})
+	waitCompleted(t, repo, id, 10*time.Second)
+}
+
+func TestOrchestrator_PreFlight_WithinLimit_Completes(t *testing.T) {
+	repo := newMemRepo()
+	// contextLimit=8192 — "short instruction" is well under 8192-512=7680 tokens
+	llm := &mockLLMClient{alive: true, name: "mock", code: "ok", contextLimit: 8192}
+	discovery := services.NewDiscoveryService(llm)
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, _ := orch.SubmitTask(domain.Task{Instruction: "short instruction"})
+	waitCompleted(t, repo, id, 10*time.Second)
 }

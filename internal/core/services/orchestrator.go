@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"nexus-ai/internal/core/domain"
-	"nexus-ai/internal/core/ports"
+	"nexus-orchestrator/internal/core/domain"
+	"nexus-orchestrator/internal/core/ports"
 
 	"github.com/google/uuid"
 )
@@ -23,6 +23,7 @@ type OrchestratorService struct {
 	repo        ports.TaskRepository
 	sessionRepo ports.SessionRepository
 	broadcaster ports.EventBroadcaster // optional; nil = no event publishing
+	workCh      chan struct{} // notified when a task is enqueued; capacity 1
 	stopCh      chan struct{}
 }
 
@@ -41,6 +42,7 @@ func NewOrchestrator(
 		repo:        repo,
 		fileWriter:  writer,
 		sessionRepo: sessionRepo,
+		workCh:      make(chan struct{}, 1),
 		stopCh:      make(chan struct{}),
 	}
 	go svc.runWorker()
@@ -62,6 +64,12 @@ func (o *OrchestratorService) SubmitTask(task domain.Task) (string, error) {
 	o.mu.Lock()
 	o.queue = append(o.queue, task)
 	o.mu.Unlock()
+
+	// Wake the worker without blocking if it is already awake.
+	select {
+	case o.workCh <- struct{}{}:
+	default:
+	}
 
 	return task.ID, nil
 }
@@ -132,16 +140,28 @@ func (o *OrchestratorService) emit(taskID string, status domain.TaskStatus) {
 }
 
 // runWorker is the background loop that processes QUEUED tasks sequentially.
+// It blocks on workCh until a task is submitted, then drains the entire queue
+// before waiting again — guaranteeing only one LLM call is ever in flight.
 func (o *OrchestratorService) runWorker() {
-	ticker := time.NewTicker(2 * time.Second)
-	defer ticker.Stop()
-
 	for {
 		select {
 		case <-o.stopCh:
 			return
-		case <-ticker.C:
-			o.processNext()
+		case <-o.workCh:
+			for {
+				o.mu.Lock()
+				empty := len(o.queue) == 0
+				o.mu.Unlock()
+				if empty {
+					break
+				}
+				select {
+				case <-o.stopCh:
+					return
+				default:
+				}
+				o.processNext()
+			}
 		}
 	}
 }
@@ -179,19 +199,44 @@ func (o *OrchestratorService) processNext() {
 		}
 	}
 
+	// Load session history once — reused for both the pre-flight token check and
+	// the Chat call to avoid double GetByProjectPath.
+	var sessionHistory []domain.Message
+	if o.sessionRepo != nil {
+		sess, err := o.sessionRepo.GetByProjectPath(task.ProjectPath)
+		if err != nil && !errors.Is(err, domain.ErrNotFound) {
+			log.Printf("orchestrator: load session for task %s: %v", task.ID, err)
+		}
+		sessionHistory = sess.Messages
+	}
+
+	// Pre-flight: guard against context-window overflow before spending LLM time.
+	// maxResponseTokens reserves budget for the assistant reply.
+	const maxResponseTokens = 512
+	if limit := llm.ContextLimit(); limit > 0 {
+		estHistory := make([]domain.Message, len(sessionHistory)+1)
+		copy(estHistory, sessionHistory)
+		estHistory[len(sessionHistory)] = domain.Message{Role: "user", Content: prompt}
+		if estimated := estimateTokens(estHistory); estimated > limit-maxResponseTokens {
+			logEntry := fmt.Sprintf(
+				"context too large: ~%d tokens estimated, model limit is %d (headroom %d) — shorten the instruction or reduce context files",
+				estimated, limit, maxResponseTokens,
+			)
+			log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
+			_ = o.repo.UpdateLogs(task.ID, logEntry)
+			_ = o.repo.UpdateStatus(task.ID, domain.StatusTooLarge)
+			o.emit(task.ID, domain.StatusTooLarge)
+			return
+		}
+	}
+
 	var code string
 	if o.sessionRepo != nil {
-		// Session-isolated generation: load history, append user turn, call Chat.
+		// Build the chat history using the already-loaded session (no second DB call).
 		userMsg := domain.Message{Role: "user", Content: prompt, CreatedAt: time.Now()}
-		if err := o.sessionRepo.AppendMessage(task.ProjectPath, userMsg); err != nil {
-			log.Printf("orchestrator: append user message for task %s: %v", task.ID, err)
-		}
-		sess, err := o.sessionRepo.GetByProjectPath(task.ProjectPath)
-		if err != nil {
-			log.Printf("orchestrator: load session for task %s: %v", task.ID, err)
-			sess.Messages = []domain.Message{userMsg}
-		}
-		code, err = llm.Chat(sess.Messages)
+		history := append(append([]domain.Message(nil), sessionHistory...), userMsg)
+		var err error
+		code, err = llm.Chat(history)
 		if err != nil {
 			logEntry := fmt.Sprintf("failed via %s: %v", llm.ProviderName(), err)
 			log.Printf("orchestrator: chat for task %s: %v", task.ID, err)
@@ -200,8 +245,11 @@ func (o *OrchestratorService) processNext() {
 			o.emit(task.ID, domain.StatusFailed)
 			return
 		}
-		// Persist assistant reply to session.
+		// Only persist messages after a successful response.
 		assistantMsg := domain.Message{Role: "assistant", Content: code, CreatedAt: time.Now()}
+		if err := o.sessionRepo.AppendMessage(task.ProjectPath, userMsg); err != nil {
+			log.Printf("orchestrator: append user message for task %s: %v", task.ID, err)
+		}
 		if err := o.sessionRepo.AppendMessage(task.ProjectPath, assistantMsg); err != nil {
 			log.Printf("orchestrator: append assistant message for task %s: %v", task.ID, err)
 		}
@@ -219,7 +267,7 @@ func (o *OrchestratorService) processNext() {
 	}
 
 	if o.fileWriter != nil && task.TargetFile != "" {
-		if err := o.fileWriter.WriteCodeToFile(task.ProjectPath, task.TargetFile, code); err != nil {
+		if err := o.fileWriter.WriteCodeToFile(task.ProjectPath, task.TargetFile, extractCode(code)); err != nil {
 			logEntry := fmt.Sprintf("failed writing output via %s: %v", llm.ProviderName(), err)
 			log.Printf("orchestrator: write file for task %s: %v", task.ID, err)
 			_ = o.repo.UpdateLogs(task.ID, logEntry)
@@ -234,4 +282,44 @@ func (o *OrchestratorService) processNext() {
 	_ = o.repo.UpdateStatus(task.ID, domain.StatusCompleted)
 	o.emit(task.ID, domain.StatusCompleted)
 	log.Printf("orchestrator: task %s completed via %s", task.ID, llm.ProviderName())
+}
+
+// extractCode strips the first markdown code fence from s, returning the raw
+// source within. If no fence is found, s is returned unchanged.
+func extractCode(s string) string {
+	lines := strings.Split(s, "\n")
+	start := -1
+	for i, l := range lines {
+		if strings.HasPrefix(strings.TrimSpace(l), "```") {
+			start = i
+			break
+		}
+	}
+	if start == -1 {
+		return s
+	}
+	end := -1
+	for i := start + 1; i < len(lines); i++ {
+		if strings.TrimSpace(lines[i]) == "```" {
+			end = i
+			break
+		}
+	}
+	if end == -1 {
+		return strings.Join(lines[start+1:], "\n")
+	}
+	return strings.Join(lines[start+1:end], "\n")
+}
+
+// estimateTokens approximates the total token count for a message slice using
+// the widely-accepted heuristic of 4 characters per token, plus 4 overhead
+// tokens per message (role + chat-formatting separators).
+// It deliberately over-estimates slightly to stay safely within the model's
+// context window.
+func estimateTokens(messages []domain.Message) int {
+	total := 0
+	for _, m := range messages {
+		total += (len(m.Content)+3)/4 + 4
+	}
+	return total
 }

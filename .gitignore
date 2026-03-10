@@ -1,5 +1,5 @@
 # Binaries & build output
-/nexus-ai
+/nexus-orchestrator
 /nexus-cli
 /nexus-daemon
 build/bin/

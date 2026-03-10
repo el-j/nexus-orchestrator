@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	repo_sqlite "nexus-ai/internal/adapters/outbound/repo_sqlite"
-	"nexus-ai/internal/core/domain"
+	repo_sqlite "nexus-orchestrator/internal/adapters/outbound/repo_sqlite"
+	"nexus-orchestrator/internal/core/domain"
 )
 
 func newTestRepo(t *testing.T) *repo_sqlite.Repository {

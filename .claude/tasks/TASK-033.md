@@ -201,7 +201,7 @@ NEXUS_ADDR=http://192.168.1.10:9999 nexus-submit --task-file .claude/tasks/TASK-
 
 ## Anti-patterns to Avoid
 
-- NEVER import anything from `nexus-ai/internal/` — nexus-submit is a pure HTTP client
+- NEVER import anything from `nexus-orchestrator/internal/` — nexus-submit is a pure HTTP client
 - NEVER require the daemon source code to build — use only stdlib + http
 - NEVER hardcode project paths in the binary
 - NEVER ignore the HTTP status code from POST /api/tasks

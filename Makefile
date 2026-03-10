@@ -21,7 +21,7 @@
 BINARY_CLI    := nexus-cli
 BINARY_DAEMON := nexus-daemon
 DIST          := dist
-MODULE        := nexus-ai
+MODULE        := nexus-orchestrator
 
 # Build tags that enable the mattn/go-sqlite3 driver
 BUILD_FLAGS := -trimpath
