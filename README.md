@@ -1,5 +1,9 @@
 # nexusOrchestrator
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/el-j/nexusOrchestrator)](https://github.com/el-j/nexusOrchestrator/releases/latest)
+[![Go Report Card](https://goreportcard.com/badge/github.com/el-j/nexusOrchestrator)](https://goreportcard.com/report/github.com/el-j/nexusOrchestrator)
+
 A local AI orchestrator that routes code-generation tasks to LM Studio or Ollama, with per-project session memory and a full MCP server for use with Claude Desktop or other MCP clients.
 
 ## Features
@@ -116,3 +120,7 @@ Point any MCP-compatible agent at `http://localhost:9998` and call:
 ```json
 {"method": "tools/call", "params": {"name": "get_queue"}}
 ```
+
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

@@ -27,7 +27,13 @@ jobs:
 
       - name: Install zig
         run: |
-          sudo apt-get update && sudo apt-get install -y zig
+          ZIG_VERSION="0.13.0"
+          curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz" -o zig.tar.xz
+          tar xf zig.tar.xz
+          sudo mv "zig-linux-x86_64-${ZIG_VERSION}/zig" /usr/local/bin/
+          sudo mv "zig-linux-x86_64-${ZIG_VERSION}/lib" /usr/local/lib/zig
+          rm -rf zig.tar.xz "zig-linux-x86_64-${ZIG_VERSION}"
+          zig version
 
       - name: Run tests
         env:
@@ -108,7 +114,14 @@ jobs:
 
       - name: Install zig
         if: matrix.runner == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y zig
+        run: |
+          ZIG_VERSION="0.13.0"
+          curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz" -o zig.tar.xz
+          tar xf zig.tar.xz
+          sudo mv "zig-linux-x86_64-${ZIG_VERSION}/zig" /usr/local/bin/
+          sudo mv "zig-linux-x86_64-${ZIG_VERSION}/lib" /usr/local/lib/zig
+          rm -rf zig.tar.xz "zig-linux-x86_64-${ZIG_VERSION}"
+          zig version
 
       - name: Build binaries
         env:

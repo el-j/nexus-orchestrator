@@ -1,0 +1,40 @@
+mode: ContinuousDelivery
+assembly-versioning-scheme: MajorMinorPatch
+tag-prefix: v
+next-version: 0.2.0
+branches:
+  main:
+    regex: ^main$
+    mode: ContinuousDelivery
+    tag: ''
+    increment: Patch
+    prevent-increment-of-merged-branch-version: true
+    track-merge-target: false
+    source-branches:
+      - develop
+      - feature
+      - hotfix
+      - release
+  feature:
+    regex: ^feature[/-]
+    mode: ContinuousDelivery
+    tag: alpha
+    increment: Minor
+    source-branches:
+      - main
+  hotfix:
+    regex: ^hotfix[/-]
+    mode: ContinuousDelivery
+    tag: beta
+    increment: Patch
+    source-branches:
+      - main
+  release:
+    regex: ^release[/-]
+    mode: ContinuousDelivery
+    tag: rc
+    increment: None
+    source-branches:
+      - main
+      - feature
+      - hotfix
