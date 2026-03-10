@@ -2,10 +2,10 @@
   "version": "2",
   "updatedAt": "2026-03-10T22:00:00.000Z",
   "counters": {
-    "nextTaskId": 112,
-    "nextPlanId": 15
+    "nextTaskId": 118,
+    "nextPlanId": 16
   },
-  "activePlanId": null,
+  "activePlanId": "PLAN-015",
   "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix). PLAN-013 completed (update CI to latest action versions). PLAN-014 completed (unified publish.yml pipeline, fixed GITHUB_TOKEN cross-trigger bug, fixed CLI/desktop artifact naming collision, updated downloads.md).",
   "plans": {
     "PLAN-001": {
@@ -109,7 +109,15 @@
       "status": "completed",
       "createdAt": "2026-03-10T09:00:00.000Z",
       "completedAt": "2026-03-10T09:30:00.000Z",
-      "taskIds": ["TASK-053","TASK-054","TASK-055","TASK-056","TASK-057","TASK-058","TASK-059"]
+      "taskIds": [
+        "TASK-053",
+        "TASK-054",
+        "TASK-055",
+        "TASK-056",
+        "TASK-057",
+        "TASK-058",
+        "TASK-059"
+      ]
     },
     "PLAN-007": {
       "id": "PLAN-007",
@@ -117,7 +125,16 @@
       "status": "completed",
       "createdAt": "2026-03-10T10:00:00.000Z",
       "completedAt": "2026-03-10T12:00:00.000Z",
-      "taskIds": ["TASK-060","TASK-061","TASK-062","TASK-063","TASK-064","TASK-065","TASK-066","TASK-067"]
+      "taskIds": [
+        "TASK-060",
+        "TASK-061",
+        "TASK-062",
+        "TASK-063",
+        "TASK-064",
+        "TASK-065",
+        "TASK-066",
+        "TASK-067"
+      ]
     },
     "PLAN-008": {
       "id": "PLAN-008",
@@ -125,7 +142,14 @@
       "status": "completed",
       "createdAt": "2026-03-10T14:00:00.000Z",
       "completedAt": "2026-03-10T14:40:00.000Z",
-      "taskIds": ["TASK-068","TASK-069","TASK-070","TASK-071","TASK-072","TASK-073"]
+      "taskIds": [
+        "TASK-068",
+        "TASK-069",
+        "TASK-070",
+        "TASK-071",
+        "TASK-072",
+        "TASK-073"
+      ]
     },
     "PLAN-009": {
       "id": "PLAN-009",
@@ -133,7 +157,19 @@
       "status": "completed",
       "createdAt": "2026-03-10T15:00:00.000Z",
       "completedAt": "2026-03-10T15:45:00.000Z",
-      "taskIds": ["TASK-074","TASK-075","TASK-076","TASK-077","TASK-078","TASK-079","TASK-080","TASK-081","TASK-082","TASK-083","TASK-084"]
+      "taskIds": [
+        "TASK-074",
+        "TASK-075",
+        "TASK-076",
+        "TASK-077",
+        "TASK-078",
+        "TASK-079",
+        "TASK-080",
+        "TASK-081",
+        "TASK-082",
+        "TASK-083",
+        "TASK-084"
+      ]
     },
     "PLAN-010": {
       "id": "PLAN-010",
@@ -141,7 +177,14 @@
       "status": "completed",
       "createdAt": "2026-03-10T16:00:00.000Z",
       "completedAt": "2026-03-10T17:00:00.000Z",
-      "taskIds": ["TASK-085","TASK-086","TASK-087","TASK-088","TASK-089","TASK-090"]
+      "taskIds": [
+        "TASK-085",
+        "TASK-086",
+        "TASK-087",
+        "TASK-088",
+        "TASK-089",
+        "TASK-090"
+      ]
     },
     "PLAN-011": {
       "id": "PLAN-011",
@@ -149,7 +192,15 @@
       "status": "completed",
       "createdAt": "2026-03-10T18:00:00.000Z",
       "completedAt": "2026-03-10T19:00:00.000Z",
-      "taskIds": ["TASK-091","TASK-092","TASK-093","TASK-094","TASK-095","TASK-096","TASK-097"]
+      "taskIds": [
+        "TASK-091",
+        "TASK-092",
+        "TASK-093",
+        "TASK-094",
+        "TASK-095",
+        "TASK-096",
+        "TASK-097"
+      ]
     },
     "PLAN-012": {
       "id": "PLAN-012",
@@ -157,15 +208,27 @@
       "status": "completed",
       "createdAt": "2026-03-10T20:00:00.000Z",
       "completedAt": "2026-03-10T20:20:00.000Z",
-      "taskIds": ["TASK-098","TASK-099","TASK-100","TASK-101","TASK-102","TASK-103"]
+      "taskIds": [
+        "TASK-098",
+        "TASK-099",
+        "TASK-100",
+        "TASK-101",
+        "TASK-102",
+        "TASK-103"
+      ]
     },
     "PLAN-013": {
       "id": "PLAN-013",
-      "goal": "Update CI to latest GitHub Action versions: gittools/actions v3.1.11→v4.3.3, zig 0.13.0→0.14.0, GitVersion.yml v6 compat",
+      "goal": "Update CI to latest GitHub Action versions: gittools/actions v3.1.11\u2192v4.3.3, zig 0.13.0\u21920.14.0, GitVersion.yml v6 compat",
       "status": "completed",
       "createdAt": "2026-03-10T21:00:00.000Z",
       "completedAt": "2026-03-10T22:00:00.000Z",
-      "taskIds": ["TASK-104","TASK-105","TASK-106","TASK-107"]
+      "taskIds": [
+        "TASK-104",
+        "TASK-105",
+        "TASK-106",
+        "TASK-107"
+      ]
     },
     "PLAN-014": {
       "id": "PLAN-014",
@@ -173,7 +236,26 @@
       "status": "completed",
       "createdAt": "2026-03-10T22:00:00.000Z",
       "completedAt": "2026-03-10T22:35:00.000Z",
-      "taskIds": ["TASK-108","TASK-109","TASK-110","TASK-111"]
+      "taskIds": [
+        "TASK-108",
+        "TASK-109",
+        "TASK-110",
+        "TASK-111"
+      ]
+    },
+    "PLAN-015": {
+      "id": "PLAN-015",
+      "goal": "Production-grade GitHub Action (Node20/TypeScript) with built-in agent identity loading from el-j/agency-agents, unit tests, CI workflow, and updated docs",
+      "status": "in-progress",
+      "createdAt": "2026-03-10T22:43:07.000Z",
+      "taskIds": [
+        "TASK-112",
+        "TASK-113",
+        "TASK-114",
+        "TASK-115",
+        "TASK-116",
+        "TASK-117"
+      ]
     }
   },
   "tasks": {
@@ -795,7 +877,9 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-005",
-      "dependencies": ["TASK-044"],
+      "dependencies": [
+        "TASK-044"
+      ],
       "createdAt": "2026-03-10T06:00:00.000Z",
       "completedAt": "2026-03-10T08:30:00.000Z"
     },
@@ -805,7 +889,9 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-005",
-      "dependencies": ["TASK-044"],
+      "dependencies": [
+        "TASK-044"
+      ],
       "createdAt": "2026-03-10T06:00:00.000Z",
       "completedAt": "2026-03-10T08:30:00.000Z"
     },
@@ -815,7 +901,9 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-005",
-      "dependencies": ["TASK-044"],
+      "dependencies": [
+        "TASK-044"
+      ],
       "completedAt": "2026-03-10T08:30:00.000Z",
       "createdAt": "2026-03-10T06:00:00.000Z"
     },
@@ -825,7 +913,9 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-005",
-      "dependencies": ["TASK-044"],
+      "dependencies": [
+        "TASK-044"
+      ],
       "createdAt": "2026-03-10T06:00:00.000Z",
       "completedAt": "2026-03-10T08:30:00.000Z"
     },
@@ -835,7 +925,9 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-005",
-      "dependencies": ["TASK-044"],
+      "dependencies": [
+        "TASK-044"
+      ],
       "createdAt": "2026-03-10T06:00:00.000Z",
       "completedAt": "2026-03-10T08:30:00.000Z"
     },
@@ -845,7 +937,10 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-005",
-      "dependencies": ["TASK-044", "TASK-049"],
+      "dependencies": [
+        "TASK-044",
+        "TASK-049"
+      ],
       "createdAt": "2026-03-10T06:00:00.000Z",
       "completedAt": "2026-03-10T08:30:00.000Z"
     },
@@ -855,7 +950,12 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-005",
-      "dependencies": ["TASK-047", "TASK-048", "TASK-049", "TASK-050"],
+      "dependencies": [
+        "TASK-047",
+        "TASK-048",
+        "TASK-049",
+        "TASK-050"
+      ],
       "createdAt": "2026-03-10T06:00:00.000Z",
       "completedAt": "2026-03-10T08:30:00.000Z"
     },
@@ -865,7 +965,16 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-005",
-      "dependencies": ["TASK-044","TASK-045","TASK-046","TASK-047","TASK-048","TASK-049","TASK-050","TASK-051"],
+      "dependencies": [
+        "TASK-044",
+        "TASK-045",
+        "TASK-046",
+        "TASK-047",
+        "TASK-048",
+        "TASK-049",
+        "TASK-050",
+        "TASK-051"
+      ],
       "createdAt": "2026-03-10T06:00:00.000Z",
       "completedAt": "2026-03-10T08:30:00.000Z"
     },
@@ -876,7 +985,9 @@
       "completedAt": "2026-03-10T09:30:00.000Z",
       "role": "architecture",
       "planId": "PLAN-006",
-      "dependencies": ["TASK-052"],
+      "dependencies": [
+        "TASK-052"
+      ],
       "createdAt": "2026-03-10T09:00:00.000Z"
     },
     "TASK-054": {
@@ -886,7 +997,9 @@
       "completedAt": "2026-03-10T09:30:00.000Z",
       "role": "backend",
       "planId": "PLAN-006",
-      "dependencies": ["TASK-053"],
+      "dependencies": [
+        "TASK-053"
+      ],
       "createdAt": "2026-03-10T09:00:00.000Z"
     },
     "TASK-055": {
@@ -896,7 +1009,9 @@
       "completedAt": "2026-03-10T09:30:00.000Z",
       "role": "api",
       "planId": "PLAN-006",
-      "dependencies": ["TASK-053"],
+      "dependencies": [
+        "TASK-053"
+      ],
       "createdAt": "2026-03-10T09:00:00.000Z"
     },
     "TASK-056": {
@@ -906,7 +1021,9 @@
       "completedAt": "2026-03-10T09:30:00.000Z",
       "role": "api",
       "planId": "PLAN-006",
-      "dependencies": ["TASK-055"],
+      "dependencies": [
+        "TASK-055"
+      ],
       "createdAt": "2026-03-10T09:00:00.000Z"
     },
     "TASK-057": {
@@ -916,7 +1033,10 @@
       "completedAt": "2026-03-10T09:30:00.000Z",
       "role": "devops",
       "planId": "PLAN-006",
-      "dependencies": ["TASK-053","TASK-054"],
+      "dependencies": [
+        "TASK-053",
+        "TASK-054"
+      ],
       "createdAt": "2026-03-10T09:00:00.000Z"
     },
     "TASK-058": {
@@ -926,7 +1046,11 @@
       "completedAt": "2026-03-10T09:30:00.000Z",
       "role": "qa",
       "planId": "PLAN-006",
-      "dependencies": ["TASK-054","TASK-055","TASK-057"],
+      "dependencies": [
+        "TASK-054",
+        "TASK-055",
+        "TASK-057"
+      ],
       "createdAt": "2026-03-10T09:00:00.000Z"
     },
     "TASK-059": {
@@ -936,7 +1060,9 @@
       "completedAt": "2026-03-10T09:30:00.000Z",
       "role": "verify",
       "planId": "PLAN-006",
-      "dependencies": ["TASK-058"],
+      "dependencies": [
+        "TASK-058"
+      ],
       "createdAt": "2026-03-10T09:00:00.000Z"
     },
     "TASK-060": {
@@ -1011,7 +1137,9 @@
       "status": "done",
       "role": "api",
       "planId": "PLAN-007",
-      "dependencies": ["TASK-061"],
+      "dependencies": [
+        "TASK-061"
+      ],
       "createdAt": "2026-03-10T10:00:00.000Z",
       "startedAt": "2026-03-10T11:00:00.000Z",
       "completedAt": "2026-03-10T11:15:00.000Z"
@@ -1022,7 +1150,15 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-007",
-      "dependencies": ["TASK-060","TASK-061","TASK-062","TASK-063","TASK-064","TASK-065","TASK-066"],
+      "dependencies": [
+        "TASK-060",
+        "TASK-061",
+        "TASK-062",
+        "TASK-063",
+        "TASK-064",
+        "TASK-065",
+        "TASK-066"
+      ],
       "createdAt": "2026-03-10T10:00:00.000Z",
       "startedAt": "2026-03-10T11:30:00.000Z",
       "completedAt": "2026-03-10T11:45:00.000Z"
@@ -1051,7 +1187,7 @@
     },
     "TASK-070": {
       "id": "TASK-070",
-      "title": "SSE event lifecycle test (submit → events → verify order)",
+      "title": "SSE event lifecycle test (submit \u2192 events \u2192 verify order)",
       "status": "done",
       "role": "qa",
       "planId": "PLAN-008",
@@ -1066,7 +1202,11 @@
       "status": "done",
       "role": "verify",
       "planId": "PLAN-008",
-      "dependencies": ["TASK-068","TASK-069","TASK-070"],
+      "dependencies": [
+        "TASK-068",
+        "TASK-069",
+        "TASK-070"
+      ],
       "createdAt": "2026-03-10T14:00:00.000Z",
       "startedAt": "2026-03-10T14:25:00.000Z",
       "completedAt": "2026-03-10T14:30:00.000Z"
@@ -1077,7 +1217,11 @@
       "status": "done",
       "role": "planning",
       "planId": "PLAN-008",
-      "dependencies": ["TASK-068","TASK-069","TASK-070"],
+      "dependencies": [
+        "TASK-068",
+        "TASK-069",
+        "TASK-070"
+      ],
       "createdAt": "2026-03-10T14:00:00.000Z",
       "startedAt": "2026-03-10T14:25:00.000Z",
       "completedAt": "2026-03-10T14:30:00.000Z"
@@ -1088,7 +1232,10 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-008",
-      "dependencies": ["TASK-071","TASK-072"],
+      "dependencies": [
+        "TASK-071",
+        "TASK-072"
+      ],
       "createdAt": "2026-03-10T14:00:00.000Z",
       "startedAt": "2026-03-10T14:35:00.000Z",
       "completedAt": "2026-03-10T14:40:00.000Z"
@@ -1110,7 +1257,9 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-009",
-      "dependencies": ["TASK-074"],
+      "dependencies": [
+        "TASK-074"
+      ],
       "createdAt": "2026-03-10T15:00:00.000Z",
       "startedAt": "2026-03-10T15:05:00.000Z",
       "completedAt": "2026-03-10T15:15:00.000Z"
@@ -1121,7 +1270,9 @@
       "status": "done",
       "role": "api",
       "planId": "PLAN-009",
-      "dependencies": ["TASK-074"],
+      "dependencies": [
+        "TASK-074"
+      ],
       "createdAt": "2026-03-10T15:00:00.000Z",
       "startedAt": "2026-03-10T15:05:00.000Z",
       "completedAt": "2026-03-10T15:15:00.000Z"
@@ -1132,7 +1283,10 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-009",
-      "dependencies": ["TASK-075","TASK-076"],
+      "dependencies": [
+        "TASK-075",
+        "TASK-076"
+      ],
       "createdAt": "2026-03-10T15:00:00.000Z",
       "startedAt": "2026-03-10T15:25:00.000Z",
       "completedAt": "2026-03-10T15:35:00.000Z"
@@ -1154,7 +1308,9 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-009",
-      "dependencies": ["TASK-078"],
+      "dependencies": [
+        "TASK-078"
+      ],
       "createdAt": "2026-03-10T15:00:00.000Z",
       "startedAt": "2026-03-10T15:05:00.000Z",
       "completedAt": "2026-03-10T15:15:00.000Z"
@@ -1165,7 +1321,9 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-009",
-      "dependencies": ["TASK-078"],
+      "dependencies": [
+        "TASK-078"
+      ],
       "createdAt": "2026-03-10T15:00:00.000Z",
       "startedAt": "2026-03-10T15:05:00.000Z",
       "completedAt": "2026-03-10T15:15:00.000Z"
@@ -1176,7 +1334,9 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-009",
-      "dependencies": ["TASK-078"],
+      "dependencies": [
+        "TASK-078"
+      ],
       "createdAt": "2026-03-10T15:00:00.000Z",
       "startedAt": "2026-03-10T15:05:00.000Z",
       "completedAt": "2026-03-10T15:15:00.000Z"
@@ -1187,7 +1347,11 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-009",
-      "dependencies": ["TASK-079","TASK-080","TASK-081"],
+      "dependencies": [
+        "TASK-079",
+        "TASK-080",
+        "TASK-081"
+      ],
       "createdAt": "2026-03-10T15:00:00.000Z",
       "startedAt": "2026-03-10T15:15:00.000Z",
       "completedAt": "2026-03-10T15:20:00.000Z"
@@ -1198,7 +1362,10 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-009",
-      "dependencies": ["TASK-077","TASK-082"],
+      "dependencies": [
+        "TASK-077",
+        "TASK-082"
+      ],
       "createdAt": "2026-03-10T15:00:00.000Z",
       "startedAt": "2026-03-10T15:35:00.000Z",
       "completedAt": "2026-03-10T15:40:00.000Z"
@@ -1209,7 +1376,9 @@
       "status": "done",
       "role": "verify",
       "planId": "PLAN-009",
-      "dependencies": ["TASK-083"],
+      "dependencies": [
+        "TASK-083"
+      ],
       "createdAt": "2026-03-10T15:00:00.000Z",
       "startedAt": "2026-03-10T15:40:00.000Z",
       "completedAt": "2026-03-10T15:45:00.000Z"
@@ -1253,7 +1422,9 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-010",
-      "dependencies": ["TASK-085"],
+      "dependencies": [
+        "TASK-085"
+      ],
       "createdAt": "2026-03-10T16:00:00.000Z",
       "startedAt": "2026-03-10T16:10:00.000Z",
       "completedAt": "2026-03-10T16:30:00.000Z"
@@ -1264,7 +1435,9 @@
       "status": "done",
       "role": "frontend",
       "planId": "PLAN-010",
-      "dependencies": ["TASK-086"],
+      "dependencies": [
+        "TASK-086"
+      ],
       "createdAt": "2026-03-10T16:00:00.000Z",
       "startedAt": "2026-03-10T16:35:00.000Z",
       "completedAt": "2026-03-10T16:40:00.000Z"
@@ -1275,31 +1448,320 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-010",
-      "dependencies": ["TASK-085","TASK-086","TASK-087","TASK-088","TASK-089"],
+      "dependencies": [
+        "TASK-085",
+        "TASK-086",
+        "TASK-087",
+        "TASK-088",
+        "TASK-089"
+      ],
       "createdAt": "2026-03-10T16:00:00.000Z",
       "startedAt": "2026-03-10T16:45:00.000Z",
       "completedAt": "2026-03-10T17:00:00.000Z"
     },
-    "TASK-091": {"id":"TASK-091","title":"Fix release.yml: static flags, cache, concurrency, timeouts, drop win/arm64","status":"done","role":"devops","planId":"PLAN-011","dependencies":[],"createdAt":"2026-03-10T18:00:00.000Z","startedAt":"2026-03-10T18:10:00.000Z","completedAt":"2026-03-10T18:25:00.000Z"},
-    "TASK-092": {"id":"TASK-092","title":"Fix desktop.yml: concurrency, timeouts, linux deps, release notes","status":"done","role":"devops","planId":"PLAN-011","dependencies":[],"createdAt":"2026-03-10T18:00:00.000Z","startedAt":"2026-03-10T18:10:00.000Z","completedAt":"2026-03-10T18:25:00.000Z"},
-    "TASK-093": {"id":"TASK-093","title":"Add var version to all entry points for ldflags injection","status":"done","role":"backend","planId":"PLAN-011","dependencies":[],"createdAt":"2026-03-10T18:00:00.000Z","startedAt":"2026-03-10T18:10:00.000Z","completedAt":"2026-03-10T18:20:00.000Z"},
-    "TASK-094": {"id":"TASK-094","title":"Harden install.sh: fatal checksum, binary validation, nexus-submit","status":"done","role":"devops","planId":"PLAN-011","dependencies":[],"createdAt":"2026-03-10T18:00:00.000Z","startedAt":"2026-03-10T18:10:00.000Z","completedAt":"2026-03-10T18:25:00.000Z"},
-    "TASK-095": {"id":"TASK-095","title":"Fix downloads.md: SHA256 split, Windows clarification, nexus-submit","status":"done","role":"frontend","planId":"PLAN-011","dependencies":[],"createdAt":"2026-03-10T18:00:00.000Z","startedAt":"2026-03-10T18:10:00.000Z","completedAt":"2026-03-10T18:25:00.000Z"},
-    "TASK-096": {"id":"TASK-096","title":"Add package-level doc comments to all 16 Go packages","status":"done","role":"backend","planId":"PLAN-011","dependencies":[],"createdAt":"2026-03-10T18:00:00.000Z","startedAt":"2026-03-10T18:10:00.000Z","completedAt":"2026-03-10T18:30:00.000Z"},
-    "TASK-097": {"id":"TASK-097","title":"QA: build, test -race, vet, YAML validate, version verify","status":"done","role":"qa","planId":"PLAN-011","dependencies":["TASK-091","TASK-092","TASK-093","TASK-094","TASK-095","TASK-096"],"createdAt":"2026-03-10T18:00:00.000Z","startedAt":"2026-03-10T18:35:00.000Z","completedAt":"2026-03-10T19:00:00.000Z"},
-    "TASK-098": {"id":"TASK-098","title":"Create MIT LICENSE file","status":"done","role":"devops","planId":"PLAN-012","dependencies":[],"createdAt":"2026-03-10T20:00:00.000Z","startedAt":"2026-03-10T20:05:00.000Z","completedAt":"2026-03-10T20:08:00.000Z"},
-    "TASK-099": {"id":"TASK-099","title":"Add GitVersion.yml configuration","status":"done","role":"devops","planId":"PLAN-012","dependencies":[],"createdAt":"2026-03-10T20:00:00.000Z","startedAt":"2026-03-10T20:05:00.000Z","completedAt":"2026-03-10T20:08:00.000Z"},
-    "TASK-100": {"id":"TASK-100","title":"Create semantic-release CI workflow","status":"done","role":"devops","planId":"PLAN-012","dependencies":["TASK-099"],"createdAt":"2026-03-10T20:00:00.000Z","startedAt":"2026-03-10T20:09:00.000Z","completedAt":"2026-03-10T20:12:00.000Z"},
-    "TASK-101": {"id":"TASK-101","title":"Update release.yml + desktop.yml for GitVersion + zig fix","status":"done","role":"devops","planId":"PLAN-012","dependencies":["TASK-100"],"createdAt":"2026-03-10T20:00:00.000Z","startedAt":"2026-03-10T20:12:00.000Z","completedAt":"2026-03-10T20:14:00.000Z"},
-    "TASK-102": {"id":"TASK-102","title":"Add license and version badges to README","status":"done","role":"devops","planId":"PLAN-012","dependencies":["TASK-098"],"createdAt":"2026-03-10T20:00:00.000Z","startedAt":"2026-03-10T20:12:00.000Z","completedAt":"2026-03-10T20:14:00.000Z"},
-    "TASK-103": {"id":"TASK-103","title":"QA verify all PLAN-012 changes","status":"done","role":"verify","planId":"PLAN-012","dependencies":["TASK-101","TASK-102"],"createdAt":"2026-03-10T20:00:00.000Z","startedAt":"2026-03-10T20:15:00.000Z","completedAt":"2026-03-10T20:20:00.000Z"},
-    "TASK-104": {"id":"TASK-104","title":"Update gittools/actions from v3.1.11 to v4.3.3","status":"done","role":"devops","planId":"PLAN-013","dependencies":[],"createdAt":"2026-03-10T21:00:00.000Z"},
-    "TASK-105": {"id":"TASK-105","title":"Update GitVersion.yml for v6.x compatibility","status":"done","role":"devops","planId":"PLAN-013","dependencies":[],"createdAt":"2026-03-10T21:00:00.000Z"},
-    "TASK-106": {"id":"TASK-106","title":"Update zig from 0.13.0 to 0.14.0 in release.yml","status":"done","role":"devops","planId":"PLAN-013","dependencies":[],"createdAt":"2026-03-10T21:00:00.000Z"},
-    "TASK-107": {"id":"TASK-107","title":"QA verify all PLAN-013 workflow changes","status":"done","role":"verify","planId":"PLAN-013","dependencies":["TASK-104","TASK-105","TASK-106"],"createdAt":"2026-03-10T21:00:00.000Z"},
-    "TASK-108": {"id":"TASK-108","title":"Create unified publish.yml CI/CD pipeline","status":"done","role":"devops","planId":"PLAN-014","dependencies":[],"createdAt":"2026-03-10T22:00:00.000Z","completedAt":"2026-03-10T22:30:00.000Z"},
-    "TASK-109": {"id":"TASK-109","title":"Update downloads.md desktop section links to nexusOrchestrator-desktop-* names","status":"done","role":"ui","planId":"PLAN-014","dependencies":["TASK-108"],"createdAt":"2026-03-10T22:00:00.000Z","completedAt":"2026-03-10T22:30:00.000Z"},
-    "TASK-110": {"id":"TASK-110","title":"Remove superseded workflows version.yml release.yml desktop.yml","status":"done","role":"devops","planId":"PLAN-014","dependencies":["TASK-108"],"createdAt":"2026-03-10T22:00:00.000Z","completedAt":"2026-03-10T22:30:00.000Z"},
-    "TASK-111": {"id":"TASK-111","title":"QA validate artifact names and workflow consistency","status":"done","role":"qa","planId":"PLAN-014","dependencies":["TASK-109","TASK-110"],"createdAt":"2026-03-10T22:00:00.000Z","completedAt":"2026-03-10T22:35:00.000Z"}
+    "TASK-091": {
+      "id": "TASK-091",
+      "title": "Fix release.yml: static flags, cache, concurrency, timeouts, drop win/arm64",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-011",
+      "dependencies": [],
+      "createdAt": "2026-03-10T18:00:00.000Z",
+      "startedAt": "2026-03-10T18:10:00.000Z",
+      "completedAt": "2026-03-10T18:25:00.000Z"
+    },
+    "TASK-092": {
+      "id": "TASK-092",
+      "title": "Fix desktop.yml: concurrency, timeouts, linux deps, release notes",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-011",
+      "dependencies": [],
+      "createdAt": "2026-03-10T18:00:00.000Z",
+      "startedAt": "2026-03-10T18:10:00.000Z",
+      "completedAt": "2026-03-10T18:25:00.000Z"
+    },
+    "TASK-093": {
+      "id": "TASK-093",
+      "title": "Add var version to all entry points for ldflags injection",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-011",
+      "dependencies": [],
+      "createdAt": "2026-03-10T18:00:00.000Z",
+      "startedAt": "2026-03-10T18:10:00.000Z",
+      "completedAt": "2026-03-10T18:20:00.000Z"
+    },
+    "TASK-094": {
+      "id": "TASK-094",
+      "title": "Harden install.sh: fatal checksum, binary validation, nexus-submit",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-011",
+      "dependencies": [],
+      "createdAt": "2026-03-10T18:00:00.000Z",
+      "startedAt": "2026-03-10T18:10:00.000Z",
+      "completedAt": "2026-03-10T18:25:00.000Z"
+    },
+    "TASK-095": {
+      "id": "TASK-095",
+      "title": "Fix downloads.md: SHA256 split, Windows clarification, nexus-submit",
+      "status": "done",
+      "role": "frontend",
+      "planId": "PLAN-011",
+      "dependencies": [],
+      "createdAt": "2026-03-10T18:00:00.000Z",
+      "startedAt": "2026-03-10T18:10:00.000Z",
+      "completedAt": "2026-03-10T18:25:00.000Z"
+    },
+    "TASK-096": {
+      "id": "TASK-096",
+      "title": "Add package-level doc comments to all 16 Go packages",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-011",
+      "dependencies": [],
+      "createdAt": "2026-03-10T18:00:00.000Z",
+      "startedAt": "2026-03-10T18:10:00.000Z",
+      "completedAt": "2026-03-10T18:30:00.000Z"
+    },
+    "TASK-097": {
+      "id": "TASK-097",
+      "title": "QA: build, test -race, vet, YAML validate, version verify",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-011",
+      "dependencies": [
+        "TASK-091",
+        "TASK-092",
+        "TASK-093",
+        "TASK-094",
+        "TASK-095",
+        "TASK-096"
+      ],
+      "createdAt": "2026-03-10T18:00:00.000Z",
+      "startedAt": "2026-03-10T18:35:00.000Z",
+      "completedAt": "2026-03-10T19:00:00.000Z"
+    },
+    "TASK-098": {
+      "id": "TASK-098",
+      "title": "Create MIT LICENSE file",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-012",
+      "dependencies": [],
+      "createdAt": "2026-03-10T20:00:00.000Z",
+      "startedAt": "2026-03-10T20:05:00.000Z",
+      "completedAt": "2026-03-10T20:08:00.000Z"
+    },
+    "TASK-099": {
+      "id": "TASK-099",
+      "title": "Add GitVersion.yml configuration",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-012",
+      "dependencies": [],
+      "createdAt": "2026-03-10T20:00:00.000Z",
+      "startedAt": "2026-03-10T20:05:00.000Z",
+      "completedAt": "2026-03-10T20:08:00.000Z"
+    },
+    "TASK-100": {
+      "id": "TASK-100",
+      "title": "Create semantic-release CI workflow",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-012",
+      "dependencies": [
+        "TASK-099"
+      ],
+      "createdAt": "2026-03-10T20:00:00.000Z",
+      "startedAt": "2026-03-10T20:09:00.000Z",
+      "completedAt": "2026-03-10T20:12:00.000Z"
+    },
+    "TASK-101": {
+      "id": "TASK-101",
+      "title": "Update release.yml + desktop.yml for GitVersion + zig fix",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-012",
+      "dependencies": [
+        "TASK-100"
+      ],
+      "createdAt": "2026-03-10T20:00:00.000Z",
+      "startedAt": "2026-03-10T20:12:00.000Z",
+      "completedAt": "2026-03-10T20:14:00.000Z"
+    },
+    "TASK-102": {
+      "id": "TASK-102",
+      "title": "Add license and version badges to README",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-012",
+      "dependencies": [
+        "TASK-098"
+      ],
+      "createdAt": "2026-03-10T20:00:00.000Z",
+      "startedAt": "2026-03-10T20:12:00.000Z",
+      "completedAt": "2026-03-10T20:14:00.000Z"
+    },
+    "TASK-103": {
+      "id": "TASK-103",
+      "title": "QA verify all PLAN-012 changes",
+      "status": "done",
+      "role": "verify",
+      "planId": "PLAN-012",
+      "dependencies": [
+        "TASK-101",
+        "TASK-102"
+      ],
+      "createdAt": "2026-03-10T20:00:00.000Z",
+      "startedAt": "2026-03-10T20:15:00.000Z",
+      "completedAt": "2026-03-10T20:20:00.000Z"
+    },
+    "TASK-104": {
+      "id": "TASK-104",
+      "title": "Update gittools/actions from v3.1.11 to v4.3.3",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-013",
+      "dependencies": [],
+      "createdAt": "2026-03-10T21:00:00.000Z"
+    },
+    "TASK-105": {
+      "id": "TASK-105",
+      "title": "Update GitVersion.yml for v6.x compatibility",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-013",
+      "dependencies": [],
+      "createdAt": "2026-03-10T21:00:00.000Z"
+    },
+    "TASK-106": {
+      "id": "TASK-106",
+      "title": "Update zig from 0.13.0 to 0.14.0 in release.yml",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-013",
+      "dependencies": [],
+      "createdAt": "2026-03-10T21:00:00.000Z"
+    },
+    "TASK-107": {
+      "id": "TASK-107",
+      "title": "QA verify all PLAN-013 workflow changes",
+      "status": "done",
+      "role": "verify",
+      "planId": "PLAN-013",
+      "dependencies": [
+        "TASK-104",
+        "TASK-105",
+        "TASK-106"
+      ],
+      "createdAt": "2026-03-10T21:00:00.000Z"
+    },
+    "TASK-108": {
+      "id": "TASK-108",
+      "title": "Create unified publish.yml CI/CD pipeline",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-014",
+      "dependencies": [],
+      "createdAt": "2026-03-10T22:00:00.000Z",
+      "completedAt": "2026-03-10T22:30:00.000Z"
+    },
+    "TASK-109": {
+      "id": "TASK-109",
+      "title": "Update downloads.md desktop section links to nexusOrchestrator-desktop-* names",
+      "status": "done",
+      "role": "ui",
+      "planId": "PLAN-014",
+      "dependencies": [
+        "TASK-108"
+      ],
+      "createdAt": "2026-03-10T22:00:00.000Z",
+      "completedAt": "2026-03-10T22:30:00.000Z"
+    },
+    "TASK-110": {
+      "id": "TASK-110",
+      "title": "Remove superseded workflows version.yml release.yml desktop.yml",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-014",
+      "dependencies": [
+        "TASK-108"
+      ],
+      "createdAt": "2026-03-10T22:00:00.000Z",
+      "completedAt": "2026-03-10T22:30:00.000Z"
+    },
+    "TASK-111": {
+      "id": "TASK-111",
+      "title": "QA validate artifact names and workflow consistency",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-014",
+      "dependencies": [
+        "TASK-109",
+        "TASK-110"
+      ],
+      "createdAt": "2026-03-10T22:00:00.000Z",
+      "completedAt": "2026-03-10T22:35:00.000Z"
+    },
+    "TASK-112": {
+      "id": "TASK-112",
+      "planId": "PLAN-015",
+      "title": "Scaffold github-action/ TypeScript project (package.json, tsconfig, types.ts)",
+      "role": "engineering",
+      "status": "todo",
+      "deps": []
+    },
+    "TASK-113": {
+      "id": "TASK-113",
+      "planId": "PLAN-015",
+      "title": "Implement action TypeScript source: installer, daemon, agents, submit, index",
+      "role": "engineering",
+      "status": "todo",
+      "deps": [
+        "TASK-112"
+      ]
+    },
+    "TASK-114": {
+      "id": "TASK-114",
+      "planId": "PLAN-015",
+      "title": "Write unit tests for agents.ts and submit.ts with jest/ts-jest",
+      "role": "testing",
+      "status": "todo",
+      "deps": [
+        "TASK-113"
+      ]
+    },
+    "TASK-115": {
+      "id": "TASK-115",
+      "planId": "PLAN-015",
+      "title": "Build dist/index.js via @vercel/ncc, update root action.yml to node20",
+      "role": "engineering",
+      "status": "todo",
+      "deps": [
+        "TASK-113"
+      ]
+    },
+    "TASK-116": {
+      "id": "TASK-116",
+      "planId": "PLAN-015",
+      "title": "Add .github/workflows/action-ci.yml \u2014 lint, typecheck, build-check CI",
+      "role": "engineering",
+      "status": "todo",
+      "deps": [
+        "TASK-115"
+      ]
+    },
+    "TASK-117": {
+      "id": "TASK-117",
+      "planId": "PLAN-015",
+      "title": "Update McpIntegrationView docs with agent input examples",
+      "role": "frontend",
+      "status": "todo",
+      "deps": [
+        "TASK-115"
+      ]
+    }
   }
 }
