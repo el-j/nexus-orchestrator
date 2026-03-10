@@ -12,10 +12,10 @@
     "test:coverage": "jest --runInBand --forceExit --coverage"
   },
   "dependencies": {
-    "@actions/core": "3.0.0",
-    "@actions/exec": "3.0.0",
-    "@actions/http-client": "4.0.0",
-    "@actions/tool-cache": "4.0.0"
+    "@actions/core": "1.11.1",
+    "@actions/exec": "1.1.1",
+    "@actions/http-client": "2.2.3",
+    "@actions/tool-cache": "2.0.2"
   },
   "devDependencies": {
     "@types/jest": "30.0.0",
@@ -28,14 +28,20 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "testMatch": ["**/__tests__/**/*.test.ts"],
+    "testMatch": [
+      "**/__tests__/**/*.test.ts"
+    ],
     "moduleNameMapper": {
       "^(\\.{1,2}/.+)\\.js$": "$1",
       "^@actions/(.+)$": "<rootDir>/__mocks__/@actions/$1.js"
     },
-    "collectCoverageFrom": ["src/**/*.ts"],
+    "collectCoverageFrom": [
+      "src/**/*.ts"
+    ],
     "coverageThreshold": {
-      "global": { "lines": 70 }
+      "global": {
+        "lines": 70
+      }
     }
   }
 }

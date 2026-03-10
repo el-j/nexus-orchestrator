@@ -189,8 +189,10 @@
             <span class="text-violet-400">#</span> GitHub Actions
           </h2>
           <p class="text-slate-400 text-sm mb-6">
-            Use nexus-orchestrator directly inside any GitHub Actions workflow. The composite action downloads a
-            local daemon, submits your task to the LLM, polls until completion, and returns the result as step
+            Use nexus-orchestrator directly inside any GitHub Actions workflow. The Node.js 20 action
+            downloads a local daemon, resolves agent identities from
+            <a href="https://github.com/el-j/agency-agents" target="_blank" rel="noopener" class="text-violet-400 hover:text-violet-300">el-j/agency-agents</a>,
+            submits your task to the LLM, polls until completion, and returns the result as step
             outputs — all in a single step.
           </p>
 
@@ -198,14 +200,17 @@
           <h3 class="text-lg font-bold mb-3 text-slate-200">Basic Usage</h3>
           <CodeBlock language="yaml" :code="ghActionBasic" class="mb-8" />
 
-          <!-- Agency agents integration -->
-          <h3 class="text-lg font-bold mb-3 text-slate-200">With Agent Identities (el-j/agency-agents)</h3>
+          <!-- Built-in agent identity -->
+          <h3 class="text-lg font-bold mb-3 text-slate-200">Built-in Agent Identities</h3>
           <p class="text-slate-400 text-sm mb-4">
-            Chain with
+            Use the <code class="text-violet-300">agent</code> input to select a specialist from
             <a href="https://github.com/el-j/agency-agents" target="_blank" rel="noopener" class="text-violet-400 hover:text-violet-300">el-j/agency-agents</a>
-            to inject a specialist system prompt — a backend architect, security engineer, DevOps automator, and more.
+            — no separate step required. The system prompt is fetched and prepended automatically.
+            Use <code class="text-violet-300">agents</code> for a named swarm or
+            <code class="text-violet-300">agent_category</code> to load every agent in a category.
           </p>
-          <CodeBlock language="yaml" :code="ghActionAgents" class="mb-8" />
+          <CodeBlock language="yaml" :code="ghActionAgents" class="mb-4" />
+          <CodeBlock language="yaml" :code="ghActionSwarm" class="mb-8" />
 
           <!-- Action inputs reference -->
           <h3 class="text-lg font-bold mb-3 text-slate-200">Key Inputs</h3>
@@ -392,32 +397,23 @@ jobs:
       - name: Show result
         run: echo "\${{ steps.nexus.outputs.logs }}"`
 
-const ghActionAgents = `# Use a specialist agent identity from el-j/agency-agents
+const ghActionAgents = `# Single agent — identity loaded automatically from el-j/agency-agents
 jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # Load a specialist agent system prompt
-      - name: Load backend architect identity
-        id: agent
-        uses: el-j/agency-agents@main
-        with:
-          agent: backend-architect
-
-      # Submit task with the agent's system prompt
-      - name: Submit AI task
+      - name: Submit AI task as Backend Architect
         id: nexus
         uses: el-j/nexus-orchestrator@v1
         with:
-          system_prompt: \${{ steps.agent.outputs.system_prompt }}
+          agent: engineering-backend-architect   # fetched from el-j/agency-agents@main
           instruction: 'Add JWT authentication middleware to the HTTP handler'
           target_file: 'internal/middleware/auth.go'
           command: execute
           anthropic_api_key: \${{ secrets.ANTHROPIC_API_KEY }}
 
-      # Commit the generated file
       - name: Commit generated code
         if: steps.nexus.outputs.status == 'COMPLETED'
         run: |
@@ -427,10 +423,31 @@ jobs:
           git commit -m "feat: AI-generated auth middleware" || echo "nothing to commit"
           git push`
 
+const ghActionSwarm = `# Swarm — load all engineering agents and orchestrate as a team
+jobs:
+  swarm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Submit task to engineering swarm
+        id: nexus
+        uses: el-j/nexus-orchestrator@v1
+        with:
+          agent_category: engineering        # loads all agents in the category
+          instruction: 'Design and implement a rate-limiter for the API'
+          command: plan
+          openai_api_key: \${{ secrets.OPENAI_API_KEY }}
+          openai_model: gpt-4o`
+
 const actionInputs = [
   { name: 'instruction', default: '—', desc: 'Task text sent to the LLM (required unless task_file is set)' },
   { name: 'task_file', default: '—', desc: 'Path to a .md/.txt file whose content becomes the instruction' },
-  { name: 'system_prompt', default: '""', desc: 'Agent identity prepended to the instruction (from el-j/agency-agents)' },
+  { name: 'agent', default: '""', desc: 'Single agent slug from el-j/agency-agents (e.g. "engineering-backend-architect")' },
+  { name: 'agents', default: '""', desc: 'Comma-separated agent slugs — generates a combined swarm prompt' },
+  { name: 'agent_category', default: '""', desc: 'Load ALL agents in a category (e.g. "engineering", "design", "testing")' },
+  { name: 'agent_ref', default: 'main', desc: 'Git ref of el-j/agency-agents to fetch from (branch, tag, SHA)' },
+  { name: 'system_prompt', default: '""', desc: 'Raw system prompt override — takes precedence over agent/agents/agent_category' },
   { name: 'target_file', default: '""', desc: 'Relative path the LLM should write (e.g. src/utils.go)' },
   { name: 'command', default: 'execute', desc: '"plan" (orchestration) or "execute" (code generation)' },
   { name: 'openai_api_key', default: '""', desc: 'OpenAI API key — enables GPT models on the local daemon' },

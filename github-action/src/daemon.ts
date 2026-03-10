@@ -24,8 +24,14 @@ export interface DaemonHandle {
 
 /** Spawn nexus-daemon and wait for its health endpoint to respond */
 export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
+  // Build environment: start with filtered process.env (strip undefined values),
+  // then overlay daemon-specific variables.
+  const filteredEnv: Record<string, string> = {};
+  for (const [k, v] of Object.entries(process.env)) {
+    if (v !== undefined) filteredEnv[k] = v;
+  }
   const env: Record<string, string> = {
-    ...(process.env as Record<string, string>),
+    ...filteredEnv,
     NEXUS_LISTEN_ADDR: opts.listenAddr,
     NEXUS_MCP_ADDR: opts.mcpAddr,
     NEXUS_DB_PATH: opts.dbPath,
