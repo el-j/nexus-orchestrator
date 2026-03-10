@@ -1,0 +1,87 @@
+name: Action CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'action.yml'
+      - 'github-action/**'
+      - '!github-action/dist/**'
+  pull_request:
+    paths:
+      - 'action.yml'
+      - 'github-action/**'
+      - '!github-action/dist/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: action-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Typecheck + Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: github-action
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: github-action/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+  build-check:
+    name: Verify dist is up to date
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: github-action
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: github-action/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Rebuild dist
+        run: npm run build
+
+      - name: Check dist is unchanged
+        # Working directory is github-action/, so use dist/index.js (not github-action/dist/index.js)
+        # The -- separator tells git this is a path, not a revision
+        run: |
+          if ! git diff --quiet -- dist/index.js; then
+            echo "::error::github-action/dist/index.js is out of date."
+            echo "Run 'cd github-action && npm run build' and commit the result."
+            git diff --stat -- dist/index.js
+            exit 1
+          fi
+          echo "dist/index.js is up to date ✓"

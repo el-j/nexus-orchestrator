@@ -1,0 +1,200 @@
+name: 'nexus-orchestrator — Submit AI Task'
+description: >
+  Submit a code-generation task to a nexus-orchestrator daemon and poll
+  for completion. Optionally downloads and starts a local daemon. Integrates
+  with el-j/agency-agents for specialist agent identities (single agent,
+  named swarm, or whole category).
+
+branding:
+  icon: 'cpu'
+  color: 'purple'
+
+# ── Inputs ────────────────────────────────────────────────────────────────────
+inputs:
+  # Task content
+  instruction:
+    description: >
+      Task instruction text sent to the LLM.
+      Mutually exclusive with task_file — use one or the other.
+    required: false
+    default: ''
+
+  task_file:
+    description: >
+      Path to a task file (.md / .txt) whose content is used as the instruction.
+      Useful for multi-line prompts stored as repository files.
+    required: false
+    default: ''
+
+  project_path:
+    description: >
+      Absolute project root for per-project session memory isolation.
+      Defaults to $GITHUB_WORKSPACE (the checked-out repository root).
+    required: false
+    default: ''
+
+  target_file:
+    description: >
+      Relative path of the file the LLM should write or update
+      (e.g. "src/utils/helpers.go"). Optional — omit for plan/analysis tasks.
+    required: false
+    default: ''
+
+  context_files:
+    description: >
+      Comma-separated list of relative file paths to include as read context
+      alongside the instruction (e.g. "go.mod,internal/core/domain/task.go").
+    required: false
+    default: ''
+
+  command:
+    description: >
+      Task command type: "plan" (orchestration / documentation) or
+      "execute" (code implementation). Default: execute.
+    required: false
+    default: 'execute'
+
+  # Routing
+  model:
+    description: >
+      LLM model override sent with the task
+      (e.g. "gpt-4o", "claude-3-5-sonnet-20241022", "llama3").
+    required: false
+    default: ''
+
+  provider:
+    description: >
+      Provider hint for routing the task
+      (e.g. "openai", "anthropic", "ollama", "lmstudio").
+    required: false
+    default: ''
+
+  # ── Agent identity — el-j/agency-agents integration ───────────────────────
+  agent:
+    description: >
+      Load a single specialist agent from el-j/agency-agents by slug or name.
+      Examples: "engineering-backend-architect", "backend-architect",
+      "Frontend Developer". Mutually exclusive with agents / agent_category.
+      The agent's system prompt is automatically prepended to the instruction.
+    required: false
+    default: ''
+
+  agents:
+    description: >
+      Comma-separated list of agent slugs/names for swarm mode
+      (e.g. "engineering-backend-architect,engineering-frontend-developer").
+      A combined orchestrator prompt is generated from all agents.
+      Mutually exclusive with agent / agent_category.
+    required: false
+    default: ''
+
+  agent_category:
+    description: >
+      Load ALL agents from a specific category from el-j/agency-agents
+      (e.g. "engineering", "design", "testing").
+      A combined swarm prompt is generated. Mutually exclusive with agent / agents.
+    required: false
+    default: ''
+
+  agent_ref:
+    description: >
+      Git ref (branch, tag, or SHA) of el-j/agency-agents to fetch identities from.
+      Default: "main".
+    required: false
+    default: 'main'
+
+  system_prompt:
+    description: >
+      Raw agent system prompt prepended to the instruction.
+      Takes precedence over agent / agents / agent_category when set.
+      Use this to chain with el-j/agency-agents manually:
+
+        - uses: el-j/agency-agents@main
+          id: ag
+          with:
+            agent: backend-architect
+
+        - uses: el-j/nexus-orchestrator@v1
+          with:
+            system_prompt: ${{ steps.ag.outputs.system_prompt }}
+            instruction: 'Refactor auth to use JWT'
+    required: false
+    default: ''
+
+  # Daemon connection
+  daemon_url:
+    description: >
+      HTTP base URL of a running nexus-daemon.
+      Used only when start_daemon is "false".
+    required: false
+    default: 'http://127.0.0.1:9999'
+
+  start_daemon:
+    description: >
+      Download and start a local nexus-daemon for the duration of this job.
+      Set to "false" to connect to an existing remote daemon via daemon_url.
+    required: false
+    default: 'true'
+
+  nexus_version:
+    description: >
+      nexus-orchestrator release version to install
+      (e.g. "v0.2.0"; defaults to "latest").
+    required: false
+    default: 'latest'
+
+  timeout_seconds:
+    description: >
+      Maximum seconds to wait for the task to reach a terminal status
+      before the step fails.
+    required: false
+    default: '300'
+
+  # LLM provider credentials (used when start_daemon=true)
+  openai_api_key:
+    description: 'OpenAI API key — enables GPT models on the local daemon.'
+    required: false
+    default: ''
+
+  openai_model:
+    description: 'OpenAI model override (default: gpt-4o-mini). Requires openai_api_key.'
+    required: false
+    default: ''
+
+  anthropic_api_key:
+    description: 'Anthropic API key — enables Claude models on the local daemon.'
+    required: false
+    default: ''
+
+  anthropic_model:
+    description: >
+      Anthropic model override (default: claude-3-5-sonnet-20241022).
+      Requires anthropic_api_key.
+    required: false
+    default: ''
+
+  github_copilot_token:
+    description: 'GitHub Copilot token — enables GPT-4o via Copilot on the local daemon.'
+    required: false
+    default: ''
+
+  github_copilot_model:
+    description: 'Copilot model override (default: gpt-4o). Requires github_copilot_token.'
+    required: false
+    default: ''
+
+# ── Outputs ───────────────────────────────────────────────────────────────────
+outputs:
+  task_id:
+    description: 'UUID of the submitted task.'
+
+  status:
+    description: 'Final task status: COMPLETED, FAILED, CANCELLED, or TOO_LARGE.'
+
+  logs:
+    description: 'LLM output and execution logs for the completed task.'
+
+# ── Implementation ────────────────────────────────────────────────────────────
+runs:
+  using: 'node20'
+  main: 'github-action/dist/index.js'
