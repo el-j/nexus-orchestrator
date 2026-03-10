@@ -70,11 +70,34 @@ type Orchestrator interface {
 	// GetProviders returns a snapshot of all registered LLM backends and their liveness.
 	GetProviders() ([]ProviderInfo, error)
 	CancelTask(id string) error
+	// RegisterCloudProvider dynamically adds a new LLM backend using the supplied
+	// configuration. Returns an error if the kind is unknown or the name is already
+	// registered.
+	RegisterCloudProvider(cfg domain.ProviderConfig) error
+	// RemoveProvider deregisters the provider with the given name.
+	// Returns domain.ErrNotFound when no provider with that name exists.
+	RemoveProvider(providerName string) error
+	// GetProviderModels returns the model catalogue of the named provider.
+	// Returns domain.ErrNotFound when no provider with that name exists.
+	GetProviderModels(providerName string) ([]string, error)
 }
+
+// EventType identifies a task lifecycle event.
+type EventType string
+
+const (
+	EventTaskQueued     EventType = "task.queued"
+	EventTaskProcessing EventType = "task.processing"
+	EventTaskCompleted  EventType = "task.completed"
+	EventTaskFailed     EventType = "task.failed"
+	EventTaskCancelled  EventType = "task.cancelled"
+	EventTaskTooLarge   EventType = "task.too_large"
+	EventTaskNoProvider EventType = "task.no_provider"
+)
 
 // TaskEvent is emitted by OrchestratorService on task lifecycle changes.
 type TaskEvent struct {
-	Type   string            `json:"type"`   // "task.queued", "task.processing", "task.completed", "task.failed", "task.cancelled"
+	Type   EventType         `json:"type"`
 	TaskID string            `json:"taskId"`
 	Status domain.TaskStatus `json:"status"`
 }

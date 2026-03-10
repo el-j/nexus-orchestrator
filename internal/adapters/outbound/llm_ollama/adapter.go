@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -56,12 +57,16 @@ func (a *Adapter) GetAvailableModels() ([]string, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("ollama: list models: unexpected status %d", resp.StatusCode)
+	}
+
 	var result struct {
 		Models []struct {
 			Name string `json:"name"`
 		} `json:"models"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
 		return nil, fmt.Errorf("ollama: decode models: %w", err)
 	}
 
@@ -93,11 +98,18 @@ func (a *Adapter) GenerateCode(prompt string) (string, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("ollama: generate: unexpected status %d", resp.StatusCode)
+	}
+
 	var result struct {
 		Response string `json:"response"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("ollama: decode response: %w", err)
+	}
+	if result.Response == "" {
+		return "", fmt.Errorf("ollama: empty response from model %q", a.model)
 	}
 	return result.Response, nil
 }
@@ -118,7 +130,7 @@ func (a *Adapter) ContextLimit() int {
 		var result struct {
 			ModelInfo map[string]interface{} `json:"model_info"`
 		}
-		if json.NewDecoder(resp.Body).Decode(&result) != nil {
+		if json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result) != nil {
 			return
 		}
 		if v, ok := result.ModelInfo["llama.context_length"]; ok {
@@ -138,7 +150,7 @@ func (a *Adapter) ContextLimit() int {
 func (a *Adapter) Chat(messages []domain.Message) (string, error) {
 	msgs := make([]map[string]string, len(messages))
 	for i, m := range messages {
-		msgs[i] = map[string]string{"role": m.Role, "content": m.Content}
+		msgs[i] = map[string]string{"role": string(m.Role), "content": m.Content}
 	}
 	reqBody, err := json.Marshal(map[string]interface{}{
 		"model":    a.model,
@@ -159,12 +171,16 @@ func (a *Adapter) Chat(messages []domain.Message) (string, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("ollama: chat: unexpected status %d", resp.StatusCode)
+	}
+
 	var result struct {
 		Message struct {
 			Content string `json:"content"`
 		} `json:"message"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("ollama: decode chat response: %w", err)
 	}
 	return result.Message.Content, nil

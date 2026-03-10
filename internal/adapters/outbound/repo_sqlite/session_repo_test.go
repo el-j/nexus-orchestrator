@@ -34,7 +34,7 @@ func TestSessionRepo_AppendMessage_CreatesSession(t *testing.T) {
 	r := newTestRepoForSession(t)
 	sr := repo_sqlite.NewSessionRepo(r)
 
-	msg := domain.Message{Role: "user", Content: "hello", CreatedAt: time.Now()}
+	msg := domain.Message{Role: domain.RoleUser, Content: "hello", CreatedAt: time.Now()}
 	if err := sr.AppendMessage("/proj/foo", msg); err != nil {
 		t.Fatalf("AppendMessage: %v", err)
 	}
@@ -57,9 +57,9 @@ func TestSessionRepo_AppendMessage_AccumulatesMessages(t *testing.T) {
 
 	path := "/proj/accumulate"
 	messages := []domain.Message{
-		{Role: "user", Content: "msg1", CreatedAt: time.Now()},
-		{Role: "assistant", Content: "reply1", CreatedAt: time.Now()},
-		{Role: "user", Content: "msg2", CreatedAt: time.Now()},
+		{Role: domain.RoleUser, Content: "msg1", CreatedAt: time.Now()},
+		{Role: domain.RoleAssistant, Content: "reply1", CreatedAt: time.Now()},
+		{Role: domain.RoleUser, Content: "msg2", CreatedAt: time.Now()},
 	}
 	for _, m := range messages {
 		if err := sr.AppendMessage(path, m); err != nil {
@@ -85,10 +85,10 @@ func TestSessionRepo_IsolatesByProjectPath(t *testing.T) {
 	r := newTestRepoForSession(t)
 	sr := repo_sqlite.NewSessionRepo(r)
 
-	if err := sr.AppendMessage("/proj/alpha", domain.Message{Role: "user", Content: "alpha-msg", CreatedAt: time.Now()}); err != nil {
+	if err := sr.AppendMessage("/proj/alpha", domain.Message{Role: domain.RoleUser, Content: "alpha-msg", CreatedAt: time.Now()}); err != nil {
 		t.Fatalf("AppendMessage alpha: %v", err)
 	}
-	if err := sr.AppendMessage("/proj/beta", domain.Message{Role: "user", Content: "beta-msg", CreatedAt: time.Now()}); err != nil {
+	if err := sr.AppendMessage("/proj/beta", domain.Message{Role: domain.RoleUser, Content: "beta-msg", CreatedAt: time.Now()}); err != nil {
 		t.Fatalf("AppendMessage beta: %v", err)
 	}
 
@@ -118,7 +118,7 @@ func TestSessionRepo_Save_RoundTrip(t *testing.T) {
 		ID:          "session-001",
 		ProjectPath: "/proj/roundtrip",
 		Messages: []domain.Message{
-			{Role: "user", Content: "ping", CreatedAt: now},
+			{Role: domain.RoleUser, Content: "ping", CreatedAt: now},
 		},
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -134,7 +134,7 @@ func TestSessionRepo_Save_RoundTrip(t *testing.T) {
 	if got.ID != sess.ID {
 		t.Errorf("ID: want %q, got %q", sess.ID, got.ID)
 	}
-	if len(got.Messages) != 1 || got.Messages[0].Role != "user" {
+	if len(got.Messages) != 1 || got.Messages[0].Role != domain.RoleUser {
 		t.Errorf("unexpected messages: %+v", got.Messages)
 	}
 }

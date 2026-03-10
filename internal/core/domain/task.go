@@ -27,6 +27,9 @@ const (
 	StatusNoProvider TaskStatus = "NO_PROVIDER"
 )
 
+// String returns the underlying string value of the TaskStatus.
+func (s TaskStatus) String() string { return string(s) }
+
 // Task is the central domain entity that represents a single unit of AI work.
 type Task struct {
 	ID           string     `json:"id"`

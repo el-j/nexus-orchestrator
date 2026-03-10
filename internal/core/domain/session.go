@@ -2,10 +2,18 @@ package domain
 
 import "time"
 
+// MessageRole identifies the speaker in a conversation turn.
+type MessageRole string
+
+const (
+	RoleUser      MessageRole = "user"
+	RoleAssistant MessageRole = "assistant"
+)
+
 // Message is a single turn in a conversation with an LLM.
-// Role is either "user" or "assistant".
+// Role must be one of the typed MessageRole constants (RoleUser, RoleAssistant).
 type Message struct {
-	Role      string    `json:"role"`
+	Role      MessageRole `json:"role"`
 	Content   string    `json:"content"`
 	CreatedAt time.Time `json:"createdAt"`
 }

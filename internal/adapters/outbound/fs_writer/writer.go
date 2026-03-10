@@ -13,10 +13,34 @@ type Writer struct{}
 // New returns a new Writer.
 func New() *Writer { return &Writer{} }
 
+// safePath resolves rel inside projectPath and returns the absolute path,
+// or an error if the result escapes the project root.
+func safePath(projectPath, rel string) (string, error) {
+	if filepath.IsAbs(rel) {
+		return "", fmt.Errorf("fs_writer: path traversal blocked: %q escapes project root", rel)
+	}
+	absProject, err := filepath.Abs(projectPath)
+	if err != nil {
+		return "", fmt.Errorf("fs_writer: abs project path: %w", err)
+	}
+	joined := filepath.Join(absProject, rel)
+	absResult, err := filepath.Abs(joined)
+	if err != nil {
+		return "", fmt.Errorf("fs_writer: abs result path: %w", err)
+	}
+	if absResult != absProject && !strings.HasPrefix(absResult, absProject+string(filepath.Separator)) {
+		return "", fmt.Errorf("fs_writer: path traversal blocked: %q escapes project root", rel)
+	}
+	return absResult, nil
+}
+
 // WriteCodeToFile writes the generated code to <projectPath>/<targetFile>,
 // creating any missing parent directories automatically.
 func (w *Writer) WriteCodeToFile(projectPath, targetFile, code string) error {
-	fullPath := filepath.Join(projectPath, targetFile)
+	fullPath, err := safePath(projectPath, targetFile)
+	if err != nil {
+		return err
+	}
 	if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
 		return fmt.Errorf("fs_writer: mkdir: %w", err)
 	}
@@ -31,7 +55,10 @@ func (w *Writer) WriteCodeToFile(projectPath, targetFile, code string) error {
 func (w *Writer) ReadContextFiles(projectPath string, files []string) (string, error) {
 	var sb strings.Builder
 	for _, f := range files {
-		fullPath := filepath.Join(projectPath, f)
+		fullPath, err := safePath(projectPath, f)
+		if err != nil {
+			return "", err
+		}
 		content, err := os.ReadFile(fullPath)
 		if err != nil {
 			return "", fmt.Errorf("fs_writer: read context file %q: %w", f, err)

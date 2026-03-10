@@ -25,6 +25,11 @@ type OrchestratorService struct {
 	broadcaster ports.EventBroadcaster // optional; nil = no event publishing
 	workCh      chan struct{} // notified when a task is enqueued; capacity 1
 	stopCh      chan struct{}
+	stopped     bool
+	stopOnce    sync.Once
+	// providerFactory builds a concrete LLMClient from a ProviderConfig.
+	// Injected by entry points to keep service layer free of adapter imports.
+	providerFactory func(domain.ProviderConfig) (ports.LLMClient, error)
 }
 
 // NewOrchestrator constructs an OrchestratorService and starts the background
@@ -51,6 +56,13 @@ func NewOrchestrator(
 
 // SubmitTask enqueues a new Task and returns its generated ID.
 func (o *OrchestratorService) SubmitTask(task domain.Task) (string, error) {
+	o.mu.Lock()
+	if o.stopped {
+		o.mu.Unlock()
+		return "", fmt.Errorf("orchestrator: submit task: service is stopped")
+	}
+	o.mu.Unlock()
+
 	task.ID = uuid.NewString()
 	task.Status = domain.StatusQueued
 	task.CreatedAt = time.Now()
@@ -105,12 +117,67 @@ func (o *OrchestratorService) CancelTask(id string) error {
 			return o.repo.UpdateStatus(id, domain.StatusCancelled)
 		}
 	}
-	return errors.New("orchestrator: task not found in queue")
+	return fmt.Errorf("orchestrator: cancel task: %w", domain.ErrNotFound)
 }
 
 // Stop signals the worker goroutine to exit.
 func (o *OrchestratorService) Stop() {
-	close(o.stopCh)
+	o.stopOnce.Do(func() {
+		o.mu.Lock()
+		o.stopped = true
+		o.mu.Unlock()
+		close(o.stopCh)
+	})
+}
+
+// WithProviderFactory sets the factory used by RegisterCloudProvider to construct
+// new LLM adapters from a ProviderConfig. Must be called before the first
+// RegisterCloudProvider call.
+func (o *OrchestratorService) WithProviderFactory(fn func(domain.ProviderConfig) (ports.LLMClient, error)) *OrchestratorService {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.providerFactory = fn
+	return o
+}
+
+// RegisterCloudProvider builds a new LLM adapter from cfg using the registered
+// factory and adds it to the DiscoveryService.
+func (o *OrchestratorService) RegisterCloudProvider(cfg domain.ProviderConfig) error {
+	o.mu.Lock()
+	factory := o.providerFactory
+	o.mu.Unlock()
+	if factory == nil {
+		return fmt.Errorf("orchestrator: no provider factory configured")
+	}
+	client, err := factory(cfg)
+	if err != nil {
+		return fmt.Errorf("orchestrator: register cloud provider: %w", err)
+	}
+	o.discovery.RegisterProvider(client)
+	return nil
+}
+
+// RemoveProvider deregisters the named provider from DiscoveryService.
+// Returns domain.ErrNotFound when no provider with that name is registered.
+func (o *OrchestratorService) RemoveProvider(providerName string) error {
+	if ok := o.discovery.RemoveProvider(providerName); !ok {
+		return fmt.Errorf("orchestrator: remove provider: %w", domain.ErrNotFound)
+	}
+	return nil
+}
+
+// GetProviderModels returns the model catalogue of the named provider.
+// Returns domain.ErrNotFound when no provider with that name is registered.
+func (o *OrchestratorService) GetProviderModels(providerName string) ([]string, error) {
+	client, ok := o.discovery.GetClientByName(providerName)
+	if !ok {
+		return nil, fmt.Errorf("orchestrator: get provider models: %w", domain.ErrNotFound)
+	}
+	models, err := client.GetAvailableModels()
+	if err != nil {
+		return nil, fmt.Errorf("orchestrator: get provider models: %w", err)
+	}
+	return models, nil
 }
 
 // SetBroadcaster wires an optional EventBroadcaster for task lifecycle events.
@@ -131,12 +198,26 @@ func (o *OrchestratorService) emit(taskID string, status domain.TaskStatus) {
 	if b == nil {
 		return
 	}
-	eventType := "task." + strings.ToLower(string(status))
 	b.Broadcast(ports.TaskEvent{
-		Type:   eventType,
+		Type:   statusEventType(status),
 		TaskID: taskID,
 		Status: status,
 	})
+}
+
+// statusEventType maps a TaskStatus to its corresponding EventType.
+var statusEventMap = map[domain.TaskStatus]ports.EventType{
+	domain.StatusQueued:     ports.EventTaskQueued,
+	domain.StatusProcessing: ports.EventTaskProcessing,
+	domain.StatusCompleted:  ports.EventTaskCompleted,
+	domain.StatusFailed:     ports.EventTaskFailed,
+	domain.StatusCancelled:  ports.EventTaskCancelled,
+	domain.StatusTooLarge:   ports.EventTaskTooLarge,
+	domain.StatusNoProvider: ports.EventTaskNoProvider,
+}
+
+func statusEventType(s domain.TaskStatus) ports.EventType {
+	return statusEventMap[s]
 }
 
 // runWorker is the background loop that processes QUEUED tasks sequentially.
@@ -179,13 +260,19 @@ func (o *OrchestratorService) processNext() {
 	llm, err := o.discovery.FindForModel(task.ModelID, task.ProviderHint)
 	if err != nil {
 		log.Printf("orchestrator: no provider for task %s (model=%q): %v", task.ID, task.ModelID, err)
-		_ = o.repo.UpdateLogs(task.ID, err.Error())
-		_ = o.repo.UpdateStatus(task.ID, domain.StatusNoProvider)
+		if err := o.repo.UpdateLogs(task.ID, err.Error()); err != nil {
+			log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
+		}
+		if err := o.repo.UpdateStatus(task.ID, domain.StatusNoProvider); err != nil {
+			log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+		}
 		o.emit(task.ID, domain.StatusNoProvider)
 		return
 	}
 
-	_ = o.repo.UpdateStatus(task.ID, domain.StatusProcessing)
+	if err := o.repo.UpdateStatus(task.ID, domain.StatusProcessing); err != nil {
+		log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+	}
 	o.emit(task.ID, domain.StatusProcessing)
 
 	// Build the prompt with optional context files
@@ -216,15 +303,19 @@ func (o *OrchestratorService) processNext() {
 	if limit := llm.ContextLimit(); limit > 0 {
 		estHistory := make([]domain.Message, len(sessionHistory)+1)
 		copy(estHistory, sessionHistory)
-		estHistory[len(sessionHistory)] = domain.Message{Role: "user", Content: prompt}
+		estHistory[len(sessionHistory)] = domain.Message{Role: domain.RoleUser, Content: prompt}
 		if estimated := estimateTokens(estHistory); estimated > limit-maxResponseTokens {
 			logEntry := fmt.Sprintf(
 				"context too large: ~%d tokens estimated, model limit is %d (headroom %d) — shorten the instruction or reduce context files",
 				estimated, limit, maxResponseTokens,
 			)
 			log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
-			_ = o.repo.UpdateLogs(task.ID, logEntry)
-			_ = o.repo.UpdateStatus(task.ID, domain.StatusTooLarge)
+			if err := o.repo.UpdateLogs(task.ID, logEntry); err != nil {
+				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
+			}
+			if err := o.repo.UpdateStatus(task.ID, domain.StatusTooLarge); err != nil {
+				log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+			}
 			o.emit(task.ID, domain.StatusTooLarge)
 			return
 		}
@@ -233,20 +324,24 @@ func (o *OrchestratorService) processNext() {
 	var code string
 	if o.sessionRepo != nil {
 		// Build the chat history using the already-loaded session (no second DB call).
-		userMsg := domain.Message{Role: "user", Content: prompt, CreatedAt: time.Now()}
+		userMsg := domain.Message{Role: domain.RoleUser, Content: prompt, CreatedAt: time.Now()}
 		history := append(append([]domain.Message(nil), sessionHistory...), userMsg)
 		var err error
 		code, err = llm.Chat(history)
 		if err != nil {
 			logEntry := fmt.Sprintf("failed via %s: %v", llm.ProviderName(), err)
 			log.Printf("orchestrator: chat for task %s: %v", task.ID, err)
-			_ = o.repo.UpdateLogs(task.ID, logEntry)
-			_ = o.repo.UpdateStatus(task.ID, domain.StatusFailed)
+			if err := o.repo.UpdateLogs(task.ID, logEntry); err != nil {
+				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
+			}
+			if err := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err != nil {
+				log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+			}
 			o.emit(task.ID, domain.StatusFailed)
 			return
 		}
 		// Only persist messages after a successful response.
-		assistantMsg := domain.Message{Role: "assistant", Content: code, CreatedAt: time.Now()}
+		assistantMsg := domain.Message{Role: domain.RoleAssistant, Content: code, CreatedAt: time.Now()}
 		if err := o.sessionRepo.AppendMessage(task.ProjectPath, userMsg); err != nil {
 			log.Printf("orchestrator: append user message for task %s: %v", task.ID, err)
 		}
@@ -259,8 +354,12 @@ func (o *OrchestratorService) processNext() {
 		if err != nil {
 			logEntry := fmt.Sprintf("failed via %s: %v", llm.ProviderName(), err)
 			log.Printf("orchestrator: generate code for task %s: %v", task.ID, err)
-			_ = o.repo.UpdateLogs(task.ID, logEntry)
-			_ = o.repo.UpdateStatus(task.ID, domain.StatusFailed)
+			if err := o.repo.UpdateLogs(task.ID, logEntry); err != nil {
+				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
+			}
+			if err := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err != nil {
+				log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+			}
 			o.emit(task.ID, domain.StatusFailed)
 			return
 		}
@@ -270,16 +369,24 @@ func (o *OrchestratorService) processNext() {
 		if err := o.fileWriter.WriteCodeToFile(task.ProjectPath, task.TargetFile, extractCode(code)); err != nil {
 			logEntry := fmt.Sprintf("failed writing output via %s: %v", llm.ProviderName(), err)
 			log.Printf("orchestrator: write file for task %s: %v", task.ID, err)
-			_ = o.repo.UpdateLogs(task.ID, logEntry)
-			_ = o.repo.UpdateStatus(task.ID, domain.StatusFailed)
+			if err := o.repo.UpdateLogs(task.ID, logEntry); err != nil {
+				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
+			}
+			if err := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err != nil {
+				log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+			}
 			o.emit(task.ID, domain.StatusFailed)
 			return
 		}
 	}
 
 	logEntry := fmt.Sprintf("completed via %s at %s", llm.ProviderName(), time.Now().UTC().Format(time.RFC3339))
-	_ = o.repo.UpdateLogs(task.ID, logEntry)
-	_ = o.repo.UpdateStatus(task.ID, domain.StatusCompleted)
+	if err := o.repo.UpdateLogs(task.ID, logEntry); err != nil {
+		log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
+	}
+	if err := o.repo.UpdateStatus(task.ID, domain.StatusCompleted); err != nil {
+		log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+	}
 	o.emit(task.ID, domain.StatusCompleted)
 	log.Printf("orchestrator: task %s completed via %s", task.ID, llm.ProviderName())
 }

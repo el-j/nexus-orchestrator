@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -23,6 +24,17 @@ func New(dbPath string) (*Repository, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: open: %w", err)
 	}
+	for _, pragma := range []string{
+		"PRAGMA journal_mode=WAL",
+		"PRAGMA busy_timeout=5000",
+		"PRAGMA foreign_keys=ON",
+	} {
+		if _, err := db.Exec(pragma); err != nil {
+			return nil, fmt.Errorf("sqlite: %s: %w", pragma, err)
+		}
+	}
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
 	if err := migrate(db); err != nil {
 		return nil, fmt.Errorf("sqlite: migrate: %w", err)
 	}
@@ -53,6 +65,13 @@ func migrate(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
+	_, err = db.Exec(`
+		CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+		CREATE INDEX IF NOT EXISTS idx_tasks_project_path ON tasks(project_path);
+	`)
+	if err != nil {
+		return err
+	}
 	// Additive column migrations — safe to re-run; errors are ignored if columns already exist.
 	for _, col := range []struct{ name, def string }{
 		{"model_id", "TEXT NOT NULL DEFAULT ''"},
@@ -65,6 +84,7 @@ func migrate(db *sql.DB) error {
 
 // Save inserts a new Task record.
 func (r *Repository) Save(t domain.Task) error {
+	t.ProjectPath = filepath.Clean(t.ProjectPath)
 	ctxJSON, err := json.Marshal(t.ContextFiles)
 	if err != nil {
 		return fmt.Errorf("sqlite: marshal context files: %w", err)
@@ -118,24 +138,32 @@ func (r *Repository) GetPending() ([]domain.Task, error) {
 
 // UpdateStatus changes the status of a task identified by id.
 func (r *Repository) UpdateStatus(id string, status domain.TaskStatus) error {
-	_, err := r.db.Exec(
+	res, err := r.db.Exec(
 		`UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?`,
 		string(status), time.Now().UnixMilli(), id,
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: update status: %w", err)
 	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("sqlite: update status: %w", domain.ErrNotFound)
+	}
 	return nil
 }
 
 // UpdateLogs replaces the logs field for the task identified by id.
 func (r *Repository) UpdateLogs(id, logs string) error {
-	_, err := r.db.Exec(
+	res, err := r.db.Exec(
 		`UPDATE tasks SET logs = ?, updated_at = ? WHERE id = ?`,
 		logs, time.Now().UnixMilli(), id,
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: update logs: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("sqlite: update logs: %w", domain.ErrNotFound)
 	}
 	return nil
 }

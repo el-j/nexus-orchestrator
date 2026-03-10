@@ -1,6 +1,8 @@
 package services_test
 
 import (
+	"fmt"
+	"sync"
 	"testing"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -140,5 +142,84 @@ func TestListProviders_IncludesActiveModel(t *testing.T) {
 	}
 	if infos[1].ActiveModel != "" {
 		t.Errorf("expected empty ActiveModel for offline provider, got %q", infos[1].ActiveModel)
+	}
+}
+
+// --- RemoveProvider / GetClientByName / concurrent safety ---
+
+func TestDiscovery_RemoveProvider_Found(t *testing.T) {
+	p1 := &mockLLMClient{alive: true, name: "alpha"}
+	p2 := &mockLLMClient{alive: true, name: "beta"}
+	svc := services.NewDiscoveryService(p1, p2)
+
+	if !svc.RemoveProvider("alpha") {
+		t.Fatal("expected RemoveProvider to return true for a known provider")
+	}
+	infos := svc.ListProviders()
+	if len(infos) != 1 || infos[0].Name != "beta" {
+		t.Errorf("expected only 'beta' remaining, got %+v", infos)
+	}
+}
+
+func TestDiscovery_RemoveProvider_NotFound(t *testing.T) {
+	p1 := &mockLLMClient{alive: true, name: "alpha"}
+	svc := services.NewDiscoveryService(p1)
+
+	if svc.RemoveProvider("nonexistent") {
+		t.Fatal("expected RemoveProvider to return false for unknown provider")
+	}
+	if len(svc.ListProviders()) != 1 {
+		t.Error("provider list should be unchanged after failed removal")
+	}
+}
+
+func TestDiscovery_RemoveProvider_CaseInsensitive(t *testing.T) {
+	p := &mockLLMClient{alive: true, name: "LMStudio"}
+	svc := services.NewDiscoveryService(p)
+
+	if !svc.RemoveProvider("lmstudio") {
+		t.Fatal("expected case-insensitive match to succeed")
+	}
+	if len(svc.ListProviders()) != 0 {
+		t.Error("provider should have been removed")
+	}
+}
+
+func TestDiscovery_GetClientByName_Found(t *testing.T) {
+	p := &mockLLMClient{alive: true, name: "mysvc"}
+	svc := services.NewDiscoveryService(p)
+
+	got, ok := svc.GetClientByName("mysvc")
+	if !ok {
+		t.Fatal("expected GetClientByName to find 'mysvc'")
+	}
+	if got.ProviderName() != "mysvc" {
+		t.Errorf("unexpected name: %q", got.ProviderName())
+	}
+}
+
+func TestDiscovery_GetClientByName_NotFound(t *testing.T) {
+	svc := services.NewDiscoveryService()
+
+	_, ok := svc.GetClientByName("ghost")
+	if ok {
+		t.Fatal("expected GetClientByName to return false for unknown provider")
+	}
+}
+
+func TestDiscovery_RegisterProvider_ConcurrentSafe(t *testing.T) {
+	svc := services.NewDiscoveryService()
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			svc.RegisterProvider(&mockLLMClient{alive: true, name: fmt.Sprintf("p%d", n)})
+		}(i)
+	}
+	wg.Wait()
+	infos := svc.ListProviders()
+	if len(infos) != 20 {
+		t.Errorf("expected 20 providers after concurrent registration, got %d", len(infos))
 	}
 }

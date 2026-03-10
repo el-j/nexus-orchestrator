@@ -69,12 +69,15 @@ func (a *Adapter) GetAvailableModels() ([]string, error) {
 		return nil, fmt.Errorf("anthropic: list models: %w", err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("anthropic: list models: unexpected status %d", resp.StatusCode)
+	}
 	var result struct {
 		Data []struct {
 			ID string `json:"id"`
 		} `json:"data"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
 		return nil, fmt.Errorf("anthropic: decode models: %w", err)
 	}
 	ids := make([]string, 0, len(result.Data))
@@ -105,13 +108,13 @@ type anthropicMessage struct {
 func toAnthropicMessages(msgs []domain.Message) []anthropicMessage {
 	out := make([]anthropicMessage, 0, len(msgs))
 	for _, m := range msgs {
-		if m.Role != "user" && m.Role != "assistant" {
+		if m.Role != domain.RoleUser && m.Role != domain.RoleAssistant {
 			continue
 		}
-		if len(out) > 0 && out[len(out)-1].Role == m.Role {
+		if len(out) > 0 && out[len(out)-1].Role == string(m.Role) {
 			out[len(out)-1].Content += "\n" + m.Content
 		} else {
-			out = append(out, anthropicMessage{Role: m.Role, Content: m.Content})
+			out = append(out, anthropicMessage{Role: string(m.Role), Content: m.Content})
 		}
 	}
 	return out
@@ -148,7 +151,7 @@ func (a *Adapter) sendMessages(messages []anthropicMessage) (string, error) {
 			Text string `json:"text"`
 		} `json:"content"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("anthropic: decode response: %w", err)
 	}
 	for _, block := range result.Content {

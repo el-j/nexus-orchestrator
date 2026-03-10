@@ -19,6 +19,7 @@ import (
 	"nexus-orchestrator/internal/adapters/outbound/llm_ollama"
 	"nexus-orchestrator/internal/adapters/outbound/llm_openaicompat"
 	"nexus-orchestrator/internal/adapters/outbound/repo_sqlite"
+	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
 	"nexus-orchestrator/internal/core/services"
 )
@@ -46,17 +47,26 @@ func main() {
 	discoverySvc := services.NewDiscoveryService(buildProviders()...)
 	sessionRepo := repo_sqlite.NewSessionRepo(repo)
 	orchestratorSvc := services.NewOrchestrator(discoverySvc, repo, writer, sessionRepo)
+	orchestratorSvc.WithProviderFactory(buildProviderFromConfig)
 	defer orchestratorSvc.Stop()
 
 	// 3. Start HTTP API and MCP server with a cancellable context
 	httpCtx, cancelHTTP := context.WithCancel(context.Background())
+	httpAddr := os.Getenv("NEXUS_LISTEN_ADDR")
+	if httpAddr == "" {
+		httpAddr = "127.0.0.1:9999"
+	}
+	mcpAddr := os.Getenv("NEXUS_MCP_ADDR")
+	if mcpAddr == "" {
+		mcpAddr = "127.0.0.1:9998"
+	}
 	go func() {
-		if err := httpapi.StartServer(httpCtx, orchestratorSvc, ":9999"); err != nil {
+		if err := httpapi.StartServer(httpCtx, orchestratorSvc, httpAddr); err != nil {
 			log.Printf("httpapi: %v", err)
 		}
 	}()
 	go func() {
-		if err := mcp.StartMCPServer(httpCtx, orchestratorSvc, ":9998"); err != nil {
+		if err := mcp.StartMCPServer(httpCtx, orchestratorSvc, mcpAddr); err != nil {
 			log.Printf("mcp: %v", err)
 		}
 	}()
@@ -112,4 +122,27 @@ func buildProviders() []ports.LLMClient {
 		providers = append(providers, llm_anthropic.NewAdapter(key, model))
 	}
 	return providers
+}
+
+// buildProviderFromConfig constructs a single LLM adapter from a runtime ProviderConfig.
+// Injected into OrchestratorService to keep the services package free of adapter imports.
+func buildProviderFromConfig(cfg domain.ProviderConfig) (ports.LLMClient, error) {
+	switch cfg.Kind {
+	case domain.ProviderKindLMStudio:
+		if cfg.BaseURL == "" {
+			cfg.BaseURL = "http://127.0.0.1:1234/v1"
+		}
+		return llm_lmstudio.NewLMStudioAdapter(cfg.BaseURL), nil
+	case domain.ProviderKindOllama:
+		if cfg.BaseURL == "" {
+			cfg.BaseURL = "http://127.0.0.1:11434"
+		}
+		return llm_ollama.NewOllamaAdapter(cfg.BaseURL, cfg.Model), nil
+	case domain.ProviderKindOpenAICompat:
+		return llm_openaicompat.NewAdapter(cfg.Name, cfg.BaseURL, cfg.APIKey, cfg.Model), nil
+	case domain.ProviderKindAnthropic:
+		return llm_anthropic.NewAdapter(cfg.APIKey, cfg.Model), nil
+	default:
+		return nil, fmt.Errorf("unknown provider kind: %q", cfg.Kind)
+	}
 }

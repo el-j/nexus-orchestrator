@@ -76,12 +76,16 @@ func (a *Adapter) GetAvailableModels() ([]string, error) {
 			return
 		}
 		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			getErr = fmt.Errorf("%s: list models: unexpected status %d", a.name, resp.StatusCode)
+			return
+		}
 		var result struct {
 			Data []struct {
 				ID string `json:"id"`
 			} `json:"data"`
 		}
-		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
 			getErr = fmt.Errorf("%s: decode models: %w", a.name, err)
 			return
 		}
@@ -104,7 +108,7 @@ func (a *Adapter) GenerateCode(prompt string) (string, error) {
 func (a *Adapter) Chat(messages []domain.Message) (string, error) {
 	msgs := make([]map[string]string, len(messages))
 	for i, m := range messages {
-		msgs[i] = map[string]string{"role": m.Role, "content": m.Content}
+		msgs[i] = map[string]string{"role": string(m.Role), "content": m.Content}
 	}
 	return a.chat(msgs)
 }
@@ -142,7 +146,7 @@ func (a *Adapter) chat(messages []map[string]string) (string, error) {
 			} `json:"message"`
 		} `json:"choices"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("%s: decode response: %w", a.name, err)
 	}
 	if len(result.Choices) == 0 {

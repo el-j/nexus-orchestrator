@@ -40,3 +40,18 @@ func (n *NexusApp) GetProviders() ([]ports.ProviderInfo, error) {
 func (n *NexusApp) CancelTask(id string) error {
 	return n.orch.CancelTask(id)
 }
+
+// RegisterCloudProvider adds a new LLM provider at runtime.
+func (n *NexusApp) RegisterCloudProvider(cfg domain.ProviderConfig) error {
+	return n.orch.RegisterCloudProvider(cfg)
+}
+
+// RemoveProvider deregisters the named provider.
+func (n *NexusApp) RemoveProvider(name string) error {
+	return n.orch.RemoveProvider(name)
+}
+
+// GetProviderModels returns available models for the named provider.
+func (n *NexusApp) GetProviderModels(providerName string) ([]string, error) {
+	return n.orch.GetProviderModels(providerName)
+}

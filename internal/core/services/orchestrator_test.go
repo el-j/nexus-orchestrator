@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"nexus-orchestrator/internal/core/domain"
+	"nexus-orchestrator/internal/core/ports"
 	"nexus-orchestrator/internal/core/services"
 )
 
@@ -397,6 +398,211 @@ func TestOrchestrator_StatusNoProvider_WhenModelUnavailable(t *testing.T) {
 		saved, _ := repo.GetByID(id)
 		if saved.Status == domain.StatusNoProvider {
 			return // success
+		}
+		if saved.Status == domain.StatusCompleted || saved.Status == domain.StatusFailed {
+			t.Fatalf("expected StatusNoProvider but got %s", saved.Status)
+		}
+	}
+	t.Fatal("task did not reach StatusNoProvider within timeout")
+}
+
+// --- Stop / CancelTask guard tests -------------------------------------------
+
+func TestOrchestrator_CancelTask_UnknownReturnsNotFound(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	err := orch.CancelTask("unknown-task-id")
+	if err == nil {
+		t.Fatal("expected error for unknown task, got nil")
+	}
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected domain.ErrNotFound, got: %v", err)
+	}
+}
+
+func TestOrchestrator_Stop_ThenSubmitReturnsError(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+
+	orch.Stop()
+
+	_, err := orch.SubmitTask(domain.Task{Instruction: "should fail"})
+	if err == nil {
+		t.Fatal("expected error after Stop, got nil")
+	}
+	if !strings.Contains(err.Error(), "stopped") {
+		t.Errorf("expected 'stopped' in error message, got: %v", err)
+	}
+}
+
+func TestOrchestrator_Stop_Idempotent(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+
+	// Calling Stop() multiple times must not panic.
+	orch.Stop()
+	orch.Stop()
+	orch.Stop()
+}
+
+// --- Provider management tests -----------------------------------------------
+
+func TestOrchestrator_RegisterCloudProvider_NoFactory(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	// No factory wired — must return an error.
+	err := orch.RegisterCloudProvider(domain.ProviderConfig{Name: "x", Kind: domain.ProviderKindOllama})
+	if err == nil {
+		t.Fatal("expected error when no provider factory is configured")
+	}
+}
+
+func TestOrchestrator_RegisterCloudProvider_FactoryError(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	orch.WithProviderFactory(func(cfg domain.ProviderConfig) (ports.LLMClient, error) {
+		return nil, errors.New("unsupported kind")
+	})
+
+	err := orch.RegisterCloudProvider(domain.ProviderConfig{Name: "bad", Kind: "unknown"})
+	if err == nil {
+		t.Fatal("expected error from factory")
+	}
+}
+
+func TestOrchestrator_RegisterCloudProvider_Success(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	stub := &mockLLMClient{alive: true, name: "new-provider", models: []string{"llama3"}}
+	orch.WithProviderFactory(func(cfg domain.ProviderConfig) (ports.LLMClient, error) {
+		return stub, nil
+	})
+
+	if err := orch.RegisterCloudProvider(domain.ProviderConfig{Name: "new-provider", Kind: domain.ProviderKindOllama}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify it was added to discovery.
+	providers, err := orch.GetProviders()
+	if err != nil {
+		t.Fatalf("GetProviders: %v", err)
+	}
+	found := false
+	for _, p := range providers {
+		if p.Name == "new-provider" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("registered provider not visible via GetProviders()")
+	}
+}
+
+func TestOrchestrator_RemoveProvider_NotFound(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	err := orch.RemoveProvider("ghost")
+	if err == nil {
+		t.Fatal("expected error when removing non-existent provider")
+	}
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected domain.ErrNotFound, got: %v", err)
+	}
+}
+
+func TestOrchestrator_RemoveProvider_Success(t *testing.T) {
+	repo := newMemRepo()
+	stub := &mockLLMClient{alive: true, name: "removeme"}
+	discovery := services.NewDiscoveryService(stub)
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	if err := orch.RemoveProvider("removeme"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	providers, _ := orch.GetProviders()
+	for _, p := range providers {
+		if p.Name == "removeme" {
+			t.Error("provider still present after removal")
+		}
+	}
+}
+
+func TestOrchestrator_GetProviderModels_NotFound(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	_, err := orch.GetProviderModels("ghost")
+	if err == nil {
+		t.Fatal("expected error for unknown provider")
+	}
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected domain.ErrNotFound, got: %v", err)
+	}
+}
+
+func TestOrchestrator_GetProviderModels_Success(t *testing.T) {
+	repo := newMemRepo()
+	stub := &mockLLMClient{alive: true, name: "mycloud", models: []string{"model-a", "model-b"}}
+	discovery := services.NewDiscoveryService(stub)
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	models, err := orch.GetProviderModels("mycloud")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(models) != 2 {
+		t.Fatalf("expected 2 models, got %d", len(models))
+	}
+	if models[0] != "model-a" || models[1] != "model-b" {
+		t.Errorf("unexpected models: %v", models)
+	}
+}
+
+func TestOrchestrator_StatusNoProvider_AfterRemove(t *testing.T) {
+	repo := newMemRepo()
+	// Provider supports llama3. We remove it, then submit a task that needs it.
+	stub := &mockLLMClient{alive: true, name: "ollama", activeModel: "llama3", models: []string{"llama3"}}
+	discovery := services.NewDiscoveryService(stub)
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	if err := orch.RemoveProvider("ollama"); err != nil {
+		t.Fatalf("RemoveProvider: %v", err)
+	}
+
+	id, err := orch.SubmitTask(domain.Task{Instruction: "do something", ModelID: "llama3"})
+	if err != nil {
+		t.Fatalf("SubmitTask: %v", err)
+	}
+
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		time.Sleep(200 * time.Millisecond)
+		saved, _ := repo.GetByID(id)
+		if saved.Status == domain.StatusNoProvider {
+			return
 		}
 		if saved.Status == domain.StatusCompleted || saved.Status == domain.StatusFailed {
 			t.Fatalf("expected StatusNoProvider but got %s", saved.Status)

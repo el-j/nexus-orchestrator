@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -51,7 +52,7 @@ func (a *Adapter) ActiveModel() string {
 			var result struct {
 				Identifier string `json:"identifier"`
 			}
-			if json.NewDecoder(resp.Body).Decode(&result) == nil && result.Identifier != "" {
+			if json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result) == nil && result.Identifier != "" {
 				a.activeModel = result.Identifier
 				return
 			}
@@ -87,7 +88,7 @@ func (a *Adapter) ContextLimit() int {
 		var result struct {
 			ContextLength int `json:"contextLength"`
 		}
-		if json.NewDecoder(resp.Body).Decode(&result) == nil && result.ContextLength > 0 {
+		if json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result) == nil && result.ContextLength > 0 {
 			a.contextLimit = result.ContextLength
 		}
 	})
@@ -112,12 +113,16 @@ func (a *Adapter) GetAvailableModels() ([]string, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("lmstudio: list models: unexpected status %d", resp.StatusCode)
+	}
+
 	var result struct {
 		Data []struct {
 			ID string `json:"id"`
 		} `json:"data"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
 		return nil, fmt.Errorf("lmstudio: decode models: %w", err)
 	}
 
@@ -152,6 +157,10 @@ func (a *Adapter) GenerateCode(prompt string) (string, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("lmstudio: generate: unexpected status %d", resp.StatusCode)
+	}
+
 	var result struct {
 		Choices []struct {
 			Message struct {
@@ -159,7 +168,7 @@ func (a *Adapter) GenerateCode(prompt string) (string, error) {
 			} `json:"message"`
 		} `json:"choices"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("lmstudio: decode response: %w", err)
 	}
 	if len(result.Choices) == 0 {
@@ -173,7 +182,7 @@ func (a *Adapter) GenerateCode(prompt string) (string, error) {
 func (a *Adapter) Chat(messages []domain.Message) (string, error) {
 	msgs := make([]map[string]string, len(messages))
 	for i, m := range messages {
-		msgs[i] = map[string]string{"role": m.Role, "content": m.Content}
+		msgs[i] = map[string]string{"role": string(m.Role), "content": m.Content}
 	}
 	reqBody, err := json.Marshal(map[string]interface{}{
 		"model":       a.activeModelOrDefault(),
@@ -194,6 +203,10 @@ func (a *Adapter) Chat(messages []domain.Message) (string, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("lmstudio: chat: unexpected status %d", resp.StatusCode)
+	}
+
 	var result struct {
 		Choices []struct {
 			Message struct {
@@ -201,7 +214,7 @@ func (a *Adapter) Chat(messages []domain.Message) (string, error) {
 			} `json:"message"`
 		} `json:"choices"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("lmstudio: decode chat response: %w", err)
 	}
 	if len(result.Choices) == 0 {

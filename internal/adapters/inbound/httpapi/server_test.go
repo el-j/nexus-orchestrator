@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"nexus-orchestrator/internal/adapters/inbound/httpapi"
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
 
@@ -33,6 +35,13 @@ type mockOrchestrator struct {
 	getProvidersErr    error
 
 	cancelTaskErr error
+
+	registerProviderErr error
+
+	removeProviderErr error
+
+	getProviderModelsResult []string
+	getProviderModelsErr    error
 }
 
 func (m *mockOrchestrator) SubmitTask(_ domain.Task) (string, error) {
@@ -53,6 +62,18 @@ func (m *mockOrchestrator) GetProviders() ([]ports.ProviderInfo, error) {
 
 func (m *mockOrchestrator) CancelTask(_ string) error {
 	return m.cancelTaskErr
+}
+
+func (m *mockOrchestrator) RegisterCloudProvider(_ domain.ProviderConfig) error {
+	return m.registerProviderErr
+}
+
+func (m *mockOrchestrator) RemoveProvider(_ string) error {
+	return m.removeProviderErr
+}
+
+func (m *mockOrchestrator) GetProviderModels(_ string) ([]string, error) {
+	return m.getProviderModelsResult, m.getProviderModelsErr
 }
 
 // newTestHandler builds a chi router with the same route/handler logic as StartServer.
@@ -107,7 +128,11 @@ func newTestHandler(orch ports.Orchestrator) http.Handler {
 	r.Delete("/api/tasks/{id}", func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
 		if err := orch.CancelTask(id); err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			if errors.Is(err, domain.ErrNotFound) {
+				http.Error(w, "task not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -124,6 +149,60 @@ func newTestHandler(orch ports.Orchestrator) http.Handler {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(providers)
+	})
+
+	r.Post("/api/providers", func(w http.ResponseWriter, r *http.Request) {
+		var cfg domain.ProviderConfig
+		if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
+			http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+		if cfg.Name == "" || cfg.Kind == "" {
+			http.Error(w, "name and kind are required", http.StatusBadRequest)
+			return
+		}
+		if err := orch.RegisterCloudProvider(cfg); err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				http.Error(w, err.Error(), http.StatusConflict)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(map[string]string{"name": cfg.Name, "kind": string(cfg.Kind)})
+	})
+
+	r.Delete("/api/providers/{name}", func(w http.ResponseWriter, r *http.Request) {
+		name := chi.URLParam(r, "name")
+		if err := orch.RemoveProvider(name); err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				http.Error(w, "provider not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	r.Get("/api/providers/{name}/models", func(w http.ResponseWriter, r *http.Request) {
+		name := chi.URLParam(r, "name")
+		models, err := orch.GetProviderModels(name)
+		if err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				http.Error(w, "provider not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if models == nil {
+			models = []string{}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(models)
 	})
 
 	r.Get("/api/health", func(w http.ResponseWriter, r *http.Request) {
@@ -346,7 +425,7 @@ func TestDeleteTask_Success(t *testing.T) {
 
 // TestDeleteTask_NotFound verifies DELETE /api/tasks/{id} returns 404 when CancelTask errors.
 func TestDeleteTask_NotFound(t *testing.T) {
-	mock := &mockOrchestrator{cancelTaskErr: errors.New("not found")}
+	mock := &mockOrchestrator{cancelTaskErr: fmt.Errorf("orchestrator: cancel task: %w", domain.ErrNotFound)}
 	ts := httptest.NewServer(newTestHandler(mock))
 	defer ts.Close()
 
@@ -431,5 +510,208 @@ func TestGetHealth(t *testing.T) {
 	}
 	if result["service"] != "nexus-orchestrator" {
 		t.Errorf("expected service %q, got %q", "nexus-orchestrator", result["service"])
+	}
+}
+
+// --- POST /api/providers tests -----------------------------------------------
+
+func TestPostProvider_Success(t *testing.T) {
+	mock := &mockOrchestrator{}
+	ts := httptest.NewServer(newTestHandler(mock))
+	defer ts.Close()
+
+	body, _ := json.Marshal(domain.ProviderConfig{Name: "my-ollama", Kind: domain.ProviderKindOllama})
+	resp, err := http.Post(ts.URL+"/api/providers", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		t.Errorf("expected 201, got %d", resp.StatusCode)
+	}
+	var result map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if result["name"] != "my-ollama" {
+		t.Errorf("expected name %q, got %q", "my-ollama", result["name"])
+	}
+}
+
+func TestPostProvider_MissingFields(t *testing.T) {
+	mock := &mockOrchestrator{}
+	ts := httptest.NewServer(newTestHandler(mock))
+	defer ts.Close()
+
+	body, _ := json.Marshal(domain.ProviderConfig{Name: "no-kind"}) // Kind is empty → 400
+	resp, err := http.Post(ts.URL+"/api/providers", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", resp.StatusCode)
+	}
+}
+
+func TestPostProvider_FactoryError(t *testing.T) {
+	mock := &mockOrchestrator{registerProviderErr: errors.New("unsupported kind")}
+	ts := httptest.NewServer(newTestHandler(mock))
+	defer ts.Close()
+
+	body, _ := json.Marshal(domain.ProviderConfig{Name: "bad", Kind: "unknown"})
+	resp, err := http.Post(ts.URL+"/api/providers", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("expected 422, got %d", resp.StatusCode)
+	}
+}
+
+// --- DELETE /api/providers/{name} tests --------------------------------------
+
+func TestDeleteProvider_Success(t *testing.T) {
+	mock := &mockOrchestrator{}
+	ts := httptest.NewServer(newTestHandler(mock))
+	defer ts.Close()
+
+	req, _ := http.NewRequest(http.MethodDelete, ts.URL+"/api/providers/my-provider", nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		t.Errorf("expected 204, got %d", resp.StatusCode)
+	}
+}
+
+func TestDeleteProvider_NotFound(t *testing.T) {
+	mock := &mockOrchestrator{removeProviderErr: domain.ErrNotFound}
+	ts := httptest.NewServer(newTestHandler(mock))
+	defer ts.Close()
+
+	req, _ := http.NewRequest(http.MethodDelete, ts.URL+"/api/providers/ghost", nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", resp.StatusCode)
+	}
+}
+
+// --- GET /api/providers/{name}/models tests ----------------------------------
+
+func TestGetProviderModels_Success(t *testing.T) {
+	mock := &mockOrchestrator{getProviderModelsResult: []string{"llama3", "codellama"}}
+	ts := httptest.NewServer(newTestHandler(mock))
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/providers/my-ollama/models")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+	var models []string
+	if err := json.NewDecoder(resp.Body).Decode(&models); err != nil {
+		t.Fatal(err)
+	}
+	if len(models) != 2 || models[0] != "llama3" {
+		t.Errorf("unexpected models: %v", models)
+	}
+}
+
+func TestGetProviderModels_NotFound(t *testing.T) {
+	mock := &mockOrchestrator{getProviderModelsErr: domain.ErrNotFound}
+	ts := httptest.NewServer(newTestHandler(mock))
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/providers/ghost/models")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", resp.StatusCode)
+	}
+}
+
+// --- Cancel 404 vs 500 tests (production handler) ---------------------------
+
+func TestDeleteTask_InternalError_Returns500(t *testing.T) {
+	// Non-ErrNotFound errors should return 500, not 404.
+	mock := &mockOrchestrator{cancelTaskErr: errors.New("database locked")}
+	ts := httptest.NewServer(newTestHandler(mock))
+	defer ts.Close()
+
+	req, err := http.NewRequest(http.MethodDelete, ts.URL+"/api/tasks/some-task", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("expected 500 for non-ErrNotFound cancel error, got %d", resp.StatusCode)
+	}
+}
+
+// --- Security headers (production handler via httpapi.Server) -----------------
+
+func TestSecurityHeaders_OnAPIResponse(t *testing.T) {
+	mock := &mockOrchestrator{}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/health")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if got := resp.Header.Get("X-Frame-Options"); got != "DENY" {
+		t.Errorf("expected X-Frame-Options DENY, got %q", got)
+	}
+	if got := resp.Header.Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Errorf("expected X-Content-Type-Options nosniff, got %q", got)
+	}
+}
+
+func TestDashboard_CSPHeader(t *testing.T) {
+	mock := &mockOrchestrator{}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/ui")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	csp := resp.Header.Get("Content-Security-Policy")
+	if csp == "" {
+		t.Error("expected Content-Security-Policy header on /ui, got empty")
+	}
+	if got := resp.Header.Get("X-Frame-Options"); got != "DENY" {
+		t.Errorf("expected X-Frame-Options DENY on /ui, got %q", got)
 	}
 }

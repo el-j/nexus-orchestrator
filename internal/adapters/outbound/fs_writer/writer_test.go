@@ -75,3 +75,45 @@ func TestWriter_ReadContextFiles_MissingFileReturnsError(t *testing.T) {
 		t.Error("expected error for missing file, got nil")
 	}
 }
+
+func TestSafePath_Traversal(t *testing.T) {
+	dir := t.TempDir()
+	w := fs_writer.New()
+
+	tests := []struct {
+		name    string
+		rel     string
+		wantErr bool
+	}{
+		{"parent escape", "../../etc/passwd", true},
+		{"sibling escape", "../sibling/file.go", true},
+		{"absolute path", "/etc/passwd", true},
+		{"valid nested", "src/main.go", false},
+		{"valid flat", "file.go", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name+" (write)", func(t *testing.T) {
+			err := w.WriteCodeToFile(dir, tt.rel, "data")
+			if tt.wantErr && err == nil {
+				t.Fatalf("expected error for %q, got nil", tt.rel)
+			}
+			if !tt.wantErr && err != nil {
+				t.Fatalf("unexpected error for %q: %v", tt.rel, err)
+			}
+			if tt.wantErr && err != nil && !strings.Contains(err.Error(), "path traversal blocked") {
+				t.Fatalf("expected path traversal error, got: %v", err)
+			}
+		})
+
+		t.Run(tt.name+" (read)", func(t *testing.T) {
+			_, err := w.ReadContextFiles(dir, []string{tt.rel})
+			if tt.wantErr && err == nil {
+				t.Fatalf("expected error for %q, got nil", tt.rel)
+			}
+			if tt.wantErr && err != nil && !strings.Contains(err.Error(), "path traversal blocked") {
+				t.Fatalf("expected path traversal error, got: %v", err)
+			}
+		})
+	}
+}

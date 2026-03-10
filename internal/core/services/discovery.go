@@ -3,12 +3,15 @@ package services
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"nexus-orchestrator/internal/core/ports"
 )
 
 // DiscoveryService probes registered LLM clients and returns the first active one.
+// All exported methods are safe for concurrent use.
 type DiscoveryService struct {
+	mu               sync.RWMutex
 	availableClients []ports.LLMClient
 }
 
@@ -17,15 +20,48 @@ func NewDiscoveryService(clients ...ports.LLMClient) *DiscoveryService {
 	return &DiscoveryService{availableClients: clients}
 }
 
-// RegisterProvider adds a new LLM adapter at runtime.
+// RegisterProvider adds a new LLM adapter at runtime. Safe for concurrent use.
 func (s *DiscoveryService) RegisterProvider(c ports.LLMClient) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.availableClients = append(s.availableClients, c)
+}
+
+// RemoveProvider removes the first registered provider whose ProviderName()
+// matches name (case-insensitive). Returns true if a provider was removed.
+func (s *DiscoveryService) RemoveProvider(name string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, c := range s.availableClients {
+		if strings.EqualFold(c.ProviderName(), name) {
+			s.availableClients = append(s.availableClients[:i], s.availableClients[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
+// GetClientByName returns the first registered provider whose ProviderName()
+// matches name (case-insensitive), along with a found flag.
+func (s *DiscoveryService) GetClientByName(name string) (ports.LLMClient, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, c := range s.availableClients {
+		if strings.EqualFold(c.ProviderName(), name) {
+			return c, true
+		}
+	}
+	return nil, false
 }
 
 // DetectActive returns the first LLM provider that responds to a Ping,
 // or nil when none are reachable.
 func (s *DiscoveryService) DetectActive() ports.LLMClient {
-	for _, client := range s.availableClients {
+	s.mu.RLock()
+	clients := make([]ports.LLMClient, len(s.availableClients))
+	copy(clients, s.availableClients)
+	s.mu.RUnlock()
+	for _, client := range clients {
 		if client.Ping() {
 			return client
 		}
@@ -39,7 +75,7 @@ func (s *DiscoveryService) DetectActive() ports.LLMClient {
 //   - Pass 1: provider whose ActiveModel() matches modelID (currently loaded)
 //   - Pass 2: provider that lists modelID in GetAvailableModels()
 //
-// providerHint (case-insensitive prefix of ProviderName) is tried first in
+// providerHint (case-insensitive substring of ProviderName) is tried first in
 // each pass. Returns an error when no suitable provider is found.
 func (s *DiscoveryService) FindForModel(modelID, providerHint string) (ports.LLMClient, error) {
 	if modelID == "" {
@@ -81,8 +117,13 @@ func (s *DiscoveryService) FindForModel(modelID, providerHint string) (ports.LLM
 // ListProviders returns the liveness and model information for every registered
 // LLM backend without modifying internal state.
 func (s *DiscoveryService) ListProviders() []ports.ProviderInfo {
-	result := make([]ports.ProviderInfo, 0, len(s.availableClients))
-	for _, c := range s.availableClients {
+	s.mu.RLock()
+	clients := make([]ports.LLMClient, len(s.availableClients))
+	copy(clients, s.availableClients)
+	s.mu.RUnlock()
+
+	result := make([]ports.ProviderInfo, 0, len(clients))
+	for _, c := range clients {
 		alive := c.Ping()
 		info := ports.ProviderInfo{
 			Name:   c.ProviderName(),
@@ -98,13 +139,19 @@ func (s *DiscoveryService) ListProviders() []ports.ProviderInfo {
 	return result
 }
 
-// orderedCandidates returns all clients with hint-matching providers first.
+// orderedCandidates returns a snapshot of all clients with hint-matching providers first.
+// Callers must NOT hold s.mu when calling this method.
 func (s *DiscoveryService) orderedCandidates(hint string) []ports.LLMClient {
+	s.mu.RLock()
+	all := make([]ports.LLMClient, len(s.availableClients))
+	copy(all, s.availableClients)
+	s.mu.RUnlock()
+
 	if hint == "" {
-		return s.availableClients
+		return all
 	}
 	var first, rest []ports.LLMClient
-	for _, c := range s.availableClients {
+	for _, c := range all {
 		if strings.Contains(strings.ToLower(c.ProviderName()), strings.ToLower(hint)) {
 			first = append(first, c)
 		} else {

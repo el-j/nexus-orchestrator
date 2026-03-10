@@ -1,12 +1,12 @@
 {
   "version": "2",
-  "updatedAt": "2026-03-10T00:30:00.000Z",
+  "updatedAt": "2026-03-10T10:00:00.000Z",
   "counters": {
-    "nextTaskId": 44,
-    "nextPlanId": 5
+    "nextTaskId": 68,
+    "nextPlanId": 8
   },
-  "activePlanId": "PLAN-005",
-  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 active (orchestrator hardening + Wails GUI + writeback). PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 active (smart multi-provider routing: ModelID/ProviderHint on Task, ActiveModel() port, FindForModel() in Discovery, StatusNoProvider, llm_openaicompat + llm_anthropic adapters, env-var provider config).",
+  "activePlanId": null,
+  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale (orchestrator hardening + Wails GUI + writeback — partially superseded by later plans). PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening: security, data integrity, concurrency, type safety, tests).",
   "plans": {
     "PLAN-001": {
       "id": "PLAN-001",
@@ -32,7 +32,7 @@
     "PLAN-002": {
       "id": "PLAN-002",
       "goal": "Harden the orchestrator against crashes/data-races and build the Wails 2 GUI dashboard with full cross-platform support",
-      "status": "active",
+      "status": "todo",
       "createdAt": "2026-03-09T12:00:00.000Z",
       "taskIds": [
         "TASK-013",
@@ -88,8 +88,9 @@
     "PLAN-005": {
       "id": "PLAN-005",
       "goal": "Smart multi-provider routing: per-task ModelID/ProviderHint, ActiveModel() on all adapters, FindForModel() with failover in DiscoveryService, StatusNoProvider domain constant, llm_openaicompat (OpenAI/GitHub Copilot/Azure) and llm_anthropic adapters, env-var provider config in both entry points",
-      "status": "active",
+      "status": "completed",
       "createdAt": "2026-03-10T06:00:00.000Z",
+      "completedAt": "2026-03-10T08:30:00.000Z",
       "taskIds": [
         "TASK-044",
         "TASK-045",
@@ -101,6 +102,22 @@
         "TASK-051",
         "TASK-052"
       ]
+    },
+    "PLAN-006": {
+      "id": "PLAN-006",
+      "goal": "UI provider and model control: ProviderConfig domain type, RegisterCloudProvider/RemoveProvider/GetProviderModels on Orchestrator port, HTTP API CRUD endpoints for providers, enriched dashboard with task-submit form and provider management, Wails binding updates",
+      "status": "completed",
+      "createdAt": "2026-03-10T09:00:00.000Z",
+      "completedAt": "2026-03-10T09:30:00.000Z",
+      "taskIds": ["TASK-053","TASK-054","TASK-055","TASK-056","TASK-057","TASK-058","TASK-059"]
+    },
+    "PLAN-007": {
+      "id": "PLAN-007",
+      "goal": "Audit hardening: fix CRITICAL/HIGH security, data integrity, concurrency, error handling, and type safety issues found in comprehensive audit",
+      "status": "completed",
+      "createdAt": "2026-03-10T10:00:00.000Z",
+      "completedAt": "2026-03-10T12:00:00.000Z",
+      "taskIds": ["TASK-060","TASK-061","TASK-062","TASK-063","TASK-064","TASK-065","TASK-066","TASK-067"]
     }
   },
   "tasks": {
@@ -709,83 +726,250 @@
     "TASK-044": {
       "id": "TASK-044",
       "title": "Architecture: ModelID/ProviderHint on Task, ActiveModel() port, StatusNoProvider, ProviderInfo extended",
-      "status": "todo",
+      "status": "done",
       "role": "architecture",
       "planId": "PLAN-005",
       "dependencies": [],
-      "createdAt": "2026-03-10T06:00:00.000Z"
+      "createdAt": "2026-03-10T06:00:00.000Z",
+      "completedAt": "2026-03-10T08:30:00.000Z"
     },
     "TASK-045": {
       "id": "TASK-045",
       "title": "LM Studio: fix ContextLimit() via native /api/v0/model + ActiveModel()",
-      "status": "todo",
+      "status": "done",
       "role": "backend",
       "planId": "PLAN-005",
       "dependencies": ["TASK-044"],
-      "createdAt": "2026-03-10T06:00:00.000Z"
+      "createdAt": "2026-03-10T06:00:00.000Z",
+      "completedAt": "2026-03-10T08:30:00.000Z"
     },
     "TASK-046": {
       "id": "TASK-046",
       "title": "Ollama adapter: implement ActiveModel() + cache GetAvailableModels()",
-      "status": "todo",
+      "status": "done",
       "role": "backend",
       "planId": "PLAN-005",
       "dependencies": ["TASK-044"],
-      "createdAt": "2026-03-10T06:00:00.000Z"
+      "createdAt": "2026-03-10T06:00:00.000Z",
+      "completedAt": "2026-03-10T08:30:00.000Z"
     },
     "TASK-047": {
       "id": "TASK-047",
       "title": "New llm_openaicompat adapter: generic OpenAI-compatible provider",
-      "status": "todo",
+      "status": "done",
       "role": "backend",
       "planId": "PLAN-005",
       "dependencies": ["TASK-044"],
+      "completedAt": "2026-03-10T08:30:00.000Z",
       "createdAt": "2026-03-10T06:00:00.000Z"
     },
     "TASK-048": {
       "id": "TASK-048",
       "title": "New llm_anthropic adapter: Anthropic Claude native API",
-      "status": "todo",
+      "status": "done",
       "role": "backend",
       "planId": "PLAN-005",
       "dependencies": ["TASK-044"],
-      "createdAt": "2026-03-10T06:00:00.000Z"
+      "createdAt": "2026-03-10T06:00:00.000Z",
+      "completedAt": "2026-03-10T08:30:00.000Z"
     },
     "TASK-049": {
       "id": "TASK-049",
       "title": "DiscoveryService: FindForModel() with failover + extended ListProviders()",
-      "status": "todo",
+      "status": "done",
       "role": "backend",
       "planId": "PLAN-005",
       "dependencies": ["TASK-044"],
-      "createdAt": "2026-03-10T06:00:00.000Z"
+      "createdAt": "2026-03-10T06:00:00.000Z",
+      "completedAt": "2026-03-10T08:30:00.000Z"
     },
     "TASK-050": {
       "id": "TASK-050",
       "title": "Orchestrator + SQLite: model-aware dispatch + StatusNoProvider + schema migration",
-      "status": "todo",
+      "status": "done",
       "role": "backend",
       "planId": "PLAN-005",
       "dependencies": ["TASK-044", "TASK-049"],
-      "createdAt": "2026-03-10T06:00:00.000Z"
+      "createdAt": "2026-03-10T06:00:00.000Z",
+      "completedAt": "2026-03-10T08:30:00.000Z"
     },
     "TASK-051": {
       "id": "TASK-051",
       "title": "Entry-point wiring: env-var provider config for daemon + desktop",
-      "status": "todo",
+      "status": "done",
       "role": "devops",
       "planId": "PLAN-005",
       "dependencies": ["TASK-047", "TASK-048", "TASK-049", "TASK-050"],
-      "createdAt": "2026-03-10T06:00:00.000Z"
+      "createdAt": "2026-03-10T06:00:00.000Z",
+      "completedAt": "2026-03-10T08:30:00.000Z"
     },
     "TASK-052": {
       "id": "TASK-052",
       "title": "QA: tests for model routing, FindForModel, StatusNoProvider",
-      "status": "todo",
+      "status": "done",
       "role": "qa",
       "planId": "PLAN-005",
       "dependencies": ["TASK-044","TASK-045","TASK-046","TASK-047","TASK-048","TASK-049","TASK-050","TASK-051"],
-      "createdAt": "2026-03-10T06:00:00.000Z"
+      "createdAt": "2026-03-10T06:00:00.000Z",
+      "completedAt": "2026-03-10T08:30:00.000Z"
+    },
+    "TASK-053": {
+      "id": "TASK-053",
+      "title": "Architecture: ProviderConfig domain type + extend Orchestrator port + DiscoveryService safety",
+      "status": "done",
+      "completedAt": "2026-03-10T09:30:00.000Z",
+      "role": "architecture",
+      "planId": "PLAN-006",
+      "dependencies": ["TASK-052"],
+      "createdAt": "2026-03-10T09:00:00.000Z"
+    },
+    "TASK-054": {
+      "id": "TASK-054",
+      "title": "Backend: OrchestratorService implements RegisterCloudProvider/RemoveProvider/GetProviderModels",
+      "status": "done",
+      "completedAt": "2026-03-10T09:30:00.000Z",
+      "role": "backend",
+      "planId": "PLAN-006",
+      "dependencies": ["TASK-053"],
+      "createdAt": "2026-03-10T09:00:00.000Z"
+    },
+    "TASK-055": {
+      "id": "TASK-055",
+      "title": "HTTP API: POST/DELETE /api/providers + GET /api/providers/{name}/models",
+      "status": "done",
+      "completedAt": "2026-03-10T09:30:00.000Z",
+      "role": "api",
+      "planId": "PLAN-006",
+      "dependencies": ["TASK-053"],
+      "createdAt": "2026-03-10T09:00:00.000Z"
+    },
+    "TASK-056": {
+      "id": "TASK-056",
+      "title": "Dashboard: provider management UI + task submit form with model/provider picker",
+      "status": "done",
+      "completedAt": "2026-03-10T09:30:00.000Z",
+      "role": "api",
+      "planId": "PLAN-006",
+      "dependencies": ["TASK-055"],
+      "createdAt": "2026-03-10T09:00:00.000Z"
+    },
+    "TASK-057": {
+      "id": "TASK-057",
+      "title": "Wails binding: expose RegisterCloudProvider/RemoveProvider/GetProviderModels in app.go + wailsbind",
+      "status": "done",
+      "completedAt": "2026-03-10T09:30:00.000Z",
+      "role": "devops",
+      "planId": "PLAN-006",
+      "dependencies": ["TASK-053","TASK-054"],
+      "createdAt": "2026-03-10T09:00:00.000Z"
+    },
+    "TASK-058": {
+      "id": "TASK-058",
+      "title": "QA: tests for all PLAN-006 additions",
+      "status": "done",
+      "completedAt": "2026-03-10T09:30:00.000Z",
+      "role": "qa",
+      "planId": "PLAN-006",
+      "dependencies": ["TASK-054","TASK-055","TASK-057"],
+      "createdAt": "2026-03-10T09:00:00.000Z"
+    },
+    "TASK-059": {
+      "id": "TASK-059",
+      "title": "Verify: full build + test + smoke validation",
+      "status": "done",
+      "completedAt": "2026-03-10T09:30:00.000Z",
+      "role": "verify",
+      "planId": "PLAN-006",
+      "dependencies": ["TASK-058"],
+      "createdAt": "2026-03-10T09:00:00.000Z"
+    },
+    "TASK-060": {
+      "id": "TASK-060",
+      "title": "Security: path traversal guard in fs_writer + request body limits",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-007",
+      "dependencies": [],
+      "createdAt": "2026-03-10T10:00:00.000Z",
+      "startedAt": "2026-03-10T10:30:00.000Z",
+      "completedAt": "2026-03-10T10:45:00.000Z"
+    },
+    "TASK-061": {
+      "id": "TASK-061",
+      "title": "Security: bind to 127.0.0.1 + HTTP request body size limits in API+MCP",
+      "status": "done",
+      "role": "api",
+      "planId": "PLAN-007",
+      "dependencies": [],
+      "createdAt": "2026-03-10T10:00:00.000Z",
+      "startedAt": "2026-03-10T10:30:00.000Z",
+      "completedAt": "2026-03-10T10:45:00.000Z"
+    },
+    "TASK-062": {
+      "id": "TASK-062",
+      "title": "Data integrity: SQLite PRAGMAs + indexes + RowsAffected + path normalization",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-007",
+      "dependencies": [],
+      "createdAt": "2026-03-10T10:00:00.000Z",
+      "startedAt": "2026-03-10T10:30:00.000Z",
+      "completedAt": "2026-03-10T10:45:00.000Z"
+    },
+    "TASK-063": {
+      "id": "TASK-063",
+      "title": "Concurrency: stop swallowing repo errors + CancelTask sentinel + post-Stop guard",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-007",
+      "dependencies": [],
+      "createdAt": "2026-03-10T10:00:00.000Z",
+      "startedAt": "2026-03-10T10:30:00.000Z",
+      "completedAt": "2026-03-10T10:45:00.000Z"
+    },
+    "TASK-064": {
+      "id": "TASK-064",
+      "title": "Type safety: typed MessageRole + TaskEvent.Type enum + domain String() methods",
+      "status": "done",
+      "role": "architecture",
+      "planId": "PLAN-007",
+      "dependencies": [],
+      "createdAt": "2026-03-10T10:00:00.000Z",
+      "startedAt": "2026-03-10T11:00:00.000Z",
+      "completedAt": "2026-03-10T11:15:00.000Z"
+    },
+    "TASK-065": {
+      "id": "TASK-065",
+      "title": "LLM adapters: check HTTP status before decode + empty response guards",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-007",
+      "dependencies": [],
+      "createdAt": "2026-03-10T10:00:00.000Z",
+      "startedAt": "2026-03-10T11:00:00.000Z",
+      "completedAt": "2026-03-10T11:15:00.000Z"
+    },
+    "TASK-066": {
+      "id": "TASK-066",
+      "title": "HTTP API: fix cancel error codes + sanitise error responses + CSP headers",
+      "status": "done",
+      "role": "api",
+      "planId": "PLAN-007",
+      "dependencies": ["TASK-061"],
+      "createdAt": "2026-03-10T10:00:00.000Z",
+      "startedAt": "2026-03-10T11:00:00.000Z",
+      "completedAt": "2026-03-10T11:15:00.000Z"
+    },
+    "TASK-067": {
+      "id": "TASK-067",
+      "title": "QA: tests for path traversal, SQLite integrity, error handling, type safety",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-007",
+      "dependencies": ["TASK-060","TASK-061","TASK-062","TASK-063","TASK-064","TASK-065","TASK-066"],
+      "createdAt": "2026-03-10T10:00:00.000Z",
+      "startedAt": "2026-03-10T11:30:00.000Z",
+      "completedAt": "2026-03-10T11:45:00.000Z"
     }
   }
 }

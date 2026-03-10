@@ -50,6 +50,21 @@ func (a *App) CancelTask(id string) error {
 	return a.orchestrator.CancelTask(id)
 }
 
+// RegisterCloudProvider adds a new LLM backend from the UI.
+func (a *App) RegisterCloudProvider(cfg domain.ProviderConfig) error {
+	return a.orchestrator.RegisterCloudProvider(cfg)
+}
+
+// RemoveProvider deregisters the named LLM backend.
+func (a *App) RemoveProvider(name string) error {
+	return a.orchestrator.RemoveProvider(name)
+}
+
+// GetProviderModels returns the model catalogue of the named provider.
+func (a *App) GetProviderModels(providerName string) ([]string, error) {
+	return a.orchestrator.GetProviderModels(providerName)
+}
+
 // Greet is the default Wails example method — kept for scaffolding compatibility.
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello, %s! NexusAI is running.", name)

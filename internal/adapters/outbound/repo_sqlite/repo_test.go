@@ -252,3 +252,29 @@ func TestRepository_Save_DuplicateID(t *testing.T) {
 		t.Fatal("expected error on duplicate Save, got nil")
 	}
 }
+
+func TestRepository_UpdateStatus_NotFound(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	err := repo.UpdateStatus("nonexistent-id", domain.StatusCompleted)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected domain.ErrNotFound, got %v", err)
+	}
+}
+
+func TestRepository_UpdateLogs_NotFound(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	err := repo.UpdateLogs("nonexistent-id", "some logs")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected domain.ErrNotFound, got %v", err)
+	}
+}

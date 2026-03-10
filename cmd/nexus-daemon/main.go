@@ -19,6 +19,7 @@ import (
 	"nexus-orchestrator/internal/adapters/outbound/llm_ollama"
 	"nexus-orchestrator/internal/adapters/outbound/llm_openaicompat"
 	"nexus-orchestrator/internal/adapters/outbound/repo_sqlite"
+	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
 	"nexus-orchestrator/internal/core/services"
 )
@@ -43,12 +44,13 @@ func main() {
 	discoverySvc := services.NewDiscoveryService(buildProviders()...)
 	sessionRepo := repo_sqlite.NewSessionRepo(repo)
 	orchestratorSvc := services.NewOrchestrator(discoverySvc, repo, writer, sessionRepo)
+	orchestratorSvc.WithProviderFactory(buildProviderFromConfig)
 	defer orchestratorSvc.Stop()
 
 	// 3. Context that cancels on SIGINT / SIGTERM — drives HTTP graceful shutdown
 	addr := os.Getenv("NEXUS_LISTEN_ADDR")
 	if addr == "" {
-		addr = ":9999"
+		addr = "127.0.0.1:9999"
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -56,7 +58,7 @@ func main() {
 
 	mcpAddr := os.Getenv("NEXUS_MCP_ADDR")
 	if mcpAddr == "" {
-		mcpAddr = ":9998"
+		mcpAddr = "127.0.0.1:9998"
 	}
 	go func() {
 		if err := mcp.StartMCPServer(ctx, orchestratorSvc, mcpAddr); err != nil {
@@ -101,4 +103,27 @@ func buildProviders() []ports.LLMClient {
 		providers = append(providers, llm_anthropic.NewAdapter(key, model))
 	}
 	return providers
+}
+
+// buildProviderFromConfig constructs a single LLM adapter from a runtime ProviderConfig.
+// Injected into OrchestratorService to keep the services package free of adapter imports.
+func buildProviderFromConfig(cfg domain.ProviderConfig) (ports.LLMClient, error) {
+	switch cfg.Kind {
+	case domain.ProviderKindLMStudio:
+		if cfg.BaseURL == "" {
+			cfg.BaseURL = "http://127.0.0.1:1234/v1"
+		}
+		return llm_lmstudio.NewLMStudioAdapter(cfg.BaseURL), nil
+	case domain.ProviderKindOllama:
+		if cfg.BaseURL == "" {
+			cfg.BaseURL = "http://127.0.0.1:11434"
+		}
+		return llm_ollama.NewOllamaAdapter(cfg.BaseURL, cfg.Model), nil
+	case domain.ProviderKindOpenAICompat:
+		return llm_openaicompat.NewAdapter(cfg.Name, cfg.BaseURL, cfg.APIKey, cfg.Model), nil
+	case domain.ProviderKindAnthropic:
+		return llm_anthropic.NewAdapter(cfg.APIKey, cfg.Model), nil
+	default:
+		return nil, fmt.Errorf("unknown provider kind: %q", cfg.Kind)
+	}
 }

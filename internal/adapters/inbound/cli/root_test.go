@@ -48,6 +48,9 @@ func (m *mockOrchestrator) GetProviders() ([]ports.ProviderInfo, error) {
 func (m *mockOrchestrator) CancelTask(_ string) error {
 	return m.cancelErr
 }
+func (m *mockOrchestrator) RegisterCloudProvider(_ domain.ProviderConfig) error  { return nil }
+func (m *mockOrchestrator) RemoveProvider(_ string) error                        { return nil }
+func (m *mockOrchestrator) GetProviderModels(_ string) ([]string, error)         { return nil, nil }
 
 // captureStdout redirects os.Stdout while fn runs and returns the collected
 // output. fn must not call t.Fatal/t.FailNow (runtime.Goexit) directly, as

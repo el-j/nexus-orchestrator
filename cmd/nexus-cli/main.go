@@ -123,3 +123,57 @@ func (r *remoteOrchestrator) CancelTask(id string) error {
 	}
 	return nil
 }
+
+func (r *remoteOrchestrator) RegisterCloudProvider(cfg domain.ProviderConfig) error {
+	body, err := json.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("remote: marshal provider config: %w", err)
+	}
+	resp, err := http.Post(r.baseURL+"/api/providers", "application/json", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("remote: register provider: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("remote: register provider: unexpected status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+func (r *remoteOrchestrator) RemoveProvider(name string) error {
+	req, err := http.NewRequest(http.MethodDelete, r.baseURL+"/api/providers/"+url.PathEscape(name), nil)
+	if err != nil {
+		return fmt.Errorf("remote: build remove-provider request: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("remote: remove provider: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("remote: remove provider: %w", domain.ErrNotFound)
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("remote: remove provider: unexpected status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+func (r *remoteOrchestrator) GetProviderModels(name string) ([]string, error) {
+	resp, err := http.Get(r.baseURL + "/api/providers/" + url.PathEscape(name) + "/models")
+	if err != nil {
+		return nil, fmt.Errorf("remote: get provider models: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("remote: get provider models: %w", domain.ErrNotFound)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("remote: get provider models: unexpected status %d", resp.StatusCode)
+	}
+	var models []string
+	if err := json.NewDecoder(resp.Body).Decode(&models); err != nil {
+		return nil, fmt.Errorf("remote: decode models: %w", err)
+	}
+	return models, nil
+}
