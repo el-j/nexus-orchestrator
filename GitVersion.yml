@@ -1,11 +1,10 @@
-mode: ContinuousDelivery
+workflow: ContinuousDelivery
 assembly-versioning-scheme: MajorMinorPatch
-tag-prefix: v
+tag-prefix: '[vV]'
 next-version: 0.2.0
 branches:
   main:
     regex: ^main$
-    mode: ContinuousDelivery
     label: ''
     increment: Patch
     source-branches:
@@ -14,21 +13,18 @@ branches:
       - release
   feature:
     regex: ^feature[/-]
-    mode: ContinuousDelivery
     label: alpha
     increment: Minor
     source-branches:
       - main
   hotfix:
     regex: ^hotfix[/-]
-    mode: ContinuousDelivery
     label: beta
     increment: Patch
     source-branches:
       - main
   release:
     regex: ^release[/-]
-    mode: ContinuousDelivery
     label: rc
     increment: None
     source-branches:
