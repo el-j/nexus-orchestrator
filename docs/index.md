@@ -11,7 +11,8 @@ description: "nexusOrchestrator — Route AI code-generation tasks to any LLM ba
 Route AI code-generation tasks to any LLM backend — locally or in the cloud.
 {: .fs-6 .fw-300 }
 
-[Get Started](/nexusOrchestrator/getting-started){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
+[Download](/nexusOrchestrator/downloads){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
+[Get Started](/nexusOrchestrator/getting-started){: .btn .fs-5 .mb-4 .mb-md-0 .mr-2 }
 [View on GitHub](https://github.com/nexus-orchestrator/nexusOrchestrator){: .btn .fs-5 .mb-4 .mb-md-0 }
 
 ---
@@ -106,6 +107,7 @@ Inbound Adapters  →  Core Services  →  Ports  ←  Outbound Adapters
 
 ## What's Next?
 
+- [Downloads](/nexusOrchestrator/downloads) — Desktop app and CLI binaries for all platforms
 - [Getting Started](/nexusOrchestrator/getting-started) — Installation, configuration, and your first task
 - [Architecture](/nexusOrchestrator/architecture) — Deep dive into the hexagonal design
 - [API Reference](/nexusOrchestrator/api-reference) — Complete HTTP and MCP endpoint documentation

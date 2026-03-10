@@ -2,11 +2,11 @@
   "version": "2",
   "updatedAt": "2026-03-10T14:00:00.000Z",
   "counters": {
-    "nextTaskId": 85,
-    "nextPlanId": 10
+    "nextTaskId": 91,
+    "nextPlanId": 11
   },
   "activePlanId": null,
-  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale (orchestrator hardening + Wails GUI + writeback — partially superseded by later plans). PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening: security, data integrity, concurrency, type safety, tests). PLAN-008 completed (comprehensive E2E testing + self-dogfood command). PLAN-009 completed (GitHub Pages site + command-aware task routing: CommandType domain types, smart execute validation with ErrNoPlan, GetByProjectPath port, Jekyll docs site with 5 pages, GitHub Actions CI).",
+  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page).",
   "plans": {
     "PLAN-001": {
       "id": "PLAN-001",
@@ -134,6 +134,14 @@
       "createdAt": "2026-03-10T15:00:00.000Z",
       "completedAt": "2026-03-10T15:45:00.000Z",
       "taskIds": ["TASK-074","TASK-075","TASK-076","TASK-077","TASK-078","TASK-079","TASK-080","TASK-081","TASK-082","TASK-083","TASK-084"]
+    },
+    "PLAN-010": {
+      "id": "PLAN-010",
+      "goal": "Cross-platform release pipeline: GitHub Actions workflow that builds Wails desktop app (macOS/Windows/Linux) + CLI/daemon archives, publishes GitHub Releases on tags, and a polished downloads landing page on GitHub Pages",
+      "status": "completed",
+      "createdAt": "2026-03-10T16:00:00.000Z",
+      "completedAt": "2026-03-10T17:00:00.000Z",
+      "taskIds": ["TASK-085","TASK-086","TASK-087","TASK-088","TASK-089","TASK-090"]
     }
   },
   "tasks": {
@@ -1173,6 +1181,72 @@
       "createdAt": "2026-03-10T15:00:00.000Z",
       "startedAt": "2026-03-10T15:40:00.000Z",
       "completedAt": "2026-03-10T15:45:00.000Z"
+    },
+    "TASK-085": {
+      "id": "TASK-085",
+      "title": "GitHub Actions: CLI + daemon release workflow",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-010",
+      "dependencies": [],
+      "createdAt": "2026-03-10T16:00:00.000Z",
+      "startedAt": "2026-03-10T16:10:00.000Z",
+      "completedAt": "2026-03-10T16:25:00.000Z"
+    },
+    "TASK-086": {
+      "id": "TASK-086",
+      "title": "Docs: polished downloads landing page",
+      "status": "done",
+      "role": "frontend",
+      "planId": "PLAN-010",
+      "dependencies": [],
+      "createdAt": "2026-03-10T16:00:00.000Z",
+      "startedAt": "2026-03-10T16:10:00.000Z",
+      "completedAt": "2026-03-10T16:25:00.000Z"
+    },
+    "TASK-087": {
+      "id": "TASK-087",
+      "title": "GitHub Actions: Wails desktop app build",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-010",
+      "dependencies": [],
+      "createdAt": "2026-03-10T16:00:00.000Z",
+      "startedAt": "2026-03-10T16:10:00.000Z",
+      "completedAt": "2026-03-10T16:25:00.000Z"
+    },
+    "TASK-088": {
+      "id": "TASK-088",
+      "title": "Install script (curl | sh) for CLI+daemon",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-010",
+      "dependencies": ["TASK-085"],
+      "createdAt": "2026-03-10T16:00:00.000Z",
+      "startedAt": "2026-03-10T16:10:00.000Z",
+      "completedAt": "2026-03-10T16:30:00.000Z"
+    },
+    "TASK-089": {
+      "id": "TASK-089",
+      "title": "Update index.md with download CTA + links",
+      "status": "done",
+      "role": "frontend",
+      "planId": "PLAN-010",
+      "dependencies": ["TASK-086"],
+      "createdAt": "2026-03-10T16:00:00.000Z",
+      "startedAt": "2026-03-10T16:35:00.000Z",
+      "completedAt": "2026-03-10T16:40:00.000Z"
+    },
+    "TASK-090": {
+      "id": "TASK-090",
+      "title": "QA: verify workflows + landing page + install script",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-010",
+      "dependencies": ["TASK-085","TASK-086","TASK-087","TASK-088","TASK-089"],
+      "createdAt": "2026-03-10T16:00:00.000Z",
+      "startedAt": "2026-03-10T16:45:00.000Z",
+      "completedAt": "2026-03-10T17:00:00.000Z"
     }
   }
 }
