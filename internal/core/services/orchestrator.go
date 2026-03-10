@@ -23,7 +23,7 @@ type OrchestratorService struct {
 	repo        ports.TaskRepository
 	sessionRepo ports.SessionRepository
 	broadcaster ports.EventBroadcaster // optional; nil = no event publishing
-	workCh      chan struct{} // notified when a task is enqueued; capacity 1
+	workCh      chan struct{}          // notified when a task is enqueued; capacity 1
 	stopCh      chan struct{}
 	stopped     bool
 	stopOnce    sync.Once

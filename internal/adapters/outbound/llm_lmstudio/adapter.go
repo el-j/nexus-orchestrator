@@ -16,7 +16,7 @@ import (
 // Adapter implements ports.LLMClient for LM Studio's OpenAI-compatible REST API.
 type Adapter struct {
 	baseURL      string
-	nativeBase   string    // LM Studio-native base URL (without /v1 suffix)
+	nativeBase   string // LM Studio-native base URL (without /v1 suffix)
 	httpClient   *http.Client
 	contextLimit int       // cached value; 0 = unknown
 	limitOnce    sync.Once // ensures the context-limit query runs at most once

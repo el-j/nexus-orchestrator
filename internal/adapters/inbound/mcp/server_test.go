@@ -34,9 +34,9 @@ func (m *mockOrch) CancelTask(_ string) error                { return m.cancelEr
 func (m *mockOrch) GetProviders() ([]ports.ProviderInfo, error) {
 	return m.providers, m.provErr
 }
-func (m *mockOrch) RegisterCloudProvider(_ domain.ProviderConfig) error         { return nil }
-func (m *mockOrch) RemoveProvider(_ string) error                               { return nil }
-func (m *mockOrch) GetProviderModels(_ string) ([]string, error)                { return nil, nil }
+func (m *mockOrch) RegisterCloudProvider(_ domain.ProviderConfig) error { return nil }
+func (m *mockOrch) RemoveProvider(_ string) error                       { return nil }
+func (m *mockOrch) GetProviderModels(_ string) ([]string, error)        { return nil, nil }
 
 // --- Helpers ---
 

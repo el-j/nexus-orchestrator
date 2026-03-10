@@ -32,17 +32,17 @@ func (s TaskStatus) String() string { return string(s) }
 
 // Task is the central domain entity that represents a single unit of AI work.
 type Task struct {
-	ID           string     `json:"id"`
-	ProjectPath  string     `json:"projectPath"`
-	TargetFile   string     `json:"targetFile"`
-	Instruction  string     `json:"instruction"`
-	ContextFiles []string   `json:"contextFiles"`
+	ID           string   `json:"id"`
+	ProjectPath  string   `json:"projectPath"`
+	TargetFile   string   `json:"targetFile"`
+	Instruction  string   `json:"instruction"`
+	ContextFiles []string `json:"contextFiles"`
 	// ModelID constrains which LLM model must process this task.
 	// Empty means "use whatever the active provider has loaded".
-	ModelID      string `json:"modelId,omitempty"`
+	ModelID string `json:"modelId,omitempty"`
 	// ProviderHint is a preference (provider name) when multiple providers carry
 	// the same model.  Empty means no preference.
-	ProviderHint string `json:"providerHint,omitempty"`
+	ProviderHint string     `json:"providerHint,omitempty"`
 	Status       TaskStatus `json:"status"`
 	CreatedAt    time.Time  `json:"createdAt"`
 	UpdatedAt    time.Time  `json:"updatedAt"`

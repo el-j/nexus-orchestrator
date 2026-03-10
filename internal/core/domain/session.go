@@ -14,8 +14,8 @@ const (
 // Role must be one of the typed MessageRole constants (RoleUser, RoleAssistant).
 type Message struct {
 	Role      MessageRole `json:"role"`
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"createdAt"`
+	Content   string      `json:"content"`
+	CreatedAt time.Time   `json:"createdAt"`
 }
 
 // Session holds the per-project conversation history used to ensure session
