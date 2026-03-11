@@ -30,9 +30,12 @@ onMounted(() => {
   }, { threshold: 0.1 })
 
   const observe = () => {
-    // Only observe elements that have not yet become visible.
-    // Each element is unobserved once it fires (see callback above), so
-    // repeated calls on route change do not accumulate stale entries.
+    // Query only elements that have not yet become visible so we never
+    // re-attach an observer to an already-animated element. Elements are
+    // individually unobserved when the IntersectionObserver fires (line above),
+    // so this selector acts as a cheap guard against DOM churn on fast
+    // navigations where the previous route's .visible elements are still in
+    // the document during the transition.
     document.querySelectorAll<Element>('.reveal:not(.visible)').forEach(el => observer.observe(el))
   }
 
