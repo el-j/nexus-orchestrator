@@ -10,7 +10,8 @@
               v-for="item in toc"
               :key="item.id"
               :href="`#${item.id}`"
-              class="block text-sm text-slate-500 hover:text-violet-400 transition-colors py-0.5"
+              @click.prevent="scrollToId(item.id)"
+              class="block text-sm text-slate-500 hover:text-violet-400 transition-colors py-0.5 cursor-pointer"
             >{{ item.label }}</a>
           </nav>
         </div>
@@ -194,6 +195,7 @@
 
 <script setup lang="ts">
 import CodeBlock from '../components/CodeBlock.vue'
+import { scrollToId } from '../utils/scroll'
 
 const toc = [
   { id: 'http-api', label: 'HTTP REST API' },

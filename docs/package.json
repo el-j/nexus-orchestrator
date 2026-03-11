@@ -2,10 +2,12 @@
   "name": "nexusorchestrator-docs",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "build": "vite-ssg build",
+    "preview": "vite preview",
+    "type-check": "vue-tsc --noEmit"
   },
   "dependencies": {
     "@primevue/themes": "^4.5.4",
@@ -20,6 +22,7 @@
     "tailwindcss": "^4.2.1",
     "typescript": "^5.8.3",
     "vite": "^7.3.1",
+    "vite-ssg": "^28.3.0",
     "vue-tsc": "^2.2.10"
   }
 }
