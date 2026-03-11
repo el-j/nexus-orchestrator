@@ -130,7 +130,6 @@ jobs:
 
       - name: Build binaries
         env:
-          CGO_ENABLED: "1"
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.goarch }}
           CC: ${{ matrix.cc }}
@@ -142,14 +141,18 @@ jobs:
 
           mkdir -p dist
 
-          go build -trimpath -ldflags "${LDFLAGS}" \
+          # nexus-cli and nexus-submit are pure Go HTTP clients with no CGO dependencies.
+          # Building with CGO_ENABLED=0 avoids CGO linker failures when cross-compiling
+          # for Linux targets using zig cc (musl).
+          CGO_ENABLED=0 go build -trimpath -ldflags "${LDFLAGS}" \
             -o dist/nexus-cli${{ matrix.bin_ext }} ./cmd/nexus-cli/...
 
-          go build -trimpath -ldflags "${LDFLAGS}" \
-            -o dist/nexus-daemon${{ matrix.bin_ext }} ./cmd/nexus-daemon/...
-
-          go build -trimpath -ldflags "${LDFLAGS}" \
+          CGO_ENABLED=0 go build -trimpath -ldflags "${LDFLAGS}" \
             -o dist/nexus-submit${{ matrix.bin_ext }} ./cmd/nexus-submit/...
+
+          # nexus-daemon embeds go-sqlite3 which requires CGO.
+          CGO_ENABLED=1 go build -trimpath -ldflags "${LDFLAGS}" \
+            -o dist/nexus-daemon${{ matrix.bin_ext }} ./cmd/nexus-daemon/...
 
       - name: Create archive
         run: |
