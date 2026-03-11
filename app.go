@@ -65,6 +65,26 @@ func (a *App) GetProviderModels(providerName string) ([]string, error) {
 	return a.orchestrator.GetProviderModels(providerName)
 }
 
+// AddProviderConfig persists a new provider configuration and registers its adapter.
+func (a *App) AddProviderConfig(cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
+	return a.orchestrator.AddProviderConfig(context.Background(), cfg)
+}
+
+// ListProviderConfigs returns all persisted provider configuration records.
+func (a *App) ListProviderConfigs() ([]domain.ProviderConfig, error) {
+	return a.orchestrator.ListProviderConfigs(context.Background())
+}
+
+// UpdateProviderConfig overwrites an existing provider configuration.
+func (a *App) UpdateProviderConfig(cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
+	return a.orchestrator.UpdateProviderConfig(context.Background(), cfg)
+}
+
+// RemoveProviderConfig deletes a persisted provider configuration by ID.
+func (a *App) RemoveProviderConfig(id string) error {
+	return a.orchestrator.RemoveProviderConfig(context.Background(), id)
+}
+
 // Greet is the default Wails example method — kept for scaffolding compatibility.
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello, %s! nexusOrchestrator is running.", name)

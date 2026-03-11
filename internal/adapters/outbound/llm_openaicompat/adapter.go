@@ -44,6 +44,7 @@ func NewAdapter(name, baseURL, apiKey, model string) *Adapter {
 
 func (a *Adapter) ProviderName() string { return a.name }
 func (a *Adapter) ActiveModel() string  { return a.model }
+func (a *Adapter) BaseURL() string      { return a.baseURL }
 func (a *Adapter) ContextLimit() int    { return 0 }
 
 // Ping checks whether the provider is reachable by hitting the /models endpoint.

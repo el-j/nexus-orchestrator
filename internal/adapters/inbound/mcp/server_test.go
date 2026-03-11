@@ -2,6 +2,7 @@ package mcp_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -41,6 +42,16 @@ func (m *mockOrch) GetProviders() ([]ports.ProviderInfo, error) {
 func (m *mockOrch) RegisterCloudProvider(_ domain.ProviderConfig) error { return nil }
 func (m *mockOrch) RemoveProvider(_ string) error                       { return nil }
 func (m *mockOrch) GetProviderModels(_ string) ([]string, error)        { return nil, nil }
+func (m *mockOrch) AddProviderConfig(_ context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
+	return cfg, nil
+}
+func (m *mockOrch) UpdateProviderConfig(_ context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
+	return cfg, nil
+}
+func (m *mockOrch) RemoveProviderConfig(_ context.Context, _ string) error { return nil }
+func (m *mockOrch) ListProviderConfigs(_ context.Context) ([]domain.ProviderConfig, error) {
+	return nil, nil
+}
 
 // --- Helpers ---
 

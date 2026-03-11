@@ -3,7 +3,11 @@
 // Outbound ports (LLMClient, TaskRepository, FileWriter, SessionRepository) are implemented by adapters.
 package ports
 
-import "nexus-orchestrator/internal/core/domain"
+import (
+	"context"
+
+	"nexus-orchestrator/internal/core/domain"
+)
 
 // --- Outbound Ports (Driven Adapters) ---
 
@@ -14,6 +18,8 @@ type LLMClient interface {
 	// ActiveModel returns the model ID currently loaded or configured on this
 	// provider.  Returns empty string when unknown.
 	ActiveModel() string
+	// BaseURL returns the configured endpoint URL for this provider.
+	BaseURL() string
 	GetAvailableModels() ([]string, error)
 	// ContextLimit returns the maximum number of input tokens the currently
 	// loaded model can accept.  Returns 0 if unknown; when 0, no pre-flight
@@ -53,6 +59,8 @@ type ProviderInfo struct {
 	Active      bool     `json:"active"`
 	ActiveModel string   `json:"activeModel,omitempty"`
 	Models      []string `json:"models,omitempty"`
+	BaseURL     string   `json:"baseURL,omitempty"`
+	Error       string   `json:"error,omitempty"`
 }
 
 // SessionRepository is the port for persisting per-project conversation history.
@@ -85,6 +93,17 @@ type Orchestrator interface {
 	// GetProviderModels returns the model catalogue of the named provider.
 	// Returns domain.ErrNotFound when no provider with that name exists.
 	GetProviderModels(providerName string) ([]string, error)
+	// AddProviderConfig persists a new provider configuration and registers the
+	// adapter when Enabled is true. Returns the saved config with the generated ID.
+	AddProviderConfig(ctx context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error)
+	// UpdateProviderConfig overwrites an existing provider configuration identified
+	// by cfg.ID and refreshes the in-process adapter registration.
+	UpdateProviderConfig(ctx context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error)
+	// RemoveProviderConfig deletes the persisted provider configuration with the
+	// given ID and deregisters its adapter from the discovery service.
+	RemoveProviderConfig(ctx context.Context, id string) error
+	// ListProviderConfigs returns all persisted provider configuration records.
+	ListProviderConfigs(ctx context.Context) ([]domain.ProviderConfig, error)
 }
 
 // EventType identifies a task lifecycle event.
@@ -111,4 +130,13 @@ type TaskEvent struct {
 // It must be safe for concurrent use. Implementations must be non-blocking.
 type EventBroadcaster interface {
 	Broadcast(event TaskEvent)
+}
+
+// ProviderConfigRepository is the outbound port for persisting and querying
+// provider configuration records across restarts.
+type ProviderConfigRepository interface {
+	SaveProviderConfig(ctx context.Context, cfg domain.ProviderConfig) error
+	ListProviderConfigs(ctx context.Context) ([]domain.ProviderConfig, error)
+	GetProviderConfig(ctx context.Context, id string) (domain.ProviderConfig, error)
+	DeleteProviderConfig(ctx context.Context, id string) error
 }

@@ -1,12 +1,12 @@
 {
   "version": "2",
-  "updatedAt": "2026-03-10T22:00:00.000Z",
+  "updatedAt": "2026-03-11T17:10:00.000Z",
   "counters": {
-    "nextTaskId": 125,
-    "nextPlanId": 18
+    "nextTaskId": 137,
+    "nextPlanId": 19
   },
   "activePlanId": null,
-  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix). PLAN-013 completed (update CI to latest action versions). PLAN-014 completed (unified publish.yml pipeline, fixed GITHUB_TOKEN cross-trigger bug, fixed CLI/desktop artifact naming collision, updated downloads.md). PLAN-015 completed (production-grade Node20 GitHub Action with TypeScript, built-in agent identity loading from el-j/agency-agents, 24 unit tests, action-ci.yml CI workflow). PLAN-016 completed (release pipeline finalization: deleted conflicting version.yml+release.yml, created CHANGELOG.md, fixed downloads.md desktop links). PLAN-017 completed (fix all broken download links: nexusOrchestrator→nexus-orchestrator prefix, macOS .tar.gz→.zip, add Gatekeeper workaround instructions).",
+  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix). PLAN-013 completed (update CI to latest action versions). PLAN-014 completed (unified publish.yml pipeline, fixed GITHUB_TOKEN cross-trigger bug, fixed CLI/desktop artifact naming collision, updated downloads.md). PLAN-015 completed (production-grade Node20 GitHub Action with TypeScript, built-in agent identity loading from el-j/agency-agents, 24 unit tests, action-ci.yml CI workflow). PLAN-016 completed (release pipeline finalization: deleted conflicting version.yml+release.yml, created CHANGELOG.md, fixed downloads.md desktop links). PLAN-017 completed (fix all broken download links: nexusOrchestrator→nexus-orchestrator prefix, macOS .tar.gz→.zip, add Gatekeeper workaround instructions). PLAN-018 completed (provider visibility: configurable Ollama/LM Studio URLs, BaseURL+Error in ProviderInfo, SQLite-persisted provider CRUD, GUI provider management panel, VS Code extension with submit/queue/status-bar).",
   "plans": {
     "PLAN-001": {
       "id": "PLAN-001",
@@ -281,6 +281,27 @@
         "TASK-122",
         "TASK-123",
         "TASK-124"
+      ]
+    },
+    "PLAN-018": {
+      "id": "PLAN-018",
+      "goal": "Provider visibility, dynamic config, and VS Code extension: fix discovery for Docker/remote providers, persist provider configs in SQLite, build GUI provider management, create VS Code extension for task submission",
+      "status": "completed",
+      "createdAt": "2026-03-11T16:10:00.000Z",
+      "completedAt": "2026-03-11T17:10:00.000Z",
+      "taskIds": [
+        "TASK-125",
+        "TASK-126",
+        "TASK-127",
+        "TASK-128",
+        "TASK-129",
+        "TASK-130",
+        "TASK-131",
+        "TASK-132",
+        "TASK-133",
+        "TASK-134",
+        "TASK-135",
+        "TASK-136"
       ]
     }
   },
@@ -1858,6 +1879,138 @@
       "dependencies": ["TASK-122", "TASK-123"],
       "createdAt": "2026-03-11T01:00:00.000Z",
       "completedAt": "2026-03-11T01:00:00.000Z"
+    },
+    "TASK-125": {
+      "id": "TASK-125",
+      "title": "Configurable Ollama base URL",
+      "status": "done",
+      "startedAt": "2026-03-11T16:20:00.000Z",
+      "completedAt": "2026-03-11T16:30:00.000Z",
+      "role": "backend",
+      "planId": "PLAN-018",
+      "dependencies": [],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-126": {
+      "id": "TASK-126",
+      "title": "Configurable LM Studio base URL",
+      "status": "done",
+      "startedAt": "2026-03-11T16:20:00.000Z",
+      "completedAt": "2026-03-11T16:30:00.000Z",
+      "role": "backend",
+      "planId": "PLAN-018",
+      "dependencies": [],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-127": {
+      "id": "TASK-127",
+      "title": "Show all providers including unreachable",
+      "status": "done",
+      "startedAt": "2026-03-11T16:20:00.000Z",
+      "completedAt": "2026-03-11T16:30:00.000Z",
+      "role": "backend",
+      "planId": "PLAN-018",
+      "dependencies": [],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-128": {
+      "id": "TASK-128",
+      "title": "GUI provider refresh and error display",
+      "status": "done",
+      "startedAt": "2026-03-11T16:32:00.000Z",
+      "completedAt": "2026-03-11T16:45:00.000Z",
+      "role": "frontend",
+      "planId": "PLAN-018",
+      "dependencies": ["TASK-127"],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-129": {
+      "id": "TASK-129",
+      "title": "Persist provider configs in SQLite",
+      "status": "done",
+      "startedAt": "2026-03-11T16:20:00.000Z",
+      "completedAt": "2026-03-11T16:30:00.000Z",
+      "role": "backend",
+      "planId": "PLAN-018",
+      "dependencies": [],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-130": {
+      "id": "TASK-130",
+      "title": "Provider CRUD HTTP API + Wails bindings",
+      "status": "done",
+      "startedAt": "2026-03-11T16:32:00.000Z",
+      "completedAt": "2026-03-11T16:45:00.000Z",
+      "role": "api",
+      "planId": "PLAN-018",
+      "dependencies": ["TASK-129"],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-131": {
+      "id": "TASK-131",
+      "title": "GUI provider management panel",
+      "status": "done",
+      "startedAt": "2026-03-11T16:47:00.000Z",
+      "completedAt": "2026-03-11T17:00:00.000Z",
+      "role": "frontend",
+      "planId": "PLAN-018",
+      "dependencies": ["TASK-130", "TASK-128"],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-132": {
+      "id": "TASK-132",
+      "title": "Scaffold VS Code extension",
+      "status": "done",
+      "startedAt": "2026-03-11T16:20:00.000Z",
+      "completedAt": "2026-03-11T16:30:00.000Z",
+      "role": "devops",
+      "planId": "PLAN-018",
+      "dependencies": [],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-133": {
+      "id": "TASK-133",
+      "title": "VS Code submit task command",
+      "status": "done",
+      "startedAt": "2026-03-11T16:32:00.000Z",
+      "completedAt": "2026-03-11T16:45:00.000Z",
+      "role": "devops",
+      "planId": "PLAN-018",
+      "dependencies": ["TASK-132"],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-134": {
+      "id": "TASK-134",
+      "title": "VS Code task queue webview",
+      "status": "done",
+      "startedAt": "2026-03-11T16:47:00.000Z",
+      "completedAt": "2026-03-11T17:00:00.000Z",
+      "role": "devops",
+      "planId": "PLAN-018",
+      "dependencies": ["TASK-133"],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-135": {
+      "id": "TASK-135",
+      "title": "VS Code status bar and provider picker",
+      "status": "done",
+      "startedAt": "2026-03-11T16:47:00.000Z",
+      "completedAt": "2026-03-11T17:00:00.000Z",
+      "role": "devops",
+      "planId": "PLAN-018",
+      "dependencies": ["TASK-133"],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-136": {
+      "id": "TASK-136",
+      "title": "VS Code extension README and docs",
+      "status": "done",
+      "startedAt": "2026-03-11T17:02:00.000Z",
+      "completedAt": "2026-03-11T17:15:00.000Z",
+      "role": "planning",
+      "planId": "PLAN-018",
+      "dependencies": ["TASK-134", "TASK-135"],
+      "createdAt": "2026-03-11T16:10:00.000Z"
     }
   }
 }

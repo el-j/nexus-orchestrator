@@ -4,6 +4,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -33,7 +34,8 @@ type OrchestratorService struct {
 	workerWg    sync.WaitGroup // tracks the background worker goroutine
 	// providerFactory builds a concrete LLMClient from a ProviderConfig.
 	// Injected by entry points to keep service layer free of adapter imports.
-	providerFactory func(domain.ProviderConfig) (ports.LLMClient, error)
+	providerFactory     func(domain.ProviderConfig) (ports.LLMClient, error)
+	providerConfigRepo  ports.ProviderConfigRepository
 }
 
 // NewOrchestrator constructs an OrchestratorService and starts the background
@@ -163,6 +165,16 @@ func (o *OrchestratorService) Stop() {
 	o.workerWg.Wait()
 }
 
+// WithProviderConfigRepo sets the repository used to persist ProviderConfig records.
+// Must be called before any AddProviderConfig / UpdateProviderConfig / RemoveProviderConfig
+// / ListProviderConfigs call.
+func (o *OrchestratorService) WithProviderConfigRepo(r ports.ProviderConfigRepository) *OrchestratorService {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.providerConfigRepo = r
+	return o
+}
+
 // WithProviderFactory sets the factory used by RegisterCloudProvider to construct
 // new LLM adapters from a ProviderConfig. Must be called before the first
 // RegisterCloudProvider call.
@@ -197,6 +209,123 @@ func (o *OrchestratorService) RemoveProvider(providerName string) error {
 		return fmt.Errorf("orchestrator: remove provider: %w", domain.ErrNotFound)
 	}
 	return nil
+}
+
+// AddProviderConfig persists a new provider config and, when Enabled, instantiates
+// and registers an adapter via the configured providerFactory.
+func (o *OrchestratorService) AddProviderConfig(ctx context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
+	o.mu.Lock()
+	repo := o.providerConfigRepo
+	factory := o.providerFactory
+	o.mu.Unlock()
+
+	if cfg.ID == "" {
+		cfg.ID = uuid.NewString()
+	}
+	now := time.Now()
+	if cfg.CreatedAt.IsZero() {
+		cfg.CreatedAt = now
+	}
+	cfg.UpdatedAt = now
+
+	if repo != nil {
+		if err := repo.SaveProviderConfig(ctx, cfg); err != nil {
+			return domain.ProviderConfig{}, fmt.Errorf("orchestrator: add provider config: %w", err)
+		}
+	}
+
+	if cfg.Enabled && factory != nil {
+		client, err := factory(cfg)
+		if err != nil {
+			return domain.ProviderConfig{}, fmt.Errorf("orchestrator: add provider config: build adapter: %w", err)
+		}
+		o.discovery.RegisterProvider(client)
+	}
+
+	return cfg, nil
+}
+
+// UpdateProviderConfig overwrites an existing provider config and refreshes its
+// in-process adapter registration.
+func (o *OrchestratorService) UpdateProviderConfig(ctx context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
+	o.mu.Lock()
+	repo := o.providerConfigRepo
+	factory := o.providerFactory
+	o.mu.Unlock()
+
+	if repo == nil {
+		return domain.ProviderConfig{}, fmt.Errorf("orchestrator: update provider config: no config repo configured")
+	}
+
+	old, err := repo.GetProviderConfig(ctx, cfg.ID)
+	if err != nil {
+		return domain.ProviderConfig{}, fmt.Errorf("orchestrator: update provider config: %w", err)
+	}
+
+	cfg.CreatedAt = old.CreatedAt
+	cfg.UpdatedAt = time.Now()
+
+	if err := repo.SaveProviderConfig(ctx, cfg); err != nil {
+		return domain.ProviderConfig{}, fmt.Errorf("orchestrator: update provider config: %w", err)
+	}
+
+	// Remove old adapter registration (name may have changed).
+	o.discovery.RemoveProvider(old.Name)
+
+	if cfg.Enabled && factory != nil {
+		client, err := factory(cfg)
+		if err != nil {
+			return domain.ProviderConfig{}, fmt.Errorf("orchestrator: update provider config: build adapter: %w", err)
+		}
+		o.discovery.RegisterProvider(client)
+	}
+
+	return cfg, nil
+}
+
+// RemoveProviderConfig deletes the persisted provider config identified by id
+// and deregisters its adapter.
+func (o *OrchestratorService) RemoveProviderConfig(ctx context.Context, id string) error {
+	o.mu.Lock()
+	repo := o.providerConfigRepo
+	o.mu.Unlock()
+
+	if repo == nil {
+		return fmt.Errorf("orchestrator: remove provider config: no config repo configured")
+	}
+
+	cfg, err := repo.GetProviderConfig(ctx, id)
+	if err != nil {
+		return fmt.Errorf("orchestrator: remove provider config: %w", err)
+	}
+
+	if err := repo.DeleteProviderConfig(ctx, id); err != nil {
+		return fmt.Errorf("orchestrator: remove provider config: %w", err)
+	}
+
+	o.discovery.RemoveProvider(cfg.Name)
+	return nil
+}
+
+// ListProviderConfigs returns all persisted provider configuration records.
+// Returns an empty slice when no repository is configured.
+func (o *OrchestratorService) ListProviderConfigs(ctx context.Context) ([]domain.ProviderConfig, error) {
+	o.mu.Lock()
+	repo := o.providerConfigRepo
+	o.mu.Unlock()
+
+	if repo == nil {
+		return []domain.ProviderConfig{}, nil
+	}
+
+	cfgs, err := repo.ListProviderConfigs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("orchestrator: list provider configs: %w", err)
+	}
+	if cfgs == nil {
+		return []domain.ProviderConfig{}, nil
+	}
+	return cfgs, nil
 }
 
 // GetProviderModels returns the model catalogue of the named provider.

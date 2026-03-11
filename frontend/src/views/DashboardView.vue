@@ -10,7 +10,7 @@
           <span class="text-white font-semibold">{{ tasks.length }}</span> total
         </p>
       </div>
-      <ProviderStatus :providers="providers" />
+      <ProviderStatus :providers="providers" :refresh="refreshProviders" />
     </header>
 
     <!-- Task list (scrollable) -->
@@ -48,7 +48,7 @@ import TaskDetailDrawer from '../components/TaskDetailDrawer.vue'
 import ProviderStatus from '../components/ProviderStatus.vue'
 
 const { tasks, loading, refresh } = useTasks()
-const { providers } = useProviders()
+const { providers, refresh: refreshProviders } = useProviders()
 const toast = useToast()
 
 const detailOpen = ref(false)

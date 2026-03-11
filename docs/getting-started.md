@@ -170,6 +170,10 @@ CGO_ENABLED=1 go test ./internal/core/services/...
 go vet ./...
 ```
 
+## Using from VS Code
+
+Install the companion VS Code extension (see [`vscode-extension/README.md`](../vscode-extension/README.md)). Once the daemon is running, you can submit tasks directly from your editor without leaving VS Code.
+
 ## Next Steps
 
 - [API Reference](/nexusOrchestrator/api-reference) — Full HTTP and MCP endpoint docs

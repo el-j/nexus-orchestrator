@@ -39,4 +39,18 @@ export interface ProviderInfo {
   Active: boolean
   ActiveModel: string
   Models: string[]
+  baseURL?: string
+  error?: string
+}
+
+export interface ProviderConfig {
+  id: string
+  name: string
+  type: 'lmstudio' | 'ollama' | 'openai' | 'anthropic' | 'openaicompat'
+  baseURL: string
+  apiKey: string
+  defaultModel: string
+  enabled: boolean
+  createdAt: string
+  updatedAt: string
 }

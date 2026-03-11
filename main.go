@@ -52,6 +52,23 @@ func main() {
 	sessionRepo := repo_sqlite.NewSessionRepo(repo)
 	orchestratorSvc := services.NewOrchestrator(discoverySvc, repo, writer, sessionRepo)
 	orchestratorSvc.WithProviderFactory(buildProviderFromConfig)
+
+	providerConfigRepo := repo_sqlite.NewProviderConfigRepo(repo)
+	orchestratorSvc.WithProviderConfigRepo(providerConfigRepo)
+
+	// Load persisted provider configs and register each enabled one.
+	if cfgs, err := providerConfigRepo.ListProviderConfigs(context.Background()); err != nil {
+		log.Printf("startup: list provider configs: %v", err)
+	} else {
+		for _, cfg := range cfgs {
+			if !cfg.Enabled {
+				continue
+			}
+			if err := orchestratorSvc.RegisterCloudProvider(cfg); err != nil {
+				log.Printf("startup: register persisted provider %q: %v", cfg.Name, err)
+			}
+		}
+	}
 	defer orchestratorSvc.Stop()
 
 	// 3. Start HTTP API and MCP server with a cancellable context
@@ -100,9 +117,17 @@ func main() {
 // buildProviders assembles all configured LLM adapters.
 // Local providers are always included; cloud providers require env-var API keys.
 func buildProviders() []ports.LLMClient {
+	lmStudioURL := os.Getenv("NEXUS_LMSTUDIO_URL")
+	if lmStudioURL == "" {
+		lmStudioURL = "http://127.0.0.1:1234/v1"
+	}
+	ollamaURL := os.Getenv("NEXUS_OLLAMA_URL")
+	if ollamaURL == "" {
+		ollamaURL = llm_ollama.DefaultBaseURL
+	}
 	providers := []ports.LLMClient{
-		llm_lmstudio.NewLMStudioAdapter("http://127.0.0.1:1234/v1"),
-		llm_ollama.NewOllamaAdapter("http://127.0.0.1:11434", "codellama"),
+		llm_lmstudio.NewLMStudioAdapter(lmStudioURL),
+		llm_ollama.NewOllamaAdapter(ollamaURL, "codellama"),
 	}
 	if key := os.Getenv("NEXUS_OPENAI_API_KEY"); key != "" {
 		model := os.Getenv("NEXUS_OPENAI_MODEL")

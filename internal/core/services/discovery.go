@@ -126,13 +126,16 @@ func (s *DiscoveryService) ListProviders() []ports.ProviderInfo {
 	for _, c := range clients {
 		alive := c.Ping()
 		info := ports.ProviderInfo{
-			Name:   c.ProviderName(),
-			Active: alive,
+			Name:    c.ProviderName(),
+			Active:  alive,
+			BaseURL: c.BaseURL(),
 		}
 		if alive {
 			info.ActiveModel = c.ActiveModel()
 			models, _ := c.GetAvailableModels()
 			info.Models = models
+		} else {
+			info.Error = fmt.Sprintf("discovery: %s: provider unreachable", c.ProviderName())
 		}
 		result = append(result, info)
 	}

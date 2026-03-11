@@ -82,6 +82,17 @@ Add the following to your Claude Desktop `claude_desktop_config.json`:
 | `get_providers` | List available LLM backends and their status |
 | `health` | Check daemon connectivity |
 
+## VS Code Extension
+
+A companion extension routes tasks from VS Code directly to the running daemon:
+
+- **Submit tasks** via Command Palette or right-click context menu
+- **Task Queue** sidebar shows live status of all tasks
+- **Status bar** shows daemon health and active task count
+- **Provider picker** lets you select LM Studio, Ollama, or cloud backends per task
+
+See [`vscode-extension/README.md`](vscode-extension/README.md) for installation and usage.
+
 ## Environment Variables
 
 | Variable | Default | Description |

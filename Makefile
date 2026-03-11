@@ -30,13 +30,13 @@ LDFLAGS     := -s -w
 # Detect host OS for zig target triple selection
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 
-.PHONY: build build-all test vet clean help \
+.PHONY: build build-gui build-all test vet clean help \
         build-linux-amd64 build-linux-arm64 \
         build-darwin-amd64 build-darwin-arm64 \
         build-windows-amd64
 
 # ---------------------------------------------------------------------------
-# Default: native build
+# Default: native build (CLI + daemon)
 # ---------------------------------------------------------------------------
 build: vet
 	@mkdir -p $(DIST)/native
@@ -45,6 +45,13 @@ build: vet
 	CGO_ENABLED=1 go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/native/$(BINARY_DAEMON) ./cmd/nexus-daemon/...
 	@echo "Built → $(DIST)/native/"
+
+# ---------------------------------------------------------------------------
+# Desktop GUI (Wails — native only, requires wails CLI)
+# ---------------------------------------------------------------------------
+build-gui:
+	wails build -platform darwin/arm64
+	@echo "Built → build/bin/"
 
 # ---------------------------------------------------------------------------
 # Cross-compile all platforms (CLI + daemon only; GUI is native-only)
@@ -140,6 +147,7 @@ clean:
 help:
 	@echo ""
 	@echo "  make build              Native CLI + daemon"
+	@echo "  make build-gui          Desktop GUI (Wails, macOS ARM64)"
 	@echo "  make build-all          Cross-compile all platforms"
 	@echo "  make build-linux-amd64  Linux x86-64 (static, musl)"
 	@echo "  make build-linux-arm64  Linux ARM64  (static, musl)"

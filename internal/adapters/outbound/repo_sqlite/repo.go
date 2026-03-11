@@ -63,6 +63,17 @@ func migrate(db *sql.DB) error {
 			created_at   INTEGER NOT NULL,
 			updated_at   INTEGER NOT NULL
 		);
+		CREATE TABLE IF NOT EXISTS provider_configs (
+			id            TEXT    PRIMARY KEY,
+			name          TEXT    NOT NULL,
+			kind          TEXT    NOT NULL,
+			base_url      TEXT    NOT NULL DEFAULT '',
+			api_key       TEXT    NOT NULL DEFAULT '',
+			model         TEXT    NOT NULL DEFAULT '',
+			enabled       INTEGER NOT NULL DEFAULT 1,
+			created_at    INTEGER NOT NULL,
+			updated_at    INTEGER NOT NULL
+		);
 	`)
 	if err != nil {
 		return err

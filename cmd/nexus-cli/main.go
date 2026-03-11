@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -179,4 +180,96 @@ func (r *remoteOrchestrator) GetProviderModels(name string) ([]string, error) {
 		return nil, fmt.Errorf("remote: decode models: %w", err)
 	}
 	return models, nil
+}
+
+func (r *remoteOrchestrator) AddProviderConfig(ctx context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
+	body, err := json.Marshal(cfg)
+	if err != nil {
+		return domain.ProviderConfig{}, fmt.Errorf("remote: marshal provider config: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.baseURL+"/api/providers/config", bytes.NewReader(body))
+	if err != nil {
+		return domain.ProviderConfig{}, fmt.Errorf("remote: build add provider config request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return domain.ProviderConfig{}, fmt.Errorf("remote: add provider config: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		return domain.ProviderConfig{}, fmt.Errorf("remote: add provider config: unexpected status %d", resp.StatusCode)
+	}
+	var created domain.ProviderConfig
+	if err := json.NewDecoder(resp.Body).Decode(&created); err != nil {
+		return domain.ProviderConfig{}, fmt.Errorf("remote: decode provider config: %w", err)
+	}
+	return created, nil
+}
+
+func (r *remoteOrchestrator) UpdateProviderConfig(ctx context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
+	body, err := json.Marshal(cfg)
+	if err != nil {
+		return domain.ProviderConfig{}, fmt.Errorf("remote: marshal provider config: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, r.baseURL+"/api/providers/config/"+url.PathEscape(cfg.ID), bytes.NewReader(body))
+	if err != nil {
+		return domain.ProviderConfig{}, fmt.Errorf("remote: build update provider config request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return domain.ProviderConfig{}, fmt.Errorf("remote: update provider config: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return domain.ProviderConfig{}, fmt.Errorf("remote: update provider config: %w", domain.ErrNotFound)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return domain.ProviderConfig{}, fmt.Errorf("remote: update provider config: unexpected status %d", resp.StatusCode)
+	}
+	var updated domain.ProviderConfig
+	if err := json.NewDecoder(resp.Body).Decode(&updated); err != nil {
+		return domain.ProviderConfig{}, fmt.Errorf("remote: decode provider config: %w", err)
+	}
+	return updated, nil
+}
+
+func (r *remoteOrchestrator) RemoveProviderConfig(ctx context.Context, id string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, r.baseURL+"/api/providers/config/"+url.PathEscape(id), nil)
+	if err != nil {
+		return fmt.Errorf("remote: build remove provider config request: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("remote: remove provider config: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("remote: remove provider config: %w", domain.ErrNotFound)
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("remote: remove provider config: unexpected status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+func (r *remoteOrchestrator) ListProviderConfigs(ctx context.Context) ([]domain.ProviderConfig, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, r.baseURL+"/api/providers/config", nil)
+	if err != nil {
+		return nil, fmt.Errorf("remote: build list provider configs request: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("remote: list provider configs: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("remote: list provider configs: unexpected status %d", resp.StatusCode)
+	}
+	var cfgs []domain.ProviderConfig
+	if err := json.NewDecoder(resp.Body).Decode(&cfgs); err != nil {
+		return nil, fmt.Errorf("remote: decode provider configs: %w", err)
+	}
+	return cfgs, nil
 }

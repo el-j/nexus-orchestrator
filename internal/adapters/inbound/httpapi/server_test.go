@@ -2,6 +2,7 @@ package httpapi_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -75,6 +76,22 @@ func (m *mockOrchestrator) RemoveProvider(_ string) error {
 
 func (m *mockOrchestrator) GetProviderModels(_ string) ([]string, error) {
 	return m.getProviderModelsResult, m.getProviderModelsErr
+}
+
+func (m *mockOrchestrator) AddProviderConfig(_ context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
+	return cfg, nil
+}
+
+func (m *mockOrchestrator) UpdateProviderConfig(_ context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
+	return cfg, nil
+}
+
+func (m *mockOrchestrator) RemoveProviderConfig(_ context.Context, _ string) error {
+	return nil
+}
+
+func (m *mockOrchestrator) ListProviderConfigs(_ context.Context) ([]domain.ProviderConfig, error) {
+	return nil, nil
 }
 
 // newTestHandler builds a chi router with the same route/handler logic as StartServer.

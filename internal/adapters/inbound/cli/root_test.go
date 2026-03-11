@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -51,6 +52,16 @@ func (m *mockOrchestrator) CancelTask(_ string) error {
 func (m *mockOrchestrator) RegisterCloudProvider(_ domain.ProviderConfig) error { return nil }
 func (m *mockOrchestrator) RemoveProvider(_ string) error                       { return nil }
 func (m *mockOrchestrator) GetProviderModels(_ string) ([]string, error)        { return nil, nil }
+func (m *mockOrchestrator) AddProviderConfig(_ context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
+	return cfg, nil
+}
+func (m *mockOrchestrator) UpdateProviderConfig(_ context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
+	return cfg, nil
+}
+func (m *mockOrchestrator) RemoveProviderConfig(_ context.Context, _ string) error { return nil }
+func (m *mockOrchestrator) ListProviderConfigs(_ context.Context) ([]domain.ProviderConfig, error) {
+	return nil, nil
+}
 
 // captureStdout redirects os.Stdout while fn runs and returns the collected
 // output. fn must not call t.Fatal/t.FailNow (runtime.Goexit) directly, as

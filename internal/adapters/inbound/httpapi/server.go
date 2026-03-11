@@ -76,6 +76,13 @@ func (s *Server) Handler() http.Handler {
 	r.Post("/api/providers", s.handleRegisterProvider)
 	r.Delete("/api/providers/{name}", s.handleRemoveProvider)
 	r.Get("/api/providers/{name}/models", s.handleProviderModels)
+
+	// Provider config CRUD (persistent, with API-key masking in responses)
+	r.Post("/api/providers/config", s.handleAddProviderConfig)
+	r.Get("/api/providers/config", s.handleListProviderConfigs)
+	r.Put("/api/providers/config/{id}", s.handleUpdateProviderConfig)
+	r.Delete("/api/providers/config/{id}", s.handleRemoveProviderConfig)
+
 	r.Get("/api/health", s.handleHealth)
 
 	// GET /api/events — SSE stream for task lifecycle events
@@ -267,4 +274,93 @@ func (s *Server) handleProviderModels(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(models)
+}
+
+// maskAPIKey returns a masked representation of an API key:
+// if longer than 4 characters, the last 4 are preserved; otherwise "****".
+func maskAPIKey(key string) string {
+	if len(key) > 4 {
+		return "****" + key[len(key)-4:]
+	}
+	return "****"
+}
+
+// maskedProviderConfig returns a copy of cfg with the APIKey field masked.
+func maskedProviderConfig(cfg domain.ProviderConfig) domain.ProviderConfig {
+	if cfg.APIKey != "" {
+		cfg.APIKey = maskAPIKey(cfg.APIKey)
+	}
+	return cfg
+}
+
+func (s *Server) handleAddProviderConfig(w http.ResponseWriter, r *http.Request) {
+	var cfg domain.ProviderConfig
+	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
+		http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if cfg.Name == "" || cfg.Kind == "" {
+		http.Error(w, "name and kind are required", http.StatusBadRequest)
+		return
+	}
+	created, err := s.orch.AddProviderConfig(r.Context(), cfg)
+	if err != nil {
+		log.Printf("httpapi: add provider config: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(maskedProviderConfig(created))
+}
+
+func (s *Server) handleListProviderConfigs(w http.ResponseWriter, r *http.Request) {
+	cfgs, err := s.orch.ListProviderConfigs(r.Context())
+	if err != nil {
+		log.Printf("httpapi: list provider configs: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	masked := make([]domain.ProviderConfig, len(cfgs))
+	for i, c := range cfgs {
+		masked[i] = maskedProviderConfig(c)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(masked)
+}
+
+func (s *Server) handleUpdateProviderConfig(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var cfg domain.ProviderConfig
+	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
+		http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	cfg.ID = id
+	updated, err := s.orch.UpdateProviderConfig(r.Context(), cfg)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			http.Error(w, "provider config not found", http.StatusNotFound)
+			return
+		}
+		log.Printf("httpapi: update provider config %s: %v", id, err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(maskedProviderConfig(updated))
+}
+
+func (s *Server) handleRemoveProviderConfig(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if err := s.orch.RemoveProviderConfig(r.Context(), id); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			http.Error(w, "provider config not found", http.StatusNotFound)
+			return
+		}
+		log.Printf("httpapi: remove provider config %s: %v", id, err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
