@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleIdentifier</key>
+  <string>io.nexusorchestrator.app</string>
+  <key>CFBundleName</key>
+  <string>nexusOrchestrator</string>
+  <key>CFBundleDisplayName</key>
+  <string>nexusOrchestrator</string>
+  <key>CFBundleExecutable</key>
+  <string>nexusOrchestrator</string>
+  <key>CFBundleIconFile</key>
+  <string>iconfile</string>
+  <key>CFBundleShortVersionString</key>
+  <string>{{.Info.ProductVersion}}</string>
+  <key>CFBundleVersion</key>
+  <string>{{.Info.ProductVersion}}</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+  <key>NSHumanReadableCopyright</key>
+  <string>{{.Info.Copyright}}</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>12.0</string>
+  <key>NSAppTransportSecurity</key>
+  <dict>
+    <key>NSAllowsLocalNetworking</key>
+    <true/>
+  </dict>
+  <key>NSPrincipalClass</key>
+  <string>NSApplication</string>
+  <key>LSUIElement</key>
+  <false/>
+  <key>NSSupportsAutomaticTermination</key>
+  <false/>
+  <key>NSSupportsSuddenTermination</key>
+  <false/>
+</dict>
+</plist>

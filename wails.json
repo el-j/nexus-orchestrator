@@ -9,10 +9,10 @@
   "wailsjsdir": "./frontend/src/wailsjs",
   "version": "2",
   "info": {
-    "companyName": "",
+    "companyName": "nexusOrchestrator Contributors",
     "productName": "nexusOrchestrator",
     "productVersion": "1.0.0",
-    "copyright": "",
-    "comments": "nexusOrchestrator"
+    "copyright": "Copyright © 2024 nexusOrchestrator Contributors",
+    "comments": "A local AI orchestrator that routes code-generation tasks to LM Studio or Ollama."
   }
 }
