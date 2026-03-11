@@ -105,7 +105,7 @@ jobs:
             cxx: "zig c++ -target aarch64-linux-musl"
             ext: tar.gz
             bin_ext: ""
-            static_flags: ""
+            static_flags: -extldflags=-static
 
           - os: darwin
             arch: amd64
@@ -164,7 +164,6 @@ jobs:
       - name: Build binaries
         shell: bash
         env:
-          CGO_ENABLED: "1"
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.goarch }}
           CC: ${{ matrix.cc }}
@@ -173,9 +172,19 @@ jobs:
           VERSION="${{ needs.version.outputs.tag }}"
           LDFLAGS="-s -w -X main.version=${VERSION} ${{ matrix.static_flags }}"
           mkdir -p dist
-          go build -trimpath -ldflags "${LDFLAGS}" -o dist/nexus-cli${{ matrix.bin_ext }} ./cmd/nexus-cli/...
-          go build -trimpath -ldflags "${LDFLAGS}" -o dist/nexus-daemon${{ matrix.bin_ext }} ./cmd/nexus-daemon/...
-          go build -trimpath -ldflags "${LDFLAGS}" -o dist/nexus-submit${{ matrix.bin_ext }} ./cmd/nexus-submit/...
+
+          # nexus-cli and nexus-submit are pure Go HTTP clients with no CGO dependencies.
+          # Building with CGO_ENABLED=0 avoids CGO linker failures when cross-compiling
+          # for Linux targets using zig cc (musl).
+          CGO_ENABLED=0 go build -trimpath -ldflags "${LDFLAGS}" \
+            -o dist/nexus-cli${{ matrix.bin_ext }} ./cmd/nexus-cli/...
+
+          CGO_ENABLED=0 go build -trimpath -ldflags "${LDFLAGS}" \
+            -o dist/nexus-submit${{ matrix.bin_ext }} ./cmd/nexus-submit/...
+
+          # nexus-daemon embeds go-sqlite3 which requires CGO.
+          CGO_ENABLED=1 go build -trimpath -ldflags "${LDFLAGS}" \
+            -o dist/nexus-daemon${{ matrix.bin_ext }} ./cmd/nexus-daemon/...
 
       - name: Create archive
         shell: bash
@@ -213,7 +222,7 @@ jobs:
 
           - os: darwin
             arch: amd64
-            runner: macos-13
+            runner: macos-latest
             platform: darwin/amd64
             archive_ext: tar.gz
             archive_name: nexus-orchestrator-desktop-darwin-amd64
