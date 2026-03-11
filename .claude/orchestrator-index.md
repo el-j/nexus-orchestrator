@@ -47,24 +47,7 @@ internal/adapters/inbound/   →  internal/core/services/  →  internal/core/po
 
 ## Active Plan
 
-**PLAN-001** — Add MCP server inbound adapter and per-project session isolation to nexusOrchestrator
-
-### Task Summary
-
-| ID | Title | Role | Status | Dependencies |
-|----|-------|------|--------|--------------|
-| TASK-001 | Domain: Session + Message types | architecture | todo | — |
-| TASK-002 | Ports: SessionRepository + Chat() on LLMClient | architecture | todo | TASK-001 |
-| TASK-003 | SQLite: session repository impl + migration | backend | todo | TASK-002 |
-| TASK-004 | LLM adapters: implement Chat() for LMStudio + Ollama | backend | todo | TASK-002 |
-| TASK-005 | OrchestratorService: session-isolated task processing | backend | todo | TASK-003, TASK-004 |
-| TASK-006 | MCP server inbound adapter (JSON-RPC 2.0 + SSE) | mcp | todo | TASK-002 |
-| TASK-007 | Wire MCP server into all three entry points | devops | todo | TASK-006 |
-| TASK-008 | Tests: SQLite session repository | qa | todo | TASK-003 |
-| TASK-009 | Tests: OrchestratorService session isolation | qa | todo | TASK-005 |
-| TASK-010 | Tests: MCP server handler | qa | todo | TASK-006 |
-| TASK-011 | Rewrite .github/agents for nexusOrchestrator | planning | done | — |
-| TASK-012 | Update copilot-instructions.md + README | planning | todo | TASK-005, TASK-006 |
+**No active plan.** All 16 plans (PLAN-001–016) completed. Next plan: PLAN-017.
 
 ---
 
@@ -72,15 +55,28 @@ internal/adapters/inbound/   →  internal/core/services/  →  internal/core/po
 
 | ID | Goal | Tasks | Status | Completed |
 |----|------|-------|--------|-----------|
-
-*(No completed plans yet — PLAN-001 is active)*
+| PLAN-001 | MCP server + per-project session isolation | TASK-001–012 | completed | 2026-03-09 |
+| PLAN-003 | Dogfood PLAN-002 via nexusOrchestrator itself | TASK-032–038 | done | 2026-03-09 |
+| PLAN-004 | Context-window guard (token pre-flight, StatusTooLarge) | TASK-039–043 | completed | 2026-03-10 |
+| PLAN-005 | Smart multi-provider routing (FindForModel, llm_openaicompat, llm_anthropic) | TASK-044–052 | completed | 2026-03-10 |
+| PLAN-006 | UI provider + model control (HTTP CRUD, Wails binding) | TASK-053–059 | completed | 2026-03-10 |
+| PLAN-007 | Audit hardening (security, SQLite, concurrency, goroutine lifecycle) | TASK-060–067 | completed | 2026-03-10 |
+| PLAN-008 | Comprehensive E2E + unit tests (MCP, HTTP, SSE, smoke) | TASK-068–073 | completed | 2026-03-10 |
+| PLAN-009 | GitHub Pages docs site + command-aware routing (CommandType) | TASK-074–084 | completed | 2026-03-10 |
+| PLAN-010 | Cross-platform release pipeline + downloads landing page | TASK-085–090 | completed | 2026-03-10 |
+| PLAN-011 | Industry-grade hardening (version injection, install.sh) | TASK-091–097 | completed | 2026-03-10 |
+| PLAN-012 | Semantic versioning + MIT license + zig 0.14.0 | TASK-098–103 | completed | 2026-03-10 |
+| PLAN-013 | CI updated to latest action versions (gittools@v4.3.3) | TASK-104–107 | completed | 2026-03-10 |
+| PLAN-014 | Unified publish.yml pipeline; fix GITHUB_TOKEN cross-trigger bug | TASK-108–111 | completed | 2026-03-10 |
+| PLAN-015 | Production Node20/TypeScript GitHub Action + 24 unit tests | TASK-112–117 | completed | 2026-03-10 |
+| PLAN-016 | Release pipeline finalization: delete version.yml+release.yml, CHANGELOG.md | TASK-118–121 | completed | 2026-03-11 |
 
 ---
 
 ## Counters
 
-- **Next Task ID**: 13
-- **Next Plan ID**: 2
+- **Next Task ID**: 123
+- **Next Plan ID**: 17
 
 ---
 
