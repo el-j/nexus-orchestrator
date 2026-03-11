@@ -39,6 +39,20 @@ CGO_ENABLED=1 go build -o nexus-daemon ./cmd/nexus-daemon/...
 CGO_ENABLED=1 go build -o nexus-cli ./cmd/nexus-cli/...
 ```
 
+## macOS: Allow nexusOrchestrator to Run
+
+When you first open the Desktop app (or run a binary) after downloading, macOS may show **"Apple could not verify nexusOrchestrator.app"**. This is expected — the app is ad-hoc signed and not yet notarized by Apple.
+
+**Method 1 (GUI):** Right-click (or Control-click) the app → select **Open** → click **Open** in the confirmation dialog. macOS remembers this choice for future launches.
+
+**Method 2 (Terminal):**
+
+```sh
+xattr -dr com.apple.quarantine nexusOrchestrator.app
+```
+
+> **Note:** You only need to do this once per download.
+
 ## Starting the Daemon
 
 ```sh

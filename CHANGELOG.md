@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- All download links on docs site now resolve correctly — prefix corrected from
+  `nexusOrchestrator-*` to `nexus-orchestrator-*` to match actual GitHub Release artifact names
+- macOS Desktop download links now point to `.zip` format (matching pipeline output);
+  previously linked to `.tar.gz` which would 404
+- Checksum verification examples on downloads page now reference correct file names
+
+### Added
+
+- macOS Gatekeeper / quarantine workaround instructions on Downloads page
+  (prominent warning section explaining "Apple could not verify" is expected for
+  unsigned open-source apps, with right-click and `xattr` solutions)
+- macOS first-run setup instructions added to Getting Started guide
+
 ## [0.2.0] - 2026-03-11
 
 ### Added

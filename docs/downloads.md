@@ -175,7 +175,7 @@ Full GUI with built-in HTTP API and MCP server. Recommended for most users.
     <div class="dl-platform">macOS</div>
     <div class="dl-arch">Apple Silicon (M1/M2/M3/M4)</div>
     <div class="dl-size">~15 MB</div>
-    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-desktop-darwin-arm64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexus-orchestrator-desktop-darwin-arm64.zip">Download .zip</a>
   </div>
 
   <div class="dl-card" data-os="mac-intel">
@@ -183,7 +183,7 @@ Full GUI with built-in HTTP API and MCP server. Recommended for most users.
     <div class="dl-platform">macOS</div>
     <div class="dl-arch">Intel (x86_64)</div>
     <div class="dl-size">~15 MB</div>
-    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-desktop-darwin-amd64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexus-orchestrator-desktop-darwin-amd64.zip">Download .zip</a>
   </div>
 
   <div class="dl-card" data-os="win">
@@ -191,7 +191,7 @@ Full GUI with built-in HTTP API and MCP server. Recommended for most users.
     <div class="dl-platform">Windows</div>
     <div class="dl-arch">64-bit (x86_64)</div>
     <div class="dl-size">~15 MB</div>
-    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-desktop-windows-amd64.zip">Download .zip</a>
+    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexus-orchestrator-desktop-windows-amd64.zip">Download .zip</a>
   </div>
 
   <div class="dl-card" data-os="linux">
@@ -199,7 +199,7 @@ Full GUI with built-in HTTP API and MCP server. Recommended for most users.
     <div class="dl-platform">Linux</div>
     <div class="dl-arch">64-bit (x86_64)</div>
     <div class="dl-size">~15 MB</div>
-    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-desktop-linux-amd64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexus-orchestrator-desktop-linux-amd64.tar.gz">Download .tar.gz</a>
   </div>
 
 </div>
@@ -217,7 +217,7 @@ Headless daemon and thin CLI client. Ideal for servers, CI pipelines, and script
     <div class="dl-platform">macOS</div>
     <div class="dl-arch">Apple Silicon (arm64)</div>
     <div class="dl-size">~12 MB</div>
-    <a class="dl-btn-outline" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-darwin-arm64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn-outline" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexus-orchestrator-darwin-arm64.tar.gz">Download .tar.gz</a>
   </div>
 
   <div class="dl-card" data-os="mac-intel">
@@ -225,7 +225,7 @@ Headless daemon and thin CLI client. Ideal for servers, CI pipelines, and script
     <div class="dl-platform">macOS</div>
     <div class="dl-arch">Intel (amd64)</div>
     <div class="dl-size">~12 MB</div>
-    <a class="dl-btn-outline" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-darwin-amd64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn-outline" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexus-orchestrator-darwin-amd64.tar.gz">Download .tar.gz</a>
   </div>
 
   <div class="dl-card" data-os="win">
@@ -233,7 +233,7 @@ Headless daemon and thin CLI client. Ideal for servers, CI pipelines, and script
     <div class="dl-platform">Windows</div>
     <div class="dl-arch">64-bit (amd64)</div>
     <div class="dl-size">~12 MB</div>
-    <a class="dl-btn-outline" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-windows-amd64.zip">Download .zip</a>
+    <a class="dl-btn-outline" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexus-orchestrator-windows-amd64.zip">Download .zip</a>
   </div>
 
   <div class="dl-card" data-os="linux">
@@ -241,7 +241,7 @@ Headless daemon and thin CLI client. Ideal for servers, CI pipelines, and script
     <div class="dl-platform">Linux</div>
     <div class="dl-arch">64-bit (amd64)</div>
     <div class="dl-size">~12 MB</div>
-    <a class="dl-btn-outline" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-linux-amd64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn-outline" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexus-orchestrator-linux-amd64.tar.gz">Download .tar.gz</a>
   </div>
 
   <div class="dl-card" data-os="linux-arm">
@@ -249,7 +249,7 @@ Headless daemon and thin CLI client. Ideal for servers, CI pipelines, and script
     <div class="dl-platform">Linux</div>
     <div class="dl-arch">ARM64</div>
     <div class="dl-size">~12 MB</div>
-    <a class="dl-btn-outline" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexusOrchestrator-linux-arm64.tar.gz">Download .tar.gz</a>
+    <a class="dl-btn-outline" href="https://github.com/el-j/nexusOrchestrator/releases/latest/download/nexus-orchestrator-linux-arm64.tar.gz">Download .tar.gz</a>
   </div>
 
 </div>
@@ -279,7 +279,7 @@ curl -sSfLO https://github.com/el-j/nexusOrchestrator/releases/latest/download/S
 # 2. Verify your archive (example for macOS Apple Silicon desktop)
 shasum -a 256 -c SHA256SUMS.txt --ignore-missing
 # or check a specific file:
-shasum -a 256 nexusOrchestrator-darwin-arm64.tar.gz
+shasum -a 256 nexus-orchestrator-darwin-arm64.tar.gz
 ```
 
 On Linux, use `sha256sum` instead of `shasum -a 256`:
@@ -291,9 +291,33 @@ sha256sum -c SHA256SUMS.txt --ignore-missing
 On Windows (PowerShell):
 
 ```powershell
-Get-FileHash .\nexusOrchestrator-windows-amd64.zip -Algorithm SHA256
+Get-FileHash .\nexus-orchestrator-windows-amd64.zip -Algorithm SHA256
 # Compare the output hash against the value in SHA256SUMS.txt or SHA256SUMS-desktop.txt
 ```
+
+<h2 class="dl-section-title">🍎 macOS: First Run</h2>
+
+<div class="dl-info-card" style="border-color: #f59e0b; background: rgba(245, 158, 11, 0.06); margin: 1.2rem 0 2rem; padding: 1.5rem;">
+  <h4 style="color: #f59e0b; margin-top: 0;">⚠️ "Apple could not verify" — this is expected</h4>
+  <p>
+    nexusOrchestrator is an open-source app that is not (yet) notarized with Apple.
+    macOS Gatekeeper will block it on first launch after downloading from the internet.
+    This is normal for community-distributed apps.
+  </p>
+  <p><strong>Option 1 — Right-click to open (recommended):</strong></p>
+  <ol>
+    <li>In Finder, right-click (or Control-click) <code>nexusOrchestrator.app</code></li>
+    <li>Select <strong>"Open"</strong> from the context menu</li>
+    <li>Click <strong>"Open"</strong> in the dialog that appears</li>
+    <li>The app will be remembered and open normally from now on</li>
+  </ol>
+  <p><strong>Option 2 — Terminal (bulk clear):</strong></p>
+  <code style="display: block; margin: 0.8rem auto; padding: 0.7rem 1rem; background: rgba(0,0,0,0.3); border-radius: 6px; font-size: 0.9rem; max-width: 700px;">xattr -dr com.apple.quarantine /path/to/nexusOrchestrator.app</code>
+  <p style="font-size: 0.85rem; color: var(--grey-dk-000); margin-bottom: 0;">
+    Replace <code>/path/to/</code> with the actual path (e.g. <code>~/Downloads/</code>).
+    This removes the quarantine flag that macOS sets on files downloaded from the internet.
+  </p>
+</div>
 
 ---
 

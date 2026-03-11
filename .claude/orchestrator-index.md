@@ -70,13 +70,14 @@ internal/adapters/inbound/   →  internal/core/services/  →  internal/core/po
 | PLAN-014 | Unified publish.yml pipeline; fix GITHUB_TOKEN cross-trigger bug | TASK-108–111 | completed | 2026-03-10 |
 | PLAN-015 | Production Node20/TypeScript GitHub Action + 24 unit tests | TASK-112–117 | completed | 2026-03-10 |
 | PLAN-016 | Release pipeline finalization: delete version.yml+release.yml, CHANGELOG.md | TASK-118–121 | completed | 2026-03-11 |
+| PLAN-017 | Fix all broken download links + macOS Gatekeeper UX instructions | TASK-122–124 | completed | 2026-03-11 |
 
 ---
 
 ## Counters
 
-- **Next Task ID**: 123
-- **Next Plan ID**: 17
+- **Next Task ID**: 125
+- **Next Plan ID**: 18
 
 ---
 
