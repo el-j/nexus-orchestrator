@@ -17,6 +17,36 @@ A local AI orchestrator that routes code-generation tasks to LM Studio or Ollama
 
 ## Quick Start
 
+### macOS (Desktop App)
+
+Download `nexus-orchestrator-desktop-darwin-arm64.zip` (Apple Silicon) or `nexus-orchestrator-desktop-darwin-amd64.zip` (Intel) from [Releases](https://github.com/el-j/nexus-orchestrator/releases/latest).
+
+> **First-run on macOS:** Because the app is not yet notarized with Apple, macOS Gatekeeper applies a quarantine attribute when you download it. Remove it before opening:
+>
+> ```sh
+> xattr -dr com.apple.quarantine nexusOrchestrator.app
+> open nexusOrchestrator.app
+> ```
+
+### CLI / Daemon (all platforms)
+
+Download `nexus-orchestrator-darwin-arm64.tar.gz` (or your platform's archive) from [Releases](https://github.com/el-j/nexus-orchestrator/releases/latest). The archive contains three binaries:
+
+| Binary | Purpose |
+|--------|---------|
+| `nexus-daemon` | Headless background daemon (HTTP API + MCP server) |
+| `nexus-cli` | Interactive CLI client for a running daemon |
+| `nexus-submit` | One-shot task submission from a task-file |
+
+```sh
+# Start the daemon
+./nexus-daemon
+# HTTP API:  http://localhost:9999
+# MCP server: http://localhost:9998/mcp
+```
+
+### Build from source
+
 ```sh
 # Build the headless daemon
 CGO_ENABLED=1 go build ./cmd/nexus-daemon/...

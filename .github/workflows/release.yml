@@ -184,7 +184,7 @@ jobs:
             arch: arm64
             runner: macos-latest
             platform: darwin/arm64
-            archive_ext: tar.gz
+            archive_ext: zip
             archive_name: nexus-orchestrator-desktop-darwin-arm64
             wails_tags: ""
 
@@ -192,7 +192,7 @@ jobs:
             arch: amd64
             runner: macos-latest
             platform: darwin/amd64
-            archive_ext: tar.gz
+            archive_ext: zip
             archive_name: nexus-orchestrator-desktop-darwin-amd64
             wails_tags: ""
 
@@ -248,16 +248,71 @@ jobs:
           TAGS_FLAG=${EXTRA_TAGS:+"-tags ${EXTRA_TAGS}"}
           wails build -platform ${{ matrix.platform }} ${TAGS_FLAG} -ldflags "-s -w -X main.version=${VERSION}"
 
-      - name: Package (tar.gz)
-        if: matrix.archive_ext == 'tar.gz'
+      - name: Sign macOS app
+        if: matrix.os == 'darwin'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_DEVELOPER_NAME: ${{ secrets.APPLE_DEVELOPER_NAME }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -n "$APPLE_CERTIFICATE" ]; then
+            # Full code signing + notarization (requires Apple Developer ID certificate secrets)
+            echo "$APPLE_CERTIFICATE" | base64 --decode > /tmp/certificate.p12
+            security create-keychain -p "" build.keychain
+            security import /tmp/certificate.p12 -k build.keychain \
+              -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+            security set-keychain-settings -t 3600 -u build.keychain
+            security unlock-keychain -p "" build.keychain
+            security list-keychains -d user -s build.keychain $(security list-keychains -d user | tr -d '"')
+            security set-key-partition-list -S apple-tool:,apple: -k "" build.keychain
+
+            codesign --deep --force --options runtime \
+              --entitlements build/darwin/entitlements.plist \
+              --sign "Developer ID Application: $APPLE_DEVELOPER_NAME" \
+              build/bin/nexusOrchestrator.app
+
+            ditto -c -k --sequesterRsrc --keepParent \
+              build/bin/nexusOrchestrator.app /tmp/notarize.zip
+            xcrun notarytool submit /tmp/notarize.zip \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_APP_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --wait
+            xcrun stapler staple build/bin/nexusOrchestrator.app
+
+            security delete-keychain build.keychain
+            rm -f /tmp/certificate.p12 /tmp/notarize.zip
+          else
+            # Ad-hoc signing: removes the "damaged and can't be opened" Gatekeeper error.
+            # Users who download from the internet may still need to clear the quarantine
+            # attribute manually: xattr -dr com.apple.quarantine nexusOrchestrator.app
+            codesign --deep --force --sign - build/bin/nexusOrchestrator.app
+          fi
+
+      - name: Package macOS (zip via ditto)
+        if: matrix.os == 'darwin'
+        shell: bash
+        run: |
+          # ditto preserves macOS resource forks, symlinks, and extended attributes
+          # that tar can silently drop. The output is a standard macOS zip archive.
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/bin/nexusOrchestrator.app \
+            "${{ matrix.archive_name }}.zip"
+
+      - name: Package Linux (tar.gz)
+        if: matrix.os == 'linux'
         shell: bash
         run: |
           cd build/bin
           tar czf "../../${{ matrix.archive_name }}.tar.gz" *
           cd ../..
 
-      - name: Package (zip)
-        if: matrix.archive_ext == 'zip'
+      - name: Package Windows (zip)
+        if: matrix.os == 'windows'
         shell: pwsh
         run: |
           Compress-Archive -Path "build/bin/*" -DestinationPath "${{ matrix.archive_name }}.zip"
@@ -327,8 +382,8 @@ jobs:
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
           files: |
-            nexus-orchestrator-desktop-darwin-arm64.tar.gz
-            nexus-orchestrator-desktop-darwin-amd64.tar.gz
+            nexus-orchestrator-desktop-darwin-arm64.zip
+            nexus-orchestrator-desktop-darwin-amd64.zip
             nexus-orchestrator-desktop-windows-amd64.zip
             nexus-orchestrator-desktop-linux-amd64.tar.gz
             SHA256SUMS-desktop.txt
