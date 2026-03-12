@@ -1,19 +1,48 @@
 # nexusOrchestrator
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![GitHub Release](https://img.shields.io/github/v/release/el-j/nexusOrchestrator)](https://github.com/el-j/nexusOrchestrator/releases/latest)
+[![Version](https://img.shields.io/badge/version-v0.9.1-blue)](https://github.com/el-j/nexusOrchestrator/releases/tag/v0.9.1)
 [![Go Report Card](https://goreportcard.com/badge/github.com/el-j/nexusOrchestrator)](https://goreportcard.com/report/github.com/el-j/nexusOrchestrator)
 
 A local AI orchestrator that routes code-generation tasks to LM Studio or Ollama, with per-project session memory and a full MCP server for use with Claude Desktop or other MCP clients.
 
 ## Features
 
-- **Hexagonal architecture** — clean separation between domain, ports, and adapters
-- **Multi-backend LLM routing** — detects and routes to LM Studio (`:1234`) or Ollama (`:11434`) automatically
-- **Session isolation** — each project path gets its own multi-turn conversation history stored in SQLite
-- **HTTP API** on `:9999` — REST endpoint for task management
-- **MCP server** on `:9998` — JSON-RPC 2.0 endpoint compatible with Claude Desktop and any MCP client
-- **Desktop GUI** via Wails + system tray
+**Core**
+- Hexagonal architecture (Ports & Adapters) — core never imports adapters
+- Multi-turn AI session isolation per project path (SQLite-backed conversation history)
+- SQLite persistence with additive schema migration and WAL mode
+
+**LLM Backends**
+- LM Studio (local, `127.0.0.1:1234`)
+- Ollama (local, `127.0.0.1:11434`)
+- Anthropic Claude (cloud)
+- OpenAI (cloud)
+- Any OpenAI-compatible endpoint (`llm_openaicompat`)
+
+**Provider Discovery**
+- Automatic port + process scanner detects running LLM runtimes at startup
+- Persistent provider config with API-key masking in logs
+- Live availability ping per provider
+
+**Task Management**
+- Submit / queue / cancel with per-task context files and target file writeback
+- Backlog / draft workflow — stage tasks before queuing
+- Queue cap (configurable, default 50) with crash-recovery on restart
+- Configurable retry limit (default 3) before marking a task failed
+
+**Interfaces**
+- HTTP REST API on `:9999` with SSE events stream (`/api/events`)
+- MCP JSON-RPC 2.0 server on `:9998` (14 tools, VS Code Copilot compatible)
+- Desktop GUI (Wails + Vue 3) with Dashboard, Provider Status, Task Queue, History, Settings
+- System Tray with quick-stats and task notifications
+- [VS Code Extension](vscode-extension/README.md) — auto-registers MCP server via `contributes.mcpServers` (VS Code 1.99+)
+- GitHub Action for CI/CD task submission
+
+**Observability**
+- AI session registry (track which Copilot / Cursor / Claude Desktop sessions are active)
+- SSE events stream for real-time task status updates
+- Structured operational logs via `log.Printf`
 
 ## Quick Start
 
@@ -56,6 +85,14 @@ CGO_ENABLED=1 go build ./cmd/nexus-daemon/...
 # HTTP API:  http://localhost:9999
 # MCP server: http://localhost:9998/mcp
 ```
+
+### VS Code Extension
+Install `nexus-orchestrator-0.2.0.vsix` from the [releases page](https://github.com/el-j/nexusOrchestrator/releases) or build from source:
+```sh
+cd vscode-extension && npm install && npm run package
+code --install-extension nexus-orchestrator-0.2.0.vsix
+```
+The extension auto-registers the `nexus-orchest` MCP server in VS Code 1.99+ — no manual configuration required. See [vscode-extension/README.md](vscode-extension/README.md) for details.
 
 ## MCP Integration (Claude Desktop)
 
@@ -109,58 +146,16 @@ CGO_ENABLED=1 go test -race ./...
 go vet ./...
 ```
 
-## Dogfooding — use nexusOrchestrator for its own development
+## Dogfooding
 
-nexusOrchestrator can submit its own PLAN-002 backlog tasks to itself for LLM implementation, validating the entire pipeline end-to-end.
+nexusOrchestrator is developed using itself. To use it on this codebase:
 
-### Prerequisites
+1. Start the daemon: `./nexus-daemon` (or run the Wails desktop app)
+2. Browse to `http://localhost:9999` or open the VS Code extension
+3. Submit a task pointing to this repo — e.g. `nexus-submit --project . --target internal/core/services/orchestrator.go --prompt "Add feature X"`
+4. Monitor progress in the GUI Dashboard or via `nexus-cli queue`
 
-- LM Studio running at `http://127.0.0.1:1234/v1` **or** Ollama at `http://127.0.0.1:11434`
-- `CGO_ENABLED=1 go build ./...` passes
-
-### Start the daemon and open the live dashboard
-
-```sh
-# Build and start the daemon
-CGO_ENABLED=1 go build -o /tmp/nexus-daemon ./cmd/nexus-daemon
-NEXUS_DB_PATH=/tmp/nexus-local.db /tmp/nexus-daemon &
-
-# Open dashboard in browser
-open http://localhost:9999/ui
-```
-
-The dashboard at `GET /ui` auto-refreshes every 2 seconds and streams live task status updates via Server-Sent Events.
-
-### Submit a PLAN-002 implementation task
-
-```sh
-# Build nexus-submit once
-CGO_ENABLED=1 go build -o /tmp/nexus-submit ./cmd/nexus-submit
-
-# Submit TASK-013 (orchestrator hardening) to the running daemon
-/tmp/nexus-submit \
-  --task-file .claude/tasks/TASK-013.md \
-  --project "$PWD" \
-  --target internal/core/services/orchestrator.go \
-  --context internal/core/services/orchestrator.go,internal/core/ports/ports.go \
-  --wait
-```
-
-### Run all PLAN-002 tasks at once
-
-```sh
-./scripts/dogfood-plan002.sh
-```
-
-The script builds both binaries, starts a fresh daemon with an isolated DB, submits all 8 PLAN-002 tasks, and prints each task ID. It cleans up the daemon and DB file on exit.
-
-### Track via MCP (for AI editors)
-
-Point any MCP-compatible agent at `http://localhost:9998` and call:
-
-```json
-{"method": "tools/call", "params": {"name": "get_queue"}}
-```
+Task definitions live in `.claude/tasks/` and plans in `.claude/plans/`.
 
 ## License
 

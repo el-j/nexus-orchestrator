@@ -49,9 +49,11 @@ const activeView = ref('dashboard')
 const navItems = [
   { id: 'dashboard', label: 'Task Queue', icon: 'pi-list' },
   { id: 'backlog', label: 'Backlog', icon: 'pi-bookmark' },
+  { id: 'history', label: 'History', icon: 'pi-clock' },
   { id: 'providers', label: 'Providers', icon: 'pi-server' },
   { id: 'discovery', label: 'Discovery', icon: 'pi-search' },
   { id: 'ai-sessions', label: 'AI Sessions', icon: 'pi-share-alt' },
+  { id: 'settings', label: 'Settings', icon: 'pi-cog' },
 ]
 
 function navigate(id: string) {

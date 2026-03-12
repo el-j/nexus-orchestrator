@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-03-12
+
+### Added
+
+- GUI **Task History** view (`HistoryView.vue`) — browse completed/failed/cancelled tasks with status filter (All / Completed / Failed / Cancelled) and `TaskDetailDrawer` detail panel; sidebar "History" nav item
+- GUI **Settings** view (`SettingsView.vue`) — Provider Connections section (list/add/edit/remove provider configs), Queue cap display, Server addresses with copy-to-clipboard; sidebar "Settings" nav item
+
+### Changed
+
+- README Features section rewritten as a grouped matrix covering all v0.9.x capabilities across 6 categories (Core, LLM Backends, Provider Discovery, Task Management, Interfaces, Observability)
+- README Dogfooding section replaced with generic 4-step workflow; removed stale PLAN-002 task file references
+- README Quick Start: added VS Code Extension install subsection cross-linking `vscode-extension/README.md`
+
+### Fixed
+
+- **Orchestrator startup recovery** — tasks stuck in `PROCESSING` at daemon crash are automatically re-queued on next startup (`recoverStuckTasks()` in `NewOrchestrator()`)
+- **Path normalization** — `ProjectPath` is now cleaned to an absolute path before storage (prevents relative-path task lookup mismatches)
+- **Queue cap** — `SubmitTask()` returns `ErrQueueFull` when queued task count ≥ cap (default 50, configurable via `WithQueueCap(n)`)
+- **Retry limit** — failing LLM calls are retried up to 3 times (`maxRetries = 3`) before task moves to `StatusFailed`; `RetryCount` persisted on `domain.Task`
+
 ## [0.9.1] - 2026-03-12
 
 ### Fixed
@@ -185,7 +205,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - HTTP body size cap prevents memory exhaustion from malformed or malicious API requests
 - SQLite `PRAGMA foreign_keys=ON` prevents referential integrity violations; WAL mode reduces write contention
 
-[Unreleased]: https://github.com/el-j/nexusOrchestrator/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/el-j/nexusOrchestrator/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/el-j/nexusOrchestrator/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/el-j/nexusOrchestrator/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/el-j/nexusOrchestrator/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/el-j/nexusOrchestrator/releases/tag/v0.8.0

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +18,12 @@ import (
 
 	"github.com/google/uuid"
 )
+
+// ErrQueueFull is returned by SubmitTask when the number of QUEUED tasks reaches the queue cap.
+var ErrQueueFull = errors.New("queue is full")
+
+// maxRetries is the maximum number of LLM call attempts before a task is permanently failed.
+const maxRetries = 3
 
 // OrchestratorService implements ports.Orchestrator and drives the worker loop.
 type OrchestratorService struct {
@@ -32,6 +39,7 @@ type OrchestratorService struct {
 	stopped     bool
 	stopOnce    sync.Once
 	workerWg    sync.WaitGroup // tracks the background worker goroutine
+	queueCap    int            // max number of QUEUED tasks; 50 when zero
 	// providerFactory builds a concrete LLMClient from a ProviderConfig.
 	// Injected by entry points to keep service layer free of adapter imports.
 	providerFactory    func(domain.ProviderConfig) (ports.LLMClient, error)
@@ -60,6 +68,7 @@ func NewOrchestrator(
 		workCh:      make(chan struct{}, 1),
 		stopCh:      make(chan struct{}),
 	}
+	svc.recoverStuckTasks()
 	svc.workerWg.Add(1)
 	go svc.runWorker()
 	return svc
@@ -68,11 +77,15 @@ func NewOrchestrator(
 // SubmitTask enqueues a new Task and returns its generated ID.
 func (o *OrchestratorService) SubmitTask(task domain.Task) (string, error) {
 	o.mu.Lock()
-	if o.stopped {
-		o.mu.Unlock()
+	stopped := o.stopped
+	queueCap := o.queueCap
+	o.mu.Unlock()
+	if stopped {
 		return "", fmt.Errorf("orchestrator: submit task: service is stopped")
 	}
-	o.mu.Unlock()
+	if queueCap <= 0 {
+		queueCap = 50
+	}
 
 	// Command validation
 	if !task.Command.IsValid() {
@@ -80,6 +93,28 @@ func (o *OrchestratorService) SubmitTask(task domain.Task) (string, error) {
 	}
 	if task.Command == "" {
 		task.Command = domain.CommandAuto
+	}
+
+	// Normalize ProjectPath to an absolute, cleaned path before any repo queries.
+	if task.ProjectPath != "" {
+		if abs, absErr := filepath.Abs(task.ProjectPath); absErr == nil {
+			task.ProjectPath = filepath.Clean(abs)
+		}
+	}
+
+	// Queue cap: count QUEUED tasks from the repo; reject if at or above the limit.
+	pending, err := o.repo.GetPending()
+	if err != nil {
+		return "", fmt.Errorf("orchestrator: submit task: check queue cap: %w", err)
+	}
+	queued := 0
+	for _, qt := range pending {
+		if qt.Status == domain.StatusQueued {
+			queued++
+		}
+	}
+	if queued >= queueCap {
+		return "", fmt.Errorf("orchestrator: submit task: %w", ErrQueueFull)
 	}
 
 	// If execute is requested, verify a completed plan task exists for this project
@@ -430,6 +465,16 @@ func (o *OrchestratorService) WithSystemScanner(s ports.SystemScanner) {
 	o.scanner = s
 }
 
+// WithQueueCap sets the maximum number of QUEUED tasks allowed at one time.
+// When the cap is reached, SubmitTask returns ErrQueueFull.
+// Default (and zero) means 50.
+func (o *OrchestratorService) WithQueueCap(n int) *OrchestratorService {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.queueCap = n
+	return o
+}
+
 // SetAISessionRepo wires the repository used to persist AI agent sessions.
 func (o *OrchestratorService) SetAISessionRepo(r ports.AISessionRepository) {
 	o.mu.Lock()
@@ -444,6 +489,10 @@ func (o *OrchestratorService) CreateDraft(task domain.Task) (string, error) {
 	}
 	if task.ProjectPath == "" {
 		return "", fmt.Errorf("orchestrator: create draft: project path is required")
+	}
+	// Normalize ProjectPath to an absolute, cleaned path.
+	if abs, absErr := filepath.Abs(task.ProjectPath); absErr == nil {
+		task.ProjectPath = filepath.Clean(abs)
 	}
 	task.ID = uuid.NewString()
 	task.Status = domain.StatusDraft
@@ -653,6 +702,63 @@ func statusEventType(s domain.TaskStatus) ports.EventType {
 	return statusEventMap[s]
 }
 
+// recoverStuckTasks re-queues any tasks that were in PROCESSING state when the
+// previous service instance crashed. Called from NewOrchestrator before the
+// worker goroutine starts, so no locking is needed on o.queue.
+func (o *OrchestratorService) recoverStuckTasks() {
+	pending, err := o.repo.GetPending()
+	if err != nil {
+		log.Printf("orchestrator: startup recovery: get pending: %v", err)
+		return
+	}
+	count := 0
+	for _, t := range pending {
+		if t.Status == domain.StatusProcessing {
+			if err := o.repo.UpdateStatus(t.ID, domain.StatusQueued); err != nil {
+				log.Printf("orchestrator: startup recovery: re-queue task %s: %v", t.ID, err)
+				continue
+			}
+			t.Status = domain.StatusQueued
+			o.queue = append(o.queue, t)
+			count++
+		}
+	}
+	if count > 0 {
+		log.Printf("orchestrator: startup recovery: re-queued %d stuck tasks", count)
+		select {
+		case o.workCh <- struct{}{}:
+		default:
+		}
+	}
+}
+
+// requeueForRetry increments the task's RetryCount, persists it with StatusQueued,
+// re-adds it to the in-memory queue, and signals the worker.
+// Returns true when the task was successfully re-queued; false when maxRetries is
+// exhausted or the repo update fails (caller should then mark the task FAILED).
+func (o *OrchestratorService) requeueForRetry(task domain.Task) bool {
+	if task.RetryCount >= maxRetries {
+		return false
+	}
+	task.RetryCount++
+	task.Status = domain.StatusQueued
+	task.UpdatedAt = time.Now()
+	if err := o.repo.Update(task); err != nil {
+		log.Printf("orchestrator: requeue task %s: update: %v", task.ID, err)
+		return false
+	}
+	log.Printf("orchestrator: task %s: retry %d/%d", task.ID, task.RetryCount, maxRetries)
+	o.mu.Lock()
+	o.queue = append(o.queue, task)
+	o.mu.Unlock()
+	select {
+	case o.workCh <- struct{}{}:
+	default:
+	}
+	o.emit(task.ID, domain.StatusQueued)
+	return true
+}
+
 // runWorker is the background loop that processes QUEUED tasks sequentially.
 // It blocks on workCh until a task is submitted, then drains the entire queue
 // before waiting again — guaranteeing only one LLM call is ever in flight.
@@ -784,6 +890,9 @@ func (o *OrchestratorService) processNext() {
 		if err != nil {
 			logEntry := fmt.Sprintf("failed via %s: %v", llm.ProviderName(), err)
 			log.Printf("orchestrator: chat for task %s: %v", task.ID, err)
+			if o.requeueForRetry(task) {
+				return
+			}
 			if err := o.repo.UpdateLogs(task.ID, logEntry); err != nil {
 				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
 			}
@@ -807,6 +916,9 @@ func (o *OrchestratorService) processNext() {
 		if err != nil {
 			logEntry := fmt.Sprintf("failed via %s: %v", llm.ProviderName(), err)
 			log.Printf("orchestrator: generate code for task %s: %v", task.ID, err)
+			if o.requeueForRetry(task) {
+				return
+			}
 			if err := o.repo.UpdateLogs(task.ID, logEntry); err != nil {
 				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
 			}

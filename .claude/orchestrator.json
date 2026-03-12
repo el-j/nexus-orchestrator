@@ -418,6 +418,20 @@
         "TASK-188"
       ],
       "completedAt": "2026-03-12T00:45:32Z"
+    },
+    "PLAN-026": {
+      "id": "PLAN-026",
+      "title": "Production Hardening and GUI Completeness",
+      "status": "completed",
+      "goal": "Close the last gaps in the v0.9.x feature set: orchestrator robustness (startup recovery, retry limits, queue cap, path normalization), GUI completeness (Task History view, Settings view), and README refresh documenting v0.9.x features.",
+      "createdAt": "2026-03-12T10:00:00.000Z",
+      "tasks": [
+        "TASK-189",
+        "TASK-190",
+        "TASK-191",
+        "TASK-192"
+      ],
+      "completedAt": "2026-03-12T08:49:21Z"
     }
   },
   "tasks": {
@@ -590,14 +604,14 @@
     "TASK-013": {
       "id": "TASK-013",
       "title": "Orchestrator: startup recovery + Stop() idempotency",
-      "status": "todo",
+      "status": "done",
       "role": "backend",
       "planId": "PLAN-002",
       "dependencies": [],
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-014": {
       "id": "TASK-014",
@@ -614,19 +628,19 @@
     "TASK-015": {
       "id": "TASK-015",
       "title": "HTTP API: history endpoint + session management",
-      "status": "todo",
+      "status": "done",
       "role": "api",
       "planId": "PLAN-002",
       "dependencies": [],
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-016": {
       "id": "TASK-016",
       "title": "CLI: queue submit + session + providers configure",
-      "status": "todo",
+      "status": "done",
       "role": "cli",
       "planId": "PLAN-002",
       "dependencies": [
@@ -635,12 +649,12 @@
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-017": {
       "id": "TASK-017",
       "title": "Frontend: scaffold Vue3+PrimeVue4+TW4 Wails app",
-      "status": "todo",
+      "status": "done",
       "role": "devops",
       "planId": "PLAN-002",
       "dependencies": [
@@ -649,12 +663,12 @@
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-018": {
       "id": "TASK-018",
       "title": "Wails binding: extend app.go with history/session/stats",
-      "status": "todo",
+      "status": "done",
       "role": "backend",
       "planId": "PLAN-002",
       "dependencies": [
@@ -663,12 +677,12 @@
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-019": {
       "id": "TASK-019",
       "title": "GUI: Dashboard + Provider status view",
-      "status": "todo",
+      "status": "done",
       "role": "devops",
       "planId": "PLAN-002",
       "dependencies": [
@@ -678,12 +692,12 @@
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-020": {
       "id": "TASK-020",
       "title": "GUI: Task Queue page with submit drawer",
-      "status": "todo",
+      "status": "done",
       "role": "devops",
       "planId": "PLAN-002",
       "dependencies": [
@@ -693,7 +707,7 @@
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-021": {
       "id": "TASK-021",
@@ -728,7 +742,7 @@
     "TASK-023": {
       "id": "TASK-023",
       "title": "System tray: show/hide, quick stats, task notifications",
-      "status": "todo",
+      "status": "done",
       "role": "devops",
       "planId": "PLAN-002",
       "dependencies": [
@@ -738,12 +752,12 @@
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-024": {
       "id": "TASK-024",
       "title": "QA: Orchestrator hardening tests + GUI smoke tests",
-      "status": "todo",
+      "status": "done",
       "role": "qa",
       "planId": "PLAN-002",
       "dependencies": [
@@ -757,12 +771,12 @@
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-025": {
       "id": "TASK-025",
       "title": "Verify: cross-platform build check + updated README",
-      "status": "todo",
+      "status": "done",
       "role": "verify",
       "planId": "PLAN-002",
       "dependencies": [
@@ -771,24 +785,24 @@
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-026": {
       "id": "TASK-026",
       "title": "Domain: add source writeback fields to Task",
-      "status": "todo",
+      "status": "done",
       "role": "architecture",
       "planId": "PLAN-002",
       "dependencies": [],
       "createdAt": "2026-03-09T13:00:00.000Z",
       "updatedAt": "2026-03-09T13:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-027": {
       "id": "TASK-027",
       "title": "Port + adapter: Writeback outbound (fs_writeback)",
-      "status": "todo",
+      "status": "done",
       "role": "backend",
       "planId": "PLAN-002",
       "dependencies": [
@@ -797,12 +811,12 @@
       "createdAt": "2026-03-09T13:00:00.000Z",
       "updatedAt": "2026-03-09T13:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-028": {
       "id": "TASK-028",
       "title": "OrchestratorService: invoke writeback on completion",
-      "status": "todo",
+      "status": "done",
       "role": "backend",
       "planId": "PLAN-002",
       "dependencies": [
@@ -812,12 +826,12 @@
       "createdAt": "2026-03-09T13:00:00.000Z",
       "updatedAt": "2026-03-09T13:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-029": {
       "id": "TASK-029",
       "title": "HTTP API + MCP: expose source fields in submit",
-      "status": "todo",
+      "status": "done",
       "role": "api",
       "planId": "PLAN-002",
       "dependencies": [
@@ -826,12 +840,12 @@
       "createdAt": "2026-03-09T13:00:00.000Z",
       "updatedAt": "2026-03-09T13:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-030": {
       "id": "TASK-030",
       "title": "New command: .claude/commands/push-to-nexus.md",
-      "status": "todo",
+      "status": "done",
       "role": "planning",
       "planId": "PLAN-002",
       "dependencies": [
@@ -840,12 +854,12 @@
       "createdAt": "2026-03-09T13:00:00.000Z",
       "updatedAt": "2026-03-09T13:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-031": {
       "id": "TASK-031",
       "title": "New command: .claude/commands/sync-from-nexus.md",
-      "status": "todo",
+      "status": "done",
       "role": "planning",
       "planId": "PLAN-002",
       "dependencies": [
@@ -854,7 +868,7 @@
       "createdAt": "2026-03-09T13:00:00.000Z",
       "updatedAt": "2026-03-09T13:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-032": {
       "id": "TASK-032",
@@ -2255,29 +2269,32 @@
     "TASK-146": {
       "id": "TASK-146",
       "title": "Fix ProviderConfig.type \u2192 kind TypeScript type mismatch",
-      "status": "todo",
+      "status": "done",
       "role": "api",
       "planId": "PLAN-021",
       "dependencies": [],
-      "createdAt": "2026-03-12T10:00:00.000Z"
+      "createdAt": "2026-03-12T10:00:00.000Z",
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-147": {
       "id": "TASK-147",
       "title": "Update CHANGELOG.md with PLAN-018/019/020 as v0.8.0",
-      "status": "todo",
+      "status": "done",
       "role": "planning",
       "planId": "PLAN-021",
       "dependencies": [],
-      "createdAt": "2026-03-12T10:00:00.000Z"
+      "createdAt": "2026-03-12T10:00:00.000Z",
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-148": {
       "id": "TASK-148",
       "title": "Replace polling in useTasks.ts with SSE consumer",
-      "status": "todo",
+      "status": "done",
       "role": "api",
       "planId": "PLAN-021",
       "dependencies": [],
-      "createdAt": "2026-03-12T10:00:00.000Z"
+      "createdAt": "2026-03-12T10:00:00.000Z",
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-149": {
       "id": "TASK-149",
@@ -2802,8 +2819,54 @@
       "createdAt": "2026-03-12T10:00:00.000Z",
       "startedAt": "2026-03-12T10:30:00.000Z",
       "completedAt": "2026-03-12T00:45:32Z"
+    },
+    "TASK-189": {
+      "id": "TASK-189",
+      "planId": "PLAN-026",
+      "title": "Orchestrator hardening: startup recovery, path normalization, queue cap, retry limit",
+      "role": "backend",
+      "status": "done",
+      "dependencies": [],
+      "createdAt": "2026-03-12T10:00:00.000Z",
+      "startedAt": "2026-03-12T08:24:09Z",
+      "completedAt": "2026-03-12T08:37:24Z"
+    },
+    "TASK-190": {
+      "id": "TASK-190",
+      "planId": "PLAN-026",
+      "title": "GUI: Task History view for completed/failed/cancelled tasks",
+      "role": "frontend",
+      "status": "done",
+      "dependencies": [],
+      "createdAt": "2026-03-12T10:00:00.000Z",
+      "startedAt": "2026-03-12T08:37:24Z",
+      "completedAt": "2026-03-12T08:49:21Z"
+    },
+    "TASK-191": {
+      "id": "TASK-191",
+      "planId": "PLAN-026",
+      "title": "GUI: Settings view for provider URLs, queue cap, MCP addr",
+      "role": "frontend",
+      "status": "done",
+      "dependencies": [
+        "TASK-189"
+      ],
+      "createdAt": "2026-03-12T10:00:00.000Z",
+      "startedAt": "2026-03-12T08:37:24Z",
+      "completedAt": "2026-03-12T08:49:21Z"
+    },
+    "TASK-192": {
+      "id": "TASK-192",
+      "planId": "PLAN-026",
+      "title": "README v0.9.x refresh: feature matrix, discovery, AI sessions, VS Code ext",
+      "role": "devops",
+      "status": "done",
+      "dependencies": [],
+      "createdAt": "2026-03-12T10:00:00.000Z",
+      "startedAt": "2026-03-12T08:37:24Z",
+      "completedAt": "2026-03-12T08:49:21Z"
     }
   },
-  "nextTaskId": 189,
-  "nextPlanId": 26
+  "nextTaskId": 193,
+  "nextPlanId": 27
 }
