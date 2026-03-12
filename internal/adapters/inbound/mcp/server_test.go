@@ -85,6 +85,7 @@ func (m *mockOrch) RegisterAISession(_ context.Context, s domain.AISession) (dom
 }
 func (m *mockOrch) ListAISessions(_ context.Context) ([]domain.AISession, error) { return nil, nil }
 func (m *mockOrch) DeregisterAISession(_ context.Context, _ string) error        { return nil }
+func (m *mockOrch) HeartbeatAISession(_ context.Context, _ string) error         { return nil }
 
 // --- Helpers ---
 

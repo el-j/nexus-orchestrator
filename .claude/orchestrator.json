@@ -1,12 +1,12 @@
 {
   "version": "2",
-  "updatedAt": "2026-03-12T10:00:00.000Z",
+  "updatedAt": "2026-03-12T12:30:00Z",
   "counters": {
     "nextTaskId": 184,
     "nextPlanId": 25
   },
   "activePlanId": null,
-  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix). PLAN-013 completed (update CI to latest action versions). PLAN-014 completed (unified publish.yml pipeline, fixed GITHUB_TOKEN cross-trigger bug, fixed CLI/desktop artifact naming collision, updated downloads.md). PLAN-015 completed (production-grade Node20 GitHub Action with TypeScript, built-in agent identity loading from el-j/agency-agents, 24 unit tests, action-ci.yml CI workflow). PLAN-016 completed (release pipeline finalization: deleted conflicting version.yml+release.yml, created CHANGELOG.md, fixed downloads.md desktop links). PLAN-017 completed (fix all broken download links: nexusOrchestrator\u2192nexus-orchestrator prefix, macOS .tar.gz\u2192.zip, add Gatekeeper workaround instructions). PLAN-018 completed (provider visibility: configurable Ollama/LM Studio URLs, BaseURL+Error in ProviderInfo, SQLite-persisted provider CRUD, GUI provider management panel, VS Code extension with submit/queue/status-bar). PLAN-019 completed (VS Code extension VSIX in release pipeline: vsce packaging with publisher+@vscode/vsce, build-vscode job in publish.yml+ci.yml, DownloadsView.vue/HomeView.vue/docs updated to mention extension). PLAN-020 completed (fix ProviderInfo TypeScript PascalCase\u2192camelCase type mismatch, wire AppSidebar routing, create ProvidersView.vue, dogfood confirmed COMPLETED via LM Studio qwen3-coder-next in 9s). PLAN-021 completed (SSE real-time updates via EventSource+fallback, ProviderConfig kind fix, CHANGELOG v0.8.0 \u2014 all 4 tasks dogfooded via daemon, LM Studio qwen3-coder-next). PLAN-022 completed (Universal AI Session Orchestration \u2014 AISession domain type, AISessionRepository+AISessionMonitor ports, SQLite AISessionRepo, HTTP /api/ai-sessions CRUD, MCP register_session+get_ai_sessions (14 tools total), GUI AISessionsView+useAISessions composable, VS Code SessionMonitor+Copilot detection, entry point wiring, 13 QA tests \u2014 all 9 tasks, 7 waves, all green). PLAN-023 active (System-Wide Provider Discovery + Background Service Mode \u2014 detect Claude CLI/Copilot/Antigravity/local AI tools, hide-to-tray, in-app log console, no console window \u2014 13 tasks across 8 waves). PLAN-024 completed (Multi-Project Planning & Idea Staging \u2014 DRAFT/BACKLOG statuses, ProviderName per-task routing, Priority+Tags, SQLite migrations, backlog CRUD on HTTP/MCP/CLI/Wails, BacklogView+BacklogList+ProjectSelector GUI, TaskSubmitForm split-button, 20 new QA tests \u2014 all 12 tasks, 7 waves, all green).",
+  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix). PLAN-013 completed (update CI to latest action versions). PLAN-014 completed (unified publish.yml pipeline, fixed GITHUB_TOKEN cross-trigger bug, fixed CLI/desktop artifact naming collision, updated downloads.md). PLAN-015 completed (production-grade Node20 GitHub Action with TypeScript, built-in agent identity loading from el-j/agency-agents, 24 unit tests, action-ci.yml CI workflow). PLAN-016 completed (release pipeline finalization: deleted conflicting version.yml+release.yml, created CHANGELOG.md, fixed downloads.md desktop links). PLAN-017 completed (fix all broken download links: nexusOrchestrator\u2192nexus-orchestrator prefix, macOS .tar.gz\u2192.zip, add Gatekeeper workaround instructions). PLAN-018 completed (provider visibility: configurable Ollama/LM Studio URLs, BaseURL+Error in ProviderInfo, SQLite-persisted provider CRUD, GUI provider management panel, VS Code extension with submit/queue/status-bar). PLAN-019 completed (VS Code extension VSIX in release pipeline: vsce packaging with publisher+@vscode/vsce, build-vscode job in publish.yml+ci.yml, DownloadsView.vue/HomeView.vue/docs updated to mention extension). PLAN-020 completed (fix ProviderInfo TypeScript PascalCase\u2192camelCase type mismatch, wire AppSidebar routing, create ProvidersView.vue, dogfood confirmed COMPLETED via LM Studio qwen3-coder-next in 9s). PLAN-021 completed (SSE real-time updates via EventSource+fallback, ProviderConfig kind fix, CHANGELOG v0.8.0 \u2014 all 4 tasks dogfooded via daemon, LM Studio qwen3-coder-next). PLAN-022 completed (Universal AI Session Orchestration \u2014 AISession domain type, AISessionRepository+AISessionMonitor ports, SQLite AISessionRepo, HTTP /api/ai-sessions CRUD, MCP register_session+get_ai_sessions (14 tools total), GUI AISessionsView+useAISessions composable, VS Code SessionMonitor+Copilot detection, entry point wiring, 13 QA tests \u2014 all 9 tasks, 7 waves, all green). PLAN-023 active (System-Wide Provider Discovery + Background Service Mode \u2014 detect Claude CLI/Copilot/Antigravity/local AI tools, hide-to-tray, in-app log console, no console window \u2014 13 tasks across 8 waves). PLAN-024 completed (Multi-Project Planning & Idea Staging \u2014 DRAFT/BACKLOG statuses, ProviderName per-task routing, Priority+Tags, SQLite migrations, backlog CRUD on HTTP/MCP/CLI/Wails, BacklogView+BacklogList+ProjectSelector GUI, TaskSubmitForm split-button, 20 new QA tests \u2014 all 12 tasks, 7 waves, all green). PLAN-029 completed (Task Queue UI fix: DashboardView flex wrapper; AI Session dedup by externalId: idempotent RegisterAISession + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code extension heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register).",
   "plans": {
     "PLAN-001": {
       "id": "PLAN-001",
@@ -432,36 +432,6 @@
         "TASK-192"
       ],
       "completedAt": "2026-03-12T08:49:21Z"
-    },
-    "PLAN-027": {
-      "id": "PLAN-027",
-      "title": "Full Build Consolidation & Runtime Bug Fixes",
-      "status": "completed",
-      "createdAt": "2026-03-12T09:16:54Z",
-      "goal": "Centralize all build outputs under dist/, fix make build-all to include GUI+VSCode, fix AI Sessions CORS/Wails bindings, fix Dashboard layout, fix SessionMonitor Copilot retry",
-      "tasks": [
-        "TASK-193",
-        "TASK-194",
-        "TASK-195",
-        "TASK-196",
-        "TASK-197",
-        "TASK-198"
-      ],
-      "completedAt": "2026-03-12T12:00:00Z"
-    },
-    "PLAN-028": {
-      "id": "PLAN-028",
-      "title": "Health Throttle + Workspace Orchestration Awareness",
-      "status": "completed",
-      "createdAt": "2026-03-12T09:51:23Z",
-      "goal": "Replace per-call Ping() with TTL-cached health + circuit breaker; add VS Code workspace agent tree view",
-      "tasks": [
-        "TASK-199",
-        "TASK-200",
-        "TASK-201",
-        "TASK-202"
-      ],
-      "completedAt": "2026-03-12T00:00:00.000Z"
     }
   },
   "tasks": {
@@ -2895,122 +2865,8 @@
       "createdAt": "2026-03-12T10:00:00.000Z",
       "startedAt": "2026-03-12T08:37:24Z",
       "completedAt": "2026-03-12T08:49:21Z"
-    },
-    "TASK-193": {
-      "id": "TASK-193",
-      "planId": "PLAN-027",
-      "title": "Centralize dist paths + make build-all completeness",
-      "role": "devops",
-      "status": "done",
-      "dependencies": [],
-      "createdAt": "2026-03-12T09:16:54Z",
-      "completedAt": "2026-03-12T12:00:00Z"
-    },
-    "TASK-194": {
-      "id": "TASK-194",
-      "planId": "PLAN-027",
-      "title": "Update GitHub workflows for new dist output structure",
-      "role": "devops",
-      "status": "done",
-      "dependencies": [
-        "TASK-193"
-      ],
-      "createdAt": "2026-03-12T09:16:54Z",
-      "completedAt": "2026-03-12T12:00:00Z"
-    },
-    "TASK-195": {
-      "id": "TASK-195",
-      "planId": "PLAN-027",
-      "title": "Fix AI Sessions: CORS headers + Wails app.go bindings + wails.ts",
-      "role": "backend",
-      "status": "done",
-      "dependencies": [],
-      "createdAt": "2026-03-12T09:16:54Z",
-      "completedAt": "2026-03-12T12:00:00Z"
-    },
-    "TASK-196": {
-      "id": "TASK-196",
-      "planId": "PLAN-027",
-      "title": "Fix Dashboard layout: TaskSubmitForm visibility + TaskQueue empty state",
-      "role": "frontend",
-      "status": "done",
-      "dependencies": [],
-      "createdAt": "2026-03-12T09:16:54Z",
-      "completedAt": "2026-03-12T12:00:00Z"
-    },
-    "TASK-197": {
-      "id": "TASK-197",
-      "planId": "PLAN-027",
-      "title": "Fix VS Code SessionMonitor: Copilot detection retry with backoff",
-      "role": "vscode",
-      "status": "done",
-      "dependencies": [],
-      "createdAt": "2026-03-12T09:16:54Z",
-      "completedAt": "2026-03-12T12:00:00Z"
-    },
-    "TASK-198": {
-      "id": "TASK-198",
-      "planId": "PLAN-027",
-      "title": "QA: verify all fixes end-to-end",
-      "role": "qa",
-      "status": "done",
-      "dependencies": [
-        "TASK-193",
-        "TASK-194",
-        "TASK-195",
-        "TASK-196",
-        "TASK-197"
-      ],
-      "createdAt": "2026-03-12T09:16:54Z",
-      "completedAt": "2026-03-12T12:00:00Z"
-    },
-    "TASK-199": {
-      "id": "TASK-199",
-      "planId": "PLAN-028",
-      "title": "DiscoveryService: TTL health cache + circuit breaker backoff",
-      "role": "backend",
-      "status": "done",
-      "dependencies": [],
-      "createdAt": "2026-03-12T09:51:23Z",
-      "completedAt": "2026-03-12T00:00:00.000Z"
-    },
-    "TASK-200": {
-      "id": "TASK-200",
-      "planId": "PLAN-028",
-      "title": "Reduce frontend provider polling interval",
-      "role": "frontend",
-      "status": "done",
-      "dependencies": [
-        "TASK-199"
-      ],
-      "createdAt": "2026-03-12T09:51:23Z",
-      "completedAt": "2026-03-12T00:00:00.000Z"
-    },
-    "TASK-201": {
-      "id": "TASK-201",
-      "planId": "PLAN-028",
-      "title": "VS Code: WorkspaceScanner + WorkspaceOrchView + extension wiring",
-      "role": "vscode",
-      "status": "done",
-      "dependencies": [],
-      "createdAt": "2026-03-12T09:51:23Z",
-      "completedAt": "2026-03-12T00:00:00.000Z"
-    },
-    "TASK-202": {
-      "id": "TASK-202",
-      "planId": "PLAN-028",
-      "title": "QA: verify health throttle, tree view, tests",
-      "role": "qa",
-      "status": "done",
-      "dependencies": [
-        "TASK-199",
-        "TASK-200",
-        "TASK-201"
-      ],
-      "createdAt": "2026-03-12T09:51:23Z",
-      "completedAt": "2026-03-12T00:00:00.000Z"
     }
   },
-  "nextTaskId": 203,
-  "nextPlanId": 29
+  "nextTaskId": 208,
+  "nextPlanId": 30
 }
