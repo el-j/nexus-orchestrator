@@ -69,7 +69,7 @@ build-frontend:
 build-vscode:
 	@echo "Building VS Code extension…"
 	@mkdir -p $(DIST_VSCODE)
-	cd vscode-extension && npm install --prefer-offline --silent && npm run build && vsce package --no-dependencies --out ../$(DIST_VSCODE)/nexus-orchestrator.vsix
+	cd vscode-extension && npm install --prefer-offline --silent && npm run build && npx @vscode/vsce package --no-dependencies --out ../$(DIST_VSCODE)/nexus-orchestrator.vsix
 	@echo "Built → $(DIST_VSCODE)/nexus-orchestrator.vsix"
 
 # Convenience target: build frontend + VS Code extension (quick pre-release check)
@@ -87,10 +87,13 @@ build-dev: build-frontend build-vscode
 build-gui: build-frontend
 	@echo "Building Wails desktop application..."
 	@mkdir -p $(DIST_DESKTOP)
-	@command -v wails >/dev/null 2>&1 || (echo "  ⚠  wails not installed, skipping GUI build" && exit 0)
-	wails build -clean
-	@cp -r build/bin/* $(DIST_DESKTOP)/
-	@echo "  → $(DIST_DESKTOP)/"
+	@if command -v wails >/dev/null 2>&1; then \
+		wails build -clean; \
+		cp -r build/bin/* $(DIST_DESKTOP)/; \
+		echo "  → $(DIST_DESKTOP)/"; \
+	else \
+		echo "  ⚠  wails not installed, skipping GUI build"; \
+	fi
 
 # Windows GUI build — uses -H windowsgui to suppress the console window.
 # Requires wails CLI and a Windows-capable cross-compilation environment.
@@ -198,6 +201,8 @@ vet:
 # ---------------------------------------------------------------------------
 clean:
 	rm -rf $(DIST) coverage.out coverage.html
+	rm -rf build/bin
+	rm -f vscode-extension/*.vsix
 
 help:
 	@echo ""
