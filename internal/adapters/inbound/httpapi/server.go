@@ -333,6 +333,20 @@ func (s *Server) handleGetLogs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, entries)
 }
 
+func (s *Server) handleHeartbeatAISession(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if err := s.orch.HeartbeatAISession(r.Context(), id); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			http.Error(w, "ai session not found", http.StatusNotFound)
+			return
+		}
+		log.Printf("httpapi: heartbeat ai session %s: %v", id, err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // handleEvents serves a Server-Sent Events stream that multiplexes task lifecycle
 // events (default event type) and log entries (event: log).
 func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
