@@ -68,10 +68,10 @@ type OrchestratorService struct {
 	lastScan           []domain.DiscoveredProvider
 	scanMu             sync.RWMutex // guards lastScan; separate from task-queue mu
 	aiSessionRepo      ports.AISessionRepository
-	maxRetries        int
-	maxResponseTokens int
-	cleanupInterval   time.Duration
-	staleThreshold    time.Duration
+	maxRetries         int
+	maxResponseTokens  int
+	cleanupInterval    time.Duration
+	staleThreshold     time.Duration
 }
 
 // NewOrchestrator constructs an OrchestratorService and starts the background

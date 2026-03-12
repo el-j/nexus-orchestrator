@@ -1,13 +1,13 @@
 package main
 
 import (
-"context"
-"errors"
-"testing"
-"time"
+	"context"
+	"errors"
+	"testing"
+	"time"
 
-"nexus-orchestrator/internal/core/domain"
-"nexus-orchestrator/internal/core/ports"
+	"nexus-orchestrator/internal/core/domain"
+	"nexus-orchestrator/internal/core/ports"
 )
 
 type mockOrchestrator struct {
@@ -57,11 +57,11 @@ func (m *mockOrchestrator) GetBacklog(p string) ([]domain.Task, error) {
 func (m *mockOrchestrator) CreateDraft(t domain.Task) (string, error) {
 	return m.idReturn, m.errReturn
 }
-func (m *mockOrchestrator) GetProviders() ([]ports.ProviderInfo, error) { return nil, nil }
+func (m *mockOrchestrator) GetProviders() ([]ports.ProviderInfo, error)         { return nil, nil }
 func (m *mockOrchestrator) RegisterCloudProvider(_ domain.ProviderConfig) error { return nil }
-func (m *mockOrchestrator) RemoveProvider(_ string) error { return nil }
-func (m *mockOrchestrator) GetProviderModels(_ string) ([]string, error) { return nil, nil }
-func (m *mockOrchestrator) PromoteTask(_ string) error { return nil }
+func (m *mockOrchestrator) RemoveProvider(_ string) error                       { return nil }
+func (m *mockOrchestrator) GetProviderModels(_ string) ([]string, error)        { return nil, nil }
+func (m *mockOrchestrator) PromoteTask(_ string) error                          { return nil }
 func (m *mockOrchestrator) UpdateTask(_ string, _ domain.Task) (domain.Task, error) {
 	return domain.Task{}, nil
 }
@@ -89,7 +89,7 @@ func (m *mockOrchestrator) ListAISessions(_ context.Context) ([]domain.AISession
 	return nil, nil
 }
 func (m *mockOrchestrator) DeregisterAISession(_ context.Context, _ string) error { return nil }
-func (m *mockOrchestrator) HeartbeatAISession(_ context.Context, _ string) error { return nil }
+func (m *mockOrchestrator) HeartbeatAISession(_ context.Context, _ string) error  { return nil }
 
 var _ ports.Orchestrator = (*mockOrchestrator)(nil)
 
