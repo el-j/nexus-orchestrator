@@ -9,7 +9,7 @@
  */
 
 import * as vscode from "vscode";
-import { NexusClient } from "./nexusClient";
+import { NexusClient, AISession } from "./nexusClient";
 
 export class NexusStatusBar {
   private item: vscode.StatusBarItem;
@@ -45,12 +45,20 @@ export class NexusStatusBar {
         return;
       }
 
-      const [providers, tasks] = await Promise.all([
+      const [providers, tasks, aiSessions] = await Promise.all([
         this.client.getProviders(),
         this.client.getTasks(),
+        this.client.getAISessions().catch((): AISession[] => []),
       ]);
 
       const activeProviders = providers.filter((p) => p.active);
+      const activeSessionCount = aiSessions.filter(
+        (s) => s.status === "active"
+      ).length;
+      const sessionSuffix =
+        aiSessions.length > 0
+          ? `\n— AI Sessions: ${activeSessionCount} active`
+          : "";
       const oneHourAgo = Date.now() - 60 * 60 * 1000;
 
       const activeTasks = tasks.filter(
@@ -64,13 +72,13 @@ export class NexusStatusBar {
 
       if (failedTasks.length > 0) {
         this.item.text = `$(error) Nexus: ${failedTasks.length} failed`;
-        this.item.tooltip = "Click to open actions";
+        this.item.tooltip = `Click to open actions${sessionSuffix}`;
       } else if (activeTasks.length > 0) {
         this.item.text = `$(sync~spin) Nexus: ${activeTasks.length} tasks`;
-        this.item.tooltip = `${activeProviders.length} provider(s) active`;
+        this.item.tooltip = `${activeProviders.length} provider(s) active${sessionSuffix}`;
       } else {
         this.item.text = "$(zap) Nexus";
-        this.item.tooltip = `${activeProviders.length} provider(s) active`;
+        this.item.tooltip = `${activeProviders.length} provider(s) active${sessionSuffix}`;
       }
     } catch {
       this.item.text = "$(warning) Nexus: offline";

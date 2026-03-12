@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -20,13 +21,20 @@ import (
 
 // Server holds the HTTP API dependencies.
 type Server struct {
-	orch ports.Orchestrator
-	hub  *Hub
+	orch   ports.Orchestrator
+	hub    *Hub
+	logHub *LogHub
 }
 
 // NewServer constructs a Server. hub may be nil to disable SSE.
 func NewServer(orch ports.Orchestrator, hub *Hub) *Server {
 	return &Server{orch: orch, hub: hub}
+}
+
+// WithLogHub configures the Server to capture and stream log entries via SSE.
+func (s *Server) WithLogHub(h *LogHub) *Server {
+	s.logHub = h
+	return s
 }
 
 // broadcasterSetter is satisfied by *services.OrchestratorService. Defined here
@@ -65,15 +73,25 @@ func (s *Server) Handler() http.Handler {
 	})
 	r.Get("/ui", s.handleUI)
 
-	// Task endpoints
+	// Task endpoints — literal segments must be registered before wildcard {id}
 	r.Post("/api/tasks", s.handleCreateTask)
 	r.Get("/api/tasks", s.handleListTasks)
+	r.Post("/api/tasks/draft", s.handleCreateDraft)
+	r.Get("/api/tasks/backlog", s.handleGetBacklog)
 	r.Get("/api/tasks/{id}", s.handleGetTask)
 	r.Delete("/api/tasks/{id}", s.handleCancelTask)
+	r.Post("/api/tasks/{id}/promote", s.handlePromoteTask)
+	r.Put("/api/tasks/{id}", s.handleUpdateTask)
 
 	// Provider + health
 	r.Get("/api/providers", s.handleProviders)
 	r.Post("/api/providers", s.handleRegisterProvider)
+
+	// Provider discovery — literal segments registered before wildcard {name}
+	r.Get("/api/providers/discovered", s.handleGetDiscoveredProviders)
+	r.Post("/api/providers/discovered/scan", s.handleTriggerScan)
+	r.Post("/api/providers/promote/{id}", s.handlePromoteProvider)
+
 	r.Delete("/api/providers/{name}", s.handleRemoveProvider)
 	r.Get("/api/providers/{name}/models", s.handleProviderModels)
 
@@ -83,29 +101,32 @@ func (s *Server) Handler() http.Handler {
 	r.Put("/api/providers/config/{id}", s.handleUpdateProviderConfig)
 	r.Delete("/api/providers/config/{id}", s.handleRemoveProviderConfig)
 
-	r.Get("/api/health", s.handleHealth)
+	// AI session endpoints — literal segment before wildcard {id}
+	r.Post("/api/ai-sessions", s.handleRegisterAISession)
+	r.Get("/api/ai-sessions", s.handleListAISessions)
+	r.Delete("/api/ai-sessions/{id}", s.handleDeregisterAISession)
 
-	// GET /api/events — SSE stream for task lifecycle events
-	r.Get("/api/events", func(w http.ResponseWriter, r *http.Request) {
-		if s.hub == nil {
-			http.Error(w, "SSE not configured", http.StatusServiceUnavailable)
-			return
-		}
-		s.hub.ServeSSE(w, r)
-	})
+	r.Get("/api/health", s.handleHealth)
+	r.Get("/api/logs", s.handleGetLogs)
+
+	// GET /api/events — SSE stream for task lifecycle and log events
+	r.Get("/api/events", s.handleEvents)
 
 	return r
 }
 
 // StartServer starts the HTTP API on addr and blocks until ctx is cancelled.
-// Signature unchanged — existing callers (main.go, cmd/nexus-daemon/main.go) work without modification.
-func StartServer(ctx context.Context, orch ports.Orchestrator, addr string) error {
+// An optional *LogHub may be passed as the final argument to capture log output via SSE.
+func StartServer(ctx context.Context, orch ports.Orchestrator, addr string, logHub ...*LogHub) error {
 	hub := NewHub()
 	// Wire broadcaster if orch exposes SetBroadcaster (avoids importing services).
 	if bs, ok := orch.(broadcasterSetter); ok {
 		bs.SetBroadcaster(hub)
 	}
 	s := NewServer(orch, hub)
+	if len(logHub) > 0 && logHub[0] != nil {
+		s.WithLogHub(logHub[0])
+	}
 	srv := &http.Server{
 		Addr:         addr,
 		Handler:      s.Handler(),
@@ -196,6 +217,74 @@ func (s *Server) handleCancelTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleCreateDraft(w http.ResponseWriter, r *http.Request) {
+	var task domain.Task
+	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+	id, err := s.orch.CreateDraft(task)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(map[string]string{"id": id, "status": "DRAFT"})
+}
+
+func (s *Server) handleGetBacklog(w http.ResponseWriter, r *http.Request) {
+	projectPath := r.URL.Query().Get("project")
+	if projectPath == "" {
+		http.Error(w, "project query parameter required", http.StatusBadRequest)
+		return
+	}
+	tasks, err := s.orch.GetBacklog(projectPath)
+	if err != nil {
+		log.Printf("httpapi: get backlog: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if tasks == nil {
+		tasks = []domain.Task{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(tasks)
+}
+
+func (s *Server) handlePromoteTask(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if err := s.orch.PromoteTask(id); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			http.Error(w, "task not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleUpdateTask(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var updates domain.Task
+	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+	updated, err := s.orch.UpdateTask(id, updates)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			http.Error(w, "task not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(updated)
 }
 
 func (s *Server) handleProviders(w http.ResponseWriter, r *http.Request) {
@@ -363,4 +452,164 @@ func (s *Server) handleRemoveProviderConfig(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleGetDiscoveredProviders(w http.ResponseWriter, r *http.Request) {
+	providers, err := s.orch.GetDiscoveredProviders()
+	if err != nil {
+		http.Error(w, `{"error":"failed to get discovered providers"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(providers)
+}
+
+func (s *Server) handleTriggerScan(w http.ResponseWriter, r *http.Request) {
+	providers, err := s.orch.TriggerScan(r.Context())
+	if err != nil {
+		http.Error(w, `{"error":"scan failed"}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(providers)
+}
+
+func (s *Server) handlePromoteProvider(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	err := s.orch.PromoteProvider(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			http.Error(w, `{"error":"provider not found"}`, http.StatusNotFound)
+			return
+		}
+		http.Error(w, `{"error":"failed to promote provider"}`, http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleGetLogs returns a JSON array of buffered log entries from the ring buffer.
+func (s *Server) handleGetLogs(w http.ResponseWriter, r *http.Request) {
+	if s.logHub == nil {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("[]"))
+		return
+	}
+	entries := s.logHub.Buffer()
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(entries)
+}
+
+func (s *Server) handleRegisterAISession(w http.ResponseWriter, r *http.Request) {
+	var session domain.AISession
+	if err := json.NewDecoder(r.Body).Decode(&session); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	if session.AgentName == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "agentName is required"})
+		return
+	}
+	if session.Source != domain.SessionSourceMCP && session.Source != domain.SessionSourceVSCode && session.Source != domain.SessionSourceHTTP {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "source must be one of: mcp, vscode, http"})
+		return
+	}
+	created, err := s.orch.RegisterAISession(r.Context(), session)
+	if err != nil {
+		log.Printf("httpapi: register ai session: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(created)
+}
+
+func (s *Server) handleListAISessions(w http.ResponseWriter, r *http.Request) {
+	sessions, err := s.orch.ListAISessions(r.Context())
+	if err != nil {
+		log.Printf("httpapi: list ai sessions: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if sessions == nil {
+		sessions = []domain.AISession{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(sessions)
+}
+
+func (s *Server) handleDeregisterAISession(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if err := s.orch.DeregisterAISession(r.Context(), id); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			http.Error(w, "ai session not found", http.StatusNotFound)
+			return
+		}
+		log.Printf("httpapi: deregister ai session %s: %v", id, err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleEvents serves a Server-Sent Events stream that multiplexes task lifecycle
+// events (default event type) and log entries (event: log).
+func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
+	if s.hub == nil {
+		http.Error(w, "SSE not configured", http.StatusServiceUnavailable)
+		return
+	}
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	taskCh := s.hub.Subscribe()
+	defer s.hub.Unsubscribe(taskCh)
+
+	var logCh chan domain.LogEntry
+	if s.logHub != nil {
+		logCh = s.logHub.Subscribe()
+		defer s.logHub.Unsubscribe(logCh)
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+	fmt.Fprint(w, "data: {\"type\":\"connected\"}\n\n")
+	flusher.Flush()
+
+	for {
+		select {
+		case msg, ok := <-taskCh:
+			if !ok {
+				return
+			}
+			if _, err := w.Write(msg); err != nil {
+				return
+			}
+			flusher.Flush()
+		case entry, ok := <-logCh:
+			if !ok {
+				return
+			}
+			data, err := json.Marshal(entry)
+			if err != nil {
+				continue
+			}
+			fmt.Fprintf(w, "event: log\ndata: %s\n\n", data)
+			flusher.Flush()
+		case <-r.Context().Done():
+			return
+		}
+	}
 }

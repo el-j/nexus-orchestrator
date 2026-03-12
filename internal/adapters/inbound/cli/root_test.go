@@ -62,6 +62,26 @@ func (m *mockOrchestrator) RemoveProviderConfig(_ context.Context, _ string) err
 func (m *mockOrchestrator) ListProviderConfigs(_ context.Context) ([]domain.ProviderConfig, error) {
 	return nil, nil
 }
+func (m *mockOrchestrator) GetDiscoveredProviders() ([]domain.DiscoveredProvider, error) {
+	return nil, nil
+}
+func (m *mockOrchestrator) TriggerScan(_ context.Context) ([]domain.DiscoveredProvider, error) {
+	return nil, nil
+}
+func (m *mockOrchestrator) PromoteProvider(_ context.Context, _ string) error { return nil }
+func (m *mockOrchestrator) CreateDraft(_ domain.Task) (string, error)         { return "", nil }
+func (m *mockOrchestrator) GetBacklog(_ string) ([]domain.Task, error)        { return nil, nil }
+func (m *mockOrchestrator) PromoteTask(_ string) error                        { return nil }
+func (m *mockOrchestrator) UpdateTask(_ string, _ domain.Task) (domain.Task, error) {
+	return domain.Task{}, nil
+}
+func (m *mockOrchestrator) RegisterAISession(_ context.Context, s domain.AISession) (domain.AISession, error) {
+	return s, nil
+}
+func (m *mockOrchestrator) ListAISessions(_ context.Context) ([]domain.AISession, error) {
+	return nil, nil
+}
+func (m *mockOrchestrator) DeregisterAISession(_ context.Context, _ string) error { return nil }
 
 // captureStdout redirects os.Stdout while fn runs and returns the collected
 // output. fn must not call t.Fatal/t.FailNow (runtime.Goexit) directly, as

@@ -7,20 +7,89 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-03-12
+
 ### Fixed
 
+- `make build-all` cross-compilation now works with zig 0.15.x — added `-tags netgo,osusergo` and `-extldflags='-static'` to Linux targets, eliminating musl `__errno_location` / `pthread_*` linker errors
+- VS Code extension now auto-registers the `nexus-orchest` MCP server via `contributes.mcpServers` (VS Code 1.99+) — no manual `.vscode/mcp.json` required
+- VS Code extension rebuilt at v0.2.0: bundles `SessionMonitor` (PLAN-022) and AI session auto-registration with daemon
+
+### Changed
+
+- VS Code extension minimum engine version bumped to `^1.99.0` to support `contributes.mcpServers`
+- Linux cross-compilation uses `-tags netgo,osusergo` (pure-Go DNS/user) and `-extldflags='-static'` (static musl) to support zig 0.15.x
+
+## [0.9.0] - 2026-03-12
+
+### Added
+
+#### Universal AI Session Orchestration (PLAN-022)
+- `AISession` domain type with `AISessionStatus` (`active`/`idle`/`disconnected`) and `AISessionSource` (`mcp`/`vscode`/`http`) enums; `IsTerminal()` predicate on status
+- `AISessionRepository` outbound port (5 methods: save, get, list, update-status, delete) and `AISessionMonitor` inbound port
+- SQLite `ai_sessions` table with additive schema migration; `AISessionRepo` outbound adapter sharing the existing `*sql.DB`
+- `RegisterAISession`, `ListAISessions`, `DeregisterAISession` methods on `OrchestratorService` and the `Orchestrator` port interface
+- HTTP API: `POST /api/ai-sessions` (201), `GET /api/ai-sessions` (200), `DELETE /api/ai-sessions/{id}` (204/404) — external AI agents can self-register
+- MCP tools `register_session` and `get_ai_sessions` (total: 14 tools) — MCP clients announce themselves via JSON-RPC 2.0
+- GUI "AI Sessions" view (`AISessionsView.vue`) with SSE real-time updates and 5s polling fallback; status-coloured session cards; "Disconnect" action; sidebar nav item
+- VS Code extension `SessionMonitor` — detects GitHub Copilot via `vscode.lm.selectChatModels`, auto-registers with daemon, 60s heartbeat, graceful deregister on extension deactivate; session count added to status bar tooltip
+- `AISessionRepo` wired into both daemon (`cmd/nexus-daemon/main.go`) and Wails desktop (`main.go`) entry points
+
+#### System-Wide Provider Discovery + Background Service Mode (PLAN-023)
+- `DiscoveredProvider` domain type with `DiscoveryMethod` (`port`/`cli`/`process`) and `DiscoveryStatus` (`reachable`/`installed`/`running`) enums
+- `SystemScanner` outbound port; `sys_scanner` adapter probes 6 TCP ports, 5 CLI tools, and 4 running processes with 8-goroutine semaphore and 5s deadline
+- `GetDiscoveredProviders`, `TriggerScan`, `PromoteProvider` methods on the `Orchestrator` port and service; 30s periodic re-scan (configurable via `NEXUS_SCAN_INTERVAL`)
+- HTTP API: `GET /api/providers/discovered`, `POST /api/providers/discovered/scan`, `POST /api/providers/promote/{id}`
+- MCP tools `discover_providers` and `promote_provider`
+- In-app log console (`LogHub` SSE fan-out with 500-entry ring buffer; `GET /api/logs`; `LogPanel.vue` with drag-resize, level filter, auto-scroll)
+- `DiscoveryView.vue` with provider discovery panel and sidebar nav
+- Wails `HideWindowOnClose: true` — desktop app hides to tray instead of quitting; `OnBeforeClose` hook
+
+#### Multi-Project Planning & Idea Staging (PLAN-024)
+- `DRAFT` and `BACKLOG` task statuses; `Priority` (`critical`/`high`/`medium`/`low`) and `Tags []string` fields on `Task`; `ProviderName` per-task routing override
+- SQLite additive migrations for new columns
+- Backlog CRUD on HTTP API (`POST /api/tasks/draft`, `GET /api/tasks/backlog`, `POST /api/tasks/promote/{id}`), MCP, CLI, and Wails binding
+- `BacklogView.vue`, `BacklogList.vue`, `ProjectSelector.vue` GUI components; `TaskSubmitForm.vue` split-button for submit vs. save-to-backlog
+
+### Fixed
+
+- MCP JSON Schema: `"type": "array"` properties (`contextFiles`, `tags`) now correctly include `"items": {"type": "string"}` — fixes Copilot/Claude Desktop tool validation error
 - All download links on docs site now resolve correctly — prefix corrected from
   `nexusOrchestrator-*` to `nexus-orchestrator-*` to match actual GitHub Release artifact names
 - macOS Desktop download links now point to `.zip` format (matching pipeline output);
   previously linked to `.tar.gz` which would 404
 - Checksum verification examples on downloads page now reference correct file names
 
-### Added
+### Added (standalone)
 
 - macOS Gatekeeper / quarantine workaround instructions on Downloads page
   (prominent warning section explaining "Apple could not verify" is expected for
   unsigned open-source apps, with right-click and `xattr` solutions)
 - macOS first-run setup instructions added to Getting Started guide
+
+## [0.8.0] - 2026-03-12
+
+### Added
+
+#### Provider Management (PLAN-018)
+- Configurable Ollama and LM Studio base URLs — override defaults via `NEXUS_OLLAMA_BASE_URL` and `NEXUS_LMSTUDIO_BASE_URL` environment variables; also configurable in the GUI
+- `BaseURL` and `Error` fields added to `ProviderInfo` so the frontend can display the live endpoint and error state
+- SQLite-persisted provider CRUD (`ProviderConfigRepository` port + `repo_sqlite` implementation)
+- Providers management panel in the Wails GUI: add, edit, delete configured providers with preset URLs for LM Studio, Ollama, OpenAI, Anthropic, and custom OpenAI-compatible endpoints
+- API key field masked (`***`) in all HTTP responses to prevent credential leakage
+- VS Code extension (`vscode-extension/`) with task submit, task queue view, and status bar provider indicator
+
+#### Release Pipeline (PLAN-019)
+- `@vscode/vsce` packaging for the VS Code extension added to `publish.yml` — VSIX artifact included in every GitHub Release
+- `build-vscode` job added to `ci.yml` for smoke-test validation of the extension on every PR
+- VS Code extension download section added to the docs Downloads page and Homepage feature list
+
+### Fixed
+
+#### GUI Provider Display (PLAN-020)
+- `ProviderInfo` TypeScript fields corrected from PascalCase (`Name`, `Active`, `ActiveModel`, `Models`) to camelCase (`name`, `active`, `activeModel`, `models`) to match Go JSON serialisation — provider cards were rendering blank before this fix
+- `AppSidebar.vue` navigation wired with `defineEmits` — clicking "Providers" now correctly switches the view
+- `ProvidersView.vue` created as a full-page provider management view (discovered providers grid + configured provider CRUD)
 
 ## [0.2.0] - 2026-03-11
 
@@ -116,5 +185,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - HTTP body size cap prevents memory exhaustion from malformed or malicious API requests
 - SQLite `PRAGMA foreign_keys=ON` prevents referential integrity violations; WAL mode reduces write contention
 
-[Unreleased]: https://github.com/el-j/nexusOrchestrator/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/el-j/nexusOrchestrator/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/el-j/nexusOrchestrator/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/el-j/nexusOrchestrator/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/el-j/nexusOrchestrator/releases/tag/v0.8.0
 [0.2.0]: https://github.com/el-j/nexusOrchestrator/releases/tag/v0.2.0

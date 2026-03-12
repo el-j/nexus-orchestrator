@@ -89,3 +89,35 @@ func (a *App) RemoveProviderConfig(id string) error {
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello, %s! nexusOrchestrator is running.", name)
 }
+
+// GetDiscoveredProviders returns system-detected AI tools (not yet promoted).
+// The frontend calls this to populate the Discovery panel.
+func (a *App) GetDiscoveredProviders() ([]domain.DiscoveredProvider, error) {
+	return a.orchestrator.GetDiscoveredProviders()
+}
+
+// TriggerScan requests an immediate system scan for AI providers.
+func (a *App) TriggerScan() error {
+	_, err := a.orchestrator.TriggerScan(context.Background())
+	return err
+}
+
+// CreateDraft creates a task idea (DRAFT status) without entering the execution queue.
+func (a *App) CreateDraft(task domain.Task) (string, error) {
+	return a.orchestrator.CreateDraft(task)
+}
+
+// GetBacklog returns DRAFT and BACKLOG tasks for the given project path.
+func (a *App) GetBacklog(projectPath string) ([]domain.Task, error) {
+	return a.orchestrator.GetBacklog(projectPath)
+}
+
+// PromoteTask transitions a DRAFT or BACKLOG task to QUEUED and enqueues it for execution.
+func (a *App) PromoteTask(id string) error {
+	return a.orchestrator.PromoteTask(id)
+}
+
+// UpdateTask updates mutable fields on an existing task.
+func (a *App) UpdateTask(id string, updates domain.Task) (domain.Task, error) {
+	return a.orchestrator.UpdateTask(id, updates)
+}

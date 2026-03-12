@@ -54,6 +54,23 @@ export interface SubmitTaskRequest {
   contextFiles?: string[];
 }
 
+// ---- AI Session types ----
+
+export interface AISession {
+  id: string;
+  agentName: string;
+  source: string;
+  status: string;
+  lastActivity: string;
+}
+
+export interface RegisterSessionRequest {
+  agentName: string;
+  source: "vscode" | "mcp" | "http";
+  projectPath?: string;
+  externalId?: string;
+}
+
 // ---- Internal response shape from POST /api/tasks ----
 
 interface CreateTaskResponse {
@@ -110,6 +127,28 @@ export class NexusClient {
   /** Return all registered LLM providers and their liveness status. */
   async getProviders(): Promise<Provider[]> {
     return this.get<Provider[]>("/api/providers");
+  }
+
+  /** Register a new AI session with the daemon. */
+  async registerSession(req: RegisterSessionRequest): Promise<AISession> {
+    return this.post<AISession>("/api/ai-sessions", req);
+  }
+
+  /** Deregister an AI session by ID. */
+  async deregisterSession(id: string): Promise<void> {
+    const url = `${this.baseUrl}/api/ai-sessions/${encodeURIComponent(id)}`;
+    const resp = await fetch(url, { method: "DELETE" });
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => "");
+      throw new Error(
+        `nexus: deregister session ${id}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ""}`
+      );
+    }
+  }
+
+  /** Return all registered AI sessions. */
+  async getAISessions(): Promise<AISession[]> {
+    return this.get<AISession[]>("/api/ai-sessions");
   }
 
   /**

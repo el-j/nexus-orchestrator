@@ -108,3 +108,29 @@ jobs:
           CGO_ENABLED=0 go build ./cmd/nexus-cli/...
           CGO_ENABLED=0 go build ./cmd/nexus-submit/...
           CGO_ENABLED=1 go build ./cmd/nexus-daemon/...
+
+  build-vscode:
+    name: Build VS Code Extension
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: vscode-extension/package-lock.json
+
+      - name: Install dependencies
+        working-directory: vscode-extension
+        run: npm ci
+
+      - name: Build extension
+        working-directory: vscode-extension
+        run: npm run build
+
+      - name: Package VSIX (smoke test)
+        working-directory: vscode-extension
+        shell: bash
+        run: npx @vscode/vsce package --no-dependencies

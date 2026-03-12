@@ -352,9 +352,44 @@ jobs:
           name: ${{ matrix.archive_name }}.${{ matrix.archive_ext }}
           path: ${{ matrix.archive_name }}.${{ matrix.archive_ext }}
 
+  build-vscode:
+    name: Build VS Code Extension
+    needs: [version, test]
+    if: needs.version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: vscode-extension/package-lock.json
+
+      - name: Install dependencies
+        working-directory: vscode-extension
+        run: npm ci
+
+      - name: Build extension
+        working-directory: vscode-extension
+        run: npm run build
+
+      - name: Package VSIX
+        shell: bash
+        run: |
+          cd vscode-extension
+          npx @vscode/vsce package --no-dependencies --out nexus-orchestrator-vscode.vsix
+          mv nexus-orchestrator-vscode.vsix ../nexus-orchestrator-vscode.vsix
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: nexus-orchestrator-vscode.vsix
+          path: nexus-orchestrator-vscode.vsix
+
   release:
     name: Create Release
-    needs: [version, build-cli, build-desktop]
+    needs: [version, build-cli, build-desktop, build-vscode]
     if: needs.version.outputs.exists == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -384,8 +419,9 @@ jobs:
         shell: bash
         run: |
           cd artifacts
-          find . -name 'nexus-orchestrator-*' ! -name 'nexus-orchestrator-desktop-*' -exec sha256sum {} + > ../SHA256SUMS.txt
+          find . -name 'nexus-orchestrator-*' ! -name 'nexus-orchestrator-desktop-*' ! -name 'nexus-orchestrator-vscode*' -exec sha256sum {} + > ../SHA256SUMS.txt
           find . -name 'nexus-orchestrator-desktop-*' -exec sha256sum {} + > ../SHA256SUMS-desktop.txt
+          find . -name 'nexus-orchestrator-vscode*.vsix' -exec sha256sum {} + > ../SHA256SUMS-vscode.txt
           cd ..
           mv artifacts/* .
 
@@ -396,5 +432,7 @@ jobs:
           files: |
             nexus-orchestrator-*.tar.gz
             nexus-orchestrator-*.zip
+            nexus-orchestrator-vscode*.vsix
             SHA256SUMS.txt
             SHA256SUMS-desktop.txt
+            SHA256SUMS-vscode.txt

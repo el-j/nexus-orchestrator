@@ -1,12 +1,28 @@
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { Task } from '../types/domain'
-import { getQueue } from '../types/wails'
+import { getQueue, createDraft as wailsCreateDraft, promoteTask as wailsPromoteTask, updateTask as wailsUpdateTask } from '../types/wails'
+import { currentProject } from './useProjectFilter'
 
 export function useTasks() {
   const tasks = ref<Task[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
   let interval: ReturnType<typeof setInterval> | null = null
+  let eventSource: EventSource | null = null
+
+  const backlogTasks = computed(() =>
+    tasks.value.filter(t =>
+      (t.Status === 'DRAFT' || t.Status === 'BACKLOG') &&
+      (currentProject.value === null || t.ProjectPath === currentProject.value)
+    )
+  )
+
+  const queuedTasks = computed(() =>
+    tasks.value.filter(t =>
+      (t.Status === 'QUEUED' || t.Status === 'PROCESSING') &&
+      (currentProject.value === null || t.ProjectPath === currentProject.value)
+    )
+  )
 
   async function refresh() {
     try {
@@ -17,16 +33,57 @@ export function useTasks() {
     }
   }
 
+  async function createDraft(task: Partial<Task>): Promise<string> {
+    const id = await wailsCreateDraft(task)
+    await refresh()
+    return id
+  }
+
+  async function promoteTask(id: string): Promise<void> {
+    await wailsPromoteTask(id)
+    await refresh()
+  }
+
+  async function updateTask(id: string, updates: Partial<Task>): Promise<Task> {
+    const updated = await wailsUpdateTask(id, updates)
+    await refresh()
+    return updated
+  }
+
   onMounted(async () => {
     loading.value = true
     await refresh()
+
+    if (typeof EventSource !== 'undefined') {
+      try {
+        eventSource = new EventSource('http://127.0.0.1:9999/api/events')
+        eventSource.onmessage = (event) => {
+          const data = JSON.parse(event.data)
+          if (data.type !== 'connected') {
+            refresh()
+          }
+        }
+        eventSource.onerror = () => {
+          console.warn('SSE connection error — falling back to polling')
+          eventSource?.close()
+          eventSource = null
+          interval = setInterval(refresh, 2000)
+        }
+      } catch {
+        // EventSource unavailable or failed to connect — fall back to polling
+        interval = setInterval(refresh, 2000)
+      }
+    } else {
+      interval = setInterval(refresh, 2000)
+    }
+
     loading.value = false
-    interval = setInterval(refresh, 2000)
   })
 
   onUnmounted(() => {
     if (interval) clearInterval(interval)
+    if (eventSource) eventSource.close()
   })
 
-  return { tasks, loading, error, refresh }
+  return { tasks, loading, error, refresh, backlogTasks, queuedTasks, createDraft, promoteTask, updateTask }
 }

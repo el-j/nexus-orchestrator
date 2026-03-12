@@ -44,6 +44,20 @@ type mockOrchestrator struct {
 
 	getProviderModelsResult []string
 	getProviderModelsErr    error
+
+	createDraftID  string
+	createDraftErr error
+
+	getBacklogResult []domain.Task
+	getBacklogErr    error
+
+	promoteTaskErr error
+
+	updateTaskResult domain.Task
+	updateTaskErr    error
+
+	discoveredProvidersResult []domain.DiscoveredProvider
+	promoteProviderErr        error
 }
 
 func (m *mockOrchestrator) SubmitTask(_ domain.Task) (string, error) {
@@ -92,6 +106,40 @@ func (m *mockOrchestrator) RemoveProviderConfig(_ context.Context, _ string) err
 
 func (m *mockOrchestrator) ListProviderConfigs(_ context.Context) ([]domain.ProviderConfig, error) {
 	return nil, nil
+}
+func (m *mockOrchestrator) GetDiscoveredProviders() ([]domain.DiscoveredProvider, error) {
+	return m.discoveredProvidersResult, nil
+}
+func (m *mockOrchestrator) TriggerScan(_ context.Context) ([]domain.DiscoveredProvider, error) {
+	return nil, nil
+}
+func (m *mockOrchestrator) PromoteProvider(_ context.Context, _ string) error {
+	return m.promoteProviderErr
+}
+
+// configurable fields for backlog operations
+var _ ports.Orchestrator = (*mockOrchestrator)(nil) // compile-time interface check
+
+func (m *mockOrchestrator) CreateDraft(_ domain.Task) (string, error) {
+	return m.createDraftID, m.createDraftErr
+}
+func (m *mockOrchestrator) GetBacklog(_ string) ([]domain.Task, error) {
+	return m.getBacklogResult, m.getBacklogErr
+}
+func (m *mockOrchestrator) PromoteTask(_ string) error {
+	return m.promoteTaskErr
+}
+func (m *mockOrchestrator) UpdateTask(_ string, _ domain.Task) (domain.Task, error) {
+	return m.updateTaskResult, m.updateTaskErr
+}
+func (m *mockOrchestrator) RegisterAISession(_ context.Context, s domain.AISession) (domain.AISession, error) {
+	return s, nil
+}
+func (m *mockOrchestrator) ListAISessions(_ context.Context) ([]domain.AISession, error) {
+	return nil, nil
+}
+func (m *mockOrchestrator) DeregisterAISession(_ context.Context, _ string) error {
+	return nil
 }
 
 // newTestHandler builds a chi router with the same route/handler logic as StartServer.
@@ -757,5 +805,205 @@ func TestPostTask_ErrNoPlan_Returns422(t *testing.T) {
 	b, _ := io.ReadAll(resp.Body)
 	if got := string(b); !strings.Contains(got, "planning required") {
 		t.Errorf("expected 'planning required' in body, got: %s", got)
+	}
+}
+
+// --- Backlog lifecycle HTTP tests --------------------------------------------
+
+func TestHandleCreateDraft_Returns201(t *testing.T) {
+	mock := &mockOrchestrator{createDraftID: "draft-xyz"}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	body := bytes.NewBufferString(`{"projectPath":"/proj/a","instruction":"build it"}`)
+	resp, err := http.Post(ts.URL+"/api/tasks/draft", "application/json", body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		t.Errorf("want 201, got %d", resp.StatusCode)
+	}
+	var result map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if result["id"] != "draft-xyz" {
+		t.Errorf("id: want draft-xyz, got %q", result["id"])
+	}
+	if result["status"] != "DRAFT" {
+		t.Errorf("status: want DRAFT, got %q", result["status"])
+	}
+}
+
+func TestHandleGetBacklog_Returns200WithTasks(t *testing.T) {
+	tasks := []domain.Task{
+		{ID: "d1", Status: domain.StatusDraft},
+		{ID: "b1", Status: domain.StatusBacklog},
+	}
+	mock := &mockOrchestrator{getBacklogResult: tasks}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/tasks/backlog?project=/some/path")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("want 200, got %d", resp.StatusCode)
+	}
+	var result []domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("want 2 tasks, got %d", len(result))
+	}
+}
+
+func TestHandleGetBacklog_RequiresProjectParam(t *testing.T) {
+	mock := &mockOrchestrator{}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/tasks/backlog")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("want 400, got %d", resp.StatusCode)
+	}
+}
+
+func TestHandlePromoteTask_Returns204(t *testing.T) {
+	mock := &mockOrchestrator{}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/tasks/some-id/promote", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		t.Errorf("want 204, got %d", resp.StatusCode)
+	}
+}
+
+func TestHandleUpdateTask_Returns200(t *testing.T) {
+	updated := domain.Task{
+		ID:          "task-99",
+		Instruction: "new instruction",
+		Priority:    1,
+		Status:      domain.StatusDraft,
+	}
+	mock := &mockOrchestrator{updateTaskResult: updated}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	body := bytes.NewBufferString(`{"instruction":"new instruction","priority":1}`)
+	req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/tasks/task-99", body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("want 200, got %d", resp.StatusCode)
+	}
+	var result domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if result.ID != "task-99" {
+		t.Errorf("id: want task-99, got %q", result.ID)
+	}
+	if result.Instruction != "new instruction" {
+		t.Errorf("instruction: want %q, got %q", "new instruction", result.Instruction)
+	}
+}
+
+// --- Provider discovery HTTP tests ------------------------------------------
+
+// TestHTTP_GetDiscoveredProviders_Returns200 verifies that GET /api/providers/discovered
+// returns 200 with application/json content type.
+func TestHTTP_GetDiscoveredProviders_Returns200(t *testing.T) {
+	mock := &mockOrchestrator{
+		discoveredProvidersResult: []domain.DiscoveredProvider{},
+	}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/providers/discovered")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+	if ct := resp.Header.Get("Content-Type"); ct != "application/json" {
+		t.Errorf("expected application/json, got %q", ct)
+	}
+}
+
+// TestHTTP_TriggerScan_Returns200 verifies that POST /api/providers/discovered/scan
+// returns 200 when the scan succeeds.
+func TestHTTP_TriggerScan_Returns200(t *testing.T) {
+	mock := &mockOrchestrator{}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	resp, err := http.Post(ts.URL+"/api/providers/discovered/scan", "application/json", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+}
+
+// TestHTTP_PromoteProvider_NotFound_Returns404 verifies that
+// POST /api/providers/promote/{id} returns 404 when the orchestrator
+// returns domain.ErrNotFound for the given provider ID.
+func TestHTTP_PromoteProvider_NotFound_Returns404(t *testing.T) {
+	mock := &mockOrchestrator{promoteProviderErr: domain.ErrNotFound}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	resp, err := http.Post(ts.URL+"/api/providers/promote/bad-id", "application/json", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", resp.StatusCode)
 	}
 }

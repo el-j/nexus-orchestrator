@@ -34,8 +34,12 @@ type OrchestratorService struct {
 	workerWg    sync.WaitGroup // tracks the background worker goroutine
 	// providerFactory builds a concrete LLMClient from a ProviderConfig.
 	// Injected by entry points to keep service layer free of adapter imports.
-	providerFactory     func(domain.ProviderConfig) (ports.LLMClient, error)
-	providerConfigRepo  ports.ProviderConfigRepository
+	providerFactory    func(domain.ProviderConfig) (ports.LLMClient, error)
+	providerConfigRepo ports.ProviderConfigRepository
+	scanner            ports.SystemScanner
+	lastScan           []domain.DiscoveredProvider
+	scanMu             sync.RWMutex // guards lastScan; separate from task-queue mu
+	aiSessionRepo      ports.AISessionRepository
 }
 
 // NewOrchestrator constructs an OrchestratorService and starts the background
@@ -342,6 +346,271 @@ func (o *OrchestratorService) GetProviderModels(providerName string) ([]string, 
 	return models, nil
 }
 
+// GetDiscoveredProviders returns auto-detected AI tools from the local system
+// that have NOT yet been promoted to active/configured providers.
+func (o *OrchestratorService) GetDiscoveredProviders() ([]domain.DiscoveredProvider, error) {
+	o.scanMu.RLock()
+	defer o.scanMu.RUnlock()
+	if o.lastScan == nil {
+		return []domain.DiscoveredProvider{}, nil
+	}
+	result := make([]domain.DiscoveredProvider, len(o.lastScan))
+	copy(result, o.lastScan)
+	return result, nil
+}
+
+// TriggerScan requests an immediate re-scan of the local system for AI providers.
+func (o *OrchestratorService) TriggerScan(ctx context.Context) ([]domain.DiscoveredProvider, error) {
+	o.mu.Lock()
+	scanner := o.scanner
+	o.mu.Unlock()
+
+	if scanner == nil {
+		return []domain.DiscoveredProvider{}, fmt.Errorf("orchestrator: trigger scan: scanner not configured")
+	}
+
+	results, err := scanner.Scan(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("orchestrator: trigger scan: %w", err)
+	}
+
+	o.scanMu.Lock()
+	o.lastScan = results
+	o.scanMu.Unlock()
+
+	return results, nil
+}
+
+// PromoteProvider converts a discovered provider into an active registered backend.
+func (o *OrchestratorService) PromoteProvider(ctx context.Context, discoveredID string) error {
+	o.scanMu.RLock()
+	var found *domain.DiscoveredProvider
+	for i := range o.lastScan {
+		if o.lastScan[i].ID == discoveredID {
+			copy := o.lastScan[i]
+			found = &copy
+			break
+		}
+	}
+	o.scanMu.RUnlock()
+
+	if found == nil {
+		return domain.ErrNotFound
+	}
+	if found.Status != domain.DiscoveryStatusReachable {
+		return fmt.Errorf("orchestrator: promote provider: provider %q is not reachable (status: %s)", found.Name, found.Status)
+	}
+
+	cfg := domain.ProviderConfig{
+		ID:      found.ID,
+		Name:    found.Name,
+		Kind:    found.Kind,
+		BaseURL: found.BaseURL,
+	}
+
+	// Register as live provider via discovery service.
+	if err := o.RegisterCloudProvider(cfg); err != nil {
+		return fmt.Errorf("orchestrator: promote provider: %w", err)
+	}
+
+	// Also persist if repo is available (non-fatal on failure).
+	if o.providerConfigRepo != nil {
+		if _, err := o.AddProviderConfig(ctx, cfg); err != nil {
+			log.Printf("orchestrator: promote provider: persist: %v", err)
+		}
+	}
+
+	return nil
+}
+
+// WithSystemScanner sets the SystemScanner used for provider discovery.
+func (o *OrchestratorService) WithSystemScanner(s ports.SystemScanner) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.scanner = s
+}
+
+// SetAISessionRepo wires the repository used to persist AI agent sessions.
+func (o *OrchestratorService) SetAISessionRepo(r ports.AISessionRepository) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.aiSessionRepo = r
+}
+
+// CreateDraft creates a task with StatusDraft without entering the execution queue.
+func (o *OrchestratorService) CreateDraft(task domain.Task) (string, error) {
+	if task.Instruction == "" {
+		return "", fmt.Errorf("orchestrator: create draft: instruction is required")
+	}
+	if task.ProjectPath == "" {
+		return "", fmt.Errorf("orchestrator: create draft: project path is required")
+	}
+	task.ID = uuid.NewString()
+	task.Status = domain.StatusDraft
+	task.CreatedAt = time.Now()
+	task.UpdatedAt = time.Now()
+	if task.Priority == 0 {
+		task.Priority = 2
+	}
+	if err := o.repo.Save(task); err != nil {
+		return "", fmt.Errorf("orchestrator: create draft: %w", err)
+	}
+	o.emit(task.ID, domain.StatusDraft)
+	return task.ID, nil
+}
+
+// GetBacklog returns DRAFT and BACKLOG tasks for the given project.
+func (o *OrchestratorService) GetBacklog(projectPath string) ([]domain.Task, error) {
+	tasks, err := o.repo.GetByProjectPathAndStatus(projectPath, domain.StatusDraft, domain.StatusBacklog)
+	if err != nil {
+		return nil, fmt.Errorf("orchestrator: get backlog: %w", err)
+	}
+	return tasks, nil
+}
+
+// PromoteTask transitions a DRAFT or BACKLOG task to QUEUED and enqueues it.
+func (o *OrchestratorService) PromoteTask(id string) error {
+	o.mu.Lock()
+
+	task, err := o.repo.GetByID(id)
+	if err != nil {
+		o.mu.Unlock()
+		return fmt.Errorf("orchestrator: promote task: %w", err)
+	}
+	if task.Status != domain.StatusDraft && task.Status != domain.StatusBacklog {
+		o.mu.Unlock()
+		return fmt.Errorf("orchestrator: promote task: cannot promote task with status %s", task.Status)
+	}
+	task.Status = domain.StatusQueued
+	task.UpdatedAt = time.Now()
+	if err := o.repo.Update(task); err != nil {
+		o.mu.Unlock()
+		return fmt.Errorf("orchestrator: promote task: %w", err)
+	}
+	o.queue = append(o.queue, task)
+	o.mu.Unlock()
+
+	select {
+	case o.workCh <- struct{}{}:
+	default:
+	}
+	o.emit(task.ID, domain.StatusQueued)
+	return nil
+}
+
+// UpdateTask merges non-zero fields from updates into the stored task and persists.
+// Status transitions are only allowed for non-executing states (DRAFT, BACKLOG, QUEUED).
+func (o *OrchestratorService) UpdateTask(id string, updates domain.Task) (domain.Task, error) {
+	task, err := o.repo.GetByID(id)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("orchestrator: update task: %w", err)
+	}
+	if updates.Instruction != "" {
+		task.Instruction = updates.Instruction
+	}
+	if updates.TargetFile != "" {
+		task.TargetFile = updates.TargetFile
+	}
+	if updates.ProviderName != "" {
+		task.ProviderName = updates.ProviderName
+	}
+	if updates.ModelID != "" {
+		task.ModelID = updates.ModelID
+	}
+	if updates.ProviderHint != "" {
+		task.ProviderHint = updates.ProviderHint
+	}
+	if updates.Priority != 0 {
+		task.Priority = updates.Priority
+	}
+	if updates.Tags != nil {
+		task.Tags = updates.Tags
+	}
+	if updates.Status != "" &&
+		(updates.Status == domain.StatusDraft ||
+			updates.Status == domain.StatusBacklog ||
+			updates.Status == domain.StatusQueued) {
+		task.Status = updates.Status
+	}
+	task.UpdatedAt = time.Now()
+	if err := o.repo.Update(task); err != nil {
+		return domain.Task{}, fmt.Errorf("orchestrator: update task: %w", err)
+	}
+	o.emit(task.ID, task.Status)
+	return task, nil
+}
+
+// RegisterAISession registers a new AI agent session, persists it, and broadcasts an event.
+func (o *OrchestratorService) RegisterAISession(ctx context.Context, s domain.AISession) (domain.AISession, error) {
+	if s.ID == "" {
+		s.ID = uuid.NewString()
+	}
+	s.Status = domain.SessionStatusActive
+	now := time.Now()
+	s.CreatedAt = now
+	s.UpdatedAt = now
+	s.LastActivity = now
+
+	o.mu.Lock()
+	repo := o.aiSessionRepo
+	b := o.broadcaster
+	o.mu.Unlock()
+
+	if repo == nil {
+		return domain.AISession{}, fmt.Errorf("orchestrator: register ai session: no session repo configured")
+	}
+	if err := repo.SaveAISession(ctx, s); err != nil {
+		return domain.AISession{}, fmt.Errorf("orchestrator: register ai session: %w", err)
+	}
+	if b != nil {
+		b.Broadcast(ports.TaskEvent{
+			Type:   "ai_session_changed",
+			TaskID: s.ID,
+			Status: domain.TaskStatus(s.Status),
+		})
+	}
+	return s, nil
+}
+
+// ListAISessions returns all persisted AI agent sessions.
+func (o *OrchestratorService) ListAISessions(ctx context.Context) ([]domain.AISession, error) {
+	o.mu.Lock()
+	repo := o.aiSessionRepo
+	o.mu.Unlock()
+
+	if repo == nil {
+		return []domain.AISession{}, nil
+	}
+	sessions, err := repo.ListAISessions(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("orchestrator: list ai sessions: %w", err)
+	}
+	return sessions, nil
+}
+
+// DeregisterAISession marks the session as disconnected and broadcasts an event.
+func (o *OrchestratorService) DeregisterAISession(ctx context.Context, id string) error {
+	o.mu.Lock()
+	repo := o.aiSessionRepo
+	b := o.broadcaster
+	o.mu.Unlock()
+
+	if repo == nil {
+		return fmt.Errorf("orchestrator: deregister ai session: no session repo configured")
+	}
+	if err := repo.UpdateAISessionStatus(ctx, id, domain.SessionStatusDisconnected, time.Now()); err != nil {
+		return fmt.Errorf("orchestrator: deregister ai session: %w", err)
+	}
+	if b != nil {
+		b.Broadcast(ports.TaskEvent{
+			Type:   "ai_session_changed",
+			TaskID: id,
+			Status: domain.TaskStatus(domain.SessionStatusDisconnected),
+		})
+	}
+	return nil
+}
+
 // SetBroadcaster wires an optional EventBroadcaster for task lifecycle events.
 // Call before starting the worker (before NewOrchestrator returns, or immediately after).
 func (o *OrchestratorService) SetBroadcaster(b ports.EventBroadcaster) {
@@ -376,6 +645,8 @@ var statusEventMap = map[domain.TaskStatus]ports.EventType{
 	domain.StatusCancelled:  ports.EventTaskCancelled,
 	domain.StatusTooLarge:   ports.EventTaskTooLarge,
 	domain.StatusNoProvider: ports.EventTaskNoProvider,
+	domain.StatusDraft:      ports.EventTaskDraft,
+	domain.StatusBacklog:    ports.EventTaskBacklog,
 }
 
 func statusEventType(s domain.TaskStatus) ports.EventType {
@@ -420,17 +691,36 @@ func (o *OrchestratorService) processNext() {
 	o.queue = o.queue[1:]
 	o.mu.Unlock()
 
-	llm, err := o.discovery.FindForModel(task.ModelID, task.ProviderHint)
-	if err != nil {
-		log.Printf("orchestrator: no provider for task %s (model=%q): %v", task.ID, task.ModelID, err)
-		if err := o.repo.UpdateLogs(task.ID, err.Error()); err != nil {
-			log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
+	var llm ports.LLMClient
+	if task.ProviderName != "" {
+		client, ok := o.discovery.GetClientByName(task.ProviderName)
+		if !ok {
+			logMsg := fmt.Sprintf("provider '%s' not found or not active", task.ProviderName)
+			log.Printf("orchestrator: no provider for task %s: %s", task.ID, logMsg)
+			if err := o.repo.UpdateLogs(task.ID, logMsg); err != nil {
+				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
+			}
+			if err := o.repo.UpdateStatus(task.ID, domain.StatusNoProvider); err != nil {
+				log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+			}
+			o.emit(task.ID, domain.StatusNoProvider)
+			return
 		}
-		if err := o.repo.UpdateStatus(task.ID, domain.StatusNoProvider); err != nil {
-			log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+		llm = client
+	} else {
+		var err error
+		llm, err = o.discovery.FindForModel(task.ModelID, task.ProviderHint)
+		if err != nil {
+			log.Printf("orchestrator: no provider for task %s (model=%q): %v", task.ID, task.ModelID, err)
+			if err := o.repo.UpdateLogs(task.ID, err.Error()); err != nil {
+				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
+			}
+			if err := o.repo.UpdateStatus(task.ID, domain.StatusNoProvider); err != nil {
+				log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+			}
+			o.emit(task.ID, domain.StatusNoProvider)
+			return
 		}
-		o.emit(task.ID, domain.StatusNoProvider)
-		return
 	}
 
 	if err := o.repo.UpdateStatus(task.ID, domain.StatusProcessing); err != nil {

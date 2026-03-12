@@ -21,6 +21,26 @@ func NewHub() *Hub {
 	return &Hub{clients: make(map[chan []byte]struct{})}
 }
 
+// Subscribe adds a new SSE client channel and returns it.
+// The caller must call Unsubscribe when done to avoid leaking the channel.
+func (h *Hub) Subscribe() chan []byte {
+	ch := make(chan []byte, 16)
+	h.mu.Lock()
+	h.clients[ch] = struct{}{}
+	h.mu.Unlock()
+	return ch
+}
+
+// Unsubscribe removes and closes a client channel.
+func (h *Hub) Unsubscribe(ch chan []byte) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if _, ok := h.clients[ch]; ok {
+		delete(h.clients, ch)
+		close(ch)
+	}
+}
+
 // Broadcast sends event to all active subscribers. Slow clients are skipped
 // (non-blocking channel send) to prevent one slow browser from stalling others.
 func (h *Hub) Broadcast(event ports.TaskEvent) {

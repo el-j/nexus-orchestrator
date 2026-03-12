@@ -9,9 +9,11 @@ import { NexusClient } from "./nexusClient";
 import { submitTaskCommand, selectProviderCommand, viewQueueCommand } from "./commands";
 import { NexusStatusBar } from "./statusBar";
 import { TaskItem, TaskQueueProvider } from "./taskQueueProvider";
+import { SessionMonitor } from "./sessionMonitor";
 
 let client: NexusClient | undefined;
 let statusBar: NexusStatusBar | undefined;
+let monitor: SessionMonitor | undefined;
 
 /** Returns the shared NexusClient instance (created during activation). */
 export function getClient(): NexusClient {
@@ -40,6 +42,10 @@ export function getStatusBar(): NexusStatusBar {
 
 export function activate(context: vscode.ExtensionContext): void {
   client = new NexusClient(daemonUrl());
+
+  // ── Session monitor (GitHub Copilot activity → daemon AISession) ────────────
+  monitor = new SessionMonitor(getClient(), context);
+  void monitor.start(); // fire-and-forget — non-critical
 
   // ── Task queue tree view ────────────────────────────────────────────────────
   const provider = new TaskQueueProvider(getClient());
@@ -178,6 +184,6 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 }
 
-export function deactivate(): void {
-  // Disposables registered on context.subscriptions are cleaned up by VS Code.
+export function deactivate(): Promise<void> | void {
+  return monitor?.stop();
 }

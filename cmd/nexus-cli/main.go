@@ -273,3 +273,179 @@ func (r *remoteOrchestrator) ListProviderConfigs(ctx context.Context) ([]domain.
 	}
 	return cfgs, nil
 }
+
+func (r *remoteOrchestrator) GetDiscoveredProviders() ([]domain.DiscoveredProvider, error) {
+	resp, err := http.Get(r.baseURL + "/api/providers/discovered")
+	if err != nil {
+		return nil, fmt.Errorf("remote: get discovered providers: %w", err)
+	}
+	defer resp.Body.Close()
+	var providers []domain.DiscoveredProvider
+	if err := json.NewDecoder(resp.Body).Decode(&providers); err != nil {
+		return nil, fmt.Errorf("remote: decode discovered providers: %w", err)
+	}
+	return providers, nil
+}
+
+func (r *remoteOrchestrator) TriggerScan(_ context.Context) ([]domain.DiscoveredProvider, error) {
+	resp, err := http.Post(r.baseURL+"/api/providers/discovered/scan", "application/json", nil)
+	if err != nil {
+		return nil, fmt.Errorf("remote: trigger scan: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		return nil, fmt.Errorf("remote: trigger scan: unexpected status %d", resp.StatusCode)
+	}
+	var providers []domain.DiscoveredProvider
+	_ = json.NewDecoder(resp.Body).Decode(&providers)
+	return providers, nil
+}
+
+func (r *remoteOrchestrator) PromoteProvider(_ context.Context, _ string) error {
+	return nil
+}
+
+func (r *remoteOrchestrator) CreateDraft(task domain.Task) (string, error) {
+	body, err := json.Marshal(task)
+	if err != nil {
+		return "", fmt.Errorf("remote: marshal draft task: %w", err)
+	}
+	resp, err := http.Post(r.baseURL+"/api/tasks/draft", "application/json", bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("remote: create draft: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		return "", fmt.Errorf("remote: create draft: unexpected status %d", resp.StatusCode)
+	}
+	var result map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("remote: decode draft response: %w", err)
+	}
+	return result["id"], nil
+}
+
+func (r *remoteOrchestrator) GetBacklog(projectPath string) ([]domain.Task, error) {
+	params := url.Values{}
+	params.Set("project", projectPath)
+	resp, err := http.Get(r.baseURL + "/api/tasks/backlog?" + params.Encode())
+	if err != nil {
+		return nil, fmt.Errorf("remote: get backlog: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("remote: get backlog: unexpected status %d", resp.StatusCode)
+	}
+	var tasks []domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&tasks); err != nil {
+		return nil, fmt.Errorf("remote: decode backlog: %w", err)
+	}
+	return tasks, nil
+}
+
+func (r *remoteOrchestrator) PromoteTask(id string) error {
+	resp, err := http.Post(r.baseURL+"/api/tasks/"+url.PathEscape(id)+"/promote", "application/json", nil)
+	if err != nil {
+		return fmt.Errorf("remote: promote task: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("remote: promote task: %w", domain.ErrNotFound)
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("remote: promote task: unexpected status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+func (r *remoteOrchestrator) UpdateTask(id string, updates domain.Task) (domain.Task, error) {
+	body, err := json.Marshal(updates)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("remote: marshal task updates: %w", err)
+	}
+	req, err := http.NewRequest(http.MethodPut, r.baseURL+"/api/tasks/"+url.PathEscape(id), bytes.NewReader(body))
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("remote: build update task request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("remote: update task: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return domain.Task{}, fmt.Errorf("remote: update task: %w", domain.ErrNotFound)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return domain.Task{}, fmt.Errorf("remote: update task: unexpected status %d", resp.StatusCode)
+	}
+	var updated domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&updated); err != nil {
+		return domain.Task{}, fmt.Errorf("remote: decode updated task: %w", err)
+	}
+	return updated, nil
+}
+
+func (r *remoteOrchestrator) RegisterAISession(ctx context.Context, s domain.AISession) (domain.AISession, error) {
+	body, err := json.Marshal(s)
+	if err != nil {
+		return domain.AISession{}, fmt.Errorf("remote: marshal ai session: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.baseURL+"/api/ai-sessions", bytes.NewReader(body))
+	if err != nil {
+		return domain.AISession{}, fmt.Errorf("remote: build register ai session request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return domain.AISession{}, fmt.Errorf("remote: register ai session: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		return domain.AISession{}, fmt.Errorf("remote: register ai session: unexpected status %d", resp.StatusCode)
+	}
+	var created domain.AISession
+	if err := json.NewDecoder(resp.Body).Decode(&created); err != nil {
+		return domain.AISession{}, fmt.Errorf("remote: decode ai session: %w", err)
+	}
+	return created, nil
+}
+
+func (r *remoteOrchestrator) ListAISessions(ctx context.Context) ([]domain.AISession, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, r.baseURL+"/api/ai-sessions", nil)
+	if err != nil {
+		return nil, fmt.Errorf("remote: build list ai sessions request: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("remote: list ai sessions: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("remote: list ai sessions: unexpected status %d", resp.StatusCode)
+	}
+	var sessions []domain.AISession
+	if err := json.NewDecoder(resp.Body).Decode(&sessions); err != nil {
+		return nil, fmt.Errorf("remote: decode ai sessions: %w", err)
+	}
+	return sessions, nil
+}
+
+func (r *remoteOrchestrator) DeregisterAISession(ctx context.Context, id string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, r.baseURL+"/api/ai-sessions/"+url.PathEscape(id), nil)
+	if err != nil {
+		return fmt.Errorf("remote: build deregister ai session request: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("remote: deregister ai session: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("remote: deregister ai session: %w", domain.ErrNotFound)
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("remote: deregister ai session: unexpected status %d", resp.StatusCode)
+	}
+	return nil
+}

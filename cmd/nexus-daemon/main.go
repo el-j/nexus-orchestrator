@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"nexus-orchestrator/internal/adapters/inbound/httpapi"
 	"nexus-orchestrator/internal/adapters/inbound/mcp"
@@ -19,6 +20,7 @@ import (
 	"nexus-orchestrator/internal/adapters/outbound/llm_ollama"
 	"nexus-orchestrator/internal/adapters/outbound/llm_openaicompat"
 	"nexus-orchestrator/internal/adapters/outbound/repo_sqlite"
+	"nexus-orchestrator/internal/adapters/outbound/sys_scanner"
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
 	"nexus-orchestrator/internal/core/services"
@@ -27,6 +29,10 @@ import (
 var version = "dev"
 
 func main() {
+	// 0. Log hub — capture log output for SSE streaming before anything logs.
+	logHub := httpapi.NewLogHub()
+	log.SetOutput(logHub)
+
 	dbPath := os.Getenv("NEXUS_DB_PATH")
 	if dbPath == "" {
 		dbPath = "nexus.db"
@@ -50,6 +56,13 @@ func main() {
 
 	providerConfigRepo := repo_sqlite.NewProviderConfigRepo(repo)
 	orchestratorSvc.WithProviderConfigRepo(providerConfigRepo)
+
+	aiSessionRepo := repo_sqlite.NewAISessionRepo(repo)
+	orchestratorSvc.SetAISessionRepo(aiSessionRepo)
+
+	// Wire system scanner for provider discovery.
+	scanner := sys_scanner.New()
+	orchestratorSvc.WithSystemScanner(scanner)
 
 	// Load persisted provider configs and register each enabled one.
 	if cfgs, err := providerConfigRepo.ListProviderConfigs(context.Background()); err != nil {
@@ -80,6 +93,35 @@ func main() {
 		mcpAddr = "127.0.0.1:9998"
 	}
 	log.Printf("nexus-daemon %s starting...", version)
+	// Initial non-blocking scan.
+	go func() {
+		if _, err := orchestratorSvc.TriggerScan(context.Background()); err != nil {
+			log.Printf("startup: initial scan: %v", err)
+		}
+	}()
+	// Periodic re-scan.
+	scanInterval := 30 * time.Second
+	if v := os.Getenv("NEXUS_SCAN_INTERVAL"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			scanInterval = d
+		}
+	}
+	go func() {
+		ticker := time.NewTicker(scanInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if results, err := orchestratorSvc.TriggerScan(ctx); err != nil {
+					log.Printf("discovery: scan error: %v", err)
+				} else {
+					log.Printf("discovery: found %d providers", len(results))
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 	go func() {
 		if err := mcp.StartMCPServer(ctx, orchestratorSvc, mcpAddr); err != nil {
 			log.Printf("daemon: mcp: %v", err)
@@ -87,7 +129,7 @@ func main() {
 	}()
 
 	// StartServer blocks until ctx is cancelled, then gracefully shuts down
-	if err := httpapi.StartServer(ctx, orchestratorSvc, addr); err != nil {
+	if err := httpapi.StartServer(ctx, orchestratorSvc, addr, logHub); err != nil {
 		log.Printf("daemon: httpapi: %v", err)
 	}
 

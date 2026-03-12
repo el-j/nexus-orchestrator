@@ -11,10 +11,13 @@
       </div>
     </div>
 
+    <!-- Project selector -->
+    <ProjectSelector />
+
     <!-- Nav -->
     <nav class="flex-1 p-2">
       <button v-for="item in navItems" :key="item.label"
-        @click="activeView = item.id"
+        @click="navigate(item.id)"
         :class="[
           'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all mb-1',
           activeView === item.id
@@ -38,10 +41,21 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import ProjectSelector from './ProjectSelector.vue'
+
+const emit = defineEmits<{ (e: 'view-change', id: string): void }>()
 
 const activeView = ref('dashboard')
 const navItems = [
   { id: 'dashboard', label: 'Task Queue', icon: 'pi-list' },
+  { id: 'backlog', label: 'Backlog', icon: 'pi-bookmark' },
   { id: 'providers', label: 'Providers', icon: 'pi-server' },
+  { id: 'discovery', label: 'Discovery', icon: 'pi-search' },
+  { id: 'ai-sessions', label: 'AI Sessions', icon: 'pi-share-alt' },
 ]
+
+function navigate(id: string) {
+  activeView.value = id
+  emit('view-change', id)
+}
 </script>

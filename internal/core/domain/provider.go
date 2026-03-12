@@ -10,6 +10,11 @@ const (
 	ProviderKindOllama       ProviderKind = "ollama"
 	ProviderKindOpenAICompat ProviderKind = "openaicompat"
 	ProviderKindAnthropic    ProviderKind = "anthropic"
+	ProviderKindLocalAI      ProviderKind = "localai"
+	ProviderKindVLLM         ProviderKind = "vllm"
+	ProviderKindTextGenUI    ProviderKind = "textgenui"
+	ProviderKindCLI          ProviderKind = "cli"
+	ProviderKindDesktopApp   ProviderKind = "desktopapp"
 )
 
 // String returns the underlying string value of the ProviderKind.
@@ -36,4 +41,37 @@ type ProviderConfig struct {
 	CreatedAt time.Time `json:"createdAt,omitempty"`
 	// UpdatedAt is the time the record was last modified.
 	UpdatedAt time.Time `json:"updatedAt,omitempty"`
+}
+
+// DiscoveryMethod describes how a provider was found on the local system.
+type DiscoveryMethod string
+
+const (
+	DiscoveryMethodPort    DiscoveryMethod = "port"
+	DiscoveryMethodCLI     DiscoveryMethod = "cli"
+	DiscoveryMethodProcess DiscoveryMethod = "process"
+)
+
+// DiscoveryStatus describes the level of detection for a discovered provider.
+type DiscoveryStatus string
+
+const (
+	DiscoveryStatusReachable DiscoveryStatus = "reachable"
+	DiscoveryStatusInstalled DiscoveryStatus = "installed"
+	DiscoveryStatusRunning   DiscoveryStatus = "running"
+)
+
+// DiscoveredProvider is a provider found by the system scanner that has NOT
+// yet been promoted to an active (registered) provider.
+type DiscoveredProvider struct {
+	ID          string          `json:"id"`
+	Name        string          `json:"name"`
+	Kind        ProviderKind    `json:"kind"`
+	Method      DiscoveryMethod `json:"method"`
+	Status      DiscoveryStatus `json:"status"`
+	BaseURL     string          `json:"baseUrl,omitempty"`
+	CLIPath     string          `json:"cliPath,omitempty"`
+	ProcessName string          `json:"processName,omitempty"`
+	Models      []string        `json:"models,omitempty"`
+	LastSeen    time.Time       `json:"lastSeen"`
 }

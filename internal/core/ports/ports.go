@@ -5,6 +5,7 @@ package ports
 
 import (
 	"context"
+	"time"
 
 	"nexus-orchestrator/internal/core/domain"
 )
@@ -43,6 +44,10 @@ type TaskRepository interface {
 	UpdateStatus(id string, status domain.TaskStatus) error
 	// UpdateLogs replaces the Logs field on the task identified by id.
 	UpdateLogs(id, logs string) error
+	// GetByProjectPathAndStatus returns tasks for a project filtered by one or more statuses.
+	GetByProjectPathAndStatus(projectPath string, statuses ...domain.TaskStatus) ([]domain.Task, error)
+	// Update persists changes to an existing task's mutable fields.
+	Update(t domain.Task) error
 }
 
 // FileWriter is the port for reading context from disk and writing generated code back.
@@ -104,6 +109,27 @@ type Orchestrator interface {
 	RemoveProviderConfig(ctx context.Context, id string) error
 	// ListProviderConfigs returns all persisted provider configuration records.
 	ListProviderConfigs(ctx context.Context) ([]domain.ProviderConfig, error)
+	// GetDiscoveredProviders returns auto-detected AI tools from the local system
+	// that have NOT yet been promoted to active/configured providers.
+	GetDiscoveredProviders() ([]domain.DiscoveredProvider, error)
+	// TriggerScan requests an immediate re-scan and returns the discovered providers.
+	TriggerScan(ctx context.Context) ([]domain.DiscoveredProvider, error)
+	// PromoteProvider converts a discovered provider into an active registered backend.
+	PromoteProvider(ctx context.Context, discoveredID string) error
+	// CreateDraft creates a task with StatusDraft. It does NOT enter the execution queue.
+	CreateDraft(task domain.Task) (string, error)
+	// GetBacklog returns DRAFT and BACKLOG tasks for the given project, ordered by priority then creation time.
+	GetBacklog(projectPath string) ([]domain.Task, error)
+	// PromoteTask transitions a DRAFT or BACKLOG task to QUEUED and enqueues it.
+	PromoteTask(id string) error
+	// UpdateTask updates mutable fields (instruction, priority, providerName, tags, status) on an existing task.
+	UpdateTask(id string, updates domain.Task) (domain.Task, error)
+	// RegisterAISession registers a new external AI agent session and persists it.
+	RegisterAISession(ctx context.Context, s domain.AISession) (domain.AISession, error)
+	// ListAISessions returns all persisted AI agent sessions.
+	ListAISessions(ctx context.Context) ([]domain.AISession, error)
+	// DeregisterAISession marks the session identified by id as disconnected.
+	DeregisterAISession(ctx context.Context, id string) error
 }
 
 // EventType identifies a task lifecycle event.
@@ -117,6 +143,9 @@ const (
 	EventTaskCancelled  EventType = "task.cancelled"
 	EventTaskTooLarge   EventType = "task.too_large"
 	EventTaskNoProvider EventType = "task.no_provider"
+	EventTaskDraft      EventType = "task.draft"
+	EventTaskBacklog    EventType = "task.backlog"
+	EventTaskUpdated    EventType = "task.updated"
 )
 
 // TaskEvent is emitted by OrchestratorService on task lifecycle changes.
@@ -132,6 +161,11 @@ type EventBroadcaster interface {
 	Broadcast(event TaskEvent)
 }
 
+// SystemScanner scans the local system for AI providers/agents.
+type SystemScanner interface {
+	Scan(ctx context.Context) ([]domain.DiscoveredProvider, error)
+}
+
 // ProviderConfigRepository is the outbound port for persisting and querying
 // provider configuration records across restarts.
 type ProviderConfigRepository interface {
@@ -139,4 +173,19 @@ type ProviderConfigRepository interface {
 	ListProviderConfigs(ctx context.Context) ([]domain.ProviderConfig, error)
 	GetProviderConfig(ctx context.Context, id string) (domain.ProviderConfig, error)
 	DeleteProviderConfig(ctx context.Context, id string) error
+}
+
+// AISessionRepository is the outbound port for persisting AI agent session entities.
+type AISessionRepository interface {
+	SaveAISession(ctx context.Context, s domain.AISession) error
+	GetAISessionByID(ctx context.Context, id string) (domain.AISession, error)
+	ListAISessions(ctx context.Context) ([]domain.AISession, error)
+	UpdateAISessionStatus(ctx context.Context, id string, status domain.AISessionStatus, lastActivity time.Time) error
+	DeleteAISession(ctx context.Context, id string) error
+}
+
+// AISessionMonitor is the optional inbound port for push-based session discovery adapters.
+type AISessionMonitor interface {
+	RegisterSession(s domain.AISession) error
+	ListActive() ([]domain.AISession, error)
 }

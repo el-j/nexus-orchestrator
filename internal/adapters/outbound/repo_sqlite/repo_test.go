@@ -379,3 +379,147 @@ func TestRepository_Save_EmptyCommand_RoundTrip(t *testing.T) {
 		t.Errorf("Command: got %q, want empty", got.Command)
 	}
 }
+
+// --- Backlog / new-column tests ----------------------------------------------
+
+func TestGetByProjectPathAndStatus_FiltersCorrectly(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	now := time.Now()
+	tasks := []domain.Task{
+		{ID: "s-draft", ProjectPath: "/proj/filter", Instruction: "draft", Status: domain.StatusDraft, Priority: 2, CreatedAt: now, UpdatedAt: now},
+		{ID: "s-backlog", ProjectPath: "/proj/filter", Instruction: "backlog", Status: domain.StatusBacklog, Priority: 1, CreatedAt: now.Add(time.Second), UpdatedAt: now.Add(time.Second)},
+		{ID: "s-queued", ProjectPath: "/proj/filter", Instruction: "queued", Status: domain.StatusQueued, Priority: 2, CreatedAt: now.Add(2 * time.Second), UpdatedAt: now.Add(2 * time.Second)},
+	}
+	for _, task := range tasks {
+		if err := repo.Save(task); err != nil {
+			t.Fatalf("Save %q: %v", task.ID, err)
+		}
+	}
+
+	got, err := repo.GetByProjectPathAndStatus("/proj/filter", domain.StatusDraft, domain.StatusBacklog)
+	if err != nil {
+		t.Fatalf("GetByProjectPathAndStatus: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("want 2 results, got %d", len(got))
+	}
+	// Ordered priority ASC: backlog (priority=1) first, then draft (priority=2)
+	if got[0].ID != "s-backlog" {
+		t.Errorf("got[0]: want s-backlog, got %q", got[0].ID)
+	}
+	if got[1].ID != "s-draft" {
+		t.Errorf("got[1]: want s-draft, got %q", got[1].ID)
+	}
+	// Ensure queued task is NOT included.
+	for _, task := range got {
+		if task.ID == "s-queued" {
+			t.Error("s-queued must not appear in DRAFT+BACKLOG filter")
+		}
+	}
+}
+
+func TestUpdate_PersistsAllFields(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	now := time.Now()
+	orig := domain.Task{
+		ID:           "upd-task",
+		ProjectPath:  "/proj/upd",
+		TargetFile:   "old.go",
+		Instruction:  "original",
+		Status:       domain.StatusDraft,
+		Priority:     2,
+		Tags:         []string{"old"},
+		ProviderName: "",
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+	if err := repo.Save(orig); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	orig.Instruction = "updated instruction"
+	orig.TargetFile = "new.go"
+	orig.ProviderName = "my-provider"
+	orig.Priority = 1
+	orig.Tags = []string{"alpha", "beta"}
+	orig.Status = domain.StatusBacklog
+	if err := repo.Update(orig); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	got, err := repo.GetByID("upd-task")
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.Instruction != "updated instruction" {
+		t.Errorf("Instruction: want %q, got %q", "updated instruction", got.Instruction)
+	}
+	if got.TargetFile != "new.go" {
+		t.Errorf("TargetFile: want %q, got %q", "new.go", got.TargetFile)
+	}
+	if got.ProviderName != "my-provider" {
+		t.Errorf("ProviderName: want %q, got %q", "my-provider", got.ProviderName)
+	}
+	if got.Priority != 1 {
+		t.Errorf("Priority: want 1, got %d", got.Priority)
+	}
+	if got.Status != domain.StatusBacklog {
+		t.Errorf("Status: want BACKLOG, got %s", got.Status)
+	}
+	if len(got.Tags) != 2 || got.Tags[0] != "alpha" || got.Tags[1] != "beta" {
+		t.Errorf("Tags: want [alpha beta], got %v", got.Tags)
+	}
+}
+
+func TestUpdate_ReturnsErrNotFound_ForUnknownID(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	err := repo.Update(domain.Task{
+		ID:          "ghost-id",
+		Instruction: "something",
+	})
+	if err == nil {
+		t.Fatal("expected error for unknown ID, got nil")
+	}
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected domain.ErrNotFound, got %v", err)
+	}
+}
+
+func TestTagsRoundtrip(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	now := time.Now()
+	task := domain.Task{
+		ID:          "tags-task",
+		ProjectPath: "/proj/tags",
+		Instruction: "tag it",
+		Status:      domain.StatusDraft,
+		Tags:        []string{"a", "b", "c"},
+		Priority:    2,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	if err := repo.Save(task); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	got, err := repo.GetByID("tags-task")
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if len(got.Tags) != 3 {
+		t.Fatalf("Tags length: want 3, got %d", len(got.Tags))
+	}
+	for i, want := range []string{"a", "b", "c"} {
+		if got.Tags[i] != want {
+			t.Errorf("Tags[%d]: want %q, got %q", i, want, got.Tags[i])
+		}
+	}
+}

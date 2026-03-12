@@ -1,4 +1,5 @@
-import type { Task, TaskInput, ProviderInfo, ProviderConfig } from './domain'
+import type { Task, TaskInput, ProviderInfo, ProviderConfig, AISession } from './domain'
+import type { DiscoveredProvider } from './discovery'
 
 // Wails Go bindings are injected at runtime via window.go
 declare global {
@@ -15,6 +16,12 @@ declare global {
           ListProviderConfigs(): Promise<ProviderConfig[]>
           UpdateProviderConfig(cfg: ProviderConfig): Promise<ProviderConfig>
           RemoveProviderConfig(id: string): Promise<void>
+          GetDiscoveredProviders(): Promise<DiscoveredProvider[]>
+          TriggerScan(): Promise<void>
+          CreateDraft(task: Partial<Task>): Promise<string>
+          GetBacklog(projectPath: string): Promise<Task[]>
+          PromoteTask(id: string): Promise<void>
+          UpdateTask(id: string, updates: Partial<Task>): Promise<Task>
         }
       }
     }
@@ -84,4 +91,56 @@ export async function updateProviderConfig(cfg: ProviderConfig): Promise<Provide
 export async function removeProviderConfig(id: string): Promise<void> {
   if (isWails()) return window.go!.main!.App!.RemoveProviderConfig(id)
   await fetch(`/api/providers/config/${id}`, { method: 'DELETE' })
+}
+
+export async function getDiscoveredProviders(): Promise<DiscoveredProvider[]> {
+  if (isWails()) return window.go!.main!.App!.GetDiscoveredProviders()
+  const r = await fetch('/api/providers/discovered')
+  return r.json() as Promise<DiscoveredProvider[]>
+}
+
+export async function triggerScan(): Promise<void> {
+  if (isWails()) return window.go!.main!.App!.TriggerScan()
+  await fetch('/api/providers/discovered/scan', { method: 'POST' })
+}
+
+export async function createDraft(task: Partial<Task>): Promise<string> {
+  if (isWails()) return window.go!.main!.App!.CreateDraft(task)
+  const r = await fetch('/api/tasks/draft', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(task),
+  })
+  const data = await r.json() as { id: string }
+  return data.id
+}
+
+export async function getBacklog(projectPath: string): Promise<Task[]> {
+  if (isWails()) return window.go!.main!.App!.GetBacklog(projectPath)
+  const r = await fetch(`/api/tasks/backlog?project=${encodeURIComponent(projectPath)}`)
+  return r.json() as Promise<Task[]>
+}
+
+export async function promoteTask(id: string): Promise<void> {
+  if (isWails()) return window.go!.main!.App!.PromoteTask(id)
+  await fetch(`/api/tasks/${id}/promote`, { method: 'POST' })
+}
+
+export async function updateTask(id: string, updates: Partial<Task>): Promise<Task> {
+  if (isWails()) return window.go!.main!.App!.UpdateTask(id, updates)
+  const r = await fetch(`/api/tasks/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  })
+  return r.json() as Promise<Task>
+}
+
+export async function listAISessions(): Promise<AISession[]> {
+  const r = await fetch('http://127.0.0.1:9999/api/ai-sessions')
+  return r.json() as Promise<AISession[]>
+}
+
+export async function deregisterAISession(id: string): Promise<void> {
+  await fetch(`http://127.0.0.1:9999/api/ai-sessions/${id}`, { method: 'DELETE' })
 }

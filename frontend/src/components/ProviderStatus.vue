@@ -1,6 +1,7 @@
 <template>
   <div class="flex flex-col gap-1">
     <!-- Live provider status -->
+    <template v-if="!props.hideDiscovered">
     <div class="flex items-center justify-between gap-3">
       <span class="text-xs text-slate-500 font-medium">Providers:</span>
       <button
@@ -9,21 +10,21 @@
       >⟳ Refresh</button>
     </div>
     <div class="flex items-start gap-2 flex-wrap">
-      <div v-for="p in providers" :key="p.Name"
+      <div v-for="p in providers" :key="p.name"
            class="flex items-start gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-all"
-           :class="p.Active
+           :class="p.active
              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
              : 'border-red-500/20 bg-red-500/5 text-slate-500'">
-        <span :class="['w-1.5 h-1.5 rounded-full mt-[3px] flex-shrink-0', p.Active ? 'bg-emerald-400 animate-pulse' : 'bg-red-500']"></span>
+        <span :class="['w-1.5 h-1.5 rounded-full mt-[3px] flex-shrink-0', p.active ? 'bg-emerald-400 animate-pulse' : 'bg-red-500']"></span>
         <div class="flex flex-col min-w-0">
           <div class="flex items-center gap-1">
-            <span>{{ p.Name }}</span>
-            <span v-if="p.Active && p.ActiveModel" class="text-slate-500 font-mono text-[10px] max-w-[80px] truncate">
-              {{ p.ActiveModel }}
+            <span>{{ p.name }}</span>
+            <span v-if="p.active && p.activeModel" class="text-slate-500 font-mono text-[10px] max-w-[80px] truncate">
+              {{ p.activeModel }}
             </span>
           </div>
           <span v-if="p.baseURL" class="text-slate-600 text-[10px] font-mono mt-0.5">{{ p.baseURL }}</span>
-          <span v-if="!p.Active && p.error" class="text-amber-500/80 text-[10px] mt-0.5">
+          <span v-if="!p.active && p.error" class="text-amber-500/80 text-[10px] mt-0.5">
             {{ p.error.length > 80 ? p.error.slice(0, 80) + '\u2026' : p.error }}
           </span>
         </div>
@@ -32,6 +33,7 @@
         No providers detected &#8212; start LM Studio or Ollama
       </div>
     </div>
+    </template>
 
     <!-- Configured providers management -->
     <div class="mt-2 pt-2 border-t border-white/5">
@@ -90,7 +92,7 @@ import type { ProviderInfo, ProviderConfig } from '../types/domain'
 import { listProviderConfigs, addProviderConfig, updateProviderConfig, removeProviderConfig } from '../types/wails'
 import ProviderConfigForm from './ProviderConfigForm.vue'
 
-const props = defineProps<{ providers: ProviderInfo[], refresh?: () => void }>()
+const props = defineProps<{ providers: ProviderInfo[], refresh?: () => void, hideDiscovered?: boolean }>()
 
 const configs = ref<ProviderConfig[]>([])
 const showForm = ref(false)

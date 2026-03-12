@@ -13,7 +13,7 @@
         <div class="flex flex-col gap-1">
           <label class="text-xs text-slate-400">Type</label>
           <select
-            v-model="form.type"
+            v-model="form.kind"
             class="bg-slate-700 rounded px-3 py-2 text-sm w-full text-white border border-white/10 focus:outline-none focus:border-purple-500"
             @change="onTypeChange"
           >
@@ -124,7 +124,7 @@ const BASE_URL_PRESETS: Record<string, string> = {
 
 function buildDefaultForm(): Partial<ProviderConfig> {
   return {
-    type: 'lmstudio',
+    kind: 'lmstudio',
     name: '',
     baseURL: BASE_URL_PRESETS['lmstudio'],
     apiKey: '',
@@ -149,7 +149,7 @@ watch(
 )
 
 function onTypeChange() {
-  const preset = BASE_URL_PRESETS[form.value.type ?? 'openaicompat']
+  const preset = BASE_URL_PRESETS[form.value.kind ?? 'openaicompat']
   if (preset !== undefined) {
     form.value.baseURL = preset
   }
