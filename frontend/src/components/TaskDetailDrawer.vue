@@ -2,7 +2,7 @@
   <Drawer v-model:visible="visible" position="right" class="!bg-[#0d0d14] !w-full sm:!w-[480px]">
     <template #header>
       <div class="flex items-center gap-3">
-        <TaskStatusBadge v-if="task" :status="task.Status" />
+        <TaskStatusBadge v-if="task" :status="task.status" />
         <span class="text-sm font-semibold text-white">Task Details</span>
       </div>
     </template>
@@ -12,19 +12,19 @@
       <div class="rounded-lg bg-[#0a0a10] border border-white/5 p-3 space-y-2">
         <div class="flex justify-between items-center">
           <span class="text-slate-500 text-xs">ID</span>
-          <span class="font-mono text-xs text-slate-400 select-all">{{ task.ID }}</span>
+          <span class="font-mono text-xs text-slate-400 select-all">{{ task.id }}</span>
         </div>
         <div class="flex justify-between items-center">
           <span class="text-slate-500 text-xs">Command</span>
-          <span class="font-mono text-xs text-violet-400 uppercase">{{ task.Command || 'auto' }}</span>
+          <span class="font-mono text-xs text-violet-400 uppercase">{{ task.command || 'auto' }}</span>
         </div>
         <div class="flex justify-between items-center">
           <span class="text-slate-500 text-xs">Created</span>
-          <span class="text-xs text-slate-400">{{ formatDate(task.CreatedAt) }}</span>
+          <span class="text-xs text-slate-400">{{ formatDate(task.createdAt) }}</span>
         </div>
         <div class="flex justify-between items-center">
           <span class="text-slate-500 text-xs">Updated</span>
-          <span class="text-xs text-slate-400">{{ formatDate(task.UpdatedAt) }}</span>
+          <span class="text-xs text-slate-400">{{ formatDate(task.updatedAt) }}</span>
         </div>
       </div>
 
@@ -32,7 +32,7 @@
       <div>
         <p class="text-xs text-slate-500 mb-2 uppercase tracking-wider font-semibold">Instruction</p>
         <p class="text-white leading-relaxed bg-[#0a0a10] border border-white/5 rounded-lg p-3">
-          {{ task.Instruction }}
+          {{ task.instruction }}
         </p>
       </div>
 
@@ -40,11 +40,11 @@
       <div class="grid grid-cols-2 gap-3">
         <div>
           <p class="text-xs text-slate-500 mb-1 uppercase tracking-wider font-semibold">Project</p>
-          <p class="font-mono text-xs text-slate-400 break-all">{{ task.ProjectPath || '—' }}</p>
+          <p class="font-mono text-xs text-slate-400 break-all">{{ task.projectPath || '—' }}</p>
         </div>
         <div>
           <p class="text-xs text-slate-500 mb-1 uppercase tracking-wider font-semibold">Target File</p>
-          <p class="font-mono text-xs text-slate-400">{{ task.TargetFile || '—' }}</p>
+          <p class="font-mono text-xs text-slate-400">{{ task.targetFile || '—' }}</p>
         </div>
       </div>
 
@@ -52,23 +52,21 @@
       <div class="grid grid-cols-2 gap-3">
         <div>
           <p class="text-xs text-slate-500 mb-1 uppercase tracking-wider font-semibold">Provider</p>
-          <p class="text-slate-400 text-xs">{{ task.ProviderHint || 'Auto' }}</p>
+          <p class="text-slate-400 text-xs">{{ task.providerHint || 'Auto' }}</p>
         </div>
         <div>
           <p class="text-xs text-slate-500 mb-1 uppercase tracking-wider font-semibold">Model</p>
-          <p class="text-slate-400 font-mono text-xs">{{ task.ModelID || 'Auto' }}</p>
+          <p class="text-slate-400 font-mono text-xs">{{ task.modelId || 'Auto' }}</p>
         </div>
       </div>
 
-      <!-- Output / Logs -->
-      <div v-if="task.Logs">
+      <div v-if="task.logs">
         <p class="text-xs text-slate-500 mb-2 uppercase tracking-wider font-semibold">Output</p>
         <pre class="text-xs text-emerald-300/80 bg-[#0a0a10] border border-white/5 rounded-lg p-3
-                    overflow-auto max-h-64 whitespace-pre-wrap font-mono leading-relaxed">{{ task.Logs }}</pre>
+                    overflow-auto max-h-64 whitespace-pre-wrap font-mono leading-relaxed">{{ task.logs }}</pre>
       </div>
 
-      <!-- Cancel action -->
-      <div v-if="task.Status === 'QUEUED'" class="pt-2">
+      <div v-if="task.status === 'QUEUED'" class="pt-2">
         <Button
           label="Cancel Task"
           icon="pi pi-times"
@@ -110,9 +108,9 @@ async function handleCancel() {
   if (!props.task) return
   cancelling.value = true
   try {
-    await cancelTask(props.task.ID)
+    await cancelTask(props.task.id)
     toast.add({ severity: 'success', summary: 'Task cancelled', life: 2000 })
-    emit('cancelled', props.task.ID)
+    emit('cancelled', props.task.id)
     visible.value = false
   } catch (e) {
     toast.add({

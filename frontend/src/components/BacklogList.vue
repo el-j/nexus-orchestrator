@@ -14,30 +14,30 @@
   <div v-else class="space-y-2">
     <div
       v-for="task in items"
-      :key="task.ID"
+      :key="task.id"
       class="group flex items-start gap-4 p-4 rounded-xl border border-white/5 bg-[#0d0d14]
              hover:border-violet-500/20 hover:bg-[#14141f] transition-all"
     >
       <!-- Priority badge -->
-      <span :class="['text-xs font-semibold mt-0.5 w-14 shrink-0', priorityColor(task.Priority)]">
-        {{ priorityLabel(task.Priority) }}
+      <span :class="['text-xs font-semibold mt-0.5 w-14 shrink-0', priorityColor(task.priority)]">
+        {{ priorityLabel(task.priority) }}
       </span>
 
       <!-- Content -->
       <div class="flex-1 min-w-0">
-        <p class="text-sm font-medium text-white leading-snug">{{ truncate(task.Instruction) }}</p>
-        <p class="text-xs text-slate-600 font-mono mt-0.5 truncate">{{ task.ProjectPath }}</p>
+        <p class="text-sm font-medium text-white leading-snug">{{ truncate(task.instruction) }}</p>
+        <p class="text-xs text-slate-600 font-mono mt-0.5 truncate">{{ task.projectPath }}</p>
         <div class="flex flex-wrap gap-1 mt-1.5">
-          <span v-if="task.ProviderName"
+          <span v-if="task.providerName"
                 class="text-xs bg-violet-500/15 text-violet-400 border border-violet-500/20 px-1.5 py-0.5 rounded-full">
-            {{ task.ProviderName }}
+            {{ task.providerName }}
           </span>
           <span v-else
                 class="text-xs bg-white/[0.05] text-slate-500 border border-white/10 px-1.5 py-0.5 rounded-full">
             Auto
           </span>
           <span
-            v-for="tag in (task.Tags ?? [])"
+            v-for="tag in (task.tags ?? [])"
             :key="tag"
             class="text-xs bg-white/[0.05] text-slate-400 border border-white/10 px-1.5 py-0.5 rounded-full"
           >{{ tag }}</span>
@@ -46,14 +46,14 @@
 
       <!-- Status + Promote -->
       <div class="flex flex-col items-end gap-1.5 shrink-0">
-        <span class="text-xs text-slate-600 uppercase tracking-wider">{{ task.Status }}</span>
+        <span class="text-xs text-slate-600 uppercase tracking-wider">{{ task.status }}</span>
         <Button
-          @click="onPromote(task.ID)"
+          @click="onPromote(task.id)"
           label="Promote ↑"
           size="small"
           severity="secondary"
           class="opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-          :loading="promoting === task.ID"
+          :loading="promoting === task.id"
         />
       </div>
     </div>

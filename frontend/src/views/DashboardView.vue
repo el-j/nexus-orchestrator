@@ -55,7 +55,7 @@ const detailOpen = ref(false)
 const selectedTask = ref<Task | null>(null)
 
 const activeCount = computed(() =>
-  tasks.value.filter((t) => t.Status === 'QUEUED' || t.Status === 'PROCESSING').length,
+  tasks.value.filter((t) => t.status === 'QUEUED' || t.status === 'PROCESSING').length,
 )
 
 function openDetail(task: Task) {

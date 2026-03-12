@@ -26,6 +26,7 @@ declare global {
           RegisterAISession(session: AISession): Promise<AISession>
           DeregisterAISession(id: string): Promise<void>
           GetServerAddr(): Promise<string>
+          HeartbeatAISession(id: string): Promise<Error>
         }
       }
     }
@@ -160,9 +161,28 @@ export async function registerAISession(session: Omit<AISession, 'id' | 'created
 
 /** Returns the base HTTP URL of the embedded API server (e.g. http://127.0.0.1:9999). */
 export async function getServerAddr(): Promise<string> {
-  if (isWails()) return window.go!.main!.App!.GetServerAddr()
+  if (isWails()) {
+    try {
+      return await window.go!.main!.App!.GetServerAddr()
+    } catch {
+      // Older binary or binding not yet available — fall back to the default embedded address.
+      return 'http://127.0.0.1:9999'
+    }
+  }
   // Browser dev mode: respect VITE_SERVER_URL env or fall back to the default address.
   return (import.meta as { env?: { VITE_SERVER_URL?: string } }).env?.VITE_SERVER_URL ?? 'http://127.0.0.1:9999'
+}
+
+export async function heartbeatAISession(id: string): Promise<void> {
+  if (isWails()) {
+    try {
+      await window.go!.main!.App!.HeartbeatAISession(id)
+    } catch (e) {
+      console.warn('heartbeatAISession: failed:', e)
+    }
+    return
+  }
+  await fetch(`/api/ai-sessions/${id}/heartbeat`, { method: 'POST' })
 }
 
 export async function deregisterAISession(id: string): Promise<void> {

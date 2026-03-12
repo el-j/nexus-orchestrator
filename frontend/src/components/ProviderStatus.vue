@@ -59,7 +59,7 @@
             :class="['w-1.5 h-1.5 rounded-full flex-shrink-0', cfg.enabled ? 'bg-emerald-400' : 'bg-slate-600']"
           ></span>
           <span class="text-xs text-slate-300 truncate">{{ cfg.name }}</span>
-          <span class="text-[10px] text-slate-600 font-mono truncate max-w-[120px]">{{ cfg.baseURL }}</span>
+          <span class="text-[10px] text-slate-600 font-mono truncate max-w-[120px]">{{ cfg.baseUrl }}</span>
         </div>
         <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
           <button

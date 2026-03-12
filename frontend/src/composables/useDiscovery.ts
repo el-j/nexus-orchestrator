@@ -1,8 +1,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import type { DiscoveredProvider } from '../types/discovery'
 import { getDiscoveredProviders, triggerScan } from '../types/wails'
-
-const SSE_URL = 'http://127.0.0.1:9999/api/events'
+import { resolveServerUrl } from './useServerUrl'
 
 export function useDiscovery() {
   const discovered = ref<DiscoveredProvider[]>([])
@@ -29,10 +28,10 @@ export function useDiscovery() {
     }
   }
 
-  function connectSSE() {
+  function connectSSE(baseUrl: string): boolean {
     if (typeof EventSource === 'undefined') return false
     try {
-      eventSource = new EventSource(SSE_URL)
+      eventSource = new EventSource(`${baseUrl}/api/events`)
       eventSource.addEventListener('provider_discovered', () => {
         refresh()
       })
@@ -54,7 +53,9 @@ export function useDiscovery() {
     loading.value = true
     await refresh()
     loading.value = false
-    if (!connectSSE()) {
+    let baseUrl = 'http://127.0.0.1:9999'
+    try { baseUrl = await resolveServerUrl() } catch { /* use default */ }
+    if (!connectSSE(baseUrl)) {
       interval = setInterval(refresh, 10000)
     }
   })

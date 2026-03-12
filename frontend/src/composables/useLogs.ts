@@ -24,21 +24,25 @@ export function useLogs() {
   }
 
   async function connect() {
-    const baseUrl = await resolveServerUrl()
-    es = new EventSource(`${baseUrl}/api/events`)
-    es.addEventListener('log', (event: MessageEvent) => {
-      try {
-        const entry: LogEntry = JSON.parse(event.data as string)
-        logs.value.push(entry)
-        if (logs.value.length > MAX_LOGS) {
-          logs.value.splice(0, logs.value.length - MAX_LOGS)
+    try {
+      const baseUrl = await resolveServerUrl()
+      es = new EventSource(`${baseUrl}/api/events`)
+      es.addEventListener('log', (event: MessageEvent) => {
+        try {
+          const entry: LogEntry = JSON.parse(event.data as string)
+          logs.value.push(entry)
+          if (logs.value.length > MAX_LOGS) {
+            logs.value.splice(0, logs.value.length - MAX_LOGS)
+          }
+        } catch (err) {
+          console.warn('useLogs: malformed log event:', err)
         }
-      } catch (err) {
-        console.warn('useLogs: malformed log event:', err)
-      }
-    })
-    es.onopen = () => { connected.value = true }
-    es.onerror = () => { connected.value = false }
+      })
+      es.onopen = () => { connected.value = true }
+      es.onerror = () => { connected.value = false }
+    } catch (err) {
+      console.warn('useLogs: connect failed, will retry on next mount:', err)
+    }
   }
 
   function clear() {

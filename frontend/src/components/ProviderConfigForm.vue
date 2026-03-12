@@ -48,7 +48,7 @@
         <div class="flex flex-col gap-1">
           <label class="text-xs text-slate-400">Base URL <span class="text-red-400">*</span></label>
           <input
-            v-model="form.baseURL"
+            v-model="form.baseUrl"
             type="text"
             placeholder="http://127.0.0.1:1234/v1"
             required
@@ -72,7 +72,7 @@
         <div class="flex flex-col gap-1">
           <label class="text-xs text-slate-400">Default Model</label>
           <input
-            v-model="form.defaultModel"
+            v-model="form.model"
             type="text"
             placeholder="e.g. gpt-4o"
             class="bg-slate-700 rounded px-3 py-2 text-sm w-full text-white border border-white/10 focus:outline-none focus:border-purple-500 placeholder:text-slate-600 font-mono text-xs"
@@ -133,9 +133,9 @@ function buildDefaultForm(): Partial<ProviderConfig> {
   return {
     kind: 'lmstudio',
     name: '',
-    baseURL: BASE_URL_PRESETS['lmstudio'],
+    baseUrl: BASE_URL_PRESETS['lmstudio'],
     apiKey: '',
-    defaultModel: '',
+    model: '',
     enabled: true,
   }
 }
@@ -158,7 +158,7 @@ watch(
 function onTypeChange() {
   const preset = BASE_URL_PRESETS[form.value.kind ?? 'openaicompat']
   if (preset !== undefined) {
-    form.value.baseURL = preset
+    form.value.baseUrl = preset
   }
 }
 
@@ -168,8 +168,8 @@ async function handleSave() {
     error.value = 'Name is required.'
     return
   }
-  const baseURL = form.value.baseURL?.trim() ?? ''
-  if (baseURL && !/^https?:\/\//i.test(baseURL)) {
+  const baseUrl = form.value.baseUrl?.trim() ?? ''
+  if (baseUrl && !/^https?:\/\//i.test(baseUrl)) {
     error.value = 'Base URL must start with http:// or https://'
     return
   }

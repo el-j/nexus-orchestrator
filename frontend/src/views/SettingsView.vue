@@ -35,7 +35,7 @@
               <span :class="['w-2 h-2 rounded-full flex-shrink-0', cfg.enabled ? 'bg-emerald-400' : 'bg-slate-600']"></span>
               <span class="text-sm font-medium text-white truncate">{{ cfg.name }}</span>
               <span class="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300 font-medium flex-shrink-0">{{ cfg.kind }}</span>
-              <span class="text-xs text-slate-500 font-mono truncate max-w-[200px]">{{ cfg.baseURL }}</span>
+              <span class="text-xs text-slate-500 font-mono truncate max-w-[200px]">{{ cfg.baseUrl }}</span>
             </div>
             <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
               <button
