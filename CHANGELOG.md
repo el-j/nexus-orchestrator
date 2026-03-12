@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.4] — 2026-03-12
+
+### Added
+- VS Code extension: "Workspace Agents" read-only sidebar tree view (`nexus.workspaceAgents`) showing orchestration state from `.claude/orchestrator.json` in all open workspace folders
+- VS Code extension: `nexus.refreshWorkspaceAgents` command with toolbar refresh button
+- VS Code extension: `WorkspaceScanner` — file-system watcher on `.claude/orchestrator.json` per workspace folder; auto-refreshes the tree on file changes
+- `DiscoveryService`: `InvalidateHealthCache()` public method; called by `TriggerScan` so a manual scan always returns fresh provider data
+
+### Fixed
+- Provider health-check over-polling: `DiscoveryService.ListProviders()` previously called `Ping()` (and `GetAvailableModels()`) on every request; now uses a 30-second TTL cache per provider
+- Circuit-breaker backoff: providers with 3+ consecutive `Ping()` failures are checked with exponentially increasing intervals (30s → 60s → 120s → … capped at 10 min), preventing repeated hammering of unreachable backends
+- `FindForModel()` no longer calls `GetAvailableModels()` live on each candidate — uses cached model lists
+
+### Changed
+- `frontend/src/composables/useProviders.ts`: polling interval 5 s → 30 s (matches backend cache TTL)
+- `vscode-extension/src/extension.ts`: status bar polling interval 10 s → 30 s (status bar calls `/api/providers` which is now cached)
+
 ## [0.9.3] — 2026-03-12
 
 ### Added

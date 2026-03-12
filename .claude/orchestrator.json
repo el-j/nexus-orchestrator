@@ -448,6 +448,20 @@
         "TASK-198"
       ],
       "completedAt": "2026-03-12T12:00:00Z"
+    },
+    "PLAN-028": {
+      "id": "PLAN-028",
+      "title": "Health Throttle + Workspace Orchestration Awareness",
+      "status": "completed",
+      "createdAt": "2026-03-12T09:51:23Z",
+      "goal": "Replace per-call Ping() with TTL-cached health + circuit breaker; add VS Code workspace agent tree view",
+      "tasks": [
+        "TASK-199",
+        "TASK-200",
+        "TASK-201",
+        "TASK-202"
+      ],
+      "completedAt": "2026-03-12T00:00:00.000Z"
     }
   },
   "tasks": {
@@ -2949,8 +2963,54 @@
       ],
       "createdAt": "2026-03-12T09:16:54Z",
       "completedAt": "2026-03-12T12:00:00Z"
+    },
+    "TASK-199": {
+      "id": "TASK-199",
+      "planId": "PLAN-028",
+      "title": "DiscoveryService: TTL health cache + circuit breaker backoff",
+      "role": "backend",
+      "status": "done",
+      "dependencies": [],
+      "createdAt": "2026-03-12T09:51:23Z",
+      "completedAt": "2026-03-12T00:00:00.000Z"
+    },
+    "TASK-200": {
+      "id": "TASK-200",
+      "planId": "PLAN-028",
+      "title": "Reduce frontend provider polling interval",
+      "role": "frontend",
+      "status": "done",
+      "dependencies": [
+        "TASK-199"
+      ],
+      "createdAt": "2026-03-12T09:51:23Z",
+      "completedAt": "2026-03-12T00:00:00.000Z"
+    },
+    "TASK-201": {
+      "id": "TASK-201",
+      "planId": "PLAN-028",
+      "title": "VS Code: WorkspaceScanner + WorkspaceOrchView + extension wiring",
+      "role": "vscode",
+      "status": "done",
+      "dependencies": [],
+      "createdAt": "2026-03-12T09:51:23Z",
+      "completedAt": "2026-03-12T00:00:00.000Z"
+    },
+    "TASK-202": {
+      "id": "TASK-202",
+      "planId": "PLAN-028",
+      "title": "QA: verify health throttle, tree view, tests",
+      "role": "qa",
+      "status": "done",
+      "dependencies": [
+        "TASK-199",
+        "TASK-200",
+        "TASK-201"
+      ],
+      "createdAt": "2026-03-12T09:51:23Z",
+      "completedAt": "2026-03-12T00:00:00.000Z"
     }
   },
-  "nextTaskId": 199,
-  "nextPlanId": 28
+  "nextTaskId": 203,
+  "nextPlanId": 29
 }

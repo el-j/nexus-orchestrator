@@ -24,6 +24,11 @@
         {
           "id": "nexus.taskQueue",
           "name": "Task Queue"
+        },
+        {
+          "id": "nexus.workspaceAgents",
+          "name": "Workspace Agents",
+          "icon": "$(organization)"
         }
       ]
     },
@@ -33,9 +38,17 @@
       { "command": "nexus.selectProvider", "title": "Nexus: Select Provider / Model" },
       { "command": "nexus.showProviders", "title": "Nexus: Show Providers" },
       { "command": "nexus.statusBarAction", "title": "Nexus: Status Bar Actions" },
-      { "command": "nexus.cancelTask", "title": "Nexus: Cancel Task", "icon": "$(trash)" }
+      { "command": "nexus.cancelTask", "title": "Nexus: Cancel Task", "icon": "$(trash)" },
+      { "command": "nexus.refreshWorkspaceAgents", "title": "Nexus: Refresh Workspace Agents", "icon": "$(refresh)" }
     ],
     "menus": {
+      "view/title": [
+        {
+          "command": "nexus.refreshWorkspaceAgents",
+          "when": "view == nexus.workspaceAgents",
+          "group": "navigation"
+        }
+      ],
       "view/item/context": [
         {
           "command": "nexus.cancelTask",

@@ -413,6 +413,8 @@ func (o *OrchestratorService) TriggerScan(ctx context.Context) ([]domain.Discove
 	o.lastScan = results
 	o.scanMu.Unlock()
 
+	o.discovery.InvalidateHealthCache()
+
 	return results, nil
 }
 

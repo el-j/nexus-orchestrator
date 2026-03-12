@@ -10,6 +10,8 @@ import { submitTaskCommand, selectProviderCommand, viewQueueCommand } from "./co
 import { NexusStatusBar } from "./statusBar";
 import { TaskItem, TaskQueueProvider } from "./taskQueueProvider";
 import { SessionMonitor } from "./sessionMonitor";
+import { WorkspaceScanner } from "./workspaceScanner";
+import { WorkspaceOrchViewProvider } from "./workspaceOrchView";
 
 let client: NexusClient | undefined;
 let statusBar: NexusStatusBar | undefined;
@@ -54,9 +56,24 @@ export function activate(context: vscode.ExtensionContext): void {
   );
   context.subscriptions.push(provider.startPolling(5000));
 
+  // ── Workspace Agents tree view ──────────────────────────────────────────────
+  const workspaceScanner = new WorkspaceScanner(context);
+  workspaceScanner.start();
+  context.subscriptions.push(workspaceScanner);
+
+  const workspaceOrchProvider = new WorkspaceOrchViewProvider(workspaceScanner);
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider('nexus.workspaceAgents', workspaceOrchProvider)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('nexus.refreshWorkspaceAgents', () => {
+      workspaceOrchProvider.refresh();
+    })
+  );
+
   // ── Status bar ──────────────────────────────────────────────────────────────
   statusBar = new NexusStatusBar(client);
-  context.subscriptions.push(statusBar.startPolling(10000));
+  context.subscriptions.push(statusBar.startPolling(30000)); // matches backend health cache TTL (30 s)
 
   // Re-create the client and refresh status bar whenever the daemon URL changes.
   context.subscriptions.push(
@@ -64,7 +81,7 @@ export function activate(context: vscode.ExtensionContext): void {
       if (e.affectsConfiguration("nexus.daemonUrl")) {
         client = new NexusClient(daemonUrl());
         statusBar = new NexusStatusBar(client);
-        context.subscriptions.push(statusBar.startPolling(10000));
+        context.subscriptions.push(statusBar.startPolling(30000)); // matches backend health cache TTL (30 s)
       }
     })
   );
