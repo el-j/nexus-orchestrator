@@ -14,7 +14,7 @@
     </header>
 
     <!-- Task list (scrollable) -->
-    <div class="flex-1 min-h-0 overflow-auto">
+    <div class="flex-1 min-h-0 flex flex-col">
       <TaskQueue
         :tasks="tasks"
         :loading="loading"

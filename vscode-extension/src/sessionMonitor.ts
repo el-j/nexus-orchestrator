@@ -95,8 +95,18 @@ export class SessionMonitor {
   }
 
   private async heartbeat(): Promise<void> {
-    if (this.sessionId) {
-      await this.detectAndRegister(); // Re-register updates lastActivity
+    if (!this.sessionId) {
+      return;
+    }
+    try {
+      await this.client.heartbeatSession(this.sessionId);
+      this.outputChannel.appendLine(`[SessionMonitor] Heartbeat sent for session: ${this.sessionId}`);
+    } catch (error) {
+      // If the session no longer exists on the server (e.g. cleaned up after
+      // being idle), fall back to a full re-registration.
+      this.outputChannel.appendLine(`[SessionMonitor] Heartbeat failed (${error}), re-registering`);
+      this.sessionId = undefined;
+      await this.detectAndRegister();
     }
   }
 }

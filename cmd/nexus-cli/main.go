@@ -449,3 +449,22 @@ func (r *remoteOrchestrator) DeregisterAISession(ctx context.Context, id string)
 	}
 	return nil
 }
+
+func (r *remoteOrchestrator) HeartbeatAISession(ctx context.Context, id string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.baseURL+"/api/ai-sessions/"+url.PathEscape(id)+"/heartbeat", nil)
+	if err != nil {
+		return fmt.Errorf("remote: build heartbeat ai session request: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("remote: heartbeat ai session: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("remote: heartbeat ai session: %w", domain.ErrNotFound)
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("remote: heartbeat ai session: unexpected status %d", resp.StatusCode)
+	}
+	return nil
+}

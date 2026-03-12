@@ -84,7 +84,7 @@ type Task struct {
 	Tags []string `json:"tags,omitempty"`
 	// Command classifies the task as planning, execution, or auto-routed.
 	// Empty is treated as CommandAuto.
-	Command   CommandType `json:"command,omitempty"`
+	Command    CommandType `json:"command,omitempty"`
 	Status     TaskStatus  `json:"status"`
 	CreatedAt  time.Time   `json:"createdAt"`
 	UpdatedAt  time.Time   `json:"updatedAt"`

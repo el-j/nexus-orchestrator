@@ -141,6 +141,9 @@ func (m *mockOrchestrator) ListAISessions(_ context.Context) ([]domain.AISession
 func (m *mockOrchestrator) DeregisterAISession(_ context.Context, _ string) error {
 	return nil
 }
+func (m *mockOrchestrator) HeartbeatAISession(_ context.Context, _ string) error {
+	return nil
+}
 
 // newTestHandler builds a chi router with the same route/handler logic as StartServer.
 func newTestHandler(orch ports.Orchestrator) http.Handler {

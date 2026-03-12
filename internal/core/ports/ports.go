@@ -125,11 +125,15 @@ type Orchestrator interface {
 	// UpdateTask updates mutable fields (instruction, priority, providerName, tags, status) on an existing task.
 	UpdateTask(id string, updates domain.Task) (domain.Task, error)
 	// RegisterAISession registers a new external AI agent session and persists it.
+	// If ExternalID is set and a session with that ExternalID already exists, it
+	// updates the existing session's last activity and returns it (idempotent).
 	RegisterAISession(ctx context.Context, s domain.AISession) (domain.AISession, error)
 	// ListAISessions returns all persisted AI agent sessions.
 	ListAISessions(ctx context.Context) ([]domain.AISession, error)
 	// DeregisterAISession marks the session identified by id as disconnected.
 	DeregisterAISession(ctx context.Context, id string) error
+	// HeartbeatAISession refreshes the last-activity timestamp of a session.
+	HeartbeatAISession(ctx context.Context, id string) error
 }
 
 // EventType identifies a task lifecycle event.
@@ -179,6 +183,9 @@ type ProviderConfigRepository interface {
 type AISessionRepository interface {
 	SaveAISession(ctx context.Context, s domain.AISession) error
 	GetAISessionByID(ctx context.Context, id string) (domain.AISession, error)
+	// GetAISessionByExternalID looks up a session by its external identifier.
+	// Returns domain.ErrNotFound when no match exists.
+	GetAISessionByExternalID(ctx context.Context, externalID string) (domain.AISession, error)
 	ListAISessions(ctx context.Context) ([]domain.AISession, error)
 	UpdateAISessionStatus(ctx context.Context, id string, status domain.AISessionStatus, lastActivity time.Time) error
 	DeleteAISession(ctx context.Context, id string) error

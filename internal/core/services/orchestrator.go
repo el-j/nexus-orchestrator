@@ -71,6 +71,8 @@ func NewOrchestrator(
 	svc.recoverStuckTasks()
 	svc.workerWg.Add(1)
 	go svc.runWorker()
+	svc.workerWg.Add(1)
+	go svc.runSessionCleanup()
 	return svc
 }
 
@@ -591,17 +593,11 @@ func (o *OrchestratorService) UpdateTask(id string, updates domain.Task) (domain
 	return task, nil
 }
 
-// RegisterAISession registers a new AI agent session, persists it, and broadcasts an event.
+// RegisterAISession registers an AI agent session, persists it, and broadcasts an event.
+// If the session carries a non-empty ExternalID and a session with that ExternalID already
+// exists, the existing session's last-activity is refreshed and it is returned unchanged
+// (idempotent). This prevents multiple heartbeat calls from creating duplicate rows.
 func (o *OrchestratorService) RegisterAISession(ctx context.Context, s domain.AISession) (domain.AISession, error) {
-	if s.ID == "" {
-		s.ID = uuid.NewString()
-	}
-	s.Status = domain.SessionStatusActive
-	now := time.Now()
-	s.CreatedAt = now
-	s.UpdatedAt = now
-	s.LastActivity = now
-
 	o.mu.Lock()
 	repo := o.aiSessionRepo
 	b := o.broadcaster
@@ -610,6 +606,40 @@ func (o *OrchestratorService) RegisterAISession(ctx context.Context, s domain.AI
 	if repo == nil {
 		return domain.AISession{}, fmt.Errorf("orchestrator: register ai session: no session repo configured")
 	}
+
+	now := time.Now()
+
+	// Idempotency: if an externalId is provided, re-use the existing session.
+	if s.ExternalID != "" {
+		existing, err := repo.GetAISessionByExternalID(ctx, s.ExternalID)
+		if err == nil {
+			// Session already exists — just refresh its last-activity timestamp.
+			existing.LastActivity = now
+			existing.UpdatedAt = now
+			existing.Status = domain.SessionStatusActive
+			if saveErr := repo.SaveAISession(ctx, existing); saveErr != nil {
+				return domain.AISession{}, fmt.Errorf("orchestrator: register ai session: refresh existing: %w", saveErr)
+			}
+			if b != nil {
+				b.Broadcast(ports.TaskEvent{
+					Type:   "ai_session_changed",
+					TaskID: existing.ID,
+					Status: domain.TaskStatus(existing.Status),
+				})
+			}
+			return existing, nil
+		}
+		// ErrNotFound is expected for the first registration — fall through.
+	}
+
+	if s.ID == "" {
+		s.ID = uuid.NewString()
+	}
+	s.Status = domain.SessionStatusActive
+	s.CreatedAt = now
+	s.UpdatedAt = now
+	s.LastActivity = now
+
 	if err := repo.SaveAISession(ctx, s); err != nil {
 		return domain.AISession{}, fmt.Errorf("orchestrator: register ai session: %w", err)
 	}
@@ -621,6 +651,22 @@ func (o *OrchestratorService) RegisterAISession(ctx context.Context, s domain.AI
 		})
 	}
 	return s, nil
+}
+
+// HeartbeatAISession refreshes the last-activity timestamp on an active session.
+// It is intended to be called periodically by connected agents to signal liveness.
+func (o *OrchestratorService) HeartbeatAISession(ctx context.Context, id string) error {
+	o.mu.Lock()
+	repo := o.aiSessionRepo
+	o.mu.Unlock()
+
+	if repo == nil {
+		return fmt.Errorf("orchestrator: heartbeat ai session: no session repo configured")
+	}
+	if err := repo.UpdateAISessionStatus(ctx, id, domain.SessionStatusActive, time.Now()); err != nil {
+		return fmt.Errorf("orchestrator: heartbeat ai session: %w", err)
+	}
+	return nil
 }
 
 // ListAISessions returns all persisted AI agent sessions.
@@ -784,6 +830,53 @@ func (o *OrchestratorService) runWorker() {
 				default:
 				}
 				o.processNext()
+			}
+		}
+	}
+}
+
+// runSessionCleanup periodically marks AI sessions as disconnected when they
+// have not sent a heartbeat within the stale threshold (5 × heartbeat interval = 5 min).
+// It runs until stopCh is closed and shares the workerWg lifecycle.
+func (o *OrchestratorService) runSessionCleanup() {
+	defer o.workerWg.Done()
+	const cleanupInterval = 2 * time.Minute
+	const staleThreshold = 5 * time.Minute
+	ticker := time.NewTicker(cleanupInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-o.stopCh:
+			return
+		case <-ticker.C:
+			o.mu.Lock()
+			repo := o.aiSessionRepo
+			b := o.broadcaster
+			o.mu.Unlock()
+			if repo == nil {
+				continue
+			}
+			ctx := context.Background()
+			sessions, err := repo.ListAISessions(ctx)
+			if err != nil {
+				log.Printf("orchestrator: session cleanup: list: %v", err)
+				continue
+			}
+			cutoff := time.Now().Add(-staleThreshold)
+			for _, s := range sessions {
+				if s.Status != domain.SessionStatusDisconnected && s.LastActivity.Before(cutoff) {
+					if markErr := repo.UpdateAISessionStatus(ctx, s.ID, domain.SessionStatusDisconnected, s.LastActivity); markErr != nil {
+						log.Printf("orchestrator: session cleanup: mark disconnected %s: %v", s.ID, markErr)
+						continue
+					}
+					if b != nil {
+						b.Broadcast(ports.TaskEvent{
+							Type:   "ai_session_changed",
+							TaskID: s.ID,
+							Status: domain.TaskStatus(domain.SessionStatusDisconnected),
+						})
+					}
+				}
 			}
 		}
 	}

@@ -124,6 +124,7 @@ func (s *Server) Handler() http.Handler {
 	r.Post("/api/ai-sessions", s.handleRegisterAISession)
 	r.Get("/api/ai-sessions", s.handleListAISessions)
 	r.Delete("/api/ai-sessions/{id}", s.handleDeregisterAISession)
+	r.Post("/api/ai-sessions/{id}/heartbeat", s.handleHeartbeatAISession)
 
 	r.Get("/api/health", s.handleHealth)
 	r.Get("/api/logs", s.handleGetLogs)
@@ -572,6 +573,20 @@ func (s *Server) handleDeregisterAISession(w http.ResponseWriter, r *http.Reques
 			return
 		}
 		log.Printf("httpapi: deregister ai session %s: %v", id, err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleHeartbeatAISession(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if err := s.orch.HeartbeatAISession(r.Context(), id); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			http.Error(w, "ai session not found", http.StatusNotFound)
+			return
+		}
+		log.Printf("httpapi: heartbeat ai session %s: %v", id, err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

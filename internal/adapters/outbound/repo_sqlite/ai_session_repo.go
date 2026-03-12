@@ -65,6 +65,23 @@ func (a *AISessionRepo) GetAISessionByID(ctx context.Context, id string) (domain
 	return s, nil
 }
 
+// GetAISessionByExternalID returns the AI session with the given external ID, or domain.ErrNotFound.
+func (a *AISessionRepo) GetAISessionByExternalID(ctx context.Context, externalID string) (domain.AISession, error) {
+	row := a.db.QueryRowContext(ctx,
+		`SELECT id, source, external_id, agent_name, project_path, status, last_activity, routed_task_ids, created_at, updated_at
+		 FROM ai_sessions WHERE external_id = ? AND external_id != ''
+		 ORDER BY last_activity DESC LIMIT 1`, externalID,
+	)
+	s, err := scanAISession(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.AISession{}, fmt.Errorf("repo_sqlite: get ai session by external id: %w", domain.ErrNotFound)
+		}
+		return domain.AISession{}, fmt.Errorf("repo_sqlite: get ai session by external id: %w", err)
+	}
+	return s, nil
+}
+
 // ListAISessions returns all AI session records ordered by last activity descending.
 func (a *AISessionRepo) ListAISessions(ctx context.Context) ([]domain.AISession, error) {
 	rows, err := a.db.QueryContext(ctx,

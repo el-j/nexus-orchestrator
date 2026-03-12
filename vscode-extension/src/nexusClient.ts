@@ -146,6 +146,19 @@ export class NexusClient {
     }
   }
 
+  /** Send a heartbeat for an existing session to refresh its last-activity timestamp. */
+  async heartbeatSession(id: string): Promise<void> {
+    const url = `${this.baseUrl}/api/ai-sessions/${encodeURIComponent(id)}/heartbeat`;
+    const resp = await fetch(url, { method: "POST" });
+    if (!resp.ok && resp.status !== 404) {
+      // 404 means the session was cleaned up — caller should re-register.
+      const body = await resp.text().catch(() => "");
+      throw new Error(
+        `nexus: heartbeat session ${id}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ""}`
+      );
+    }
+  }
+
   /** Return all registered AI sessions. */
   async getAISessions(): Promise<AISession[]> {
     return this.get<AISession[]>("/api/ai-sessions");
