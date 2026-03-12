@@ -1,5 +1,4 @@
 package llm_openaicompat
-package llm_openaicompat
 
 import (
 	"encoding/json"

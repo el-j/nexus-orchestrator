@@ -22,25 +22,32 @@ type optRepo struct {
 func newOptRepo() *optRepo { return &optRepo{tasks: make(map[string]domain.Task)} }
 
 func (r *optRepo) Save(t domain.Task) error {
-	r.mu.Lock(); defer r.mu.Unlock(); r.tasks[t.ID] = t; return nil
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.tasks[t.ID] = t
+	return nil
 }
 func (r *optRepo) GetByID(id string) (domain.Task, error) {
-	r.mu.Lock(); defer r.mu.Unlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	t, ok := r.tasks[id]
 	if !ok {
 		return domain.Task{}, errors.New("not found")
 	}
 	return t, nil
 }
-func (r *optRepo) GetPending() ([]domain.Task, error)                                             { return nil, nil }
-func (r *optRepo) UpdateStatus(_ string, _ domain.TaskStatus) error                               { return nil }
-func (r *optRepo) UpdateLogs(_, _ string) error                                                   { return nil }
-func (r *optRepo) GetByProjectPath(_ string) ([]domain.Task, error)                               { return nil, nil }
+func (r *optRepo) GetPending() ([]domain.Task, error)               { return nil, nil }
+func (r *optRepo) UpdateStatus(_ string, _ domain.TaskStatus) error { return nil }
+func (r *optRepo) UpdateLogs(_, _ string) error                     { return nil }
+func (r *optRepo) GetByProjectPath(_ string) ([]domain.Task, error) { return nil, nil }
 func (r *optRepo) GetByProjectPathAndStatus(_ string, _ ...domain.TaskStatus) ([]domain.Task, error) {
 	return nil, nil
 }
 func (r *optRepo) Update(t domain.Task) error {
-	r.mu.Lock(); defer r.mu.Unlock(); r.tasks[t.ID] = t; return nil
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.tasks[t.ID] = t
+	return nil
 }
 
 type optWriter struct{}
