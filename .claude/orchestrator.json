@@ -432,6 +432,22 @@
         "TASK-192"
       ],
       "completedAt": "2026-03-12T08:49:21Z"
+    },
+    "PLAN-027": {
+      "id": "PLAN-027",
+      "title": "Full Build Consolidation & Runtime Bug Fixes",
+      "status": "completed",
+      "createdAt": "2026-03-12T09:16:54Z",
+      "goal": "Centralize all build outputs under dist/, fix make build-all to include GUI+VSCode, fix AI Sessions CORS/Wails bindings, fix Dashboard layout, fix SessionMonitor Copilot retry",
+      "tasks": [
+        "TASK-193",
+        "TASK-194",
+        "TASK-195",
+        "TASK-196",
+        "TASK-197",
+        "TASK-198"
+      ],
+      "completedAt": "2026-03-12T12:00:00Z"
     }
   },
   "tasks": {
@@ -2865,8 +2881,76 @@
       "createdAt": "2026-03-12T10:00:00.000Z",
       "startedAt": "2026-03-12T08:37:24Z",
       "completedAt": "2026-03-12T08:49:21Z"
+    },
+    "TASK-193": {
+      "id": "TASK-193",
+      "planId": "PLAN-027",
+      "title": "Centralize dist paths + make build-all completeness",
+      "role": "devops",
+      "status": "done",
+      "dependencies": [],
+      "createdAt": "2026-03-12T09:16:54Z",
+      "completedAt": "2026-03-12T12:00:00Z"
+    },
+    "TASK-194": {
+      "id": "TASK-194",
+      "planId": "PLAN-027",
+      "title": "Update GitHub workflows for new dist output structure",
+      "role": "devops",
+      "status": "done",
+      "dependencies": [
+        "TASK-193"
+      ],
+      "createdAt": "2026-03-12T09:16:54Z",
+      "completedAt": "2026-03-12T12:00:00Z"
+    },
+    "TASK-195": {
+      "id": "TASK-195",
+      "planId": "PLAN-027",
+      "title": "Fix AI Sessions: CORS headers + Wails app.go bindings + wails.ts",
+      "role": "backend",
+      "status": "done",
+      "dependencies": [],
+      "createdAt": "2026-03-12T09:16:54Z",
+      "completedAt": "2026-03-12T12:00:00Z"
+    },
+    "TASK-196": {
+      "id": "TASK-196",
+      "planId": "PLAN-027",
+      "title": "Fix Dashboard layout: TaskSubmitForm visibility + TaskQueue empty state",
+      "role": "frontend",
+      "status": "done",
+      "dependencies": [],
+      "createdAt": "2026-03-12T09:16:54Z",
+      "completedAt": "2026-03-12T12:00:00Z"
+    },
+    "TASK-197": {
+      "id": "TASK-197",
+      "planId": "PLAN-027",
+      "title": "Fix VS Code SessionMonitor: Copilot detection retry with backoff",
+      "role": "vscode",
+      "status": "done",
+      "dependencies": [],
+      "createdAt": "2026-03-12T09:16:54Z",
+      "completedAt": "2026-03-12T12:00:00Z"
+    },
+    "TASK-198": {
+      "id": "TASK-198",
+      "planId": "PLAN-027",
+      "title": "QA: verify all fixes end-to-end",
+      "role": "qa",
+      "status": "done",
+      "dependencies": [
+        "TASK-193",
+        "TASK-194",
+        "TASK-195",
+        "TASK-196",
+        "TASK-197"
+      ],
+      "createdAt": "2026-03-12T09:16:54Z",
+      "completedAt": "2026-03-12T12:00:00Z"
     }
   },
-  "nextTaskId": 193,
-  "nextPlanId": 27
+  "nextTaskId": 199,
+  "nextPlanId": 28
 }

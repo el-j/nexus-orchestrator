@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full overflow-hidden">
+  <div class="flex flex-col flex-1 min-h-0 overflow-hidden">
     <!-- Header bar -->
     <header class="flex items-center justify-between px-5 py-3 border-b border-white/5 bg-[#0a0a10] flex-shrink-0">
       <div>
@@ -14,7 +14,7 @@
     </header>
 
     <!-- Task list (scrollable) -->
-    <div class="flex-1 overflow-auto">
+    <div class="flex-1 min-h-0 overflow-auto">
       <TaskQueue
         :tasks="tasks"
         :loading="loading"
@@ -24,7 +24,7 @@
     </div>
 
     <!-- Submit form (pinned at bottom) -->
-    <TaskSubmitForm @submitted="handleSubmitted" />
+    <TaskSubmitForm class="flex-shrink-0" @submitted="handleSubmitted" />
 
     <!-- Detail drawer -->
     <TaskDetailDrawer

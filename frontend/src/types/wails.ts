@@ -22,6 +22,9 @@ declare global {
           GetBacklog(projectPath: string): Promise<Task[]>
           PromoteTask(id: string): Promise<void>
           UpdateTask(id: string, updates: Partial<Task>): Promise<Task>
+          ListAISessions(): Promise<AISession[]>
+          RegisterAISession(session: AISession): Promise<AISession>
+          DeregisterAISession(id: string): Promise<void>
         }
       }
     }
@@ -137,10 +140,25 @@ export async function updateTask(id: string, updates: Partial<Task>): Promise<Ta
 }
 
 export async function listAISessions(): Promise<AISession[]> {
-  const r = await fetch('http://127.0.0.1:9999/api/ai-sessions')
+  if (isWails()) return window.go!.main!.App!.ListAISessions()
+  const r = await fetch('/api/ai-sessions')
+  if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json() as Promise<AISession[]>
 }
 
+export async function registerAISession(session: Omit<AISession, 'id' | 'createdAt' | 'updatedAt'>): Promise<AISession> {
+  if (isWails()) return window.go!.main!.App!.RegisterAISession(session as AISession)
+  const r = await fetch('/api/ai-sessions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(session),
+  })
+  if (!r.ok) throw new Error(`HTTP ${r.status}`)
+  return r.json() as Promise<AISession>
+}
+
 export async function deregisterAISession(id: string): Promise<void> {
-  await fetch(`http://127.0.0.1:9999/api/ai-sessions/${id}`, { method: 'DELETE' })
+  if (isWails()) return window.go!.main!.App!.DeregisterAISession(id)
+  const r = await fetch(`/api/ai-sessions/${id}`, { method: 'DELETE' })
+  if (!r.ok) throw new Error(`HTTP ${r.status}`)
 }

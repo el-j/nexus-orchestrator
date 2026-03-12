@@ -23,7 +23,13 @@ Thumbs.db
 frontend/node_modules/
 frontend/.vite/
 frontend/src/wailsjs/
+frontend/dist
 coverage.out
+
+# Centralized dist outputs
+/dist/desktop/
+/dist/vscode/
 docs/node_modules/
 github-action/node_modules/
 github-action/coverage/
+

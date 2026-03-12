@@ -21,6 +21,8 @@
 BINARY_CLI    := nexus-cli
 BINARY_DAEMON := nexus-daemon
 DIST          := dist
+DIST_DESKTOP  := $(DIST)/desktop
+DIST_VSCODE   := $(DIST)/vscode
 MODULE        := nexus-orchestrator
 
 # Build tags that enable the mattn/go-sqlite3 driver
@@ -39,7 +41,8 @@ UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 .PHONY: build build-gui build-gui-windows-amd64 build-all test vet clean help \
         build-linux-amd64 build-linux-arm64 \
         build-darwin-amd64 build-darwin-arm64 \
-        build-windows-amd64
+        build-windows-amd64 \
+        build-frontend build-vscode build-dev
 
 # ---------------------------------------------------------------------------
 # Default: native build (CLI + daemon)
@@ -53,11 +56,41 @@ build: vet
 	@echo "Built → $(DIST)/native/"
 
 # ---------------------------------------------------------------------------
+# Frontend GUI assets (Vite → frontend/dist/) and VS Code extension
+# ---------------------------------------------------------------------------
+
+# Build the Vite frontend into frontend/dist/  (embedded by Wails at build time)
+build-frontend:
+	@echo "Building Vite frontend…"
+	cd frontend && npm install --prefer-offline --silent && npm run build
+	@echo "Built → frontend/dist/"
+
+# Compile the VS Code extension bundle and package it as a .vsix
+build-vscode:
+	@echo "Building VS Code extension…"
+	@mkdir -p $(DIST_VSCODE)
+	cd vscode-extension && npm install --prefer-offline --silent && npm run build && vsce package --no-dependencies --out ../$(DIST_VSCODE)/nexus-orchestrator.vsix
+	@echo "Built → $(DIST_VSCODE)/nexus-orchestrator.vsix"
+
+# Convenience target: build frontend + VS Code extension (quick pre-release check)
+build-dev: build-frontend build-vscode
+	@echo ""
+	@echo "┌─────────────────────────────────────────┐"
+	@echo "│  build-dev complete                     │"
+	@echo "│  frontend/dist/   — Vite GUI assets     │"
+	@echo "│  vscode-extension/*.vsix — ready to test│"
+	@echo "└─────────────────────────────────────────┘"
+
+# ---------------------------------------------------------------------------
 # Desktop GUI (Wails — native only, requires wails CLI)
 # ---------------------------------------------------------------------------
-build-gui:
-	wails build -platform darwin/arm64
-	@echo "Built → build/bin/"
+build-gui: build-frontend
+	@echo "Building Wails desktop application..."
+	@mkdir -p $(DIST_DESKTOP)
+	@command -v wails >/dev/null 2>&1 || (echo "  ⚠  wails not installed, skipping GUI build" && exit 0)
+	wails build -clean
+	@cp -r build/bin/* $(DIST_DESKTOP)/
+	@echo "  → $(DIST_DESKTOP)/"
 
 # Windows GUI build — uses -H windowsgui to suppress the console window.
 # Requires wails CLI and a Windows-capable cross-compilation environment.
@@ -69,7 +102,7 @@ build-gui-windows-amd64:
 # ---------------------------------------------------------------------------
 # Cross-compile all platforms (CLI + daemon only; GUI is native-only)
 # ---------------------------------------------------------------------------
-build-all: build-linux-amd64 build-linux-arm64 build-darwin-amd64 build-darwin-arm64 build-windows-amd64
+build-all: build-linux-amd64 build-linux-arm64 build-darwin-amd64 build-darwin-arm64 build-windows-amd64 build-frontend build-vscode build-gui
 	@echo "All cross-platform builds complete → $(DIST)/"
 
 build-linux-amd64:
@@ -171,6 +204,9 @@ help:
 	@echo "  make build              Native CLI + daemon"
 	@echo "  make build-gui          Desktop GUI (Wails, macOS ARM64)"
 	@echo "  make build-gui-windows-amd64 Desktop GUI (Wails, Windows AMD64, -H windowsgui)"
+	@echo "  make build-frontend     Vite GUI assets → frontend/dist/ (no Wails needed)"
+	@echo "  make build-vscode       VS Code extension bundle + VSIX package"
+	@echo "  make build-dev          build-frontend + build-vscode (quick pre-release check)"
 	@echo "  make build-all          Cross-compile all platforms"
 	@echo "  make build-linux-amd64  Linux x86-64 (static, musl)"
 	@echo "  make build-linux-arm64  Linux ARM64  (static, musl)"

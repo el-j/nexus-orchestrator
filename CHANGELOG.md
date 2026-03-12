@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.3] — 2026-03-12
+
+### Added
+- Wails desktop bindings for AI Sessions (`ListAISessions`, `RegisterAISession`, `DeregisterAISession`) in `app.go`
+- CORS middleware in HTTP API for Wails WebView and local browser access (`wails://wails.localhost`, `http://localhost:*`)
+- `registerAISession()` function in `wails.ts` (previously missing entirely)
+- VS Code extension: `OutputChannel` for `Nexus Orchestrator` — session monitor logs visible in Output panel
+- `dist/desktop/` and `dist/vscode/` centralized output directories for GUI and VS Code VSIX
+
+### Fixed
+- AI Sessions view shows "Load failed" — `listAISessions`/`deregisterAISession` in `wails.ts` were making raw hardcoded HTTP calls (`http://127.0.0.1:9999`) bypassing the Wails IPC binding pattern; fixed to use `isWails()` with proper `window.go` bindings
+- Task Queue view rendered black — `DashboardView` used `h-full` inside a flex container with `padding-bottom: 208px`, and the task list `div` lacked `min-h-0`, preventing `overflow-auto` from activating; `TaskSubmitForm` lacked `flex-shrink-0` and was collapsed to zero height
+- VS Code Copilot not recognized — `SessionMonitor.detectAndRegister()` was called once at activation with no retry; added exponential backoff (2 s / 5 s / 10 s) so Copilot models are detected even when the extension host activates before Copilot finishes loading
+- `make build-all` now builds all artifacts: CLI/daemon (all platforms) + Wails GUI + VS Code extension + frontend
+
+### Changed
+- Makefile: added `DIST_DESKTOP` and `DIST_VSCODE` variables; `build-gui` copies Wails output to `dist/desktop/`; `build-vscode` outputs VSIX to `dist/vscode/`; `build-all` includes `build-frontend build-vscode build-gui`
+- `.github/workflows/publish.yml`: all `build/bin/` artifact paths → `dist/desktop/`; VSIX path → `dist/vscode/nexus-orchestrator.vsix`
+- `.gitignore`: added `/dist/desktop/` and `/dist/vscode/`
+
 ## [0.9.2] - 2026-03-12
 
 ### Added
