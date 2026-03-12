@@ -49,7 +49,7 @@ func TestLogHub_Write_TeeesToStderr(t *testing.T) {
 func TestLogHub_Buffer_CapAt500(t *testing.T) {
 	hub := httpapi.NewLogHubWithWriter(io.Discard)
 	for i := 0; i < 600; i++ {
-		_, _ = hub.Write([]byte(fmt.Sprintf("line %d\n", i)))
+		_, _ = fmt.Fprintf(hub, "line %d\n", i)
 	}
 	buf := hub.Buffer()
 	if len(buf) != 500 {
@@ -90,7 +90,7 @@ func TestLogHub_Concurrent_NoRace(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < linesEach; j++ {
-				_, _ = hub.Write([]byte(fmt.Sprintf("goroutine %d line %d\n", i, j)))
+				_, _ = fmt.Fprintf(hub, "goroutine %d line %d\n", i, j)
 			}
 		}()
 	}

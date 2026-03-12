@@ -25,6 +25,7 @@ declare global {
           ListAISessions(): Promise<AISession[]>
           RegisterAISession(session: AISession): Promise<AISession>
           DeregisterAISession(id: string): Promise<void>
+          GetServerAddr(): Promise<string>
         }
       }
     }
@@ -155,6 +156,13 @@ export async function registerAISession(session: Omit<AISession, 'id' | 'created
   })
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   return r.json() as Promise<AISession>
+}
+
+/** Returns the base HTTP URL of the embedded API server (e.g. http://127.0.0.1:9999). */
+export async function getServerAddr(): Promise<string> {
+  if (isWails()) return window.go!.main!.App!.GetServerAddr()
+  // Browser dev mode: respect VITE_SERVER_URL env or fall back to the default address.
+  return (import.meta as { env?: { VITE_SERVER_URL?: string } }).env?.VITE_SERVER_URL ?? 'http://127.0.0.1:9999'
 }
 
 export async function deregisterAISession(id: string): Promise<void> {

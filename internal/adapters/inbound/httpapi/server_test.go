@@ -1010,3 +1010,35 @@ func TestHTTP_PromoteProvider_NotFound_Returns404(t *testing.T) {
 		t.Errorf("expected 404, got %d", resp.StatusCode)
 	}
 }
+
+// TestErrorResponse_HasJSONContentType verifies that error responses from the
+// production handler set Content-Type: application/json and return a valid
+// {"error":"..."} JSON body rather than plain text.
+func TestErrorResponse_HasJSONContentType(t *testing.T) {
+	mock := &mockOrchestrator{}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	// Submitting malformed JSON triggers the decode-error path in handleCreateTask.
+	body := bytes.NewBufferString(`not-valid-json`)
+	resp, err := http.Post(ts.URL+"/api/tasks", "application/json", body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", resp.StatusCode)
+	}
+	if ct := resp.Header.Get("Content-Type"); ct != "application/json" {
+		t.Errorf("expected Content-Type application/json for error response, got %q", ct)
+	}
+	var result map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("error response body is not valid JSON: %v", err)
+	}
+	if _, ok := result["error"]; !ok {
+		t.Error("expected 'error' key in JSON error response body")
+	}
+}

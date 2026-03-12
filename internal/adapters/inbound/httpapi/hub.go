@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sync"
 
+	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
 )
 
@@ -44,6 +45,25 @@ func (h *Hub) Unsubscribe(ch chan []byte) {
 // Broadcast sends event to all active subscribers. Slow clients are skipped
 // (non-blocking channel send) to prevent one slow browser from stalling others.
 func (h *Hub) Broadcast(event ports.TaskEvent) {
+	data, err := json.Marshal(event)
+	if err != nil {
+		return
+	}
+	msg := []byte(fmt.Sprintf("data: %s\n\n", data))
+
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for ch := range h.clients {
+		select {
+		case ch <- msg:
+		default: // slow client — drop this event rather than blocking
+		}
+	}
+}
+
+// BroadcastAISessionEvent sends an AI session lifecycle event to all active
+// subscribers. Slow clients are skipped to prevent blocking.
+func (h *Hub) BroadcastAISessionEvent(event domain.AISessionEvent) {
 	data, err := json.Marshal(event)
 	if err != nil {
 		return

@@ -36,6 +36,15 @@ var version = "dev"
 var assets embed.FS
 
 func main() {
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+// run is the real entry point. Separating it from main() ensures that deferred
+// cleanup (repo.Close, orchestratorSvc.Stop) always executes before os.Exit.
+func run() error {
 	// 0. Log hub — capture log output for SSE streaming before anything logs.
 	logHub := httpapi.NewLogHub()
 	log.SetOutput(logHub)
@@ -48,8 +57,7 @@ func main() {
 	// 1. Outbound adapters
 	repo, err := repo_sqlite.New(dbPath)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "fatal: open database:", err)
-		os.Exit(1)
+		return fmt.Errorf("fatal: open database: %w", err)
 	}
 	defer repo.Close()
 
@@ -138,7 +146,7 @@ func main() {
 	}()
 
 	// 4. Initialise Wails app binding
-	app := NewApp(orchestratorSvc)
+	app := NewApp(orchestratorSvc, httpAddr)
 
 	trayAdapter := tray.NewTrayAdapter(orchestratorSvc, func() {
 		runtime.WindowShow(app.ctx)
@@ -174,9 +182,9 @@ func main() {
 			app,
 		},
 	}); err != nil {
-		fmt.Fprintln(os.Stderr, "wails:", err)
-		os.Exit(1)
+		return fmt.Errorf("wails: %w", err)
 	}
+	return nil
 }
 
 // buildProviders assembles all configured LLM adapters.

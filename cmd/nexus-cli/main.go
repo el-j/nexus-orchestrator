@@ -301,7 +301,19 @@ func (r *remoteOrchestrator) TriggerScan(_ context.Context) ([]domain.Discovered
 	return providers, nil
 }
 
-func (r *remoteOrchestrator) PromoteProvider(_ context.Context, _ string) error {
+func (r *remoteOrchestrator) PromoteProvider(ctx context.Context, id string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.baseURL+"/api/providers/promote/"+url.PathEscape(id), nil)
+	if err != nil {
+		return fmt.Errorf("cli: promote provider: build request: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("cli: promote provider: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("cli: promote provider: unexpected status %d", resp.StatusCode)
+	}
 	return nil
 }
 

@@ -76,10 +76,12 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(statusBar.startPolling(30000)); // matches backend health cache TTL (30 s)
 
   // Re-create the client and refresh status bar whenever the daemon URL changes.
+  // Dispose the old status bar first to prevent accumulating pollers.
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration("nexus.daemonUrl")) {
         client = new NexusClient(daemonUrl());
+        statusBar?.dispose();
         statusBar = new NexusStatusBar(client);
         context.subscriptions.push(statusBar.startPolling(30000)); // matches backend health cache TTL (30 s)
       }

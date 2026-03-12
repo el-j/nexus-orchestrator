@@ -4,6 +4,7 @@
     <select
       :value="currentProject ?? ''"
       @change="setProject(($event.target as HTMLSelectElement).value || null)"
+      aria-label="Select project"
       class="w-full rounded-lg bg-white/[0.05] text-slate-300 text-xs px-2 py-1.5 border border-white/10
              focus:outline-none focus:border-violet-500/50 hover:border-white/20 transition-colors
              hidden lg:block"

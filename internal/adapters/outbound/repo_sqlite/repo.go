@@ -13,7 +13,7 @@ import (
 
 	"nexus-orchestrator/internal/core/domain"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3" // register the sqlite3 driver via its init() side-effect
 )
 
 // Repository implements ports.TaskRepository using a local SQLite database.
@@ -39,7 +39,7 @@ func New(dbPath string) (*Repository, error) {
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 	if err := migrate(db); err != nil {
-		return nil, fmt.Errorf("sqlite: migrate: %w", err)
+		return nil, err
 	}
 	return &Repository{db: db}, nil
 }
@@ -89,14 +89,14 @@ func migrate(db *sql.DB) error {
 		);
 	`)
 	if err != nil {
-		return err
+		return fmt.Errorf("sqlite: migrate: %w", err)
 	}
 	_, err = db.Exec(`
 		CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 		CREATE INDEX IF NOT EXISTS idx_tasks_project_path ON tasks(project_path);
 	`)
 	if err != nil {
-		return err
+		return fmt.Errorf("sqlite: migrate: %w", err)
 	}
 	// Additive column migrations — safe to re-run; errors are ignored if columns already exist.
 	for _, col := range []struct{ name, def string }{
@@ -183,7 +183,10 @@ func (r *Repository) UpdateStatus(id string, status domain.TaskStatus) error {
 	if err != nil {
 		return fmt.Errorf("sqlite: update status: %w", err)
 	}
-	n, _ := res.RowsAffected()
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("sqlite: rows affected: %w", err)
+	}
 	if n == 0 {
 		return fmt.Errorf("sqlite: update status: %w", domain.ErrNotFound)
 	}
@@ -199,7 +202,10 @@ func (r *Repository) UpdateLogs(id, logs string) error {
 	if err != nil {
 		return fmt.Errorf("sqlite: update logs: %w", err)
 	}
-	n, _ := res.RowsAffected()
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("sqlite: rows affected: %w", err)
+	}
 	if n == 0 {
 		return fmt.Errorf("sqlite: update logs: %w", domain.ErrNotFound)
 	}
@@ -282,7 +288,10 @@ func (r *Repository) Update(t domain.Task) error {
 	if err != nil {
 		return fmt.Errorf("sqlite: update task: %w", err)
 	}
-	n, _ := res.RowsAffected()
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("sqlite: rows affected: %w", err)
+	}
 	if n == 0 {
 		return fmt.Errorf("sqlite: update task: %w", domain.ErrNotFound)
 	}

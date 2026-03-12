@@ -80,15 +80,15 @@ func TestPathNormalization(t *testing.T) {
 // TestQueueCap verifies that SubmitTask returns ErrQueueFull once the QUEUED
 // task count reaches the configured cap.
 func TestQueueCap(t *testing.T) {
-	const cap = 3
+	const queueCap = 3
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService() // no providers — tasks never leave queue
 	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
-	orch.WithQueueCap(cap)
+	orch.WithQueueCap(queueCap)
 	defer orch.Stop()
 
-	// Directly seed `cap` QUEUED tasks into the repo to avoid relying on worker timing.
-	for i := 0; i < cap; i++ {
+	// Directly seed `queueCap` QUEUED tasks into the repo to avoid relying on worker timing.
+	for i := 0; i < queueCap; i++ {
 		qt := domain.Task{
 			ID:          fmt.Sprintf("seed-queued-%d", i),
 			Instruction: "seed",
@@ -104,7 +104,7 @@ func TestQueueCap(t *testing.T) {
 	// The next submission must be rejected.
 	_, err := orch.SubmitTask(domain.Task{Instruction: "overflow"})
 	if err == nil {
-		t.Fatal("expected ErrQueueFull for the (cap+1)-th task, got nil")
+		t.Fatal("expected ErrQueueFull for the (queueCap+1)-th task, got nil")
 	}
 	if !errors.Is(err, services.ErrQueueFull) {
 		t.Errorf("expected errors.Is(err, ErrQueueFull), got: %v", err)

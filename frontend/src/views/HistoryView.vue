@@ -11,11 +11,12 @@
       </div>
 
       <!-- Status filter -->
-      <div class="flex items-center gap-1">
+      <div class="flex items-center gap-1" role="group" aria-label="Filter tasks by status">
         <button
           v-for="f in filters"
           :key="f.value"
           @click="selectedFilter = f.value"
+          :aria-pressed="selectedFilter === f.value"
           :class="[
             'px-3 py-1 rounded-lg text-xs font-medium transition-all',
             selectedFilter === f.value

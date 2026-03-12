@@ -101,7 +101,7 @@ const editingConfig = ref<ProviderConfig | null>(null)
 async function loadConfigs() {
   try {
     configs.value = await listProviderConfigs()
-  } catch { /* silent fail */ }
+  } catch (e) { console.warn('ProviderStatus: loadConfigs failed:', e) }
 }
 
 onMounted(loadConfigs)
@@ -129,7 +129,7 @@ async function handleSave(cfg: Partial<ProviderConfig>) {
   }
   closeForm()
   await loadConfigs()
-  props.refresh?.()
+  await props.refresh?.()
 }
 
 async function handleDelete(cfg: ProviderConfig) {

@@ -14,7 +14,7 @@ export function useDiscovery() {
   async function refresh() {
     try {
       discovered.value = await getDiscoveredProviders()
-    } catch { /* silent — backend may not be ready */ }
+    } catch (e) { console.warn('useDiscovery: refresh failed:', e) }
   }
 
   async function scanNow() {
@@ -24,7 +24,7 @@ export function useDiscovery() {
       // Give the scanner a moment, then refresh
       await new Promise(r => setTimeout(r, 1500))
       await refresh()
-    } catch { /* silent */ } finally {
+    } catch (e) { console.warn('useDiscovery: scan failed:', e) } finally {
       scanning.value = false
     }
   }

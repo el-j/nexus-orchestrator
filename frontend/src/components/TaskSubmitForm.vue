@@ -132,6 +132,7 @@
               class="px-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 border border-l-0 border-indigo-500 rounded-r-md text-white transition-colors flex items-center"
               :class="{ '!bg-indigo-500': splitOpen }"
               aria-label="More submit options"
+              :aria-expanded="splitOpen"
             >
               <i class="pi pi-chevron-down text-[10px]"></i>
             </button>
@@ -139,10 +140,13 @@
             <Transition name="split-menu">
               <div
                 v-if="splitOpen"
+                role="menu"
+                @keydown.esc="splitOpen = false"
                 class="absolute right-0 bottom-full mb-1 z-50 min-w-[160px] rounded-md border border-white/10 bg-[#13131f] shadow-xl overflow-hidden"
               >
                 <button
                   type="button"
+                  role="menuitem"
                   @click="handleSaveDraft"
                   class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-white/5 flex items-center gap-2 transition-colors"
                 >
@@ -151,6 +155,7 @@
                 </button>
                 <button
                   type="button"
+                  role="menuitem"
                   @click="handleSaveBacklog"
                   class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-white/5 flex items-center gap-2 transition-colors"
                 >

@@ -57,6 +57,7 @@
                 'bg-yellow-500/20 text-yellow-300': s.status === 'idle',
                 'bg-slate-700/50 text-slate-400': s.status === 'disconnected',
               }"
+              :aria-label="`Status: ${s.status}`"
             >{{ s.status }}</span>
           </div>
 

@@ -13,11 +13,18 @@ import (
 type App struct {
 	ctx          context.Context
 	orchestrator ports.Orchestrator
+	httpAddr     string
 }
 
 // NewApp creates a new App instance.
-func NewApp(orch ports.Orchestrator) *App {
-	return &App{orchestrator: orch}
+func NewApp(orch ports.Orchestrator, httpAddr string) *App {
+	return &App{orchestrator: orch, httpAddr: httpAddr}
+}
+
+// GetServerAddr returns the base HTTP URL of the embedded API server so the
+// frontend can derive EventSource and fetch URLs without hardcoding the port.
+func (a *App) GetServerAddr() string {
+	return "http://" + a.httpAddr
 }
 
 // startup is called by Wails when the application starts.
@@ -144,6 +151,14 @@ func (a *App) RegisterAISession(session domain.AISession) (domain.AISession, err
 func (a *App) DeregisterAISession(id string) error {
 	if err := a.orchestrator.DeregisterAISession(context.Background(), id); err != nil {
 		return fmt.Errorf("app: deregister ai session: %w", err)
+	}
+	return nil
+}
+
+// HeartbeatAISession refreshes the last-activity timestamp of the AI session with the given ID.
+func (a *App) HeartbeatAISession(id string) error {
+	if err := a.orchestrator.HeartbeatAISession(context.Background(), id); err != nil {
+		return fmt.Errorf("app: heartbeat ai session: %w", err)
 	}
 	return nil
 }

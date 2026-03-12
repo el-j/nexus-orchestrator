@@ -1,12 +1,12 @@
 {
   "version": "2",
-  "updatedAt": "2026-03-12T12:30:00Z",
+  "updatedAt": "2026-03-12T16:20:01.000Z",
   "counters": {
-    "nextTaskId": 184,
-    "nextPlanId": 25
+    "nextTaskId": 226,
+    "nextPlanId": 31
   },
   "activePlanId": null,
-  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix). PLAN-013 completed (update CI to latest action versions). PLAN-014 completed (unified publish.yml pipeline, fixed GITHUB_TOKEN cross-trigger bug, fixed CLI/desktop artifact naming collision, updated downloads.md). PLAN-015 completed (production-grade Node20 GitHub Action with TypeScript, built-in agent identity loading from el-j/agency-agents, 24 unit tests, action-ci.yml CI workflow). PLAN-016 completed (release pipeline finalization: deleted conflicting version.yml+release.yml, created CHANGELOG.md, fixed downloads.md desktop links). PLAN-017 completed (fix all broken download links: nexusOrchestrator\u2192nexus-orchestrator prefix, macOS .tar.gz\u2192.zip, add Gatekeeper workaround instructions). PLAN-018 completed (provider visibility: configurable Ollama/LM Studio URLs, BaseURL+Error in ProviderInfo, SQLite-persisted provider CRUD, GUI provider management panel, VS Code extension with submit/queue/status-bar). PLAN-019 completed (VS Code extension VSIX in release pipeline: vsce packaging with publisher+@vscode/vsce, build-vscode job in publish.yml+ci.yml, DownloadsView.vue/HomeView.vue/docs updated to mention extension). PLAN-020 completed (fix ProviderInfo TypeScript PascalCase\u2192camelCase type mismatch, wire AppSidebar routing, create ProvidersView.vue, dogfood confirmed COMPLETED via LM Studio qwen3-coder-next in 9s). PLAN-021 completed (SSE real-time updates via EventSource+fallback, ProviderConfig kind fix, CHANGELOG v0.8.0 \u2014 all 4 tasks dogfooded via daemon, LM Studio qwen3-coder-next). PLAN-022 completed (Universal AI Session Orchestration \u2014 AISession domain type, AISessionRepository+AISessionMonitor ports, SQLite AISessionRepo, HTTP /api/ai-sessions CRUD, MCP register_session+get_ai_sessions (14 tools total), GUI AISessionsView+useAISessions composable, VS Code SessionMonitor+Copilot detection, entry point wiring, 13 QA tests \u2014 all 9 tasks, 7 waves, all green). PLAN-023 active (System-Wide Provider Discovery + Background Service Mode \u2014 detect Claude CLI/Copilot/Antigravity/local AI tools, hide-to-tray, in-app log console, no console window \u2014 13 tasks across 8 waves). PLAN-024 completed (Multi-Project Planning & Idea Staging \u2014 DRAFT/BACKLOG statuses, ProviderName per-task routing, Priority+Tags, SQLite migrations, backlog CRUD on HTTP/MCP/CLI/Wails, BacklogView+BacklogList+ProjectSelector GUI, TaskSubmitForm split-button, 20 new QA tests \u2014 all 12 tasks, 7 waves, all green). PLAN-029 completed (Task Queue UI fix: DashboardView flex wrapper; AI Session dedup by externalId: idempotent RegisterAISession + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code extension heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register).",
+  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix). PLAN-013 completed (update CI to latest action versions). PLAN-014 completed (unified publish.yml pipeline, fixed GITHUB_TOKEN cross-trigger bug, fixed CLI/desktop artifact naming collision, updated downloads.md). PLAN-015 completed (production-grade Node20 GitHub Action with TypeScript, built-in agent identity loading from el-j/agency-agents, 24 unit tests, action-ci.yml CI workflow). PLAN-016 completed (release pipeline finalization: deleted conflicting version.yml+release.yml, created CHANGELOG.md, fixed downloads.md desktop links). PLAN-017 completed (fix all broken download links: nexusOrchestrator\u2192nexus-orchestrator prefix, macOS .tar.gz\u2192.zip, add Gatekeeper workaround instructions). PLAN-018 completed (provider visibility: configurable Ollama/LM Studio URLs, BaseURL+Error in ProviderInfo, SQLite-persisted provider CRUD, GUI provider management panel, VS Code extension with submit/queue/status-bar). PLAN-019 completed (VS Code extension VSIX in release pipeline: vsce packaging with publisher+@vscode/vsce, build-vscode job in publish.yml+ci.yml, DownloadsView.vue/HomeView.vue/docs updated to mention extension). PLAN-020 completed (fix ProviderInfo TypeScript PascalCase\u2192camelCase type mismatch, wire AppSidebar routing, create ProvidersView.vue, dogfood confirmed COMPLETED via LM Studio qwen3-coder-next in 9s). PLAN-021 completed (SSE real-time updates via EventSource+fallback, ProviderConfig kind fix, CHANGELOG v0.8.0 \u2014 all 4 tasks dogfooded via daemon, LM Studio qwen3-coder-next). PLAN-022 completed (Universal AI Session Orchestration \u2014 AISession domain type, AISessionRepository+AISessionMonitor ports, SQLite AISessionRepo, HTTP /api/ai-sessions CRUD, MCP register_session+get_ai_sessions (14 tools total), GUI AISessionsView+useAISessions composable, VS Code SessionMonitor+Copilot detection, entry point wiring, 13 QA tests \u2014 all 9 tasks, 7 waves, all green). PLAN-023 active (System-Wide Provider Discovery + Background Service Mode \u2014 detect Claude CLI/Copilot/Antigravity/local AI tools, hide-to-tray, in-app log console, no console window \u2014 13 tasks across 8 waves). PLAN-024 completed (Multi-Project Planning & Idea Staging \u2014 DRAFT/BACKLOG statuses, ProviderName per-task routing, Priority+Tags, SQLite migrations, backlog CRUD on HTTP/MCP/CLI/Wails, BacklogView+BacklogList+ProjectSelector GUI, TaskSubmitForm split-button, 20 new QA tests \u2014 all 12 tasks, 7 waves, all green). PLAN-029 completed (Task Queue UI fix: DashboardView flex wrapper; AI Session dedup by externalId: idempotent RegisterAISession + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code extension heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-030 completed (Comprehensive Hardening: HeartbeatAISession+PromoteProvider bindings, error handling consistency, constructor nil-validation, HTTP API error format, frontend circular dep fix, VSCode memory leak+URLs, VSCode session monitor race fix, processNext decomposition into 4 helpers, silent catch blocks fixed, security hardening CSP nonce+file permissions+XSS, Vue error boundary+rejection handler, GitHub Action 53 tests, golangci-lint+eslint in CI, discovery error logging+configurable builder options, frontend accessibility ARIA labels).",
   "plans": {
     "PLAN-001": {
       "id": "PLAN-001",
@@ -432,6 +432,33 @@
         "TASK-192"
       ],
       "completedAt": "2026-03-12T08:49:21Z"
+    },
+    "PLAN-030": {
+      "id": "PLAN-030",
+      "goal": "Comprehensive Hardening: Type Safety, Error Handling, Test Coverage, Security & Accessibility",
+      "status": "completed",
+      "createdAt": "2026-03-12T16:13:40.000Z",
+      "completedAt": "2026-03-12T16:50:00.000Z",
+      "taskIds": [
+        "TASK-208",
+        "TASK-209",
+        "TASK-210",
+        "TASK-211",
+        "TASK-212",
+        "TASK-213",
+        "TASK-214",
+        "TASK-215",
+        "TASK-216",
+        "TASK-217",
+        "TASK-218",
+        "TASK-219",
+        "TASK-220",
+        "TASK-221",
+        "TASK-222",
+        "TASK-223",
+        "TASK-224",
+        "TASK-225"
+      ]
     }
   },
   "tasks": {
@@ -2754,117 +2781,239 @@
       "startedAt": "2026-03-12T13:20:00.000Z",
       "completedAt": "2026-03-12T13:40:00.000Z"
     },
-    "TASK-184": {
-      "id": "TASK-184",
-      "title": "Fix make build-all zig 0.15.x musl cross-compilation",
-      "status": "done",
-      "role": "devops",
-      "planId": "PLAN-025",
-      "dependencies": [],
-      "createdAt": "2026-03-12T10:00:00.000Z",
-      "startedAt": "2026-03-12T10:01:00.000Z",
-      "completedAt": "2026-03-12T10:15:00.000Z"
-    },
-    "TASK-185": {
-      "id": "TASK-185",
-      "title": "VS Code extension contributes.mcpServers + nexus.mcpPort config",
+    "TASK-208": {
+      "id": "TASK-208",
+      "title": "Fix TaskEvent type safety - AISessionStatus cast",
       "status": "done",
       "role": "architecture",
-      "planId": "PLAN-025",
+      "planId": "PLAN-030",
       "dependencies": [],
-      "createdAt": "2026-03-12T10:00:00.000Z",
-      "startedAt": "2026-03-12T10:01:00.000Z",
-      "completedAt": "2026-03-12T10:15:00.000Z"
+      "createdAt": "2026-03-12T16:13:40.000Z",
+      "updatedAt": "2026-03-12T16:30:00.000Z",
+      "startedAt": "2026-03-12T16:20:01.000Z",
+      "completedAt": "2026-03-12T16:30:00.000Z"
     },
-    "TASK-186": {
-      "id": "TASK-186",
-      "title": "Rebuild VS Code extension dist, bump to v0.2.0, repackage VSIX",
+    "TASK-209": {
+      "id": "TASK-209",
+      "title": "Fix error handling consistency in core services",
       "status": "done",
-      "role": "devops",
-      "planId": "PLAN-025",
-      "dependencies": [
-        "TASK-185"
-      ],
-      "createdAt": "2026-03-12T10:00:00.000Z",
-      "startedAt": "2026-03-12T10:15:00.000Z",
-      "completedAt": "2026-03-12T10:30:00.000Z"
+      "role": "backend",
+      "planId": "PLAN-030",
+      "dependencies": [],
+      "createdAt": "2026-03-12T16:13:40.000Z",
+      "updatedAt": "2026-03-12T16:30:00.000Z",
+      "startedAt": "2026-03-12T16:20:01.000Z",
+      "completedAt": "2026-03-12T16:30:00.000Z"
     },
-    "TASK-187": {
-      "id": "TASK-187",
-      "title": "Update CHANGELOG for v0.9.1 distribution fixes",
+    "TASK-210": {
+      "id": "TASK-210",
+      "title": "Add constructor nil-validation in NewOrchestrator",
       "status": "done",
-      "role": "planning",
-      "planId": "PLAN-025",
-      "dependencies": [
-        "TASK-184",
-        "TASK-185",
-        "TASK-186"
-      ],
-      "createdAt": "2026-03-12T10:00:00.000Z",
-      "startedAt": "2026-03-12T10:15:00.000Z",
-      "completedAt": "2026-03-12T10:30:00.000Z"
+      "role": "backend",
+      "planId": "PLAN-030",
+      "dependencies": [],
+      "createdAt": "2026-03-12T16:13:40.000Z",
+      "updatedAt": "2026-03-12T16:30:00.000Z",
+      "startedAt": "2026-03-12T16:20:01.000Z",
+      "completedAt": "2026-03-12T16:30:00.000Z"
     },
-    "TASK-188": {
-      "id": "TASK-188",
-      "title": "QA - verify build-all, extension v0.2.0, full test suite",
+    "TASK-211": {
+      "id": "TASK-211",
+      "title": "Add HeartbeatAISession to Wails + CLI PromoteProvider",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-030",
+      "dependencies": [
+        "TASK-208"
+      ],
+      "createdAt": "2026-03-12T16:13:40.000Z",
+      "updatedAt": "2026-03-12T16:45:00.000Z",
+      "startedAt": "2026-03-12T16:30:00.000Z",
+      "completedAt": "2026-03-12T16:45:00.000Z"
+    },
+    "TASK-212": {
+      "id": "TASK-212",
+      "title": "Fix HTTP API error response format consistency",
+      "status": "done",
+      "role": "api",
+      "planId": "PLAN-030",
+      "dependencies": [],
+      "createdAt": "2026-03-12T16:13:40.000Z",
+      "updatedAt": "2026-03-12T16:30:00.000Z",
+      "startedAt": "2026-03-12T16:20:01.000Z",
+      "completedAt": "2026-03-12T16:30:00.000Z"
+    },
+    "TASK-213": {
+      "id": "TASK-213",
+      "title": "Fix frontend circular dep + incomplete components",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-030",
+      "dependencies": [],
+      "createdAt": "2026-03-12T16:13:40.000Z",
+      "updatedAt": "2026-03-12T16:30:00.000Z",
+      "startedAt": "2026-03-12T16:20:01.000Z",
+      "completedAt": "2026-03-12T16:30:00.000Z"
+    },
+    "TASK-214": {
+      "id": "TASK-214",
+      "title": "Fix VSCode ext memory leak + hardcoded URLs",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-030",
+      "dependencies": [],
+      "createdAt": "2026-03-12T16:13:40.000Z",
+      "updatedAt": "2026-03-12T16:30:00.000Z",
+      "startedAt": "2026-03-12T16:20:01.000Z",
+      "completedAt": "2026-03-12T16:30:00.000Z"
+    },
+    "TASK-215": {
+      "id": "TASK-215",
+      "title": "Fix race conditions in VSCode session monitor",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-030",
+      "dependencies": [
+        "TASK-214"
+      ],
+      "createdAt": "2026-03-12T16:13:40.000Z",
+      "updatedAt": "2026-03-12T16:45:00.000Z",
+      "startedAt": "2026-03-12T16:30:00.000Z",
+      "completedAt": "2026-03-12T16:45:00.000Z"
+    },
+    "TASK-216": {
+      "id": "TASK-216",
+      "title": "Decompose processNext god method",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-030",
+      "dependencies": [
+        "TASK-208",
+        "TASK-209"
+      ],
+      "createdAt": "2026-03-12T16:13:40.000Z",
+      "updatedAt": "2026-03-12T16:45:00.000Z",
+      "startedAt": "2026-03-12T16:30:00.000Z",
+      "completedAt": "2026-03-12T16:45:00.000Z"
+    },
+    "TASK-217": {
+      "id": "TASK-217",
+      "title": "Fix silent error handling in frontend composables",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-030",
+      "dependencies": [
+        "TASK-213"
+      ],
+      "createdAt": "2026-03-12T16:13:40.000Z",
+      "updatedAt": "2026-03-12T16:45:00.000Z",
+      "startedAt": "2026-03-12T16:30:00.000Z",
+      "completedAt": "2026-03-12T16:45:00.000Z"
+    },
+    "TASK-218": {
+      "id": "TASK-218",
+      "title": "Add LLM adapter unit tests - all 4 providers",
       "status": "done",
       "role": "qa",
-      "planId": "PLAN-025",
-      "dependencies": [
-        "TASK-184",
-        "TASK-185",
-        "TASK-186",
-        "TASK-187"
-      ],
-      "createdAt": "2026-03-12T10:00:00.000Z",
-      "startedAt": "2026-03-12T10:30:00.000Z",
-      "completedAt": "2026-03-12T00:45:32Z"
+      "planId": "PLAN-030",
+      "dependencies": [],
+      "createdAt": "2026-03-12T16:13:40.000Z",
+      "updatedAt": "2026-03-12T16:30:00.000Z",
+      "startedAt": "2026-03-12T16:20:01.000Z",
+      "completedAt": "2026-03-12T16:30:00.000Z"
     },
-    "TASK-189": {
-      "id": "TASK-189",
-      "planId": "PLAN-026",
-      "title": "Orchestrator hardening: startup recovery, path normalization, queue cap, retry limit",
+    "TASK-219": {
+      "id": "TASK-219",
+      "title": "Add provider_config_repo + Wails binding tests",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-030",
+      "dependencies": [],
+      "createdAt": "2026-03-12T16:13:40.000Z",
+      "updatedAt": "2026-03-12T16:30:00.000Z",
+      "startedAt": "2026-03-12T16:20:01.000Z",
+      "completedAt": "2026-03-12T16:30:00.000Z"
+    },
+    "TASK-220": {
+      "id": "TASK-220",
+      "title": "Security hardening - CSP, permissions, XSS",
+      "status": "done",
       "role": "backend",
-      "status": "done",
-      "dependencies": [],
-      "createdAt": "2026-03-12T10:00:00.000Z",
-      "startedAt": "2026-03-12T08:24:09Z",
-      "completedAt": "2026-03-12T08:37:24Z"
-    },
-    "TASK-190": {
-      "id": "TASK-190",
-      "planId": "PLAN-026",
-      "title": "GUI: Task History view for completed/failed/cancelled tasks",
-      "role": "frontend",
-      "status": "done",
-      "dependencies": [],
-      "createdAt": "2026-03-12T10:00:00.000Z",
-      "startedAt": "2026-03-12T08:37:24Z",
-      "completedAt": "2026-03-12T08:49:21Z"
-    },
-    "TASK-191": {
-      "id": "TASK-191",
-      "planId": "PLAN-026",
-      "title": "GUI: Settings view for provider URLs, queue cap, MCP addr",
-      "role": "frontend",
-      "status": "done",
+      "planId": "PLAN-030",
       "dependencies": [
-        "TASK-189"
+        "TASK-212"
       ],
-      "createdAt": "2026-03-12T10:00:00.000Z",
-      "startedAt": "2026-03-12T08:37:24Z",
-      "completedAt": "2026-03-12T08:49:21Z"
+      "createdAt": "2026-03-12T16:13:40.000Z",
+      "updatedAt": "2026-03-12T16:45:00.000Z",
+      "startedAt": "2026-03-12T16:30:00.000Z",
+      "completedAt": "2026-03-12T16:45:00.000Z"
     },
-    "TASK-192": {
-      "id": "TASK-192",
-      "planId": "PLAN-026",
-      "title": "README v0.9.x refresh: feature matrix, discovery, AI sessions, VS Code ext",
-      "role": "devops",
+    "TASK-221": {
+      "id": "TASK-221",
+      "title": "Add Vue global error boundary + rejection handler",
       "status": "done",
+      "role": "backend",
+      "planId": "PLAN-030",
+      "dependencies": [
+        "TASK-213"
+      ],
+      "createdAt": "2026-03-12T16:13:40.000Z",
+      "updatedAt": "2026-03-12T16:45:00.000Z",
+      "startedAt": "2026-03-12T16:30:00.000Z",
+      "completedAt": "2026-03-12T16:45:00.000Z"
+    },
+    "TASK-222": {
+      "id": "TASK-222",
+      "title": "Add GitHub Action tests - daemon, installer, index",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-030",
       "dependencies": [],
-      "createdAt": "2026-03-12T10:00:00.000Z",
-      "startedAt": "2026-03-12T08:37:24Z",
-      "completedAt": "2026-03-12T08:49:21Z"
+      "createdAt": "2026-03-12T16:13:40.000Z",
+      "updatedAt": "2026-03-12T16:30:00.000Z",
+      "startedAt": "2026-03-12T16:20:01.000Z",
+      "completedAt": "2026-03-12T16:30:00.000Z"
+    },
+    "TASK-223": {
+      "id": "TASK-223",
+      "title": "Frontend accessibility audit fixes",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-030",
+      "dependencies": [
+        "TASK-213",
+        "TASK-217"
+      ],
+      "createdAt": "2026-03-12T16:13:40.000Z",
+      "updatedAt": "2026-03-12T16:50:00.000Z",
+      "startedAt": "2026-03-12T16:45:00.000Z",
+      "completedAt": "2026-03-12T16:50:00.000Z"
+    },
+    "TASK-224": {
+      "id": "TASK-224",
+      "title": "Add golangci-lint + eslint to CI pipeline",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-030",
+      "dependencies": [],
+      "createdAt": "2026-03-12T16:13:40.000Z",
+      "updatedAt": "2026-03-12T16:30:00.000Z",
+      "startedAt": "2026-03-12T16:20:01.000Z",
+      "completedAt": "2026-03-12T16:30:00.000Z"
+    },
+    "TASK-225": {
+      "id": "TASK-225",
+      "title": "Fix discovery silent error + configurable constants",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-030",
+      "dependencies": [
+        "TASK-209"
+      ],
+      "createdAt": "2026-03-12T16:13:40.000Z",
+      "updatedAt": "2026-03-12T16:45:00.000Z",
+      "startedAt": "2026-03-12T16:30:00.000Z",
+      "completedAt": "2026-03-12T16:45:00.000Z"
     }
   },
   "nextTaskId": 208,

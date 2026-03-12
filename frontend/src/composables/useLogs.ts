@@ -1,5 +1,6 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import type { LogEntry } from '../types/domain'
+import { resolveServerUrl } from './useServerUrl'
 
 const MAX_LOGS = 2000
 
@@ -10,26 +11,31 @@ export function useLogs() {
 
   async function fetchInitial() {
     try {
-      const res = await fetch('http://127.0.0.1:9999/api/logs')
+      const baseUrl = await resolveServerUrl()
+      const res = await fetch(`${baseUrl}/api/logs`)
       if (res.ok) {
         const data: LogEntry[] = await res.json()
         logs.value = data
       }
-    } catch {
-      // daemon not running yet
+    } catch (err) {
+      // Daemon not running yet — non-fatal at startup.
+      console.warn('useLogs: fetchInitial failed:', err)
     }
   }
 
-  function connect() {
-    es = new EventSource('http://127.0.0.1:9999/api/events')
+  async function connect() {
+    const baseUrl = await resolveServerUrl()
+    es = new EventSource(`${baseUrl}/api/events`)
     es.addEventListener('log', (event: MessageEvent) => {
       try {
-        const entry: LogEntry = JSON.parse(event.data)
+        const entry: LogEntry = JSON.parse(event.data as string)
         logs.value.push(entry)
         if (logs.value.length > MAX_LOGS) {
           logs.value.splice(0, logs.value.length - MAX_LOGS)
         }
-      } catch { /* ignore malformed */ }
+      } catch (err) {
+        console.warn('useLogs: malformed log event:', err)
+      }
     })
     es.onopen = () => { connected.value = true }
     es.onerror = () => { connected.value = false }
@@ -40,8 +46,8 @@ export function useLogs() {
   }
 
   onMounted(() => {
-    fetchInitial()
-    connect()
+    void fetchInitial()
+    void connect()
   })
 
   onUnmounted(() => {

@@ -171,20 +171,28 @@ func StartServer(ctx context.Context, orch ports.Orchestrator, addr string, logH
 	return nil
 }
 
+// writeJSONError sets Content-Type to application/json, writes the HTTP status
+// code, and encodes {"error":"<msg>"} as the response body.
+func writeJSONError(w http.ResponseWriter, msg string, code int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
+}
+
 func (s *Server) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 	var req domain.Task
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	taskID, err := s.orch.SubmitTask(req)
 	if err != nil {
 		if errors.Is(err, domain.ErrNoPlan) {
-			http.Error(w, "planning required before execution; submit a 'plan' task first", http.StatusUnprocessableEntity)
+			writeJSONError(w, "planning required before execution; submit a 'plan' task first", http.StatusUnprocessableEntity)
 			return
 		}
 		log.Printf("httpapi: create task: %v", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -199,7 +207,7 @@ func (s *Server) handleListTasks(w http.ResponseWriter, r *http.Request) {
 	tasks, err := s.orch.GetQueue()
 	if err != nil {
 		log.Printf("httpapi: list tasks: %v", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	if tasks == nil {
@@ -214,11 +222,11 @@ func (s *Server) handleGetTask(w http.ResponseWriter, r *http.Request) {
 	task, err := s.orch.GetTask(id)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
-			http.Error(w, "task not found", http.StatusNotFound)
+			writeJSONError(w, "task not found", http.StatusNotFound)
 			return
 		}
 		log.Printf("httpapi: get task %s: %v", id, err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -229,11 +237,11 @@ func (s *Server) handleCancelTask(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := s.orch.CancelTask(id); err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
-			http.Error(w, "task not found", http.StatusNotFound)
+			writeJSONError(w, "task not found", http.StatusNotFound)
 			return
 		}
 		log.Printf("httpapi: cancel task %s: %v", id, err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -242,12 +250,12 @@ func (s *Server) handleCancelTask(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleCreateDraft(w http.ResponseWriter, r *http.Request) {
 	var task domain.Task
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
-		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		writeJSONError(w, "invalid JSON", http.StatusBadRequest)
 		return
 	}
 	id, err := s.orch.CreateDraft(task)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -258,13 +266,13 @@ func (s *Server) handleCreateDraft(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGetBacklog(w http.ResponseWriter, r *http.Request) {
 	projectPath := r.URL.Query().Get("project")
 	if projectPath == "" {
-		http.Error(w, "project query parameter required", http.StatusBadRequest)
+		writeJSONError(w, "project query parameter required", http.StatusBadRequest)
 		return
 	}
 	tasks, err := s.orch.GetBacklog(projectPath)
 	if err != nil {
 		log.Printf("httpapi: get backlog: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if tasks == nil {
@@ -278,10 +286,10 @@ func (s *Server) handlePromoteTask(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := s.orch.PromoteTask(id); err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
-			http.Error(w, "task not found", http.StatusNotFound)
+			writeJSONError(w, "task not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -291,16 +299,16 @@ func (s *Server) handleUpdateTask(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var updates domain.Task
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		writeJSONError(w, "invalid JSON", http.StatusBadRequest)
 		return
 	}
 	updated, err := s.orch.UpdateTask(id, updates)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
-			http.Error(w, "task not found", http.StatusNotFound)
+			writeJSONError(w, "task not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -311,7 +319,7 @@ func (s *Server) handleProviders(w http.ResponseWriter, r *http.Request) {
 	providers, err := s.orch.GetProviders()
 	if err != nil {
 		log.Printf("httpapi: get providers: %v", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	if providers == nil {
@@ -332,19 +340,19 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleRegisterProvider(w http.ResponseWriter, r *http.Request) {
 	var cfg domain.ProviderConfig
 	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
-		http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+		writeJSONError(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	if cfg.Name == "" || cfg.Kind == "" {
-		http.Error(w, "name and kind are required", http.StatusBadRequest)
+		writeJSONError(w, "name and kind are required", http.StatusBadRequest)
 		return
 	}
 	if err := s.orch.RegisterCloudProvider(cfg); err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
-			http.Error(w, err.Error(), http.StatusConflict)
+			writeJSONError(w, err.Error(), http.StatusConflict)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		writeJSONError(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -356,11 +364,11 @@ func (s *Server) handleRemoveProvider(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
 	if err := s.orch.RemoveProvider(name); err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
-			http.Error(w, "provider not found", http.StatusNotFound)
+			writeJSONError(w, "provider not found", http.StatusNotFound)
 			return
 		}
 		log.Printf("httpapi: remove provider %s: %v", name, err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -371,11 +379,11 @@ func (s *Server) handleProviderModels(w http.ResponseWriter, r *http.Request) {
 	models, err := s.orch.GetProviderModels(name)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
-			http.Error(w, "provider not found", http.StatusNotFound)
+			writeJSONError(w, "provider not found", http.StatusNotFound)
 			return
 		}
 		log.Printf("httpapi: provider models %s: %v", name, err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	if models == nil {
@@ -405,17 +413,17 @@ func maskedProviderConfig(cfg domain.ProviderConfig) domain.ProviderConfig {
 func (s *Server) handleAddProviderConfig(w http.ResponseWriter, r *http.Request) {
 	var cfg domain.ProviderConfig
 	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
-		http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+		writeJSONError(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	if cfg.Name == "" || cfg.Kind == "" {
-		http.Error(w, "name and kind are required", http.StatusBadRequest)
+		writeJSONError(w, "name and kind are required", http.StatusBadRequest)
 		return
 	}
 	created, err := s.orch.AddProviderConfig(r.Context(), cfg)
 	if err != nil {
 		log.Printf("httpapi: add provider config: %v", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -427,7 +435,7 @@ func (s *Server) handleListProviderConfigs(w http.ResponseWriter, r *http.Reques
 	cfgs, err := s.orch.ListProviderConfigs(r.Context())
 	if err != nil {
 		log.Printf("httpapi: list provider configs: %v", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	masked := make([]domain.ProviderConfig, len(cfgs))
@@ -442,18 +450,18 @@ func (s *Server) handleUpdateProviderConfig(w http.ResponseWriter, r *http.Reque
 	id := chi.URLParam(r, "id")
 	var cfg domain.ProviderConfig
 	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
-		http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+		writeJSONError(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	cfg.ID = id
 	updated, err := s.orch.UpdateProviderConfig(r.Context(), cfg)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
-			http.Error(w, "provider config not found", http.StatusNotFound)
+			writeJSONError(w, "provider config not found", http.StatusNotFound)
 			return
 		}
 		log.Printf("httpapi: update provider config %s: %v", id, err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -464,11 +472,11 @@ func (s *Server) handleRemoveProviderConfig(w http.ResponseWriter, r *http.Reque
 	id := chi.URLParam(r, "id")
 	if err := s.orch.RemoveProviderConfig(r.Context(), id); err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
-			http.Error(w, "provider config not found", http.StatusNotFound)
+			writeJSONError(w, "provider config not found", http.StatusNotFound)
 			return
 		}
 		log.Printf("httpapi: remove provider config %s: %v", id, err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -477,7 +485,7 @@ func (s *Server) handleRemoveProviderConfig(w http.ResponseWriter, r *http.Reque
 func (s *Server) handleGetDiscoveredProviders(w http.ResponseWriter, r *http.Request) {
 	providers, err := s.orch.GetDiscoveredProviders()
 	if err != nil {
-		http.Error(w, `{"error":"failed to get discovered providers"}`, http.StatusInternalServerError)
+		writeJSONError(w, "failed to get discovered providers", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -487,7 +495,7 @@ func (s *Server) handleGetDiscoveredProviders(w http.ResponseWriter, r *http.Req
 func (s *Server) handleTriggerScan(w http.ResponseWriter, r *http.Request) {
 	providers, err := s.orch.TriggerScan(r.Context())
 	if err != nil {
-		http.Error(w, `{"error":"scan failed"}`, http.StatusInternalServerError)
+		writeJSONError(w, "scan failed", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -499,10 +507,10 @@ func (s *Server) handlePromoteProvider(w http.ResponseWriter, r *http.Request) {
 	err := s.orch.PromoteProvider(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
-			http.Error(w, `{"error":"provider not found"}`, http.StatusNotFound)
+			writeJSONError(w, "provider not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, `{"error":"failed to promote provider"}`, http.StatusBadRequest)
+		writeJSONError(w, "failed to promote provider", http.StatusBadRequest)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -523,27 +531,21 @@ func (s *Server) handleGetLogs(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleRegisterAISession(w http.ResponseWriter, r *http.Request) {
 	var session domain.AISession
 	if err := json.NewDecoder(r.Body).Decode(&session); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if session.AgentName == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "agentName is required"})
+		writeJSONError(w, "agentName is required", http.StatusBadRequest)
 		return
 	}
 	if session.Source != domain.SessionSourceMCP && session.Source != domain.SessionSourceVSCode && session.Source != domain.SessionSourceHTTP {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{"error": "source must be one of: mcp, vscode, http"})
+		writeJSONError(w, "source must be one of: mcp, vscode, http", http.StatusBadRequest)
 		return
 	}
 	created, err := s.orch.RegisterAISession(r.Context(), session)
 	if err != nil {
 		log.Printf("httpapi: register ai session: %v", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -555,7 +557,7 @@ func (s *Server) handleListAISessions(w http.ResponseWriter, r *http.Request) {
 	sessions, err := s.orch.ListAISessions(r.Context())
 	if err != nil {
 		log.Printf("httpapi: list ai sessions: %v", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	if sessions == nil {
@@ -569,11 +571,11 @@ func (s *Server) handleDeregisterAISession(w http.ResponseWriter, r *http.Reques
 	id := chi.URLParam(r, "id")
 	if err := s.orch.DeregisterAISession(r.Context(), id); err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
-			http.Error(w, "ai session not found", http.StatusNotFound)
+			writeJSONError(w, "ai session not found", http.StatusNotFound)
 			return
 		}
 		log.Printf("httpapi: deregister ai session %s: %v", id, err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -583,11 +585,11 @@ func (s *Server) handleHeartbeatAISession(w http.ResponseWriter, r *http.Request
 	id := chi.URLParam(r, "id")
 	if err := s.orch.HeartbeatAISession(r.Context(), id); err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
-			http.Error(w, "ai session not found", http.StatusNotFound)
+			writeJSONError(w, "ai session not found", http.StatusNotFound)
 			return
 		}
 		log.Printf("httpapi: heartbeat ai session %s: %v", id, err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -597,12 +599,12 @@ func (s *Server) handleHeartbeatAISession(w http.ResponseWriter, r *http.Request
 // events (default event type) and log entries (event: log).
 func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	if s.hub == nil {
-		http.Error(w, "SSE not configured", http.StatusServiceUnavailable)
+		writeJSONError(w, "SSE not configured", http.StatusServiceUnavailable)
 		return
 	}
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		writeJSONError(w, "streaming not supported", http.StatusInternalServerError)
 		return
 	}
 

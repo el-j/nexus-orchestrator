@@ -38,7 +38,7 @@ LINUX_LDFLAGS     := -s -w -extldflags='-static'
 # Detect host OS for zig target triple selection
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 
-.PHONY: build build-gui build-gui-windows-amd64 build-all test vet clean help \
+.PHONY: build build-gui build-gui-windows-amd64 build-all test vet lint clean help \
         build-linux-amd64 build-linux-arm64 \
         build-darwin-amd64 build-darwin-arm64 \
         build-windows-amd64 \
@@ -196,6 +196,9 @@ test-cover:
 vet:
 	go vet ./...
 
+lint:
+	golangci-lint run ./...
+
 # ---------------------------------------------------------------------------
 # Housekeeping
 # ---------------------------------------------------------------------------
@@ -222,6 +225,7 @@ help:
 	@echo "  make test-unit          Core service tests only"
 	@echo "  make test-cover         Tests + HTML coverage report"
 	@echo "  make vet                go vet ./..."
+	@echo "  make lint               golangci-lint run ./..."
 	@echo "  make clean              Remove dist/"
 	@echo ""
 	@echo "GUI desktop app:"

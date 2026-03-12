@@ -10,7 +10,7 @@ export function useProviders() {
   async function refresh() {
     try {
       providers.value = await getProviders()
-    } catch { /* silent fail */ }
+    } catch (e) { console.warn('useProviders: refresh failed:', e) }
   }
 
   onMounted(async () => {

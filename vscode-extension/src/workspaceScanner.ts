@@ -86,8 +86,8 @@ export class WorkspaceScanner implements vscode.Disposable {
             lastModified: stat.mtime,
           })
         }
-      } catch {
-        // Malformed or unreadable — skip silently
+      } catch (e) {
+        console.error('WorkspaceScanner: file I/O failed:', e)
       }
     }
   }

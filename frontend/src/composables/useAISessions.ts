@@ -1,6 +1,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import type { AISession } from '../types/domain'
 import { listAISessions, deregisterAISession } from '../types/wails'
+import { resolveServerUrl } from './useServerUrl'
 
 export function useAISessions() {
   const sessions = ref<AISession[]>([])
@@ -29,7 +30,8 @@ export function useAISessions() {
 
     if (typeof EventSource !== 'undefined') {
       try {
-        eventSource = new EventSource('http://127.0.0.1:9999/api/events')
+        const baseUrl = await resolveServerUrl()
+        eventSource = new EventSource(`${baseUrl}/api/events`)
         eventSource.onmessage = (event) => {
           const data = JSON.parse(event.data) as { type: string }
           if (data.type === 'ai_session_changed') {

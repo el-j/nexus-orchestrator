@@ -36,8 +36,9 @@ func newTestOrchestratorWithAISessionRepo(t *testing.T) *services.OrchestratorSe
 
 // capturingBroadcaster records every Broadcast call for later inspection.
 type capturingBroadcaster struct {
-	mu     sync.Mutex
-	events []ports.TaskEvent
+	mu            sync.Mutex
+	events        []ports.TaskEvent
+	sessionEvents []domain.AISessionEvent
 }
 
 func (b *capturingBroadcaster) Broadcast(ev ports.TaskEvent) {
@@ -46,11 +47,25 @@ func (b *capturingBroadcaster) Broadcast(ev ports.TaskEvent) {
 	b.events = append(b.events, ev)
 }
 
+func (b *capturingBroadcaster) BroadcastAISessionEvent(ev domain.AISessionEvent) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.sessionEvents = append(b.sessionEvents, ev)
+}
+
 func (b *capturingBroadcaster) snapshot() []ports.TaskEvent {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	out := make([]ports.TaskEvent, len(b.events))
 	copy(out, b.events)
+	return out
+}
+
+func (b *capturingBroadcaster) sessionSnapshot() []domain.AISessionEvent {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	out := make([]domain.AISessionEvent, len(b.sessionEvents))
+	copy(out, b.sessionEvents)
 	return out
 }
 
@@ -208,14 +223,14 @@ func TestAISessionBroadcast(t *testing.T) {
 		if err != nil {
 			t.Fatalf("RegisterAISession: %v", err)
 		}
-		// RegisterAISession calls Broadcast synchronously before returning.
-		events := bc.snapshot()
+		// RegisterAISession calls BroadcastAISessionEvent synchronously before returning.
+		events := bc.sessionSnapshot()
 		if len(events) == 0 {
 			t.Fatal("expected at least one broadcast event after RegisterAISession")
 		}
 		var found bool
 		for _, ev := range events {
-			if ev.Type == "ai_session_changed" && ev.TaskID == created.ID {
+			if ev.Type == "ai_session_changed" && ev.AISessionID == created.ID {
 				found = true
 				break
 			}
@@ -243,7 +258,7 @@ func TestAISessionBroadcast(t *testing.T) {
 			t.Fatalf("DeregisterAISession: %v", err)
 		}
 		// Expect >=2 events: one from RegisterAISession, one from DeregisterAISession.
-		events := bc.snapshot()
+		events := bc.sessionSnapshot()
 		if len(events) < 2 {
 			t.Fatalf("expected >=2 events (register+deregister), got %d: %v", len(events), events)
 		}
@@ -251,8 +266,8 @@ func TestAISessionBroadcast(t *testing.T) {
 		if last.Type != "ai_session_changed" {
 			t.Errorf("expected last event type %q, got %q", "ai_session_changed", last.Type)
 		}
-		if last.TaskID != created.ID {
-			t.Errorf("expected last event taskId %q, got %q", created.ID, last.TaskID)
+		if last.AISessionID != created.ID {
+			t.Errorf("expected last event aiSessionId %q, got %q", created.ID, last.AISessionID)
 		}
 	})
 }

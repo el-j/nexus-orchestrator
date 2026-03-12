@@ -43,3 +43,12 @@ type AISession struct {
 	CreatedAt     time.Time       `json:"createdAt"`
 	UpdatedAt     time.Time       `json:"updatedAt"`
 }
+
+// AISessionEvent is emitted by OrchestratorService when an AI agent session
+// is registered, deregistered, or expires from inactivity.
+type AISessionEvent struct {
+	Type        string          `json:"type"`
+	AISessionID string          `json:"aiSessionId"`
+	Status      AISessionStatus `json:"status"`
+	Timestamp   time.Time       `json:"timestamp"`
+}

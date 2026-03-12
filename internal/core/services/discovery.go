@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -233,7 +234,11 @@ func (s *DiscoveryService) cachedHealth(c ports.LLMClient) *providerHealth {
 	}
 	if alive {
 		updated.activeModel = c.ActiveModel()
-		updated.models, _ = c.GetAvailableModels()
+		if models, mErr := c.GetAvailableModels(); mErr != nil {
+			log.Printf("discovery: get models from %s: %v", name, mErr)
+		} else {
+			updated.models = models
+		}
 		updated.consecutiveFails = 0
 	} else {
 		updated.consecutiveFails++

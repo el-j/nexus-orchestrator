@@ -1187,3 +1187,82 @@ func TestOrchestrator_PromoteProvider_Reachable(t *testing.T) {
 		t.Fatalf("PromoteProvider: unexpected error: %v", err)
 	}
 }
+
+// --- Constructor nil-validation tests ----------------------------------------
+
+// mustPanic calls f and fails the test if f does not panic with a message
+// containing wantMsg.
+func mustPanic(t *testing.T, wantMsg string, f func()) {
+	t.Helper()
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Errorf("expected panic containing %q, but no panic occurred", wantMsg)
+			return
+		}
+		msg, ok := r.(string)
+		if !ok {
+			t.Errorf("expected panic to be a string, got %T: %v", r, r)
+			return
+		}
+		if !strings.Contains(msg, wantMsg) {
+			t.Errorf("panic message %q does not contain %q", msg, wantMsg)
+		}
+	}()
+	f()
+}
+
+func TestNewOrchestrator_NilPanics(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	writer := &noopWriter{}
+
+	mustPanic(t, "discovery is required", func() {
+		services.NewOrchestrator(nil, repo, writer, nil)
+	})
+
+	mustPanic(t, "repo is required", func() {
+		services.NewOrchestrator(discovery, nil, writer, nil)
+	})
+
+	mustPanic(t, "writer is required", func() {
+		services.NewOrchestrator(discovery, repo, nil, nil)
+	})
+}
+
+// TestPromoteProvider_EmptyBaseURL verifies that PromoteProvider returns an
+// error when the discovered provider is reachable but has no BaseURL.
+func TestPromoteProvider_EmptyBaseURL(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	orch.WithProviderFactory(func(cfg domain.ProviderConfig) (ports.LLMClient, error) {
+		return &mockLLMClient{alive: true, name: cfg.Name}, nil
+	})
+
+	scanner := &mockScanner{
+		results: []domain.DiscoveredProvider{
+			{
+				ID:      "no-url",
+				Name:    "Headless",
+				Kind:    domain.ProviderKindLMStudio,
+				Status:  domain.DiscoveryStatusReachable,
+				BaseURL: "", // intentionally empty
+			},
+		},
+	}
+	orch.WithSystemScanner(scanner)
+	if _, err := orch.TriggerScan(context.Background()); err != nil {
+		t.Fatalf("TriggerScan: %v", err)
+	}
+
+	err := orch.PromoteProvider(context.Background(), "no-url")
+	if err == nil {
+		t.Fatal("expected error for empty BaseURL, got nil")
+	}
+	if !strings.Contains(err.Error(), "no base URL") {
+		t.Errorf("expected 'no base URL' in error message, got: %v", err)
+	}
+}

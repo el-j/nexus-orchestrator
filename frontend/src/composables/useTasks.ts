@@ -1,7 +1,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { Task } from '../types/domain'
 import { getQueue, createDraft as wailsCreateDraft, promoteTask as wailsPromoteTask, updateTask as wailsUpdateTask } from '../types/wails'
-import { currentProject } from './useProjectFilter'
+import { currentProject } from './useProjectState'
+import { resolveServerUrl } from './useServerUrl'
 
 export function useTasks() {
   const tasks = ref<Task[]>([])
@@ -56,7 +57,8 @@ export function useTasks() {
 
     if (typeof EventSource !== 'undefined') {
       try {
-        eventSource = new EventSource('http://127.0.0.1:9999/api/events')
+        const baseUrl = await resolveServerUrl()
+        eventSource = new EventSource(`${baseUrl}/api/events`)
         eventSource.onmessage = (event) => {
           const data = JSON.parse(event.data)
           if (data.type !== 'connected') {

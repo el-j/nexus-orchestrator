@@ -43,10 +43,11 @@ func (w *Writer) WriteCodeToFile(projectPath, targetFile, code string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
+	// 0o640: owner read/write, group read; generated code may contain credentials
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0o750); err != nil {
 		return fmt.Errorf("fs_writer: mkdir: %w", err)
 	}
-	if err := os.WriteFile(fullPath, []byte(code), 0o644); err != nil {
+	if err := os.WriteFile(fullPath, []byte(code), 0o640); err != nil {
 		return fmt.Errorf("fs_writer: write file: %w", err)
 	}
 	return nil
@@ -65,7 +66,7 @@ func (w *Writer) ReadContextFiles(projectPath string, files []string) (string, e
 		if err != nil {
 			return "", fmt.Errorf("fs_writer: read context file %q: %w", f, err)
 		}
-		sb.WriteString(fmt.Sprintf("// --- %s ---\n", f))
+		fmt.Fprintf(&sb, "// --- %s ---\n", f)
 		sb.Write(content)
 		sb.WriteString("\n")
 	}

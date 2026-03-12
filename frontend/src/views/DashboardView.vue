@@ -4,7 +4,7 @@
     <header class="flex items-center justify-between px-5 py-3 border-b border-white/5 bg-[#0a0a10] flex-shrink-0">
       <div>
         <h1 class="text-sm font-bold text-white">Task Queue</h1>
-        <p class="text-xs text-slate-500">
+        <p class="text-xs text-slate-500" role="status" aria-live="polite">
           <span class="text-white font-semibold">{{ activeCount }}</span> active
           <span class="mx-1 text-slate-700">·</span>
           <span class="text-white font-semibold">{{ tasks.length }}</span> total

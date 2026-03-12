@@ -22,8 +22,28 @@ import (
 // ErrQueueFull is returned by SubmitTask when the number of QUEUED tasks reaches the queue cap.
 var ErrQueueFull = errors.New("queue is full")
 
-// maxRetries is the maximum number of LLM call attempts before a task is permanently failed.
-const maxRetries = 3
+// Option is a functional option for configuring OrchestratorService.
+type Option func(*OrchestratorService)
+
+// WithMaxRetries sets the maximum LLM call attempts before a task is permanently failed. Default: 3.
+func WithMaxRetries(n int) Option {
+	return func(s *OrchestratorService) { s.maxRetries = n }
+}
+
+// WithMaxResponseTokens sets the token budget reserved for the assistant reply in pre-flight checks. Default: 512.
+func WithMaxResponseTokens(n int) Option {
+	return func(s *OrchestratorService) { s.maxResponseTokens = n }
+}
+
+// WithCleanupInterval sets how often the session cleanup goroutine runs. Default: 2 minutes.
+func WithCleanupInterval(d time.Duration) Option {
+	return func(s *OrchestratorService) { s.cleanupInterval = d }
+}
+
+// WithStaleThreshold sets the session inactivity duration before it is marked disconnected. Default: 5 minutes.
+func WithStaleThreshold(d time.Duration) Option {
+	return func(s *OrchestratorService) { s.staleThreshold = d }
+}
 
 // OrchestratorService implements ports.Orchestrator and drives the worker loop.
 type OrchestratorService struct {
@@ -48,6 +68,10 @@ type OrchestratorService struct {
 	lastScan           []domain.DiscoveredProvider
 	scanMu             sync.RWMutex // guards lastScan; separate from task-queue mu
 	aiSessionRepo      ports.AISessionRepository
+	maxRetries        int
+	maxResponseTokens int
+	cleanupInterval   time.Duration
+	staleThreshold    time.Duration
 }
 
 // NewOrchestrator constructs an OrchestratorService and starts the background
@@ -59,14 +83,31 @@ func NewOrchestrator(
 	repo ports.TaskRepository,
 	writer ports.FileWriter,
 	sessionRepo ports.SessionRepository,
+	opts ...Option,
 ) *OrchestratorService {
+	if discovery == nil {
+		panic("orchestrator: NewOrchestrator: discovery is required")
+	}
+	if repo == nil {
+		panic("orchestrator: NewOrchestrator: repo is required")
+	}
+	if writer == nil {
+		panic("orchestrator: NewOrchestrator: writer is required")
+	}
 	svc := &OrchestratorService{
-		discovery:   discovery,
-		repo:        repo,
-		fileWriter:  writer,
-		sessionRepo: sessionRepo,
-		workCh:      make(chan struct{}, 1),
-		stopCh:      make(chan struct{}),
+		discovery:         discovery,
+		repo:              repo,
+		fileWriter:        writer,
+		sessionRepo:       sessionRepo,
+		workCh:            make(chan struct{}, 1),
+		stopCh:            make(chan struct{}),
+		maxRetries:        3,
+		maxResponseTokens: 512,
+		cleanupInterval:   2 * time.Minute,
+		staleThreshold:    5 * time.Minute,
+	}
+	for _, opt := range opts {
+		opt(svc)
 	}
 	svc.recoverStuckTasks()
 	svc.workerWg.Add(1)
@@ -426,18 +467,21 @@ func (o *OrchestratorService) PromoteProvider(ctx context.Context, discoveredID 
 	var found *domain.DiscoveredProvider
 	for i := range o.lastScan {
 		if o.lastScan[i].ID == discoveredID {
-			copy := o.lastScan[i]
-			found = &copy
+			discovered := o.lastScan[i]
+			found = &discovered
 			break
 		}
 	}
 	o.scanMu.RUnlock()
 
 	if found == nil {
-		return domain.ErrNotFound
+		return fmt.Errorf("orchestrator: promote provider: %w", domain.ErrNotFound)
 	}
 	if found.Status != domain.DiscoveryStatusReachable {
 		return fmt.Errorf("orchestrator: promote provider: provider %q is not reachable (status: %s)", found.Name, found.Status)
+	}
+	if found.BaseURL == "" {
+		return fmt.Errorf("orchestrator: promote provider: discovered provider has no base URL")
 	}
 
 	cfg := domain.ProviderConfig{
@@ -621,10 +665,11 @@ func (o *OrchestratorService) RegisterAISession(ctx context.Context, s domain.AI
 				return domain.AISession{}, fmt.Errorf("orchestrator: register ai session: refresh existing: %w", saveErr)
 			}
 			if b != nil {
-				b.Broadcast(ports.TaskEvent{
-					Type:   "ai_session_changed",
-					TaskID: existing.ID,
-					Status: domain.TaskStatus(existing.Status),
+				b.BroadcastAISessionEvent(domain.AISessionEvent{
+					Type:        "ai_session_changed",
+					AISessionID: existing.ID,
+					Status:      existing.Status,
+					Timestamp:   time.Now(),
 				})
 			}
 			return existing, nil
@@ -644,10 +689,11 @@ func (o *OrchestratorService) RegisterAISession(ctx context.Context, s domain.AI
 		return domain.AISession{}, fmt.Errorf("orchestrator: register ai session: %w", err)
 	}
 	if b != nil {
-		b.Broadcast(ports.TaskEvent{
-			Type:   "ai_session_changed",
-			TaskID: s.ID,
-			Status: domain.TaskStatus(s.Status),
+		b.BroadcastAISessionEvent(domain.AISessionEvent{
+			Type:        "ai_session_changed",
+			AISessionID: s.ID,
+			Status:      s.Status,
+			Timestamp:   time.Now(),
 		})
 	}
 	return s, nil
@@ -699,10 +745,11 @@ func (o *OrchestratorService) DeregisterAISession(ctx context.Context, id string
 		return fmt.Errorf("orchestrator: deregister ai session: %w", err)
 	}
 	if b != nil {
-		b.Broadcast(ports.TaskEvent{
-			Type:   "ai_session_changed",
-			TaskID: id,
-			Status: domain.TaskStatus(domain.SessionStatusDisconnected),
+		b.BroadcastAISessionEvent(domain.AISessionEvent{
+			Type:        "ai_session_changed",
+			AISessionID: id,
+			Status:      domain.SessionStatusDisconnected,
+			Timestamp:   time.Now(),
 		})
 	}
 	return nil
@@ -785,7 +832,7 @@ func (o *OrchestratorService) recoverStuckTasks() {
 // Returns true when the task was successfully re-queued; false when maxRetries is
 // exhausted or the repo update fails (caller should then mark the task FAILED).
 func (o *OrchestratorService) requeueForRetry(task domain.Task) bool {
-	if task.RetryCount >= maxRetries {
+	if task.RetryCount >= o.maxRetries {
 		return false
 	}
 	task.RetryCount++
@@ -795,7 +842,7 @@ func (o *OrchestratorService) requeueForRetry(task domain.Task) bool {
 		log.Printf("orchestrator: requeue task %s: update: %v", task.ID, err)
 		return false
 	}
-	log.Printf("orchestrator: task %s: retry %d/%d", task.ID, task.RetryCount, maxRetries)
+	log.Printf("orchestrator: task %s: retry %d/%d", task.ID, task.RetryCount, o.maxRetries)
 	o.mu.Lock()
 	o.queue = append(o.queue, task)
 	o.mu.Unlock()
@@ -840,9 +887,13 @@ func (o *OrchestratorService) runWorker() {
 // It runs until stopCh is closed and shares the workerWg lifecycle.
 func (o *OrchestratorService) runSessionCleanup() {
 	defer o.workerWg.Done()
-	const cleanupInterval = 2 * time.Minute
-	const staleThreshold = 5 * time.Minute
-	ticker := time.NewTicker(cleanupInterval)
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-o.stopCh
+		cancel()
+	}()
+	defer cancel()
+	ticker := time.NewTicker(o.cleanupInterval)
 	defer ticker.Stop()
 	for {
 		select {
@@ -856,13 +907,12 @@ func (o *OrchestratorService) runSessionCleanup() {
 			if repo == nil {
 				continue
 			}
-			ctx := context.Background()
 			sessions, err := repo.ListAISessions(ctx)
 			if err != nil {
 				log.Printf("orchestrator: session cleanup: list: %v", err)
 				continue
 			}
-			cutoff := time.Now().Add(-staleThreshold)
+			cutoff := time.Now().Add(-o.staleThreshold)
 			for _, s := range sessions {
 				if s.Status != domain.SessionStatusDisconnected && s.LastActivity.Before(cutoff) {
 					if markErr := repo.UpdateAISessionStatus(ctx, s.ID, domain.SessionStatusDisconnected, s.LastActivity); markErr != nil {
@@ -870,10 +920,11 @@ func (o *OrchestratorService) runSessionCleanup() {
 						continue
 					}
 					if b != nil {
-						b.Broadcast(ports.TaskEvent{
-							Type:   "ai_session_changed",
-							TaskID: s.ID,
-							Status: domain.TaskStatus(domain.SessionStatusDisconnected),
+						b.BroadcastAISessionEvent(domain.AISessionEvent{
+							Type:        "ai_session_changed",
+							AISessionID: s.ID,
+							Status:      domain.SessionStatusDisconnected,
+							Timestamp:   time.Now(),
 						})
 					}
 				}
@@ -892,7 +943,32 @@ func (o *OrchestratorService) processNext() {
 	o.queue = o.queue[1:]
 	o.mu.Unlock()
 
-	var llm ports.LLMClient
+	llm, err := o.selectProviderForTask(task)
+	if err != nil {
+		return
+	}
+
+	if err := o.repo.UpdateStatus(task.ID, domain.StatusProcessing); err != nil {
+		log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+	}
+	o.emit(task.ID, domain.StatusProcessing)
+
+	prompt, sessionHistory, err := o.buildChatContext(task, llm)
+	if err != nil {
+		return
+	}
+
+	code, err := o.executeGeneration(task, llm, prompt, sessionHistory)
+	if err != nil {
+		return
+	}
+
+	o.writeTaskOutput(task, code, llm.ProviderName())
+}
+
+// selectProviderForTask resolves the LLM client for the task by provider name or
+// by model/hint lookup. On failure it sets StatusNoProvider, logs the reason, and emits the event.
+func (o *OrchestratorService) selectProviderForTask(task domain.Task) (ports.LLMClient, error) {
 	if task.ProviderName != "" {
 		client, ok := o.discovery.GetClientByName(task.ProviderName)
 		if !ok {
@@ -905,31 +981,30 @@ func (o *OrchestratorService) processNext() {
 				log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
 			}
 			o.emit(task.ID, domain.StatusNoProvider)
-			return
+			return nil, fmt.Errorf("provider %q not found or not active", task.ProviderName)
 		}
-		llm = client
-	} else {
-		var err error
-		llm, err = o.discovery.FindForModel(task.ModelID, task.ProviderHint)
-		if err != nil {
-			log.Printf("orchestrator: no provider for task %s (model=%q): %v", task.ID, task.ModelID, err)
-			if err := o.repo.UpdateLogs(task.ID, err.Error()); err != nil {
-				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
-			}
-			if err := o.repo.UpdateStatus(task.ID, domain.StatusNoProvider); err != nil {
-				log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
-			}
-			o.emit(task.ID, domain.StatusNoProvider)
-			return
+		return client, nil
+	}
+	llm, err := o.discovery.FindForModel(task.ModelID, task.ProviderHint)
+	if err != nil {
+		log.Printf("orchestrator: no provider for task %s (model=%q): %v", task.ID, task.ModelID, err)
+		if err2 := o.repo.UpdateLogs(task.ID, err.Error()); err2 != nil {
+			log.Printf("orchestrator: update logs for task %s: %v", task.ID, err2)
 		}
+		if err2 := o.repo.UpdateStatus(task.ID, domain.StatusNoProvider); err2 != nil {
+			log.Printf("orchestrator: update status for task %s: %v", task.ID, err2)
+		}
+		o.emit(task.ID, domain.StatusNoProvider)
+		return nil, err
 	}
+	return llm, nil
+}
 
-	if err := o.repo.UpdateStatus(task.ID, domain.StatusProcessing); err != nil {
-		log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
-	}
-	o.emit(task.ID, domain.StatusProcessing)
-
-	// Build the prompt with optional context files
+// buildChatContext constructs the prompt with optional context file content prepended,
+// loads session history, and guards against context-window overflow.
+// On overflow it sets StatusTooLarge, logs the reason, and emits the event.
+func (o *OrchestratorService) buildChatContext(task domain.Task, llm ports.LLMClient) (string, []domain.Message, error) {
+	// Build the prompt with optional context files.
 	prompt := task.Instruction
 	if len(task.ContextFiles) > 0 && o.fileWriter != nil {
 		ctx, err := o.fileWriter.ReadContextFiles(task.ProjectPath, task.ContextFiles)
@@ -952,16 +1027,14 @@ func (o *OrchestratorService) processNext() {
 	}
 
 	// Pre-flight: guard against context-window overflow before spending LLM time.
-	// maxResponseTokens reserves budget for the assistant reply.
-	const maxResponseTokens = 512
 	if limit := llm.ContextLimit(); limit > 0 {
 		estHistory := make([]domain.Message, len(sessionHistory)+1)
 		copy(estHistory, sessionHistory)
 		estHistory[len(sessionHistory)] = domain.Message{Role: domain.RoleUser, Content: prompt}
-		if estimated := estimateTokens(estHistory); estimated > limit-maxResponseTokens {
+		if estimated := estimateTokens(estHistory); estimated > limit-o.maxResponseTokens {
 			logEntry := fmt.Sprintf(
 				"context too large: ~%d tokens estimated, model limit is %d (headroom %d) — shorten the instruction or reduce context files",
-				estimated, limit, maxResponseTokens,
+				estimated, limit, o.maxResponseTokens,
 			)
 			log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
 			if err := o.repo.UpdateLogs(task.ID, logEntry); err != nil {
@@ -971,31 +1044,36 @@ func (o *OrchestratorService) processNext() {
 				log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
 			}
 			o.emit(task.ID, domain.StatusTooLarge)
-			return
+			return "", nil, fmt.Errorf("context too large")
 		}
 	}
 
-	var code string
+	return prompt, sessionHistory, nil
+}
+
+// executeGeneration dispatches to Chat (when sessionRepo is set) or GenerateCode,
+// with retry on transient failures. On fatal failure it persists StatusFailed.
+// On success with a sessionRepo it appends the user and assistant messages to the session.
+func (o *OrchestratorService) executeGeneration(task domain.Task, llm ports.LLMClient, prompt string, sessionHistory []domain.Message) (string, error) {
 	if o.sessionRepo != nil {
 		// Build the chat history using the already-loaded session (no second DB call).
 		userMsg := domain.Message{Role: domain.RoleUser, Content: prompt, CreatedAt: time.Now()}
 		history := append(append([]domain.Message(nil), sessionHistory...), userMsg)
-		var err error
-		code, err = llm.Chat(history)
+		code, err := llm.Chat(history)
 		if err != nil {
 			logEntry := fmt.Sprintf("failed via %s: %v", llm.ProviderName(), err)
 			log.Printf("orchestrator: chat for task %s: %v", task.ID, err)
 			if o.requeueForRetry(task) {
-				return
+				return "", err
 			}
-			if err := o.repo.UpdateLogs(task.ID, logEntry); err != nil {
-				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
+			if err2 := o.repo.UpdateLogs(task.ID, logEntry); err2 != nil {
+				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err2)
 			}
-			if err := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err != nil {
-				log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+			if err2 := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err2 != nil {
+				log.Printf("orchestrator: update status for task %s: %v", task.ID, err2)
 			}
 			o.emit(task.ID, domain.StatusFailed)
-			return
+			return "", err
 		}
 		// Only persist messages after a successful response.
 		assistantMsg := domain.Message{Role: domain.RoleAssistant, Content: code, CreatedAt: time.Now()}
@@ -1005,42 +1083,47 @@ func (o *OrchestratorService) processNext() {
 		if err := o.sessionRepo.AppendMessage(task.ProjectPath, assistantMsg); err != nil {
 			log.Printf("orchestrator: append assistant message for task %s: %v", task.ID, err)
 		}
-	} else {
-		var err error
-		code, err = llm.GenerateCode(prompt)
-		if err != nil {
-			logEntry := fmt.Sprintf("failed via %s: %v", llm.ProviderName(), err)
-			log.Printf("orchestrator: generate code for task %s: %v", task.ID, err)
-			if o.requeueForRetry(task) {
-				return
-			}
-			if err := o.repo.UpdateLogs(task.ID, logEntry); err != nil {
-				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
-			}
-			if err := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err != nil {
-				log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
-			}
-			o.emit(task.ID, domain.StatusFailed)
-			return
-		}
+		return code, nil
 	}
 
+	code, err := llm.GenerateCode(prompt)
+	if err != nil {
+		logEntry := fmt.Sprintf("failed via %s: %v", llm.ProviderName(), err)
+		log.Printf("orchestrator: generate code for task %s: %v", task.ID, err)
+		if o.requeueForRetry(task) {
+			return "", err
+		}
+		if err2 := o.repo.UpdateLogs(task.ID, logEntry); err2 != nil {
+			log.Printf("orchestrator: update logs for task %s: %v", task.ID, err2)
+		}
+		if err2 := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err2 != nil {
+			log.Printf("orchestrator: update status for task %s: %v", task.ID, err2)
+		}
+		o.emit(task.ID, domain.StatusFailed)
+		return "", err
+	}
+	return code, nil
+}
+
+// writeTaskOutput optionally writes the generated code to disk and marks the task
+// as COMPLETED. On write failure it persists StatusFailed and emits the event.
+func (o *OrchestratorService) writeTaskOutput(task domain.Task, code string, providerName string) {
 	if o.fileWriter != nil && task.TargetFile != "" {
 		if err := o.fileWriter.WriteCodeToFile(task.ProjectPath, task.TargetFile, extractCode(code)); err != nil {
-			logEntry := fmt.Sprintf("failed writing output via %s: %v", llm.ProviderName(), err)
+			logEntry := fmt.Sprintf("failed writing output via %s: %v", providerName, err)
 			log.Printf("orchestrator: write file for task %s: %v", task.ID, err)
-			if err := o.repo.UpdateLogs(task.ID, logEntry); err != nil {
-				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
+			if err2 := o.repo.UpdateLogs(task.ID, logEntry); err2 != nil {
+				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err2)
 			}
-			if err := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err != nil {
-				log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+			if err2 := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err2 != nil {
+				log.Printf("orchestrator: update status for task %s: %v", task.ID, err2)
 			}
 			o.emit(task.ID, domain.StatusFailed)
 			return
 		}
 	}
 
-	logEntry := fmt.Sprintf("completed via %s at %s", llm.ProviderName(), time.Now().UTC().Format(time.RFC3339))
+	logEntry := fmt.Sprintf("completed via %s at %s", providerName, time.Now().UTC().Format(time.RFC3339))
 	if err := o.repo.UpdateLogs(task.ID, logEntry); err != nil {
 		log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
 	}
@@ -1048,7 +1131,7 @@ func (o *OrchestratorService) processNext() {
 		log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
 	}
 	o.emit(task.ID, domain.StatusCompleted)
-	log.Printf("orchestrator: task %s completed via %s", task.ID, llm.ProviderName())
+	log.Printf("orchestrator: task %s completed via %s", task.ID, providerName)
 }
 
 // extractCode strips the first markdown code fence from s, returning the raw

@@ -45,11 +45,23 @@ export class NexusStatusBar {
         return;
       }
 
-      const [providers, tasks, aiSessions] = await Promise.all([
+      const [providersResult, tasksResult, aiSessionsResult] = await Promise.allSettled([
         this.client.getProviders(),
         this.client.getTasks(),
-        this.client.getAISessions().catch((): AISession[] => []),
+        this.client.getAISessions(),
       ]);
+
+      const providers = providersResult.status === 'fulfilled' ? providersResult.value : [];
+      const tasks = tasksResult.status === 'fulfilled' ? tasksResult.value : [];
+      const aiSessions = aiSessionsResult.status === 'fulfilled' ? aiSessionsResult.value : [];
+      const isDegraded = providersResult.status === 'rejected' || tasksResult.status === 'rejected';
+      if (isDegraded) {
+        const failed = [
+          providersResult.status === 'rejected' ? 'providers' : null,
+          tasksResult.status === 'rejected' ? 'tasks' : null,
+        ].filter(Boolean).join(', ');
+        console.warn('statusBar: degraded — failed to fetch:', failed);
+      }
 
       const activeProviders = providers.filter((p) => p.active);
       const activeSessionCount = aiSessions.filter(
@@ -74,13 +86,17 @@ export class NexusStatusBar {
         this.item.text = `$(error) Nexus: ${failedTasks.length} failed`;
         this.item.tooltip = `Click to open actions${sessionSuffix}`;
       } else if (activeTasks.length > 0) {
-        this.item.text = `$(sync~spin) Nexus: ${activeTasks.length} tasks`;
+        this.item.text = `$(sync~spin) Nexus: ${activeTasks.length} tasks${isDegraded ? ' ~' : ''}`;
         this.item.tooltip = `${activeProviders.length} provider(s) active${sessionSuffix}`;
+      } else if (isDegraded) {
+        this.item.text = "$(warning) Nexus: degraded";
+        this.item.tooltip = `Some API calls failed — ${activeProviders.length} provider(s) active${sessionSuffix}`;
       } else {
         this.item.text = "$(zap) Nexus";
         this.item.tooltip = `${activeProviders.length} provider(s) active${sessionSuffix}`;
       }
-    } catch {
+    } catch (error) {
+      console.warn('statusBar: update failed:', error);
       this.item.text = "$(warning) Nexus: offline";
       this.item.tooltip = "Click to open actions";
     }

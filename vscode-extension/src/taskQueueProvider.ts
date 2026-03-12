@@ -77,7 +77,9 @@ export class TaskItem extends vscode.TreeItem {
       `**Updated:** ${task.updatedAt}`,
     ]
     if (task.logs) {
-      tooltipLines.push(`\n**Logs:**\n\`\`\`\n${task.logs}\n\`\`\``)
+      const safeLogs = task.logs.slice(0, 500).replace(/[<>&]/g, '') +
+        (task.logs.length > 500 ? '...' : '')
+      tooltipLines.push(`\n**Logs:**\n\`\`\`\n${safeLogs}\n\`\`\``)
     }
     this.tooltip = new vscode.MarkdownString(tooltipLines.join('\n\n'))
 

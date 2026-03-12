@@ -3,8 +3,14 @@
     class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
     @click.self="onClose"
   >
-    <div class="bg-slate-800 rounded-xl p-6 w-full max-w-md shadow-2xl border border-white/10">
-      <h2 class="text-sm font-bold text-white mb-4">
+    <div
+      class="bg-slate-800 rounded-xl p-6 w-full max-w-md shadow-2xl border border-white/10"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="provider-form-title"
+      @keydown.esc="onClose"
+    >
+      <h2 id="provider-form-title" class="text-sm font-bold text-white mb-4">
         {{ modelValue ? 'Edit Provider' : 'Add Provider' }}
       </h2>
 
@@ -33,6 +39,7 @@
             type="text"
             placeholder="My Provider"
             required
+            minlength="1"
             class="bg-slate-700 rounded px-3 py-2 text-sm w-full text-white border border-white/10 focus:outline-none focus:border-purple-500 placeholder:text-slate-600"
           />
         </div>
@@ -157,6 +164,15 @@ function onTypeChange() {
 
 async function handleSave() {
   error.value = ''
+  if (!form.value.name?.trim()) {
+    error.value = 'Name is required.'
+    return
+  }
+  const baseURL = form.value.baseURL?.trim() ?? ''
+  if (baseURL && !/^https?:\/\//i.test(baseURL)) {
+    error.value = 'Base URL must start with http:// or https://'
+    return
+  }
   saving.value = true
   try {
     await props.onSave(form.value)

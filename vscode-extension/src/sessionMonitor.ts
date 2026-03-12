@@ -8,6 +8,7 @@ import { NexusClient } from "./nexusClient";
 
 export class SessionMonitor {
   private sessionId: string | undefined;
+  private isReregistering = false;
   private heartbeatTimer: NodeJS.Timeout | undefined;
   private modelChangeListener: vscode.Disposable | undefined;
   private readonly outputChannel: vscode.OutputChannel;
@@ -100,13 +101,20 @@ export class SessionMonitor {
     }
     try {
       await this.client.heartbeatSession(this.sessionId);
-      this.outputChannel.appendLine(`[SessionMonitor] Heartbeat sent for session: ${this.sessionId}`);
     } catch (error) {
       // If the session no longer exists on the server (e.g. cleaned up after
       // being idle), fall back to a full re-registration.
       this.outputChannel.appendLine(`[SessionMonitor] Heartbeat failed (${error}), re-registering`);
+      if (this.isReregistering) {
+        return;
+      }
+      this.isReregistering = true;
       this.sessionId = undefined;
-      await this.detectAndRegister();
+      try {
+        await this.detectAndRegister();
+      } finally {
+        this.isReregistering = false;
+      }
     }
   }
 }

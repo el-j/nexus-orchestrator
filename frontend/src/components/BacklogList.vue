@@ -92,6 +92,8 @@ async function onPromote(id: string) {
   promoting.value = id
   try {
     await promoteTask(id)
+  } catch (e) {
+    console.warn('BacklogList: promote failed:', e)
   } finally {
     promoting.value = null
   }

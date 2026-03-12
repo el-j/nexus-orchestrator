@@ -163,6 +163,7 @@ type TaskEvent struct {
 // It must be safe for concurrent use. Implementations must be non-blocking.
 type EventBroadcaster interface {
 	Broadcast(event TaskEvent)
+	BroadcastAISessionEvent(event domain.AISessionEvent)
 }
 
 // SystemScanner scans the local system for AI providers/agents.
