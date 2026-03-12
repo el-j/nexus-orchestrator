@@ -2,8 +2,10 @@ package mcp_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -26,6 +28,18 @@ type mockOrch struct {
 	cancelErr  error
 	providers  []ports.ProviderInfo
 	provErr    error
+
+	createDraftID  string
+	createDraftErr error
+	backlogTasks   []domain.Task
+	backlogErr     error
+	promoteErr     error
+	updateResult   domain.Task
+	updateErr      error
+
+	triggerScanResult  []domain.DiscoveredProvider
+	triggerScanErr     error
+	promoteProviderErr error
 }
 
 func (m *mockOrch) SubmitTask(t domain.Task) (string, error) {
@@ -41,6 +55,37 @@ func (m *mockOrch) GetProviders() ([]ports.ProviderInfo, error) {
 func (m *mockOrch) RegisterCloudProvider(_ domain.ProviderConfig) error { return nil }
 func (m *mockOrch) RemoveProvider(_ string) error                       { return nil }
 func (m *mockOrch) GetProviderModels(_ string) ([]string, error)        { return nil, nil }
+func (m *mockOrch) AddProviderConfig(_ context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
+	return cfg, nil
+}
+func (m *mockOrch) UpdateProviderConfig(_ context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
+	return cfg, nil
+}
+func (m *mockOrch) RemoveProviderConfig(_ context.Context, _ string) error { return nil }
+func (m *mockOrch) ListProviderConfigs(_ context.Context) ([]domain.ProviderConfig, error) {
+	return nil, nil
+}
+func (m *mockOrch) GetDiscoveredProviders() ([]domain.DiscoveredProvider, error) {
+	return nil, nil
+}
+func (m *mockOrch) TriggerScan(_ context.Context) ([]domain.DiscoveredProvider, error) {
+	return m.triggerScanResult, m.triggerScanErr
+}
+func (m *mockOrch) PromoteProvider(_ context.Context, _ string) error { return m.promoteProviderErr }
+func (m *mockOrch) CreateDraft(_ domain.Task) (string, error) {
+	return m.createDraftID, m.createDraftErr
+}
+func (m *mockOrch) GetBacklog(_ string) ([]domain.Task, error) { return m.backlogTasks, m.backlogErr }
+func (m *mockOrch) PromoteTask(_ string) error                 { return m.promoteErr }
+func (m *mockOrch) UpdateTask(_ string, _ domain.Task) (domain.Task, error) {
+	return m.updateResult, m.updateErr
+}
+func (m *mockOrch) RegisterAISession(_ context.Context, s domain.AISession) (domain.AISession, error) {
+	return s, nil
+}
+func (m *mockOrch) ListAISessions(_ context.Context) ([]domain.AISession, error) { return nil, nil }
+func (m *mockOrch) DeregisterAISession(_ context.Context, _ string) error        { return nil }
+func (m *mockOrch) HeartbeatAISession(_ context.Context, _ string) error         { return nil }
 
 // --- Helpers ---
 
@@ -117,7 +162,7 @@ func TestMCP_Initialize(t *testing.T) {
 	}
 }
 
-func TestMCP_ToolsList_Returns6Tools(t *testing.T) {
+func TestMCP_ToolsList_Returns14Tools(t *testing.T) {
 	srv := newServer(t, &mockOrch{})
 	r := postRPC(t, srv, map[string]any{
 		"jsonrpc": "2.0",
@@ -135,8 +180,8 @@ func TestMCP_ToolsList_Returns6Tools(t *testing.T) {
 	if err := json.Unmarshal(r.Result, &result); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
-	if len(result.Tools) != 6 {
-		t.Errorf("expected 6 tools, got %d", len(result.Tools))
+	if len(result.Tools) != 14 {
+		t.Errorf("expected 14 tools, got %d", len(result.Tools))
 	}
 }
 
@@ -338,5 +383,298 @@ func TestMCP_SubmitTask_ErrNoPlan_PropagatesError(t *testing.T) {
 	}
 	if r.Error.Code != -32603 {
 		t.Errorf("code: want -32603, got %d", r.Error.Code)
+	}
+}
+
+// --- Backlog lifecycle MCP tests ---------------------------------------------
+
+func TestMCP_CreateDraft_ReturnsTaskID(t *testing.T) {
+	orch := &mockOrch{createDraftID: "draft-abc"}
+	srv := newServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      20,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "create_draft",
+			"arguments": map[string]any{
+				"projectPath": "/proj/mcp",
+				"instruction": "build a thing",
+			},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("expected content in result")
+	}
+	var payload map[string]string
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &payload); err != nil {
+		t.Fatalf("unmarshal text payload: %v", err)
+	}
+	if payload["id"] != "draft-abc" {
+		t.Errorf("id: want draft-abc, got %q", payload["id"])
+	}
+	if payload["status"] != string(domain.StatusDraft) {
+		t.Errorf("status: want DRAFT, got %q", payload["status"])
+	}
+}
+
+func TestMCP_GetBacklog_ReturnsTasks(t *testing.T) {
+	orch := &mockOrch{
+		backlogTasks: []domain.Task{
+			{ID: "d1", Status: domain.StatusDraft},
+			{ID: "b1", Status: domain.StatusBacklog},
+		},
+	}
+	srv := newServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      21,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "get_backlog",
+			"arguments": map[string]any{"projectPath": "/proj/mcp"},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	var tasks []domain.Task
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &tasks); err != nil {
+		t.Fatalf("unmarshal tasks: %v", err)
+	}
+	if len(tasks) != 2 {
+		t.Errorf("want 2 tasks, got %d", len(tasks))
+	}
+}
+
+func TestMCP_PromoteTask_ReturnsBool(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      22,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "promote_task",
+			"arguments": map[string]any{"id": "task-to-promote"},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	var payload map[string]bool
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &payload); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+	if !payload["promoted"] {
+		t.Error("promoted: want true, got false")
+	}
+}
+
+// --- Provider discovery MCP tests -------------------------------------------
+
+func TestMCP_DiscoverProviders_ReturnsResults(t *testing.T) {
+	orch := &mockOrch{}
+	orch.triggerScanResult = []domain.DiscoveredProvider{
+		{ID: "dp-1", Name: "LM Studio", Kind: domain.ProviderKindLMStudio},
+	}
+	srv := newServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      30,
+		"method":  "tools/call",
+		"params":  map[string]any{"name": "discover_providers", "arguments": map[string]any{}},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	var providers []domain.DiscoveredProvider
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &providers); err != nil {
+		t.Fatalf("unmarshal providers: %v", err)
+	}
+	if len(providers) != 1 || providers[0].ID != "dp-1" {
+		t.Errorf("unexpected providers: %+v", providers)
+	}
+}
+
+func TestMCP_PromoteProvider_Success(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      31,
+		"method":  "tools/call",
+		"params":  map[string]any{"name": "promote_provider", "arguments": map[string]any{"id": "dp-1"}},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &payload); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+	if payload["promoted"] != true {
+		t.Errorf("promoted: want true, got %v", payload["promoted"])
+	}
+	if payload["id"] != "dp-1" {
+		t.Errorf("id: want dp-1, got %v", payload["id"])
+	}
+}
+
+func TestMCP_PromoteProvider_NotFound_Returns32602(t *testing.T) {
+	orch := &mockOrch{promoteProviderErr: fmt.Errorf("not found: %w", domain.ErrNotFound)}
+	srv := newServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      32,
+		"method":  "tools/call",
+		"params":  map[string]any{"name": "promote_provider", "arguments": map[string]any{"id": "missing"}},
+	})
+	if r.Error == nil {
+		t.Fatal("expected error for not found")
+	}
+	if r.Error.Code != -32602 {
+		t.Errorf("code: want -32602, got %d", r.Error.Code)
+	}
+}
+
+// --- AI session MCP tests ----------------------------------------------------
+
+func TestMCP_RegisterSession_ReturnsSessionID(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      40,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "register_session",
+			"arguments": map[string]any{
+				"agent_name":   "Claude Desktop",
+				"project_path": "/my/project",
+			},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("expected content in result")
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &payload); err != nil {
+		t.Fatalf("unmarshal text payload: %v", err)
+	}
+	if _, ok := payload["session_id"]; !ok {
+		t.Error("result must contain session_id key")
+	}
+	if payload["status"] != "registered" {
+		t.Errorf("status: want \"registered\", got %v", payload["status"])
+	}
+}
+
+func TestMCP_RegisterSession_MissingAgentName_Returns32602(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      41,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "register_session",
+			"arguments": map[string]any{},
+		},
+	})
+	if r.Error == nil {
+		t.Fatal("expected error for missing agent_name")
+	}
+	if r.Error.Code != -32602 {
+		t.Errorf("code: want -32602, got %d", r.Error.Code)
+	}
+}
+
+func TestMCP_GetAISessions_ReturnsList(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      42,
+		"method":  "tools/call",
+		"params":  map[string]any{"name": "get_ai_sessions", "arguments": map[string]any{}},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("expected content in result")
+	}
+	// The mock returns nil sessions; the marshalled form is a JSON null or empty array.
+	// Either way the response must be valid JSON.
+	var sessions []domain.AISession
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &sessions); err != nil {
+		t.Fatalf("result text is not a valid JSON session list: %v", err)
 	}
 }

@@ -1,20 +1,20 @@
 <template>
-  <div class="flex flex-col h-full overflow-hidden">
+  <div class="flex flex-col flex-1 min-h-0 overflow-hidden">
     <!-- Header bar -->
     <header class="flex items-center justify-between px-5 py-3 border-b border-white/5 bg-[#0a0a10] flex-shrink-0">
       <div>
         <h1 class="text-sm font-bold text-white">Task Queue</h1>
-        <p class="text-xs text-slate-500">
+        <p class="text-xs text-slate-500" role="status" aria-live="polite">
           <span class="text-white font-semibold">{{ activeCount }}</span> active
           <span class="mx-1 text-slate-700">·</span>
           <span class="text-white font-semibold">{{ tasks.length }}</span> total
         </p>
       </div>
-      <ProviderStatus :providers="providers" />
+      <ProviderStatus :providers="providers" :refresh="refreshProviders" />
     </header>
 
     <!-- Task list (scrollable) -->
-    <div class="flex-1 overflow-auto">
+    <div class="flex-1 min-h-0 flex flex-col">
       <TaskQueue
         :tasks="tasks"
         :loading="loading"
@@ -24,7 +24,7 @@
     </div>
 
     <!-- Submit form (pinned at bottom) -->
-    <TaskSubmitForm @submitted="handleSubmitted" />
+    <TaskSubmitForm class="flex-shrink-0" @submitted="handleSubmitted" />
 
     <!-- Detail drawer -->
     <TaskDetailDrawer
@@ -48,7 +48,7 @@ import TaskDetailDrawer from '../components/TaskDetailDrawer.vue'
 import ProviderStatus from '../components/ProviderStatus.vue'
 
 const { tasks, loading, refresh } = useTasks()
-const { providers } = useProviders()
+const { providers, refresh: refreshProviders } = useProviders()
 const toast = useToast()
 
 const detailOpen = ref(false)

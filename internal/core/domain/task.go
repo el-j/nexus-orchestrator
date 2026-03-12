@@ -30,6 +30,8 @@ const (
 	// model available or all providers are unreachable.  The task is never sent
 	// to any LLM; the user should choose a different model or start a provider.
 	StatusNoProvider TaskStatus = "NO_PROVIDER"
+	StatusDraft      TaskStatus = "DRAFT"
+	StatusBacklog    TaskStatus = "BACKLOG"
 )
 
 // String returns the underlying string value of the TaskStatus.
@@ -73,11 +75,24 @@ type Task struct {
 	// ProviderHint is a preference (provider name) when multiple providers carry
 	// the same model.  Empty means no preference.
 	ProviderHint string `json:"providerHint,omitempty"`
+	// ProviderName is an explicit provider lock. Non-empty means skip discovery
+	// and route directly to the named provider. Empty falls back to ProviderHint/ModelID.
+	ProviderName string `json:"providerName,omitempty"`
+	// Priority controls backlog ordering (1=highest, 2=medium default, 3+=low).
+	Priority int `json:"priority,omitempty"`
+	// Tags are free-form labels for organising ideas and backlog items.
+	Tags []string `json:"tags,omitempty"`
 	// Command classifies the task as planning, execution, or auto-routed.
 	// Empty is treated as CommandAuto.
-	Command   CommandType `json:"command,omitempty"`
-	Status    TaskStatus  `json:"status"`
-	CreatedAt time.Time   `json:"createdAt"`
-	UpdatedAt time.Time   `json:"updatedAt"`
-	Logs      string      `json:"logs,omitempty"`
+	Command    CommandType `json:"command,omitempty"`
+	Status     TaskStatus  `json:"status"`
+	CreatedAt  time.Time   `json:"createdAt"`
+	UpdatedAt  time.Time   `json:"updatedAt"`
+	RetryCount int         `json:"retryCount,omitempty"`
+	Logs       string      `json:"logs,omitempty"`
+}
+
+// IsExecutable returns true if the task can enter the execution queue.
+func (t Task) IsExecutable() bool {
+	return t.Status == StatusQueued
 }

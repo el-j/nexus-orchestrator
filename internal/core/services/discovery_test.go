@@ -13,6 +13,7 @@ import (
 type mockLLMClient struct {
 	alive        bool
 	name         string
+	baseURL      string
 	code         string
 	codeErr      error
 	contextLimit int
@@ -23,6 +24,7 @@ type mockLLMClient struct {
 func (m *mockLLMClient) Ping() bool                                 { return m.alive }
 func (m *mockLLMClient) ProviderName() string                       { return m.name }
 func (m *mockLLMClient) ActiveModel() string                        { return m.activeModel }
+func (m *mockLLMClient) BaseURL() string                            { return m.baseURL }
 func (m *mockLLMClient) GetAvailableModels() ([]string, error)      { return m.models, nil }
 func (m *mockLLMClient) ContextLimit() int                          { return m.contextLimit }
 func (m *mockLLMClient) GenerateCode(prompt string) (string, error) { return m.code, m.codeErr }

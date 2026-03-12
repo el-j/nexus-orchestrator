@@ -65,6 +65,8 @@ func (s *SessionRepo) AppendMessage(projectPath string, msg domain.Message) erro
 	if err != nil {
 		return fmt.Errorf("sqlite: begin tx for append message: %w", err)
 	}
+	// Rollback is a no-op after Commit succeeds; the deferred error is intentionally ignored
+	// following idiomatic Go transaction patterns.
 	defer tx.Rollback() //nolint:errcheck
 
 	row := tx.QueryRow(
@@ -82,7 +84,7 @@ func (s *SessionRepo) AppendMessage(projectPath string, msg domain.Message) erro
 			UpdatedAt:   now,
 		}
 	} else if err != nil {
-		return err
+		return fmt.Errorf("sqlite: scan session for append: %w", err)
 	}
 
 	sess.Messages = append(sess.Messages, msg)

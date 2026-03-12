@@ -26,6 +26,7 @@ type mockLLM struct{}
 func (m *mockLLM) Ping() bool                            { return true }
 func (m *mockLLM) ProviderName() string                  { return "MockLLM" }
 func (m *mockLLM) ActiveModel() string                   { return "mock-model" }
+func (m *mockLLM) BaseURL() string                       { return "" }
 func (m *mockLLM) GetAvailableModels() ([]string, error) { return []string{"mock-model"}, nil }
 func (m *mockLLM) ContextLimit() int                     { return 0 }
 func (m *mockLLM) GenerateCode(_ string) (string, error) {
@@ -44,6 +45,7 @@ type blockingMockLLM struct {
 func (m *blockingMockLLM) Ping() bool                            { return true }
 func (m *blockingMockLLM) ProviderName() string                  { return "MockLLM" }
 func (m *blockingMockLLM) ActiveModel() string                   { return "mock-model" }
+func (m *blockingMockLLM) BaseURL() string                       { return "" }
 func (m *blockingMockLLM) GetAvailableModels() ([]string, error) { return []string{"mock-model"}, nil }
 func (m *blockingMockLLM) ContextLimit() int                     { return 0 }
 func (m *blockingMockLLM) GenerateCode(_ string) (string, error) {

@@ -23,6 +23,7 @@ type integrationMockLLM struct{}
 func (m *integrationMockLLM) Ping() bool           { return true }
 func (m *integrationMockLLM) ProviderName() string { return "MockLLM" }
 func (m *integrationMockLLM) ActiveModel() string  { return "mock-model" }
+func (m *integrationMockLLM) BaseURL() string      { return "" }
 func (m *integrationMockLLM) GetAvailableModels() ([]string, error) {
 	return []string{"mock-model"}, nil
 }

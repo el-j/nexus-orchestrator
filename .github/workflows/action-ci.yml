@@ -46,6 +46,12 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Lint (if configured)
+        # ESLint is not yet configured as a dev dependency; this step runs the
+        # lint script if present and is a no-op otherwise. When eslint is added
+        # to package.json, add a "lint" script and this step will start enforcing it.
+        run: npm run lint --if-present
+
       - name: Unit tests
         run: npm test
 

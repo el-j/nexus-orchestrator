@@ -1,12 +1,12 @@
 {
   "version": "2",
-  "updatedAt": "2026-03-10T22:00:00.000Z",
+  "updatedAt": "2026-03-12T18:00:00.000Z",
   "counters": {
-    "nextTaskId": 125,
-    "nextPlanId": 18
+    "nextTaskId": 230,
+    "nextPlanId": 32
   },
   "activePlanId": null,
-  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix). PLAN-013 completed (update CI to latest action versions). PLAN-014 completed (unified publish.yml pipeline, fixed GITHUB_TOKEN cross-trigger bug, fixed CLI/desktop artifact naming collision, updated downloads.md). PLAN-015 completed (production-grade Node20 GitHub Action with TypeScript, built-in agent identity loading from el-j/agency-agents, 24 unit tests, action-ci.yml CI workflow). PLAN-016 completed (release pipeline finalization: deleted conflicting version.yml+release.yml, created CHANGELOG.md, fixed downloads.md desktop links). PLAN-017 completed (fix all broken download links: nexusOrchestrator→nexus-orchestrator prefix, macOS .tar.gz→.zip, add Gatekeeper workaround instructions).",
+  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix). PLAN-013 completed (update CI to latest action versions). PLAN-014 completed (unified publish.yml pipeline, fixed GITHUB_TOKEN cross-trigger bug, fixed CLI/desktop artifact naming collision, updated downloads.md). PLAN-015 completed (production-grade Node20 GitHub Action with TypeScript, built-in agent identity loading from el-j/agency-agents, 24 unit tests, action-ci.yml CI workflow). PLAN-016 completed (release pipeline finalization: deleted conflicting version.yml+release.yml, created CHANGELOG.md, fixed downloads.md desktop links). PLAN-017 completed (fix all broken download links: nexusOrchestrator→nexus-orchestrator prefix, macOS .tar.gz→.zip, add Gatekeeper workaround instructions). PLAN-018 completed (provider visibility: configurable Ollama/LM Studio URLs, BaseURL+Error in ProviderInfo, SQLite-persisted provider CRUD, GUI provider management panel, VS Code extension with submit/queue/status-bar). PLAN-019 completed (VS Code extension VSIX in release pipeline: vsce packaging with publisher+@vscode/vsce, build-vscode job in publish.yml+ci.yml, DownloadsView.vue/HomeView.vue/docs updated to mention extension). PLAN-020 completed (fix ProviderInfo TypeScript PascalCase→camelCase type mismatch, wire AppSidebar routing, create ProvidersView.vue, dogfood confirmed COMPLETED via LM Studio qwen3-coder-next in 9s). PLAN-021 completed (SSE real-time updates via EventSource+fallback, ProviderConfig kind fix, CHANGELOG v0.8.0 — all 4 tasks dogfooded via daemon, LM Studio qwen3-coder-next). PLAN-022 completed (Universal AI Session Orchestration — AISession domain type, AISessionRepository+AISessionMonitor ports, SQLite AISessionRepo, HTTP /api/ai-sessions CRUD, MCP register_session+get_ai_sessions (14 tools total), GUI AISessionsView+useAISessions composable, VS Code SessionMonitor+Copilot detection, entry point wiring, 13 QA tests — all 9 tasks, 7 waves, all green). PLAN-023 active (System-Wide Provider Discovery + Background Service Mode — detect Claude CLI/Copilot/Antigravity/local AI tools, hide-to-tray, in-app log console, no console window — 13 tasks across 8 waves). PLAN-024 completed (Multi-Project Planning & Idea Staging — DRAFT/BACKLOG statuses, ProviderName per-task routing, Priority+Tags, SQLite migrations, backlog CRUD on HTTP/MCP/CLI/Wails, BacklogView+BacklogList+ProjectSelector GUI, TaskSubmitForm split-button, 20 new QA tests — all 12 tasks, 7 waves, all green). PLAN-029 completed (Task Queue UI fix: DashboardView flex wrapper; AI Session dedup by externalId: idempotent RegisterAISession + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code extension heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-030 completed (Comprehensive Hardening: HeartbeatAISession+PromoteProvider bindings, error handling consistency, constructor nil-validation, HTTP API error format, frontend circular dep fix, VSCode memory leak+URLs, VSCode session monitor race fix, processNext decomposition into 4 helpers, silent catch blocks fixed, security hardening CSP nonce+file permissions+XSS, Vue error boundary+rejection handler, GitHub Action 53 tests, golangci-lint+eslint in CI, discovery error logging+configurable builder options, frontend accessibility ARIA labels). PLAN-031 completed (fix duplicate package decl in llm_openaicompat test, go fmt all files, add gofmt CI check + vet gate for test job — all 4 tasks green). EXPERIMENT 2026-03-12: go build passes even when _test.go files have syntax errors (build only compiles cmd/ entry points, never test files) — CI pattern Build✓ Vet✗ Test✗ gives false confidence; fixed by adding needs:[vet] gate to test job. EXPERIMENT 2026-03-12: duplicate package declarations caused by appending generated/scaffolded code to an existing file that already had a package line — always check for duplicate package decls after code generation. EXPERIMENT 2026-03-12: gofmt violations (multi-statement single lines with ;) not caught by go vet or go build — must add explicit gofmt -l check in lint CI job; find command: find . -name '*.go' | xargs gofmt -l. SESSION 2026-03-12: Completed PLAN-031 (CI hard-failure fix). Files changed: adapter_test.go (dup pkg decl), orchestrator_options_test.go (gofmt), .github/workflows/ci.yml (gofmt check + vet gate). Tests: all green. Next: PLAN-032.",
   "plans": {
     "PLAN-001": {
       "id": "PLAN-001",
@@ -32,7 +32,7 @@
     "PLAN-002": {
       "id": "PLAN-002",
       "goal": "Harden the orchestrator against crashes/data-races and build the Wails 2 GUI dashboard with full cross-platform support",
-      "status": "todo",
+      "status": "completed",
       "createdAt": "2026-03-09T12:00:00.000Z",
       "taskIds": [
         "TASK-013",
@@ -54,7 +54,8 @@
         "TASK-029",
         "TASK-030",
         "TASK-031"
-      ]
+      ],
+      "completedAt": "2026-03-09T12:00:00.000Z"
     },
     "PLAN-003": {
       "id": "PLAN-003",
@@ -219,7 +220,7 @@
     },
     "PLAN-013": {
       "id": "PLAN-013",
-      "goal": "Update CI to latest GitHub Action versions: gittools/actions v3.1.11\u2192v4.3.3, zig 0.13.0\u21920.14.0, GitVersion.yml v6 compat",
+      "goal": "Update CI to latest GitHub Action versions: gittools/actions v3.1.11→v4.3.3, zig 0.13.0→0.14.0, GitVersion.yml v6 compat",
       "status": "completed",
       "createdAt": "2026-03-10T21:00:00.000Z",
       "completedAt": "2026-03-10T22:00:00.000Z",
@@ -282,6 +283,155 @@
         "TASK-123",
         "TASK-124"
       ]
+    },
+    "PLAN-018": {
+      "id": "PLAN-018",
+      "goal": "Provider visibility, dynamic config, and VS Code extension: fix discovery for Docker/remote providers, persist provider configs in SQLite, build GUI provider management, create VS Code extension for task submission",
+      "status": "completed",
+      "createdAt": "2026-03-11T16:10:00.000Z",
+      "completedAt": "2026-03-11T17:10:00.000Z",
+      "taskIds": [
+        "TASK-125",
+        "TASK-126",
+        "TASK-127",
+        "TASK-128",
+        "TASK-129",
+        "TASK-130",
+        "TASK-131",
+        "TASK-132",
+        "TASK-133",
+        "TASK-134",
+        "TASK-135",
+        "TASK-136"
+      ]
+    },
+    "PLAN-019": {
+      "id": "PLAN-019",
+      "goal": "Build VS Code extension VSIX in release pipeline, attach as downloadable release asset, and mention it on the GitHub Pages documentation site",
+      "status": "completed",
+      "createdAt": "2026-03-11T18:00:00.000Z",
+      "completedAt": "2026-03-11T18:30:00.000Z",
+      "taskIds": [
+        "TASK-137",
+        "TASK-138",
+        "TASK-139",
+        "TASK-140",
+        "TASK-141",
+        "TASK-142"
+      ]
+    },
+    "PLAN-020": {
+      "id": "PLAN-020",
+      "goal": "Fix GUI provider display (ProviderInfo type mismatch), wire Providers sidebar routing, create ProvidersView, and validate dogfooding",
+      "status": "completed",
+      "createdAt": "2026-03-11T19:00:00.000Z",
+      "completedAt": "2026-03-11T19:30:00.000Z",
+      "taskIds": [
+        "TASK-143",
+        "TASK-144",
+        "TASK-145"
+      ]
+    },
+    "PLAN-021": {
+      "id": "PLAN-021",
+      "goal": "SSE real-time task updates, fix ProviderConfig kind/type mismatch, CHANGELOG v0.8.0",
+      "status": "completed",
+      "createdAt": "2026-03-12T10:00:00.000Z",
+      "taskIds": [
+        "TASK-146",
+        "TASK-147",
+        "TASK-148",
+        "TASK-149"
+      ]
+    },
+    "PLAN-022": {
+      "id": "PLAN-022",
+      "goal": "Universal AI Session Orchestration — discover, visualise, and guide all active AI copilot/LLM sessions (VS Code Copilot, Claude Desktop, any MCP client) from a single nexusOrchestrator meta-orchestrator hub",
+      "status": "completed",
+      "createdAt": "2026-03-12T11:00:00.000Z",
+      "taskIds": [
+        "TASK-150",
+        "TASK-151",
+        "TASK-152",
+        "TASK-153",
+        "TASK-154",
+        "TASK-155",
+        "TASK-156",
+        "TASK-157",
+        "TASK-158"
+      ],
+      "completedAt": "2026-03-11T23:47:20.000Z"
+    },
+    "PLAN-023": {
+      "id": "PLAN-023",
+      "goal": "System-Wide Provider Discovery + Background Service Mode — auto-detect all local AI tools (Claude CLI, Copilot, Antigravity, LM Studio, Ollama, etc.), hide-to-tray on window close, in-app log console, suppress console window",
+      "status": "completed",
+      "createdAt": "2026-03-11T21:00:00.000Z",
+      "taskIds": [
+        "TASK-159",
+        "TASK-160",
+        "TASK-161",
+        "TASK-162",
+        "TASK-163",
+        "TASK-164",
+        "TASK-165",
+        "TASK-166",
+        "TASK-167",
+        "TASK-168",
+        "TASK-169",
+        "TASK-170",
+        "TASK-171"
+      ],
+      "completedAt": "2026-03-11T22:39:31.844896+00:00"
+    },
+    "PLAN-024": {
+      "id": "PLAN-024",
+      "goal": "Multi-Project Planning & Idea Staging — add DRAFT/BACKLOG task statuses, per-task explicit provider routing (ProviderName), priority + tags fields, backlog CRUD across HTTP API / MCP / CLI / GUI, project-scoped backlog view with promote-to-queue workflow",
+      "status": "completed",
+      "createdAt": "2026-03-12T12:00:00.000Z",
+      "completedAt": "2026-03-12T13:40:00.000Z",
+      "taskIds": [
+        "TASK-172",
+        "TASK-173",
+        "TASK-174",
+        "TASK-175",
+        "TASK-176",
+        "TASK-177",
+        "TASK-178",
+        "TASK-179",
+        "TASK-180",
+        "TASK-181",
+        "TASK-182",
+        "TASK-183"
+      ]
+    },
+    "PLAN-025": {
+      "id": "PLAN-025",
+      "title": "Distribution Hardening & VS Code Extension v0.2.0",
+      "status": "completed",
+      "createdAt": "2026-03-12T10:00:00.000Z",
+      "taskIds": [
+        "TASK-184",
+        "TASK-185",
+        "TASK-186",
+        "TASK-187",
+        "TASK-188"
+      ],
+      "completedAt": "2026-03-12T00:45:32Z"
+    },
+    "PLAN-026": {
+      "id": "PLAN-026",
+      "title": "Production Hardening and GUI Completeness",
+      "status": "completed",
+      "goal": "Close the last gaps in the v0.9.x feature set: orchestrator robustness (startup recovery, retry limits, queue cap, path normalization), GUI completeness (Task History view, Settings view), and README refresh documenting v0.9.x features.",
+      "createdAt": "2026-03-12T10:00:00.000Z",
+      "tasks": [
+        "TASK-189",
+        "TASK-190",
+        "TASK-191",
+        "TASK-192"
+      ],
+      "completedAt": "2026-03-12T08:49:21Z"
     }
   },
   "tasks": {
@@ -454,14 +604,14 @@
     "TASK-013": {
       "id": "TASK-013",
       "title": "Orchestrator: startup recovery + Stop() idempotency",
-      "status": "todo",
+      "status": "done",
       "role": "backend",
       "planId": "PLAN-002",
       "dependencies": [],
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-014": {
       "id": "TASK-014",
@@ -478,19 +628,19 @@
     "TASK-015": {
       "id": "TASK-015",
       "title": "HTTP API: history endpoint + session management",
-      "status": "todo",
+      "status": "done",
       "role": "api",
       "planId": "PLAN-002",
       "dependencies": [],
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-016": {
       "id": "TASK-016",
       "title": "CLI: queue submit + session + providers configure",
-      "status": "todo",
+      "status": "done",
       "role": "cli",
       "planId": "PLAN-002",
       "dependencies": [
@@ -499,12 +649,12 @@
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-017": {
       "id": "TASK-017",
       "title": "Frontend: scaffold Vue3+PrimeVue4+TW4 Wails app",
-      "status": "todo",
+      "status": "done",
       "role": "devops",
       "planId": "PLAN-002",
       "dependencies": [
@@ -513,12 +663,12 @@
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-018": {
       "id": "TASK-018",
       "title": "Wails binding: extend app.go with history/session/stats",
-      "status": "todo",
+      "status": "done",
       "role": "backend",
       "planId": "PLAN-002",
       "dependencies": [
@@ -527,12 +677,12 @@
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-019": {
       "id": "TASK-019",
       "title": "GUI: Dashboard + Provider status view",
-      "status": "todo",
+      "status": "done",
       "role": "devops",
       "planId": "PLAN-002",
       "dependencies": [
@@ -542,12 +692,12 @@
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-020": {
       "id": "TASK-020",
       "title": "GUI: Task Queue page with submit drawer",
-      "status": "todo",
+      "status": "done",
       "role": "devops",
       "planId": "PLAN-002",
       "dependencies": [
@@ -557,7 +707,7 @@
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-021": {
       "id": "TASK-021",
@@ -592,7 +742,7 @@
     "TASK-023": {
       "id": "TASK-023",
       "title": "System tray: show/hide, quick stats, task notifications",
-      "status": "todo",
+      "status": "done",
       "role": "devops",
       "planId": "PLAN-002",
       "dependencies": [
@@ -602,12 +752,12 @@
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-024": {
       "id": "TASK-024",
       "title": "QA: Orchestrator hardening tests + GUI smoke tests",
-      "status": "todo",
+      "status": "done",
       "role": "qa",
       "planId": "PLAN-002",
       "dependencies": [
@@ -621,12 +771,12 @@
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-025": {
       "id": "TASK-025",
       "title": "Verify: cross-platform build check + updated README",
-      "status": "todo",
+      "status": "done",
       "role": "verify",
       "planId": "PLAN-002",
       "dependencies": [
@@ -635,24 +785,24 @@
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-026": {
       "id": "TASK-026",
       "title": "Domain: add source writeback fields to Task",
-      "status": "todo",
+      "status": "done",
       "role": "architecture",
       "planId": "PLAN-002",
       "dependencies": [],
       "createdAt": "2026-03-09T13:00:00.000Z",
       "updatedAt": "2026-03-09T13:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-027": {
       "id": "TASK-027",
       "title": "Port + adapter: Writeback outbound (fs_writeback)",
-      "status": "todo",
+      "status": "done",
       "role": "backend",
       "planId": "PLAN-002",
       "dependencies": [
@@ -661,12 +811,12 @@
       "createdAt": "2026-03-09T13:00:00.000Z",
       "updatedAt": "2026-03-09T13:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-028": {
       "id": "TASK-028",
       "title": "OrchestratorService: invoke writeback on completion",
-      "status": "todo",
+      "status": "done",
       "role": "backend",
       "planId": "PLAN-002",
       "dependencies": [
@@ -676,12 +826,12 @@
       "createdAt": "2026-03-09T13:00:00.000Z",
       "updatedAt": "2026-03-09T13:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-029": {
       "id": "TASK-029",
       "title": "HTTP API + MCP: expose source fields in submit",
-      "status": "todo",
+      "status": "done",
       "role": "api",
       "planId": "PLAN-002",
       "dependencies": [
@@ -690,12 +840,12 @@
       "createdAt": "2026-03-09T13:00:00.000Z",
       "updatedAt": "2026-03-09T13:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-030": {
       "id": "TASK-030",
       "title": "New command: .claude/commands/push-to-nexus.md",
-      "status": "todo",
+      "status": "done",
       "role": "planning",
       "planId": "PLAN-002",
       "dependencies": [
@@ -704,12 +854,12 @@
       "createdAt": "2026-03-09T13:00:00.000Z",
       "updatedAt": "2026-03-09T13:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-031": {
       "id": "TASK-031",
       "title": "New command: .claude/commands/sync-from-nexus.md",
-      "status": "todo",
+      "status": "done",
       "role": "planning",
       "planId": "PLAN-002",
       "dependencies": [
@@ -718,7 +868,7 @@
       "createdAt": "2026-03-09T13:00:00.000Z",
       "updatedAt": "2026-03-09T13:00:00.000Z",
       "startedAt": null,
-      "completedAt": null
+      "completedAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-032": {
       "id": "TASK-032",
@@ -1213,7 +1363,7 @@
     },
     "TASK-070": {
       "id": "TASK-070",
-      "title": "SSE event lifecycle test (submit \u2192 events \u2192 verify order)",
+      "title": "SSE event lifecycle test (submit → events → verify order)",
       "status": "done",
       "role": "qa",
       "planId": "PLAN-008",
@@ -1772,7 +1922,7 @@
     "TASK-116": {
       "id": "TASK-116",
       "planId": "PLAN-015",
-      "title": "Add .github/workflows/action-ci.yml \u2014 lint, typecheck, build-check CI",
+      "title": "Add .github/workflows/action-ci.yml — lint, typecheck, build-check CI",
       "role": "engineering",
       "status": "done",
       "deps": [
@@ -1825,7 +1975,11 @@
       "status": "done",
       "role": "planning",
       "planId": "PLAN-016",
-      "dependencies": ["TASK-118", "TASK-119", "TASK-120"],
+      "dependencies": [
+        "TASK-118",
+        "TASK-119",
+        "TASK-120"
+      ],
       "createdAt": "2026-03-11T00:00:00.000Z",
       "completedAt": "2026-03-11T00:00:00.000Z"
     },
@@ -1855,9 +2009,752 @@
       "status": "done",
       "role": "planning",
       "planId": "PLAN-017",
-      "dependencies": ["TASK-122", "TASK-123"],
+      "dependencies": [
+        "TASK-122",
+        "TASK-123"
+      ],
       "createdAt": "2026-03-11T01:00:00.000Z",
       "completedAt": "2026-03-11T01:00:00.000Z"
+    },
+    "TASK-125": {
+      "id": "TASK-125",
+      "title": "Configurable Ollama base URL",
+      "status": "done",
+      "startedAt": "2026-03-11T16:20:00.000Z",
+      "completedAt": "2026-03-11T16:30:00.000Z",
+      "role": "backend",
+      "planId": "PLAN-018",
+      "dependencies": [],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-126": {
+      "id": "TASK-126",
+      "title": "Configurable LM Studio base URL",
+      "status": "done",
+      "startedAt": "2026-03-11T16:20:00.000Z",
+      "completedAt": "2026-03-11T16:30:00.000Z",
+      "role": "backend",
+      "planId": "PLAN-018",
+      "dependencies": [],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-127": {
+      "id": "TASK-127",
+      "title": "Show all providers including unreachable",
+      "status": "done",
+      "startedAt": "2026-03-11T16:20:00.000Z",
+      "completedAt": "2026-03-11T16:30:00.000Z",
+      "role": "backend",
+      "planId": "PLAN-018",
+      "dependencies": [],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-128": {
+      "id": "TASK-128",
+      "title": "GUI provider refresh and error display",
+      "status": "done",
+      "startedAt": "2026-03-11T16:32:00.000Z",
+      "completedAt": "2026-03-11T16:45:00.000Z",
+      "role": "frontend",
+      "planId": "PLAN-018",
+      "dependencies": [
+        "TASK-127"
+      ],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-129": {
+      "id": "TASK-129",
+      "title": "Persist provider configs in SQLite",
+      "status": "done",
+      "startedAt": "2026-03-11T16:20:00.000Z",
+      "completedAt": "2026-03-11T16:30:00.000Z",
+      "role": "backend",
+      "planId": "PLAN-018",
+      "dependencies": [],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-130": {
+      "id": "TASK-130",
+      "title": "Provider CRUD HTTP API + Wails bindings",
+      "status": "done",
+      "startedAt": "2026-03-11T16:32:00.000Z",
+      "completedAt": "2026-03-11T16:45:00.000Z",
+      "role": "api",
+      "planId": "PLAN-018",
+      "dependencies": [
+        "TASK-129"
+      ],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-131": {
+      "id": "TASK-131",
+      "title": "GUI provider management panel",
+      "status": "done",
+      "startedAt": "2026-03-11T16:47:00.000Z",
+      "completedAt": "2026-03-11T17:00:00.000Z",
+      "role": "frontend",
+      "planId": "PLAN-018",
+      "dependencies": [
+        "TASK-130",
+        "TASK-128"
+      ],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-132": {
+      "id": "TASK-132",
+      "title": "Scaffold VS Code extension",
+      "status": "done",
+      "startedAt": "2026-03-11T16:20:00.000Z",
+      "completedAt": "2026-03-11T16:30:00.000Z",
+      "role": "devops",
+      "planId": "PLAN-018",
+      "dependencies": [],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-133": {
+      "id": "TASK-133",
+      "title": "VS Code submit task command",
+      "status": "done",
+      "startedAt": "2026-03-11T16:32:00.000Z",
+      "completedAt": "2026-03-11T16:45:00.000Z",
+      "role": "devops",
+      "planId": "PLAN-018",
+      "dependencies": [
+        "TASK-132"
+      ],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-134": {
+      "id": "TASK-134",
+      "title": "VS Code task queue webview",
+      "status": "done",
+      "startedAt": "2026-03-11T16:47:00.000Z",
+      "completedAt": "2026-03-11T17:00:00.000Z",
+      "role": "devops",
+      "planId": "PLAN-018",
+      "dependencies": [
+        "TASK-133"
+      ],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-135": {
+      "id": "TASK-135",
+      "title": "VS Code status bar and provider picker",
+      "status": "done",
+      "startedAt": "2026-03-11T16:47:00.000Z",
+      "completedAt": "2026-03-11T17:00:00.000Z",
+      "role": "devops",
+      "planId": "PLAN-018",
+      "dependencies": [
+        "TASK-133"
+      ],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-136": {
+      "id": "TASK-136",
+      "title": "VS Code extension README and docs",
+      "status": "done",
+      "startedAt": "2026-03-11T17:02:00.000Z",
+      "completedAt": "2026-03-11T17:15:00.000Z",
+      "role": "planning",
+      "planId": "PLAN-018",
+      "dependencies": [
+        "TASK-134",
+        "TASK-135"
+      ],
+      "createdAt": "2026-03-11T16:10:00.000Z"
+    },
+    "TASK-137": {
+      "id": "TASK-137",
+      "title": "Prepare vscode-extension for vsce packaging",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-019",
+      "dependencies": [],
+      "createdAt": "2026-03-11T18:00:00.000Z",
+      "startedAt": "2026-03-11T18:05:00.000Z",
+      "completedAt": "2026-03-11T18:30:00.000Z"
+    },
+    "TASK-138": {
+      "id": "TASK-138",
+      "title": "Add VSIX build job to publish.yml and release job",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-019",
+      "dependencies": [],
+      "createdAt": "2026-03-11T18:00:00.000Z",
+      "startedAt": "2026-03-11T18:05:00.000Z",
+      "completedAt": "2026-03-11T18:30:00.000Z"
+    },
+    "TASK-139": {
+      "id": "TASK-139",
+      "title": "Add vscode-extension CI check to ci.yml",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-019",
+      "dependencies": [],
+      "createdAt": "2026-03-11T18:00:00.000Z",
+      "startedAt": "2026-03-11T18:05:00.000Z",
+      "completedAt": "2026-03-11T18:30:00.000Z"
+    },
+    "TASK-140": {
+      "id": "TASK-140",
+      "title": "Add VS Code extension section to DownloadsView.vue",
+      "status": "done",
+      "role": "frontend",
+      "planId": "PLAN-019",
+      "dependencies": [],
+      "createdAt": "2026-03-11T18:00:00.000Z",
+      "startedAt": "2026-03-11T18:05:00.000Z",
+      "completedAt": "2026-03-11T18:30:00.000Z"
+    },
+    "TASK-141": {
+      "id": "TASK-141",
+      "title": "Add VS Code Extension feature to HomeView.vue",
+      "status": "done",
+      "role": "frontend",
+      "planId": "PLAN-019",
+      "dependencies": [],
+      "createdAt": "2026-03-11T18:00:00.000Z",
+      "startedAt": "2026-03-11T18:05:00.000Z",
+      "completedAt": "2026-03-11T18:30:00.000Z"
+    },
+    "TASK-142": {
+      "id": "TASK-142",
+      "title": "Update docs/index.md with VS Code extension feature",
+      "status": "done",
+      "role": "docs",
+      "planId": "PLAN-019",
+      "dependencies": [],
+      "createdAt": "2026-03-11T18:00:00.000Z",
+      "startedAt": "2026-03-11T18:05:00.000Z",
+      "completedAt": "2026-03-11T18:30:00.000Z"
+    },
+    "TASK-143": {
+      "id": "TASK-143",
+      "title": "Fix ProviderInfo TypeScript type and ProviderStatus template",
+      "status": "done",
+      "role": "frontend",
+      "planId": "PLAN-020",
+      "dependencies": [],
+      "createdAt": "2026-03-11T19:00:00.000Z",
+      "startedAt": "2026-03-11T19:05:00.000Z",
+      "completedAt": "2026-03-11T19:30:00.000Z"
+    },
+    "TASK-144": {
+      "id": "TASK-144",
+      "title": "Wire AppSidebar routing and create ProvidersView",
+      "status": "done",
+      "role": "frontend",
+      "planId": "PLAN-020",
+      "dependencies": [],
+      "createdAt": "2026-03-11T19:00:00.000Z",
+      "startedAt": "2026-03-11T19:05:00.000Z",
+      "completedAt": "2026-03-11T19:30:00.000Z"
+    },
+    "TASK-145": {
+      "id": "TASK-145",
+      "title": "Rebuild Wails GUI and dogfood smoke test",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-020",
+      "dependencies": [
+        "TASK-143",
+        "TASK-144"
+      ],
+      "createdAt": "2026-03-11T19:00:00.000Z",
+      "startedAt": "2026-03-11T19:20:00.000Z",
+      "completedAt": "2026-03-11T19:30:00.000Z"
+    },
+    "TASK-146": {
+      "id": "TASK-146",
+      "title": "Fix ProviderConfig.type → kind TypeScript type mismatch",
+      "status": "done",
+      "role": "api",
+      "planId": "PLAN-021",
+      "dependencies": [],
+      "createdAt": "2026-03-12T10:00:00.000Z",
+      "completedAt": "2026-03-12T10:00:00.000Z"
+    },
+    "TASK-147": {
+      "id": "TASK-147",
+      "title": "Update CHANGELOG.md with PLAN-018/019/020 as v0.8.0",
+      "status": "done",
+      "role": "planning",
+      "planId": "PLAN-021",
+      "dependencies": [],
+      "createdAt": "2026-03-12T10:00:00.000Z",
+      "completedAt": "2026-03-12T10:00:00.000Z"
+    },
+    "TASK-148": {
+      "id": "TASK-148",
+      "title": "Replace polling in useTasks.ts with SSE consumer",
+      "status": "done",
+      "role": "api",
+      "planId": "PLAN-021",
+      "dependencies": [],
+      "createdAt": "2026-03-12T10:00:00.000Z",
+      "completedAt": "2026-03-12T10:00:00.000Z"
+    },
+    "TASK-149": {
+      "id": "TASK-149",
+      "title": "Fix ProviderConfigForm.vue to use kind field",
+      "status": "done",
+      "role": "api",
+      "planId": "PLAN-021",
+      "dependencies": [
+        "TASK-146"
+      ],
+      "createdAt": "2026-03-12T10:00:00.000Z"
+    },
+    "TASK-150": {
+      "id": "TASK-150",
+      "title": "Define AISession domain type and enums",
+      "status": "done",
+      "role": "architecture",
+      "planId": "PLAN-022",
+      "dependencies": [],
+      "createdAt": "2026-03-12T11:00:00.000Z",
+      "startedAt": "2026-03-11T23:02:06.000Z",
+      "completedAt": "2026-03-11T23:06:49.000Z"
+    },
+    "TASK-151": {
+      "id": "TASK-151",
+      "title": "Add AISessionRepository and AISessionMonitor ports",
+      "status": "done",
+      "role": "architecture",
+      "planId": "PLAN-022",
+      "dependencies": [
+        "TASK-150"
+      ],
+      "createdAt": "2026-03-12T11:00:00.000Z",
+      "startedAt": "2026-03-11T23:06:49.000Z",
+      "completedAt": "2026-03-11T23:08:16.000Z"
+    },
+    "TASK-152": {
+      "id": "TASK-152",
+      "title": "Implement SQLite AISessionRepo outbound adapter",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-022",
+      "dependencies": [
+        "TASK-151"
+      ],
+      "createdAt": "2026-03-12T11:00:00.000Z",
+      "startedAt": "2026-03-11T23:08:16.000Z",
+      "completedAt": "2026-03-11T23:12:42.000Z"
+    },
+    "TASK-153": {
+      "id": "TASK-153",
+      "title": "HTTP API CRUD and SSE for AI sessions",
+      "status": "done",
+      "role": "api",
+      "planId": "PLAN-022",
+      "dependencies": [
+        "TASK-151",
+        "TASK-152"
+      ],
+      "createdAt": "2026-03-12T11:00:00.000Z",
+      "startedAt": "2026-03-11T23:12:42.000Z",
+      "completedAt": "2026-03-11T23:18:24.000Z"
+    },
+    "TASK-154": {
+      "id": "TASK-154",
+      "title": "MCP tools register_session and get_ai_sessions",
+      "status": "done",
+      "role": "mcp",
+      "planId": "PLAN-022",
+      "dependencies": [
+        "TASK-153"
+      ],
+      "createdAt": "2026-03-12T11:00:00.000Z",
+      "startedAt": "2026-03-11T23:18:24.000Z",
+      "completedAt": "2026-03-11T23:27:29.000Z"
+    },
+    "TASK-155": {
+      "id": "TASK-155",
+      "title": "GUI AISessionsView and useAISessions composable",
+      "status": "done",
+      "role": "frontend",
+      "planId": "PLAN-022",
+      "dependencies": [
+        "TASK-153"
+      ],
+      "createdAt": "2026-03-12T11:00:00.000Z",
+      "startedAt": "2026-03-11T23:18:24.000Z",
+      "completedAt": "2026-03-11T23:27:29.000Z"
+    },
+    "TASK-156": {
+      "id": "TASK-156",
+      "title": "VS Code extension SessionMonitor with vscode.lm API",
+      "status": "done",
+      "role": "cli",
+      "planId": "PLAN-022",
+      "dependencies": [
+        "TASK-153"
+      ],
+      "createdAt": "2026-03-12T11:00:00.000Z",
+      "startedAt": "2026-03-11T23:18:24.000Z",
+      "completedAt": "2026-03-11T23:27:29.000Z"
+    },
+    "TASK-157": {
+      "id": "TASK-157",
+      "title": "Wire AISession repo into daemon and Wails entry points",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-022",
+      "dependencies": [
+        "TASK-152",
+        "TASK-153",
+        "TASK-154"
+      ],
+      "createdAt": "2026-03-12T11:00:00.000Z",
+      "startedAt": "2026-03-11T23:27:29.000Z",
+      "completedAt": "2026-03-11T23:29:15.000Z"
+    },
+    "TASK-158": {
+      "id": "TASK-158",
+      "title": "QA integration tests for AI session pipeline",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-022",
+      "dependencies": [
+        "TASK-157"
+      ],
+      "createdAt": "2026-03-12T11:00:00.000Z",
+      "startedAt": "2026-03-11T23:29:15.000Z",
+      "completedAt": "2026-03-11T23:47:20.000Z"
+    },
+    "TASK-159": {
+      "id": "TASK-159",
+      "title": "Domain types for system-wide discovery and log streaming",
+      "status": "done",
+      "role": "architecture",
+      "planId": "PLAN-023",
+      "dependencies": [],
+      "createdAt": "2026-03-11T21:00:00.000Z",
+      "startedAt": "2026-03-11T21:18:37.042534Z",
+      "completedAt": "2026-03-11T21:20:21.340072+00:00"
+    },
+    "TASK-160": {
+      "id": "TASK-160",
+      "title": "Port interfaces for SystemScanner and discovery orchestration",
+      "status": "done",
+      "role": "architecture",
+      "planId": "PLAN-023",
+      "dependencies": [
+        "TASK-159"
+      ],
+      "createdAt": "2026-03-11T21:00:00.000Z",
+      "startedAt": "2026-03-11T21:20:21.340072+00:00",
+      "completedAt": "2026-03-11T21:28:01.578240+00:00"
+    },
+    "TASK-161": {
+      "id": "TASK-161",
+      "title": "sys_scanner outbound adapter — port, CLI, and process probes",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-023",
+      "dependencies": [
+        "TASK-160"
+      ],
+      "createdAt": "2026-03-11T21:00:00.000Z",
+      "startedAt": "2026-03-11T21:28:01.578240+00:00",
+      "completedAt": "2026-03-11T21:47:00.257031+00:00"
+    },
+    "TASK-162": {
+      "id": "TASK-162",
+      "title": "System tray inbound adapter with getlantern/systray",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-023",
+      "dependencies": [
+        "TASK-160"
+      ],
+      "createdAt": "2026-03-11T21:00:00.000Z",
+      "startedAt": "2026-03-11T21:28:01.578240+00:00",
+      "completedAt": "2026-03-11T21:47:00.257031+00:00"
+    },
+    "TASK-163": {
+      "id": "TASK-163",
+      "title": "SSE log capture backend for in-app log console",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-023",
+      "dependencies": [
+        "TASK-159"
+      ],
+      "createdAt": "2026-03-11T21:00:00.000Z",
+      "startedAt": "2026-03-11T21:20:21.340072+00:00",
+      "completedAt": "2026-03-11T21:28:01.578240+00:00"
+    },
+    "TASK-164": {
+      "id": "TASK-164",
+      "title": "OrchestratorService discovery and promote methods",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-023",
+      "dependencies": [
+        "TASK-160",
+        "TASK-161"
+      ],
+      "createdAt": "2026-03-11T21:00:00.000Z",
+      "startedAt": "2026-03-11T21:47:00.257031+00:00",
+      "completedAt": "2026-03-11T21:53:12.394693+00:00"
+    },
+    "TASK-165": {
+      "id": "TASK-165",
+      "title": "Wails hide-to-tray and build config for console suppression",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-023",
+      "dependencies": [
+        "TASK-162"
+      ],
+      "createdAt": "2026-03-11T21:00:00.000Z",
+      "startedAt": "2026-03-11T21:47:00.257031+00:00",
+      "completedAt": "2026-03-11T21:53:12.394693+00:00"
+    },
+    "TASK-166": {
+      "id": "TASK-166",
+      "title": "HTTP API endpoints for provider discovery",
+      "status": "done",
+      "role": "api",
+      "planId": "PLAN-023",
+      "dependencies": [
+        "TASK-164"
+      ],
+      "createdAt": "2026-03-11T21:00:00.000Z",
+      "startedAt": "2026-03-11T21:53:12.394693+00:00",
+      "completedAt": "2026-03-11T22:00:16.488040+00:00"
+    },
+    "TASK-167": {
+      "id": "TASK-167",
+      "title": "Frontend DiscoveredProvidersPanel and DiscoveryView",
+      "status": "done",
+      "role": "frontend",
+      "planId": "PLAN-023",
+      "dependencies": [
+        "TASK-166"
+      ],
+      "createdAt": "2026-03-11T21:00:00.000Z",
+      "startedAt": "2026-03-11T22:00:16.488040+00:00",
+      "completedAt": "2026-03-11T22:39:31.844896+00:00"
+    },
+    "TASK-168": {
+      "id": "TASK-168",
+      "title": "Frontend LogPanel and useLogs composable",
+      "status": "done",
+      "role": "frontend",
+      "planId": "PLAN-023",
+      "dependencies": [
+        "TASK-163"
+      ],
+      "createdAt": "2026-03-11T21:00:00.000Z",
+      "startedAt": "2026-03-11T21:28:01.578240+00:00",
+      "completedAt": "2026-03-11T21:47:00.257031+00:00"
+    },
+    "TASK-169": {
+      "id": "TASK-169",
+      "title": "MCP tools for provider discovery",
+      "status": "done",
+      "role": "mcp",
+      "planId": "PLAN-023",
+      "dependencies": [
+        "TASK-166"
+      ],
+      "createdAt": "2026-03-11T21:00:00.000Z",
+      "startedAt": "2026-03-11T22:00:16.488040+00:00",
+      "completedAt": "2026-03-11T22:39:31.844896+00:00"
+    },
+    "TASK-170": {
+      "id": "TASK-170",
+      "title": "Entry point wiring for scanner, tray, and log capture",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-023",
+      "dependencies": [
+        "TASK-161",
+        "TASK-162",
+        "TASK-163",
+        "TASK-164",
+        "TASK-165"
+      ],
+      "createdAt": "2026-03-11T21:00:00.000Z",
+      "startedAt": "2026-03-11T21:53:12.394693+00:00",
+      "completedAt": "2026-03-11T22:00:16.488040+00:00"
+    },
+    "TASK-171": {
+      "id": "TASK-171",
+      "title": "QA integration tests for discovery and tray pipeline",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-023",
+      "dependencies": [
+        "TASK-170"
+      ],
+      "createdAt": "2026-03-11T21:00:00.000Z",
+      "startedAt": "2026-03-11T22:00:16.488040+00:00",
+      "completedAt": "2026-03-11T22:39:31.844896+00:00"
+    },
+    "TASK-172": {
+      "id": "TASK-172",
+      "title": "Domain — add DRAFT/BACKLOG statuses, Priority, ProviderName, Tags fields",
+      "status": "done",
+      "role": "architecture",
+      "planId": "PLAN-024",
+      "dependencies": [],
+      "createdAt": "2026-03-12T12:00:00.000Z",
+      "startedAt": "2026-03-12T12:00:00.000Z",
+      "completedAt": "2026-03-12T12:10:00.000Z"
+    },
+    "TASK-173": {
+      "id": "TASK-173",
+      "title": "Ports — extend Orchestrator and TaskRepository for backlog lifecycle",
+      "status": "done",
+      "role": "architecture",
+      "planId": "PLAN-024",
+      "dependencies": [
+        "TASK-172"
+      ],
+      "createdAt": "2026-03-12T12:00:00.000Z",
+      "startedAt": "2026-03-12T12:10:00.000Z",
+      "completedAt": "2026-03-12T12:20:00.000Z"
+    },
+    "TASK-174": {
+      "id": "TASK-174",
+      "title": "SQLite — add columns and repo methods for backlog fields",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-024",
+      "dependencies": [
+        "TASK-173"
+      ],
+      "createdAt": "2026-03-12T12:00:00.000Z",
+      "startedAt": "2026-03-12T12:20:00.000Z",
+      "completedAt": "2026-03-12T12:30:00.000Z"
+    },
+    "TASK-175": {
+      "id": "TASK-175",
+      "title": "OrchestratorService — backlog lifecycle and explicit provider routing",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-024",
+      "dependencies": [
+        "TASK-173",
+        "TASK-174"
+      ],
+      "createdAt": "2026-03-12T12:00:00.000Z",
+      "startedAt": "2026-03-12T12:30:00.000Z",
+      "completedAt": "2026-03-12T12:45:00.000Z"
+    },
+    "TASK-176": {
+      "id": "TASK-176",
+      "title": "HTTP API — backlog CRUD, promote, and update endpoints",
+      "status": "done",
+      "role": "api",
+      "planId": "PLAN-024",
+      "dependencies": [
+        "TASK-175"
+      ],
+      "createdAt": "2026-03-12T12:00:00.000Z",
+      "startedAt": "2026-03-12T12:45:00.000Z",
+      "completedAt": "2026-03-12T13:00:00.000Z"
+    },
+    "TASK-177": {
+      "id": "TASK-177",
+      "title": "MCP — draft, backlog, promote, update tools",
+      "status": "done",
+      "role": "mcp",
+      "planId": "PLAN-024",
+      "dependencies": [
+        "TASK-176"
+      ],
+      "createdAt": "2026-03-12T12:00:00.000Z",
+      "startedAt": "2026-03-12T13:00:00.000Z",
+      "completedAt": "2026-03-12T13:20:00.000Z"
+    },
+    "TASK-178": {
+      "id": "TASK-178",
+      "title": "Wails bindings — backlog lifecycle methods",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-024",
+      "dependencies": [
+        "TASK-175"
+      ],
+      "createdAt": "2026-03-12T12:00:00.000Z",
+      "startedAt": "2026-03-12T12:45:00.000Z",
+      "completedAt": "2026-03-12T13:00:00.000Z"
+    },
+    "TASK-179": {
+      "id": "TASK-179",
+      "title": "Frontend — TypeScript types, useProjectFilter, enhanced useTasks",
+      "status": "done",
+      "role": "frontend",
+      "planId": "PLAN-024",
+      "dependencies": [
+        "TASK-176"
+      ],
+      "createdAt": "2026-03-12T12:00:00.000Z",
+      "startedAt": "2026-03-12T13:00:00.000Z",
+      "completedAt": "2026-03-12T13:20:00.000Z"
+    },
+    "TASK-180": {
+      "id": "TASK-180",
+      "title": "Frontend — BacklogView, BacklogList, ProjectSelector components",
+      "status": "done",
+      "role": "frontend",
+      "planId": "PLAN-024",
+      "dependencies": [
+        "TASK-179"
+      ],
+      "createdAt": "2026-03-12T12:00:00.000Z",
+      "startedAt": "2026-03-12T13:20:00.000Z",
+      "completedAt": "2026-03-12T13:40:00.000Z"
+    },
+    "TASK-181": {
+      "id": "TASK-181",
+      "title": "Frontend — TaskSubmitForm with provider/model/priority/split-button",
+      "status": "done",
+      "role": "frontend",
+      "planId": "PLAN-024",
+      "dependencies": [
+        "TASK-179"
+      ],
+      "createdAt": "2026-03-12T12:00:00.000Z",
+      "startedAt": "2026-03-12T13:20:00.000Z",
+      "completedAt": "2026-03-12T13:40:00.000Z"
+    },
+    "TASK-182": {
+      "id": "TASK-182",
+      "title": "CLI — backlog, draft, promote, update subcommands",
+      "status": "done",
+      "role": "cli",
+      "planId": "PLAN-024",
+      "dependencies": [
+        "TASK-176"
+      ],
+      "createdAt": "2026-03-12T12:00:00.000Z",
+      "startedAt": "2026-03-12T13:00:00.000Z",
+      "completedAt": "2026-03-12T13:20:00.000Z"
+    },
+    "TASK-183": {
+      "id": "TASK-183",
+      "title": "QA — unit and integration tests for backlog lifecycle",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-024",
+      "dependencies": [
+        "TASK-175",
+        "TASK-176",
+        "TASK-177"
+      ],
+      "createdAt": "2026-03-12T12:00:00.000Z",
+      "startedAt": "2026-03-12T13:20:00.000Z",
+      "completedAt": "2026-03-12T13:40:00.000Z"
     }
-  }
+  },
+  "nextTaskId": 208,
+  "nextPlanId": 30
 }

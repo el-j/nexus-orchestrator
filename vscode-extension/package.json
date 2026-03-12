@@ -1,0 +1,105 @@
+{
+  "name": "nexus-orchestrator",
+  "displayName": "Nexus Orchestrator",
+  "description": "Route AI code-generation tasks through nexusOrchestrator",
+  "version": "0.2.0",
+  "publisher": "el-j",
+  "engines": { "vscode": "^1.99.0" },
+  "categories": ["AI", "Other"],
+  "repository": { "type": "git", "url": "https://github.com/el-j/nexus-orchestrator" },
+  "activationEvents": ["onStartupFinished"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "nexus-orchestrator",
+          "title": "Nexus Orchestrator",
+          "icon": "$(zap)"
+        }
+      ]
+    },
+    "views": {
+      "nexus-orchestrator": [
+        {
+          "id": "nexus.taskQueue",
+          "name": "Task Queue"
+        },
+        {
+          "id": "nexus.workspaceAgents",
+          "name": "Workspace Agents",
+          "icon": "$(organization)"
+        }
+      ]
+    },
+    "commands": [
+      { "command": "nexus.submitTask", "title": "Nexus: Submit Task" },
+      { "command": "nexus.viewQueue", "title": "Nexus: View Task Queue" },
+      { "command": "nexus.selectProvider", "title": "Nexus: Select Provider / Model" },
+      { "command": "nexus.showProviders", "title": "Nexus: Show Providers" },
+      { "command": "nexus.statusBarAction", "title": "Nexus: Status Bar Actions" },
+      { "command": "nexus.cancelTask", "title": "Nexus: Cancel Task", "icon": "$(trash)" },
+      { "command": "nexus.refreshWorkspaceAgents", "title": "Nexus: Refresh Workspace Agents", "icon": "$(refresh)" }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "nexus.refreshWorkspaceAgents",
+          "when": "view == nexus.workspaceAgents",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "nexus.cancelTask",
+          "when": "viewItem == nexusTask",
+          "group": "inline"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Nexus Orchestrator",
+      "properties": {
+        "nexus.daemonUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:9999",
+          "description": "URL of the nexusOrchestrator daemon"
+        },
+        "nexus.defaultProvider": {
+          "type": "string",
+          "default": "",
+          "description": "Default provider name for task submissions"
+        },
+        "nexus.defaultModel": {
+          "type": "string",
+          "default": "",
+          "description": "Default model for task submissions"
+        },
+        "nexus.mcpPort": {
+          "type": "number",
+          "default": 9998,
+          "description": "Port of the nexusOrchestrator MCP server (JSON-RPC 2.0). Must match NEXUS_MCP_ADDR on the daemon."
+        }
+      }
+    },
+    "mcpServers": {
+      "nexus-orchest": {
+        "label": "Nexus Orchestrator",
+        "type": "http",
+        "url": "http://127.0.0.1:${config:nexus.mcpPort}/mcp"
+      }
+    }
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
+    "watch": "npm run build -- --watch",
+    "package": "vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^3.4.0"
+  }
+}

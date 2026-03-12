@@ -79,9 +79,9 @@ func main() {
 		fmt.Fprintln(os.Stderr, "error: POST /api/tasks:", err)
 		os.Exit(1)
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
+		resp.Body.Close()
 		fmt.Fprintf(os.Stderr, "error: daemon returned HTTP %d\n", resp.StatusCode)
 		os.Exit(1)
 	}
@@ -91,9 +91,11 @@ func main() {
 		Status string `json:"status"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		resp.Body.Close()
 		fmt.Fprintln(os.Stderr, "error: decode response:", err)
 		os.Exit(1)
 	}
+	resp.Body.Close()
 
 	fmt.Printf("submitted: task_id=%s status=%s\n", result.TaskID, result.Status)
 	fmt.Printf("track: %s/api/tasks/%s\n", *addr, result.TaskID)

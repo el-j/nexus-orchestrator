@@ -1,17 +1,37 @@
 package httpapi
 
 import (
+	"crypto/rand"
+	"encoding/base64"
+	"fmt"
 	"html/template"
 	"net/http"
 )
 
 var dashboardTmpl = template.Must(template.New("dashboard").Parse(dashboardTemplateHTML))
 
+type dashboardData struct{ Nonce string }
+
+func generateNonce() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("httpapi: generate nonce: %w", err)
+	}
+	return base64.StdEncoding.EncodeToString(b), nil
+}
+
 func (s *Server) handleUI(w http.ResponseWriter, _ *http.Request) {
+	nonce, err := generateNonce()
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'")
-	if err := dashboardTmpl.Execute(w, nil); err != nil {
+	w.Header().Set("X-Frame-Options", "DENY")
+	w.Header().Set("Content-Security-Policy",
+		"default-src 'self'; style-src 'nonce-"+nonce+"'; script-src 'nonce-"+nonce+"'")
+	if err := dashboardTmpl.Execute(w, dashboardData{Nonce: nonce}); err != nil {
 		http.Error(w, "template error", http.StatusInternalServerError)
 	}
 }
@@ -22,7 +42,7 @@ const dashboardTemplateHTML = `<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>nexusOrchestrator</title>
-  <style>
+  <style nonce="{{.Nonce}}">
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
     :root {
       --bg: #09090b; --surface: #18181b; --surface2: #27272a;
@@ -101,6 +121,7 @@ const dashboardTemplateHTML = `<!DOCTYPE html>
     .mono { font-family: monospace; font-size: 0.75rem; color: var(--muted) }
     .empty { padding: 2rem; text-align: center; color: var(--muted); font-size: 0.85rem }
     #refresh-ts { font-size:0.7rem; color:var(--muted); margin-left:auto }
+    #add-provider-btn { font-size: 0.7rem; padding: 0.2rem 0.65rem }
     /* Modal */
     .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65);
                       z-index: 100; align-items: center; justify-content: center }
@@ -204,7 +225,7 @@ const dashboardTemplateHTML = `<!DOCTYPE html>
     <div class="panel">
       <div class="panel-header">
         <span>LLM Providers</span>
-        <button class="btn btn-primary" id="add-provider-btn" style="font-size:0.7rem;padding:0.2rem 0.65rem">+ Add</button>
+        <button class="btn btn-primary" id="add-provider-btn">+ Add</button>
       </div>
       <div id="providers-list"><div class="empty">Loading…</div></div>
     </div>
@@ -217,7 +238,7 @@ const dashboardTemplateHTML = `<!DOCTYPE html>
     </div>
   </div>
 </div>
-<script>
+<script nonce="{{.Nonce}}">
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
 }
@@ -321,7 +342,7 @@ async function refresh() {
             '<span class="dot '+(prov.active?'dot-green':'dot-red')+'"></span>' +
             '<span class="name">'+esc(prov.name)+'</span>' +
             (prov.activeModel ? '<span class="pill pill-active">'+esc(prov.activeModel)+'</span>' : '') +
-            '<button class="btn btn-danger" onclick="removeProvider(\''+esc(prov.name)+'\')">×</button>' +
+            '<button class="btn btn-danger" data-provider="'+esc(prov.name)+'">×</button>' +
           '</div>' +
           (models.length > 0 ? '<div class="model-pills">'+pills+'</div>' : '') +
         '</div>'
@@ -435,6 +456,11 @@ document.getElementById('modal-submit').addEventListener('click', async () => {
   } finally {
     btn.disabled = false
   }
+})
+
+document.getElementById('providers-list').addEventListener('click', e => {
+  const btn = e.target.closest('[data-provider]')
+  if (btn) removeProvider(btn.dataset.provider)
 })
 
 // --- SSE push ---

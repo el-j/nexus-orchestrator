@@ -170,6 +170,16 @@ CGO_ENABLED=1 go test ./internal/core/services/...
 go vet ./...
 ```
 
+## Using from VS Code
+
+### VS Code Extension
+
+Download the [`.vsix`](https://github.com/el-j/nexus-orchestrator/releases/latest/download/nexus-orchestrator-vscode.vsix)
+and install via `code --install-extension nexus-orchestrator-vscode.vsix`.
+Configure the daemon URL under `Nexus > Daemon URL` in VS Code settings (default: `http://127.0.0.1:9999`).
+
+Alternatively, install the companion extension from source (see [`vscode-extension/README.md`](../vscode-extension/README.md)). Once the daemon is running, you can submit tasks directly from your editor without leaving VS Code.
+
 ## Next Steps
 
 - [API Reference](/nexusOrchestrator/api-reference) — Full HTTP and MCP endpoint docs

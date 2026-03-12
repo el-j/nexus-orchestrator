@@ -1,0 +1,101 @@
+# golangci-lint v2 configuration
+# Enabled linters are curated to catch real bugs and security issues.
+# Style-only rules are excluded or disabled to avoid blocking CI.
+
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  # Disable all linters by default, then enable explicitly
+  default: none
+  enable:
+    - govet
+    - ineffassign
+    - staticcheck
+    - errcheck
+    - gocritic
+    - revive
+
+  settings:
+    errcheck:
+      check-type-assertions: false
+      check-blank: false
+      # Common close/write patterns where checking the error return is non-actionable:
+      # - deferred Body.Close on HTTP responses
+      # - deferred rows.Close / db.Close
+      # - fmt.Fprint* writes to http.ResponseWriter (net/http handles connection errors)
+      exclude-functions:
+        - (io.Closer).Close
+        - (*os.File).Close
+        - (net/http.ResponseWriter).Write
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - fmt.Fprint
+        - (*net/http.Response).Body.Close
+        - (database/sql.Rows).Close
+        - (database/sql.DB).Close
+        - (*database/sql.Rows).Close
+        - (*database/sql.DB).Close
+        - (net.Conn).Close
+        - (*net.TCPConn).Close
+        # repo_sqlite.Repository.Close wraps sql.DB.Close — deferred close error is non-actionable
+        - (*nexus-orchestrator/internal/adapters/outbound/repo_sqlite.Repository).Close
+
+    revive:
+      rules:
+        # Style-only rules — disabled to avoid noisy CI failures
+        - name: exported
+          disabled: true
+        - name: unexported-return
+          disabled: true
+        - name: var-naming
+          disabled: true
+        - name: package-comments
+          disabled: true
+        - name: comment-spacings
+          disabled: true
+        # blank-imports: standard Go idiom for driver registration (e.g. go-sqlite3)
+        - name: blank-imports
+          disabled: true
+        # unused-parameter: cobra RunE callbacks must match the func(cmd, args) signature
+        - name: unused-parameter
+          disabled: true
+
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+      disabled-checks:
+        - appendAssign
+        - commentFormatting
+        - hugeParam
+        # rangeValCopy: intentionally not fixed — value-range loops are clearer than index loops
+        # for the struct sizes involved here, and profiling has not shown them as bottlenecks
+        - rangeValCopy
+
+    staticcheck:
+      checks:
+        - "all"
+        - "-SA1019" # deprecated usage — too many false positives from wails deps
+        - "-ST1000" # package comments — style only
+        - "-ST1003" # underscore in package names — intentional in adapter naming (llm_lmstudio, etc.)
+        - "-ST1020" # exported symbol comments — style only
+        - "-ST1021" # exported symbol comments — style only
+        - "-ST1022" # exported symbol comments — style only
+
+  exclusions:
+    # Exclude generated and frontend asset directories from linting
+    paths:
+      - "frontend/.*"
+      - "build/.*"
+      - "dist/.*"
+      - "vendor/.*"
+      - ".*\\.pb\\.go"
+      - "wailsjs/.*"
+    rules:
+      # Test HTTP handlers legitimately ignore json.Encoder.Encode errors
+      - path: "_test\\.go"
+        linters:
+          - errcheck

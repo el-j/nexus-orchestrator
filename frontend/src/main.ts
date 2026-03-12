@@ -10,6 +10,15 @@ import App from './App.vue'
 
 const app = createApp(App)
 
+app.config.errorHandler = (err, instance, info) => {
+  console.error('[Vue] Unhandled error:', err, info)
+}
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[Vue] Unhandled promise rejection:', event.reason)
+  event.preventDefault()
+})
+
 app.use(PrimeVue, {
   theme: {
     preset: Aura,

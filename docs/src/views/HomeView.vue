@@ -250,7 +250,7 @@ import CodeBlock from '../components/CodeBlock.vue'
 
 const stats = [
   { value: '6+', label: 'LLM Providers' },
-  { value: '3', label: 'Interfaces (HTTP/MCP/GUI)' },
+  { value: '4', label: 'Interfaces (HTTP/MCP/GUI/VSCode)' },
   { value: '∞', label: 'Project Sessions' },
   { value: '<1s', label: 'Context Guard' },
   { value: '0', label: 'Telemetry' },
@@ -265,6 +265,7 @@ const features = [
   { icon: '⚡', title: 'Smart Discovery', desc: 'Auto-detect running LLM backends with health checks and automatic failover when a provider goes down.' },
   { icon: '🎯', title: 'Command Routing', desc: 'Classify tasks as "plan" or "execute". Enforces that execution tasks have a prior plan, preventing uncoordinated changes.' },
   { icon: '🖥️', title: 'Desktop GUI', desc: 'Native Wails desktop app with embedded HTTP API, real-time task monitoring, system tray, and provider management.' },
+  { icon: '🔌', title: 'VS Code Extension', desc: 'Submit tasks, monitor the queue, and switch providers without leaving your editor. Available as a .vsix for VS Code 1.85+.' },
 ]
 
 const providers = ['LM Studio', 'Ollama', 'OpenAI', 'Anthropic', 'GitHub Copilot', 'Any OpenAI-compatible']

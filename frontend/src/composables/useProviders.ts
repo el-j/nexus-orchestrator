@@ -10,14 +10,14 @@ export function useProviders() {
   async function refresh() {
     try {
       providers.value = await getProviders()
-    } catch { /* silent fail */ }
+    } catch (e) { console.warn('useProviders: refresh failed:', e) }
   }
 
   onMounted(async () => {
     loading.value = true
     await refresh()
     loading.value = false
-    interval = setInterval(refresh, 5000)
+    interval = setInterval(refresh, 30_000) // matches backend health cache TTL (30 s)
   })
 
   onUnmounted(() => {

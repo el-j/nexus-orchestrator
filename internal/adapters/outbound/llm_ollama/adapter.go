@@ -1,4 +1,5 @@
-// Package llm_ollama implements the LLMClient port for Ollama's API at 127.0.0.1:11434.
+// Package llm_ollama implements the LLMClient port for Ollama's REST API.
+// The default base URL is DefaultBaseURL; override via NEXUS_OLLAMA_URL.
 package llm_ollama
 
 import (
@@ -12,6 +13,9 @@ import (
 
 	"nexus-orchestrator/internal/core/domain"
 )
+
+// DefaultBaseURL is the default Ollama endpoint used when NEXUS_OLLAMA_URL is not set.
+const DefaultBaseURL = "http://127.0.0.1:11434"
 
 // Adapter implements ports.LLMClient for Ollama's REST API.
 type Adapter struct {
@@ -39,6 +43,9 @@ func (a *Adapter) ProviderName() string { return "Ollama" }
 
 // ActiveModel returns the configured default model name for this Ollama instance.
 func (a *Adapter) ActiveModel() string { return a.model }
+
+// BaseURL returns the configured endpoint URL for this adapter.
+func (a *Adapter) BaseURL() string { return a.baseURL }
 
 // Ping checks whether Ollama is reachable.
 func (a *Adapter) Ping() bool {

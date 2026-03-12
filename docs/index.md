@@ -51,6 +51,9 @@ Classify tasks as "plan" (orchestration/documentation) or "execute" (code implem
 ### Desktop GUI + System Tray
 Native desktop application powered by Wails with an embedded web dashboard, real-time task monitoring, and system tray integration.
 
+### VS Code Extension
+Submit tasks, monitor the queue, and switch LLM providers without leaving your editor. Install the [`.vsix`](https://github.com/el-j/nexus-orchestrator/releases/latest/download/nexus-orchestrator-vscode.vsix) from the Releases page or via `code --install-extension nexus-orchestrator-vscode.vsix`.
+
 ---
 
 ## Quick Start

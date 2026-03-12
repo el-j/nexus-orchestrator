@@ -15,6 +15,9 @@ import (
 	"nexus-orchestrator/internal/core/domain"
 )
 
+// defaultBaseURL is the default LM Studio base URL. Override via NEXUS_LMSTUDIO_URL.
+const defaultBaseURL = "http://127.0.0.1:1234/v1"
+
 // Adapter implements ports.LLMClient for LM Studio's OpenAI-compatible REST API.
 type Adapter struct {
 	baseURL      string
@@ -40,6 +43,9 @@ func NewLMStudioAdapter(baseURL string) *Adapter {
 
 // ProviderName identifies this adapter.
 func (a *Adapter) ProviderName() string { return "LM Studio" }
+
+// BaseURL returns the configured endpoint URL for this adapter.
+func (a *Adapter) BaseURL() string { return a.baseURL }
 
 // ActiveModel returns the identifier of the model currently loaded in LM Studio.
 // It queries the native /api/v0/model endpoint; falls back to the first ID from

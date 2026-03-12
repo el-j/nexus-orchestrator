@@ -277,6 +277,8 @@ jobs:
           EXTRA_TAGS="${{ matrix.wails_tags }}"
           TAGS_FLAG=${EXTRA_TAGS:+"-tags ${EXTRA_TAGS}"}
           wails build -platform ${{ matrix.platform }} ${TAGS_FLAG} -ldflags "-s -w -X main.version=${VERSION}"
+          mkdir -p dist/desktop
+          cp -r build/bin/* dist/desktop/
 
       - name: Sign macOS app
         if: matrix.os == 'darwin'
@@ -303,16 +305,16 @@ jobs:
             codesign --deep --force --options runtime \
               --entitlements build/darwin/entitlements.plist \
               --sign "Developer ID Application: $APPLE_DEVELOPER_NAME" \
-              build/bin/nexusOrchestrator.app
+              dist/desktop/nexusOrchestrator.app
 
             ditto -c -k --sequesterRsrc --keepParent \
-              build/bin/nexusOrchestrator.app /tmp/notarize.zip
+              dist/desktop/nexusOrchestrator.app /tmp/notarize.zip
             xcrun notarytool submit /tmp/notarize.zip \
               --apple-id "$APPLE_ID" \
               --password "$APPLE_APP_PASSWORD" \
               --team-id "$APPLE_TEAM_ID" \
               --wait
-            xcrun stapler staple build/bin/nexusOrchestrator.app
+            xcrun stapler staple dist/desktop/nexusOrchestrator.app
 
             security delete-keychain build.keychain
             rm -f /tmp/certificate.p12 /tmp/notarize.zip
@@ -320,7 +322,7 @@ jobs:
             # Ad-hoc signing: removes the "damaged and can't be opened" Gatekeeper error.
             # Users who download from the internet may still need to clear the quarantine
             # attribute manually: xattr -dr com.apple.quarantine nexusOrchestrator.app
-            codesign --deep --force --sign - build/bin/nexusOrchestrator.app
+            codesign --deep --force --sign - dist/desktop/nexusOrchestrator.app
           fi
 
       - name: Package macOS (zip via ditto)
@@ -330,14 +332,14 @@ jobs:
           # ditto preserves macOS resource forks, symlinks, and extended attributes
           # that tar can silently drop. The output is a standard macOS zip archive.
           ditto -c -k --sequesterRsrc --keepParent \
-            build/bin/nexusOrchestrator.app \
+            dist/desktop/nexusOrchestrator.app \
             "${{ matrix.archive_name }}.zip"
 
       - name: Package Linux (tar.gz)
         if: matrix.os == 'linux'
         shell: bash
         run: |
-          cd build/bin
+          cd dist/desktop
           tar czf "../../${{ matrix.archive_name }}.tar.gz" *
           cd ../..
 
@@ -345,16 +347,51 @@ jobs:
         if: matrix.os == 'windows'
         shell: pwsh
         run: |
-          Compress-Archive -Path "build/bin/*" -DestinationPath "${{ matrix.archive_name }}.zip"
+          Compress-Archive -Path "dist/desktop/*" -DestinationPath "${{ matrix.archive_name }}.zip"
 
       - uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.archive_name }}.${{ matrix.archive_ext }}
           path: ${{ matrix.archive_name }}.${{ matrix.archive_ext }}
 
+  build-vscode:
+    name: Build VS Code Extension
+    needs: [version, test]
+    if: needs.version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: vscode-extension/package-lock.json
+
+      - name: Install dependencies
+        working-directory: vscode-extension
+        run: npm ci
+
+      - name: Build extension
+        working-directory: vscode-extension
+        run: npm run build
+
+      - name: Package VSIX
+        shell: bash
+        run: |
+          mkdir -p dist/vscode
+          cd vscode-extension
+          npx @vscode/vsce package --no-dependencies --out ../dist/vscode/nexus-orchestrator.vsix
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: nexus-orchestrator-vscode.vsix
+          path: dist/vscode/nexus-orchestrator.vsix
+
   release:
     name: Create Release
-    needs: [version, build-cli, build-desktop]
+    needs: [version, build-cli, build-desktop, build-vscode]
     if: needs.version.outputs.exists == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -384,8 +421,9 @@ jobs:
         shell: bash
         run: |
           cd artifacts
-          find . -name 'nexus-orchestrator-*' ! -name 'nexus-orchestrator-desktop-*' -exec sha256sum {} + > ../SHA256SUMS.txt
+          find . -name 'nexus-orchestrator-*' ! -name 'nexus-orchestrator-desktop-*' ! -name 'nexus-orchestrator-vscode*' -exec sha256sum {} + > ../SHA256SUMS.txt
           find . -name 'nexus-orchestrator-desktop-*' -exec sha256sum {} + > ../SHA256SUMS-desktop.txt
+          find . -name 'nexus-orchestrator*.vsix' -exec sha256sum {} + > ../SHA256SUMS-vscode.txt
           cd ..
           mv artifacts/* .
 
@@ -396,5 +434,7 @@ jobs:
           files: |
             nexus-orchestrator-*.tar.gz
             nexus-orchestrator-*.zip
+            nexus-orchestrator*.vsix
             SHA256SUMS.txt
             SHA256SUMS-desktop.txt
+            SHA256SUMS-vscode.txt

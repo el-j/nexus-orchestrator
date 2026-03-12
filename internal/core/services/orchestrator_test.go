@@ -1,6 +1,7 @@
 package services_test
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"sync"
@@ -84,6 +85,29 @@ func (r *memRepo) GetByProjectPath(projectPath string) ([]domain.Task, error) {
 		}
 	}
 	return out, nil
+}
+
+func (r *memRepo) GetByProjectPathAndStatus(projectPath string, statuses ...domain.TaskStatus) ([]domain.Task, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	statusSet := make(map[domain.TaskStatus]bool, len(statuses))
+	for _, s := range statuses {
+		statusSet[s] = true
+	}
+	var out []domain.Task
+	for _, t := range r.tasks {
+		if t.ProjectPath == projectPath && statusSet[t.Status] {
+			out = append(out, t)
+		}
+	}
+	return out, nil
+}
+
+func (r *memRepo) Update(t domain.Task) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.tasks[t.ID] = t
+	return nil
 }
 
 type noopWriter struct{}
@@ -771,4 +795,474 @@ func TestOrchestrator_StatusNoProvider_AfterRemove(t *testing.T) {
 		}
 	}
 	t.Fatal("task did not reach StatusNoProvider within timeout")
+}
+
+// --- Backlog lifecycle tests -------------------------------------------------
+
+func TestCreateDraft_CreatesStatusDraft(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.CreateDraft(domain.Task{
+		ProjectPath: "/proj/draft",
+		Instruction: "draft something",
+	})
+	if err != nil {
+		t.Fatalf("CreateDraft: %v", err)
+	}
+	if id == "" {
+		t.Fatal("expected non-empty task ID")
+	}
+	saved, err := repo.GetByID(id)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if saved.Status != domain.StatusDraft {
+		t.Errorf("status: want DRAFT, got %s", saved.Status)
+	}
+	// Must NOT appear in the execution queue.
+	queue, _ := orch.GetQueue()
+	for _, qt := range queue {
+		if qt.ID == id {
+			t.Error("draft task must not be in the worker queue")
+		}
+	}
+}
+
+func TestCreateDraft_DefaultsPriorityToTwo(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.CreateDraft(domain.Task{
+		ProjectPath: "/proj/priority",
+		Instruction: "low priority idea",
+		Priority:    0, // explicit zero — should be defaulted to 2
+	})
+	if err != nil {
+		t.Fatalf("CreateDraft: %v", err)
+	}
+	saved, _ := repo.GetByID(id)
+	if saved.Priority != 2 {
+		t.Errorf("priority: want 2, got %d", saved.Priority)
+	}
+}
+
+func TestCreateDraft_RequiresInstruction(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	_, err := orch.CreateDraft(domain.Task{
+		ProjectPath: "/proj/empty",
+		Instruction: "",
+	})
+	if err == nil {
+		t.Fatal("expected error for empty instruction, got nil")
+	}
+}
+
+func TestGetBacklog_ReturnsOnlyDraftAndBacklog(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	const proj = "/proj/backlog"
+
+	draftID, err := orch.CreateDraft(domain.Task{ProjectPath: proj, Instruction: "draft idea"})
+	if err != nil {
+		t.Fatalf("CreateDraft: %v", err)
+	}
+
+	// Manually save a BACKLOG task.
+	if err := repo.Save(domain.Task{
+		ID:          "backlog-1",
+		ProjectPath: proj,
+		Instruction: "backlog idea",
+		Status:      domain.StatusBacklog,
+		Priority:    2,
+	}); err != nil {
+		t.Fatalf("Save backlog: %v", err)
+	}
+
+	// SubmitTask creates a QUEUED task (should NOT appear in backlog).
+	_, err = orch.SubmitTask(domain.Task{ProjectPath: proj, Instruction: "queued work"})
+	if err != nil {
+		t.Fatalf("SubmitTask: %v", err)
+	}
+
+	tasks, err := orch.GetBacklog(proj)
+	if err != nil {
+		t.Fatalf("GetBacklog: %v", err)
+	}
+	if len(tasks) != 2 {
+		t.Fatalf("GetBacklog: want 2 tasks, got %d", len(tasks))
+	}
+	for _, task := range tasks {
+		if task.Status != domain.StatusDraft && task.Status != domain.StatusBacklog {
+			t.Errorf("unexpected status in backlog: %s", task.Status)
+		}
+	}
+	found := false
+	for _, task := range tasks {
+		if task.ID == draftID {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("draft task not found in GetBacklog result")
+	}
+}
+
+func TestPromoteTask_DraftToQueued(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.CreateDraft(domain.Task{
+		ProjectPath: "/proj/promote",
+		Instruction: "promote me",
+	})
+	if err != nil {
+		t.Fatalf("CreateDraft: %v", err)
+	}
+
+	if err := orch.PromoteTask(id); err != nil {
+		t.Fatalf("PromoteTask: %v", err)
+	}
+
+	saved, err := repo.GetByID(id)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if saved.Status != domain.StatusQueued {
+		t.Errorf("status after promote: want QUEUED, got %s", saved.Status)
+	}
+}
+
+func TestPromoteTask_ErrorOnAlreadyQueued(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.SubmitTask(domain.Task{
+		ProjectPath: "/proj/already-queued",
+		Instruction: "already in queue",
+	})
+	if err != nil {
+		t.Fatalf("SubmitTask: %v", err)
+	}
+
+	err = orch.PromoteTask(id)
+	if err == nil {
+		t.Fatal("expected error when promoting already-queued task, got nil")
+	}
+}
+
+func TestUpdateTask_MergesFields(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.CreateDraft(domain.Task{
+		ProjectPath: "/proj/update",
+		Instruction: "original instruction",
+		Priority:    2,
+	})
+	if err != nil {
+		t.Fatalf("CreateDraft: %v", err)
+	}
+
+	updated, err := orch.UpdateTask(id, domain.Task{
+		Instruction: "updated instruction",
+		Priority:    1,
+	})
+	if err != nil {
+		t.Fatalf("UpdateTask: %v", err)
+	}
+	if updated.Instruction != "updated instruction" {
+		t.Errorf("instruction: want %q, got %q", "updated instruction", updated.Instruction)
+	}
+	if updated.Priority != 1 {
+		t.Errorf("priority: want 1, got %d", updated.Priority)
+	}
+	// Verify persisted in repository.
+	saved, _ := repo.GetByID(id)
+	if saved.Instruction != "updated instruction" {
+		t.Errorf("persisted instruction: want %q, got %q", "updated instruction", saved.Instruction)
+	}
+}
+
+func TestIsExecutable(t *testing.T) {
+	cases := []struct {
+		status domain.TaskStatus
+		want   bool
+	}{
+		{domain.StatusDraft, false},
+		{domain.StatusBacklog, false},
+		{domain.StatusQueued, true},
+		{domain.StatusProcessing, false},
+		{domain.StatusCompleted, false},
+		{domain.StatusFailed, false},
+		{domain.StatusCancelled, false},
+	}
+	for _, tc := range cases {
+		t.Run(string(tc.status), func(t *testing.T) {
+			task := domain.Task{Status: tc.status}
+			if got := task.IsExecutable(); got != tc.want {
+				t.Errorf("IsExecutable() for %s: want %v, got %v", tc.status, tc.want, got)
+			}
+		})
+	}
+}
+
+// --- Scanner / provider discovery tests --------------------------------------
+
+// mockScanner is a test double for ports.SystemScanner.
+type mockScanner struct {
+	results []domain.DiscoveredProvider
+	err     error
+}
+
+func (m *mockScanner) Scan(_ context.Context) ([]domain.DiscoveredProvider, error) {
+	return m.results, m.err
+}
+
+// TestOrchestrator_GetDiscoveredProviders_EmptyWithoutScanner verifies that
+// GetDiscoveredProviders returns a non-nil empty slice (not nil, not an error)
+// when no scanner has been configured.
+func TestOrchestrator_GetDiscoveredProviders_EmptyWithoutScanner(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	providers, err := orch.GetDiscoveredProviders()
+	if err != nil {
+		t.Fatalf("GetDiscoveredProviders: unexpected error: %v", err)
+	}
+	if providers == nil {
+		t.Fatal("expected non-nil empty slice, got nil")
+	}
+	if len(providers) != 0 {
+		t.Errorf("expected empty slice, got %d providers", len(providers))
+	}
+}
+
+// TestOrchestrator_TriggerScan_WithMockScanner verifies that TriggerScan
+// delegates to the configured scanner and returns its results.
+func TestOrchestrator_TriggerScan_WithMockScanner(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	scanner := &mockScanner{
+		results: []domain.DiscoveredProvider{
+			{ID: "port-1234", Name: "LM Studio", Kind: domain.ProviderKindLMStudio, Status: domain.DiscoveryStatusReachable},
+			{ID: "cli-ollama", Name: "Ollama CLI", Kind: domain.ProviderKindOllama, Status: domain.DiscoveryStatusInstalled},
+		},
+	}
+	orch.WithSystemScanner(scanner)
+
+	results, err := orch.TriggerScan(context.Background())
+	if err != nil {
+		t.Fatalf("TriggerScan: %v", err)
+	}
+	if len(results) != 2 {
+		t.Errorf("expected 2 providers from mock scanner, got %d", len(results))
+	}
+}
+
+// TestOrchestrator_TriggerScan_NoScanner_ReturnsError verifies that calling
+// TriggerScan without a configured scanner returns an error containing
+// "scanner not configured".
+func TestOrchestrator_TriggerScan_NoScanner_ReturnsError(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	_, err := orch.TriggerScan(context.Background())
+	if err == nil {
+		t.Fatal("expected error when no scanner configured, got nil")
+	}
+	if !strings.Contains(err.Error(), "scanner not configured") {
+		t.Errorf("expected 'scanner not configured' in error, got: %v", err)
+	}
+}
+
+// TestOrchestrator_PromoteProvider_NotFound verifies that PromoteProvider
+// returns domain.ErrNotFound when the given ID does not match any scanned provider.
+func TestOrchestrator_PromoteProvider_NotFound(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	scanner := &mockScanner{
+		results: []domain.DiscoveredProvider{
+			{ID: "port-1234", Name: "LM Studio", Kind: domain.ProviderKindLMStudio, Status: domain.DiscoveryStatusReachable},
+			{ID: "cli-ollama", Name: "Ollama CLI", Kind: domain.ProviderKindOllama, Status: domain.DiscoveryStatusInstalled},
+		},
+	}
+	orch.WithSystemScanner(scanner)
+	if _, err := orch.TriggerScan(context.Background()); err != nil {
+		t.Fatalf("TriggerScan: %v", err)
+	}
+
+	err := orch.PromoteProvider(context.Background(), "nonexistent-id")
+	if err == nil {
+		t.Fatal("expected error for nonexistent provider ID, got nil")
+	}
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected domain.ErrNotFound, got: %v", err)
+	}
+}
+
+// TestOrchestrator_PromoteProvider_NotReachable verifies that PromoteProvider
+// returns an error (but not ErrNotFound) when the provider's status is not Reachable.
+func TestOrchestrator_PromoteProvider_NotReachable(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	scanner := &mockScanner{
+		results: []domain.DiscoveredProvider{
+			{ID: "cli-ollama", Name: "Ollama CLI", Kind: domain.ProviderKindOllama, Status: domain.DiscoveryStatusInstalled},
+		},
+	}
+	orch.WithSystemScanner(scanner)
+	if _, err := orch.TriggerScan(context.Background()); err != nil {
+		t.Fatalf("TriggerScan: %v", err)
+	}
+
+	err := orch.PromoteProvider(context.Background(), "cli-ollama")
+	if err == nil {
+		t.Fatal("expected error for non-reachable provider, got nil")
+	}
+	if errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected a 'not reachable' error, got ErrNotFound instead")
+	}
+}
+
+// TestOrchestrator_PromoteProvider_Reachable verifies that PromoteProvider
+// succeeds when the provider has DiscoveryStatusReachable and a factory is set.
+func TestOrchestrator_PromoteProvider_Reachable(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	orch.WithProviderFactory(func(cfg domain.ProviderConfig) (ports.LLMClient, error) {
+		return &mockLLMClient{alive: true, name: cfg.Name}, nil
+	})
+
+	scanner := &mockScanner{
+		results: []domain.DiscoveredProvider{
+			{
+				ID:      "port-1234",
+				Name:    "LM Studio",
+				Kind:    domain.ProviderKindLMStudio,
+				Status:  domain.DiscoveryStatusReachable,
+				BaseURL: "http://127.0.0.1:1234",
+			},
+		},
+	}
+	orch.WithSystemScanner(scanner)
+	if _, err := orch.TriggerScan(context.Background()); err != nil {
+		t.Fatalf("TriggerScan: %v", err)
+	}
+
+	if err := orch.PromoteProvider(context.Background(), "port-1234"); err != nil {
+		t.Fatalf("PromoteProvider: unexpected error: %v", err)
+	}
+}
+
+// --- Constructor nil-validation tests ----------------------------------------
+
+// mustPanic calls f and fails the test if f does not panic with a message
+// containing wantMsg.
+func mustPanic(t *testing.T, wantMsg string, f func()) {
+	t.Helper()
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Errorf("expected panic containing %q, but no panic occurred", wantMsg)
+			return
+		}
+		msg, ok := r.(string)
+		if !ok {
+			t.Errorf("expected panic to be a string, got %T: %v", r, r)
+			return
+		}
+		if !strings.Contains(msg, wantMsg) {
+			t.Errorf("panic message %q does not contain %q", msg, wantMsg)
+		}
+	}()
+	f()
+}
+
+func TestNewOrchestrator_NilPanics(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	writer := &noopWriter{}
+
+	mustPanic(t, "discovery is required", func() {
+		services.NewOrchestrator(nil, repo, writer, nil)
+	})
+
+	mustPanic(t, "repo is required", func() {
+		services.NewOrchestrator(discovery, nil, writer, nil)
+	})
+
+	mustPanic(t, "writer is required", func() {
+		services.NewOrchestrator(discovery, repo, nil, nil)
+	})
+}
+
+// TestPromoteProvider_EmptyBaseURL verifies that PromoteProvider returns an
+// error when the discovered provider is reachable but has no BaseURL.
+func TestPromoteProvider_EmptyBaseURL(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	orch.WithProviderFactory(func(cfg domain.ProviderConfig) (ports.LLMClient, error) {
+		return &mockLLMClient{alive: true, name: cfg.Name}, nil
+	})
+
+	scanner := &mockScanner{
+		results: []domain.DiscoveredProvider{
+			{
+				ID:      "no-url",
+				Name:    "Headless",
+				Kind:    domain.ProviderKindLMStudio,
+				Status:  domain.DiscoveryStatusReachable,
+				BaseURL: "", // intentionally empty
+			},
+		},
+	}
+	orch.WithSystemScanner(scanner)
+	if _, err := orch.TriggerScan(context.Background()); err != nil {
+		t.Fatalf("TriggerScan: %v", err)
+	}
+
+	err := orch.PromoteProvider(context.Background(), "no-url")
+	if err == nil {
+		t.Fatal("expected error for empty BaseURL, got nil")
+	}
+	if !strings.Contains(err.Error(), "no base URL") {
+		t.Errorf("expected 'no base URL' in error message, got: %v", err)
+	}
 }

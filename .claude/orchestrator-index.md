@@ -47,7 +47,7 @@ internal/adapters/inbound/   →  internal/core/services/  →  internal/core/po
 
 ## Active Plan
 
-**No active plan.** All 16 plans (PLAN-001–016) completed. Next plan: PLAN-017.
+**No active plan.** All plans through PLAN-029 completed. Next plan: PLAN-030.
 
 ---
 
@@ -71,13 +71,14 @@ internal/adapters/inbound/   →  internal/core/services/  →  internal/core/po
 | PLAN-015 | Production Node20/TypeScript GitHub Action + 24 unit tests | TASK-112–117 | completed | 2026-03-10 |
 | PLAN-016 | Release pipeline finalization: delete version.yml+release.yml, CHANGELOG.md | TASK-118–121 | completed | 2026-03-11 |
 | PLAN-017 | Fix all broken download links + macOS Gatekeeper UX instructions | TASK-122–124 | completed | 2026-03-11 |
+| PLAN-029 | Task Queue UI Fix + AI Session Deduplication & Cleanup | TASK-203–207 | completed | 2026-03-12 |
 
 ---
 
 ## Counters
 
-- **Next Task ID**: 125
-- **Next Plan ID**: 18
+- **Next Task ID**: 208
+- **Next Plan ID**: 30
 
 ---
 
@@ -88,3 +89,41 @@ internal/adapters/inbound/   →  internal/core/services/  →  internal/core/po
 - `.claude/plans/PLAN-NNN.md` — archived completed plans (written by `/archive-plan`)
 - `.claude/commands/*.md` — slash commands invoked by Claude agents
 - Completed tasks are removed from `orchestrator.json` when a plan is archived; the `.md` files are kept permanently as a record
+
+---
+
+## Key Learnings / Experiment Log
+
+### SESSION 2026-03-12: PLAN-029 — Task Queue UI Fix + AI Session Deduplication & Cleanup
+
+**Files changed**: 7 (DashboardView.vue, ports.go, ai_session_repo.go, orchestrator.go, server.go × 2, sessionMonitor.ts)  
+**Tests**: all passing  
+**Tasks**: TASK-203–207
+
+#### Learnings
+
+1. **Vue flex height chain** — A `flex-1` child inside a *block* container (`<div>` with no `display: flex`) gets no effective height. The parent wrapper must be `flex flex-col` for the child's `flex-1` and `h-full` to resolve. `overflow-auto` alone is insufficient. Fix: change the `DashboardView` wrapper from `<div class="flex-1 min-h-0 overflow-auto">` to `<div class="flex flex-col flex-1 min-h-0">`.
+
+2. **Session dedup pattern** — For idempotent registration endpoints where external callers (e.g. VS Code extensions) heartbeat via POST, the correct architecture is:
+   - Server: check `externalId` → if exists, update `lastActivity`, return existing record (no new row)
+   - Client heartbeat: lightweight `POST /{id}/heartbeat` (204 No Content) instead of re-registering
+   - Stale cleanup: background goroutine with TTL (5 min) + cleanup interval (2 min)
+   - Fallback: if heartbeat receives 404, client re-registers (session was cleaned up server-side)
+
+3. **Interface coverage rule** — When adding a new method to `ports.Orchestrator`, ALL of these locations must be updated:
+   - `internal/core/services/orchestrator.go` (implementation)
+   - `cmd/nexus-cli/main.go` (remote stub)
+   - `internal/adapters/inbound/httpapi/server_test.go` (mock)
+   - `internal/adapters/inbound/cli/root_test.go` (mock)
+   - `internal/adapters/inbound/mcp/server_test.go` (mock) ← most often missed
+
+4. **MCP test mock** — `mcp/server_test.go` is the most frequently missed location when extending the Orchestrator port. Always run `grep -r 'mockOrch\|mockOrchestrator' --include='*_test.go' .` before assuming coverage is complete.
+
+#### Anti-patterns caught
+
+- `heartbeat()` calling `detectAndRegister()` = always creates new sessions (O(n) row growth, 72+ sessions observed in production)
+- `INSERT OR REPLACE` on primary key only ≠ dedup by `externalId` — requires a separate `UNIQUE` constraint on `external_id` OR an application-level lookup before insert
+
+```
+EXPERIMENT 2026-03-12: Tried re-registering on every heartbeat tick (detectAndRegister in heartbeat loop). Failed because it bypassed externalId dedup and created unbounded session rows. Used idempotent RegisterAISession (lookup-then-update) + dedicated HeartbeatAISession endpoint instead.
+```
