@@ -56,9 +56,9 @@
 
         <!-- Details -->
         <div class="space-y-1.5 mb-3">
-          <div v-if="p.baseURL" class="flex items-center gap-1.5">
+          <div v-if="p.baseUrl" class="flex items-center gap-1.5">
             <i class="pi pi-globe text-[10px] text-slate-600"></i>
-            <span class="text-[10px] text-slate-500 font-mono truncate">{{ p.baseURL }}</span>
+            <span class="text-[10px] text-slate-500 font-mono truncate">{{ p.baseUrl }}</span>
           </div>
           <div v-if="p.cliPath" class="flex items-center gap-1.5">
             <i class="pi pi-chevron-right text-[10px] text-slate-600"></i>

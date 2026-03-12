@@ -6,7 +6,7 @@ export function useProjectFilter() {
   const { tasks } = useTasks()
 
   const projectList = computed<string[]>(() => {
-    const paths = new Set(tasks.value.map(t => t.ProjectPath).filter(Boolean))
+    const paths = new Set(tasks.value.map(t => t.projectPath).filter(Boolean))
     return Array.from(paths).sort()
   })
 

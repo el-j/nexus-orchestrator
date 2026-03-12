@@ -1,5 +1,5 @@
 <template>
-  <ErrorFallback v-if="appError" @retry="appError = null" />
+  <ErrorFallback v-if="appError" :error="appError" @retry="appError = null" />
   <template v-else>
     <div class="flex h-screen bg-[#050508] overflow-hidden">
       <AppSidebar @view-change="currentView = $event" />

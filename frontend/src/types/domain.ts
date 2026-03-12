@@ -12,31 +12,31 @@ export type TaskStatus =
 export type CommandType = 'plan' | 'execute' | 'auto'
 
 export interface Task {
-  ID: string
-  ProjectPath: string
-  TargetFile: string
-  Instruction: string
-  ContextFiles: string[]
-  ModelID: string
-  ProviderHint: string
-  Command: CommandType
-  Status: TaskStatus
-  CreatedAt: string
-  UpdatedAt: string
-  Logs: string
-  ProviderName?: string
-  Priority?: number
-  Tags?: string[]
+  id: string
+  projectPath: string
+  targetFile: string
+  instruction: string
+  contextFiles: string[]
+  modelId: string
+  providerHint: string
+  command: CommandType
+  status: TaskStatus
+  createdAt: string
+  updatedAt: string
+  logs: string
+  providerName?: string
+  priority?: number
+  tags?: string[]
 }
 
 export interface TaskInput {
-  ProjectPath: string
-  TargetFile: string
-  Instruction: string
-  ContextFiles?: string[]
-  ModelID?: string
-  ProviderHint?: string
-  Command?: CommandType
+  projectPath: string
+  targetFile: string
+  instruction: string
+  contextFiles?: string[]
+  modelId?: string
+  providerHint?: string
+  command?: CommandType
 }
 
 export interface ProviderInfo {
@@ -52,9 +52,9 @@ export interface ProviderConfig {
   id: string
   name: string
   kind: 'lmstudio' | 'ollama' | 'openai' | 'anthropic' | 'openaicompat'
-  baseURL: string
+  baseUrl: string
   apiKey: string
-  defaultModel: string
+  model: string
   enabled: boolean
   createdAt: string
   updatedAt: string
@@ -75,7 +75,7 @@ export interface DiscoveredProvider {
   kind: string
   method: 'port' | 'cli' | 'process'
   status: 'reachable' | 'installed' | 'running'
-  baseURL?: string
+  baseUrl?: string
   cliPath?: string
   processName?: string
   models?: string[]

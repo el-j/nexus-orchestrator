@@ -68,33 +68,33 @@
       <!-- Rows -->
       <div
         v-for="task in filteredTasks"
-        :key="task.ID"
+        :key="task.id"
         @click="openDetail(task)"
         class="grid grid-cols-[6rem_1fr_1fr_7rem_8rem] gap-3 items-center px-4 py-3 mb-1
                rounded-xl border border-white/5 bg-[#0d0d14]
                hover:border-violet-500/20 hover:bg-[#14141f] cursor-pointer transition-all"
       >
         <!-- Short ID -->
-        <span class="font-mono text-xs text-slate-400 truncate" :title="task.ID">
-          {{ shortId(task.ID) }}
+        <span class="font-mono text-xs text-slate-400 truncate" :title="task.id">
+          {{ shortId(task.id) }}
         </span>
 
         <!-- Project (last path segment) -->
-        <span class="text-xs text-slate-300 truncate font-mono" :title="task.ProjectPath">
-          {{ projectName(task.ProjectPath) }}
+        <span class="text-xs text-slate-300 truncate font-mono" :title="task.projectPath">
+          {{ projectName(task.projectPath) }}
         </span>
 
         <!-- Target file (filename only) -->
-        <span class="text-xs text-slate-400 truncate font-mono" :title="task.TargetFile">
-          {{ fileName(task.TargetFile) || '—' }}
+        <span class="text-xs text-slate-400 truncate font-mono" :title="task.targetFile">
+          {{ fileName(task.targetFile) || '—' }}
         </span>
 
         <!-- Status badge -->
-        <TaskStatusBadge :status="task.Status" />
+        <TaskStatusBadge :status="task.status" />
 
-        <!-- Finished at (UpdatedAt as proxy) -->
+        <!-- Finished at (updatedAt as proxy) -->
         <span class="text-xs text-slate-500">
-          {{ task.UpdatedAt ? formatDate(task.UpdatedAt) : '—' }}
+          {{ task.updatedAt ? formatDate(task.updatedAt) : '—' }}
         </span>
       </div>
     </div>
@@ -131,12 +131,12 @@ const selectedFilter = ref<FilterValue>('ALL')
 const historyStatuses = new Set<TaskStatus>(['COMPLETED', 'FAILED', 'CANCELLED'])
 
 const historyTasks = computed(() =>
-  tasks.value.filter((t) => historyStatuses.has(t.Status)),
+  tasks.value.filter((t) => historyStatuses.has(t.status)),
 )
 
 const filteredTasks = computed(() => {
   if (selectedFilter.value === 'ALL') return historyTasks.value
-  return historyTasks.value.filter((t) => t.Status === selectedFilter.value)
+  return historyTasks.value.filter((t) => t.status === selectedFilter.value)
 })
 
 const detailOpen = ref(false)

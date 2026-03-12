@@ -281,15 +281,15 @@ function removeTag(index: number) {
 
 function buildTaskPayload(): Partial<Task> {
   return {
-    ProjectPath: form.ProjectPath,
-    TargetFile: form.TargetFile,
-    Instruction: form.Instruction.trim(),
-    Command: form.Command,
-    ProviderHint: form.ProviderName || '',
-    ModelID: form.ModelID || '',
-    Priority: form.Priority,
-    Tags: form.Tags.length > 0 ? [...form.Tags] : [],
-    ContextFiles: [],
+    projectPath: form.ProjectPath,
+    targetFile: form.TargetFile,
+    instruction: form.Instruction.trim(),
+    command: form.Command,
+    providerHint: form.ProviderName || '',
+    modelId: form.ModelID || '',
+    priority: form.Priority,
+    tags: form.Tags.length > 0 ? [...form.Tags] : [],
+    contextFiles: [],
   }
 }
 
@@ -303,13 +303,13 @@ async function handleSubmit() {
   try {
     const p = buildTaskPayload()
     const id = await submitTask({
-      ProjectPath: p.ProjectPath ?? '',
-      TargetFile: p.TargetFile ?? '',
-      Instruction: p.Instruction ?? '',
-      Command: p.Command,
-      ProviderHint: p.ProviderHint ?? '',
-      ModelID: p.ModelID ?? '',
-      ContextFiles: [],
+      projectPath: p.projectPath ?? '',
+      targetFile: p.targetFile ?? '',
+      instruction: p.instruction ?? '',
+      command: p.command,
+      providerHint: p.providerHint ?? '',
+      modelId: p.modelId ?? '',
+      contextFiles: [],
     })
     toast.add({ severity: 'success', summary: 'Task submitted', detail: `ID: ${id}`, life: 3000 })
     emit('submitted', id)
@@ -332,7 +332,7 @@ async function handleSaveDraft() {
   if (!form.Instruction?.trim()) return
 
   try {
-    const id = await createDraft({ ...buildTaskPayload(), Status: 'DRAFT' })
+    const id = await createDraft({ ...buildTaskPayload(), status: 'DRAFT' })
     toast.add({ severity: 'info', summary: 'Draft saved', detail: `ID: ${id}`, life: 3000 })
     emit('submitted', id)
     resetForm()
@@ -352,7 +352,7 @@ async function handleSaveBacklog() {
   if (!form.Instruction?.trim()) return
 
   try {
-    const id = await createDraft({ ...buildTaskPayload(), Status: 'BACKLOG' })
+    const id = await createDraft({ ...buildTaskPayload(), status: 'BACKLOG' })
     toast.add({ severity: 'info', summary: 'Added to backlog', detail: `ID: ${id}`, life: 3000 })
     emit('submitted', id)
     resetForm()

@@ -40,7 +40,7 @@ import type { DiscoveredProvider } from '../types/discovery'
 const { discovered, loading, scanning, scanNow } = useDiscovery()
 
 function handlePromote(provider: DiscoveredProvider) {
-  console.log('Promote discovered provider:', provider.name, provider.baseURL)
+  console.log('Promote discovered provider:', provider.name, provider.baseUrl)
   // TODO: navigate to providers view and open add form pre-filled
 }
 </script>

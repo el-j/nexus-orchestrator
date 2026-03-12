@@ -18,24 +18,24 @@
 
     <!-- Task list -->
     <div v-else class="p-4 space-y-2">
-      <div v-for="task in tasks" :key="task.ID"
+      <div v-for="task in tasks" :key="task.id"
            @click="$emit('select', task)"
            class="group flex items-start gap-4 p-4 rounded-xl border border-white/5 bg-[#0d0d14]
                   hover:border-violet-500/20 hover:bg-[#14141f] cursor-pointer transition-all">
-        <TaskStatusBadge :status="task.Status" class="mt-0.5 flex-shrink-0" />
+        <TaskStatusBadge :status="task.status" class="mt-0.5 flex-shrink-0" />
         <div class="flex-1 min-w-0">
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0">
-              <p class="text-sm font-medium text-white truncate">{{ task.Instruction }}</p>
+              <p class="text-sm font-medium text-white truncate">{{ task.instruction }}</p>
               <p class="text-xs text-slate-500 mt-0.5 truncate font-mono">
-                {{ task.ProjectPath }}<span class="text-slate-600 mx-1">/</span>{{ task.TargetFile }}
+                {{ task.projectPath }}<span class="text-slate-600 mx-1">/</span>{{ task.targetFile }}
               </p>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
-              <span class="text-xs text-slate-600">{{ formatTime(task.CreatedAt) }}</span>
+              <span class="text-xs text-slate-600">{{ formatTime(task.createdAt) }}</span>
               <Button
-                v-if="task.Status === 'QUEUED'"
-                @click.stop="$emit('cancel', task.ID)"
+                v-if="task.status === 'QUEUED'"
+                @click.stop="$emit('cancel', task.id)"
                 icon="pi pi-times"
                 severity="danger"
                 text
@@ -47,9 +47,9 @@
             </div>
           </div>
           <!-- Logs preview for completed/failed -->
-          <div v-if="task.Logs && (task.Status === 'COMPLETED' || task.Status === 'FAILED')"
+          <div v-if="task.logs && (task.status === 'COMPLETED' || task.status === 'FAILED')"
                class="mt-2 text-xs text-slate-600 font-mono truncate">
-            {{ task.Logs.slice(0, 80) }}{{ task.Logs.length > 80 ? '…' : '' }}
+            {{ task.logs.slice(0, 80) }}{{ task.logs.length > 80 ? '…' : '' }}
           </div>
         </div>
       </div>

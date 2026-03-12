@@ -13,15 +13,15 @@ export function useTasks() {
 
   const backlogTasks = computed(() =>
     tasks.value.filter(t =>
-      (t.Status === 'DRAFT' || t.Status === 'BACKLOG') &&
-      (currentProject.value === null || t.ProjectPath === currentProject.value)
+      (t.status === 'DRAFT' || t.status === 'BACKLOG') &&
+      (currentProject.value === null || t.projectPath === currentProject.value)
     )
   )
 
   const queuedTasks = computed(() =>
     tasks.value.filter(t =>
-      (t.Status === 'QUEUED' || t.Status === 'PROCESSING') &&
-      (currentProject.value === null || t.ProjectPath === currentProject.value)
+      (t.status === 'QUEUED' || t.status === 'PROCESSING') &&
+      (currentProject.value === null || t.projectPath === currentProject.value)
     )
   )
 

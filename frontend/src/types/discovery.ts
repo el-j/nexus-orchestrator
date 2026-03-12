@@ -6,7 +6,7 @@ export interface DiscoveredProvider {
   name: string
   kind: string // lmstudio, ollama, localai, vllm, textgen, cli, desktopapp
   method: DiscoveryMethod
-  baseURL?: string
+  baseUrl?: string
   cliPath?: string
   processName?: string
   status: DiscoveryStatus

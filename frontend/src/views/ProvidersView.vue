@@ -102,7 +102,7 @@ const activeCount = computed(() => providers.value.filter(p => p.active).length)
 function handlePromote(provider: DiscoveredProvider) {
   // Pre-fill the configured provider form with discovered data
   // For now, we open the add form — a future iteration can pre-fill fields
-  console.log('Promote discovered provider:', provider.name, provider.baseURL)
-  // TODO: open ProviderConfigForm pre-filled with provider.kind, provider.baseURL, provider.name
+  console.log('Promote discovered provider:', provider.name, provider.baseUrl)
+  // TODO: open ProviderConfigForm pre-filled with provider.kind, provider.baseUrl, provider.name
 }
 </script>
