@@ -44,7 +44,7 @@ func (m *mockOrchestrator) GetQueue() ([]domain.Task, error) {
 
 func (m *mockOrchestrator) GetAllTasks() ([]domain.Task, error) {
 	return m.queueResult, m.queueErr
-	}
+}
 
 func (m *mockOrchestrator) GetProviders() ([]ports.ProviderInfo, error) {
 	return m.providersList, m.providersErr
