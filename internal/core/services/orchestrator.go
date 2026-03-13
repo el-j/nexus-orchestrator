@@ -48,7 +48,6 @@ func WithStaleThreshold(d time.Duration) Option {
 // OrchestratorService implements ports.Orchestrator and drives the worker loop.
 type OrchestratorService struct {
 	mu          sync.Mutex
-	queue       []domain.Task
 	discovery   *DiscoveryService
 	fileWriter  ports.FileWriter
 	repo        ports.TaskRepository
@@ -117,19 +116,55 @@ func NewOrchestrator(
 	return svc
 }
 
-// SubmitTask enqueues a new Task and returns its generated ID.
-func (o *OrchestratorService) SubmitTask(task domain.Task) (string, error) {
+func (o *OrchestratorService) signalWorker() {
+	select {
+	case o.workCh <- struct{}{}:
+	default:
+	}
+}
+
+func (o *OrchestratorService) validateQueueAdmission(task domain.Task) error {
 	o.mu.Lock()
 	stopped := o.stopped
 	queueCap := o.queueCap
 	o.mu.Unlock()
 	if stopped {
-		return "", fmt.Errorf("orchestrator: submit task: service is stopped")
+		return fmt.Errorf("orchestrator: queue task: service is stopped")
 	}
 	if queueCap <= 0 {
 		queueCap = 50
 	}
 
+	pending, err := o.repo.GetPending()
+	if err != nil {
+		return fmt.Errorf("orchestrator: queue task: check queue cap: %w", err)
+	}
+	if len(pending) >= queueCap {
+		return fmt.Errorf("orchestrator: queue task: %w", ErrQueueFull)
+	}
+
+	if task.Command == domain.CommandExecute {
+		existing, err := o.repo.GetByProjectPath(task.ProjectPath)
+		if err != nil {
+			return fmt.Errorf("orchestrator: queue task: %w", err)
+		}
+		hasPlan := false
+		for _, existingTask := range existing {
+			if existingTask.Command == domain.CommandPlan && existingTask.Status == domain.StatusCompleted {
+				hasPlan = true
+				break
+			}
+		}
+		if !hasPlan {
+			return fmt.Errorf("orchestrator: queue task: %w", domain.ErrNoPlan)
+		}
+	}
+
+	return nil
+}
+
+// SubmitTask enqueues a new Task and returns its generated ID.
+func (o *OrchestratorService) SubmitTask(task domain.Task) (string, error) {
 	// Command validation
 	if !task.Command.IsValid() {
 		return "", fmt.Errorf("orchestrator: submit task: invalid command type %q", task.Command)
@@ -144,38 +179,8 @@ func (o *OrchestratorService) SubmitTask(task domain.Task) (string, error) {
 			task.ProjectPath = filepath.Clean(abs)
 		}
 	}
-
-	// Queue cap: count QUEUED tasks from the repo; reject if at or above the limit.
-	pending, err := o.repo.GetPending()
-	if err != nil {
-		return "", fmt.Errorf("orchestrator: submit task: check queue cap: %w", err)
-	}
-	queued := 0
-	for _, qt := range pending {
-		if qt.Status == domain.StatusQueued {
-			queued++
-		}
-	}
-	if queued >= queueCap {
-		return "", fmt.Errorf("orchestrator: submit task: %w", ErrQueueFull)
-	}
-
-	// If execute is requested, verify a completed plan task exists for this project
-	if task.Command == domain.CommandExecute {
-		existing, err := o.repo.GetByProjectPath(task.ProjectPath)
-		if err != nil {
-			return "", fmt.Errorf("orchestrator: submit task: %w", err)
-		}
-		hasPlan := false
-		for _, t := range existing {
-			if t.Command == domain.CommandPlan && t.Status == domain.StatusCompleted {
-				hasPlan = true
-				break
-			}
-		}
-		if !hasPlan {
-			return "", fmt.Errorf("orchestrator: submit task: %w", domain.ErrNoPlan)
-		}
+	if err := o.validateQueueAdmission(task); err != nil {
+		return "", fmt.Errorf("orchestrator: submit task: %w", err)
 	}
 
 	task.ID = uuid.NewString()
@@ -187,16 +192,7 @@ func (o *OrchestratorService) SubmitTask(task domain.Task) (string, error) {
 		return "", fmt.Errorf("orchestrator: save task: %w", err)
 	}
 	o.emit(task.ID, domain.StatusQueued)
-
-	o.mu.Lock()
-	o.queue = append(o.queue, task)
-	o.mu.Unlock()
-
-	// Wake the worker without blocking if it is already awake.
-	select {
-	case o.workCh <- struct{}{}:
-	default:
-	}
+	o.signalWorker()
 
 	return task.ID, nil
 }
@@ -228,16 +224,19 @@ func (o *OrchestratorService) GetProviders() ([]ports.ProviderInfo, error) {
 
 // CancelTask removes a QUEUED task before it is processed.
 func (o *OrchestratorService) CancelTask(id string) error {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-
-	for i, t := range o.queue {
-		if t.ID == id {
-			o.queue = append(o.queue[:i], o.queue[i+1:]...)
-			return o.repo.UpdateStatus(id, domain.StatusCancelled)
-		}
+	ok, err := o.repo.UpdateStatusIfCurrent(id, domain.StatusQueued, domain.StatusCancelled)
+	if err != nil {
+		return fmt.Errorf("orchestrator: cancel task: %w", err)
 	}
-	return fmt.Errorf("orchestrator: cancel task: %w", domain.ErrNotFound)
+	if ok {
+		o.emit(id, domain.StatusCancelled)
+		return nil
+	}
+	task, err := o.repo.GetByID(id)
+	if err != nil {
+		return fmt.Errorf("orchestrator: cancel task: %w", err)
+	}
+	return fmt.Errorf("orchestrator: cancel task: cannot cancel task with status %s", task.Status)
 }
 
 // Stop signals the worker goroutine to exit and waits for it to finish.
@@ -494,18 +493,19 @@ func (o *OrchestratorService) PromoteProvider(ctx context.Context, discoveredID 
 		Name:    found.Name,
 		Kind:    found.Kind,
 		BaseURL: found.BaseURL,
+		Enabled: true,
 	}
 
-	// Register as live provider via discovery service.
-	if err := o.RegisterCloudProvider(cfg); err != nil {
-		return fmt.Errorf("orchestrator: promote provider: %w", err)
-	}
-
-	// Also persist if repo is available (non-fatal on failure).
 	if o.providerConfigRepo != nil {
-		if _, err := o.AddProviderConfig(ctx, cfg); err != nil {
+		if _, err := o.AddProviderConfig(ctx, cfg); err == nil {
+			return nil
+		} else {
 			log.Printf("orchestrator: promote provider: persist: %v", err)
 		}
+	}
+
+	if err := o.RegisterCloudProvider(cfg); err != nil {
+		return fmt.Errorf("orchestrator: promote provider: %w", err)
 	}
 
 	return nil
@@ -586,30 +586,24 @@ func (o *OrchestratorService) GetBacklog(projectPath string) ([]domain.Task, err
 
 // PromoteTask transitions a DRAFT or BACKLOG task to QUEUED and enqueues it.
 func (o *OrchestratorService) PromoteTask(id string) error {
-	o.mu.Lock()
-
 	task, err := o.repo.GetByID(id)
 	if err != nil {
-		o.mu.Unlock()
 		return fmt.Errorf("orchestrator: promote task: %w", err)
 	}
 	if task.Status != domain.StatusDraft && task.Status != domain.StatusBacklog {
-		o.mu.Unlock()
 		return fmt.Errorf("orchestrator: promote task: cannot promote task with status %s", task.Status)
 	}
-	task.Status = domain.StatusQueued
-	task.UpdatedAt = time.Now()
-	if err := o.repo.Update(task); err != nil {
-		o.mu.Unlock()
+	if err := o.validateQueueAdmission(task); err != nil {
 		return fmt.Errorf("orchestrator: promote task: %w", err)
 	}
-	o.queue = append(o.queue, task)
-	o.mu.Unlock()
-
-	select {
-	case o.workCh <- struct{}{}:
-	default:
+	ok, err := o.repo.UpdateStatusIfCurrent(id, task.Status, domain.StatusQueued)
+	if err != nil {
+		return fmt.Errorf("orchestrator: promote task: %w", err)
 	}
+	if !ok {
+		return fmt.Errorf("orchestrator: promote task: task state changed during promotion")
+	}
+	o.signalWorker()
 	o.emit(task.ID, domain.StatusQueued)
 	return nil
 }
@@ -642,10 +636,12 @@ func (o *OrchestratorService) UpdateTask(id string, updates domain.Task) (domain
 	if updates.Tags != nil {
 		task.Tags = updates.Tags
 	}
+	if updates.Status == domain.StatusQueued {
+		return domain.Task{}, fmt.Errorf("orchestrator: update task: use promote task to transition into %s", domain.StatusQueued)
+	}
 	if updates.Status != "" &&
 		(updates.Status == domain.StatusDraft ||
-			updates.Status == domain.StatusBacklog ||
-			updates.Status == domain.StatusQueued) {
+			updates.Status == domain.StatusBacklog) {
 		task.Status = updates.Status
 	}
 	task.UpdatedAt = time.Now()
@@ -825,24 +821,29 @@ func (o *OrchestratorService) recoverStuckTasks() {
 		log.Printf("orchestrator: startup recovery: get pending: %v", err)
 		return
 	}
-	count := 0
+	requeued := 0
+	hasQueued := false
 	for _, t := range pending {
+		if t.Status == domain.StatusQueued {
+			hasQueued = true
+		}
 		if t.Status == domain.StatusProcessing {
-			if err := o.repo.UpdateStatus(t.ID, domain.StatusQueued); err != nil {
+			ok, err := o.repo.UpdateStatusIfCurrent(t.ID, domain.StatusProcessing, domain.StatusQueued)
+			if err != nil {
 				log.Printf("orchestrator: startup recovery: re-queue task %s: %v", t.ID, err)
 				continue
 			}
-			t.Status = domain.StatusQueued
-			o.queue = append(o.queue, t)
-			count++
+			if ok {
+				requeued++
+				hasQueued = true
+			}
 		}
 	}
-	if count > 0 {
-		log.Printf("orchestrator: startup recovery: re-queued %d stuck tasks", count)
-		select {
-		case o.workCh <- struct{}{}:
-		default:
-		}
+	if requeued > 0 {
+		log.Printf("orchestrator: startup recovery: re-queued %d stuck tasks", requeued)
+	}
+	if hasQueued {
+		o.signalWorker()
 	}
 }
 
@@ -862,13 +863,7 @@ func (o *OrchestratorService) requeueForRetry(task domain.Task) bool {
 		return false
 	}
 	log.Printf("orchestrator: task %s: retry %d/%d", task.ID, task.RetryCount, o.maxRetries)
-	o.mu.Lock()
-	o.queue = append(o.queue, task)
-	o.mu.Unlock()
-	select {
-	case o.workCh <- struct{}{}:
-	default:
-	}
+	o.signalWorker()
 	o.emit(task.ID, domain.StatusQueued)
 	return true
 }
@@ -884,10 +879,7 @@ func (o *OrchestratorService) runWorker() {
 			return
 		case <-o.workCh:
 			for {
-				o.mu.Lock()
-				empty := len(o.queue) == 0
-				o.mu.Unlock()
-				if empty {
+				if !o.processNext() {
 					break
 				}
 				select {
@@ -952,37 +944,34 @@ func (o *OrchestratorService) runSessionCleanup() {
 	}
 }
 
-func (o *OrchestratorService) processNext() {
-	o.mu.Lock()
-	if len(o.queue) == 0 {
-		o.mu.Unlock()
-		return
+func (o *OrchestratorService) processNext() bool {
+	task, err := o.repo.ClaimNextQueued()
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return false
+		}
+		log.Printf("orchestrator: claim next queued: %v", err)
+		return false
 	}
-	task := o.queue[0]
-	o.queue = o.queue[1:]
-	o.mu.Unlock()
 
 	llm, err := o.selectProviderForTask(task)
 	if err != nil {
-		return
-	}
-
-	if err := o.repo.UpdateStatus(task.ID, domain.StatusProcessing); err != nil {
-		log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+		return true
 	}
 	o.emit(task.ID, domain.StatusProcessing)
 
 	prompt, sessionHistory, err := o.buildChatContext(task, llm)
 	if err != nil {
-		return
+		return true
 	}
 
 	code, err := o.executeGeneration(task, llm, prompt, sessionHistory)
 	if err != nil {
-		return
+		return true
 	}
 
 	o.writeTaskOutput(task, code, llm.ProviderName())
+	return true
 }
 
 // selectProviderForTask resolves the LLM client for the task by provider name or

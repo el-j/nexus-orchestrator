@@ -163,6 +163,88 @@ func TestRepository_GetPending_Empty(t *testing.T) {
 	}
 }
 
+func TestRepository_ClaimNextQueued_ClaimsOldestQueuedAndMarksProcessing(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	base := time.Now().Add(-5 * time.Minute)
+	queuedOldest := newTask("queued-oldest", domain.StatusQueued, base)
+	queuedNewest := newTask("queued-newest", domain.StatusQueued, base.Add(time.Minute))
+	processing := newTask("already-processing", domain.StatusProcessing, base.Add(2*time.Minute))
+
+	for _, task := range []domain.Task{queuedNewest, processing, queuedOldest} {
+		if err := repo.Save(task); err != nil {
+			t.Fatalf("Save %s: %v", task.ID, err)
+		}
+	}
+
+	claimed, err := repo.ClaimNextQueued()
+	if err != nil {
+		t.Fatalf("ClaimNextQueued: %v", err)
+	}
+	if claimed.ID != queuedOldest.ID {
+		t.Fatalf("claimed task: want %q, got %q", queuedOldest.ID, claimed.ID)
+	}
+	if claimed.Status != domain.StatusProcessing {
+		t.Fatalf("claimed status: want %s, got %s", domain.StatusProcessing, claimed.Status)
+	}
+
+	saved, err := repo.GetByID(queuedOldest.ID)
+	if err != nil {
+		t.Fatalf("GetByID claimed task: %v", err)
+	}
+	if saved.Status != domain.StatusProcessing {
+		t.Fatalf("persisted claimed status: want %s, got %s", domain.StatusProcessing, saved.Status)
+	}
+}
+
+func TestRepository_ClaimNextQueued_ReturnsErrNotFoundWhenEmpty(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	_, err := repo.ClaimNextQueued()
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("expected domain.ErrNotFound, got %v", err)
+	}
+}
+
+func TestRepository_UpdateStatusIfCurrent(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	task := newTask("conditional-status", domain.StatusQueued, time.Now())
+	if err := repo.Save(task); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	ok, err := repo.UpdateStatusIfCurrent(task.ID, domain.StatusQueued, domain.StatusCancelled)
+	if err != nil {
+		t.Fatalf("UpdateStatusIfCurrent: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected transition to succeed")
+	}
+
+	ok, err = repo.UpdateStatusIfCurrent(task.ID, domain.StatusQueued, domain.StatusCompleted)
+	if err != nil {
+		t.Fatalf("UpdateStatusIfCurrent second transition: %v", err)
+	}
+	if ok {
+		t.Fatal("expected second transition to fail because status no longer matches")
+	}
+
+	saved, err := repo.GetByID(task.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if saved.Status != domain.StatusCancelled {
+		t.Fatalf("status after guarded update: want %s, got %s", domain.StatusCancelled, saved.Status)
+	}
+}
+
 func TestRepository_UpdateStatus(t *testing.T) {
 	repo := newTestRepo(t)
 	defer repo.Close()

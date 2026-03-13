@@ -174,6 +174,50 @@ func (r *Repository) GetPending() ([]domain.Task, error) {
 	return tasks, rows.Err()
 }
 
+// ClaimNextQueued atomically claims the oldest queued task and marks it PROCESSING.
+func (r *Repository) ClaimNextQueued() (domain.Task, error) {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("sqlite: begin claim next queued: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	row := tx.QueryRow(
+		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count
+		 FROM tasks WHERE status = 'QUEUED' ORDER BY created_at ASC LIMIT 1`,
+	)
+	task, err := scanTask(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.Task{}, fmt.Errorf("sqlite: claim next queued: %w", domain.ErrNotFound)
+		}
+		return domain.Task{}, fmt.Errorf("sqlite: claim next queued: %w", err)
+	}
+
+	res, err := tx.Exec(
+		`UPDATE tasks SET status = ?, updated_at = ? WHERE id = ? AND status = 'QUEUED'`,
+		string(domain.StatusProcessing), time.Now().UnixMilli(), task.ID,
+	)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("sqlite: claim next queued: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("sqlite: claim next queued rows affected: %w", err)
+	}
+	if n == 0 {
+		return domain.Task{}, fmt.Errorf("sqlite: claim next queued: %w", domain.ErrNotFound)
+	}
+	if err := tx.Commit(); err != nil {
+		return domain.Task{}, fmt.Errorf("sqlite: claim next queued commit: %w", err)
+	}
+	task.Status = domain.StatusProcessing
+	task.UpdatedAt = time.Now()
+	return task, nil
+}
+
 // UpdateStatus changes the status of a task identified by id.
 func (r *Repository) UpdateStatus(id string, status domain.TaskStatus) error {
 	res, err := r.db.Exec(
@@ -191,6 +235,22 @@ func (r *Repository) UpdateStatus(id string, status domain.TaskStatus) error {
 		return fmt.Errorf("sqlite: update status: %w", domain.ErrNotFound)
 	}
 	return nil
+}
+
+// UpdateStatusIfCurrent changes the status only when the current status matches from.
+func (r *Repository) UpdateStatusIfCurrent(id string, from, to domain.TaskStatus) (bool, error) {
+	res, err := r.db.Exec(
+		`UPDATE tasks SET status = ?, updated_at = ? WHERE id = ? AND status = ?`,
+		string(to), time.Now().UnixMilli(), id, string(from),
+	)
+	if err != nil {
+		return false, fmt.Errorf("sqlite: update status if current: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("sqlite: update status if current rows affected: %w", err)
+	}
+	return n == 1, nil
 }
 
 // UpdateLogs replaces the logs field for the task identified by id.

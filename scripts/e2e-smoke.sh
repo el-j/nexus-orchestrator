@@ -188,7 +188,7 @@ else
     fail "Test 9 — Global backlog missing draft"
 fi
 
-# Test 10 — Create an additional queued item deterministically
+# Test 10 — Create an additional queued item deterministically via promote
 RESP="$(curl -s -w '\n%{http_code}' -X POST "${HTTP_BASE}/api/tasks/draft" \
     -H 'Content-Type: application/json' \
     -d '{"projectPath":"'"${PROJECT_PATH}"'","targetFile":"queued.go","instruction":"queued item"}')"
@@ -196,15 +196,11 @@ HTTP_CODE="$(echo "$RESP" | tail -1)"
 BODY="$(echo "$RESP" | sed '$d')"
 QUEUED_ID="$(extract_json_field "$BODY" "id")"
 if [ "$HTTP_CODE" = "201" ] && [ -n "$QUEUED_ID" ]; then
-    RESP="$(curl -s -w '\n%{http_code}' -X PUT "${HTTP_BASE}/api/tasks/${QUEUED_ID}" \
-        -H 'Content-Type: application/json' \
-        -d '{"status":"QUEUED"}')"
-    HTTP_CODE="$(echo "$RESP" | tail -1)"
-    BODY="$(echo "$RESP" | sed '$d')"
-    if [ "$HTTP_CODE" = "200" ] && echo "$BODY" | grep -q '"status":"QUEUED"'; then
-        pass "Test 10 — Create queued item via update"
+    RESP="$(curl -s -o /dev/null -w '%{http_code}' -X POST "${HTTP_BASE}/api/tasks/${QUEUED_ID}/promote")"
+    if [ "$RESP" = "204" ]; then
+        pass "Test 10 — Create queued item via promote"
     else
-        fail "Test 10 — Create queued item: HTTP $HTTP_CODE, body: ${BODY:0:120}"
+        fail "Test 10 — Create queued item via promote: expected 204, got $RESP"
     fi
 else
     fail "Test 10 — Create queued item failed"
@@ -275,13 +271,13 @@ else
     fail "Test 16 — Deregister AI session: skipped (no session id)"
 fi
 
-# Test 17 — Cancel task (accept 204 or 404 — task may already be processing/completed)
+# Test 17 — Cancel task (accept 204, 404, or 409 — task may already be processing/completed)
 if [ -n "$TASK_ID" ]; then
     RESP="$(curl -s -o /dev/null -w '%{http_code}' -X DELETE "${HTTP_BASE}/api/tasks/${TASK_ID}")"
-    if [ "$RESP" = "204" ] || [ "$RESP" = "404" ]; then
+    if [ "$RESP" = "204" ] || [ "$RESP" = "404" ] || [ "$RESP" = "409" ]; then
         pass "Test 17 — Cancel task ($RESP accepted)"
     else
-        fail "Test 17 — Cancel task: expected 204 or 404, got $RESP"
+        fail "Test 17 — Cancel task: expected 204, 404, or 409, got $RESP"
     fi
 else
     fail "Test 17 — Cancel task: skipped (no task_id)"

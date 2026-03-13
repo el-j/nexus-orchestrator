@@ -50,6 +50,53 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
+  vet:
+    needs: version
+    if: needs.version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.24"
+
+      - uses: actions/cache@v5
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+
+      - name: go vet
+        run: go vet ./...
+
+  lint:
+    needs: version
+    if: needs.version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.24"
+
+      - name: Check gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "The following files are not gofmt-formatted:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: latest
+
   test:
     needs: version
     if: needs.version.outputs.exists == 'false'
@@ -62,24 +109,107 @@ jobs:
         with:
           go-version: "1.24"
 
-      - name: Install zig
-        shell: bash
-        run: |
-          ZIG_VERSION="0.14.0"
-          curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz" -o zig.tar.xz
-          tar xf zig.tar.xz
-          sudo mv "zig-linux-x86_64-${ZIG_VERSION}/zig" /usr/local/bin/
-          sudo mv "zig-linux-x86_64-${ZIG_VERSION}/lib" /usr/local/lib/zig
-          rm -rf zig.tar.xz "zig-linux-x86_64-${ZIG_VERSION}"
-          zig version
+      - uses: actions/cache@v5
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
 
       - name: Run tests
         shell: bash
         run: CGO_ENABLED=1 go test -race -count=1 ./...
 
+  frontend-test:
+    needs: version
+    if: needs.version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Type-check frontend
+        working-directory: frontend
+        run: npx vue-tsc --noEmit
+
+      - name: Run frontend smoke coverage
+        working-directory: frontend
+        run: npm run test:coverage
+
+  vscode-gate:
+    needs: version
+    if: needs.version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: vscode-extension/package-lock.json
+
+      - name: Install dependencies
+        working-directory: vscode-extension
+        run: npm ci
+
+      - name: Run extension smoke coverage
+        working-directory: vscode-extension
+        run: npm run test:coverage
+
+      - name: Build extension
+        working-directory: vscode-extension
+        run: npm run build
+
+      - name: Package VSIX (smoke test)
+        working-directory: vscode-extension
+        shell: bash
+        run: npx @vscode/vsce package --no-dependencies
+
+  e2e:
+    needs: [version, test, frontend-test, vscode-gate]
+    if: needs.version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.24"
+
+      - uses: actions/cache@v5
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+
+      - name: Run daemon E2E smoke
+        shell: bash
+        run: ./scripts/e2e-smoke.sh
+
+  release-gate:
+    needs: [version, vet, lint, test, frontend-test, vscode-gate, e2e]
+    if: needs.version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Confirm full release gate passed
+        run: echo "Publish gate passed"
+
   build-cli:
     name: Build CLI ${{ matrix.os }}-${{ matrix.arch }}
-    needs: [version, test]
+    needs: [version, release-gate]
     if: needs.version.outputs.exists == 'false'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
@@ -204,7 +334,7 @@ jobs:
 
   build-desktop:
     name: Build Desktop ${{ matrix.os }}-${{ matrix.arch }}
-    needs: [version, test]
+    needs: [version, release-gate]
     if: needs.version.outputs.exists == 'false'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
@@ -356,7 +486,7 @@ jobs:
 
   build-vscode:
     name: Build VS Code Extension
-    needs: [version, test]
+    needs: [version, release-gate]
     if: needs.version.outputs.exists == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -372,6 +502,10 @@ jobs:
       - name: Install dependencies
         working-directory: vscode-extension
         run: npm ci
+
+      - name: Run extension smoke coverage
+        working-directory: vscode-extension
+        run: npm run test:coverage
 
       - name: Build extension
         working-directory: vscode-extension

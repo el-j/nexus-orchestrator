@@ -3,6 +3,7 @@ package services_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -34,7 +35,7 @@ func (r *memRepo) GetByID(id string) (domain.Task, error) {
 	defer r.mu.Unlock()
 	t, ok := r.tasks[id]
 	if !ok {
-		return domain.Task{}, errors.New("not found")
+		return domain.Task{}, domain.ErrNotFound
 	}
 	return t, nil
 }
@@ -51,6 +52,31 @@ func (r *memRepo) GetPending() ([]domain.Task, error) {
 	return out, nil
 }
 
+func (r *memRepo) ClaimNextQueued() (domain.Task, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var (
+		claimed domain.Task
+		found   bool
+	)
+	for _, task := range r.tasks {
+		if task.Status != domain.StatusQueued {
+			continue
+		}
+		if !found || task.CreatedAt.Before(claimed.CreatedAt) {
+			claimed = task
+			found = true
+		}
+	}
+	if !found {
+		return domain.Task{}, domain.ErrNotFound
+	}
+	claimed.Status = domain.StatusProcessing
+	claimed.UpdatedAt = time.Now()
+	r.tasks[claimed.ID] = claimed
+	return claimed, nil
+}
+
 func (r *memRepo) UpdateStatus(id string, status domain.TaskStatus) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -61,6 +87,22 @@ func (r *memRepo) UpdateStatus(id string, status domain.TaskStatus) error {
 	t.Status = status
 	r.tasks[id] = t
 	return nil
+}
+
+func (r *memRepo) UpdateStatusIfCurrent(id string, from, to domain.TaskStatus) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	t, ok := r.tasks[id]
+	if !ok {
+		return false, nil
+	}
+	if t.Status != from {
+		return false, nil
+	}
+	t.Status = to
+	t.UpdatedAt = time.Now()
+	r.tasks[id] = t
+	return true, nil
 }
 
 func (r *memRepo) UpdateLogs(id, logs string) error {
@@ -125,6 +167,55 @@ type noopWriter struct{}
 func (w *noopWriter) WriteCodeToFile(_, _, _ string) error                  { return nil }
 func (w *noopWriter) ReadContextFiles(_ string, _ []string) (string, error) { return "", nil }
 
+type memProviderConfigRepo struct {
+	mu        sync.Mutex
+	configs   map[string]domain.ProviderConfig
+	saveCalls int
+	saveErr   error
+}
+
+func newMemProviderConfigRepo() *memProviderConfigRepo {
+	return &memProviderConfigRepo{configs: make(map[string]domain.ProviderConfig)}
+}
+
+func (r *memProviderConfigRepo) SaveProviderConfig(_ context.Context, cfg domain.ProviderConfig) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.saveCalls++
+	if r.saveErr != nil {
+		return r.saveErr
+	}
+	r.configs[cfg.ID] = cfg
+	return nil
+}
+
+func (r *memProviderConfigRepo) ListProviderConfigs(_ context.Context) ([]domain.ProviderConfig, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := make([]domain.ProviderConfig, 0, len(r.configs))
+	for _, cfg := range r.configs {
+		out = append(out, cfg)
+	}
+	return out, nil
+}
+
+func (r *memProviderConfigRepo) GetProviderConfig(_ context.Context, id string) (domain.ProviderConfig, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	cfg, ok := r.configs[id]
+	if !ok {
+		return domain.ProviderConfig{}, domain.ErrNotFound
+	}
+	return cfg, nil
+}
+
+func (r *memProviderConfigRepo) DeleteProviderConfig(_ context.Context, id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.configs, id)
+	return nil
+}
+
 // --- Tests --------------------------------------------------------------------
 
 func TestOrchestrator_SubmitTask_AssignsIDAndQueues(t *testing.T) {
@@ -162,10 +253,14 @@ func TestOrchestrator_GetQueue_ReturnsPendingTasks(t *testing.T) {
 	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
 	defer orch.Stop()
 
-	for i := 0; i < 3; i++ {
-		_, err := orch.SubmitTask(domain.Task{Instruction: "task"})
+	for i, status := range []domain.TaskStatus{domain.StatusQueued, domain.StatusProcessing, domain.StatusQueued} {
+		err := repo.Save(domain.Task{
+			ID:          fmt.Sprintf("pending-%d", i),
+			Instruction: "task",
+			Status:      status,
+		})
 		if err != nil {
-			t.Fatalf("SubmitTask: %v", err)
+			t.Fatalf("Save: %v", err)
 		}
 	}
 
@@ -976,6 +1071,40 @@ func TestPromoteTask_ErrorOnAlreadyQueued(t *testing.T) {
 	}
 }
 
+func TestPromoteTask_EnforcesQueueCap(t *testing.T) {
+	const queueCap = 1
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch.WithQueueCap(queueCap)
+	defer orch.Stop()
+
+	if err := repo.Save(domain.Task{
+		ID:          "pending-cap-task",
+		ProjectPath: "/proj/cap",
+		Instruction: "existing queued task",
+		Status:      domain.StatusQueued,
+	}); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	id, err := orch.CreateDraft(domain.Task{
+		ProjectPath: "/proj/cap",
+		Instruction: "promote later",
+	})
+	if err != nil {
+		t.Fatalf("CreateDraft: %v", err)
+	}
+
+	err = orch.PromoteTask(id)
+	if err == nil {
+		t.Fatal("expected queue cap error, got nil")
+	}
+	if !errors.Is(err, services.ErrQueueFull) {
+		t.Fatalf("expected ErrQueueFull, got %v", err)
+	}
+}
+
 func TestUpdateTask_MergesFields(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
@@ -1008,6 +1137,29 @@ func TestUpdateTask_MergesFields(t *testing.T) {
 	saved, _ := repo.GetByID(id)
 	if saved.Instruction != "updated instruction" {
 		t.Errorf("persisted instruction: want %q, got %q", "updated instruction", saved.Instruction)
+	}
+}
+
+func TestUpdateTask_RejectsQueuedTransition(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.CreateDraft(domain.Task{
+		ProjectPath: "/proj/update-status",
+		Instruction: "status mutation",
+	})
+	if err != nil {
+		t.Fatalf("CreateDraft: %v", err)
+	}
+
+	_, err = orch.UpdateTask(id, domain.Task{Status: domain.StatusQueued})
+	if err == nil {
+		t.Fatal("expected error when forcing queued via UpdateTask")
+	}
+	if !strings.Contains(err.Error(), "use promote task") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
@@ -1195,6 +1347,81 @@ func TestOrchestrator_PromoteProvider_Reachable(t *testing.T) {
 
 	if err := orch.PromoteProvider(context.Background(), "port-1234"); err != nil {
 		t.Fatalf("PromoteProvider: unexpected error: %v", err)
+	}
+}
+
+func TestOrchestrator_PromoteProvider_PersistsEnabledWithoutDuplicateRegistration(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	cfgRepo := newMemProviderConfigRepo()
+	orch.WithProviderConfigRepo(cfgRepo)
+
+	var (
+		factoryMu    sync.Mutex
+		factoryCalls int
+		seenConfigs  []domain.ProviderConfig
+	)
+	orch.WithProviderFactory(func(cfg domain.ProviderConfig) (ports.LLMClient, error) {
+		factoryMu.Lock()
+		defer factoryMu.Unlock()
+		factoryCalls++
+		seenConfigs = append(seenConfigs, cfg)
+		return &mockLLMClient{alive: true, name: cfg.Name}, nil
+	})
+
+	scanner := &mockScanner{
+		results: []domain.DiscoveredProvider{{
+			ID:      "port-1234",
+			Name:    "LM Studio",
+			Kind:    domain.ProviderKindLMStudio,
+			Status:  domain.DiscoveryStatusReachable,
+			BaseURL: "http://127.0.0.1:1234",
+		}},
+	}
+	orch.WithSystemScanner(scanner)
+	if _, err := orch.TriggerScan(context.Background()); err != nil {
+		t.Fatalf("TriggerScan: %v", err)
+	}
+
+	if err := orch.PromoteProvider(context.Background(), "port-1234"); err != nil {
+		t.Fatalf("PromoteProvider: %v", err)
+	}
+
+	saved, err := cfgRepo.GetProviderConfig(context.Background(), "port-1234")
+	if err != nil {
+		t.Fatalf("GetProviderConfig: %v", err)
+	}
+	if !saved.Enabled {
+		t.Fatal("expected promoted provider to be persisted with Enabled=true")
+	}
+
+	factoryMu.Lock()
+	defer factoryMu.Unlock()
+	if factoryCalls != 1 {
+		t.Fatalf("factory calls: want 1, got %d", factoryCalls)
+	}
+	if len(seenConfigs) != 1 {
+		t.Fatalf("seen configs: want 1, got %d", len(seenConfigs))
+	}
+	if !seenConfigs[0].Enabled {
+		t.Fatal("expected enabled config passed to provider factory")
+	}
+
+	providers, err := orch.GetProviders()
+	if err != nil {
+		t.Fatalf("GetProviders: %v", err)
+	}
+	count := 0
+	for _, provider := range providers {
+		if provider.Name == "LM Studio" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("expected one live promoted provider, got %d", count)
 	}
 }
 

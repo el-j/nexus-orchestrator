@@ -1,12 +1,12 @@
 {
   "version": "2",
-  "updatedAt": "2026-03-13T09:59:36.000Z",
+  "updatedAt": "2026-03-13T11:34:30.000Z",
   "counters": {
-    "nextTaskId": 247,
-    "nextPlanId": 37
+    "nextTaskId": 251,
+    "nextPlanId": 38
   },
   "activePlanId": null,
-  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix). PLAN-013 completed (update CI to latest action versions). PLAN-014 completed (unified publish.yml pipeline, fixed GITHUB_TOKEN cross-trigger bug, fixed CLI/desktop artifact naming collision, updated downloads.md). PLAN-015 completed (production-grade Node20 GitHub Action with TypeScript, built-in agent identity loading from el-j/agency-agents, 24 unit tests, action-ci.yml CI workflow). PLAN-016 completed (release pipeline finalization: deleted conflicting version.yml+release.yml, created CHANGELOG.md, fixed downloads.md desktop links). PLAN-017 completed (fix all broken download links: nexusOrchestrator\u2192nexus-orchestrator prefix, macOS .tar.gz\u2192.zip, add Gatekeeper workaround instructions). PLAN-018 completed (provider visibility: configurable Ollama/LM Studio URLs, BaseURL+Error in ProviderInfo, SQLite-persisted provider CRUD, GUI provider management panel, VS Code extension with submit/queue/status-bar). PLAN-019 completed (VS Code extension VSIX in release pipeline: vsce packaging with publisher+@vscode/vsce, build-vscode job in publish.yml+ci.yml, DownloadsView.vue/HomeView.vue/docs updated to mention extension). PLAN-020 completed (fix ProviderInfo TypeScript PascalCase\u2192camelCase type mismatch, wire AppSidebar routing, create ProvidersView.vue, dogfood confirmed COMPLETED via LM Studio qwen3-coder-next in 9s). PLAN-021 completed (SSE real-time updates via EventSource+fallback, ProviderConfig kind fix, CHANGELOG v0.8.0 \u2014 all 4 tasks dogfooded via daemon, LM Studio qwen3-coder-next). PLAN-022 completed (Universal AI Session Orchestration \u2014 AISession domain type, AISessionRepository+AISessionMonitor ports, SQLite AISessionRepo, HTTP /api/ai-sessions CRUD, MCP register_session+get_ai_sessions (14 tools total), GUI AISessionsView+useAISessions composable, VS Code SessionMonitor+Copilot detection, entry point wiring, 13 QA tests \u2014 all 9 tasks, 7 waves, all green). PLAN-023 active (System-Wide Provider Discovery + Background Service Mode \u2014 detect Claude CLI/Copilot/Antigravity/local AI tools, hide-to-tray, in-app log console, no console window \u2014 13 tasks across 8 waves). PLAN-024 completed (Multi-Project Planning & Idea Staging \u2014 DRAFT/BACKLOG statuses, ProviderName per-task routing, Priority+Tags, SQLite migrations, backlog CRUD on HTTP/MCP/CLI/Wails, BacklogView+BacklogList+ProjectSelector GUI, TaskSubmitForm split-button, 20 new QA tests \u2014 all 12 tasks, 7 waves, all green). PLAN-029 completed (Task Queue UI fix: DashboardView flex wrapper; AI Session dedup by externalId: idempotent RegisterAISession + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code extension heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-030 completed (Comprehensive Hardening: HeartbeatAISession+PromoteProvider bindings, error handling consistency, constructor nil-validation, HTTP API error format, frontend circular dep fix, VSCode memory leak+URLs, VSCode session monitor race fix, processNext decomposition into 4 helpers, silent catch blocks fixed, security hardening CSP nonce+file permissions+XSS, Vue error boundary+rejection handler, GitHub Action 53 tests, golangci-lint+eslint in CI, discovery error logging+configurable builder options, frontend accessibility ARIA labels). PLAN-031 completed (fix duplicate package decl in llm_openaicompat test, go fmt all files, add gofmt CI check + vet gate for test job \u2014 all 4 tasks green). EXPERIMENT 2026-03-12: go build passes even when _test.go files have syntax errors (build only compiles cmd/ entry points, never test files) \u2014 CI pattern Build\u2713 Vet\u2717 Test\u2717 gives false confidence; fixed by adding needs:[vet] gate to test job. EXPERIMENT 2026-03-12: duplicate package declarations caused by appending generated/scaffolded code to an existing file that already had a package line \u2014 always check for duplicate package decls after code generation. EXPERIMENT 2026-03-12: gofmt violations (multi-statement single lines with ;) not caught by go vet or go build \u2014 must add explicit gofmt -l check in lint CI job; find command: find . -name '*.go' | xargs gofmt -l. SESSION 2026-03-12: Completed PLAN-031 (CI hard-failure fix). Files changed: adapter_test.go (dup pkg decl), orchestrator_options_test.go (gofmt), .github/workflows/ci.yml (gofmt check + vet gate). Tests: all green. SESSION 2026-03-13: Completed PLAN-036 (formalized the release-readiness audit into .claude plan/task records and cleared the stale active-plan pointer).",
+  "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix). PLAN-013 completed (update CI to latest action versions). PLAN-014 completed (unified publish.yml pipeline, fixed GITHUB_TOKEN cross-trigger bug, fixed CLI/desktop artifact naming collision, updated downloads.md). PLAN-015 completed (production-grade Node20 GitHub Action with TypeScript, built-in agent identity loading from el-j/agency-agents, 24 unit tests, action-ci.yml CI workflow). PLAN-016 completed (release pipeline finalization: deleted conflicting version.yml+release.yml, created CHANGELOG.md, fixed downloads.md desktop links). PLAN-017 completed (fix all broken download links: nexusOrchestrator\u2192nexus-orchestrator prefix, macOS .tar.gz\u2192.zip, add Gatekeeper workaround instructions). PLAN-018 completed (provider visibility: configurable Ollama/LM Studio URLs, BaseURL+Error in ProviderInfo, SQLite-persisted provider CRUD, GUI provider management panel, VS Code extension with submit/queue/status-bar). PLAN-019 completed (VS Code extension VSIX in release pipeline: vsce packaging with publisher+@vscode/vsce, build-vscode job in publish.yml+ci.yml, DownloadsView.vue/HomeView.vue/docs updated to mention extension). PLAN-020 completed (fix ProviderInfo TypeScript PascalCase\u2192camelCase type mismatch, wire AppSidebar routing, create ProvidersView.vue, dogfood confirmed COMPLETED via LM Studio qwen3-coder-next in 9s). PLAN-021 completed (SSE real-time updates via EventSource+fallback, ProviderConfig kind fix, CHANGELOG v0.8.0 \u2014 all 4 tasks dogfooded via daemon, LM Studio qwen3-coder-next). PLAN-022 completed (Universal AI Session Orchestration \u2014 AISession domain type, AISessionRepository+AISessionMonitor ports, SQLite AISessionRepo, HTTP /api/ai-sessions CRUD, MCP register_session+get_ai_sessions (14 tools total), GUI AISessionsView+useAISessions composable, VS Code SessionMonitor+Copilot detection, entry point wiring, 13 QA tests \u2014 all 9 tasks, 7 waves, all green). PLAN-023 active (System-Wide Provider Discovery + Background Service Mode \u2014 detect Claude CLI/Copilot/Antigravity/local AI tools, hide-to-tray, in-app log console, no console window \u2014 13 tasks across 8 waves). PLAN-024 completed (Multi-Project Planning & Idea Staging \u2014 DRAFT/BACKLOG statuses, ProviderName per-task routing, Priority+Tags, SQLite migrations, backlog CRUD on HTTP/MCP/CLI/Wails, BacklogView+BacklogList+ProjectSelector GUI, TaskSubmitForm split-button, 20 new QA tests \u2014 all 12 tasks, 7 waves, all green). PLAN-029 completed (Task Queue UI fix: DashboardView flex wrapper; AI Session dedup by externalId: idempotent RegisterAISession + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code extension heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-030 completed (Comprehensive Hardening: HeartbeatAISession+PromoteProvider bindings, error handling consistency, constructor nil-validation, HTTP API error format, frontend circular dep fix, VSCode memory leak+URLs, VSCode session monitor race fix, processNext decomposition into 4 helpers, silent catch blocks fixed, security hardening CSP nonce+file permissions+XSS, Vue error boundary+rejection handler, GitHub Action 53 tests, golangci-lint+eslint in CI, discovery error logging+configurable builder options, frontend accessibility ARIA labels). PLAN-031 completed (fix duplicate package decl in llm_openaicompat test, go fmt all files, add gofmt CI check + vet gate for test job \u2014 all 4 tasks green). EXPERIMENT 2026-03-12: go build passes even when _test.go files have syntax errors (build only compiles cmd/ entry points, never test files) \u2014 CI pattern Build\u2713 Vet\u2717 Test\u2717 gives false confidence; fixed by adding needs:[vet] gate to test job. EXPERIMENT 2026-03-12: duplicate package declarations caused by appending generated/scaffolded code to an existing file that already had a package line \u2014 always check for duplicate package decls after code generation. EXPERIMENT 2026-03-12: gofmt violations (multi-statement single lines with ;) not caught by go vet or go build \u2014 must add explicit gofmt -l check in lint CI job; find command: find . -name '*.go' | xargs gofmt -l. SESSION 2026-03-12: Completed PLAN-031 (CI hard-failure fix). Files changed: adapter_test.go (dup pkg decl), orchestrator_options_test.go (gofmt), .github/workflows/ci.yml (gofmt check + vet gate). Tests: all green. SESSION 2026-03-13: Completed PLAN-036 (formalized the release-readiness audit into .claude plan/task records and cleared the stale active-plan pointer). SESSION 2026-03-13: Started PLAN-037 (Wave 1 release-readiness hardening for queue authority, publish-gate parity, and provider promotion durability). SESSION 2026-03-13: Completed PLAN-037 (queued-task authority moved to persisted pending rows, publish gained full release-gate parity, provider promotion now persists enabled config, and Go race tests + daemon E2E + frontend/extension coverage all passed).",
   "plans": {
     "PLAN-001": {
       "completedAt": "2026-03-09T10:00:00.000Z",
@@ -490,6 +490,19 @@
         "TASK-246"
       ],
       "completedAt": "2026-03-13T09:59:36.000Z"
+    },
+    "PLAN-037": {
+      "id": "PLAN-037",
+      "goal": "Execute Wave 1 release-readiness hardening: queued-task authority, publish-gate parity, and durable provider promotion",
+      "status": "completed",
+      "createdAt": "2026-03-13T10:17:51.000Z",
+      "taskIds": [
+        "TASK-247",
+        "TASK-248",
+        "TASK-249",
+        "TASK-250"
+      ],
+      "completedAt": "2026-03-13T11:34:30.000Z"
     }
   },
   "tasks": {
@@ -3007,6 +3020,53 @@
       ],
       "createdAt": "2026-03-13T09:59:36.000Z",
       "completedAt": "2026-03-13T09:59:36.000Z"
+    },
+    "TASK-247": {
+      "id": "TASK-247",
+      "title": "Backend: unify queued-task authority and admission path",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-037",
+      "dependencies": [],
+      "createdAt": "2026-03-13T10:17:51.000Z",
+      "startedAt": "2026-03-13T10:17:51.000Z",
+      "completedAt": "2026-03-13T11:34:30.000Z"
+    },
+    "TASK-248": {
+      "id": "TASK-248",
+      "title": "DevOps: make publish workflow enforce full release gate",
+      "status": "done",
+      "role": "devops",
+      "planId": "PLAN-037",
+      "dependencies": [],
+      "createdAt": "2026-03-13T10:17:51.000Z",
+      "startedAt": "2026-03-13T10:17:51.000Z",
+      "completedAt": "2026-03-13T11:34:30.000Z"
+    },
+    "TASK-249": {
+      "id": "TASK-249",
+      "title": "Backend: persist provider promotion as enabled",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-037",
+      "dependencies": [],
+      "createdAt": "2026-03-13T10:17:51.000Z",
+      "startedAt": "2026-03-13T10:17:51.000Z",
+      "completedAt": "2026-03-13T11:34:30.000Z"
+    },
+    "TASK-250": {
+      "id": "TASK-250",
+      "title": "Verification: validate Wave 1 release-readiness hardening",
+      "status": "done",
+      "role": "verify",
+      "planId": "PLAN-037",
+      "dependencies": [
+        "TASK-247",
+        "TASK-248",
+        "TASK-249"
+      ],
+      "createdAt": "2026-03-13T10:17:51.000Z",
+      "completedAt": "2026-03-13T11:34:30.000Z"
     }
   }
 }

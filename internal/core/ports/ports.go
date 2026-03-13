@@ -39,9 +39,11 @@ type TaskRepository interface {
 	Save(t domain.Task) error
 	GetByID(id string) (domain.Task, error)
 	GetPending() ([]domain.Task, error)
+	ClaimNextQueued() (domain.Task, error)
 	// GetByProjectPath returns all tasks for the given project path.
 	GetByProjectPath(projectPath string) ([]domain.Task, error)
 	UpdateStatus(id string, status domain.TaskStatus) error
+	UpdateStatusIfCurrent(id string, from, to domain.TaskStatus) (bool, error)
 	// UpdateLogs replaces the Logs field on the task identified by id.
 	UpdateLogs(id, logs string) error
 	// GetAll returns every task, ordered by creation time descending.

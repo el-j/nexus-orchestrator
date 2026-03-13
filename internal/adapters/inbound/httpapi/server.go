@@ -255,6 +255,10 @@ func (s *Server) handleCancelTask(w http.ResponseWriter, r *http.Request) {
 			writeJSONError(w, "task not found", http.StatusNotFound)
 			return
 		}
+		if strings.Contains(err.Error(), "cannot cancel task with status") {
+			writeJSONError(w, err.Error(), http.StatusConflict)
+			return
+		}
 		log.Printf("httpapi: cancel task %s: %v", id, err)
 		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return

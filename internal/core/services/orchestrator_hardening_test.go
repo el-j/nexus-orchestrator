@@ -111,6 +111,70 @@ func TestQueueCap(t *testing.T) {
 	}
 }
 
+func TestCancelTask_CancelsPersistedQueuedTask(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	now := time.Now()
+	queuedTask := domain.Task{
+		ID:          "persisted-queued-task",
+		ProjectPath: "/tmp/recovery-test",
+		Instruction: "cancel me after restart",
+		Status:      domain.StatusQueued,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	if err := repo.Save(queuedTask); err != nil {
+		t.Fatalf("setup: save queued task: %v", err)
+	}
+
+	if err := orch.CancelTask(queuedTask.ID); err != nil {
+		t.Fatalf("CancelTask: %v", err)
+	}
+
+	saved, err := repo.GetByID(queuedTask.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if saved.Status != domain.StatusCancelled {
+		t.Fatalf("status after cancel: want %s, got %s", domain.StatusCancelled, saved.Status)
+	}
+}
+
+func TestStartupRecoverySignalsExistingQueuedTask(t *testing.T) {
+	repo := newMemRepo()
+	now := time.Now()
+	queuedTask := domain.Task{
+		ID:          "persisted-queued-on-startup",
+		ProjectPath: "/tmp/recovery-test",
+		Instruction: "process me from persisted queue",
+		Status:      domain.StatusQueued,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	if err := repo.Save(queuedTask); err != nil {
+		t.Fatalf("setup: save queued task: %v", err)
+	}
+
+	llm := &mockLLMClient{alive: true, name: "mock", code: "queued startup code"}
+	discovery := services.NewDiscoveryService(llm)
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		time.Sleep(200 * time.Millisecond)
+		saved, _ := repo.GetByID(queuedTask.ID)
+		if saved.Status == domain.StatusCompleted {
+			return
+		}
+	}
+	saved, _ := repo.GetByID(queuedTask.ID)
+	t.Fatalf("task did not reach COMPLETED from persisted queued state; final status: %s", saved.Status)
+}
+
 // TestRetryLimit verifies that a task whose LLM calls always fail is retried
 // exactly maxRetries times and then permanently set to StatusFailed.
 func TestRetryLimit(t *testing.T) {
