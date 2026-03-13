@@ -26,6 +26,7 @@ declare global {
           ListAISessions(): Promise<AISession[]>
           RegisterAISession(session: AISession): Promise<AISession>
           DeregisterAISession(id: string): Promise<void>
+          PurgeDisconnectedSessions(): Promise<number>
           GetServerAddr(): Promise<string>
           HeartbeatAISession(id: string): Promise<Error>
         }
@@ -197,4 +198,12 @@ export async function deregisterAISession(id: string): Promise<void> {
   if (isWails()) return window.go!.main!.App!.DeregisterAISession(id)
   const r = await fetch(`/api/ai-sessions/${id}`, { method: 'DELETE' })
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
+}
+
+export async function purgeDisconnectedSessions(): Promise<number> {
+  if (isWails()) return window.go!.main!.App!.PurgeDisconnectedSessions()
+  const r = await fetch('/api/ai-sessions', { method: 'DELETE' })
+  if (!r.ok) throw new Error(`HTTP ${r.status}`)
+  const data = await r.json() as { deleted: number }
+  return data.deleted ?? 0
 }

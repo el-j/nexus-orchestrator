@@ -8,6 +8,7 @@
           <DashboardView v-if="currentView === 'dashboard'" />
           <BacklogView v-else-if="currentView === 'backlog'" />
           <HistoryView v-else-if="currentView === 'history'" />
+          <LiveActivityView v-else-if="currentView === 'live-activity'" />
           <ProvidersView v-else-if="currentView === 'providers'" />
           <DiscoveryView v-else-if="currentView === 'discovery'" />
           <AISessionsView v-else-if="currentView === 'ai-sessions'" />
@@ -29,6 +30,7 @@ import AppSidebar from './components/AppSidebar.vue'
 import DashboardView from './views/DashboardView.vue'
 import BacklogView from './views/BacklogView.vue'
 import HistoryView from './views/HistoryView.vue'
+import LiveActivityView from './views/LiveActivityView.vue'
 import ProvidersView from './views/ProvidersView.vue'
 import DiscoveryView from './views/DiscoveryView.vue'
 import AISessionsView from './views/AISessionsView.vue'

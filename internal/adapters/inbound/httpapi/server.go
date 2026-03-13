@@ -124,6 +124,7 @@ func (s *Server) Handler() http.Handler {
 	// AI session endpoints — literal segment before wildcard {id}
 	r.Post("/api/ai-sessions", s.handleRegisterAISession)
 	r.Get("/api/ai-sessions", s.handleListAISessions)
+	r.Delete("/api/ai-sessions", s.handlePurgeDisconnectedSessions)
 	r.Delete("/api/ai-sessions/{id}", s.handleDeregisterAISession)
 	r.Post("/api/ai-sessions/{id}/heartbeat", s.handleHeartbeatAISession)
 	r.Get("/api/ai-sessions/{id}/tasks", s.handleGetSessionTasks)
@@ -599,6 +600,19 @@ func (s *Server) handleDeregisterAISession(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// handlePurgeDisconnectedSessions deletes all AI sessions that are disconnected
+// and have been inactive for more than 2 hours. Returns {"deleted": N}.
+func (s *Server) handlePurgeDisconnectedSessions(w http.ResponseWriter, r *http.Request) {
+	n, err := s.orch.PurgeDisconnectedSessions(r.Context())
+	if err != nil {
+		log.Printf("httpapi: purge disconnected sessions: %v", err)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]int{"deleted": n})
 }
 
 func (s *Server) handleHeartbeatAISession(w http.ResponseWriter, r *http.Request) {

@@ -1,6 +1,6 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import type { AISession } from '../types/domain'
-import { listAISessions, deregisterAISession } from '../types/wails'
+import { listAISessions, deregisterAISession, purgeDisconnectedSessions } from '../types/wails'
 import { resolveServerUrl } from './useServerUrl'
 
 export function useAISessions() {
@@ -21,6 +21,11 @@ export function useAISessions() {
 
   async function deregister(id: string) {
     await deregisterAISession(id)
+    await refresh()
+  }
+
+  async function purgeDisconnected() {
+    await purgeDisconnectedSessions()
     await refresh()
   }
 
@@ -59,5 +64,5 @@ export function useAISessions() {
     if (eventSource) eventSource.close()
   })
 
-  return { sessions, loading, error, refresh, deregister }
+  return { sessions, loading, error, refresh, deregister, purgeDisconnected }
 }

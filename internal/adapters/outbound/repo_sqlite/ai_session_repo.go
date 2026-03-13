@@ -187,6 +187,20 @@ func (a *AISessionRepo) AppendRoutedTaskID(ctx context.Context, sessionID string
 	return nil
 }
 
+// PurgeDisconnected deletes all AI sessions with status "disconnected" whose
+// last_activity is older than olderThan. Returns the number of rows deleted.
+func (a *AISessionRepo) PurgeDisconnected(ctx context.Context, olderThan time.Duration) (int, error) {
+	cutoff := time.Now().Add(-olderThan).UTC().Format(time.RFC3339)
+	res, err := a.db.ExecContext(ctx,
+		`DELETE FROM ai_sessions WHERE status = 'disconnected' AND last_activity < ?`, cutoff,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("repo_sqlite: purge disconnected: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	return int(n), nil
+}
+
 func scanAISession(s scanner) (domain.AISession, error) {
 	var sess domain.AISession
 	var sourceStr, statusStr string

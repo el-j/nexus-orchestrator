@@ -148,6 +148,9 @@ type Orchestrator interface {
 	// UpdateTaskStatus allows an external AI session to report task completion or failure.
 	// Only the session that claimed the task (matching AISessionID) may update its status.
 	UpdateTaskStatus(ctx context.Context, taskID string, sessionID string, status domain.TaskStatus, logs string) (domain.Task, error)
+	// PurgeDisconnectedSessions deletes all AI sessions with status "disconnected"
+	// that have been inactive for more than 2 hours. Returns the count deleted.
+	PurgeDisconnectedSessions(ctx context.Context) (int, error)
 }
 
 // EventType identifies a task lifecycle event.
@@ -206,6 +209,9 @@ type AISessionRepository interface {
 	DeleteAISession(ctx context.Context, id string) error
 	// AppendRoutedTaskID adds a task ID to the session's routed task list (no duplicates).
 	AppendRoutedTaskID(ctx context.Context, sessionID string, taskID string) error
+	// PurgeDisconnected deletes all sessions with status "disconnected" whose
+	// last_activity is older than olderThan. Returns the number of rows deleted.
+	PurgeDisconnected(ctx context.Context, olderThan time.Duration) (int, error)
 }
 
 // AISessionMonitor is the optional inbound port for push-based session discovery adapters.

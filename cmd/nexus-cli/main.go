@@ -545,3 +545,22 @@ func (r *remoteOrchestrator) UpdateTaskStatus(ctx context.Context, taskID string
 	}
 	return task, nil
 }
+
+func (r *remoteOrchestrator) PurgeDisconnectedSessions(ctx context.Context) (int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, r.baseURL+"/api/ai-sessions", nil)
+	if err != nil {
+		return 0, fmt.Errorf("remote: build purge disconnected sessions request: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("remote: purge disconnected sessions: %w", err)
+	}
+	defer resp.Body.Close()
+	var result struct {
+		Deleted int `json:"deleted"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, fmt.Errorf("remote: purge disconnected sessions: decode: %w", err)
+	}
+	return result.Deleted, nil
+}

@@ -882,6 +882,23 @@ func (o *OrchestratorService) DeregisterAISession(ctx context.Context, id string
 	return nil
 }
 
+// PurgeDisconnectedSessions immediately deletes all AI sessions with status
+// "disconnected" that have been inactive for more than 2 hours. Returns the
+// number of sessions deleted.
+func (o *OrchestratorService) PurgeDisconnectedSessions(ctx context.Context) (int, error) {
+	o.mu.Lock()
+	repo := o.aiSessionRepo
+	o.mu.Unlock()
+	if repo == nil {
+		return 0, fmt.Errorf("orchestrator: purge disconnected sessions: no session repo configured")
+	}
+	n, err := repo.PurgeDisconnected(ctx, 2*time.Hour)
+	if err != nil {
+		return 0, fmt.Errorf("orchestrator: purge disconnected sessions: %w", err)
+	}
+	return n, nil
+}
+
 // SetBroadcaster wires an optional EventBroadcaster for task lifecycle events.
 // Call before starting the worker (before NewOrchestrator returns, or immediately after).
 func (o *OrchestratorService) SetBroadcaster(b ports.EventBroadcaster) {
@@ -1051,6 +1068,12 @@ func (o *OrchestratorService) runSessionCleanup() {
 						})
 					}
 				}
+			}
+			// Purge disconnected sessions older than 2 hours to prevent unbounded growth.
+			if n, purgeErr := repo.PurgeDisconnected(ctx, 2*time.Hour); purgeErr != nil {
+				log.Printf("orchestrator: session cleanup: purge: %v", purgeErr)
+			} else if n > 0 {
+				log.Printf("orchestrator: session cleanup: purged %d stale disconnected sessions", n)
 			}
 		}
 	}

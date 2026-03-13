@@ -150,6 +150,9 @@ func (m *mockOrchestrator) ClaimTask(_ context.Context, _ string, _ string) (dom
 func (m *mockOrchestrator) UpdateTaskStatus(_ context.Context, _ string, _ string, _ domain.TaskStatus, _ string) (domain.Task, error) {
 	return domain.Task{}, nil
 }
+func (m *mockOrchestrator) PurgeDisconnectedSessions(_ context.Context) (int, error) {
+	return 0, nil
+}
 func (m *mockOrchestrator) GetAllTasks() ([]domain.Task, error) {
 	return m.getQueueResult, m.getQueueErr
 }

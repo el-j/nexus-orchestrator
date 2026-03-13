@@ -168,6 +168,16 @@ func (a *App) HeartbeatAISession(id string) error {
 	return nil
 }
 
+// PurgeDisconnectedSessions deletes all AI sessions that are disconnected and
+// older than 2 hours. Returns the number of sessions purged.
+func (a *App) PurgeDisconnectedSessions() (int, error) {
+	n, err := a.orchestrator.PurgeDisconnectedSessions(context.Background())
+	if err != nil {
+		return 0, fmt.Errorf("app: purge disconnected sessions: %w", err)
+	}
+	return n, nil
+}
+
 // ClaimTask assigns a QUEUED task to the given AI session.
 func (a *App) ClaimTask(taskID string, sessionID string) (domain.Task, error) {
 	t, err := a.orchestrator.ClaimTask(context.Background(), taskID, sessionID)

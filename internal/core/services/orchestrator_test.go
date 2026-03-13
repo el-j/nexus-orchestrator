@@ -1602,6 +1602,20 @@ func (r *memAISessionRepo) AppendRoutedTaskID(_ context.Context, sessionID strin
 	return nil
 }
 
+func (r *memAISessionRepo) PurgeDisconnected(_ context.Context, olderThan time.Duration) (int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	cutoff := time.Now().Add(-olderThan)
+	n := 0
+	for id, s := range r.sessions {
+		if s.Status == domain.SessionStatusDisconnected && s.LastActivity.Before(cutoff) {
+			delete(r.sessions, id)
+			n++
+		}
+	}
+	return n, nil
+}
+
 // --- helpers for claim/status tests ---
 
 func setupClaimTestOrch(t *testing.T) (*services.OrchestratorService, *memRepo, *memAISessionRepo) {

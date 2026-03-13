@@ -189,19 +189,71 @@ func (s *Scanner) probePort(ctx context.Context, t portTarget) ([]domain.Discove
 	}
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return []domain.DiscoveredProvider{makePortProvider(t, nil)}, nil
+		return []domain.DiscoveredProvider{makePortProvider(t, nil, nil, false)}, nil
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 256*1024))
-	return []domain.DiscoveredProvider{makePortProvider(t, parseModels(body))}, nil
+	models := parseModels(body)
+
+	// For Ollama, also probe /api/ps to detect actively loaded / generating models.
+	var activeModels []string
+	generating := false
+	if t.kind == domain.ProviderKindOllama {
+		activeModels, generating = s.probeOllamaPS(ctx, t.port)
+	}
+
+	return []domain.DiscoveredProvider{makePortProvider(t, models, activeModels, generating)}, nil
 }
 
-func makePortProvider(t portTarget, models []string) domain.DiscoveredProvider {
+// probeOllamaPS calls the Ollama /api/ps endpoint to discover models currently
+// loaded in memory and whether any generation is actively in progress.
+func (s *Scanner) probeOllamaPS(ctx context.Context, port int) (activeModels []string, generating bool) {
+	url := fmt.Sprintf("http://127.0.0.1:%d/api/ps", port)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, false
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return nil, false
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+
+	var ps struct {
+		Models []struct {
+			Name  string `json:"name"`
+			Model string `json:"model"`
+		} `json:"models"`
+	}
+	if err := json.Unmarshal(body, &ps); err != nil {
+		return nil, false
+	}
+	for _, m := range ps.Models {
+		name := m.Name
+		if name == "" {
+			name = m.Model
+		}
+		if name != "" {
+			activeModels = append(activeModels, name)
+			generating = true // at least one model is loaded/active
+		}
+	}
+	return activeModels, generating
+}
+
+func makePortProvider(t portTarget, models []string, activeModels []string, generating bool) domain.DiscoveredProvider {
 	return domain.DiscoveredProvider{
 		ID: fmt.Sprintf("port-%d", t.port), Name: t.name, Kind: t.kind,
 		Method: domain.DiscoveryMethodPort, Status: domain.DiscoveryStatusReachable,
-		BaseURL: fmt.Sprintf("http://127.0.0.1:%d", t.port),
-		Models:  models, LastSeen: time.Now().UTC(),
+		BaseURL:      fmt.Sprintf("http://127.0.0.1:%d", t.port),
+		Models:       models,
+		ActiveModels: activeModels,
+		Generating:   generating,
+		LastSeen:     time.Now().UTC(),
 	}
 }
 

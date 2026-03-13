@@ -82,7 +82,14 @@ No Makefile — use plain `go` toolchain commands.
   - `NEXUS_DB_PATH` — SQLite database file path (default: `nexus.db`)
   - `NEXUS_LISTEN_ADDR` — HTTP API listen address (default: `:9999`)
   - `NEXUS_MCP_ADDR` — MCP server listen address (default: `:9998`)
-- Provider base URLs (LM Studio `127.0.0.1:1234`, Ollama `127.0.0.1:11434`) are currently hardcoded in outbound adapters.
+- Provider base URLs are configurable via env vars (all default to localhost):
+  - `NEXUS_LMSTUDIO_URL` — LM Studio API root (default: `http://127.0.0.1:1234/v1`)
+  - `NEXUS_OLLAMA_URL` — Ollama API root (default: `http://127.0.0.1:11434`)
+  - `NEXUS_ANTIGRAVITY_URL` — Antigravity (Google) API root (default: `http://127.0.0.1:4315/v1`)
+  - `NEXUS_OPENAI_API_KEY` — enables OpenAI adapter; `NEXUS_OPENAI_MODEL` sets model (default `gpt-4o-mini`)
+  - `NEXUS_GITHUBCOPILOT_TOKEN` — enables GitHub Copilot adapter
+  - `NEXUS_ANTHROPIC_API_KEY` — enables Anthropic/Claude adapter; `NEXUS_ANTHROPIC_MODEL` sets model
+- Antigravity is a Google-backed desktop AI app exposing an OpenAI-compatible API at port `4315`. It is always registered in `buildProviders()` (like LM Studio/Ollama) and wired via `llm_openaicompat`. `ProviderKindDesktopApp`, `ProviderKindLocalAI`, `ProviderKindVLLM`, and `ProviderKindTextGenUI` all route through `llm_openaicompat` in `buildProviderFromConfig`.
 
 ### Adding a new LLM provider
 1. Create `internal/adapters/outbound/llm_<name>/adapter.go`.

@@ -13,6 +13,11 @@
         class="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:border-violet-500/40 transition-all"
         @click="refresh"
       >⟳ Refresh</button>
+      <button
+        v-if="sessions.some(s => s.status === 'disconnected')"
+        class="text-xs text-red-400 hover:text-red-300 px-3 py-1.5 rounded-lg border border-red-500/20 hover:border-red-500/40 transition-all ml-2"
+        @click="purgeDisconnected"
+      >🗑 Clear Disconnected</button>
     </header>
 
     <!-- Content -->
@@ -98,7 +103,7 @@
 import { computed } from 'vue'
 import { useAISessions } from '../composables/useAISessions'
 
-const { sessions, loading, error, refresh, deregister } = useAISessions()
+const { sessions, loading, error, refresh, deregister, purgeDisconnected } = useAISessions()
 
 const activeCount = computed(() => sessions.value.filter(s => s.status === 'active').length)
 </script>

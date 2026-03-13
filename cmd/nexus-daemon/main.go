@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -172,6 +173,11 @@ func buildProviders() []ports.LLMClient {
 		}
 		providers = append(providers, llm_anthropic.NewAdapter(key, model))
 	}
+	antigravityURL := os.Getenv("NEXUS_ANTIGRAVITY_URL")
+	if antigravityURL == "" {
+		antigravityURL = "http://127.0.0.1:4315/v1"
+	}
+	providers = append(providers, llm_openaicompat.NewAdapter("Antigravity", antigravityURL, "", ""))
 	return providers
 }
 
@@ -193,6 +199,14 @@ func buildProviderFromConfig(cfg domain.ProviderConfig) (ports.LLMClient, error)
 		return llm_openaicompat.NewAdapter(cfg.Name, cfg.BaseURL, cfg.APIKey, cfg.Model), nil
 	case domain.ProviderKindAnthropic:
 		return llm_anthropic.NewAdapter(cfg.APIKey, cfg.Model), nil
+	case domain.ProviderKindDesktopApp, domain.ProviderKindLocalAI, domain.ProviderKindVLLM, domain.ProviderKindTextGenUI:
+		baseURL := cfg.BaseURL
+		if baseURL == "" {
+			baseURL = "http://127.0.0.1:4315/v1"
+		} else if !strings.HasSuffix(baseURL, "/v1") {
+			baseURL = strings.TrimRight(baseURL, "/") + "/v1"
+		}
+		return llm_openaicompat.NewAdapter(cfg.Name, baseURL, cfg.APIKey, cfg.Model), nil
 	default:
 		return nil, fmt.Errorf("unknown provider kind: %q", cfg.Kind)
 	}
