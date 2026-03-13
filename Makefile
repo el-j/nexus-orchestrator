@@ -42,7 +42,7 @@ UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
         build-linux-amd64 build-linux-arm64 \
         build-darwin-amd64 build-darwin-arm64 \
         build-windows-amd64 \
-        build-frontend build-vscode build-dev
+        build-frontend build-vscode build-dev dev dev-daemon check-air
 
 # ---------------------------------------------------------------------------
 # Default: native build (CLI + daemon)
@@ -80,6 +80,43 @@ build-dev: build-frontend build-vscode
 	@echo "│  build/frontend/  — Vite GUI assets     │"
 	@echo "│  build/vscode/    — .vsix ready to test │"
 	@echo "└─────────────────────────────────────────┘"
+
+# ---------------------------------------------------------------------------
+# Hot-reload dev mode — daemon (air) + Vite frontend (HMR) in parallel
+# ---------------------------------------------------------------------------
+
+# Ensure air is installed; install it automatically if missing.
+check-air:
+	@command -v air >/dev/null 2>&1 || { \
+		echo "→ Installing air (Go hot-reload watcher)…"; \
+		go install github.com/air-verse/air@latest; \
+	}
+
+# Start daemon with hot-reload + Vite HMR frontend in parallel.
+# Press Ctrl+C once to stop both.
+#
+#   Daemon  → http://127.0.0.1:9999  (air rebuilds on *.go changes)
+#   Frontend→ http://127.0.0.1:5173  (Vite HMR, proxies /api+/mcp → :9999)
+dev: check-air
+	@echo ""
+	@echo "┌──────────────────────────────────────────────────┐"
+	@echo "│  nexusOrchestrator — dev mode                    │"
+	@echo "│                                                  │"
+	@echo "│  Daemon  → http://127.0.0.1:9999  (air)         │"
+	@echo "│  Frontend→ http://127.0.0.1:5173  (vite HMR)    │"
+	@echo "│                                                  │"
+	@echo "│  Ctrl+C to stop both                            │"
+	@echo "└──────────────────────────────────────────────────┘"
+	@echo ""
+	@cd frontend && npm install --prefer-offline --silent
+	@trap 'kill 0' INT; \
+	  air & \
+	  (cd frontend && npm run dev) & \
+	  wait
+
+# Backend only — daemon hot-reload without the frontend.
+dev-daemon: check-air
+	air
 
 # ---------------------------------------------------------------------------
 # Desktop GUI (Wails — native only, requires wails CLI)
@@ -221,6 +258,10 @@ help:
 	@echo "  make build-frontend     Vite GUI assets → build/frontend/ (no Wails needed)"
 	@echo "  make build-vscode       VS Code extension bundle + VSIX package"
 	@echo "  make build-dev          build-frontend + build-vscode (quick pre-release check)"
+	@echo ""
+	@echo "Dev:"
+	@echo "  make dev                daemon (air hot-reload) + Vite HMR frontend in parallel"
+	@echo "  make dev-daemon         daemon hot-reload only (no frontend)"
 	@echo "  make build-all          Cross-compile all platforms"
 	@echo "  make build-linux-amd64  Linux x86-64 (static, musl)"
 	@echo "  make build-linux-arm64  Linux ARM64  (static, musl)"

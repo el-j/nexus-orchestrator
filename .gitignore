@@ -45,3 +45,6 @@ github-action/coverage/
 vscode-extension/dist/
 
 coverage
+
+# air hot-reload build output
+tmp/

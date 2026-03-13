@@ -1,0 +1,44 @@
+# air — Go hot-reload configuration for nexus-daemon
+# https://github.com/air-verse/air
+#
+# Usage:
+#   air            — watches *.go, rebuilds daemon on changes
+#   make dev       — starts air + vite dev server together
+
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  # Build the headless daemon (not the Wails desktop GUI)
+  cmd        = "CGO_ENABLED=1 go build -o ./tmp/nexus-daemon ./cmd/nexus-daemon"
+  bin        = "./tmp/nexus-daemon"
+  full_bin   = "./tmp/nexus-daemon"
+  include_ext = ["go"]
+  exclude_dir = [
+    "build", "frontend", "vendor", "tmp",
+    ".claude", "docs", "vscode-extension", "github-action",
+  ]
+  exclude_file = []
+  exclude_regex = ["_test\\.go$"]
+  # ms to wait after a change before rebuilding (debounce)
+  delay = 500
+  # ms to wait for old process to exit before killing it
+  kill_delay = 300
+  # send SIGTERM first, then SIGKILL after kill_delay
+  send_interrupt = true
+  # log build errors to stderr
+  log = "air_build_errors.log"
+
+[log]
+  time       = false
+  main_only  = false
+
+[color]
+  main    = "magenta"
+  watcher = "cyan"
+  build   = "yellow"
+  runner  = "green"
+
+[misc]
+  # remove tmp/ on exit
+  clean_on_exit = true
