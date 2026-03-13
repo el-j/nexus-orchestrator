@@ -244,6 +244,10 @@ func (s *Server) handleToolCall(w http.ResponseWriter, r *http.Request, req rpcR
 		result, err = s.toolRegisterSession(r.Context(), p.Arguments)
 	case "get_ai_sessions":
 		result, err = s.toolGetAISessions(r.Context())
+	case "claim_task":
+		result, err = s.toolClaimTask(r.Context(), p.Arguments)
+	case "update_task_status":
+		result, err = s.toolUpdateTaskStatus(r.Context(), p.Arguments)
 	default:
 		writeError(w, req.ID, codeMethodNotFound, fmt.Sprintf("unknown tool: %s", p.Name))
 		return
@@ -523,6 +527,49 @@ func (s *Server) toolGetAISessions(ctx context.Context) (callToolResult, error) 
 	return textResult(string(b)), nil
 }
 
+func (s *Server) toolClaimTask(ctx context.Context, args json.RawMessage) (callToolResult, error) {
+	var p struct {
+		TaskID    string `json:"task_id"`
+		SessionID string `json:"session_id"`
+	}
+	if err := json.Unmarshal(args, &p); err != nil {
+		return callToolResult{}, &mcpError{code: codeInvalidParams, msg: "invalid claim_task params"}
+	}
+	if p.TaskID == "" || p.SessionID == "" {
+		return callToolResult{}, &mcpError{code: codeInvalidParams, msg: "task_id and session_id are required"}
+	}
+	task, err := s.orch.ClaimTask(ctx, p.TaskID, p.SessionID)
+	if err != nil {
+		return callToolResult{}, fmt.Errorf("mcp: claim_task: %w", err)
+	}
+	b, _ := json.Marshal(task)
+	return textResult(string(b)), nil
+}
+
+func (s *Server) toolUpdateTaskStatus(ctx context.Context, args json.RawMessage) (callToolResult, error) {
+	var p struct {
+		TaskID    string `json:"task_id"`
+		SessionID string `json:"session_id"`
+		Status    string `json:"status"`
+		Logs      string `json:"logs"`
+	}
+	if err := json.Unmarshal(args, &p); err != nil {
+		return callToolResult{}, &mcpError{code: codeInvalidParams, msg: "invalid update_task_status params"}
+	}
+	if p.TaskID == "" || p.SessionID == "" || p.Status == "" {
+		return callToolResult{}, &mcpError{code: codeInvalidParams, msg: "task_id, session_id, and status are required"}
+	}
+	if p.Status != "COMPLETED" && p.Status != "FAILED" {
+		return callToolResult{}, &mcpError{code: codeInvalidParams, msg: "status must be COMPLETED or FAILED"}
+	}
+	task, err := s.orch.UpdateTaskStatus(ctx, p.TaskID, p.SessionID, domain.TaskStatus(p.Status), p.Logs)
+	if err != nil {
+		return callToolResult{}, fmt.Errorf("mcp: update_task_status: %w", err)
+	}
+	b, _ := json.Marshal(task)
+	return textResult(string(b)), nil
+}
+
 // ----- Helpers -----
 
 func textResult(text string) callToolResult {
@@ -690,6 +737,32 @@ func toolList() []toolDef {
 			Name:        "get_ai_sessions",
 			Description: "Return the list of all known external AI agent sessions registered with this nexusOrchestrator instance.",
 			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
+		},
+		{
+			Name:        "claim_task",
+			Description: "Claim a QUEUED task for execution by the specified AI session, transitioning it to PROCESSING.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"task_id":    {Type: "string", Description: "ID of the task to claim."},
+					"session_id": {Type: "string", Description: "ID of the AI session claiming the task."},
+				},
+				Required: []string{"task_id", "session_id"},
+			},
+		},
+		{
+			Name:        "update_task_status",
+			Description: "Report task completion or failure from the executing AI session. Only the session that claimed the task may update it.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"task_id":    {Type: "string", Description: "ID of the task to update."},
+					"session_id": {Type: "string", Description: "ID of the AI session that claimed the task."},
+					"status":     {Type: "string", Description: "New status: COMPLETED or FAILED."},
+					"logs":       {Type: "string", Description: "Optional output or log message."},
+				},
+				Required: []string{"task_id", "session_id", "status"},
+			},
 		},
 	}
 }

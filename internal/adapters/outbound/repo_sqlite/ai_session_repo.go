@@ -137,6 +137,56 @@ func (a *AISessionRepo) DeleteAISession(ctx context.Context, id string) error {
 	return nil
 }
 
+// AppendRoutedTaskID adds a task ID to the session's routed task list without duplicates.
+func (a *AISessionRepo) AppendRoutedTaskID(ctx context.Context, sessionID string, taskID string) error {
+	tx, err := a.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("repo_sqlite: append routed task id: begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var idsJSON string
+	err = tx.QueryRowContext(ctx, `SELECT routed_task_ids FROM ai_sessions WHERE id = ?`, sessionID).Scan(&idsJSON)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("repo_sqlite: append routed task id: %w", domain.ErrNotFound)
+		}
+		return fmt.Errorf("repo_sqlite: append routed task id: %w", err)
+	}
+
+	var ids []string
+	if err := json.Unmarshal([]byte(idsJSON), &ids); err != nil {
+		ids = []string{}
+	}
+
+	// Deduplicate
+	for _, id := range ids {
+		if id == taskID {
+			return nil // already present
+		}
+	}
+	ids = append(ids, taskID)
+
+	updatedJSON, err := json.Marshal(ids)
+	if err != nil {
+		return fmt.Errorf("repo_sqlite: append routed task id: marshal: %w", err)
+	}
+
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err = tx.ExecContext(ctx,
+		`UPDATE ai_sessions SET routed_task_ids = ?, updated_at = ? WHERE id = ?`,
+		string(updatedJSON), now, sessionID,
+	)
+	if err != nil {
+		return fmt.Errorf("repo_sqlite: append routed task id: update: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("repo_sqlite: append routed task id: commit: %w", err)
+	}
+	return nil
+}
+
 func scanAISession(s scanner) (domain.AISession, error) {
 	var sess domain.AISession
 	var sourceStr, statusStr string

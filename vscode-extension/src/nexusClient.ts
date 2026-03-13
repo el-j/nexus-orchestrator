@@ -31,6 +31,7 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   logs?: string;
+  aiSessionId?: string;
 }
 
 // ---- Provider type (mirrors ports.ProviderInfo) ----
@@ -164,6 +165,21 @@ export class NexusClient {
     return this.get<AISession[]>("/api/ai-sessions");
   }
 
+  /** Claim a queued task for the given session. */
+  async claimTask(taskId: string, sessionId: string): Promise<Task> {
+    return this.post<Task>(`/api/tasks/${encodeURIComponent(taskId)}/claim`, { sessionId });
+  }
+
+  /** Update a task's status (COMPLETED or FAILED). */
+  async updateTaskStatus(taskId: string, sessionId: string, status: "COMPLETED" | "FAILED", logs?: string): Promise<Task> {
+    return this.put<Task>(`/api/tasks/${encodeURIComponent(taskId)}/status`, { sessionId, status, logs });
+  }
+
+  /** Get all tasks bound to a specific AI session. */
+  async getSessionTasks(sessionId: string): Promise<Task[]> {
+    return this.get<Task[]>(`/api/ai-sessions/${encodeURIComponent(sessionId)}/tasks`);
+  }
+
   /**
    * Ping the daemon's health endpoint.
    * Returns true when the daemon is reachable and reports status "ok".
@@ -204,6 +220,21 @@ export class NexusClient {
       const body = await resp.text().catch(() => "");
       throw new Error(
         `nexus: POST ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ""}`
+      );
+    }
+    return resp.json() as Promise<T>;
+  }
+
+  private async put<T>(path: string, payload: unknown): Promise<T> {
+    const resp = await fetch(`${this.baseUrl}${path}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => "");
+      throw new Error(
+        `nexus: PUT ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ""}`
       );
     }
     return resp.json() as Promise<T>;

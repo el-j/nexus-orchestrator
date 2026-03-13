@@ -52,6 +52,8 @@ type TaskRepository interface {
 	GetByProjectPathAndStatus(projectPath string, statuses ...domain.TaskStatus) ([]domain.Task, error)
 	// Update persists changes to an existing task's mutable fields.
 	Update(t domain.Task) error
+	// GetTasksBySessionID returns all tasks claimed by the given AI session.
+	GetTasksBySessionID(sessionID string) ([]domain.Task, error)
 }
 
 // FileWriter is the port for reading context from disk and writing generated code back.
@@ -140,6 +142,12 @@ type Orchestrator interface {
 	DeregisterAISession(ctx context.Context, id string) error
 	// HeartbeatAISession refreshes the last-activity timestamp of a session.
 	HeartbeatAISession(ctx context.Context, id string) error
+	// ClaimTask assigns a QUEUED task to the given AI session, transitioning it to PROCESSING.
+	// Returns domain.ErrNotFound if the task or session does not exist.
+	ClaimTask(ctx context.Context, taskID string, sessionID string) (domain.Task, error)
+	// UpdateTaskStatus allows an external AI session to report task completion or failure.
+	// Only the session that claimed the task (matching AISessionID) may update its status.
+	UpdateTaskStatus(ctx context.Context, taskID string, sessionID string, status domain.TaskStatus, logs string) (domain.Task, error)
 }
 
 // EventType identifies a task lifecycle event.
@@ -196,6 +204,8 @@ type AISessionRepository interface {
 	ListAISessions(ctx context.Context) ([]domain.AISession, error)
 	UpdateAISessionStatus(ctx context.Context, id string, status domain.AISessionStatus, lastActivity time.Time) error
 	DeleteAISession(ctx context.Context, id string) error
+	// AppendRoutedTaskID adds a task ID to the session's routed task list (no duplicates).
+	AppendRoutedTaskID(ctx context.Context, sessionID string, taskID string) error
 }
 
 // AISessionMonitor is the optional inbound port for push-based session discovery adapters.

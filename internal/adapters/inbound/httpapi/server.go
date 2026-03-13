@@ -126,6 +126,11 @@ func (s *Server) Handler() http.Handler {
 	r.Get("/api/ai-sessions", s.handleListAISessions)
 	r.Delete("/api/ai-sessions/{id}", s.handleDeregisterAISession)
 	r.Post("/api/ai-sessions/{id}/heartbeat", s.handleHeartbeatAISession)
+	r.Get("/api/ai-sessions/{id}/tasks", s.handleGetSessionTasks)
+
+	// Task claim + external status update
+	r.Post("/api/tasks/{id}/claim", s.handleClaimTask)
+	r.Put("/api/tasks/{id}/status", s.handleUpdateTaskStatus)
 
 	r.Get("/api/health", s.handleHealth)
 	r.Get("/api/logs", s.handleGetLogs)
@@ -608,6 +613,95 @@ func (s *Server) handleHeartbeatAISession(w http.ResponseWriter, r *http.Request
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleClaimTask(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var body struct {
+		SessionID string `json:"sessionId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.SessionID == "" {
+		writeJSONError(w, "sessionId is required", http.StatusBadRequest)
+		return
+	}
+	task, err := s.orch.ClaimTask(r.Context(), id, body.SessionID)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			writeJSONError(w, "task or session not found", http.StatusNotFound)
+			return
+		}
+		if strings.Contains(err.Error(), "not QUEUED") || strings.Contains(err.Error(), "is disconnected") {
+			writeJSONError(w, err.Error(), http.StatusConflict)
+			return
+		}
+		log.Printf("httpapi: claim task %s: %v", id, err)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(task)
+}
+
+func (s *Server) handleUpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	var body struct {
+		SessionID string `json:"sessionId"`
+		Status    string `json:"status"`
+		Logs      string `json:"logs"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.SessionID == "" || body.Status == "" {
+		writeJSONError(w, "sessionId and status are required", http.StatusBadRequest)
+		return
+	}
+	if body.Status != "COMPLETED" && body.Status != "FAILED" {
+		writeJSONError(w, "status must be COMPLETED or FAILED", http.StatusBadRequest)
+		return
+	}
+	task, err := s.orch.UpdateTaskStatus(r.Context(), id, body.SessionID, domain.TaskStatus(body.Status), body.Logs)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			writeJSONError(w, "task not found", http.StatusNotFound)
+			return
+		}
+		if strings.Contains(err.Error(), "does not own") {
+			writeJSONError(w, err.Error(), http.StatusForbidden)
+			return
+		}
+		if strings.Contains(err.Error(), "not PROCESSING") || strings.Contains(err.Error(), "invalid target status") {
+			writeJSONError(w, err.Error(), http.StatusConflict)
+			return
+		}
+		log.Printf("httpapi: update task status %s: %v", id, err)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(task)
+}
+
+func (s *Server) handleGetSessionTasks(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	// We use GetAllTasks and filter by AISessionID since there's no direct port method on Orchestrator
+	// for session-scoped task query. The repo method is on TaskRepository, not Orchestrator.
+	allTasks, err := s.orch.GetAllTasks()
+	if err != nil {
+		log.Printf("httpapi: get session tasks %s: %v", id, err)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	var sessionTasks []domain.Task
+	for _, t := range allTasks {
+		if t.AISessionID == id {
+			sessionTasks = append(sessionTasks, t)
+		}
+	}
+	if sessionTasks == nil {
+		sessionTasks = []domain.Task{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(sessionTasks)
 }
 
 // handleEvents serves a Server-Sent Events stream that multiplexes task lifecycle

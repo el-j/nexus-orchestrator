@@ -11,6 +11,7 @@ export class SessionMonitor {
   private sessionId: string | undefined;
   private isReregistering = false;
   private heartbeatTimer: NodeJS.Timeout | undefined;
+  private claimTimer: NodeJS.Timeout | undefined;
   private modelChangeListener: vscode.Disposable | undefined;
   private readonly outputChannel: vscode.OutputChannel;
 
@@ -49,11 +50,16 @@ export class SessionMonitor {
     }
     // Heartbeat every 60s
     this.heartbeatTimer = setInterval(() => void this.heartbeat(), 60_000);
+    // Poll for QUEUED tasks to auto-claim every 10s
+    this.claimTimer = setInterval(() => void this.pollAndClaim(), 10_000);
   }
 
   async stop(): Promise<void> {
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
+    }
+    if (this.claimTimer) {
+      clearInterval(this.claimTimer);
     }
     if (this.sessionId) {
       try {
@@ -115,6 +121,24 @@ export class SessionMonitor {
       } finally {
         this.isReregistering = false;
       }
+    }
+  }
+
+  private async pollAndClaim(): Promise<void> {
+    if (!this.sessionId) return;
+    try {
+      const tasks = await this.client.getTasks();
+      const queued = tasks.filter(t => t.status === "QUEUED");
+      for (const task of queued) {
+        try {
+          const claimed = await this.client.claimTask(task.id, this.sessionId);
+          logNexusActivity('copilot', `claimed task ${claimed.id} (${claimed.instruction.slice(0, 60)})`);
+        } catch {
+          // Another agent may have claimed it first — skip
+        }
+      }
+    } catch {
+      // Daemon may be unreachable — skip silently
     }
   }
 }

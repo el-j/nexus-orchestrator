@@ -52,7 +52,8 @@ func (r *optRepo) Update(t domain.Task) error {
 	r.tasks[t.ID] = t
 	return nil
 }
-func (r *optRepo) GetAll() ([]domain.Task, error) { return nil, nil }
+func (r *optRepo) GetAll() ([]domain.Task, error)                      { return nil, nil }
+func (r *optRepo) GetTasksBySessionID(_ string) ([]domain.Task, error) { return nil, nil }
 
 type optWriter struct{}
 

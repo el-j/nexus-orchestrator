@@ -167,3 +167,21 @@ func (a *App) HeartbeatAISession(id string) error {
 	}
 	return nil
 }
+
+// ClaimTask assigns a QUEUED task to the given AI session.
+func (a *App) ClaimTask(taskID string, sessionID string) (domain.Task, error) {
+	t, err := a.orchestrator.ClaimTask(context.Background(), taskID, sessionID)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("app: claim task: %w", err)
+	}
+	return t, nil
+}
+
+// UpdateTaskStatus allows an external AI session to report task completion or failure.
+func (a *App) UpdateTaskStatus(taskID string, sessionID string, status string, logs string) (domain.Task, error) {
+	t, err := a.orchestrator.UpdateTaskStatus(context.Background(), taskID, sessionID, domain.TaskStatus(status), logs)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("app: update task status: %w", err)
+	}
+	return t, nil
+}

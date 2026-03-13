@@ -730,6 +730,118 @@ func (o *OrchestratorService) HeartbeatAISession(ctx context.Context, id string)
 	return nil
 }
 
+// ClaimTask assigns a QUEUED task to the given AI session, transitioning it to PROCESSING.
+// Returns domain.ErrNotFound if the task or session does not exist.
+func (o *OrchestratorService) ClaimTask(ctx context.Context, taskID string, sessionID string) (domain.Task, error) {
+	o.mu.Lock()
+	repo := o.repo
+	sessionRepo := o.aiSessionRepo
+	b := o.broadcaster
+	o.mu.Unlock()
+
+	if sessionRepo == nil {
+		return domain.Task{}, fmt.Errorf("orchestrator: claim task: no session repo configured")
+	}
+
+	// Verify session exists and is active.
+	sess, err := sessionRepo.GetAISessionByID(ctx, sessionID)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("orchestrator: claim task: session lookup: %w", err)
+	}
+	if sess.Status.IsTerminal() {
+		return domain.Task{}, fmt.Errorf("orchestrator: claim task: session %s is %s", sessionID, sess.Status)
+	}
+
+	// Atomically transition QUEUED → PROCESSING.
+	ok, err := repo.UpdateStatusIfCurrent(taskID, domain.StatusQueued, domain.StatusProcessing)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("orchestrator: claim task: %w", err)
+	}
+	if !ok {
+		return domain.Task{}, fmt.Errorf("orchestrator: claim task: task %s is not QUEUED", taskID)
+	}
+
+	// Bind the session to the task.
+	task, err := repo.GetByID(taskID)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("orchestrator: claim task: get task: %w", err)
+	}
+	task.AISessionID = sessionID
+	if err := repo.Update(task); err != nil {
+		return domain.Task{}, fmt.Errorf("orchestrator: claim task: update session binding: %w", err)
+	}
+
+	// Record the task on the session's routed list.
+	if err := sessionRepo.AppendRoutedTaskID(ctx, sessionID, taskID); err != nil {
+		log.Printf("orchestrator: claim task: append routed task id: %v", err)
+	}
+
+	if b != nil {
+		b.Broadcast(ports.TaskEvent{
+			Type:   ports.EventTaskProcessing,
+			TaskID: taskID,
+			Status: domain.StatusProcessing,
+		})
+	}
+	return task, nil
+}
+
+// UpdateTaskStatus allows an external AI session to report task completion or failure.
+// Only the session that claimed the task (matching AISessionID) may update its status.
+func (o *OrchestratorService) UpdateTaskStatus(ctx context.Context, taskID string, sessionID string, status domain.TaskStatus, logs string) (domain.Task, error) {
+	o.mu.Lock()
+	repo := o.repo
+	b := o.broadcaster
+	o.mu.Unlock()
+
+	// Only allow COMPLETED or FAILED from external agents.
+	if status != domain.StatusCompleted && status != domain.StatusFailed {
+		return domain.Task{}, fmt.Errorf("orchestrator: update task status: invalid target status %s (must be COMPLETED or FAILED)", status)
+	}
+
+	task, err := repo.GetByID(taskID)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("orchestrator: update task status: %w", err)
+	}
+
+	// Ownership check.
+	if task.AISessionID != sessionID {
+		return domain.Task{}, fmt.Errorf("orchestrator: update task status: session %s does not own task %s", sessionID, taskID)
+	}
+
+	// Only PROCESSING tasks can be completed/failed.
+	if task.Status != domain.StatusProcessing {
+		return domain.Task{}, fmt.Errorf("orchestrator: update task status: task %s is %s, not PROCESSING", taskID, task.Status)
+	}
+
+	if err := repo.UpdateStatus(taskID, status); err != nil {
+		return domain.Task{}, fmt.Errorf("orchestrator: update task status: %w", err)
+	}
+	if logs != "" {
+		if err := repo.UpdateLogs(taskID, logs); err != nil {
+			log.Printf("orchestrator: update task status: update logs: %v", err)
+		}
+	}
+
+	task.Status = status
+	task.Logs = logs
+
+	if b != nil {
+		var evtType ports.EventType
+		if status == domain.StatusCompleted {
+			evtType = ports.EventTaskCompleted
+		} else {
+			evtType = ports.EventTaskFailed
+		}
+		b.Broadcast(ports.TaskEvent{
+			Type:   evtType,
+			TaskID: taskID,
+			Status: status,
+		})
+	}
+	return task, nil
+}
+
 // ListAISessions returns all persisted AI agent sessions.
 func (o *OrchestratorService) ListAISessions(ctx context.Context) ([]domain.AISession, error) {
 	o.mu.Lock()

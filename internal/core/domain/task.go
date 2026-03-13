@@ -84,12 +84,13 @@ type Task struct {
 	Tags []string `json:"tags,omitempty"`
 	// Command classifies the task as planning, execution, or auto-routed.
 	// Empty is treated as CommandAuto.
-	Command    CommandType `json:"command,omitempty"`
-	Status     TaskStatus  `json:"status"`
-	CreatedAt  time.Time   `json:"createdAt"`
-	UpdatedAt  time.Time   `json:"updatedAt"`
-	RetryCount int         `json:"retryCount,omitempty"`
-	Logs       string      `json:"logs,omitempty"`
+	Command     CommandType `json:"command,omitempty"`
+	Status      TaskStatus  `json:"status"`
+	CreatedAt   time.Time   `json:"createdAt"`
+	UpdatedAt   time.Time   `json:"updatedAt"`
+	RetryCount  int         `json:"retryCount,omitempty"`
+	Logs        string      `json:"logs,omitempty"`
+	AISessionID string      `json:"aiSessionId,omitempty"`
 }
 
 // IsExecutable returns true if the task can enter the execution queue.

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 
 	"nexus-orchestrator/internal/adapters/inbound/cli"
 	"nexus-orchestrator/internal/core/domain"
@@ -497,4 +498,50 @@ func (r *remoteOrchestrator) HeartbeatAISession(ctx context.Context, id string) 
 		return fmt.Errorf("remote: heartbeat ai session: unexpected status %d", resp.StatusCode)
 	}
 	return nil
+}
+
+func (r *remoteOrchestrator) ClaimTask(ctx context.Context, taskID string, sessionID string) (domain.Task, error) {
+	body := fmt.Sprintf(`{"sessionId":%q}`, sessionID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.baseURL+"/api/tasks/"+url.PathEscape(taskID)+"/claim", strings.NewReader(body))
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("remote: build claim task request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("remote: claim task: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return domain.Task{}, fmt.Errorf("remote: claim task: %w", domain.ErrNotFound)
+	}
+	var task domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&task); err != nil {
+		return domain.Task{}, fmt.Errorf("remote: claim task: decode: %w", err)
+	}
+	return task, nil
+}
+
+func (r *remoteOrchestrator) UpdateTaskStatus(ctx context.Context, taskID string, sessionID string, status domain.TaskStatus, logs string) (domain.Task, error) {
+	payload := struct {
+		SessionID string `json:"sessionId"`
+		Status    string `json:"status"`
+		Logs      string `json:"logs,omitempty"`
+	}{sessionID, string(status), logs}
+	data, _ := json.Marshal(payload)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, r.baseURL+"/api/tasks/"+url.PathEscape(taskID)+"/status", bytes.NewReader(data))
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("remote: build update task status request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("remote: update task status: %w", err)
+	}
+	defer resp.Body.Close()
+	var task domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&task); err != nil {
+		return domain.Task{}, fmt.Errorf("remote: update task status: decode: %w", err)
+	}
+	return task, nil
 }

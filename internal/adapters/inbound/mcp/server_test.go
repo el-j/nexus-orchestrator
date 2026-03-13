@@ -87,6 +87,12 @@ func (m *mockOrch) RegisterAISession(_ context.Context, s domain.AISession) (dom
 func (m *mockOrch) ListAISessions(_ context.Context) ([]domain.AISession, error) { return nil, nil }
 func (m *mockOrch) DeregisterAISession(_ context.Context, _ string) error        { return nil }
 func (m *mockOrch) HeartbeatAISession(_ context.Context, _ string) error         { return nil }
+func (m *mockOrch) ClaimTask(_ context.Context, _ string, _ string) (domain.Task, error) {
+	return domain.Task{}, nil
+}
+func (m *mockOrch) UpdateTaskStatus(_ context.Context, _ string, _ string, _ domain.TaskStatus, _ string) (domain.Task, error) {
+	return domain.Task{}, nil
+}
 
 // --- Helpers ---
 
@@ -163,7 +169,7 @@ func TestMCP_Initialize(t *testing.T) {
 	}
 }
 
-func TestMCP_ToolsList_Returns15Tools(t *testing.T) {
+func TestMCP_ToolsList_Returns17Tools(t *testing.T) {
 	srv := newServer(t, &mockOrch{})
 	r := postRPC(t, srv, map[string]any{
 		"jsonrpc": "2.0",
@@ -181,8 +187,8 @@ func TestMCP_ToolsList_Returns15Tools(t *testing.T) {
 	if err := json.Unmarshal(r.Result, &result); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
-	if len(result.Tools) != 15 {
-		t.Errorf("expected 15 tools, got %d", len(result.Tools))
+	if len(result.Tools) != 17 {
+		t.Errorf("expected 17 tools, got %d", len(result.Tools))
 	}
 }
 

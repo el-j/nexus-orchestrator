@@ -87,6 +87,12 @@ func (m *mockOrchestrator) ListAISessions(_ context.Context) ([]domain.AISession
 }
 func (m *mockOrchestrator) DeregisterAISession(_ context.Context, _ string) error { return nil }
 func (m *mockOrchestrator) HeartbeatAISession(_ context.Context, _ string) error  { return nil }
+func (m *mockOrchestrator) ClaimTask(_ context.Context, _ string, _ string) (domain.Task, error) {
+	return domain.Task{}, nil
+}
+func (m *mockOrchestrator) UpdateTaskStatus(_ context.Context, _ string, _ string, _ domain.TaskStatus, _ string) (domain.Task, error) {
+	return domain.Task{}, nil
+}
 
 // captureStdout redirects os.Stdout while fn runs and returns the collected
 // output. fn must not call t.Fatal/t.FailNow (runtime.Goexit) directly, as
