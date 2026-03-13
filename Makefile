@@ -6,7 +6,7 @@
 #   make build-all       cross-compile CLI + daemon for all platforms
 #   make test            run all tests
 #   make vet             go vet
-#   make clean           remove dist/
+#   make clean           remove build/ output subdirectories
 #   make help            list targets
 #
 # Cross-compilation notes:
@@ -20,7 +20,7 @@
 
 BINARY_CLI    := nexus-cli
 BINARY_DAEMON := nexus-daemon
-DIST          := dist
+DIST          := build
 DIST_DESKTOP  := $(DIST)/desktop
 DIST_VSCODE   := $(DIST)/vscode
 MODULE        := nexus-orchestrator
@@ -56,14 +56,14 @@ build: vet
 	@echo "Built → $(DIST)/native/"
 
 # ---------------------------------------------------------------------------
-# Frontend GUI assets (Vite → frontend/dist/) and VS Code extension
+# Frontend GUI assets (Vite → build/frontend/) and VS Code extension
 # ---------------------------------------------------------------------------
 
-# Build the Vite frontend into frontend/dist/  (embedded by Wails at build time)
+# Build the Vite frontend into build/frontend/  (embedded by Wails at build time)
 build-frontend:
 	@echo "Building Vite frontend…"
 	cd frontend && npm install --prefer-offline --silent && npm run build
-	@echo "Built → frontend/dist/"
+	@echo "Built → build/frontend/"
 
 # Compile the VS Code extension bundle and package it as a .vsix
 build-vscode:
@@ -77,8 +77,8 @@ build-dev: build-frontend build-vscode
 	@echo ""
 	@echo "┌─────────────────────────────────────────┐"
 	@echo "│  build-dev complete                     │"
-	@echo "│  frontend/dist/   — Vite GUI assets     │"
-	@echo "│  vscode-extension/*.vsix — ready to test│"
+	@echo "│  build/frontend/  — Vite GUI assets     │"
+	@echo "│  build/vscode/    — .vsix ready to test │"
 	@echo "└─────────────────────────────────────────┘"
 
 # ---------------------------------------------------------------------------
@@ -94,6 +94,8 @@ build-gui: build-frontend
 	else \
 		echo "  ⚠  wails not installed, skipping GUI build"; \
 	fi
+# NOTE: build/bin/ is used by Wails for its raw output; build/desktop/ is the
+# final packaged artifact for distribution.
 
 # Windows GUI build — uses -H windowsgui to suppress the console window.
 # Requires wails CLI and a Windows-capable cross-compilation environment.
@@ -203,8 +205,12 @@ lint:
 # Housekeeping
 # ---------------------------------------------------------------------------
 clean:
-	rm -rf $(DIST) coverage.out coverage.html
-	rm -rf build/bin
+	# Remove generated build outputs — preserves build/darwin/ and build/windows/ (Wails resources)
+	rm -rf build/bin build/native build/desktop build/vscode build/docs build/frontend
+	rm -rf build/linux_amd64 build/linux_arm64
+	rm -rf build/darwin_amd64 build/darwin_arm64
+	rm -rf build/windows_amd64
+	rm -f coverage.out coverage.html
 	rm -f vscode-extension/*.vsix
 
 help:
@@ -212,7 +218,7 @@ help:
 	@echo "  make build              Native CLI + daemon"
 	@echo "  make build-gui          Desktop GUI (Wails, macOS ARM64)"
 	@echo "  make build-gui-windows-amd64 Desktop GUI (Wails, Windows AMD64, -H windowsgui)"
-	@echo "  make build-frontend     Vite GUI assets → frontend/dist/ (no Wails needed)"
+	@echo "  make build-frontend     Vite GUI assets → build/frontend/ (no Wails needed)"
 	@echo "  make build-vscode       VS Code extension bundle + VSIX package"
 	@echo "  make build-dev          build-frontend + build-vscode (quick pre-release check)"
 	@echo "  make build-all          Cross-compile all platforms"
@@ -226,7 +232,7 @@ help:
 	@echo "  make test-cover         Tests + HTML coverage report"
 	@echo "  make vet                go vet ./..."
 	@echo "  make lint               golangci-lint run ./..."
-	@echo "  make clean              Remove dist/"
+	@echo "  make clean              Remove build/ output subdirs (keeps Wails resources)"
 	@echo ""
 	@echo "GUI desktop app:"
 	@echo "  wails dev               Hot-reload dev mode"

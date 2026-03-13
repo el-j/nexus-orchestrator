@@ -2,8 +2,19 @@
 /nexus-orchestrator
 /nexus-cli
 /nexus-daemon
+# Unified build output — all artifacts go under build/
+# Preserve build/darwin/ and build/windows/ (Wails build resources, tracked in git)
 build/bin/
-/dist/
+build/native/
+build/linux_amd64/
+build/linux_arm64/
+build/darwin_amd64/
+build/darwin_arm64/
+build/windows_amd64/
+build/desktop/
+build/vscode/
+build/docs/
+build/frontend/
 *.exe
 
 # SQLite databases
@@ -23,15 +34,13 @@ Thumbs.db
 frontend/node_modules/
 frontend/.vite/
 frontend/src/wailsjs/
-frontend/dist
 coverage.out
 
-# Centralized dist outputs
-/dist/desktop/
-/dist/vscode/
+# Docs / Action / VSCode extension intermediate build artifacts
+docs/dist/
 docs/node_modules/
 github-action/node_modules/
 github-action/coverage/
-
+vscode-extension/dist/
 
 coverage

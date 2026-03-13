@@ -32,7 +32,7 @@ import (
 
 var version = "dev"
 
-//go:embed all:frontend/dist
+//go:embed all:build/frontend
 var assets embed.FS
 
 func main() {
