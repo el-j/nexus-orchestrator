@@ -122,7 +122,7 @@ const editingConfig = ref<ProviderConfig | null>(null)
 
 async function loadConfigs() {
   try {
-    configs.value = await listProviderConfigs()
+    configs.value = (await listProviderConfigs()) ?? []
   } catch { /* silent fail */ }
 }
 

@@ -9,7 +9,7 @@ export function useProviders() {
 
   async function refresh() {
     try {
-      providers.value = await getProviders()
+      providers.value = (await getProviders()) ?? []
     } catch (e) { console.warn('useProviders: refresh failed:', e) }
   }
 

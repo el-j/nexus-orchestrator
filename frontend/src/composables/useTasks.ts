@@ -27,7 +27,7 @@ export function useTasks() {
 
   async function refresh() {
     try {
-      tasks.value = await getQueue()
+      tasks.value = (await getQueue()) ?? []
       error.value = null
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to load tasks'

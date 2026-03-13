@@ -163,7 +163,7 @@ func (r *Repository) GetPending() ([]domain.Task, error) {
 	}
 	defer rows.Close()
 
-	var tasks []domain.Task
+	tasks := []domain.Task{}
 	for rows.Next() {
 		t, err := scanTask(rows)
 		if err != nil {
@@ -225,7 +225,7 @@ func (r *Repository) GetByProjectPath(projectPath string) ([]domain.Task, error)
 	}
 	defer rows.Close()
 
-	var tasks []domain.Task
+	tasks := []domain.Task{}
 	for rows.Next() {
 		t, err := scanTask(rows)
 		if err != nil {

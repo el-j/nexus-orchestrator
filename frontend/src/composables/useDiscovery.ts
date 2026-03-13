@@ -12,7 +12,7 @@ export function useDiscovery() {
 
   async function refresh() {
     try {
-      discovered.value = await getDiscoveredProviders()
+      discovered.value = (await getDiscoveredProviders()) ?? []
     } catch (e) { console.warn('useDiscovery: refresh failed:', e) }
   }
 

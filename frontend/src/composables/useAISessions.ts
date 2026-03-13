@@ -12,7 +12,7 @@ export function useAISessions() {
 
   async function refresh() {
     try {
-      sessions.value = await listAISessions()
+      sessions.value = (await listAISessions()) ?? []
       error.value = null
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to load AI sessions'

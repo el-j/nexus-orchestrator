@@ -74,7 +74,7 @@ func (p *ProviderConfigRepo) ListProviderConfigs(ctx context.Context) ([]domain.
 	}
 	defer rows.Close()
 
-	var configs []domain.ProviderConfig
+	configs := []domain.ProviderConfig{}
 	for rows.Next() {
 		cfg, err := scanProviderConfig(rows)
 		if err != nil {

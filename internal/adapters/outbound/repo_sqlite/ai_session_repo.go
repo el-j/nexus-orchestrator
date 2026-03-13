@@ -93,7 +93,7 @@ func (a *AISessionRepo) ListAISessions(ctx context.Context) ([]domain.AISession,
 	}
 	defer rows.Close()
 
-	var sessions []domain.AISession
+	sessions := []domain.AISession{}
 	for rows.Next() {
 		s, err := scanAISession(rows)
 		if err != nil {
