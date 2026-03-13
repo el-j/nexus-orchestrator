@@ -48,6 +48,7 @@ func (m *mockOrch) SubmitTask(t domain.Task) (string, error) {
 }
 func (m *mockOrch) GetTask(_ string) (domain.Task, error) { return m.getTask, m.getErr }
 func (m *mockOrch) GetQueue() ([]domain.Task, error)      { return m.queue, m.queueErr }
+func (m *mockOrch) GetAllTasks() ([]domain.Task, error)   { return m.queue, m.queueErr }
 func (m *mockOrch) CancelTask(_ string) error             { return m.cancelErr }
 func (m *mockOrch) GetProviders() ([]ports.ProviderInfo, error) {
 	return m.providers, m.provErr
@@ -162,7 +163,7 @@ func TestMCP_Initialize(t *testing.T) {
 	}
 }
 
-func TestMCP_ToolsList_Returns14Tools(t *testing.T) {
+func TestMCP_ToolsList_Returns15Tools(t *testing.T) {
 	srv := newServer(t, &mockOrch{})
 	r := postRPC(t, srv, map[string]any{
 		"jsonrpc": "2.0",
@@ -180,8 +181,8 @@ func TestMCP_ToolsList_Returns14Tools(t *testing.T) {
 	if err := json.Unmarshal(r.Result, &result); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
-	if len(result.Tools) != 14 {
-		t.Errorf("expected 14 tools, got %d", len(result.Tools))
+	if len(result.Tools) != 15 {
+		t.Errorf("expected 15 tools, got %d", len(result.Tools))
 	}
 }
 
@@ -252,6 +253,36 @@ func TestMCP_ToolCall_GetQueue(t *testing.T) {
 	}
 	if len(tasks) != 2 {
 		t.Errorf("expected 2 tasks, got %d", len(tasks))
+	}
+}
+
+func TestMCP_ToolCall_GetAllTasks(t *testing.T) {
+	orch := &mockOrch{queue: []domain.Task{{ID: "t1"}, {ID: "t2"}, {ID: "t3"}}}
+	srv := newServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      41,
+		"method":  "tools/call",
+		"params":  map[string]any{"name": "get_all_tasks", "arguments": map[string]any{}},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	var tasks []domain.Task
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &tasks); err != nil {
+		t.Fatalf("unmarshal tasks: %v", err)
+	}
+	if len(tasks) != 3 {
+		t.Errorf("expected 3 tasks, got %d", len(tasks))
 	}
 }
 

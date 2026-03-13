@@ -220,6 +220,8 @@ func (s *Server) handleToolCall(w http.ResponseWriter, r *http.Request, req rpcR
 		result, err = s.toolGetTask(p.Arguments)
 	case "get_queue":
 		result, err = s.toolGetQueue()
+	case "get_all_tasks":
+		result, err = s.toolGetAllTasks()
 	case "cancel_task":
 		result, err = s.toolCancelTask(p.Arguments)
 	case "get_providers":
@@ -315,6 +317,18 @@ func (s *Server) toolGetQueue() (callToolResult, error) {
 	b, err := json.Marshal(tasks)
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_queue: marshal: %w", err)
+	}
+	return textResult(string(b)), nil
+}
+
+func (s *Server) toolGetAllTasks() (callToolResult, error) {
+	tasks, err := s.orch.GetAllTasks()
+	if err != nil {
+		return callToolResult{}, fmt.Errorf("mcp: get_all_tasks: %w", err)
+	}
+	b, err := json.Marshal(tasks)
+	if err != nil {
+		return callToolResult{}, fmt.Errorf("mcp: get_all_tasks: marshal: %w", err)
 	}
 	return textResult(string(b)), nil
 }
@@ -562,6 +576,11 @@ func toolList() []toolDef {
 		{
 			Name:        "get_queue",
 			Description: "List all tasks currently in the queue.",
+			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
+		},
+		{
+			Name:        "get_all_tasks",
+			Description: "Return every task regardless of status (QUEUED, PROCESSING, DRAFT, BACKLOG, COMPLETED, FAILED, CANCELLED).",
 			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
 		},
 		{

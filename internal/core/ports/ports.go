@@ -44,6 +44,8 @@ type TaskRepository interface {
 	UpdateStatus(id string, status domain.TaskStatus) error
 	// UpdateLogs replaces the Logs field on the task identified by id.
 	UpdateLogs(id, logs string) error
+	// GetAll returns every task, ordered by creation time descending.
+	GetAll() ([]domain.Task, error)
 	// GetByProjectPathAndStatus returns tasks for a project filtered by one or more statuses.
 	GetByProjectPathAndStatus(projectPath string, statuses ...domain.TaskStatus) ([]domain.Task, error)
 	// Update persists changes to an existing task's mutable fields.
@@ -85,6 +87,8 @@ type Orchestrator interface {
 	// GetTask returns the task with the given ID, or domain.ErrNotFound.
 	GetTask(id string) (domain.Task, error)
 	GetQueue() ([]domain.Task, error)
+	// GetAllTasks returns every task regardless of status.
+	GetAllTasks() ([]domain.Task, error)
 	// GetProviders returns a snapshot of all registered LLM backends and their liveness.
 	GetProviders() ([]ProviderInfo, error)
 	CancelTask(id string) error

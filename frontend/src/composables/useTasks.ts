@@ -11,13 +11,6 @@ export function useTasks() {
   let interval: ReturnType<typeof setInterval> | null = null
   let eventSource: EventSource | null = null
 
-  const backlogTasks = computed(() =>
-    tasks.value.filter(t =>
-      (t.status === 'DRAFT' || t.status === 'BACKLOG') &&
-      (currentProject.value === null || t.projectPath === currentProject.value)
-    )
-  )
-
   const queuedTasks = computed(() =>
     tasks.value.filter(t =>
       (t.status === 'QUEUED' || t.status === 'PROCESSING') &&
@@ -87,5 +80,5 @@ export function useTasks() {
     if (eventSource) eventSource.close()
   })
 
-  return { tasks, loading, error, refresh, backlogTasks, queuedTasks, createDraft, promoteTask, updateTask }
+  return { tasks, loading, error, refresh, queuedTasks, createDraft, promoteTask, updateTask }
 }

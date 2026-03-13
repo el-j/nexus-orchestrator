@@ -10,6 +10,7 @@ declare global {
           SubmitTask(task: TaskInput): Promise<string>
           GetTask(id: string): Promise<Task>
           GetQueue(): Promise<Task[]>
+          GetAllTasks(): Promise<Task[]>
           GetProviders(): Promise<ProviderInfo[]>
           CancelTask(id: string): Promise<void>
           AddProviderConfig(cfg: Partial<ProviderConfig>): Promise<ProviderConfig>
@@ -54,6 +55,12 @@ export async function getQueue(): Promise<Task[]> {
   if (isWails()) return window.go!.main!.App!.GetQueue()
   const r = await fetch('/api/tasks')
   return r.json() as Promise<Task[]>
+}
+
+export async function getAllTasks(): Promise<Task[]> {
+  if (isWails()) return (await window.go!.main!.App!.GetAllTasks()) ?? []
+  const r = await fetch('/api/tasks/all')
+  return (await r.json()) as Task[]
 }
 
 export async function getProviders(): Promise<ProviderInfo[]> {
@@ -121,9 +128,10 @@ export async function createDraft(task: Partial<Task>): Promise<string> {
 }
 
 export async function getBacklog(projectPath: string): Promise<Task[]> {
-  if (isWails()) return window.go!.main!.App!.GetBacklog(projectPath)
-  const r = await fetch(`/api/tasks/backlog?project=${encodeURIComponent(projectPath)}`)
-  return r.json() as Promise<Task[]>
+  if (isWails()) return (await window.go!.main!.App!.GetBacklog(projectPath)) ?? []
+  const query = projectPath ? `?project=${encodeURIComponent(projectPath)}` : ''
+  const r = await fetch(`/api/tasks/backlog${query}`)
+  return (await r.json()) as Task[]
 }
 
 export async function promoteTask(id: string): Promise<void> {

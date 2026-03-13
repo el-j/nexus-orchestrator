@@ -94,6 +94,24 @@ func (r *remoteOrchestrator) GetQueue() ([]domain.Task, error) {
 	return tasks, nil
 }
 
+func (r *remoteOrchestrator) GetAllTasks() ([]domain.Task, error) {
+	resp, err := http.Get(r.baseURL + "/api/tasks/all")
+	if err != nil {
+		return nil, fmt.Errorf("remote: get all tasks: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("remote: get all tasks: unexpected status %d", resp.StatusCode)
+	}
+
+	var tasks []domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&tasks); err != nil {
+		return nil, fmt.Errorf("remote: decode all tasks: %w", err)
+	}
+	return tasks, nil
+}
+
 func (r *remoteOrchestrator) GetProviders() ([]ports.ProviderInfo, error) {
 	resp, err := http.Get(r.baseURL + "/api/providers")
 	if err != nil {

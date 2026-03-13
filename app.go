@@ -47,6 +47,11 @@ func (a *App) GetQueue() ([]domain.Task, error) {
 	return a.orchestrator.GetQueue()
 }
 
+// GetAllTasks returns every task regardless of status.
+func (a *App) GetAllTasks() ([]domain.Task, error) {
+	return a.orchestrator.GetAllTasks()
+}
+
 // GetProviders returns the status of all registered LLM backends.
 func (a *App) GetProviders() ([]ports.ProviderInfo, error) {
 	return a.orchestrator.GetProviders()

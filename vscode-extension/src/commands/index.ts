@@ -2,7 +2,7 @@
  * commands/index.ts — Barrel export for all Nexus command implementations.
  */
 
-export { submitTaskCommand } from "./submitTask";
+export { sendCurrentContextCommand, submitTaskCommand } from "./submitTask";
 export { selectProviderCommand } from "./selectProvider";
 export { viewQueueCommand } from "./viewQueue";
 

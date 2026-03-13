@@ -95,6 +95,7 @@ func (s *Server) Handler() http.Handler {
 	// Task endpoints — literal segments must be registered before wildcard {id}
 	r.Post("/api/tasks", s.handleCreateTask)
 	r.Get("/api/tasks", s.handleListTasks)
+	r.Get("/api/tasks/all", s.handleGetAllTasks)
 	r.Post("/api/tasks/draft", s.handleCreateDraft)
 	r.Get("/api/tasks/backlog", s.handleGetBacklog)
 	r.Get("/api/tasks/{id}", s.handleGetTask)
@@ -217,6 +218,20 @@ func (s *Server) handleListTasks(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(tasks)
 }
 
+func (s *Server) handleGetAllTasks(w http.ResponseWriter, r *http.Request) {
+	tasks, err := s.orch.GetAllTasks()
+	if err != nil {
+		log.Printf("httpapi: get all tasks: %v", err)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if tasks == nil {
+		tasks = []domain.Task{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(tasks)
+}
+
 func (s *Server) handleGetTask(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	task, err := s.orch.GetTask(id)
@@ -265,10 +280,6 @@ func (s *Server) handleCreateDraft(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleGetBacklog(w http.ResponseWriter, r *http.Request) {
 	projectPath := r.URL.Query().Get("project")
-	if projectPath == "" {
-		writeJSONError(w, "project query parameter required", http.StatusBadRequest)
-		return
-	}
 	tasks, err := s.orch.GetBacklog(projectPath)
 	if err != nil {
 		log.Printf("httpapi: get backlog: %v", err)

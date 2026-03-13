@@ -1,11 +1,11 @@
 {
   "version": "2",
-  "updatedAt": "2026-03-13T01:00:00.000Z",
+  "updatedAt": "2026-03-13T08:31:20.000Z",
   "counters": {
-    "nextTaskId": 233,
-    "nextPlanId": 33
+    "nextTaskId": 243,
+    "nextPlanId": 36
   },
-  "activePlanId": null,
+  "activePlanId": "PLAN-035",
   "notes": "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix). PLAN-013 completed (update CI to latest action versions). PLAN-014 completed (unified publish.yml pipeline, fixed GITHUB_TOKEN cross-trigger bug, fixed CLI/desktop artifact naming collision, updated downloads.md). PLAN-015 completed (production-grade Node20 GitHub Action with TypeScript, built-in agent identity loading from el-j/agency-agents, 24 unit tests, action-ci.yml CI workflow). PLAN-016 completed (release pipeline finalization: deleted conflicting version.yml+release.yml, created CHANGELOG.md, fixed downloads.md desktop links). PLAN-017 completed (fix all broken download links: nexusOrchestrator\u2192nexus-orchestrator prefix, macOS .tar.gz\u2192.zip, add Gatekeeper workaround instructions). PLAN-018 completed (provider visibility: configurable Ollama/LM Studio URLs, BaseURL+Error in ProviderInfo, SQLite-persisted provider CRUD, GUI provider management panel, VS Code extension with submit/queue/status-bar). PLAN-019 completed (VS Code extension VSIX in release pipeline: vsce packaging with publisher+@vscode/vsce, build-vscode job in publish.yml+ci.yml, DownloadsView.vue/HomeView.vue/docs updated to mention extension). PLAN-020 completed (fix ProviderInfo TypeScript PascalCase\u2192camelCase type mismatch, wire AppSidebar routing, create ProvidersView.vue, dogfood confirmed COMPLETED via LM Studio qwen3-coder-next in 9s). PLAN-021 completed (SSE real-time updates via EventSource+fallback, ProviderConfig kind fix, CHANGELOG v0.8.0 \u2014 all 4 tasks dogfooded via daemon, LM Studio qwen3-coder-next). PLAN-022 completed (Universal AI Session Orchestration \u2014 AISession domain type, AISessionRepository+AISessionMonitor ports, SQLite AISessionRepo, HTTP /api/ai-sessions CRUD, MCP register_session+get_ai_sessions (14 tools total), GUI AISessionsView+useAISessions composable, VS Code SessionMonitor+Copilot detection, entry point wiring, 13 QA tests \u2014 all 9 tasks, 7 waves, all green). PLAN-023 active (System-Wide Provider Discovery + Background Service Mode \u2014 detect Claude CLI/Copilot/Antigravity/local AI tools, hide-to-tray, in-app log console, no console window \u2014 13 tasks across 8 waves). PLAN-024 completed (Multi-Project Planning & Idea Staging \u2014 DRAFT/BACKLOG statuses, ProviderName per-task routing, Priority+Tags, SQLite migrations, backlog CRUD on HTTP/MCP/CLI/Wails, BacklogView+BacklogList+ProjectSelector GUI, TaskSubmitForm split-button, 20 new QA tests \u2014 all 12 tasks, 7 waves, all green). PLAN-029 completed (Task Queue UI fix: DashboardView flex wrapper; AI Session dedup by externalId: idempotent RegisterAISession + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code extension heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-030 completed (Comprehensive Hardening: HeartbeatAISession+PromoteProvider bindings, error handling consistency, constructor nil-validation, HTTP API error format, frontend circular dep fix, VSCode memory leak+URLs, VSCode session monitor race fix, processNext decomposition into 4 helpers, silent catch blocks fixed, security hardening CSP nonce+file permissions+XSS, Vue error boundary+rejection handler, GitHub Action 53 tests, golangci-lint+eslint in CI, discovery error logging+configurable builder options, frontend accessibility ARIA labels). PLAN-031 completed (fix duplicate package decl in llm_openaicompat test, go fmt all files, add gofmt CI check + vet gate for test job \u2014 all 4 tasks green). EXPERIMENT 2026-03-12: go build passes even when _test.go files have syntax errors (build only compiles cmd/ entry points, never test files) \u2014 CI pattern Build\u2713 Vet\u2717 Test\u2717 gives false confidence; fixed by adding needs:[vet] gate to test job. EXPERIMENT 2026-03-12: duplicate package declarations caused by appending generated/scaffolded code to an existing file that already had a package line \u2014 always check for duplicate package decls after code generation. EXPERIMENT 2026-03-12: gofmt violations (multi-statement single lines with ;) not caught by go vet or go build \u2014 must add explicit gofmt -l check in lint CI job; find command: find . -name '*.go' | xargs gofmt -l. SESSION 2026-03-12: Completed PLAN-031 (CI hard-failure fix). Files changed: adapter_test.go (dup pkg decl), orchestrator_options_test.go (gofmt), .github/workflows/ci.yml (gofmt check + vet gate). Tests: all green. Next: PLAN-032.",
   "plans": {
     "PLAN-001": {
@@ -444,6 +444,43 @@
         "TASK-232"
       ],
       "completedAt": "2026-03-13T01:00:00.000Z"
+    },
+    "PLAN-033": {
+      "id": "PLAN-033",
+      "goal": "Fix data source mismatch: BacklogView and HistoryView call getQueue() which excludes DRAFT/BACKLOG/COMPLETED tasks",
+      "status": "completed",
+      "createdAt": "2026-03-13T01:10:00.000Z",
+      "taskIds": [
+        "TASK-233",
+        "TASK-234",
+        "TASK-235"
+      ],
+      "completedAt": "2026-03-13T01:50:00.000Z"
+    },
+    "PLAN-034": {
+      "id": "PLAN-034",
+      "goal": "Make Nexus routing explicit in the VS Code extension and surface route visibility through logs, status, and queue UI",
+      "status": "completed",
+      "createdAt": "2026-03-13T01:30:00.000Z",
+      "taskIds": [
+        "TASK-236",
+        "TASK-237",
+        "TASK-238"
+      ],
+      "completedAt": "2026-03-13T01:50:00.000Z"
+    },
+    "PLAN-035": {
+      "id": "PLAN-035",
+      "goal": "Add deterministic release-gate E2E coverage for daemon, frontend views, and VS Code extension",
+      "status": "completed",
+      "createdAt": "2026-03-13T02:00:00.000Z",
+      "taskIds": [
+        "TASK-239",
+        "TASK-240",
+        "TASK-241",
+        "TASK-242"
+      ],
+      "completedAt": "2026-03-13T08:31:20.000Z"
     }
   },
   "tasks": {
@@ -2798,8 +2835,123 @@
       ],
       "createdAt": "2026-03-13T00:36:00.000Z",
       "completedAt": "2026-03-13T01:00:00.000Z"
+    },
+    "TASK-233": {
+      "id": "TASK-233",
+      "title": "Backend: Add GetAllTasks + fix GetBacklog empty-project",
+      "status": "done",
+      "role": "backend",
+      "planId": "PLAN-033",
+      "dependencies": [],
+      "createdAt": "2026-03-13T01:10:00.000Z",
+      "completedAt": "2026-03-13T01:50:00.000Z"
+    },
+    "TASK-234": {
+      "id": "TASK-234",
+      "title": "Frontend: Fix BacklogView + HistoryView data sources",
+      "status": "done",
+      "role": "frontend",
+      "planId": "PLAN-033",
+      "dependencies": [
+        "TASK-233"
+      ],
+      "createdAt": "2026-03-13T01:10:00.000Z",
+      "completedAt": "2026-03-13T01:50:00.000Z"
+    },
+    "TASK-235": {
+      "id": "TASK-235",
+      "title": "Build verification",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-033",
+      "dependencies": [
+        "TASK-233",
+        "TASK-234"
+      ],
+      "createdAt": "2026-03-13T01:10:00.000Z",
+      "completedAt": "2026-03-13T01:50:00.000Z"
+    },
+    "TASK-236": {
+      "id": "TASK-236",
+      "title": "VS Code extension: add explicit send-current-context queue workflow",
+      "status": "done",
+      "role": "frontend",
+      "planId": "PLAN-034",
+      "dependencies": [],
+      "createdAt": "2026-03-13T01:30:00.000Z",
+      "completedAt": "2026-03-13T01:50:00.000Z"
+    },
+    "TASK-237": {
+      "id": "TASK-237",
+      "title": "VS Code extension: add route visibility and activity log",
+      "status": "done",
+      "role": "frontend",
+      "planId": "PLAN-034",
+      "dependencies": [
+        "TASK-236"
+      ],
+      "createdAt": "2026-03-13T01:30:00.000Z",
+      "completedAt": "2026-03-13T01:50:00.000Z"
+    },
+    "TASK-238": {
+      "id": "TASK-238",
+      "title": "Verification: build Go, frontend views, and VS Code extension surfaces",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-034",
+      "dependencies": [
+        "TASK-236",
+        "TASK-237"
+      ],
+      "createdAt": "2026-03-13T01:30:00.000Z",
+      "completedAt": "2026-03-13T01:50:00.000Z"
+    },
+    "TASK-239": {
+      "id": "TASK-239",
+      "title": "QA: expand deterministic daemon E2E coverage",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-035",
+      "dependencies": [],
+      "createdAt": "2026-03-13T02:00:00.000Z",
+      "completedAt": "2026-03-13T08:31:20.000Z"
+    },
+    "TASK-240": {
+      "id": "TASK-240",
+      "title": "Frontend: add backlog/history smoke tests with coverage",
+      "status": "done",
+      "role": "frontend",
+      "planId": "PLAN-035",
+      "dependencies": [
+        "TASK-239"
+      ],
+      "createdAt": "2026-03-13T02:00:00.000Z",
+      "completedAt": "2026-03-13T08:31:20.000Z"
+    },
+    "TASK-241": {
+      "id": "TASK-241",
+      "title": "VS Code extension: add queue and visibility smoke tests",
+      "status": "done",
+      "role": "frontend",
+      "planId": "PLAN-035",
+      "dependencies": [
+        "TASK-239"
+      ],
+      "createdAt": "2026-03-13T02:00:00.000Z",
+      "completedAt": "2026-03-13T08:31:20.000Z"
+    },
+    "TASK-242": {
+      "id": "TASK-242",
+      "title": "CI: enforce release-gate E2E and coverage checks",
+      "status": "done",
+      "role": "qa",
+      "planId": "PLAN-035",
+      "dependencies": [
+        "TASK-240",
+        "TASK-241"
+      ],
+      "createdAt": "2026-03-13T02:00:00.000Z",
+      "completedAt": "2026-03-13T08:31:20.000Z"
     }
-  },
-  "nextTaskId": 233,
-  "nextPlanId": 33
+  }
 }

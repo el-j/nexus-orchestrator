@@ -15,8 +15,8 @@
     <div
       v-for="task in items"
       :key="task.id"
-      class="group flex items-start gap-4 p-4 rounded-xl border border-white/5 bg-[#0d0d14]
-             hover:border-violet-500/20 hover:bg-[#14141f] transition-all"
+          class="group flex items-start gap-4 p-4 rounded-xl border border-white/5 bg-nexus-800
+            hover:border-violet-500/20 hover:bg-nexus-700 transition-all"
     >
       <!-- Priority badge -->
       <span :class="['text-xs font-semibold mt-0.5 w-14 shrink-0', priorityColor(task.priority)]">
@@ -33,13 +33,13 @@
             {{ task.providerName }}
           </span>
           <span v-else
-                class="text-xs bg-white/[0.05] text-slate-500 border border-white/10 px-1.5 py-0.5 rounded-full">
+                class="text-xs bg-white/5 text-slate-500 border border-white/10 px-1.5 py-0.5 rounded-full">
             Auto
           </span>
           <span
             v-for="tag in (task.tags ?? [])"
             :key="tag"
-            class="text-xs bg-white/[0.05] text-slate-400 border border-white/10 px-1.5 py-0.5 rounded-full"
+            class="text-xs bg-white/5 text-slate-400 border border-white/10 px-1.5 py-0.5 rounded-full"
           >{{ tag }}</span>
         </div>
       </div>
@@ -65,6 +65,10 @@ import { ref } from 'vue'
 import Button from 'primevue/button'
 import { useTasks } from '../composables/useTasks'
 import type { Task } from '../types/domain'
+
+const emit = defineEmits<{
+  promoted: [id: string]
+}>()
 
 defineProps<{ items: Task[] }>()
 
@@ -92,6 +96,7 @@ async function onPromote(id: string) {
   promoting.value = id
   try {
     await promoteTask(id)
+    emit('promoted', id)
   } catch (e) {
     console.warn('BacklogList: promote failed:', e)
   } finally {

@@ -212,6 +212,28 @@ func (r *Repository) UpdateLogs(id, logs string) error {
 	return nil
 }
 
+// GetAll returns every task, ordered by creation time descending.
+func (r *Repository) GetAll() ([]domain.Task, error) {
+	rows, err := r.db.Query(
+		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count
+		 FROM tasks ORDER BY created_at DESC`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: query all tasks: %w", err)
+	}
+	defer rows.Close()
+
+	tasks := []domain.Task{}
+	for rows.Next() {
+		t, err := scanTask(rows)
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, t)
+	}
+	return tasks, rows.Err()
+}
+
 // GetByProjectPath returns all tasks for the given project path, ordered by creation time descending.
 func (r *Repository) GetByProjectPath(projectPath string) ([]domain.Task, error) {
 	projectPath = filepath.Clean(projectPath)

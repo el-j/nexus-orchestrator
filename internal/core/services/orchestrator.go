@@ -216,6 +216,11 @@ func (o *OrchestratorService) GetQueue() ([]domain.Task, error) {
 	return o.repo.GetPending()
 }
 
+// GetAllTasks returns every task regardless of status.
+func (o *OrchestratorService) GetAllTasks() ([]domain.Task, error) {
+	return o.repo.GetAll()
+}
+
 // GetProviders returns the liveness status of every registered LLM backend.
 func (o *OrchestratorService) GetProviders() ([]ports.ProviderInfo, error) {
 	return o.discovery.ListProviders(), nil
@@ -557,7 +562,21 @@ func (o *OrchestratorService) CreateDraft(task domain.Task) (string, error) {
 }
 
 // GetBacklog returns DRAFT and BACKLOG tasks for the given project.
+// If projectPath is empty, returns all DRAFT and BACKLOG tasks across all projects.
 func (o *OrchestratorService) GetBacklog(projectPath string) ([]domain.Task, error) {
+	if projectPath == "" {
+		all, err := o.repo.GetAll()
+		if err != nil {
+			return nil, fmt.Errorf("orchestrator: get backlog: %w", err)
+		}
+		backlog := []domain.Task{}
+		for _, t := range all {
+			if t.Status == domain.StatusDraft || t.Status == domain.StatusBacklog {
+				backlog = append(backlog, t)
+			}
+		}
+		return backlog, nil
+	}
 	tasks, err := o.repo.GetByProjectPathAndStatus(projectPath, domain.StatusDraft, domain.StatusBacklog)
 	if err != nil {
 		return nil, fmt.Errorf("orchestrator: get backlog: %w", err)

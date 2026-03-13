@@ -6,12 +6,13 @@
 
 import * as vscode from "vscode";
 import { NexusClient } from "./nexusClient";
-import { submitTaskCommand, selectProviderCommand, viewQueueCommand } from "./commands";
+import { sendCurrentContextCommand, submitTaskCommand, selectProviderCommand, viewQueueCommand } from "./commands";
 import { NexusStatusBar } from "./statusBar";
 import { TaskItem, TaskQueueProvider } from "./taskQueueProvider";
 import { SessionMonitor } from "./sessionMonitor";
 import { WorkspaceScanner } from "./workspaceScanner";
 import { WorkspaceOrchViewProvider } from "./workspaceOrchView";
+import { getNexusActivityChannel, showNexusActivityLog } from "./activityLog";
 
 let client: NexusClient | undefined;
 let statusBar: NexusStatusBar | undefined;
@@ -44,6 +45,7 @@ export function getStatusBar(): NexusStatusBar {
 
 export function activate(context: vscode.ExtensionContext): void {
   client = new NexusClient(daemonUrl());
+  context.subscriptions.push(getNexusActivityChannel());
 
   // ── Session monitor (GitHub Copilot activity → daemon AISession) ────────────
   monitor = new SessionMonitor(getClient(), context);
@@ -88,6 +90,15 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
+  // ── nexus.sendCurrentContext ────────────────────────────────────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nexus.sendCurrentContext", async () => {
+      await sendCurrentContextCommand(getClient(), daemonUrl());
+      provider.refresh();
+      void getStatusBar().update();
+    })
+  );
+
   // ── nexus.submitTask ────────────────────────────────────────────────────────
   context.subscriptions.push(
     vscode.commands.registerCommand("nexus.submitTask", async () => {
@@ -101,6 +112,12 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("nexus.viewQueue", () => {
       viewQueueCommand();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("nexus.showActivityLog", () => {
+      showNexusActivityLog();
     })
   );
 
@@ -182,8 +199,10 @@ export function activate(context: vscode.ExtensionContext): void {
         action: string;
       }
       const items: ActionItem[] = [
-        { label: "$(add) Submit Task", action: "nexus.submitTask" },
+        { label: "$(arrow-up) Send Current Context to Queue", action: "nexus.sendCurrentContext" },
+        { label: "$(edit) Compose Manual Task", action: "nexus.submitTask" },
         { label: "$(list-unordered) View Queue", action: "nexus.viewQueue" },
+        { label: "$(output) Show Activity Log", action: "nexus.showActivityLog" },
         { label: "$(server) Select Provider / Model", action: "nexus.selectProvider" },
         { label: "$(refresh) Refresh Providers", action: "nexus.statusBarRefresh" },
       ];

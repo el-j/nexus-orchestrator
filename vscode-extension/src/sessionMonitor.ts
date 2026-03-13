@@ -5,6 +5,7 @@
 
 import * as vscode from "vscode";
 import { NexusClient } from "./nexusClient";
+import { getNexusActivityChannel, logNexusActivity } from "./activityLog";
 
 export class SessionMonitor {
   private sessionId: string | undefined;
@@ -17,8 +18,7 @@ export class SessionMonitor {
     private readonly client: NexusClient,
     private readonly context: vscode.ExtensionContext
   ) {
-    this.outputChannel = vscode.window.createOutputChannel('Nexus Orchestrator');
-    this.context.subscriptions.push(this.outputChannel);
+    this.outputChannel = getNexusActivityChannel();
   }
 
   async start(): Promise<void> {
@@ -73,7 +73,7 @@ export class SessionMonitor {
           ? await vscode.lm.selectChatModels({ vendor: "copilot" })
           : [];
       if (models.length === 0) {
-        this.outputChannel.appendLine('[SessionMonitor] Copilot models not available yet — will retry');
+        logNexusActivity('copilot', 'models not available yet; waiting to register session');
         return; // Copilot not available
       }
 
@@ -88,10 +88,10 @@ export class SessionMonitor {
         externalId,
       });
       this.sessionId = session.id;
-      this.outputChannel.appendLine(`[SessionMonitor] Copilot session registered: ${session.id}`);
+      logNexusActivity('copilot', `session registered: ${session.id}`);
       await this.context.workspaceState.update("nexus.sessionId", session.id);
     } catch (error) {
-      this.outputChannel.appendLine(`[SessionMonitor] Registration failed: ${error}`);
+      logNexusActivity('copilot', `registration failed: ${error}`);
     }
   }
 
@@ -104,7 +104,7 @@ export class SessionMonitor {
     } catch (error) {
       // If the session no longer exists on the server (e.g. cleaned up after
       // being idle), fall back to a full re-registration.
-      this.outputChannel.appendLine(`[SessionMonitor] Heartbeat failed (${error}), re-registering`);
+      logNexusActivity('copilot', `heartbeat failed (${error}); re-registering`);
       if (this.isReregistering) {
         return;
       }

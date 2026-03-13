@@ -10,6 +10,7 @@
 
 import * as vscode from "vscode";
 import { NexusClient, AISession } from "./nexusClient";
+import { getActivitySnapshot } from "./activityLog";
 
 export class NexusStatusBar {
   private item: vscode.StatusBarItem;
@@ -64,13 +65,12 @@ export class NexusStatusBar {
       }
 
       const activeProviders = providers.filter((p) => p.active);
-      const activeSessionCount = aiSessions.filter(
-        (s) => s.status === "active"
-      ).length;
-      const sessionSuffix =
-        aiSessions.length > 0
-          ? `\n— AI Sessions: ${activeSessionCount} active`
-          : "";
+      const activeSessions = aiSessions.filter((s) => s.status === "active");
+      const activeSessionCount = activeSessions.length;
+      const mcpSessions = activeSessions.filter((s) => s.source === "mcp").length;
+      const vscodeSessions = activeSessions.filter((s) => s.source === "vscode").length;
+      const httpSessions = activeSessions.filter((s) => s.source === "http").length;
+      const lastQueuedTaskId = getActivitySnapshot().lastQueuedTaskId;
       const oneHourAgo = Date.now() - 60 * 60 * 1000;
 
       const activeTasks = tasks.filter(
@@ -82,18 +82,35 @@ export class NexusStatusBar {
           new Date(t.updatedAt).getTime() >= oneHourAgo
       );
 
+      const tooltipLines = [
+        `Providers active: ${activeProviders.length}`,
+        `Nexus queue: ${activeTasks.length} active task(s)`,
+        `Copilot direct sessions: ${vscodeSessions}`,
+        `MCP sessions: ${mcpSessions}`,
+        `HTTP sessions: ${httpSessions}`,
+        `AI sessions total: ${activeSessionCount}`,
+      ];
+      if (lastQueuedTaskId) {
+        tooltipLines.push(`Last queued by extension: #${lastQueuedTaskId.replace(/-/g, "").slice(0, 8)}`);
+      }
+      if (isDegraded) {
+        tooltipLines.push("Some daemon reads failed during the last refresh");
+      }
+      tooltipLines.push("Click to open Nexus actions");
+      const tooltip = tooltipLines.join("\n");
+
       if (failedTasks.length > 0) {
-        this.item.text = `$(error) Nexus: ${failedTasks.length} failed`;
-        this.item.tooltip = `Click to open actions${sessionSuffix}`;
+        this.item.text = `$(error) Nexus Q${activeTasks.length} M${mcpSessions} V${vscodeSessions}`;
+        this.item.tooltip = tooltip;
       } else if (activeTasks.length > 0) {
-        this.item.text = `$(sync~spin) Nexus: ${activeTasks.length} tasks${isDegraded ? ' ~' : ''}`;
-        this.item.tooltip = `${activeProviders.length} provider(s) active${sessionSuffix}`;
+        this.item.text = `$(sync~spin) Nexus Q${activeTasks.length} M${mcpSessions} V${vscodeSessions}${isDegraded ? ' ~' : ''}`;
+        this.item.tooltip = tooltip;
       } else if (isDegraded) {
         this.item.text = "$(warning) Nexus: degraded";
-        this.item.tooltip = `Some API calls failed — ${activeProviders.length} provider(s) active${sessionSuffix}`;
+        this.item.tooltip = tooltip;
       } else {
-        this.item.text = "$(zap) Nexus";
-        this.item.tooltip = `${activeProviders.length} provider(s) active${sessionSuffix}`;
+        this.item.text = `$(zap) Nexus Q0 M${mcpSessions} V${vscodeSessions}`;
+        this.item.tooltip = tooltip;
       }
     } catch (error) {
       console.warn('statusBar: update failed:', error);

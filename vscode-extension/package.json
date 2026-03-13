@@ -4,10 +4,20 @@
   "description": "Route AI code-generation tasks through nexusOrchestrator",
   "version": "0.2.0",
   "publisher": "el-j",
-  "engines": { "vscode": "^1.99.0" },
-  "categories": ["AI", "Other"],
-  "repository": { "type": "git", "url": "https://github.com/el-j/nexus-orchestrator" },
-  "activationEvents": ["onStartupFinished"],
+  "engines": {
+    "vscode": "^1.99.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/el-j/nexus-orchestrator"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {
@@ -33,19 +43,74 @@
       ]
     },
     "commands": [
-      { "command": "nexus.submitTask", "title": "Nexus: Submit Task" },
-      { "command": "nexus.viewQueue", "title": "Nexus: View Task Queue" },
-      { "command": "nexus.selectProvider", "title": "Nexus: Select Provider / Model" },
-      { "command": "nexus.showProviders", "title": "Nexus: Show Providers" },
-      { "command": "nexus.statusBarAction", "title": "Nexus: Status Bar Actions" },
-      { "command": "nexus.cancelTask", "title": "Nexus: Cancel Task", "icon": "$(trash)" },
-      { "command": "nexus.refreshWorkspaceAgents", "title": "Nexus: Refresh Workspace Agents", "icon": "$(refresh)" }
+      {
+        "command": "nexus.sendCurrentContext",
+        "title": "Nexus: Send Current Context To Queue"
+      },
+      {
+        "command": "nexus.submitTask",
+        "title": "Nexus: Compose Manual Task"
+      },
+      {
+        "command": "nexus.viewQueue",
+        "title": "Nexus: View Task Queue"
+      },
+      {
+        "command": "nexus.showActivityLog",
+        "title": "Nexus: Show Activity Log"
+      },
+      {
+        "command": "nexus.selectProvider",
+        "title": "Nexus: Select Provider / Model"
+      },
+      {
+        "command": "nexus.showProviders",
+        "title": "Nexus: Show Providers"
+      },
+      {
+        "command": "nexus.statusBarAction",
+        "title": "Nexus: Status Bar Actions"
+      },
+      {
+        "command": "nexus.cancelTask",
+        "title": "Nexus: Cancel Task",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "nexus.refreshWorkspaceAgents",
+        "title": "Nexus: Refresh Workspace Agents",
+        "icon": "$(refresh)"
+      }
     ],
     "menus": {
       "view/title": [
         {
+          "command": "nexus.sendCurrentContext",
+          "when": "view == nexus.taskQueue",
+          "group": "navigation"
+        },
+        {
+          "command": "nexus.showActivityLog",
+          "when": "view == nexus.taskQueue",
+          "group": "navigation@2"
+        },
+        {
           "command": "nexus.refreshWorkspaceAgents",
           "when": "view == nexus.workspaceAgents",
+          "group": "navigation"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "nexus.sendCurrentContext",
+          "when": "resourceScheme == file",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "nexus.sendCurrentContext",
+          "when": "editorHasSelection",
           "group": "navigation"
         }
       ],
@@ -93,13 +158,17 @@
   "scripts": {
     "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
     "watch": "npm run build -- --watch",
-    "package": "vsce package --no-dependencies"
+    "package": "vsce package --no-dependencies",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
-    "@types/vscode": "^1.85.0",
     "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vitest/coverage-v8": "^4.1.0",
+    "@vscode/vsce": "^3.4.0",
     "esbuild": "^0.20.0",
     "typescript": "^5.3.0",
-    "@vscode/vsce": "^3.4.0"
+    "vitest": "^4.1.0"
   }
 }

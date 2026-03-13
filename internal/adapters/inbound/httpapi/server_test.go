@@ -144,6 +144,9 @@ func (m *mockOrchestrator) DeregisterAISession(_ context.Context, _ string) erro
 func (m *mockOrchestrator) HeartbeatAISession(_ context.Context, _ string) error {
 	return nil
 }
+func (m *mockOrchestrator) GetAllTasks() ([]domain.Task, error) {
+	return m.getQueueResult, m.getQueueErr
+}
 
 // newTestHandler builds a chi router with the same route/handler logic as StartServer.
 func newTestHandler(orch ports.Orchestrator) http.Handler {
@@ -168,6 +171,19 @@ func newTestHandler(orch ports.Orchestrator) http.Handler {
 
 	r.Get("/api/tasks", func(w http.ResponseWriter, r *http.Request) {
 		tasks, err := orch.GetQueue()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if tasks == nil {
+			tasks = []domain.Task{}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(tasks)
+	})
+
+	r.Get("/api/tasks/all", func(w http.ResponseWriter, r *http.Request) {
+		tasks, err := orch.GetAllTasks()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -419,6 +435,37 @@ func TestGetTasks_EmptyQueue(t *testing.T) {
 	}
 	if len(result) != 0 {
 		t.Errorf("expected 0 tasks, got %d", len(result))
+	}
+}
+
+func TestGetAllTasks_Success(t *testing.T) {
+	tasks := []domain.Task{
+		{ID: "d1", Status: domain.StatusDraft},
+		{ID: "c1", Status: domain.StatusCompleted},
+	}
+	mock := &mockOrchestrator{getQueueResult: tasks}
+	ts := httptest.NewServer(newTestHandler(mock))
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/tasks/all")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+
+	var result []domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("expected 2 tasks, got %d", len(result))
+	}
+	if result[0].ID != "d1" || result[1].ID != "c1" {
+		t.Errorf("unexpected task order/result: %+v", result)
 	}
 }
 
@@ -869,8 +916,8 @@ func TestHandleGetBacklog_Returns200WithTasks(t *testing.T) {
 	}
 }
 
-func TestHandleGetBacklog_RequiresProjectParam(t *testing.T) {
-	mock := &mockOrchestrator{}
+func TestHandleGetBacklog_WithoutProjectParam_Returns200(t *testing.T) {
+	mock := &mockOrchestrator{getBacklogResult: []domain.Task{{ID: "draft-any", Status: domain.StatusDraft}}}
 	srv := httpapi.NewServer(mock, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
@@ -881,8 +928,43 @@ func TestHandleGetBacklog_RequiresProjectParam(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("want 400, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("want 200, got %d", resp.StatusCode)
+	}
+	var result []domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 1 || result[0].ID != "draft-any" {
+		t.Errorf("unexpected backlog result: %+v", result)
+	}
+}
+
+func TestHandleGetAllTasks_Returns200WithTasks(t *testing.T) {
+	tasks := []domain.Task{
+		{ID: "draft-1", Status: domain.StatusDraft},
+		{ID: "done-1", Status: domain.StatusCompleted},
+	}
+	mock := &mockOrchestrator{getQueueResult: tasks}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/tasks/all")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("want 200, got %d", resp.StatusCode)
+	}
+	var result []domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("want 2 tasks, got %d", len(result))
 	}
 }
 

@@ -5,6 +5,7 @@
 
 import * as vscode from 'vscode'
 import { NexusClient, Task, TaskStatus } from './nexusClient'
+import { getKnownTaskSource } from './activityLog'
 
 function statusEmoji(status: TaskStatus): string {
   switch (status) {
@@ -61,6 +62,8 @@ export class TaskItem extends vscode.TreeItem {
     )
 
     const parts: string[] = []
+    const source = getKnownTaskSource(task.id)
+    if (source) parts.push(source)
     if (task.providerHint) parts.push(task.providerHint)
     if (task.modelId) parts.push(task.modelId)
     this.description = parts.join(' / ')
@@ -69,6 +72,7 @@ export class TaskItem extends vscode.TreeItem {
       `**Instruction:** ${task.instruction}`,
       `**ID:** ${task.id}`,
       `**Status:** ${task.status}`,
+      `**Source:** ${source ?? 'unknown'}`,
       `**Project:** ${task.projectPath}`,
       `**Target:** ${task.targetFile || '—'}`,
       `**Provider:** ${task.providerHint || '—'}`,

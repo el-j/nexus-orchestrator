@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->
-    <header class="flex items-center justify-between px-5 py-3 border-b border-white/5 bg-[#0a0a10] flex-shrink-0">
+    <header class="flex items-center justify-between px-5 py-3 border-b border-white/5 bg-[#0a0a10] shrink-0">
       <div>
         <h1 class="text-sm font-bold text-white">Task History</h1>
         <p class="text-xs text-slate-500">
@@ -31,7 +31,7 @@
 
     <!-- Loading skeleton -->
     <div v-if="loading" class="flex-1 overflow-auto p-4 space-y-2">
-      <div v-for="i in 5" :key="i" class="h-14 rounded-xl bg-white/[0.03] animate-pulse" />
+      <div v-for="i in 5" :key="i" class="h-14 rounded-xl bg-white/3 animate-pulse" />
     </div>
 
     <!-- Empty state -->
@@ -71,8 +71,8 @@
         :key="task.id"
         @click="openDetail(task)"
         class="grid grid-cols-[6rem_1fr_1fr_7rem_8rem] gap-3 items-center px-4 py-3 mb-1
-               rounded-xl border border-white/5 bg-[#0d0d14]
-               hover:border-violet-500/20 hover:bg-[#14141f] cursor-pointer transition-all"
+               rounded-xl border border-white/5 bg-nexus-800
+               hover:border-violet-500/20 hover:bg-nexus-700 cursor-pointer transition-all"
       >
         <!-- Short ID -->
         <span class="font-mono text-xs text-slate-400 truncate" :title="task.id">
@@ -109,13 +109,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useTasks } from '../composables/useTasks'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { getAllTasks } from '../types/wails'
 import type { Task, TaskStatus } from '../types/domain'
+import { currentProject } from '../composables/useProjectState'
+import { resolveServerUrl } from '../composables/useServerUrl'
 import TaskStatusBadge from '../components/TaskStatusBadge.vue'
 import TaskDetailDrawer from '../components/TaskDetailDrawer.vue'
 
-const { tasks, loading, refresh } = useTasks()
+const tasks = ref<Task[]>([])
+const loading = ref(false)
+let interval: ReturnType<typeof setInterval> | null = null
+let eventSource: EventSource | null = null
 
 type FilterValue = 'ALL' | 'COMPLETED' | 'FAILED' | 'CANCELLED'
 
@@ -131,7 +136,11 @@ const selectedFilter = ref<FilterValue>('ALL')
 const historyStatuses = new Set<TaskStatus>(['COMPLETED', 'FAILED', 'CANCELLED'])
 
 const historyTasks = computed(() =>
-  tasks.value.filter((t) => historyStatuses.has(t.status)),
+  tasks.value.filter(
+    (t) =>
+      historyStatuses.has(t.status) &&
+      (currentProject.value === null || t.projectPath === currentProject.value),
+  ),
 )
 
 const filteredTasks = computed(() => {
@@ -141,6 +150,56 @@ const filteredTasks = computed(() => {
 
 const detailOpen = ref(false)
 const selectedTask = ref<Task | null>(null)
+
+async function refresh() {
+  tasks.value = (await getAllTasks()) ?? []
+}
+
+watch(currentProject, () => {
+  void refresh()
+})
+
+onMounted(async () => {
+  loading.value = true
+  await refresh()
+
+  if (typeof EventSource !== 'undefined') {
+    try {
+      const baseUrl = await resolveServerUrl()
+      eventSource = new EventSource(`${baseUrl}/api/events`)
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data)
+        if (data.type !== 'connected') {
+          void refresh()
+        }
+      }
+      eventSource.onerror = () => {
+        eventSource?.close()
+        eventSource = null
+        if (!interval) {
+          interval = setInterval(() => {
+            void refresh()
+          }, 2000)
+        }
+      }
+    } catch {
+      interval = setInterval(() => {
+        void refresh()
+      }, 2000)
+    }
+  } else {
+    interval = setInterval(() => {
+      void refresh()
+    }, 2000)
+  }
+
+  loading.value = false
+})
+
+onUnmounted(() => {
+  if (interval) clearInterval(interval)
+  if (eventSource) eventSource.close()
+})
 
 function openDetail(task: Task) {
   selectedTask.value = task

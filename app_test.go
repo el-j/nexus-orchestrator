@@ -90,6 +90,9 @@ func (m *mockOrchestrator) ListAISessions(_ context.Context) ([]domain.AISession
 }
 func (m *mockOrchestrator) DeregisterAISession(_ context.Context, _ string) error { return nil }
 func (m *mockOrchestrator) HeartbeatAISession(_ context.Context, _ string) error  { return nil }
+func (m *mockOrchestrator) GetAllTasks() ([]domain.Task, error) {
+	return m.tasksReturn, m.errReturn
+}
 
 var _ ports.Orchestrator = (*mockOrchestrator)(nil)
 

@@ -110,6 +110,16 @@ func (r *memRepo) Update(t domain.Task) error {
 	return nil
 }
 
+func (r *memRepo) GetAll() ([]domain.Task, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := []domain.Task{}
+	for _, t := range r.tasks {
+		out = append(out, t)
+	}
+	return out, nil
+}
+
 type noopWriter struct{}
 
 func (w *noopWriter) WriteCodeToFile(_, _, _ string) error                  { return nil }
