@@ -1,0 +1,20 @@
+{
+  "name": "nexus-orchestrator-root",
+  "private": true,
+  "description": "Root workspace – pre-commit tooling only (not a publishable package)",
+  "scripts": {
+    "prepare": "husky",
+    "format": "prettier --write \"**/*.{ts,tsx,vue,js,jsx,cjs,mjs,json,css,scss,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,vue,js,jsx,cjs,mjs,json,css,scss,md}\""
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.4.3",
+    "prettier": "^3.5.3"
+  },
+  "lint-staged": {
+    "*.go": "gofmt -w",
+    "*.{ts,tsx,vue,js,jsx,cjs,mjs}": "prettier --write",
+    "*.{json,css,scss,md}": "prettier --write"
+  }
+}
