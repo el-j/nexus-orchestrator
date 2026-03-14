@@ -3,7 +3,8 @@ id: TASK-021
 title: GUI — Task History page + TaskDetail Drawer (Vue 3 + PrimeVue 4)
 role: devops
 planId: PLAN-002
-status: todo
+status: done
+completedAt: 2026-03-14T18:30:00.000Z
 dependencies: [TASK-017, TASK-018]
 createdAt: 2026-03-09T14:00:00.000Z
 ---
@@ -23,63 +24,69 @@ The Task History page shows all completed and failed tasks in a filterable Prime
 ## Implementation Steps
 
 1. **Create `frontend/src/pages/TaskHistory.vue`**:
+
    ```vue
    <script setup lang="ts">
-   import { ref, computed } from 'vue'
-   import { useQuery, useQueryClient } from '@tanstack/vue-query'
-   import { useToast } from 'primevue/usetoast'
-   import { useRouter } from 'vue-router'
-   import DataTable from 'primevue/datatable'
-   import Column from 'primevue/column'
-   import InputText from 'primevue/inputtext'
-   import Button from 'primevue/button'
-   import Select from 'primevue/select'      // PrimeVue 4 — formerly Dropdown
-   import { useNexus } from '../composables/useNexus'
-   import StatusTag from '../components/StatusTag.vue'
-   import TaskDetail from '../components/TaskDetail.vue'
-   import type { Task } from '../types/domain'
+   import { ref, computed } from 'vue';
+   import { useQuery, useQueryClient } from '@tanstack/vue-query';
+   import { useToast } from 'primevue/usetoast';
+   import { useRouter } from 'vue-router';
+   import DataTable from 'primevue/datatable';
+   import Column from 'primevue/column';
+   import InputText from 'primevue/inputtext';
+   import Button from 'primevue/button';
+   import Select from 'primevue/select'; // PrimeVue 4 — formerly Dropdown
+   import { useNexus } from '../composables/useNexus';
+   import StatusTag from '../components/StatusTag.vue';
+   import TaskDetail from '../components/TaskDetail.vue';
+   import type { Task } from '../types/domain';
 
-   const nexus = useNexus()
-   const toast = useToast()
-   const router = useRouter()
-   const queryClient = useQueryClient()
+   const nexus = useNexus();
+   const toast = useToast();
+   const router = useRouter();
+   const queryClient = useQueryClient();
 
-   const filterStatus = ref<'all' | 'completed' | 'failed'>('all')
-   const filterProject = ref('')
-   const selectedTask = ref<Task | null>(null)
+   const filterStatus = ref<'all' | 'completed' | 'failed'>('all');
+   const filterProject = ref('');
+   const selectedTask = ref<Task | null>(null);
 
    const statusOptions = [
      { label: 'All', value: 'all' },
      { label: 'Completed', value: 'completed' },
      { label: 'Failed', value: 'failed' },
-   ]
+   ];
 
    const { data: completed } = useQuery({
      queryKey: ['history', 'completed'],
      queryFn: () => nexus.getAllTasks('completed'),
-     refetchInterval: 5000
-   })
+     refetchInterval: 5000,
+   });
    const { data: failed } = useQuery({
      queryKey: ['history', 'failed'],
      queryFn: () => nexus.getAllTasks('failed'),
-     refetchInterval: 5000
-   })
+     refetchInterval: 5000,
+   });
 
    const allTasks = computed(() => {
-     const c = filterStatus.value !== 'failed' ? (completed.value ?? []) : []
-     const f = filterStatus.value !== 'completed' ? (failed.value ?? []) : []
+     const c = filterStatus.value !== 'failed' ? (completed.value ?? []) : [];
+     const f = filterStatus.value !== 'completed' ? (failed.value ?? []) : [];
      return [...c, ...f]
-       .filter(t => !filterProject.value || t.projectPath.includes(filterProject.value))
-       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-   })
+       .filter((t) => !filterProject.value || t.projectPath.includes(filterProject.value))
+       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+   });
 
    async function retryTask(task: Task) {
      try {
-       const id = await nexus.submitTask(task.projectPath, task.prompt)
-       toast.add({ severity: 'success', summary: 'Retried', detail: `New task: ${id}`, life: 4000 })
-       router.push('/queue')
+       const id = await nexus.submitTask(task.projectPath, task.prompt);
+       toast.add({
+         severity: 'success',
+         summary: 'Retried',
+         detail: `New task: ${id}`,
+         life: 4000,
+       });
+       router.push('/queue');
      } catch (e) {
-       toast.add({ severity: 'error', summary: 'Retry failed', detail: String(e), life: 4000 })
+       toast.add({ severity: 'error', summary: 'Retry failed', detail: String(e), life: 4000 });
      }
    }
    </script>
@@ -90,12 +97,26 @@ The Task History page shows all completed and failed tasks in a filterable Prime
          <h1 class="text-xl font-semibold">Task History</h1>
          <div class="flex gap-2">
            <InputText v-model="filterProject" placeholder="Filter by project..." class="w-56" />
-           <Select v-model="filterStatus" :options="statusOptions" optionLabel="label" optionValue="value" class="w-36" />
+           <Select
+             v-model="filterStatus"
+             :options="statusOptions"
+             optionLabel="label"
+             optionValue="value"
+             class="w-36"
+           />
          </div>
        </div>
 
-       <DataTable :value="allTasks" dataKey="id" stripedRows scrollable scrollHeight="flex"
-                  selectionMode="single" v-model:selection="selectedTask" class="flex-1">
+       <DataTable
+         :value="allTasks"
+         dataKey="id"
+         stripedRows
+         scrollable
+         scrollHeight="flex"
+         selectionMode="single"
+         v-model:selection="selectedTask"
+         class="flex-1"
+       >
          <template #empty>No tasks in history yet.</template>
          <Column field="status" header="Status">
            <template #body="{ data }"><StatusTag :status="data.status" /></template>
@@ -108,7 +129,9 @@ The Task History page shows all completed and failed tasks in a filterable Prime
            </template>
          </Column>
          <Column field="prompt" header="Prompt">
-           <template #body="{ data }">{{ data.prompt.slice(0, 80) }}{{ data.prompt.length > 80 ? '…' : '' }}</template>
+           <template #body="{ data }"
+             >{{ data.prompt.slice(0, 80) }}{{ data.prompt.length > 80 ? '…' : '' }}</template
+           >
          </Column>
          <Column field="retryCount" header="Retries" style="width: 80px" />
          <Column field="updatedAt" header="Completed">
@@ -116,57 +139,74 @@ The Task History page shows all completed and failed tasks in a filterable Prime
          </Column>
          <Column header="Actions" style="width: 100px">
            <template #body="{ data }">
-             <Button icon="pi pi-replay" text rounded size="small" title="Retry"
-                     @click.stop="retryTask(data)" />
+             <Button
+               icon="pi pi-replay"
+               text
+               rounded
+               size="small"
+               title="Retry"
+               @click.stop="retryTask(data)"
+             />
            </template>
          </Column>
        </DataTable>
 
-       <TaskDetail v-model:visible="!!selectedTask" :task="selectedTask"
-                   @close="selectedTask = null" @retry="retryTask" />
+       <TaskDetail
+         v-model:visible="!!selectedTask"
+         :task="selectedTask"
+         @close="selectedTask = null"
+         @retry="retryTask"
+       />
      </div>
    </template>
    ```
+
    Import `relativeTime` from `../utils/time`.
 
 2. **Create `frontend/src/components/TaskDetail.vue`** (PrimeVue Drawer, right side, 520px wide):
+
    ```vue
    <script setup lang="ts">
-   import { computed } from 'vue'
-   import { useQuery, useQueryClient } from '@tanstack/vue-query'
-   import { useToast } from 'primevue/usetoast'
-   import Drawer from 'primevue/drawer'
-   import Button from 'primevue/button'
-   import Tag from 'primevue/tag'
-   import { useNexus } from '../composables/useNexus'
-   import StatusTag from './StatusTag.vue'
-   import type { Task } from '../types/domain'
+   import { computed } from 'vue';
+   import { useQuery, useQueryClient } from '@tanstack/vue-query';
+   import { useToast } from 'primevue/usetoast';
+   import Drawer from 'primevue/drawer';
+   import Button from 'primevue/button';
+   import Tag from 'primevue/tag';
+   import { useNexus } from '../composables/useNexus';
+   import StatusTag from './StatusTag.vue';
+   import type { Task } from '../types/domain';
 
-   const props = defineProps<{ visible: boolean; task: Task | null }>()
-   const emit = defineEmits<{ 'update:visible': [boolean]; close: []; retry: [Task] }>()
+   const props = defineProps<{ visible: boolean; task: Task | null }>();
+   const emit = defineEmits<{ 'update:visible': [boolean]; close: []; retry: [Task] }>();
 
-   const nexus = useNexus()
-   const toast = useToast()
-   const queryClient = useQueryClient()
+   const nexus = useNexus();
+   const toast = useToast();
+   const queryClient = useQueryClient();
 
-   const sessionKey = computed(() => props.task?.projectPath ?? '')
+   const sessionKey = computed(() => props.task?.projectPath ?? '');
    const { data: messages } = useQuery({
      queryKey: computed(() => ['session', sessionKey.value]),
      queryFn: () => nexus.getSession(sessionKey.value),
      enabled: computed(() => !!props.task),
-   })
+   });
 
    async function clearSession() {
-     if (!props.task) return
-     await nexus.clearSession(props.task.projectPath)
-     await queryClient.invalidateQueries({ queryKey: ['session', sessionKey.value] })
-     toast.add({ severity: 'info', summary: 'Session cleared', life: 3000 })
+     if (!props.task) return;
+     await nexus.clearSession(props.task.projectPath);
+     await queryClient.invalidateQueries({ queryKey: ['session', sessionKey.value] });
+     toast.add({ severity: 'info', summary: 'Session cleared', life: 3000 });
    }
    </script>
 
    <template>
-     <Drawer :visible="visible" @update:visible="emit('update:visible', $event)"
-             position="right" class="!w-[520px]" @hide="emit('close')">
+     <Drawer
+       :visible="visible"
+       @update:visible="emit('update:visible', $event)"
+       position="right"
+       class="!w-[520px]"
+       @hide="emit('close')"
+     >
        <template #header>
          <div class="flex items-center gap-2">
            <StatusTag v-if="task" :status="task.status" />
@@ -177,41 +217,87 @@ The Task History page shows all completed and failed tasks in a filterable Prime
        <template v-if="task">
          <!-- Prompt -->
          <section class="mb-6">
-           <h3 class="text-xs uppercase text-surface-500 mb-2 font-semibold tracking-wide">Prompt</h3>
-           <pre class="whitespace-pre-wrap text-sm bg-surface-900 rounded-lg p-3">{{ task.prompt }}</pre>
+           <h3 class="text-xs uppercase text-surface-500 mb-2 font-semibold tracking-wide">
+             Prompt
+           </h3>
+           <pre class="whitespace-pre-wrap text-sm bg-surface-900 rounded-lg p-3">{{
+             task.prompt
+           }}</pre>
          </section>
 
          <!-- Session history -->
          <section class="mb-6">
            <div class="flex items-center justify-between mb-2">
-             <h3 class="text-xs uppercase text-surface-500 font-semibold tracking-wide">Session History</h3>
-             <Button label="Clear" icon="pi pi-trash" text size="small" severity="secondary" @click="clearSession" />
+             <h3 class="text-xs uppercase text-surface-500 font-semibold tracking-wide">
+               Session History
+             </h3>
+             <Button
+               label="Clear"
+               icon="pi pi-trash"
+               text
+               size="small"
+               severity="secondary"
+               @click="clearSession"
+             />
            </div>
-           <div v-if="!messages?.length" class="text-sm text-surface-600 italic">No session history.</div>
+           <div v-if="!messages?.length" class="text-sm text-surface-600 italic">
+             No session history.
+           </div>
            <div v-else class="space-y-2 max-h-64 overflow-y-auto">
-             <div v-for="(msg, i) in messages" :key="i"
-                  :class="msg.role === 'user' ? 'text-right' : 'text-left'">
-               <Tag :value="msg.role" :severity="msg.role === 'user' ? 'info' : 'secondary'" class="text-xs mb-1" />
-               <pre class="whitespace-pre-wrap text-xs bg-surface-900 rounded-lg p-2 inline-block max-w-[90%] text-left">{{ msg.content }}</pre>
+             <div
+               v-for="(msg, i) in messages"
+               :key="i"
+               :class="msg.role === 'user' ? 'text-right' : 'text-left'"
+             >
+               <Tag
+                 :value="msg.role"
+                 :severity="msg.role === 'user' ? 'info' : 'secondary'"
+                 class="text-xs mb-1"
+               />
+               <pre
+                 class="whitespace-pre-wrap text-xs bg-surface-900 rounded-lg p-2 inline-block max-w-[90%] text-left"
+                 >{{ msg.content }}</pre
+               >
              </div>
            </div>
          </section>
 
          <!-- Source writeback info (shown only if sourceProjectPath is set) -->
          <section v-if="task.sourceProjectPath" class="mb-6">
-           <h3 class="text-xs uppercase text-surface-500 mb-2 font-semibold tracking-wide">Writeback Source</h3>
+           <h3 class="text-xs uppercase text-surface-500 mb-2 font-semibold tracking-wide">
+             Writeback Source
+           </h3>
            <table class="text-sm w-full">
-             <tr><td class="text-surface-500 pr-3 py-0.5">Project</td><td class="font-mono text-xs">{{ task.sourceProjectPath }}</td></tr>
-             <tr><td class="text-surface-500 pr-3 py-0.5">Task ID</td><td class="font-mono text-xs">{{ task.sourceTaskId }}</td></tr>
-             <tr v-if="task.sourcePlanId"><td class="text-surface-500 pr-3 py-0.5">Plan ID</td><td class="font-mono text-xs">{{ task.sourcePlanId }}</td></tr>
+             <tr>
+               <td class="text-surface-500 pr-3 py-0.5">Project</td>
+               <td class="font-mono text-xs">{{ task.sourceProjectPath }}</td>
+             </tr>
+             <tr>
+               <td class="text-surface-500 pr-3 py-0.5">Task ID</td>
+               <td class="font-mono text-xs">{{ task.sourceTaskId }}</td>
+             </tr>
+             <tr v-if="task.sourcePlanId">
+               <td class="text-surface-500 pr-3 py-0.5">Plan ID</td>
+               <td class="font-mono text-xs">{{ task.sourcePlanId }}</td>
+             </tr>
            </table>
          </section>
 
          <!-- Metadata -->
          <section>
-           <h3 class="text-xs uppercase text-surface-500 mb-2 font-semibold tracking-wide">Metadata</h3>
+           <h3 class="text-xs uppercase text-surface-500 mb-2 font-semibold tracking-wide">
+             Metadata
+           </h3>
            <table class="text-xs w-full">
-             <tr v-for="[k,v] in [['Project', task.projectPath], ['Retries', task.retryCount], ['Created', task.createdAt], ['Updated', task.updatedAt]]" :key="k">
+             <tr
+               v-for="[k, v] in [
+                 ['Project', task.projectPath],
+                 ['Retries', task.retryCount],
+                 ['Created', task.createdAt],
+                 ['Updated', task.updatedAt],
+               ]"
+               :key="k"
+             >
                <td class="text-surface-500 pr-3 py-0.5 w-20">{{ k }}</td>
                <td class="font-mono break-all">{{ v }}</td>
              </tr>
@@ -220,8 +306,12 @@ The Task History page shows all completed and failed tasks in a filterable Prime
        </template>
 
        <template #footer>
-         <Button label="Retry Task" icon="pi pi-replay" class="w-full"
-                 @click="task && emit('retry', task)" />
+         <Button
+           label="Retry Task"
+           icon="pi pi-replay"
+           class="w-full"
+           @click="task && emit('retry', task)"
+         />
        </template>
      </Drawer>
    </template>

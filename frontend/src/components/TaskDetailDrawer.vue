@@ -16,7 +16,9 @@
         </div>
         <div class="flex justify-between items-center">
           <span class="text-slate-500 text-xs">Command</span>
-          <span class="font-mono text-xs text-violet-400 uppercase">{{ task.command || 'auto' }}</span>
+          <span class="font-mono text-xs text-violet-400 uppercase">{{
+            task.command || 'auto'
+          }}</span>
         </div>
         <div class="flex justify-between items-center">
           <span class="text-slate-500 text-xs">Created</span>
@@ -30,7 +32,9 @@
 
       <!-- Instruction -->
       <div>
-        <p class="text-xs text-slate-500 mb-2 uppercase tracking-wider font-semibold">Instruction</p>
+        <p class="text-xs text-slate-500 mb-2 uppercase tracking-wider font-semibold">
+          Instruction
+        </p>
         <p class="text-white leading-relaxed bg-[#0a0a10] border border-white/5 rounded-lg p-3">
           {{ task.instruction }}
         </p>
@@ -43,7 +47,9 @@
           <p class="font-mono text-xs text-slate-400 break-all">{{ task.projectPath || '—' }}</p>
         </div>
         <div>
-          <p class="text-xs text-slate-500 mb-1 uppercase tracking-wider font-semibold">Target File</p>
+          <p class="text-xs text-slate-500 mb-1 uppercase tracking-wider font-semibold">
+            Target File
+          </p>
           <p class="font-mono text-xs text-slate-400">{{ task.targetFile || '—' }}</p>
         </div>
       </div>
@@ -62,8 +68,10 @@
 
       <div v-if="task.logs">
         <p class="text-xs text-slate-500 mb-2 uppercase tracking-wider font-semibold">Output</p>
-        <pre class="text-xs text-emerald-300/80 bg-[#0a0a10] border border-white/5 rounded-lg p-3
-                    overflow-auto max-h-64 whitespace-pre-wrap font-mono leading-relaxed">{{ task.logs }}</pre>
+        <pre
+          class="text-xs text-emerald-300/80 bg-[#0a0a10] border border-white/5 rounded-lg p-3 overflow-auto max-h-64 whitespace-pre-wrap font-mono leading-relaxed"
+          >{{ task.logs }}</pre
+        >
       </div>
 
       <div v-if="task.status === 'QUEUED'" class="pt-2">
@@ -82,53 +90,46 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import Drawer from 'primevue/drawer'
-import Button from 'primevue/button'
-import { useToast } from 'primevue/usetoast'
-import { cancelTask } from '../types/wails'
-import type { Task } from '../types/domain'
-import TaskStatusBadge from './TaskStatusBadge.vue'
+import { ref, computed } from 'vue';
+import Drawer from 'primevue/drawer';
+import Button from 'primevue/button';
+import { useToast } from 'primevue/usetoast';
+import { cancelTask } from '../types/wails';
+import type { Task } from '../types/domain';
+import TaskStatusBadge from './TaskStatusBadge.vue';
+import { formatDate } from '../utils/time';
 
-const props = defineProps<{ task: Task | null; modelValue: boolean }>()
+const props = defineProps<{ task: Task | null; modelValue: boolean }>();
 const emit = defineEmits<{
-  'update:modelValue': [v: boolean]
-  cancelled: [id: string]
-}>()
+  'update:modelValue': [v: boolean];
+  cancelled: [id: string];
+}>();
 
 const visible = computed({
   get: () => props.modelValue,
   set: (v) => emit('update:modelValue', v),
-})
+});
 
-const toast = useToast()
-const cancelling = ref(false)
+const toast = useToast();
+const cancelling = ref(false);
 
 async function handleCancel() {
-  if (!props.task) return
-  cancelling.value = true
+  if (!props.task) return;
+  cancelling.value = true;
   try {
-    await cancelTask(props.task.id)
-    toast.add({ severity: 'success', summary: 'Task cancelled', life: 2000 })
-    emit('cancelled', props.task.id)
-    visible.value = false
+    await cancelTask(props.task.id);
+    toast.add({ severity: 'success', summary: 'Task cancelled', life: 2000 });
+    emit('cancelled', props.task.id);
+    visible.value = false;
   } catch (e) {
     toast.add({
       severity: 'error',
       summary: 'Cancel failed',
       detail: e instanceof Error ? e.message : String(e),
       life: 4000,
-    })
+    });
   } finally {
-    cancelling.value = false
-  }
-}
-
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString()
-  } catch {
-    return 'Invalid date'
+    cancelling.value = false;
   }
 }
 </script>

@@ -3,7 +3,8 @@ id: TASK-022
 title: GUI — Settings page (read-only config overview, Vue 3 + PrimeVue 4)
 role: devops
 planId: PLAN-002
-status: todo
+status: done
+completedAt: 2026-03-14T18:30:00.000Z
 dependencies: [TASK-017, TASK-018]
 createdAt: 2026-03-09T14:00:00.000Z
 ---
@@ -27,6 +28,7 @@ The Settings page shows the current nexusOrchestrator configuration in a read-on
    - Page title: `<h1>Settings</h1>` with sub-text "Read-only. Restart daemon to apply env var changes."
 
 2. **Section "LLM Providers"** using PrimeVue `DataTable`:
+
    ```vue
    <Panel header="LLM Providers">
      <DataTable :value="providers ?? []" size="small">
@@ -46,6 +48,7 @@ The Settings page shows the current nexusOrchestrator configuration in a read-on
    ```
 
 3. **Section "Network"** using PrimeVue `Fieldset`:
+
    ```vue
    <Fieldset legend="Network Addresses">
      <div class="grid grid-cols-2 gap-4 text-sm">
@@ -62,12 +65,14 @@ The Settings page shows the current nexusOrchestrator configuration in a read-on
    ```
 
 4. **Section "Queue & Storage"**: shows `stats.queueDepth` (live, `refetchInterval: 5000`) + env var defaults:
+
    ```
    NEXUS_MAX_QUEUE=500
    NEXUS_DB_PATH=nexus.db
    ```
 
 5. **Section "Environment Variables"** with copy-to-clipboard:
+
    ```vue
    <Panel header="Environment Variables">
      <pre class="bg-surface-900 rounded-lg p-4 text-xs font-mono text-surface-300 select-all">
@@ -79,6 +84,7 @@ The Settings page shows the current nexusOrchestrator configuration in a read-on
              @click="copyEnvVars" />
    </Panel>
    ```
+
    `copyEnvVars` uses `navigator.clipboard.writeText(envVarsText)` with toast feedback.
 
 6. **Section "About"**:
@@ -95,7 +101,7 @@ The Settings page shows the current nexusOrchestrator configuration in a read-on
 - [ ] `cd frontend && npm run type-check` exits 0
 - [ ] `frontend/src/pages/Settings.vue` exists with all 5 sections
 - [ ] "Copy to clipboard" button works (uses `navigator.clipboard`)
-- [ ] Provider table uses live `getProviders()` data with status Tag  
+- [ ] Provider table uses live `getProviders()` data with status Tag
 - [ ] No editable inputs — read-only page only
 - [ ] Settings routed at `/settings` via Vue Router
 
