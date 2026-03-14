@@ -11,7 +11,7 @@ const (
 	// SessionSourceVSCode is pushed by the nexus VS Code extension.
 	SessionSourceVSCode AISessionSource = "vscode"
 	// SessionSourceHTTP is posted to POST /api/ai-sessions.
-	SessionSourceHTTP AISessionSource = "http"
+	SessionSourceHTTP             AISessionSource = "http"
 	SessionSourceVSCodeDiscovered AISessionSource = "vscode-discovered"
 )
 
@@ -33,13 +33,13 @@ func (s AISessionStatus) IsTerminal() bool {
 // AISession tracks a registered external AI agent session (GitHub Copilot,
 // Claude Code, Cursor, etc.) that nexusOrchestrator can route tasks to.
 type AISession struct {
-	ID            string          `json:"id"`
-	Source        AISessionSource `json:"source"`
-	ExternalID    string          `json:"externalId,omitempty"`
-	AgentName     string          `json:"agentName"`
-	ProjectPath   string          `json:"projectPath,omitempty"`
-	Status        AISessionStatus `json:"status"`
-	LastActivity  time.Time       `json:"lastActivity"`
+	ID                  string          `json:"id"`
+	Source              AISessionSource `json:"source"`
+	ExternalID          string          `json:"externalId,omitempty"`
+	AgentName           string          `json:"agentName"`
+	ProjectPath         string          `json:"projectPath,omitempty"`
+	Status              AISessionStatus `json:"status"`
+	LastActivity        time.Time       `json:"lastActivity"`
 	RoutedTaskIDs       []string        `json:"routedTaskIds,omitempty"`
 	CreatedAt           time.Time       `json:"createdAt"`
 	UpdatedAt           time.Time       `json:"updatedAt"`
