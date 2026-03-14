@@ -151,6 +151,13 @@ type Orchestrator interface {
 	// PurgeDisconnectedSessions deletes all AI sessions with status "disconnected"
 	// that have been inactive for more than 2 hours. Returns the count deleted.
 	PurgeDisconnectedSessions(ctx context.Context) (int, error)
+	// GetDiscoveredAgents returns agents detected by the last AgentScanner run,
+	// triggering an on-demand scan if the cache is older than 30 seconds.
+	GetDiscoveredAgents(ctx context.Context) ([]domain.DiscoveredAgent, error)
+	// DelegateToNexus marks the AISession as delegated to the orchestrator queue
+	// and returns a canonical delegation instruction string for the caller to deliver
+	// to the external agent. Returns domain.ErrNotFound if sessionID does not exist.
+	DelegateToNexus(ctx context.Context, sessionID string) (string, error)
 }
 
 // EventType identifies a task lifecycle event.
@@ -186,6 +193,12 @@ type EventBroadcaster interface {
 // SystemScanner scans the local system for AI providers/agents.
 type SystemScanner interface {
 	Scan(ctx context.Context) ([]domain.DiscoveredProvider, error)
+}
+
+// AgentScanner scans the local system for running AI agent tools.
+// Distinct from SystemScanner which probes LLM server endpoints.
+type AgentScanner interface {
+	ScanAgents(ctx context.Context) ([]domain.DiscoveredAgent, error)
 }
 
 // ProviderConfigRepository is the outbound port for persisting and querying

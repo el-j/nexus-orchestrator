@@ -102,6 +102,12 @@ func (m *mockOrchestrator) PurgeDisconnectedSessions(_ context.Context) (int, er
 func (m *mockOrchestrator) GetAllTasks() ([]domain.Task, error) {
 	return m.tasksReturn, m.errReturn
 }
+func (m *mockOrchestrator) GetDiscoveredAgents(_ context.Context) ([]domain.DiscoveredAgent, error) {
+	return nil, nil
+}
+func (m *mockOrchestrator) DelegateToNexus(_ context.Context, _ string) (string, error) {
+	return "", nil
+}
 
 var _ ports.Orchestrator = (*mockOrchestrator)(nil)
 

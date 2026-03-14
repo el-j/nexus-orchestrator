@@ -19,6 +19,13 @@ import (
 	"github.com/google/uuid"
 )
 
+// discoveredAgentStore is the minimal subset of the discovered-agent storage
+// interface used by OrchestratorService.
+type discoveredAgentStore interface {
+	UpsertDiscoveredAgent(ctx context.Context, a domain.DiscoveredAgent) error
+	ListDiscoveredAgents(ctx context.Context) ([]domain.DiscoveredAgent, error)
+}
+
 // ErrQueueFull is returned by SubmitTask when the number of QUEUED tasks reaches the queue cap.
 var ErrQueueFull = errors.New("queue is full")
 
@@ -67,6 +74,10 @@ type OrchestratorService struct {
 	lastScan           []domain.DiscoveredProvider
 	scanMu             sync.RWMutex // guards lastScan; separate from task-queue mu
 	aiSessionRepo      ports.AISessionRepository
+	agentScanner       ports.AgentScanner
+	agentRepo          discoveredAgentStore
+	lastAgentScan      time.Time
+	lastAgentScanMu    sync.Mutex
 	maxRetries         int
 	maxResponseTokens  int
 	cleanupInterval    time.Duration
@@ -533,6 +544,16 @@ func (o *OrchestratorService) SetAISessionRepo(r ports.AISessionRepository) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	o.aiSessionRepo = r
+}
+
+// SetAgentScanner wires the scanner used to detect running AI agent tools.
+func (o *OrchestratorService) SetAgentScanner(s ports.AgentScanner) {
+	o.agentScanner = s
+}
+
+// SetDiscoveredAgentRepo wires the repository used to persist discovered agents.
+func (o *OrchestratorService) SetDiscoveredAgentRepo(r discoveredAgentStore) {
+	o.agentRepo = r
 }
 
 // CreateDraft creates a task with StatusDraft without entering the execution queue.
@@ -1302,6 +1323,79 @@ func extractCode(s string) string {
 		return strings.Join(lines[start+1:], "\n")
 	}
 	return strings.Join(lines[start+1:end], "\n")
+}
+
+func (o *OrchestratorService) GetDiscoveredAgents(ctx context.Context) ([]domain.DiscoveredAgent, error) {
+	o.lastAgentScanMu.Lock()
+	shouldScan := o.agentScanner != nil && (o.lastAgentScan.IsZero() || time.Since(o.lastAgentScan) > 30*time.Second)
+	o.lastAgentScanMu.Unlock()
+
+	var scanned []domain.DiscoveredAgent
+	if shouldScan {
+		agents, err := o.agentScanner.ScanAgents(ctx)
+		if err != nil {
+			log.Printf("orchestrator: scan agents: %v", err)
+		} else {
+			scanned = agents
+			if o.agentRepo != nil {
+				for _, a := range agents {
+					if err := o.agentRepo.UpsertDiscoveredAgent(ctx, a); err != nil {
+						log.Printf("orchestrator: upsert discovered agent %s: %v", a.ID, err)
+					}
+				}
+			}
+		}
+		o.lastAgentScanMu.Lock()
+		o.lastAgentScan = time.Now()
+		o.lastAgentScanMu.Unlock()
+	}
+
+	if o.agentRepo != nil {
+		return o.agentRepo.ListDiscoveredAgents(ctx)
+	}
+	return scanned, nil
+}
+
+func (o *OrchestratorService) DelegateToNexus(ctx context.Context, sessionID string) (string, error) {
+	if o.aiSessionRepo == nil {
+		return "", fmt.Errorf("orchestrator: delegate to nexus: session repo not configured")
+	}
+	session, err := o.aiSessionRepo.GetAISessionByID(ctx, sessionID)
+	if err != nil {
+		return "", fmt.Errorf("orchestrator: delegate to nexus: %w", err)
+	}
+	now := time.Now()
+	session.DelegatedToNexus = true
+	session.DelegationTimestamp = &now
+	if err := o.aiSessionRepo.SaveAISession(ctx, session); err != nil {
+		return "", fmt.Errorf("orchestrator: delegate to nexus: save: %w", err)
+	}
+	return delegationInstruction(session, now), nil
+}
+
+func delegationInstruction(session domain.AISession, now time.Time) string {
+	return fmt.Sprintf(`You are now operating under nexusOrchestrator coordination.
+
+YOUR NEW WORKFLOW:
+1. Check the nexus queue:  GET http://127.0.0.1:63987/api/tasks
+2. Claim the next QUEUED task:
+   POST http://127.0.0.1:63987/api/tasks/{id}/claim
+   Body: {"sessionId": "%s"}
+3. Execute the task's instruction for %s.
+4. Report completion:
+   PUT http://127.0.0.1:63987/api/tasks/{id}/status
+   Body: {"sessionId": "%s", "status": "COMPLETED", "logs": "<summary>"}
+5. Repeat from step 1.  If queue is empty, wait 30 s and check again.
+
+Do NOT take autonomous actions outside the nexus task queue while this delegation is active.
+
+Nexus session ID: %s
+Project:          %s
+Timestamp:        %s`,
+		session.ID, session.ProjectPath,
+		session.ID,
+		session.ID, session.ProjectPath,
+		now.UTC().Format(time.RFC3339))
 }
 
 // estimateTokens approximates the total token count for a message slice using

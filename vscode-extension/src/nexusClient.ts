@@ -63,6 +63,29 @@ export interface AISession {
   source: string;
   status: string;
   lastActivity: string;
+  projectPath?: string;
+  delegatedToNexus?: boolean;
+  delegationTimestamp?: string;
+  agentCapabilities?: string[];
+  detectionMethod?: string;
+}
+
+export interface DiscoveredAgent {
+  id: string;
+  kind: string;
+  name: string;
+  detectionMethod: string;
+  processName?: string;
+  cliPath?: string;
+  configPath?: string;
+  mcpEndpoint?: string;
+  isRunning: boolean;
+  lastSeen: string;
+}
+
+export interface DelegateResponse {
+  instruction: string;
+  sessionId: string;
 }
 
 export interface RegisterSessionRequest {
@@ -103,6 +126,11 @@ export class NexusClient {
   /** Return all tasks currently in the queue. */
   async getTasks(): Promise<Task[]> {
     return this.get<Task[]>("/api/tasks");
+  }
+
+  /** Return ALL tasks regardless of status (completed, failed, queued, etc.). */
+  async getAllTasks(): Promise<Task[]> {
+    return this.get<Task[]>('/api/tasks/all')
   }
 
   /** Return a single task by ID. Throws if not found (404). */
@@ -178,6 +206,24 @@ export class NexusClient {
   /** Get all tasks bound to a specific AI session. */
   async getSessionTasks(sessionId: string): Promise<Task[]> {
     return this.get<Task[]>(`/api/ai-sessions/${encodeURIComponent(sessionId)}/tasks`);
+  }
+
+  /** Return all registered AI sessions (alias with explicit name). */
+  async listAISessions(): Promise<AISession[]> {
+    return this.get<AISession[]>('/api/ai-sessions');
+  }
+
+  /** Return all discovered AI agents on this machine. */
+  async getDiscoveredAgents(): Promise<DiscoveredAgent[]> {
+    return this.get<DiscoveredAgent[]>('/api/ai-sessions/discovered');
+  }
+
+  /** Delegate a session to nexusOrchestrator for task handling. */
+  async delegateSession(sessionId: string): Promise<DelegateResponse> {
+    return this.post<DelegateResponse>(
+      `/api/ai-sessions/${encodeURIComponent(sessionId)}/delegate`,
+      {}
+    );
   }
 
   /**

@@ -125,9 +125,11 @@ func (s *Server) Handler() http.Handler {
 	r.Post("/api/ai-sessions", s.handleRegisterAISession)
 	r.Get("/api/ai-sessions", s.handleListAISessions)
 	r.Delete("/api/ai-sessions", s.handlePurgeDisconnectedSessions)
+	r.Get("/api/ai-sessions/discovered", s.handleGetDiscoveredAgents)
 	r.Delete("/api/ai-sessions/{id}", s.handleDeregisterAISession)
 	r.Post("/api/ai-sessions/{id}/heartbeat", s.handleHeartbeatAISession)
 	r.Get("/api/ai-sessions/{id}/tasks", s.handleGetSessionTasks)
+	r.Post("/api/ai-sessions/{id}/delegate", s.handleDelegateToNexus)
 
 	// Task claim + external status update
 	r.Post("/api/tasks/{id}/claim", s.handleClaimTask)
@@ -138,6 +140,10 @@ func (s *Server) Handler() http.Handler {
 
 	// GET /api/events — SSE stream for task lifecycle and log events
 	r.Get("/api/events", s.handleEvents)
+
+	// Discovery + how-to
+	r.Get("/api/howto", s.handleHowto)
+	r.Get("/.well-known/nexus.json", s.handleWellKnownNexus)
 
 	return r
 }
@@ -693,6 +699,39 @@ func (s *Server) handleUpdateTaskStatus(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(task)
+}
+
+func (s *Server) handleGetDiscoveredAgents(w http.ResponseWriter, r *http.Request) {
+	agents, err := s.orch.GetDiscoveredAgents(r.Context())
+	if err != nil {
+		log.Printf("httpapi: get discovered agents: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode([]domain.DiscoveredAgent{})
+		return
+	}
+	if agents == nil {
+		agents = []domain.DiscoveredAgent{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(agents)
+}
+
+func (s *Server) handleDelegateToNexus(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	instruction, err := s.orch.DelegateToNexus(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			writeJSONError(w, "session not found", http.StatusNotFound)
+			return
+		}
+		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"instruction": instruction,
+		"sessionId":   id,
+	})
 }
 
 func (s *Server) handleGetSessionTasks(w http.ResponseWriter, r *http.Request) {

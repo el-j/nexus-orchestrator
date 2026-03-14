@@ -12,6 +12,7 @@ const (
 	SessionSourceVSCode AISessionSource = "vscode"
 	// SessionSourceHTTP is posted to POST /api/ai-sessions.
 	SessionSourceHTTP AISessionSource = "http"
+	SessionSourceVSCodeDiscovered AISessionSource = "vscode-discovered"
 )
 
 // AISessionStatus represents the lifecycle state of an AI agent session.
@@ -39,9 +40,13 @@ type AISession struct {
 	ProjectPath   string          `json:"projectPath,omitempty"`
 	Status        AISessionStatus `json:"status"`
 	LastActivity  time.Time       `json:"lastActivity"`
-	RoutedTaskIDs []string        `json:"routedTaskIds,omitempty"`
-	CreatedAt     time.Time       `json:"createdAt"`
-	UpdatedAt     time.Time       `json:"updatedAt"`
+	RoutedTaskIDs       []string        `json:"routedTaskIds,omitempty"`
+	CreatedAt           time.Time       `json:"createdAt"`
+	UpdatedAt           time.Time       `json:"updatedAt"`
+	DelegatedToNexus    bool            `json:"delegatedToNexus"`
+	DelegationTimestamp *time.Time      `json:"delegationTimestamp,omitempty"`
+	AgentCapabilities   []string        `json:"agentCapabilities,omitempty"`
+	DetectionMethod     string          `json:"detectionMethod,omitempty"`
 }
 
 // AISessionEvent is emitted by OrchestratorService when an AI agent session

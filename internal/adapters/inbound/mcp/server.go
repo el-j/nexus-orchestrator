@@ -51,6 +51,9 @@ type rpcError struct {
 type serverInfo struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
+	// Instructions is surfaced by MCP clients (e.g. Claude Desktop, Cursor) as a
+	// system-level hint that tells the AI how to start working with this server.
+	Instructions string `json:"instructions,omitempty"`
 }
 
 type capabilities struct {
@@ -188,7 +191,14 @@ func (s *Server) handleInitialize(w http.ResponseWriter, req rpcRequest) {
 	result := initializeResult{
 		ProtocolVersion: "2024-11-05",
 		Capabilities:    capabilities{Tools: map[string]any{}},
-		ServerInfo:      serverInfo{Name: "nexusOrchestrator", Version: "1.0.0"},
+		ServerInfo: serverInfo{
+			Name:    "nexusOrchestrator",
+			Version: "1.0.0",
+			Instructions: "You are connected to nexusOrchestrator — a multi-LLM AI task " +
+				"orchestration server. Call the 'howto' tool first to receive a complete " +
+				"integration guide. Use 'register_session' to identify yourself, " +
+				"'get_queue' to see available tasks, and 'claim_task' to start working.",
+		},
 	}
 	resp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: result}
 	_ = json.NewEncoder(w).Encode(resp)
@@ -248,6 +258,8 @@ func (s *Server) handleToolCall(w http.ResponseWriter, r *http.Request, req rpcR
 		result, err = s.toolClaimTask(r.Context(), p.Arguments)
 	case "update_task_status":
 		result, err = s.toolUpdateTaskStatus(r.Context(), p.Arguments)
+	case "howto":
+		result, err = s.toolHowto()
 	default:
 		writeError(w, req.ID, codeMethodNotFound, fmt.Sprintf("unknown tool: %s", p.Name))
 		return
@@ -572,6 +584,71 @@ func (s *Server) toolUpdateTaskStatus(ctx context.Context, args json.RawMessage)
 
 // ----- Helpers -----
 
+// toolHowto returns the complete integration guide as a text block.
+// This is the in-protocol equivalent of GET /api/howto — useful when an AI
+// agent has only MCP access and no direct HTTP connectivity.
+func (s *Server) toolHowto() (callToolResult, error) {
+	guide := `nexusOrchestrator — Integration Guide
+======================================
+
+WHAT IS THIS?
+A multi-LLM AI task orchestration server. Humans (or AIs) submit tasks;
+AI agents discover the queue, claim tasks, execute them, and report results.
+
+QUICK START (AI WORKER)
+1. call register_session   — identify yourself with a name, role, and model
+2. call get_queue          — see tasks available to claim
+3. call claim_task         — take ownership of a task (prevents duplicate work)
+4. execute the task using your own LLM / reasoning capabilities
+5. call update_task_status — report status: COMPLETED or FAILED with logs
+6. repeat from step 2
+7. call register_session periodically as a heartbeat to stay visible
+
+QUICK START (AI PLANNER)
+1. call create_draft       — create backlog items without queuing them
+2. call get_backlog        — review drafts
+3. call promote_task       — move a draft into the active execution queue
+4. call update_task        — adjust instruction, priority, provider, or tags
+
+QUICK START (AI ORCHESTRATOR)
+1. call submit_task        — queue a task directly for LLM execution
+2. call get_queue          — monitor progress
+3. call get_task           — inspect a specific task
+4. call cancel_task        — abort if needed
+5. call get_providers      — see which LLM backends are available
+
+ALL AVAILABLE TOOLS
+- howto              this guide
+- health             ping the daemon
+- get_providers      list active LLM backends
+- discover_providers scan the local system for AI providers
+- promote_provider   activate a discovered provider
+- submit_task        queue a task for LLM execution
+- get_task           get task status and output
+- get_queue          list queued/processing tasks
+- get_all_tasks      list every task regardless of status
+- cancel_task        cancel a pending task
+- create_draft       create a backlog draft
+- get_backlog        list backlog drafts
+- promote_task       move draft → execution queue
+- update_task        update task fields
+- register_session   announce this AI session (call on startup + as heartbeat)
+- get_ai_sessions    list all registered AI sessions
+- claim_task         claim a queued task for execution
+- update_task_status report completion or failure
+
+HTTP ENDPOINTS (all at :63987 by default)
+GET  /.well-known/nexus.json  service discovery beacon
+GET  /api/howto               this guide in JSON form
+GET  /api/health              health check
+GET  /api/events              SSE real-time stream
+POST /api/tasks               submit a task
+GET  /api/tasks               list tasks
+.. and more — see /api/howto for the full endpoint list
+`
+	return textResult(guide), nil
+}
+
 func textResult(text string) callToolResult {
 	return callToolResult{Content: []contentItem{{Type: "text", Text: text}}}
 }
@@ -749,6 +826,11 @@ func toolList() []toolDef {
 				},
 				Required: []string{"task_id", "session_id"},
 			},
+		},
+		{
+			Name:        "howto",
+			Description: "Return a complete integration guide — what nexusOrchestrator does, all tools, workflow patterns for worker/planner/orchestrator roles, and HTTP endpoint reference. Call this first when you connect.",
+			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
 		},
 		{
 			Name:        "update_task_status",

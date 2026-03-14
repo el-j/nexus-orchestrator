@@ -61,9 +61,12 @@ func main() {
 	aiSessionRepo := repo_sqlite.NewAISessionRepo(repo)
 	orchestratorSvc.SetAISessionRepo(aiSessionRepo)
 
-	// Wire system scanner for provider discovery.
+	// Wire system scanner for provider discovery + agent detection.
 	scanner := sys_scanner.New()
 	orchestratorSvc.WithSystemScanner(scanner)
+	orchestratorSvc.SetAgentScanner(scanner)
+	discoveredAgentRepo := repo_sqlite.NewDiscoveredAgentRepo(repo)
+	orchestratorSvc.SetDiscoveredAgentRepo(discoveredAgentRepo)
 
 	// Load persisted provider configs and register each enabled one.
 	if cfgs, err := providerConfigRepo.ListProviderConfigs(context.Background()); err != nil {
@@ -94,6 +97,23 @@ func main() {
 		mcpAddr = "127.0.0.1:63988"
 	}
 	log.Printf("nexus-daemon %s starting...", version)
+	// Print a human- and AI-readable ready banner once both servers are about to start.
+	go func() {
+		// Brief pause so the log context lines printed above appear first.
+		time.Sleep(50 * time.Millisecond)
+		httpBase := "http://" + addr
+		fmt.Printf("\n")
+		fmt.Printf("┌────────────────────────────────────────────────────────┐\n")
+		fmt.Printf("│  nexusOrchestrator %s — ready                     │\n", version)
+		fmt.Printf("├────────────────────────────────────────────────────────┤\n")
+		fmt.Printf("│  HTTP API  →  %-39s  │\n", httpBase)
+		fmt.Printf("│  Dashboard →  %-39s  │\n", httpBase+"/ui")
+		fmt.Printf("│  How-to    →  %-39s  │\n", httpBase+"/api/howto")
+		fmt.Printf("│  Discovery →  %-39s  │\n", httpBase+"/.well-known/nexus.json")
+		fmt.Printf("│  MCP       →  %-39s  │\n", "http://"+mcpAddr+"/mcp")
+		fmt.Printf("└────────────────────────────────────────────────────────┘\n")
+		fmt.Printf("\n")
+	}()
 	// Initial non-blocking scan.
 	go func() {
 		if _, err := orchestratorSvc.TriggerScan(context.Background()); err != nil {

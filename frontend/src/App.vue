@@ -12,6 +12,7 @@
           <ProvidersView v-else-if="currentView === 'providers'" />
           <DiscoveryView v-else-if="currentView === 'discovery'" />
           <AISessionsView v-else-if="currentView === 'ai-sessions'" />
+          <AIAgentsView v-else-if="currentView === 'ai-agents'" />
           <SettingsView v-else-if="currentView === 'settings'" />
         </main>
         <LogPanel />
@@ -34,6 +35,7 @@ import LiveActivityView from './views/LiveActivityView.vue'
 import ProvidersView from './views/ProvidersView.vue'
 import DiscoveryView from './views/DiscoveryView.vue'
 import AISessionsView from './views/AISessionsView.vue'
+import AIAgentsView from './views/AIAgentsView.vue'
 import SettingsView from './views/SettingsView.vue'
 import LogPanel from './components/LogPanel.vue'
 import ErrorFallback from './components/ErrorFallback.vue'

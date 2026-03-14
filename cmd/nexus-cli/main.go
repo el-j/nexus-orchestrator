@@ -564,3 +564,10 @@ func (r *remoteOrchestrator) PurgeDisconnectedSessions(ctx context.Context) (int
 	}
 	return result.Deleted, nil
 }
+func (r *remoteOrchestrator) GetDiscoveredAgents(_ context.Context) ([]domain.DiscoveredAgent, error) {
+	return nil, nil
+}
+
+func (r *remoteOrchestrator) DelegateToNexus(_ context.Context, _ string) (string, error) {
+	return "", nil
+}

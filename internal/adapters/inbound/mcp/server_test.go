@@ -96,6 +96,12 @@ func (m *mockOrch) UpdateTaskStatus(_ context.Context, _ string, _ string, _ dom
 func (m *mockOrch) PurgeDisconnectedSessions(_ context.Context) (int, error) {
 	return 0, nil
 }
+func (m *mockOrch) GetDiscoveredAgents(_ context.Context) ([]domain.DiscoveredAgent, error) {
+	return nil, nil
+}
+func (m *mockOrch) DelegateToNexus(_ context.Context, _ string) (string, error) {
+	return "", nil
+}
 
 // --- Helpers ---
 
@@ -190,8 +196,8 @@ func TestMCP_ToolsList_Returns17Tools(t *testing.T) {
 	if err := json.Unmarshal(r.Result, &result); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
-	if len(result.Tools) != 17 {
-		t.Errorf("expected 17 tools, got %d", len(result.Tools))
+	if len(result.Tools) != 18 {
+		t.Errorf("expected 18 tools, got %d", len(result.Tools))
 	}
 }
 

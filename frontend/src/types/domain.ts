@@ -94,6 +94,19 @@ export interface AISession {
   status: AISessionStatus
   lastActivity: string
   routedTaskIds?: string[]
+  delegatedToNexus?: boolean
+  agentCapabilities?: string[]
   createdAt: string
   updatedAt: string
+}
+
+export interface DiscoveredAgent {
+  id: string
+  kind: string
+  name: string
+  detectionMethod: string
+  isRunning: boolean
+  lastSeen: string
+  mcpEndpoint?: string
+  configPath?: string
 }

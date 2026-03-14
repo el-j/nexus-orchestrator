@@ -61,12 +61,16 @@ No Makefile — use plain `go` toolchain commands.
 - Router: `github.com/go-chi/chi/v5` with `middleware.Logger` and `middleware.Recoverer`.
 - All task endpoints live under `/api/tasks`: `POST`, `GET`, `DELETE /api/tasks/{id}`.
 - JSON in/out. Return proper HTTP status codes (`201 Created`, `404 Not Found`, etc.).
+- **Discovery beacon**: `GET /.well-known/nexus.json` — lightweight JSON doc with schema_version, API URLs, MCP info, and capabilities. First stop for any AI or tool discovering the server.
+- **Integration guide**: `GET /api/howto` — full machine-readable doc: quick-start steps, connection URLs (dynamically resolved to request host), AI workflow patterns, all HTTP endpoints list, and cURL examples. Call this before doing anything else.
 
 ### MCP Server
 - Adapter: `internal/adapters/inbound/mcp/server.go`
 - Protocol: JSON-RPC 2.0, version `"2024-11-05"`, endpoint `POST /mcp`
 - Default address: `:63988` (override with `NEXUS_MCP_ADDR`)
-- 6 tools: `submit_task`, `get_task`, `get_queue`, `cancel_task`, `get_providers`, `health`
+- 7 tools: `howto` (call first!), `submit_task`, `get_task`, `get_queue`, `cancel_task`, `get_providers`, `health`
+- `howto` tool returns the full integration guide as text — identical content to `GET /api/howto`
+- MCP `initialize` response includes `serverInfo.Instructions` pointing AIs to call `howto` first
 - `NewServer(orch) *Server` — registers `/mcp` and `/health` handlers; `*Server` implements `http.Handler`
 - `StartMCPServer(ctx, orch, addr)` — runs server with graceful shutdown on context cancellation
 

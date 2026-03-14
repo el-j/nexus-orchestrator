@@ -96,6 +96,12 @@ func (m *mockOrchestrator) UpdateTaskStatus(_ context.Context, _ string, _ strin
 func (m *mockOrchestrator) PurgeDisconnectedSessions(_ context.Context) (int, error) {
 	return 0, nil
 }
+func (m *mockOrchestrator) GetDiscoveredAgents(_ context.Context) ([]domain.DiscoveredAgent, error) {
+	return nil, nil
+}
+func (m *mockOrchestrator) DelegateToNexus(_ context.Context, _ string) (string, error) {
+	return "", nil
+}
 
 // captureStdout redirects os.Stdout while fn runs and returns the collected
 // output. fn must not call t.Fatal/t.FailNow (runtime.Goexit) directly, as

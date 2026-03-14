@@ -39,6 +39,12 @@
           "id": "nexus.workspaceAgents",
           "name": "Workspace Agents",
           "icon": "$(organization)"
+        },
+        {
+          "id": "nexus.aiSessions",
+          "name": "AI Agents",
+          "icon": "$(robot)",
+          "when": "true"
         }
       ]
     },
@@ -80,6 +86,20 @@
         "command": "nexus.refreshWorkspaceAgents",
         "title": "Nexus: Refresh Workspace Agents",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "nexus.refreshAISessions",
+        "title": "Refresh AI Agents",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "nexus.delegateToNexus",
+        "title": "Send to Nexus Orchestrator",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "nexus.delegateAllSessions",
+        "title": "Delegate All Active Agents"
       }
     ],
     "menus": {
@@ -97,6 +117,11 @@
         {
           "command": "nexus.refreshWorkspaceAgents",
           "when": "view == nexus.workspaceAgents",
+          "group": "navigation"
+        },
+        {
+          "command": "nexus.refreshAISessions",
+          "when": "view == nexus.aiSessions",
           "group": "navigation"
         }
       ],
@@ -118,6 +143,11 @@
         {
           "command": "nexus.cancelTask",
           "when": "viewItem == nexusTask",
+          "group": "inline"
+        },
+        {
+          "command": "nexus.delegateToNexus",
+          "when": "view == nexus.aiSessions && viewItem == aiSession",
           "group": "inline"
         }
       ]
@@ -144,6 +174,11 @@
           "type": "number",
           "default": 63988,
           "description": "Port of the nexusOrchestrator MCP server (JSON-RPC 2.0). Must match NEXUS_MCP_ADDR on the daemon."
+        },
+        "nexus.enableMCPPortSweep": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, nexusOrchestrator probes a curated set of localhost ports for MCP-compatible servers during agent discovery. Disable if you experience unexpected connections to local services."
         }
       }
     },

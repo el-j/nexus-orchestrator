@@ -156,6 +156,12 @@ func (m *mockOrchestrator) PurgeDisconnectedSessions(_ context.Context) (int, er
 func (m *mockOrchestrator) GetAllTasks() ([]domain.Task, error) {
 	return m.getQueueResult, m.getQueueErr
 }
+func (m *mockOrchestrator) GetDiscoveredAgents(_ context.Context) ([]domain.DiscoveredAgent, error) {
+	return nil, nil
+}
+func (m *mockOrchestrator) DelegateToNexus(_ context.Context, _ string) (string, error) {
+	return "", nil
+}
 
 // newTestHandler builds a chi router with the same route/handler logic as StartServer.
 func newTestHandler(orch ports.Orchestrator) http.Handler {

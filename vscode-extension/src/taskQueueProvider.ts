@@ -92,9 +92,18 @@ export class TaskItem extends vscode.TreeItem {
   }
 }
 
-export class TaskQueueProvider implements vscode.TreeDataProvider<TaskItem> {
+class DaemonOfflineItem extends vscode.TreeItem {
+  constructor() {
+    super('Nexus daemon offline — start daemon to connect', vscode.TreeItemCollapsibleState.None)
+    this.iconPath = new vscode.ThemeIcon('debug-disconnect')
+    this.tooltip = 'The nexusOrchestrator daemon is not running. Start it to see tasks.'
+    this.contextValue = 'nexusDaemonOffline'
+  }
+}
+
+export class TaskQueueProvider implements vscode.TreeDataProvider<TaskItem | DaemonOfflineItem> {
   private readonly _onDidChangeTreeData =
-    new vscode.EventEmitter<TaskItem | undefined | void>()
+    new vscode.EventEmitter<TaskItem | DaemonOfflineItem | undefined | void>()
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event
 
   constructor(private readonly client: NexusClient) {}
@@ -108,21 +117,22 @@ export class TaskQueueProvider implements vscode.TreeDataProvider<TaskItem> {
     return new vscode.Disposable(() => clearInterval(handle))
   }
 
-  getTreeItem(element: TaskItem): vscode.TreeItem {
+  getTreeItem(element: TaskItem | DaemonOfflineItem): vscode.TreeItem {
     return element
   }
 
-  async getChildren(): Promise<TaskItem[]> {
+  async getChildren(): Promise<(TaskItem | DaemonOfflineItem)[]> {
     try {
-      const tasks = await this.client.getTasks()
-      return tasks
-        .sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        )
-        .map(t => new TaskItem(t))
+      const tasks = await this.client.getAllTasks()
+      const active = tasks
+        .filter(t => t.status === 'QUEUED' || t.status === 'PROCESSING')
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      const recent = tasks
+        .filter(t => t.status !== 'QUEUED' && t.status !== 'PROCESSING')
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      return [...active, ...recent].map(t => new TaskItem(t))
     } catch {
-      return []
+      return [new DaemonOfflineItem()]
     }
   }
 }

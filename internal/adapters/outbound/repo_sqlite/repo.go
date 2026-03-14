@@ -87,6 +87,19 @@ func migrate(db *sql.DB) error {
 			created_at       DATETIME NOT NULL,
 			updated_at       DATETIME NOT NULL
 		);
+		CREATE TABLE IF NOT EXISTS discovered_agents (
+			id               TEXT PRIMARY KEY,
+			kind             TEXT NOT NULL,
+			name             TEXT NOT NULL,
+			detection_method TEXT NOT NULL DEFAULT '',
+			process_name     TEXT NOT NULL DEFAULT '',
+			cli_path         TEXT NOT NULL DEFAULT '',
+			config_path      TEXT NOT NULL DEFAULT '',
+			mcp_endpoint     TEXT NOT NULL DEFAULT '',
+			is_running       INTEGER NOT NULL DEFAULT 0,
+			last_seen        DATETIME NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_discovered_agents_kind ON discovered_agents(kind);
 	`)
 	if err != nil {
 		return fmt.Errorf("sqlite: migrate: %w", err)
@@ -110,6 +123,14 @@ func migrate(db *sql.DB) error {
 		{"ai_session_id", "TEXT NOT NULL DEFAULT ''"},
 	} {
 		_, _ = db.Exec(fmt.Sprintf("ALTER TABLE tasks ADD COLUMN %s %s", col.name, col.def))
+	}
+	for _, col := range []struct{ table, name, def string }{
+		{"ai_sessions", "delegated_to_nexus", "INTEGER NOT NULL DEFAULT 0"},
+		{"ai_sessions", "delegation_timestamp", "DATETIME"},
+		{"ai_sessions", "agent_capabilities", "TEXT NOT NULL DEFAULT '[]'"},
+		{"ai_sessions", "detection_method", "TEXT NOT NULL DEFAULT ''"},
+	} {
+		_, _ = db.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", col.table, col.name, col.def))
 	}
 	return nil
 }

@@ -5,6 +5,7 @@
 export { sendCurrentContextCommand, submitTaskCommand } from "./submitTask";
 export { selectProviderCommand } from "./selectProvider";
 export { viewQueueCommand } from "./viewQueue";
+export { delegateToNexusCommand } from "./delegateToNexus";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function showProvidersCommand(): Promise<void> {

@@ -13,6 +13,9 @@ import { SessionMonitor } from "./sessionMonitor";
 import { WorkspaceScanner } from "./workspaceScanner";
 import { WorkspaceOrchViewProvider } from "./workspaceOrchView";
 import { getNexusActivityChannel, showNexusActivityLog } from "./activityLog";
+import { AgentDetector } from './agentDetector';
+import { AISessionsTreeProvider, AISessionItem } from './aiSessionsTreeProvider';
+import { delegateToNexusCommand } from './commands/delegateToNexus';
 
 let client: NexusClient | undefined;
 let statusBar: NexusStatusBar | undefined;
@@ -63,7 +66,7 @@ export function activate(context: vscode.ExtensionContext): void {
   workspaceScanner.start();
   context.subscriptions.push(workspaceScanner);
 
-  const workspaceOrchProvider = new WorkspaceOrchViewProvider(workspaceScanner);
+  const workspaceOrchProvider = new WorkspaceOrchViewProvider(workspaceScanner, getClient());
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider('nexus.workspaceAgents', workspaceOrchProvider)
   );
@@ -217,6 +220,37 @@ export function activate(context: vscode.ExtensionContext): void {
         await getStatusBar().update();
       } else {
         await vscode.commands.executeCommand(chosen.action);
+      }
+    })
+  );
+
+  // ── Universal Agent Detector ──────────────────────────────────────────────
+  const agentDetector = new AgentDetector(getClient(), context);
+  agentDetector.start();
+  context.subscriptions.push(agentDetector);
+
+  // ── AI Sessions tree view ─────────────────────────────────────────────────
+  const aiSessionsProvider = new AISessionsTreeProvider(getClient());
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider('nexus.aiSessions', aiSessionsProvider)
+  );
+  agentDetector.onDidChange(() => aiSessionsProvider.refresh());
+  context.subscriptions.push(aiSessionsProvider.startPolling(15_000));
+
+  // ── Commands ──────────────────────────────────────────────────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand('nexus.refreshAISessions', () => {
+      aiSessionsProvider.refresh();
+      void agentDetector.detectAll();
+    }),
+    vscode.commands.registerCommand('nexus.delegateToNexus', (item?: AISessionItem) =>
+      delegateToNexusCommand(getClient(), item)
+    ),
+    vscode.commands.registerCommand('nexus.delegateAllSessions', async () => {
+      const sessions = await getClient().listAISessions();
+      const active = sessions.filter(s => s.status === 'active' && !s.delegatedToNexus);
+      for (const s of active) {
+        await delegateToNexusCommand(getClient(), s);
       }
     })
   );
