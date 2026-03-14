@@ -98,7 +98,7 @@ const dashboardTemplateHTML = `<!DOCTYPE html>
          border-bottom: 1px solid var(--border); white-space: nowrap }
     td { padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border); vertical-align: middle }
     tr:last-child td { border-bottom: none }
-    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600 }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 63987px; font-size: 0.7rem; font-weight: 600 }
     .badge-queued     { background: #1e3a5f; color: #93c5fd }
     .badge-processing { background: #422006; color: #fde68a }
     .badge-completed  { background: #14532d; color: #86efac }
@@ -239,8 +239,8 @@ func StartServer(ctx context.Context, orch ports.Orchestrator, addr string) erro
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` exits 0
-- [ ] `GET http://localhost:9999/ui` returns HTTP 200 with `Content-Type: text/html`
-- [ ] `GET http://localhost:9999/` redirects to `/ui`
+- [ ] `GET http://localhost:63987/ui` returns HTTP 200 with `Content-Type: text/html`
+- [ ] `GET http://localhost:63987/` redirects to `/ui`
 - [ ] Dashboard shows provider cards and queue table
 - [ ] JavaScript polls every 2 seconds; queue updates appear without page reload
 - [ ] Status badges render with correct colours (indigo=queued, yellow=processing, green=completed, red=failed)

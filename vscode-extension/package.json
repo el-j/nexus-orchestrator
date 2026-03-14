@@ -127,7 +127,7 @@
       "properties": {
         "nexus.daemonUrl": {
           "type": "string",
-          "default": "http://127.0.0.1:9999",
+          "default": "http://127.0.0.1:63987",
           "description": "URL of the nexusOrchestrator daemon"
         },
         "nexus.defaultProvider": {
@@ -142,7 +142,7 @@
         },
         "nexus.mcpPort": {
           "type": "number",
-          "default": 9998,
+          "default": 63988,
           "description": "Port of the nexusOrchestrator MCP server (JSON-RPC 2.0). Must match NEXUS_MCP_ADDR on the daemon."
         }
       }

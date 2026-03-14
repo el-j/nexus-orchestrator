@@ -18,8 +18,8 @@ The project has three entry points:
 
 | Binary | File | Role |
 |--------|------|------|
-| Desktop GUI | `main.go` + `app.go` | Wails window + embedded HTTP + MCP on `:9998` |
-| Headless daemon | `cmd/nexus-daemon/main.go` | HTTP `:9999` + MCP `:9998` |
+| Desktop GUI | `main.go` + `app.go` | Wails window + embedded HTTP + MCP on `:63988` |
+| Headless daemon | `cmd/nexus-daemon/main.go` | HTTP `:63987` + MCP `:63988` |
 | CLI client | `cmd/nexus-cli/main.go` | Thin HTTP client, no local services — **no changes needed** |
 
 Every time a new outbound adapter is added, ALL non-CLI entry points must be updated. The wiring order is always: construct repo → construct service → pass to HTTP server + MCP server.

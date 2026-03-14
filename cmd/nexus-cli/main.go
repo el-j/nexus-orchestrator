@@ -21,7 +21,7 @@ var version = "dev"
 
 func main() {
 	// Use a lightweight HTTP-backed orchestrator stub that talks to the daemon.
-	orch := &remoteOrchestrator{baseURL: "http://127.0.0.1:9999"}
+	orch := &remoteOrchestrator{baseURL: "http://127.0.0.1:63987"}
 
 	root := cli.NewRootCmd(orch)
 	root.Version = version

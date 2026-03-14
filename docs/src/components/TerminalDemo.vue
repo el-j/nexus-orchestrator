@@ -30,11 +30,11 @@ interface TermLine {
 
 const lines: TermLine[] = [
   { text: '$ nexus-daemon', type: 'cmd' },
-  { text: '  HTTP API   → :9999', type: 'output' },
-  { text: '  MCP Server → :9998', type: 'output' },
-  { text: '  Dashboard  → :9999/ui', type: 'output' },
+  { text: '  HTTP API   → :63987', type: 'output' },
+  { text: '  MCP Server → :63988', type: 'output' },
+  { text: '  Dashboard  → :63987/ui', type: 'output' },
   { text: '', type: 'blank' },
-  { text: "$ curl -X POST localhost:9999/api/tasks \\", type: 'cmd' },
+  { text: "$ curl -X POST localhost:63987/api/tasks \\", type: 'cmd' },
   { text: "    -d '{\"instruction\":\"Add auth middleware\"}'", type: 'output' },
   { text: '', type: 'blank' },
   { text: '  {"id":"a1b2c3","status":"QUEUED"}', type: 'info' },

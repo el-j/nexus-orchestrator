@@ -26,7 +26,7 @@ Currently, `execute-plan.md` runs plan tasks locally via sub-agents. `push-to-ne
    - `active` or empty — use `activePlanId` from orchestrator.json
 3. **Step 1 — Prerequisites**:
    - Read `.claude/orchestrator.json` to get the plan and its tasks.
-   - Verify daemon is running: `curl -sf http://127.0.0.1:9999/api/health`.
+   - Verify daemon is running: `curl -sf http://127.0.0.1:63987/api/health`.
    - If not running: print instructions to start it and stop.
    - Verify at least one active provider: `GET /api/providers` has at least one entry with `active: true`.
 4. **Step 2 — Build dependency graph**:

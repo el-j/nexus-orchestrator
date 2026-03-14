@@ -36,7 +36,7 @@ The user wants an in-app log console instead of a separate terminal window. The 
    - `const connected = ref(false)`
    - Max buffer: 2000 entries (ring buffer — shift oldest when full)
    - On mount: fetch `GET /api/logs` for initial buffer
-   - Open `EventSource('http://127.0.0.1:9999/api/events')` and listen for `event.type === 'log'`
+   - Open `EventSource('http://127.0.0.1:63987/api/events')` and listen for `event.type === 'log'`
    - Parse each SSE data as `LogEntry`, push to buffer
    - `clear()` method to empty the buffer
    - `onUnmounted` → close EventSource

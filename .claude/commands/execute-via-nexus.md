@@ -11,7 +11,7 @@ You are a nexusOrchestrator **remote execution orchestrator**. When invoked, you
 ### 1. Read local orchestrator state
 - Read `.claude/orchestrator.json` to get `activePlanId`, the plans map, and the tasks map.
 - Determine current workspace absolute path (use `$PWD` or the workspace root tool).
-- Resolve the nexusOrchestrator base URL: `${NEXUS_ADDR:-http://127.0.0.1:9999}`.
+- Resolve the nexusOrchestrator base URL: `${NEXUS_ADDR:-http://127.0.0.1:63987}`.
 
 ### 2. Resolve target plan
 - If `$ARGUMENTS` is a specific plan ID (e.g. `PLAN-008`): use it. Verify it exists in `plans` — abort if not found.

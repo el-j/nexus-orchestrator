@@ -83,7 +83,7 @@ func main() {
 	// 3. Context that cancels on SIGINT / SIGTERM — drives HTTP graceful shutdown
 	addr := os.Getenv("NEXUS_LISTEN_ADDR")
 	if addr == "" {
-		addr = "127.0.0.1:9999"
+		addr = "127.0.0.1:63987"
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -91,7 +91,7 @@ func main() {
 
 	mcpAddr := os.Getenv("NEXUS_MCP_ADDR")
 	if mcpAddr == "" {
-		mcpAddr = "127.0.0.1:9998"
+		mcpAddr = "127.0.0.1:63988"
 	}
 	log.Printf("nexus-daemon %s starting...", version)
 	// Initial non-blocking scan.

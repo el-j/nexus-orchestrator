@@ -16,7 +16,7 @@ Extend the nexus VS Code extension to detect active GitHub Copilot chat activity
 ## Context
 `vscode-extension/src/` currently has:
 - `extension.ts` — `activate()`, 7 registered commands, no `vscode.lm.*` API use
-- `nexusClient.ts` — HTTP client for `http://127.0.0.1:9999`
+- `nexusClient.ts` — HTTP client for `http://127.0.0.1:63987`
 - `statusBar.ts` — polling status bar
 - No existing session registration logic
 
@@ -70,7 +70,7 @@ Export class `SessionMonitor`:
 - Import `SessionMonitor` from `./sessionMonitor`
 - In `activate()`: create `new SessionMonitor(getClient(), context)` and call `monitor.start()`
 - Store monitor instance; in `deactivate()` call `monitor.stop()`
-- Add command `nexus.showAISessions` (already listed in package.json sidebar design — add here) that calls `vscode.commands.executeCommand('nexus.taskQueue.focus')` as placeholder OR opens the Nexus UI URL `http://127.0.0.1:9999/ui`
+- Add command `nexus.showAISessions` (already listed in package.json sidebar design — add here) that calls `vscode.commands.executeCommand('nexus.taskQueue.focus')` as placeholder OR opens the Nexus UI URL `http://127.0.0.1:63987/ui`
 
 ### 4. statusBar.ts — session count in tooltip
 In the tooltip string, if daemon is reachable, append:

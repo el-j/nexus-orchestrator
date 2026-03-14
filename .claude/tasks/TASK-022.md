@@ -51,11 +51,11 @@ The Settings page shows the current nexusOrchestrator configuration in a read-on
      <div class="grid grid-cols-2 gap-4 text-sm">
        <div>
          <div class="text-surface-500 text-xs mb-1">HTTP API</div>
-         <code class="bg-surface-900 px-2 py-1 rounded">NEXUS_LISTEN_ADDR=:9999</code>
+         <code class="bg-surface-900 px-2 py-1 rounded">NEXUS_LISTEN_ADDR=:63987</code>
        </div>
        <div>
          <div class="text-surface-500 text-xs mb-1">MCP Server</div>
-         <code class="bg-surface-900 px-2 py-1 rounded">NEXUS_MCP_ADDR=:9998</code>
+         <code class="bg-surface-900 px-2 py-1 rounded">NEXUS_MCP_ADDR=:63988</code>
        </div>
      </div>
    </Fieldset>
@@ -72,8 +72,8 @@ The Settings page shows the current nexusOrchestrator configuration in a read-on
    <Panel header="Environment Variables">
      <pre class="bg-surface-900 rounded-lg p-4 text-xs font-mono text-surface-300 select-all">
    NEXUS_DB_PATH=nexus.db
-   NEXUS_LISTEN_ADDR=:9999
-   NEXUS_MCP_ADDR=:9998
+   NEXUS_LISTEN_ADDR=:63987
+   NEXUS_MCP_ADDR=:63988
    NEXUS_MAX_QUEUE=500</pre>
      <Button label="Copy to clipboard" icon="pi pi-copy" text size="small" class="mt-2"
              @click="copyEnvVars" />
@@ -83,7 +83,7 @@ The Settings page shows the current nexusOrchestrator configuration in a read-on
 
 6. **Section "About"**:
    - Module: `nexus-orchestrator` (Go 1.24)
-   - Protocol: HTTP API `:9999` + MCP JSON-RPC 2.0 `:9998`
+   - Protocol: HTTP API `:63987` + MCP JSON-RPC 2.0 `:63988`
    - Wails: v2.11.0
    - Vue: 3.x + PrimeVue 4
 

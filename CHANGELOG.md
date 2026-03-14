@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `dist/desktop/` and `dist/vscode/` centralized output directories for GUI and VS Code VSIX
 
 ### Fixed
-- AI Sessions view shows "Load failed" — `listAISessions`/`deregisterAISession` in `wails.ts` were making raw hardcoded HTTP calls (`http://127.0.0.1:9999`) bypassing the Wails IPC binding pattern; fixed to use `isWails()` with proper `window.go` bindings
+- AI Sessions view shows "Load failed" — `listAISessions`/`deregisterAISession` in `wails.ts` were making raw hardcoded HTTP calls (`http://127.0.0.1:63987`) bypassing the Wails IPC binding pattern; fixed to use `isWails()` with proper `window.go` bindings
 - Task Queue view rendered black — `DashboardView` used `h-full` inside a flex container with `padding-bottom: 208px`, and the task list `div` lacked `min-h-0`, preventing `overflow-auto` from activating; `TaskSubmitForm` lacked `flex-shrink-0` and was collapsed to zero height
 - VS Code Copilot not recognized — `SessionMonitor.detectAndRegister()` was called once at activation with no retry; added exponential backoff (2 s / 5 s / 10 s) so Copilot models are detected even when the extension host activates before Copilot finishes loading
 - `make build-all` now builds all artifacts: CLI/daemon (all platforms) + Wails GUI + VS Code extension + frontend
@@ -153,7 +153,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 #### MCP Server & Session Isolation (PLAN-001)
-- MCP JSON-RPC 2.0 inbound adapter (`internal/adapters/inbound/mcp/`) listening on `:9998`
+- MCP JSON-RPC 2.0 inbound adapter (`internal/adapters/inbound/mcp/`) listening on `:63988`
 - 6 MCP tools: `submit_task`, `get_task`, `get_queue`, `cancel_task`, `get_providers`, `health`
 - Per-project session isolation via `domain.Session` and `domain.Message` types
 - `SessionRepository` port and SQLite implementation (`repo_sqlite.SessionRepo`)

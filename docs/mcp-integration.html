@@ -59,7 +59,7 @@
         <span>MCP Integration</span>
       </div>
       <h1>MCP Integration</h1>
-      <p>Connect Claude Desktop or any MCP client to nexusOrchestrator using the built-in JSON-RPC 2.0 server on port 9998.</p>
+      <p>Connect Claude Desktop or any MCP client to nexusOrchestrator using the built-in JSON-RPC 2.0 server on port 63988.</p>
     </div>
   </div>
 </header>
@@ -101,7 +101,7 @@
     <div class="callout callout-warning mt-3">
       <span class="callout-icon">⚠️</span>
       <div class="callout-content">
-        <p><strong>Start the daemon first.</strong> Make sure <code>nexus-daemon</code> is running before starting Claude Desktop. The MCP server must be listening on port 9998.</p>
+        <p><strong>Start the daemon first.</strong> Make sure <code>nexus-daemon</code> is running before starting Claude Desktop. The MCP server must be listening on port 63988.</p>
       </div>
     </div>
 
@@ -119,7 +119,7 @@
         <pre style="margin: 0; border-radius: 0 0 var(--radius-md) var(--radius-md);"><code class="language-json">{
   "mcpServers": {
     "nexusOrchestrator": {
-      "url": "http://localhost:9998/mcp"
+      "url": "http://localhost:63988/mcp"
     }
   }
 }</code></pre>
@@ -131,7 +131,7 @@
         <pre style="margin: 0; border-radius: 0 0 var(--radius-md) var(--radius-md);"><code class="language-json">{
   "mcpServers": {
     "nexusOrchestrator": {
-      "url": "http://localhost:9998/mcp"
+      "url": "http://localhost:63988/mcp"
     }
   }
 }</code></pre>
@@ -143,7 +143,7 @@
         <pre style="margin: 0; border-radius: 0 0 var(--radius-md) var(--radius-md);"><code class="language-json">{
   "mcpServers": {
     "nexusOrchestrator": {
-      "url": "http://localhost:9998/mcp"
+      "url": "http://localhost:63988/mcp"
     }
   }
 }</code></pre>
@@ -157,7 +157,7 @@
           <h4>Start the daemon</h4>
           <p>Make sure nexus-daemon is running before configuring Claude.</p>
           <pre><code class="language-bash">./nexus-daemon
-# MCP Server → http://localhost:9998/mcp</code></pre>
+# MCP Server → http://localhost:63988/mcp</code></pre>
         </div>
       </div>
       <div class="step-item animate-on-scroll delay-1">
@@ -415,7 +415,7 @@
             <td>Start <code>nexus-daemon</code> first, then restart Claude Desktop</td>
           </tr>
           <tr>
-            <td>Connection refused on :9998</td>
+            <td>Connection refused on :63988</td>
             <td>Daemon crashed or wrong port</td>
             <td>Check daemon logs; verify <code>NEXUS_MCP_PORT</code> matches config URL</td>
           </tr>
@@ -458,7 +458,7 @@
     <div class="callout callout-note mt-3">
       <span class="callout-icon">ℹ️</span>
       <div class="callout-content">
-        <p><strong>Verify MCP is listening:</strong> <code>curl http://localhost:9998/mcp -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'</code></p>
+        <p><strong>Verify MCP is listening:</strong> <code>curl http://localhost:63988/mcp -X POST -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'</code></p>
       </div>
     </div>
   </section>
@@ -471,7 +471,7 @@
     <p>nexusOrchestrator's MCP server is standards-compliant and works with any JSON-RPC 2.0 client. You can also call it directly from scripts:</p>
 
     <pre class="animate-on-scroll"><code class="language-bash"># Test MCP health from the command line
-curl -s -X POST http://localhost:9998/mcp \
+curl -s -X POST http://localhost:63988/mcp \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -484,7 +484,7 @@ curl -s -X POST http://localhost:9998/mcp \
   }' | jq '.result.content[0].text | fromjson'</code></pre>
 
     <pre class="animate-on-scroll"><code class="language-bash"># Submit a task via MCP from the command line
-curl -s -X POST http://localhost:9998/mcp \
+curl -s -X POST http://localhost:63988/mcp \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",

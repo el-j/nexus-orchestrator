@@ -22,22 +22,22 @@ The old `scripts/dogfood-plan002.sh` is PLAN-002-specific and stale. We need a *
 1. Create `scripts/e2e-smoke.sh` (NOT replacing the old script — keep it for reference).
 2. The script must:
    a. Build `nexus-daemon` to a temp path.
-   b. Start the daemon with a temp DB (`NEXUS_DB_PATH=/tmp/nexus-e2e-$$.db`), binding to ephemeral or known ports (`:19999` for HTTP, `:19998` for MCP to avoid conflicts).
-   c. Wait for health endpoint: `curl -sf http://127.0.0.1:19999/api/health`.
+   b. Start the daemon with a temp DB (`NEXUS_DB_PATH=/tmp/nexus-e2e-$$.db`), binding to ephemeral or known ports (`:163987` for HTTP, `:163988` for MCP to avoid conflicts).
+   c. Wait for health endpoint: `curl -sf http://127.0.0.1:163987/api/health`.
    d. **Test 1 — Health**: Verify `/api/health` returns `{"status":"ok","service":"nexus-orchestrator"}`.
    e. **Test 2 — Providers**: `GET /api/providers` — verify it returns a JSON array (may be empty if no LLM running, which is OK for CI).
    f. **Test 3 — Submit task**: `POST /api/tasks` with a test task body → verify 201 + `task_id` in response.
    g. **Test 4 — Get task**: `GET /api/tasks/{id}` → verify task exists with status QUEUED or PROCESSING (if no LLM, it may stay QUEUED or go to NO_PROVIDER).
    h. **Test 5 — List tasks**: `GET /api/tasks` → verify JSON array contains the submitted task.
    i. **Test 6 — Cancel task**: `DELETE /api/tasks/{id}` → verify 204.
-   j. **Test 7 — MCP health**: `POST http://127.0.0.1:19998/mcp` with JSON-RPC health tool call → verify result.
+   j. **Test 7 — MCP health**: `POST http://127.0.0.1:163988/mcp` with JSON-RPC health tool call → verify result.
    k. **Test 8 — MCP initialize**: JSON-RPC `initialize` → verify `protocolVersion` is `"2024-11-05"`.
    l. **Test 9 — Dashboard**: `GET /ui` → verify 200 + HTML content.
    m. **Final**: Stop daemon, clean up temp files.
 3. Use `set -euo pipefail` and `trap` for cleanup.
 4. Print clear PASS/FAIL for each test with coloured output.
 5. Exit 0 if all pass, 1 if any fail.
-6. Use env vars: `NEXUS_HTTP_PORT` (default 19999), `NEXUS_MCP_PORT` (default 19998) for port override.
+6. Use env vars: `NEXUS_HTTP_PORT` (default 163987), `NEXUS_MCP_PORT` (default 163988) for port override.
 
 ## Acceptance Criteria
 - [ ] `scripts/e2e-smoke.sh` exists and is executable (`chmod +x`)

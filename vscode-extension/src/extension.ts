@@ -31,7 +31,7 @@ function daemonUrl(): string {
   return (
     vscode.workspace
       .getConfiguration("nexus")
-      .get<string>("daemonUrl") ?? "http://127.0.0.1:9999"
+      .get<string>("daemonUrl") ?? "http://127.0.0.1:63987"
   );
 }
 

@@ -95,15 +95,15 @@ check-air:
 # Start daemon with hot-reload + Vite HMR frontend in parallel.
 # Press Ctrl+C once to stop both.
 #
-#   Daemon  → http://127.0.0.1:9999  (air rebuilds on *.go changes)
-#   Frontend→ http://127.0.0.1:5173  (Vite HMR, proxies /api+/mcp → :9999)
+#   Daemon  → http://127.0.0.1:63987  (air rebuilds on *.go changes)
+#   Frontend→ http://127.0.0.1:63989  (Vite HMR, proxies /api+/mcp → :63987)
 dev: check-air
 	@echo ""
 	@echo "┌──────────────────────────────────────────────────┐"
 	@echo "│  nexusOrchestrator — dev mode                    │"
 	@echo "│                                                  │"
-	@echo "│  Daemon  → http://127.0.0.1:9999  (air)         │"
-	@echo "│  Frontend→ http://127.0.0.1:5173  (vite HMR)    │"
+	@echo "│  Daemon  → http://127.0.0.1:63987  (air)         │"
+	@echo "│  Frontend→ http://127.0.0.1:63989  (vite HMR)    │"
 	@echo "│                                                  │"
 	@echo "│  Ctrl+C to stop both                            │"
 	@echo "└──────────────────────────────────────────────────┘"

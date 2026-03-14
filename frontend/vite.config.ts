@@ -14,16 +14,16 @@ export default defineConfig({
       '@': resolve(__dirname, './src'),
     },
   },
-  // Dev server: proxy /api and /mcp to the running nexus-daemon on :9999
+  // Dev server: proxy /api and /mcp to the running nexus-daemon on :63987
   server: {
-    port: 5173,
+    port: 63989,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:9999',
+        target: 'http://127.0.0.1:63987',
         changeOrigin: true,
       },
       '/mcp': {
-        target: 'http://127.0.0.1:9999',
+        target: 'http://127.0.0.1:63987',
         changeOrigin: true,
       },
     },

@@ -1,5 +1,5 @@
 // Command nexus-orchestrator is the nexusOrchestrator desktop application.
-// It runs a native GUI via Wails with an embedded HTTP API on :9999 and MCP server on :9998.
+// It runs a native GUI via Wails with an embedded HTTP API on :63987 and MCP server on :63988.
 package main
 
 import (
@@ -99,11 +99,11 @@ func run() error {
 	httpCtx, cancelHTTP := context.WithCancel(context.Background())
 	httpAddr := os.Getenv("NEXUS_LISTEN_ADDR")
 	if httpAddr == "" {
-		httpAddr = "127.0.0.1:9999"
+		httpAddr = "127.0.0.1:63987"
 	}
 	mcpAddr := os.Getenv("NEXUS_MCP_ADDR")
 	if mcpAddr == "" {
-		mcpAddr = "127.0.0.1:9998"
+		mcpAddr = "127.0.0.1:63988"
 	}
 	go func() {
 		if err := httpapi.StartServer(httpCtx, orchestratorSvc, httpAddr, logHub); err != nil {

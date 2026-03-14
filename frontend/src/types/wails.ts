@@ -168,18 +168,18 @@ export async function registerAISession(session: Omit<AISession, 'id' | 'created
   return r.json() as Promise<AISession>
 }
 
-/** Returns the base HTTP URL of the embedded API server (e.g. http://127.0.0.1:9999). */
+/** Returns the base HTTP URL of the embedded API server (e.g. http://127.0.0.1:63987). */
 export async function getServerAddr(): Promise<string> {
   if (isWails()) {
     try {
       return await window.go!.main!.App!.GetServerAddr()
     } catch {
       // Older binary or binding not yet available — fall back to the default embedded address.
-      return 'http://127.0.0.1:9999'
+      return 'http://127.0.0.1:63987'
     }
   }
   // Browser dev mode: respect VITE_SERVER_URL env or fall back to the default address.
-  return (import.meta as { env?: { VITE_SERVER_URL?: string } }).env?.VITE_SERVER_URL ?? 'http://127.0.0.1:9999'
+  return (import.meta as { env?: { VITE_SERVER_URL?: string } }).env?.VITE_SERVER_URL ?? 'http://127.0.0.1:63987'
 }
 
 export async function heartbeatAISession(id: string): Promise<void> {

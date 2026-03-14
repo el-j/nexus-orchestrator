@@ -36,7 +36,7 @@ Launch a sub-agent with:
   - Error wrapping: `fmt.Errorf("package: operation: %w", err)`
   - Concurrency: `sync.Mutex` for shared state; no goroutines in `internal/core/services/`
   - `domain.ErrNotFound` sentinel for missing entities
-  - HTTP API: chi router on `:9999`; MCP server: JSON-RPC 2.0 on `:9998`
+  - HTTP API: chi router on `:63987`; MCP server: JSON-RPC 2.0 on `:63988`
   - Tests: `CGO_ENABLED=1 go test -race -count=1 ./...`
 
 ### 5. Verify completion

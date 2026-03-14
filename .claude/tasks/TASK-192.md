@@ -32,7 +32,7 @@ Rewrite the README `Features` section and the `Dogfooding` section to accurately
    - LLM Backends: LM Studio, Ollama, Anthropic, OpenAI, OpenAI-compat (cloud providers)
    - Provider Discovery: automatic port + process scanner for local LLM runtimes
    - Task Management: submit / queue / cancel, backlog/draft workflow, per-task context files, file writeback
-   - Interfaces: HTTP API (:9999), MCP server (:9998), Desktop GUI (Wails), System Tray, VS Code Extension, GitHub Action
+   - Interfaces: HTTP API (:63987), MCP server (:63988), Desktop GUI (Wails), System Tray, VS Code Extension, GitHub Action
    - Observability: SSE events stream, AI session tracking, structured logs
 
 2. **Dogfooding section** — replace PLAN-002-specific steps with a generic "use nexusOrchestrator for its own development" workflow: start daemon, submit a task from the `.claude/tasks/` directory using `nexus-submit`, track via `nexus-cli` or MCP

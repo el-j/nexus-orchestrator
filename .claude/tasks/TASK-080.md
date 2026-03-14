@@ -47,7 +47,7 @@ Two critical documentation pages: the architecture overview explaining the hexag
    ---
    ```
    Content:
-   - **HTTP REST API** (base: `http://localhost:9999`)
+   - **HTTP REST API** (base: `http://localhost:63987`)
      - `POST /api/tasks` — Submit task (request/response JSON)
      - `GET /api/tasks` — List all tasks
      - `GET /api/tasks/{id}` — Get task by ID
@@ -58,7 +58,7 @@ Two critical documentation pages: the architecture overview explaining the hexag
      - `GET /api/providers/{name}/models` — List provider models
      - `GET /api/events` — SSE event stream
      - `GET /api/health` — Health check
-   - **MCP Server** (base: `http://localhost:9998/mcp`)
+   - **MCP Server** (base: `http://localhost:63988/mcp`)
      - JSON-RPC 2.0 protocol, version "2024-11-05"
      - Tools: submit_task, get_task, get_queue, cancel_task, get_providers, health
      - Request/response examples for each tool

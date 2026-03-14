@@ -121,7 +121,7 @@
           </h2>
           <div class="rounded-xl border border-white/8 bg-[#0d0d14] p-6">
             <p class="text-slate-400 text-sm mb-3">
-              Open <code class="text-violet-300">http://localhost:9999/ui</code> in your browser for a live dashboard that:
+              Open <code class="text-violet-300">http://localhost:63987/ui</code> in your browser for a live dashboard that:
             </p>
             <ul class="space-y-2 list-none p-0">
               <li v-for="feature in dashboardFeatures" :key="feature" class="flex items-start gap-2 text-sm text-slate-400">
@@ -193,9 +193,9 @@ CGO_ENABLED=1 go build -o nexus-cli ./cmd/nexus-cli/...`
 
 const codeDaemonBasic = `# Start with default settings
 ./nexus-daemon
-# HTTP API:   http://127.0.0.1:9999
-# MCP server: http://127.0.0.1:9998/mcp
-# Dashboard:  http://127.0.0.1:9999/ui`
+# HTTP API:   http://127.0.0.1:63987
+# MCP server: http://127.0.0.1:63988/mcp
+# Dashboard:  http://127.0.0.1:63987/ui`
 
 const codeDaemonCustom = `# Use environment variables for custom settings
 NEXUS_DB_PATH=/path/to/nexus.db \\
@@ -213,7 +213,7 @@ NEXUS_ANTHROPIC_API_KEY=sk-ant-... NEXUS_ANTHROPIC_MODEL=claude-3-5-sonnet-20241
 NEXUS_GITHUBCOPILOT_TOKEN=ghu_... NEXUS_GITHUBCOPILOT_MODEL=gpt-4o ./nexus-daemon`
 
 const codeFirstTask = `# Submit a code-generation task
-curl -s -X POST http://localhost:9999/api/tasks \\
+curl -s -X POST http://localhost:63987/api/tasks \\
   -H "Content-Type: application/json" \\
   -d '{
     "projectPath": "'$PWD'",
@@ -231,19 +231,19 @@ const codeFirstTaskResponse = `{
 }`
 
 const codeStatus = `# Get task by ID
-curl -s http://localhost:9999/api/tasks/TASK_ID | jq .
+curl -s http://localhost:63987/api/tasks/TASK_ID | jq .
 
 # List all pending tasks
-curl -s http://localhost:9999/api/tasks | jq .`
+curl -s http://localhost:63987/api/tasks | jq .`
 
-const codeCancel = `curl -X DELETE http://localhost:9999/api/tasks/TASK_ID
+const codeCancel = `curl -X DELETE http://localhost:63987/api/tasks/TASK_ID
 # Returns 204 No Content on success`
 
 const codeProviders = `# List all providers
-curl -s http://localhost:9999/api/providers | jq .
+curl -s http://localhost:63987/api/providers | jq .
 
 # Register a new cloud provider
-curl -s -X POST http://localhost:9999/api/providers \\
+curl -s -X POST http://localhost:63987/api/providers \\
   -H "Content-Type: application/json" \\
   -d '{
     "name": "My OpenAI",
@@ -254,7 +254,7 @@ curl -s -X POST http://localhost:9999/api/providers \\
   }' | jq .
 
 # Remove a provider
-curl -X DELETE http://localhost:9999/api/providers/My%20OpenAI`
+curl -X DELETE http://localhost:63987/api/providers/My%20OpenAI`
 
 const codeTesting = `# Full test suite with race detection
 CGO_ENABLED=1 go test -race ./...

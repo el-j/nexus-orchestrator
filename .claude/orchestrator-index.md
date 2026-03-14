@@ -11,8 +11,8 @@ Full history of completed plans for the nexusOrchestrator project.
 | Property | Value |
 |----------|-------|
 | Language | Go 1.24, CGO required (`mattn/go-sqlite3`) |
-| HTTP API | `github.com/go-chi/chi/v5` on `:9999` |
-| MCP server | JSON-RPC 2.0 inbound adapter on `:9998` |
+| HTTP API | `github.com/go-chi/chi/v5` on `:63987` |
+| MCP server | JSON-RPC 2.0 inbound adapter on `:63988` |
 | GUI | Wails v2 desktop app |
 | CLI | Cobra-based thin HTTP client |
 | Build | `CGO_ENABLED=1 go build ./...` |

@@ -31,7 +31,7 @@ Add the following to your Claude Desktop configuration file:
 {
   "mcpServers": {
     "nexusOrchestrator": {
-      "url": "http://localhost:9998/mcp"
+      "url": "http://localhost:63988/mcp"
     }
   }
 }
@@ -157,14 +157,14 @@ Make sure the nexus-daemon is running before starting Claude Desktop.
 - **Version**: `2024-11-05`
 - **Endpoint**: `POST /mcp`
 - **Health**: `GET /health`
-- **Default Port**: 9998 (configurable via `NEXUS_MCP_ADDR`)
+- **Default Port**: 63988 (configurable via `NEXUS_MCP_ADDR`)
 
 The MCP server supports both `initialize` and `tools/list` lifecycle methods, and all tool invocations via `tools/call`.
 
 ## Troubleshooting
 
 {: .warning }
-**Connection refused**: Make sure the nexus-daemon is running and the MCP port (default 9998) is not blocked by a firewall.
+**Connection refused**: Make sure the nexus-daemon is running and the MCP port (default 63988) is not blocked by a firewall.
 
 {: .note }
 **No tools appearing**: Verify the URL in `claude_desktop_config.json` ends with `/mcp` (not just the host:port).

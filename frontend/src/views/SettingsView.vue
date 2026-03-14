@@ -162,8 +162,8 @@ async function handleDelete(cfg: ProviderConfig) {
 // ── Server Addresses ──────────────────────────────────────────────────────────
 
 const serverAddresses = [
-  { label: 'HTTP API', url: 'http://127.0.0.1:9999' },
-  { label: 'MCP Server', url: 'http://127.0.0.1:9998/mcp' },
+  { label: 'HTTP API', url: 'http://127.0.0.1:63987' },
+  { label: 'MCP Server', url: 'http://127.0.0.1:63988/mcp' },
 ]
 
 const copied = ref<string | null>(null)

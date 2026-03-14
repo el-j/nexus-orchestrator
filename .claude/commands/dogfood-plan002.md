@@ -7,8 +7,8 @@ You are a nexusOrchestrator dogfood agent. When invoked, you submit PLAN-002 imp
 ## Prerequisites Check
 
 Before submitting, verify:
-1. `curl -sf http://localhost:9999/api/health` returns `{"status":"ok"}` — daemon must be running
-2. `curl -sf http://localhost:9999/api/providers` returns at least one `"active": true` — LLM must be online
+1. `curl -sf http://localhost:63987/api/health` returns `{"status":"ok"}` — daemon must be running
+2. `curl -sf http://localhost:63987/api/providers` returns at least one `"active": true` — LLM must be online
 3. `cmd/nexus-submit` binary exists at `$PWD/cmd/nexus-submit/` (run `CGO_ENABLED=1 go build ./cmd/nexus-submit/...` if not)
 
 If either check fails: print instructions and stop.
@@ -36,7 +36,7 @@ Submit in this order (sequential per file group to avoid conflicts):
 ## Steps
 
 ### 1. Verify daemon + provider
-Call `GET http://127.0.0.1:9999/api/health`.
+Call `GET http://127.0.0.1:63987/api/health`.
 If that fails:
 ```
 ERROR: nexus-daemon is not running.
@@ -59,7 +59,7 @@ CGO_ENABLED=1 go run ./cmd/nexus-submit \
   --project "$PWD" \
   --target <target> \
   --context <context> \
-  --addr http://127.0.0.1:9999
+  --addr http://127.0.0.1:63987
 ```
 
 Record the returned `task_id`.
@@ -80,8 +80,8 @@ Print:
   TASK-014 → <nexus-uuid>
   ...
 
-Dashboard: http://localhost:9999/ui
-API:       http://localhost:9999/api/tasks
+Dashboard: http://localhost:63987/ui
+API:       http://localhost:63987/api/tasks
 
 Run /sync-from-nexus to pull results back when ready.
 ```

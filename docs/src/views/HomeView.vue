@@ -259,8 +259,8 @@ const stats = [
 const features = [
   { icon: '🔀', title: 'Multi-Backend Routing', desc: 'Auto-discovers and routes to LM Studio, Ollama, OpenAI, Anthropic, or any OpenAI-compatible endpoint. Per-task model selection with provider hints.' },
   { icon: '🧠', title: 'Session Memory', desc: 'Every project path gets its own SQLite-backed conversation history. Multi-turn context maintained automatically across tasks.' },
-  { icon: '🔌', title: 'MCP Server', desc: 'Built-in JSON-RPC 2.0 server on port 9998, compatible with Claude Desktop and any MCP client. Six tools ready out of the box.' },
-  { icon: '🌐', title: 'Full REST API', desc: 'Complete task management on port 9999 — submit, list, cancel, monitor. Real-time updates via Server-Sent Events.' },
+  { icon: '🔌', title: 'MCP Server', desc: 'Built-in JSON-RPC 2.0 server on port 63988, compatible with Claude Desktop and any MCP client. Six tools ready out of the box.' },
+  { icon: '🌐', title: 'Full REST API', desc: 'Complete task management on port 63987 — submit, list, cancel, monitor. Real-time updates via Server-Sent Events.' },
   { icon: '🛡️', title: 'Context Guard', desc: 'Pre-flight token estimation prevents prompt overflow. Tasks exceeding context limits are flagged as TOO_LARGE immediately.' },
   { icon: '⚡', title: 'Smart Discovery', desc: 'Auto-detect running LLM backends with health checks and automatic failover when a provider goes down.' },
   { icon: '🎯', title: 'Command Routing', desc: 'Classify tasks as "plan" or "execute". Enforces that execution tasks have a prior plan, preventing uncoordinated changes.' },
@@ -272,7 +272,7 @@ const providers = ['LM Studio', 'Ollama', 'OpenAI', 'Anthropic', 'GitHub Copilot
 
 const quickSteps = [
   { title: 'Build from source or download', desc: 'CGO_ENABLED=1 go build -o nexus-daemon ./cmd/nexus-daemon/...' },
-  { title: 'Start the daemon', desc: 'Run ./nexus-daemon — HTTP API on :9999, MCP on :9998' },
+  { title: 'Start the daemon', desc: 'Run ./nexus-daemon — HTTP API on :63987, MCP on :63988' },
   { title: 'Connect your LLM provider', desc: 'LM Studio, Ollama, or set NEXUS_OPENAI_API_KEY for cloud' },
   { title: 'Submit your first task', desc: 'Via HTTP API, MCP, CLI, or Claude Desktop' },
 ]
@@ -282,11 +282,11 @@ CGO_ENABLED=1 go build -o nexus-daemon ./cmd/nexus-daemon/...
 
 # Start
 ./nexus-daemon
-# HTTP API  → http://localhost:9999
-# MCP       → http://localhost:9998/mcp
-# Dashboard → http://localhost:9999/ui`
+# HTTP API  → http://localhost:63987
+# MCP       → http://localhost:63988/mcp
+# Dashboard → http://localhost:63987/ui`
 
-const codeSubmit = `curl -X POST http://localhost:9999/api/tasks \\
+const codeSubmit = `curl -X POST http://localhost:63987/api/tasks \\
   -H "Content-Type: application/json" \\
   -d '{
     "projectPath": "/path/to/project",

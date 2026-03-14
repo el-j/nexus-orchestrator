@@ -32,8 +32,8 @@ A local AI orchestrator that routes code-generation tasks to LM Studio or Ollama
 - Configurable retry limit (default 3) before marking a task failed
 
 **Interfaces**
-- HTTP REST API on `:9999` with SSE events stream (`/api/events`)
-- MCP JSON-RPC 2.0 server on `:9998` (14 tools, VS Code Copilot compatible)
+- HTTP REST API on `:63987` with SSE events stream (`/api/events`)
+- MCP JSON-RPC 2.0 server on `:63988` (14 tools, VS Code Copilot compatible)
 - Desktop GUI (Wails + Vue 3) with Dashboard, Provider Status, Task Queue, History, Settings
 - System Tray with quick-stats and task notifications
 - [VS Code Extension](vscode-extension/README.md) — auto-registers MCP server via `contributes.mcpServers` (VS Code 1.99+)
@@ -70,8 +70,8 @@ Download `nexus-orchestrator-darwin-arm64.tar.gz` (or your platform's archive) f
 ```sh
 # Start the daemon
 ./nexus-daemon
-# HTTP API:  http://localhost:9999
-# MCP server: http://localhost:9998/mcp
+# HTTP API:  http://localhost:63987
+# MCP server: http://localhost:63988/mcp
 ```
 
 ### Build from source
@@ -82,8 +82,8 @@ CGO_ENABLED=1 go build ./cmd/nexus-daemon/...
 
 # Run it
 ./nexus-daemon
-# HTTP API:  http://localhost:9999
-# MCP server: http://localhost:9998/mcp
+# HTTP API:  http://localhost:63987
+# MCP server: http://localhost:63988/mcp
 ```
 
 ### VS Code Extension
@@ -102,7 +102,7 @@ Add the following to your Claude Desktop `claude_desktop_config.json`:
 {
   "mcpServers": {
     "nexusOrchestrator": {
-      "url": "http://localhost:9998/mcp"
+      "url": "http://localhost:63988/mcp"
     }
   }
 }
@@ -135,8 +135,8 @@ See [`vscode-extension/README.md`](vscode-extension/README.md) for installation 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `NEXUS_DB_PATH` | `nexus.db` | SQLite database path |
-| `NEXUS_LISTEN_ADDR` | `:9999` | HTTP API listen address |
-| `NEXUS_MCP_ADDR` | `:9998` | MCP server listen address |
+| `NEXUS_LISTEN_ADDR` | `:63987` | HTTP API listen address |
+| `NEXUS_MCP_ADDR` | `:63988` | MCP server listen address |
 
 ## Build & Test
 
@@ -151,7 +151,7 @@ go vet ./...
 nexusOrchestrator is developed using itself. To use it on this codebase:
 
 1. Start the daemon: `./nexus-daemon` (or run the Wails desktop app)
-2. Browse to `http://localhost:9999` or open the VS Code extension
+2. Browse to `http://localhost:63987` or open the VS Code extension
 3. Submit a task pointing to this repo — e.g. `nexus-submit --project . --target internal/core/services/orchestrator.go --prompt "Add feature X"`
 4. Monitor progress in the GUI Dashboard or via `nexus-cli queue`
 

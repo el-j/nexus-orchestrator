@@ -68,7 +68,7 @@ When `window.go?.main?.App` has a corresponding binding use it; otherwise fall t
 ### 3. useAISessions.ts — composable
 Pattern: identical to `useTasks.ts` (SSE-first, polling fallback).
 Returns: `sessions: Ref<AISession[]>`, `loading: Ref<boolean>`, `error: Ref<string|null>`, `deregister(id: string): Promise<void>`.
-- On mount: fetch `listAISessions()`, then open `EventSource('http://127.0.0.1:9999/api/events')`
+- On mount: fetch `listAISessions()`, then open `EventSource('http://127.0.0.1:63987/api/events')`
 - On SSE event with `type === 'ai_session_changed'`: call `listAISessions()` to refresh
 - On `onerror`: close EventSource, fall back to `setInterval(refresh, 5000)`
 - `deregister(id)` calls `deregisterAISession(id)` then refreshes
@@ -108,7 +108,7 @@ Follow the exact pattern used for the existing nav items.
 
 ## Anti-patterns to Avoid
 - NEVER rewrite domain.ts from scratch — only append the new types
-- NEVER hardcode the daemon URL beyond `http://127.0.0.1:9999` (consistent with useTasks.ts)
+- NEVER hardcode the daemon URL beyond `http://127.0.0.1:63987` (consistent with useTasks.ts)
 - NEVER add polling-only when SSE is available
 - NEVER import from Vue Router — this project uses manual view switching via emits, not vue-router
 - NEVER use `<script>` (Options API) — use `<script setup>` (Composition API) throughout

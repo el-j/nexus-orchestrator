@@ -28,8 +28,8 @@
           <h1 class="text-4xl font-black mb-4"><span class="gradient-text">API Reference</span></h1>
           <p class="text-lg text-slate-400">Complete reference for all HTTP REST API endpoints and MCP tools.</p>
           <div class="mt-4 flex flex-wrap gap-3">
-            <span class="px-3 py-1 rounded-lg bg-[#0d0d14] border border-white/8 text-xs text-slate-400 font-mono">Base URL: http://localhost:9999</span>
-            <span class="px-3 py-1 rounded-lg bg-[#0d0d14] border border-white/8 text-xs text-slate-400 font-mono">MCP: http://localhost:9998</span>
+            <span class="px-3 py-1 rounded-lg bg-[#0d0d14] border border-white/8 text-xs text-slate-400 font-mono">Base URL: http://localhost:63987</span>
+            <span class="px-3 py-1 rounded-lg bg-[#0d0d14] border border-white/8 text-xs text-slate-400 font-mono">MCP: http://localhost:63988</span>
           </div>
         </div>
 
@@ -365,7 +365,7 @@ const mcpInfo = [
   { label: 'Standard', value: 'JSON-RPC 2.0' },
   { label: 'Version', value: '2024-11-05' },
   { label: 'Endpoint', value: 'POST /mcp' },
-  { label: 'Default Port', value: '9998' },
+  { label: 'Default Port', value: '63988' },
 ]
 
 const mcpTools = [
@@ -409,8 +409,8 @@ const mcpSubmit = `// Request
 
 const envVars = [
   { var: 'NEXUS_DB_PATH', default: 'nexus.db', desc: 'SQLite database file path' },
-  { var: 'NEXUS_LISTEN_ADDR', default: '127.0.0.1:9999', desc: 'HTTP API listen address' },
-  { var: 'NEXUS_MCP_ADDR', default: '127.0.0.1:9998', desc: 'MCP server listen address' },
+  { var: 'NEXUS_LISTEN_ADDR', default: '127.0.0.1:63987', desc: 'HTTP API listen address' },
+  { var: 'NEXUS_MCP_ADDR', default: '127.0.0.1:63988', desc: 'MCP server listen address' },
   { var: 'NEXUS_OPENAI_API_KEY', default: '', desc: 'OpenAI API key (enables OpenAI provider)' },
   { var: 'NEXUS_OPENAI_MODEL', default: 'gpt-4o-mini', desc: 'Default OpenAI model' },
   { var: 'NEXUS_ANTHROPIC_API_KEY', default: '', desc: 'Anthropic API key (enables Anthropic provider)' },

@@ -107,7 +107,7 @@ var _ ports.Orchestrator = (*mockOrchestrator)(nil)
 
 func TestApp_SubmitTask_Delegates(t *testing.T) {
 	mock := &mockOrchestrator{idReturn: "task-42"}
-	app := NewApp(mock, "127.0.0.1:9999")
+	app := NewApp(mock, "127.0.0.1:63987")
 	task := domain.Task{
 		ProjectPath: "/projects/alpha",
 		TargetFile:  "main.go",
@@ -131,7 +131,7 @@ func TestApp_SubmitTask_Delegates(t *testing.T) {
 func TestApp_GetTask_Delegates(t *testing.T) {
 	want := domain.Task{ID: "t-99", Status: domain.StatusQueued, CreatedAt: time.Now()}
 	mock := &mockOrchestrator{taskReturn: want}
-	app := NewApp(mock, "127.0.0.1:9999")
+	app := NewApp(mock, "127.0.0.1:63987")
 	got, err := app.GetTask("t-99")
 	if err != nil {
 		t.Fatalf("GetTask: unexpected error: %v", err)
@@ -153,7 +153,7 @@ func TestApp_GetQueue_Delegates(t *testing.T) {
 		{ID: "q-2", Status: domain.StatusProcessing},
 	}
 	mock := &mockOrchestrator{tasksReturn: tasks}
-	app := NewApp(mock, "127.0.0.1:9999")
+	app := NewApp(mock, "127.0.0.1:63987")
 	got, err := app.GetQueue()
 	if err != nil {
 		t.Fatalf("GetQueue: unexpected error: %v", err)
@@ -168,7 +168,7 @@ func TestApp_GetQueue_Delegates(t *testing.T) {
 
 func TestApp_CancelTask_Delegates(t *testing.T) {
 	mock := &mockOrchestrator{}
-	app := NewApp(mock, "127.0.0.1:9999")
+	app := NewApp(mock, "127.0.0.1:63987")
 	if err := app.CancelTask("t-cancel-1"); err != nil {
 		t.Fatalf("CancelTask: unexpected error: %v", err)
 	}
@@ -183,7 +183,7 @@ func TestApp_CancelTask_Delegates(t *testing.T) {
 func TestApp_GetBacklog_Delegates(t *testing.T) {
 	drafts := []domain.Task{{ID: "d-1", Status: domain.StatusDraft}}
 	mock := &mockOrchestrator{tasksReturn: drafts}
-	app := NewApp(mock, "127.0.0.1:9999")
+	app := NewApp(mock, "127.0.0.1:63987")
 	got, err := app.GetBacklog("/projects/beta")
 	if err != nil {
 		t.Fatalf("GetBacklog: unexpected error: %v", err)
@@ -202,7 +202,7 @@ func TestApp_GetBacklog_Delegates(t *testing.T) {
 func TestApp_ErrorPropagation(t *testing.T) {
 	sentinel := errors.New("orchestrator offline")
 	mock := &mockOrchestrator{errReturn: sentinel}
-	app := NewApp(mock, "127.0.0.1:9999")
+	app := NewApp(mock, "127.0.0.1:63987")
 	if _, err := app.SubmitTask(domain.Task{}); !errors.Is(err, sentinel) {
 		t.Errorf("SubmitTask error: got %v, want %v", err, sentinel)
 	}

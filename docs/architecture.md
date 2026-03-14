@@ -206,10 +206,10 @@ type FileWriter interface {
 
 | Adapter | Package | Protocol | Default Port |
 |---------|---------|----------|-------------|
-| HTTP API | `httpapi` | REST + SSE | `:9999` |
-| MCP Server | `mcp` | JSON-RPC 2.0 | `:9998` |
+| HTTP API | `httpapi` | REST + SSE | `:63987` |
+| MCP Server | `mcp` | JSON-RPC 2.0 | `:63988` |
 | CLI Client | `cli` | HTTP → daemon | — |
-| Wails GUI | `wailsbind` | Native + embedded HTTP | `:9999` |
+| Wails GUI | `wailsbind` | Native + embedded HTTP | `:63987` |
 | System Tray | `tray` | OS native | — |
 
 All inbound adapters accept `ports.Orchestrator` as a dependency — never a concrete service type.
@@ -234,8 +234,8 @@ All inbound adapters accept `ports.Orchestrator` as a dependency — never a con
 | Binary | Path | Purpose |
 |--------|------|---------|
 | Desktop GUI | `main.go` + `app.go` | Wails window + embedded HTTP API + MCP |
-| Headless Daemon | `cmd/nexus-daemon/main.go` | HTTP API on `:9999` + MCP on `:9998` |
-| CLI Client | `cmd/nexus-cli/main.go` | Thin HTTP client → daemon at `127.0.0.1:9999` |
+| Headless Daemon | `cmd/nexus-daemon/main.go` | HTTP API on `:63987` + MCP on `:63988` |
+| CLI Client | `cmd/nexus-cli/main.go` | Thin HTTP client → daemon at `127.0.0.1:63987` |
 
 ---
 

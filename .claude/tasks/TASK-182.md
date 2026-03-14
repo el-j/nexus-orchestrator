@@ -20,23 +20,23 @@ The CLI client needs subcommands to interact with the new backlog endpoints on t
 
 1. Add `nexus-cli draft` command:
    - Flags: `--project` (required), `--instruction` (required), `--target`, `--context`, `--provider`, `--model`, `--priority` (default 2), `--tags` (comma-separated)
-   - POST to `http://127.0.0.1:9999/api/tasks/draft`
+   - POST to `http://127.0.0.1:63987/api/tasks/draft`
    - Print `Draft created: {task_id}`
 
 2. Add `nexus-cli backlog` command:
    - Flags: `--project` (required)
-   - GET `http://127.0.0.1:9999/api/tasks/backlog/{projectPath}`
+   - GET `http://127.0.0.1:63987/api/tasks/backlog/{projectPath}`
    - Print table: ID | Priority | Status | Instruction (truncated) | Provider | Tags
 
 3. Add `nexus-cli promote` command:
    - Arg: task ID (required)
-   - POST to `http://127.0.0.1:9999/api/tasks/{id}/promote`
+   - POST to `http://127.0.0.1:63987/api/tasks/{id}/promote`
    - Print `Task {id} promoted to queue`
 
 4. Add `nexus-cli update` command:
    - Arg: task ID (required)
    - Flags: `--instruction`, `--provider`, `--model`, `--priority`, `--tags`, `--status`
-   - PUT to `http://127.0.0.1:9999/api/tasks/{id}`
+   - PUT to `http://127.0.0.1:63987/api/tasks/{id}`
    - Print updated task
 
 5. Update `nexus-cli submit` to accept `--provider` and `--priority` flags.

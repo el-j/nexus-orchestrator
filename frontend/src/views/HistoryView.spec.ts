@@ -13,7 +13,7 @@ vi.mock('../types/wails', () => ({
 }))
 
 vi.mock('../composables/useServerUrl', () => ({
-  resolveServerUrl: vi.fn().mockResolvedValue('http://127.0.0.1:9999'),
+  resolveServerUrl: vi.fn().mockResolvedValue('http://127.0.0.1:63987'),
 }))
 
 function makeTask(overrides: Partial<Task> = {}): Task {

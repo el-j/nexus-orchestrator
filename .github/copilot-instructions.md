@@ -17,9 +17,9 @@ inbound adapters → core services → ports ← outbound adapters
 Entry points:
 | Binary | Path | Purpose |
 |--------|------|---------|
-| Desktop GUI | `main.go` + `app.go` | Wails window + embedded HTTP API on `:9999` + MCP on `:9998` |
-| Headless daemon | `cmd/nexus-daemon/main.go` | HTTP API on `:9999` + MCP on `:9998` (for servers / background) |
-| CLI client | `cmd/nexus-cli/main.go` | Thin HTTP client → daemon at `127.0.0.1:9999` |
+| Desktop GUI | `main.go` + `app.go` | Wails window + embedded HTTP API on `:63987` + MCP on `:63988` |
+| Headless daemon | `cmd/nexus-daemon/main.go` | HTTP API on `:63987` + MCP on `:63988` (for servers / background) |
+| CLI client | `cmd/nexus-cli/main.go` | Thin HTTP client → daemon at `127.0.0.1:63987` |
 
 ## Build & Test
 
@@ -65,7 +65,7 @@ No Makefile — use plain `go` toolchain commands.
 ### MCP Server
 - Adapter: `internal/adapters/inbound/mcp/server.go`
 - Protocol: JSON-RPC 2.0, version `"2024-11-05"`, endpoint `POST /mcp`
-- Default address: `:9998` (override with `NEXUS_MCP_ADDR`)
+- Default address: `:63988` (override with `NEXUS_MCP_ADDR`)
 - 6 tools: `submit_task`, `get_task`, `get_queue`, `cancel_task`, `get_providers`, `health`
 - `NewServer(orch) *Server` — registers `/mcp` and `/health` handlers; `*Server` implements `http.Handler`
 - `StartMCPServer(ctx, orch, addr)` — runs server with graceful shutdown on context cancellation
@@ -80,8 +80,8 @@ No Makefile — use plain `go` toolchain commands.
 ### Configuration
 - Prefer environment variables over flags for daemon config:
   - `NEXUS_DB_PATH` — SQLite database file path (default: `nexus.db`)
-  - `NEXUS_LISTEN_ADDR` — HTTP API listen address (default: `:9999`)
-  - `NEXUS_MCP_ADDR` — MCP server listen address (default: `:9998`)
+  - `NEXUS_LISTEN_ADDR` — HTTP API listen address (default: `:63987`)
+  - `NEXUS_MCP_ADDR` — MCP server listen address (default: `:63988`)
 - Provider base URLs are configurable via env vars (all default to localhost):
   - `NEXUS_LMSTUDIO_URL` — LM Studio API root (default: `http://127.0.0.1:1234/v1`)
   - `NEXUS_OLLAMA_URL` — Ollama API root (default: `http://127.0.0.1:11434`)

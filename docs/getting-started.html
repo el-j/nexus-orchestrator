@@ -164,9 +164,9 @@ export GITHUB_TOKEN=ghp_...</code></pre>
             <p>Launch nexus-daemon — it will auto-discover local LLM backends:</p>
             <pre><code class="language-bash">./nexus-daemon</code></pre>
             <p style="margin-top: 0.5rem;">You should see:</p>
-            <pre><code class="language-bash"> ✓ HTTP API   → http://localhost:9999
- ✓ MCP Server → http://localhost:9998/mcp
- ✓ Dashboard  → http://localhost:9999/ui</code></pre>
+            <pre><code class="language-bash"> ✓ HTTP API   → http://localhost:63987
+ ✓ MCP Server → http://localhost:63988/mcp
+ ✓ Dashboard  → http://localhost:63987/ui</code></pre>
           </div>
         </div>
 
@@ -177,7 +177,7 @@ export GITHUB_TOKEN=ghp_...</code></pre>
         <div class="glass-card animate-on-scroll" style="padding: 1.5rem; margin-bottom: 1.5rem;">
           <h3 style="font-size: 0.9375rem; margin-bottom: 1rem; color: var(--accent-light);">⚡ Quick Verify</h3>
           <p style="font-size: 0.875rem; margin-bottom: 0.75rem;">Once the daemon is running, verify it's healthy:</p>
-          <pre><code class="language-bash">curl http://localhost:9999/health</code></pre>
+          <pre><code class="language-bash">curl http://localhost:63987/health</code></pre>
           <p style="font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.75rem;">Expected response:</p>
           <pre><code class="language-json">{"status": "ok"}</code></pre>
         </div>
@@ -185,7 +185,7 @@ export GITHUB_TOKEN=ghp_...</code></pre>
         <div class="glass-card animate-on-scroll delay-1" style="padding: 1.5rem;">
           <h3 style="font-size: 0.9375rem; margin-bottom: 1rem; color: var(--accent-light);">🔍 Check Providers</h3>
           <p style="font-size: 0.875rem; margin-bottom: 0.75rem;">See which LLM backends were discovered:</p>
-          <pre><code class="language-bash">curl http://localhost:9999/api/providers</code></pre>
+          <pre><code class="language-bash">curl http://localhost:63987/api/providers</code></pre>
         </div>
       </div>
     </div>
@@ -210,12 +210,12 @@ export GITHUB_TOKEN=ghp_...</code></pre>
         <tbody>
           <tr>
             <td><code>NEXUS_HTTP_PORT</code></td>
-            <td><code>9999</code></td>
+            <td><code>63987</code></td>
             <td>Port for the HTTP REST API and dashboard</td>
           </tr>
           <tr>
             <td><code>NEXUS_MCP_PORT</code></td>
-            <td><code>9998</code></td>
+            <td><code>63988</code></td>
             <td>Port for the MCP JSON-RPC server</td>
           </tr>
           <tr>
@@ -273,7 +273,7 @@ export GITHUB_TOKEN=ghp_...</code></pre>
     <div class="grid-2 mt-4">
       <div class="animate-on-scroll">
         <h3>1. Submit the task</h3>
-        <pre><code class="language-bash">curl -X POST http://localhost:9999/api/tasks \
+        <pre><code class="language-bash">curl -X POST http://localhost:63987/api/tasks \
   -H "Content-Type: application/json" \
   -d '{
     "projectPath": "/Users/you/myproject",
@@ -290,7 +290,7 @@ export GITHUB_TOKEN=ghp_...</code></pre>
 
       <div class="animate-on-scroll delay-1">
         <h3>2. Poll for completion</h3>
-        <pre><code class="language-bash">curl http://localhost:9999/api/tasks/abc-123-def-456</code></pre>
+        <pre><code class="language-bash">curl http://localhost:63987/api/tasks/abc-123-def-456</code></pre>
         <p class="mt-2">When complete, the response includes the generated code:</p>
         <pre><code class="language-json">{
   "id": "abc-123-def-456",
@@ -313,7 +313,7 @@ export GITHUB_TOKEN=ghp_...</code></pre>
   <!-- Dashboard -->
   <section class="content-section" id="dashboard">
     <h2>Web Dashboard</h2>
-    <p>The daemon ships with an embedded web dashboard at <code>http://localhost:9999/ui</code>. Open it in your browser to:</p>
+    <p>The daemon ships with an embedded web dashboard at <code>http://localhost:63987/ui</code>. Open it in your browser to:</p>
 
     <div class="grid-3 mt-4">
       <div class="card animate-on-scroll">
@@ -336,7 +336,7 @@ export GITHUB_TOKEN=ghp_...</code></pre>
     <div class="code-panel mt-4 animate-on-scroll" style="text-align: center; padding: 3rem 2rem; background: var(--bg-card); border: 1px dashed var(--border);">
       <p style="font-size: 2rem; margin-bottom: 0.75rem;" aria-hidden="true">🖥️</p>
       <p style="color: var(--text-muted); font-size: 0.9375rem;">Dashboard screenshot placeholder</p>
-      <p style="color: var(--text-muted); font-size: 0.8125rem; margin-top: 0.5rem;">Open <code>http://localhost:9999/ui</code> after starting the daemon</p>
+      <p style="color: var(--text-muted); font-size: 0.8125rem; margin-top: 0.5rem;">Open <code>http://localhost:63987/ui</code> after starting the daemon</p>
     </div>
   </section>
 

@@ -34,7 +34,7 @@ A step-by-step getting started guide and MCP integration page for users who want
    - **Submitting Your First Task**: curl example with POST /api/tasks
    - **Checking Task Status**: curl GET /api/tasks/{id}
    - **Using the CLI**: `nexus-cli` commands
-   - **Using the Dashboard**: Open http://localhost:9999/ui
+   - **Using the Dashboard**: Open http://localhost:63987/ui
    - **Configuration**: Environment variables table (NEXUS_DB_PATH, NEXUS_LISTEN_ADDR, NEXUS_MCP_ADDR)
    - **Provider Setup**: How to configure LM Studio, Ollama, cloud providers
 

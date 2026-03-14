@@ -5,7 +5,7 @@
 ## Prerequisites
 
 - nexusOrchestrator daemon running (`nexus-daemon` binary or the desktop app)
-- Daemon accessible at `http://127.0.0.1:9999` (default)
+- Daemon accessible at `http://127.0.0.1:63987` (default)
 
 ## Installation
 
@@ -25,7 +25,7 @@ code --install-extension nexus-orchestrator-0.1.0.vsix
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `nexus.daemonUrl` | `http://127.0.0.1:9999` | URL of running daemon |
+| `nexus.daemonUrl` | `http://127.0.0.1:63987` | URL of running daemon |
 | `nexus.defaultProvider` | `` | Pre-selected provider name |
 | `nexus.defaultModel` | `` | Pre-selected model |
 

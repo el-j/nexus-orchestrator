@@ -343,8 +343,8 @@ const packages = [
     title: 'Desktop App',
     items: [
       'Full Wails GUI with task dashboard',
-      'Embedded HTTP API on port <code class="text-slate-300">9999</code>',
-      'Embedded MCP server on port <code class="text-slate-300">9998</code>',
+      'Embedded HTTP API on port <code class="text-slate-300">63987</code>',
+      'Embedded MCP server on port <code class="text-slate-300">63988</code>',
       'Provider auto-discovery &amp; health UI',
       'Per-project session viewer',
     ],
@@ -354,8 +354,8 @@ const packages = [
     title: 'Daemon (nexus-daemon)',
     items: [
       'Headless background service',
-      'HTTP API on port <code class="text-slate-300">9999</code>',
-      'MCP server on port <code class="text-slate-300">9998</code>',
+      'HTTP API on port <code class="text-slate-300">63987</code>',
+      'MCP server on port <code class="text-slate-300">63988</code>',
       'Ideal for servers &amp; CI environments',
       'Configurable via environment variables',
     ],
@@ -366,7 +366,7 @@ const packages = [
     items: [
       'Thin HTTP client — no embedded LLM logic',
       'Submit, list, cancel, and monitor tasks',
-      'Connects to daemon at <code class="text-slate-300">127.0.0.1:9999</code>',
+      'Connects to daemon at <code class="text-slate-300">127.0.0.1:63987</code>',
       'Scriptable for automation &amp; pipelines',
     ],
   },
@@ -378,7 +378,7 @@ const packages = [
       'Task queue tree view sidebar',
       'Status bar with live daemon health',
       'Provider &amp; model picker command',
-      'Connects to daemon at <code class="text-slate-300">127.0.0.1:9999</code>',
+      'Connects to daemon at <code class="text-slate-300">127.0.0.1:63987</code>',
     ],
   },
 ]

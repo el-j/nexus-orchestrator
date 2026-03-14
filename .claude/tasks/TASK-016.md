@@ -10,7 +10,7 @@ createdAt: 2026-03-09T12:00:00.000Z
 
 ## Context
 
-The CLI (`cmd/nexus-cli`) is a remote HTTP client that talks to the nexusOrchestrator daemon at `127.0.0.1:9999`. It currently has `queue list`, `queue get <id>`, `queue cancel <id>`, and `providers` commands — but is **missing the primary use case**: `queue submit`. It also has no commands for managing session history, which is now required for external projects using the writeback workflow.
+The CLI (`cmd/nexus-cli`) is a remote HTTP client that talks to the nexusOrchestrator daemon at `127.0.0.1:63987`. It currently has `queue list`, `queue get <id>`, `queue cancel <id>`, and `providers` commands — but is **missing the primary use case**: `queue submit`. It also has no commands for managing session history, which is now required for external projects using the writeback workflow.
 
 ## Files to Read
 
@@ -54,7 +54,7 @@ The CLI (`cmd/nexus-cli`) is a remote HTTP client that talks to the nexusOrchest
    - `sessions clear <path>`: prints `Session cleared for <path>` on success
    - `projectPath` must be URL-encoded when placed in the URL path: use `url.PathEscape(projectPath)`
 
-3. **Helper: `baseURL()` function** — reads `NEXUS_ADDR` env var (default `http://127.0.0.1:9999`) so the CLI can point at remote daemons.
+3. **Helper: `baseURL()` function** — reads `NEXUS_ADDR` env var (default `http://127.0.0.1:63987`) so the CLI can point at remote daemons.
 
 4. **Consistent error formatting**: all HTTP errors should print `Error: <status> <message>` to stderr and exit with code 1. Reuse whatever pattern already exists in root.go.
 

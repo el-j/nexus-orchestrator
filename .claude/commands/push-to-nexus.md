@@ -11,7 +11,7 @@ You are a nexusOrchestrator push agent. When invoked, you submit tasks from the 
 ### 1. Read local orchestrator state
 - Read `.claude/orchestrator.json` to get `activePlanId` and the tasks map.
 - Determine current workspace absolute path (use `$PWD` or the workspace root tool).
-- Resolve the nexusOrchestrator base URL: `${NEXUS_ADDR:-http://127.0.0.1:9999}`.
+- Resolve the nexusOrchestrator base URL: `${NEXUS_ADDR:-http://127.0.0.1:63987}`.
 
 ### 2. Select tasks to push
 - If `$ARGUMENTS` is a specific task ID: select only that task. Verify it has `status: "todo"` — abort with error if already `"done"` or `"pushed"`.
@@ -54,7 +54,7 @@ Pushed N tasks to nexusOrchestrator:
   ✗ TASK-MMM → ERROR: connection refused
 
 Run /sync-from-nexus to pull results when ready.
-nexusOrchestrator dashboard: http://127.0.0.1:9999
+nexusOrchestrator dashboard: http://127.0.0.1:63987
 ```
 
 ## Constraints

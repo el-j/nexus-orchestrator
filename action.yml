@@ -127,7 +127,7 @@ inputs:
       HTTP base URL of a running nexus-daemon.
       Used only when start_daemon is "false".
     required: false
-    default: 'http://127.0.0.1:9999'
+    default: 'http://127.0.0.1:63987'
 
   start_daemon:
     description: >

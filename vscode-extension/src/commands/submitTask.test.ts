@@ -91,7 +91,7 @@ describe('sendCurrentContextCommand', () => {
       cancelTask: vi.fn().mockResolvedValue(undefined),
     } as unknown as NexusClient
 
-    const promise = sendCurrentContextCommand(client, 'http://127.0.0.1:9999')
+    const promise = sendCurrentContextCommand(client, 'http://127.0.0.1:63987')
     await vi.runAllTimersAsync()
     await promise
 

@@ -35,8 +35,8 @@ go vet ./...
 NEXUS_DB_PATH=/tmp/verify.db nexus-daemon &
 sleep 1
 
-curl -sf http://localhost:9999/api/health | jq .
-curl -sf http://localhost:9999/ui | grep -q "nexusOrchestrator"
+curl -sf http://localhost:63987/api/health | jq .
+curl -sf http://localhost:63987/ui | grep -q "nexusOrchestrator"
 
 # 5. Test nexus-submit
 nexus-submit --task-file .claude/tasks/TASK-013.md \
@@ -45,12 +45,12 @@ nexus-submit --task-file .claude/tasks/TASK-013.md \
              --context internal/core/services/orchestrator.go | grep "task_id"
 
 # 6. Check SSE
-curl -N --max-time 3 http://localhost:9999/api/events | head -1
+curl -N --max-time 3 http://localhost:63987/api/events | head -1
 
 # 7. Run dogfood script (requires LLM provider online)
 # ./scripts/dogfood-plan002.sh
 
-kill $(lsof -ti:9999) 2>/dev/null
+kill $(lsof -ti:63987) 2>/dev/null
 ```
 
 ## README Section to Add
@@ -75,7 +75,7 @@ CGO_ENABLED=1 go build -o /tmp/nexus-daemon ./cmd/nexus-daemon
 NEXUS_DB_PATH=/tmp/nexus-local.db /tmp/nexus-daemon &
 
 # Open the live dashboard
-open http://localhost:9999/ui
+open http://localhost:63987/ui
 ```
 
 ### Submit a PLAN-002 task for LLM implementation

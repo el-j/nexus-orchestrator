@@ -59,7 +59,7 @@
         <span>API Reference</span>
       </div>
       <h1>API Reference</h1>
-      <p>Complete HTTP REST API and MCP endpoint documentation. Base URL: <code>http://localhost:9999</code> &nbsp;·&nbsp; MCP: <code>http://localhost:9998/mcp</code></p>
+      <p>Complete HTTP REST API and MCP endpoint documentation. Base URL: <code>http://localhost:63987</code> &nbsp;·&nbsp; MCP: <code>http://localhost:63988/mcp</code></p>
     </div>
   </div>
 </header>
@@ -70,12 +70,12 @@
   <!-- HTTP REST API -->
   <section class="content-section" id="http-api">
     <h2>HTTP REST API</h2>
-    <p>All endpoints accept and return <code>application/json</code> unless stated otherwise. The API runs on port <code>9999</code> by default.</p>
+    <p>All endpoints accept and return <code>application/json</code> unless stated otherwise. The API runs on port <code>63987</code> by default.</p>
 
     <div class="callout callout-note mt-3">
       <span class="callout-icon">ℹ️</span>
       <div class="callout-content">
-        <p><strong>Base URL:</strong> <code>http://localhost:9999</code> &nbsp;—&nbsp; Override the port with the <code>NEXUS_HTTP_PORT</code> environment variable.</p>
+        <p><strong>Base URL:</strong> <code>http://localhost:63987</code> &nbsp;—&nbsp; Override the port with the <code>NEXUS_HTTP_PORT</code> environment variable.</p>
       </div>
     </div>
 
@@ -356,12 +356,12 @@ data: {"status":"COMPLETED","logs":"...","updatedAt":"..."}</code></pre>
   <!-- MCP API -->
   <section class="content-section" id="mcp-api">
     <h2>MCP Server API</h2>
-    <p>The MCP server runs on port <code>9998</code> and implements JSON-RPC 2.0. It exposes six tools compatible with Claude Desktop and any MCP client.</p>
+    <p>The MCP server runs on port <code>63988</code> and implements JSON-RPC 2.0. It exposes six tools compatible with Claude Desktop and any MCP client.</p>
 
     <div class="callout callout-note mt-3">
       <span class="callout-icon">ℹ️</span>
       <div class="callout-content">
-        <p><strong>MCP Endpoint:</strong> <code>http://localhost:9998/mcp</code> — See the <a href="./mcp-integration.html">MCP Integration page</a> for Claude Desktop configuration.</p>
+        <p><strong>MCP Endpoint:</strong> <code>http://localhost:63988/mcp</code> — See the <a href="./mcp-integration.html">MCP Integration page</a> for Claude Desktop configuration.</p>
       </div>
     </div>
 
@@ -519,12 +519,12 @@ data: {"status":"COMPLETED","logs":"...","updatedAt":"..."}</code></pre>
         <tbody>
           <tr>
             <td><code>NEXUS_HTTP_PORT</code></td>
-            <td><code>9999</code></td>
+            <td><code>63987</code></td>
             <td>HTTP API and dashboard port</td>
           </tr>
           <tr>
             <td><code>NEXUS_MCP_PORT</code></td>
-            <td><code>9998</code></td>
+            <td><code>63988</code></td>
             <td>MCP JSON-RPC server port</td>
           </tr>
           <tr>

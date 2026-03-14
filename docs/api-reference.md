@@ -17,7 +17,7 @@ nav_order: 3
 
 ## HTTP REST API
 
-Base URL: `http://localhost:9999`
+Base URL: `http://localhost:63987`
 
 ### Submit Task
 
@@ -255,7 +255,7 @@ Serves the embedded web dashboard with real-time task monitoring, task submissio
 
 ## MCP Server
 
-Base URL: `http://localhost:9998`
+Base URL: `http://localhost:63988`
 
 ### Protocol
 
@@ -263,7 +263,7 @@ Base URL: `http://localhost:9998`
 - **Version**: `2024-11-05`
 - **Endpoint**: `POST /mcp`
 - **Health**: `GET /health`
-- **Default Port**: 9998 (configurable via `NEXUS_MCP_ADDR`)
+- **Default Port**: 63988 (configurable via `NEXUS_MCP_ADDR`)
 
 ### Available Tools
 
@@ -353,8 +353,8 @@ A task moves through these states:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `NEXUS_DB_PATH` | `nexus.db` | SQLite database file path |
-| `NEXUS_LISTEN_ADDR` | `127.0.0.1:9999` | HTTP API listen address |
-| `NEXUS_MCP_ADDR` | `127.0.0.1:9998` | MCP server listen address |
+| `NEXUS_LISTEN_ADDR` | `127.0.0.1:63987` | HTTP API listen address |
+| `NEXUS_MCP_ADDR` | `127.0.0.1:63988` | MCP server listen address |
 | `NEXUS_OPENAI_API_KEY` | — | OpenAI API key (enables OpenAI provider) |
 | `NEXUS_OPENAI_MODEL` | `gpt-4o-mini` | Default OpenAI model |
 | `NEXUS_ANTHROPIC_API_KEY` | — | Anthropic API key (enables Anthropic provider) |

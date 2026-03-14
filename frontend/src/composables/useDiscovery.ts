@@ -53,7 +53,7 @@ export function useDiscovery() {
     loading.value = true
     await refresh()
     loading.value = false
-    let baseUrl = 'http://127.0.0.1:9999'
+    let baseUrl = 'http://127.0.0.1:63987'
     try { baseUrl = await resolveServerUrl() } catch { /* use default */ }
     if (!connectSSE(baseUrl)) {
       interval = setInterval(refresh, 10000)

@@ -42,5 +42,5 @@ When all tasks in the plan are `done`:
 - `fmt.Errorf("package: operation: %w", err)` error wrapping everywhere
 - No goroutines inside `internal/core/services/`
 - `domain.ErrNotFound` for missing entities
-- HTTP API on `:9999`, MCP on `:9998`
+- HTTP API on `:63987`, MCP on `:63988`
 - All tests: `CGO_ENABLED=1 go test -race -count=1 ./...`
