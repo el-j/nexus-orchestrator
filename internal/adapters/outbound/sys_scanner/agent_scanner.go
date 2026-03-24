@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -227,7 +228,9 @@ func (s *Scanner) probeProcessFlags(ctx context.Context) []domain.DiscoveredAgen
 			}
 			parts := strings.SplitN(line, " ", 2)
 			procName := ""
+			pid := 0
 			if len(parts) > 1 {
+				pid, _ = strconv.Atoi(parts[0])
 				procName = strings.TrimSpace(parts[1])
 				if idx := strings.Index(procName, " "); idx > 0 {
 					procName = procName[:idx]
@@ -244,6 +247,7 @@ func (s *Scanner) probeProcessFlags(ctx context.Context) []domain.DiscoveredAgen
 				DetectionMethod: "process-flag",
 				ProcessName:     procName,
 				IsRunning:       true,
+				PID:             pid,
 			})
 		}
 	}
@@ -262,7 +266,7 @@ func (s *Scanner) probeAgentProcesses(ctx context.Context) []domain.DiscoveredAg
 	}
 	var results []domain.DiscoveredAgent
 	for _, p := range patterns {
-		found, matched, _ := detectProcess(ctx, p.pattern)
+		found, matched, pid, _ := detectProcess(ctx, p.pattern)
 		if !found {
 			continue
 		}
@@ -273,6 +277,7 @@ func (s *Scanner) probeAgentProcesses(ctx context.Context) []domain.DiscoveredAg
 			DetectionMethod: "process",
 			ProcessName:     matched,
 			IsRunning:       true,
+			PID:             pid,
 		})
 	}
 	return results

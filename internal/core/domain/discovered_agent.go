@@ -28,4 +28,5 @@ type DiscoveredAgent struct {
 	MCPEndpoint     string    `json:"mcpEndpoint,omitempty"`
 	IsRunning       bool      `json:"isRunning"`
 	LastSeen        time.Time `json:"lastSeen"`
+	PID             int       `json:"pid,omitempty"`
 }

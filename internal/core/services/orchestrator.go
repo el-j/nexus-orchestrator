@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -124,6 +125,8 @@ func NewOrchestrator(
 	go svc.runWorker()
 	svc.workerWg.Add(1)
 	go svc.runSessionCleanup()
+	svc.workerWg.Add(1)
+	go svc.runTaskWatchdog()
 	return svc
 }
 
@@ -733,6 +736,52 @@ func (o *OrchestratorService) RegisterAISession(ctx context.Context, s domain.AI
 		})
 	}
 	return s, nil
+}
+
+// TerminateAISession attempts to gracefully shut down or force kill the external agent process.
+func (o *OrchestratorService) TerminateAISession(ctx context.Context, id string, force bool) error {
+	o.mu.Lock()
+	repo := o.aiSessionRepo
+	b := o.broadcaster
+	o.mu.Unlock()
+
+	if repo == nil {
+		return fmt.Errorf("orchestrator: terminate ai session: no session repo configured")
+	}
+
+	sess, err := repo.GetAISessionByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("orchestrator: terminate ai session: %w", err)
+	}
+
+	if sess.PID > 0 {
+		proc, err := os.FindProcess(sess.PID)
+		if err == nil {
+			if force {
+				_ = proc.Kill()
+			} else {
+				// On Unix systems, you'd send SIGTERM.
+				// Since os.Interrupt works cross-platform mostly:
+				_ = proc.Signal(os.Interrupt)
+			}
+		}
+	}
+
+	// Mark it disconnected logically.
+	if err := repo.UpdateAISessionStatus(ctx, id, domain.SessionStatusDisconnected, time.Now()); err != nil {
+		return fmt.Errorf("orchestrator: terminate ai session: log disconnect: %w", err)
+	}
+
+	if b != nil {
+		b.BroadcastAISessionEvent(domain.AISessionEvent{
+			Type:        "ai_session_terminated",
+			AISessionID: sess.ID,
+			Status:      domain.SessionStatusDisconnected,
+			Timestamp:   time.Now(),
+		})
+	}
+
+	return nil
 }
 
 // HeartbeatAISession refreshes the last-activity timestamp on an active session.
@@ -1409,4 +1458,68 @@ func estimateTokens(messages []domain.Message) int {
 		total += (len(m.Content)+3)/4 + 4
 	}
 	return total
+}
+
+func (o *OrchestratorService) runTaskWatchdog() {
+	defer o.workerWg.Done()
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-o.stopCh
+		cancel()
+	}()
+	defer cancel()
+	// Check every minute
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-o.stopCh:
+			return
+		case <-ticker.C:
+			// 5 minutes timeout for processing tasks
+			tasks, err := o.repo.GetStaleProcessing(ctx, 5*time.Minute)
+			if err != nil {
+				log.Printf("orchestrator: task watchdog: get stale tasks: %v", err)
+				continue
+			}
+			for _, t := range tasks {
+				log.Printf("orchestrator: task watchdog: task %s stuck in PROCESSING, failing", t.ID)
+				t.Status = domain.StatusFailed
+				t.Logs = t.Logs + "\n\n[System] Task timed out while PROCESSING. Marked as FAILED by watchdog."
+				if err := o.repo.Update(t); err != nil {
+					log.Printf("orchestrator: task watchdog: update task %s fail: %v", t.ID, err)
+					continue
+				}
+				o.emit(t.ID, domain.StatusFailed)
+				if o.broadcaster != nil {
+					o.broadcaster.Broadcast(ports.TaskEvent{
+						Type: ports.EventTaskFailed, TaskID: t.ID, Status: domain.StatusFailed,
+					})
+				}
+			}
+		}
+	}
+}
+
+// HeartbeatTask keeps a PROCESSING task alive, preventing the watchdog from failing it.
+func (o *OrchestratorService) HeartbeatTask(ctx context.Context, taskID string, sessionID string) error {
+	task, err := o.repo.GetByID(taskID)
+	if err != nil {
+		return fmt.Errorf("heartbeat task: %w", err)
+	}
+	if task.Status != domain.StatusProcessing {
+		return fmt.Errorf("heartbeat task: task not processing")
+	}
+	if task.AISessionID != sessionID {
+		return fmt.Errorf("heartbeat task: not claimed by session %s", sessionID)
+	}
+	// UpdateStatusIfCurrent touches UpdatedAt
+	ok, err := o.repo.UpdateStatusIfCurrent(task.ID, domain.StatusProcessing, domain.StatusProcessing)
+	if err != nil {
+		return fmt.Errorf("heartbeat task: update status: %w", err)
+	}
+	if !ok {
+		return fmt.Errorf("heartbeat task: status changed")
+	}
+	return nil
 }

@@ -54,6 +54,8 @@ type TaskRepository interface {
 	Update(t domain.Task) error
 	// GetTasksBySessionID returns all tasks claimed by the given AI session.
 	GetTasksBySessionID(sessionID string) ([]domain.Task, error)
+	// GetStaleProcessing returns tasks in PROCESSING state longer than threshold.
+	GetStaleProcessing(ctx context.Context, threshold time.Duration) ([]domain.Task, error)
 }
 
 // FileWriter is the port for reading context from disk and writing generated code back.
@@ -140,6 +142,9 @@ type Orchestrator interface {
 	ListAISessions(ctx context.Context) ([]domain.AISession, error)
 	// DeregisterAISession marks the session identified by id as disconnected.
 	DeregisterAISession(ctx context.Context, id string) error
+	// TerminateAISession attempts to gracefully shut down or force kill the
+	// external agent process associated with the given session ID.
+	TerminateAISession(ctx context.Context, id string, force bool) error
 	// HeartbeatAISession refreshes the last-activity timestamp of a session.
 	HeartbeatAISession(ctx context.Context, id string) error
 	// ClaimTask assigns a QUEUED task to the given AI session, transitioning it to PROCESSING.
@@ -148,6 +153,8 @@ type Orchestrator interface {
 	// UpdateTaskStatus allows an external AI session to report task completion or failure.
 	// Only the session that claimed the task (matching AISessionID) may update its status.
 	UpdateTaskStatus(ctx context.Context, taskID string, sessionID string, status domain.TaskStatus, logs string) (domain.Task, error)
+	// HeartbeatTask keeps a PROCESSING task alive, preventing the watchdog from failing it.
+	HeartbeatTask(ctx context.Context, taskID string, sessionID string) error
 	// PurgeDisconnectedSessions deletes all AI sessions with status "disconnected"
 	// that have been inactive for more than 2 hours. Returns the count deleted.
 	PurgeDisconnectedSessions(ctx context.Context) (int, error)

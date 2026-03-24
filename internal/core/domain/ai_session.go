@@ -47,6 +47,7 @@ type AISession struct {
 	DelegationTimestamp *time.Time      `json:"delegationTimestamp,omitempty"`
 	AgentCapabilities   []string        `json:"agentCapabilities,omitempty"`
 	DetectionMethod     string          `json:"detectionMethod,omitempty"`
+	PID                 int             `json:"pid,omitempty"`
 }
 
 // AISessionEvent is emitted by OrchestratorService when an AI agent session

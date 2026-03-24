@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -316,7 +317,7 @@ func (s *Scanner) probeProcess(ctx context.Context, p processPattern) ([]domain.
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	found, matched, err := detectProcess(ctx, p.pattern)
+	found, matched, _, err := detectProcess(ctx, p.pattern)
 	if err != nil || !found {
 		return nil, nil
 	}
@@ -328,37 +329,39 @@ func (s *Scanner) probeProcess(ctx context.Context, p processPattern) ([]domain.
 	}}, nil
 }
 
-func detectProcess(ctx context.Context, pattern string) (bool, string, error) {
+func detectProcess(ctx context.Context, pattern string) (bool, string, int, error) {
 	if runtime.GOOS == "windows" {
 		return detectProcessWindows(ctx, pattern)
 	}
 	return detectProcessPgrep(ctx, pattern)
 }
 
-func detectProcessPgrep(ctx context.Context, pattern string) (bool, string, error) {
+func detectProcessPgrep(ctx context.Context, pattern string) (bool, string, int, error) {
 	out, err := exec.CommandContext(ctx, "pgrep", "-lf", pattern).Output()
 	if err != nil {
-		return false, "", nil
+		return false, "", 0, nil
 	}
 	line := strings.TrimSpace(string(out))
 	if line == "" {
-		return false, "", nil
+		return false, "", 0, nil
 	}
 	parts := strings.SplitN(line, " ", 2)
 	name := pattern
+	pid := 0
 	if len(parts) == 2 {
+		pid, _ = strconv.Atoi(parts[0])
 		name = strings.TrimSpace(parts[1])
 		if idx := strings.Index(name, " "); idx > 0 {
 			name = name[:idx]
 		}
 	}
-	return true, name, nil
+	return true, name, pid, nil
 }
 
-func detectProcessWindows(ctx context.Context, pattern string) (bool, string, error) {
+func detectProcessWindows(ctx context.Context, pattern string) (bool, string, int, error) {
 	out, err := exec.CommandContext(ctx, "tasklist", "/fo", "csv", "/nh").Output()
 	if err != nil {
-		return false, "", fmt.Errorf("sys_scanner: tasklist: %w", err)
+		return false, "", 0, fmt.Errorf("sys_scanner: tasklist: %w", err)
 	}
 	lower := strings.ToLower(pattern)
 	for _, line := range strings.Split(string(out), "\n") {
@@ -366,12 +369,20 @@ func detectProcessWindows(ctx context.Context, pattern string) (bool, string, er
 			continue
 		}
 		line = strings.TrimSpace(line)
+
+		pid := 0
+		parts := strings.Split(line, ",")
+		if len(parts) > 1 {
+			pidStr := strings.Trim(parts[1], `"`)
+			pid, _ = strconv.Atoi(pidStr)
+		}
+
 		if len(line) > 0 && line[0] == '"' {
 			if end := strings.Index(line[1:], "\""); end >= 0 {
-				return true, line[1 : end+1], nil
+				return true, line[1 : end+1], pid, nil
 			}
 		}
-		return true, pattern, nil
+		return true, pattern, pid, nil
 	}
-	return false, "", nil
+	return false, "", 0, nil
 }

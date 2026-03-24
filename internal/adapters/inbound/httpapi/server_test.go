@@ -144,6 +144,9 @@ func (m *mockOrchestrator) DeregisterAISession(_ context.Context, _ string) erro
 func (m *mockOrchestrator) HeartbeatAISession(_ context.Context, _ string) error {
 	return nil
 }
+func (m *mockOrchestrator) HeartbeatTask(ctx context.Context, taskID, sessionID string) error {
+	return nil
+}
 func (m *mockOrchestrator) ClaimTask(_ context.Context, _ string, _ string) (domain.Task, error) {
 	return domain.Task{}, nil
 }

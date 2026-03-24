@@ -3,6 +3,7 @@
 package repo_sqlite
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -428,7 +429,30 @@ func (r *Repository) GetTasksBySessionID(sessionID string) ([]domain.Task, error
 	return tasks, rows.Err()
 }
 
-// scanner is satisfied by both *sql.Row and *sql.Rows.
+// GetStaleProcessing returns tasks in PROCESSING status that haven't been updated for the threshold duration.
+func (r *Repository) GetStaleProcessing(ctx context.Context, threshold time.Duration) ([]domain.Task, error) {
+	cutoff := time.Now().Add(-threshold).UnixMilli()
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id
+		 FROM tasks WHERE status = 'PROCESSING' AND updated_at < ? ORDER BY updated_at ASC`,
+		cutoff,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: query stale processing: %w", err)
+	}
+	defer rows.Close()
+
+	tasks := []domain.Task{}
+	for rows.Next() {
+		t, err := scanTask(rows)
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, t)
+	}
+	return tasks, rows.Err()
+}
+
 type scanner interface {
 	Scan(dest ...interface{}) error
 }
