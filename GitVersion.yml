@@ -1,6 +1,7 @@
 assembly-versioning-scheme: MajorMinorPatch
 tag-prefix: '[vV]?'
-next-version: 0.2.0
+next-version: 0.10.0
+
 branches:
   main:
     regex: ^main$
@@ -11,18 +12,38 @@ branches:
       - hotfix
       - release
       - copilot
+      - alpha
+      - beta
+
+  alpha:
+    regex: ^alpha[/-]
+    label: alpha
+    increment: Minor
+    source-branches:
+      - main
+
+  beta:
+    regex: ^beta[/-]
+    label: beta
+    increment: Minor
+    source-branches:
+      - main
+      - alpha
+
   feature:
     regex: ^feature[/-]
     label: alpha
     increment: Minor
     source-branches:
       - main
+
   hotfix:
     regex: ^hotfix[/-]
-    label: beta
+    label: ''
     increment: Patch
     source-branches:
       - main
+
   release:
     regex: ^release[/-]
     label: rc
@@ -31,6 +52,8 @@ branches:
       - main
       - feature
       - hotfix
+      - beta
+
   copilot:
     regex: ^copilot[/-]
     label: alpha

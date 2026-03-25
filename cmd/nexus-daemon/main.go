@@ -21,7 +21,11 @@ import (
 	"nexus-orchestrator/internal/core/services"
 )
 
-var version = "dev"
+var (
+	version   = "dev"
+	commit    = "unknown"
+	buildDate = "unknown"
+)
 
 func main() {
 	// 0. Log hub — capture log output for SSE streaming before anything logs.
@@ -92,7 +96,7 @@ func main() {
 	if mcpAddr == "" {
 		mcpAddr = "127.0.0.1:63988"
 	}
-	log.Printf("nexus-daemon %s starting...", version)
+	log.Printf("nexus-daemon %s (%s %s) starting...", version, commit, buildDate)
 	// Print a human- and AI-readable ready banner once both servers are about to start.
 	go func() {
 		// Brief pause so the log context lines printed above appear first.

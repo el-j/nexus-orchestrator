@@ -12,7 +12,11 @@ import (
 	"time"
 )
 
-var version = "dev"
+var (
+	version   = "dev"
+	commit    = "unknown"
+	buildDate = "unknown"
+)
 
 func main() {
 	var (

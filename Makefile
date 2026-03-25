@@ -25,15 +25,28 @@ DIST_DESKTOP  := $(DIST)/desktop
 DIST_VSCODE   := $(DIST)/vscode
 MODULE        := nexus-orchestrator
 
+# ---------------------------------------------------------------------------
+# Version stamping — computed from git at build time
+# ---------------------------------------------------------------------------
+GIT_TAG    := $(shell git describe --tags --match 'v[0-9]*' --abbrev=0 2>/dev/null || echo "v0.0.0")
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+GIT_DIRTY  := $(shell git diff --quiet 2>/dev/null || echo "-dirty")
+BUILD_DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+VERSION    := $(shell echo "$(GIT_TAG)" | sed 's/^v//')$(GIT_DIRTY)
+
+VERSION_FLAGS := -X 'main.version=$(VERSION)' \
+                 -X 'main.commit=$(GIT_COMMIT)' \
+                 -X 'main.buildDate=$(BUILD_DATE)'
+
 # Build tags that enable the mattn/go-sqlite3 driver
 BUILD_FLAGS := -trimpath
-LDFLAGS     := -s -w
+LDFLAGS     := -s -w $(VERSION_FLAGS)
 # Windows GUI binary requires -H windowsgui to suppress the console window.
-LDFLAGS_WIN_GUI := -s -w -H windowsgui
+LDFLAGS_WIN_GUI := -s -w -H windowsgui $(VERSION_FLAGS)
 
 # zig 0.15.x musl: pure-Go net/user avoids musl libc symbol issues; -static links sqlite3 statically
 LINUX_BUILD_FLAGS := -trimpath -tags netgo,osusergo
-LINUX_LDFLAGS     := -s -w -extldflags='-static'
+LINUX_LDFLAGS     := -s -w -extldflags='-static' $(VERSION_FLAGS)
 
 # Detect host OS for zig target triple selection
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
@@ -42,7 +55,8 @@ UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
         build-linux-amd64 build-linux-arm64 \
         build-darwin-amd64 build-darwin-arm64 \
         build-windows-amd64 \
-        build-frontend build-vscode build-dev dev dev-daemon check-air
+        build-frontend build-vscode build-dev dev dev-daemon check-air \
+        version version-sync release-alpha release-beta release-rc release
 
 # ---------------------------------------------------------------------------
 # Default: native build (CLI + daemon)
@@ -69,7 +83,7 @@ build-frontend:
 build-vscode:
 	@echo "Building VS Code extension…"
 	@mkdir -p $(DIST_VSCODE)
-	cd vscode-extension && npm install --prefer-offline --silent && npm run build && npx @vscode/vsce package --no-dependencies --out ../$(DIST_VSCODE)/nexus-orchestrator.vsix
+	cd vscode-extension && npm install --prefer-offline --silent && npm run build && npx @vscode/vsce package --no-dependencies --packageVersion "$(VERSION)" --out ../$(DIST_VSCODE)/nexus-orchestrator.vsix
 	@echo "Built → $(DIST_VSCODE)/nexus-orchestrator.vsix"
 
 # Convenience target: build frontend + VS Code extension (quick pre-release check)
@@ -125,7 +139,7 @@ build-gui: build-frontend
 	@echo "Building Wails desktop application..."
 	@mkdir -p $(DIST_DESKTOP)
 	@if command -v wails >/dev/null 2>&1; then \
-		wails build -clean; \
+		wails build -clean -ldflags "-s -w -X 'main.version=$(VERSION)' -X 'main.commit=$(GIT_COMMIT)' -X 'main.buildDate=$(BUILD_DATE)'"; \
 		cp -r build/bin/* $(DIST_DESKTOP)/; \
 		echo "  → $(DIST_DESKTOP)/"; \
 	else \
@@ -138,7 +152,8 @@ build-gui: build-frontend
 # Requires wails CLI and a Windows-capable cross-compilation environment.
 build-gui-windows-amd64:
 	GOOS=windows GOARCH=amd64 \
-		wails build -platform windows/amd64
+		wails build -platform windows/amd64 \
+		-ldflags "-s -w -H windowsgui -X 'main.version=$(VERSION)' -X 'main.commit=$(GIT_COMMIT)' -X 'main.buildDate=$(BUILD_DATE)'"
 	@echo "Built → build/bin/"
 
 # ---------------------------------------------------------------------------
@@ -250,32 +265,82 @@ clean:
 	rm -f coverage.out coverage.html
 	rm -f vscode-extension/*.vsix
 
+# ---------------------------------------------------------------------------
+# Version display and package sync
+# ---------------------------------------------------------------------------
+version:
+	@echo "$(VERSION) (commit: $(GIT_COMMIT), built: $(BUILD_DATE))"
+
+version-sync:
+	@bash scripts/version-sync.sh "$(VERSION)"
+
+# ---------------------------------------------------------------------------
+# Release tagging (local) — pushes an annotated git tag
+# ---------------------------------------------------------------------------
+# Usage:
+#   make release-alpha VER=0.10.0    → tags v0.10.0-alpha.1 (next alpha number)
+#   make release-beta  VER=0.10.0    → tags v0.10.0-beta.1
+#   make release-rc    VER=0.10.0    → tags v0.10.0-rc.1
+#   make release       VER=0.10.0    → tags v0.10.0
+#
+# If VER is omitted the current computed VERSION is used.
+
+release-alpha:
+	@bash scripts/release.sh alpha "$(or $(VER),$(VERSION))"
+
+release-beta:
+	@bash scripts/release.sh beta "$(or $(VER),$(VERSION))"
+
+release-rc:
+	@bash scripts/release.sh rc "$(or $(VER),$(VERSION))"
+
+release:
+	@bash scripts/release.sh stable "$(or $(VER),$(VERSION))"
+
 help:
 	@echo ""
-	@echo "  make build              Native CLI + daemon"
-	@echo "  make build-gui          Desktop GUI (Wails, macOS ARM64)"
-	@echo "  make build-gui-windows-amd64 Desktop GUI (Wails, Windows AMD64, -H windowsgui)"
-	@echo "  make build-frontend     Vite GUI assets → build/frontend/ (no Wails needed)"
-	@echo "  make build-vscode       VS Code extension bundle + VSIX package"
-	@echo "  make build-dev          build-frontend + build-vscode (quick pre-release check)"
+	@echo "Build:"
+	@echo "  make build                  Native CLI + daemon (current OS/arch)"
+	@echo "  make build-gui              Desktop GUI (Wails, native)"
+	@echo "  make build-gui-windows-amd64 Desktop GUI (Wails, Windows AMD64)"
+	@echo "  make build-frontend         Vite GUI assets → build/frontend/"
+	@echo "  make build-vscode           VS Code extension bundle + VSIX (version-stamped)"
+	@echo "  make build-dev              build-frontend + build-vscode"
+	@echo "  make build-all              Cross-compile all platforms"
+	@echo "  make build-linux-amd64      Linux x86-64 (static, musl)"
+	@echo "  make build-linux-arm64      Linux ARM64  (static, musl)"
+	@echo "  make build-darwin-amd64     macOS x86-64"
+	@echo "  make build-darwin-arm64     macOS ARM64 (Apple Silicon)"
+	@echo "  make build-windows-amd64    Windows x86-64"
 	@echo ""
 	@echo "Dev:"
-	@echo "  make dev                daemon (air hot-reload) + Vite HMR frontend in parallel"
-	@echo "  make dev-daemon         daemon hot-reload only (no frontend)"
-	@echo "  make build-all          Cross-compile all platforms"
-	@echo "  make build-linux-amd64  Linux x86-64 (static, musl)"
-	@echo "  make build-linux-arm64  Linux ARM64  (static, musl)"
-	@echo "  make build-darwin-amd64 macOS x86-64"
-	@echo "  make build-darwin-arm64 macOS ARM64 (Apple Silicon)"
-	@echo "  make build-windows-amd64 Windows x86-64"
-	@echo "  make test               Run all tests with -race"
-	@echo "  make test-unit          Core service tests only"
-	@echo "  make test-cover         Tests + HTML coverage report"
-	@echo "  make vet                go vet ./..."
-	@echo "  make lint               golangci-lint run ./..."
-	@echo "  make clean              Remove build/ output subdirs (keeps Wails resources)"
+	@echo "  make dev                    daemon (air) + Vite HMR in parallel"
+	@echo "  make dev-daemon             daemon hot-reload only"
 	@echo ""
-	@echo "GUI desktop app:"
-	@echo "  wails dev               Hot-reload dev mode"
-	@echo "  wails build             Production Wails binary"
+	@echo "Test & quality:"
+	@echo "  make test                   All tests with -race"
+	@echo "  make test-unit              Core service tests only"
+	@echo "  make test-cover             Tests + HTML coverage report"
+	@echo "  make vet                    go vet ./..."
+	@echo "  make lint                   golangci-lint run ./..."
+	@echo ""
+	@echo "Versioning:"
+	@echo "  make version                Show current version + commit + build date"
+	@echo "  make version-sync           Stamp version into all package manifests"
+	@echo "  make release-alpha VER=X.Y.Z  Tag v X.Y.Z-alpha.N (auto-increment N)"
+	@echo "  make release-beta  VER=X.Y.Z  Tag vX.Y.Z-beta.N"
+	@echo "  make release-rc    VER=X.Y.Z  Tag vX.Y.Z-rc.N"
+	@echo "  make release       VER=X.Y.Z  Tag vX.Y.Z (stable)"
+	@echo ""
+	@echo "  Branch → tag workchain:"
+	@echo "    feature/** or alpha/**  →  vX.Y.Z-alpha.N"
+	@echo "    beta/**                 →  vX.Y.Z-beta.N"
+	@echo "    release/**              →  vX.Y.Z-rc.N"
+	@echo "    main                    →  vX.Y.Z"
+	@echo "    hotfix/**               →  vX.Y.(Z+1)"
+	@echo ""
+	@echo "Other:"
+	@echo "  make clean                  Remove build/ output subdirs"
+	@echo "  wails dev                   Wails hot-reload dev mode"
+	@echo "  wails build                 Production Wails binary"
 	@echo ""

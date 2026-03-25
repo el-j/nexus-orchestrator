@@ -10,6 +10,8 @@ on:
       - 'hotfix/**'
       - 'copilot/**'
       - 'release/**'
+      - 'alpha/**'
+      - 'beta/**'
     paths-ignore:
       - 'docs/**'
       - '*.md'
