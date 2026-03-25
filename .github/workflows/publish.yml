@@ -525,7 +525,7 @@ jobs:
         run: |
           mkdir -p build/vscode
           cd vscode-extension
-          npx @vscode/vsce package --no-dependencies --packageVersion "${{ needs.version.outputs.semVer }}" --out ../build/vscode/nexus-orchestrator.vsix
+          npx @vscode/vsce package --no-dependencies --out ../build/vscode/nexus-orchestrator.vsix
 
       - uses: actions/upload-artifact@v6
         with:

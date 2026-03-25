@@ -24,6 +24,7 @@ DIST          := build
 DIST_DESKTOP  := $(DIST)/desktop
 DIST_VSCODE   := $(DIST)/vscode
 MODULE        := nexus-orchestrator
+IMAGE         := ghcr.io/el-j/nexus-orchestrator
 
 # ---------------------------------------------------------------------------
 # Version stamping — computed from git at build time
@@ -33,6 +34,7 @@ GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 GIT_DIRTY  := $(shell git diff --quiet 2>/dev/null || echo "-dirty")
 BUILD_DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 VERSION    := $(shell echo "$(GIT_TAG)" | sed 's/^v//')$(GIT_DIRTY)
+VSIX_VERSION := $(shell echo "$(GIT_TAG)" | sed 's/^v//')
 
 VERSION_FLAGS := -X 'main.version=$(VERSION)' \
                  -X 'main.commit=$(GIT_COMMIT)' \
@@ -56,7 +58,8 @@ UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
         build-darwin-amd64 build-darwin-arm64 \
         build-windows-amd64 \
         build-frontend build-vscode build-dev dev dev-daemon check-air \
-        version version-sync release-alpha release-beta release-rc release
+        version version-sync release-alpha release-beta release-rc release \
+        docker-build docker-push docker-run
 
 # ---------------------------------------------------------------------------
 # Default: native build (CLI + daemon)
@@ -83,7 +86,10 @@ build-frontend:
 build-vscode:
 	@echo "Building VS Code extension…"
 	@mkdir -p $(DIST_VSCODE)
-	cd vscode-extension && npm install --prefer-offline --silent && npm run build && npx @vscode/vsce package --no-dependencies --packageVersion "$(VERSION)" --out ../$(DIST_VSCODE)/nexus-orchestrator.vsix
+	cd vscode-extension && npm install --prefer-offline --silent && \
+		node -e "const fs=require('fs'),p='package.json',pkg=JSON.parse(fs.readFileSync(p,'utf8'));pkg.version='$(VSIX_VERSION)';fs.writeFileSync(p,JSON.stringify(pkg,null,2)+'\n');" && \
+		npm run build && \
+		npx @vscode/vsce package --no-dependencies --out ../$(DIST_VSCODE)/nexus-orchestrator.vsix
 	@echo "Built → $(DIST_VSCODE)/nexus-orchestrator.vsix"
 
 # Convenience target: build frontend + VS Code extension (quick pre-release check)
@@ -297,6 +303,32 @@ release-rc:
 release:
 	@bash scripts/release.sh stable "$(or $(VER),$(VERSION))"
 
+# ---------------------------------------------------------------------------
+# Docker — build image locally and push to ghcr.io
+# ---------------------------------------------------------------------------
+docker-build:
+	docker build \
+		--build-arg VERSION=$(VSIX_VERSION) \
+		--build-arg COMMIT=$(GIT_COMMIT) \
+		--build-arg BUILD_DATE=$(BUILD_DATE) \
+		-t $(IMAGE):$(VSIX_VERSION) \
+		-t $(IMAGE):latest \
+		.
+	@echo "Built → $(IMAGE):$(VSIX_VERSION)"
+
+docker-push:
+	docker push $(IMAGE):$(VSIX_VERSION)
+	docker push $(IMAGE):latest
+	@echo "Pushed → $(IMAGE):$(VSIX_VERSION)"
+
+# Quick local smoke-run: mounts ~/.nexus as /data, exposes both ports
+docker-run:
+	docker run --rm \
+		-p 63987:63987 \
+		-p 63988:63988 \
+		-v "$(HOME)/.nexus:/data" \
+		$(IMAGE):$(VSIX_VERSION)
+
 help:
 	@echo ""
 	@echo "Build:"
@@ -338,6 +370,12 @@ help:
 	@echo "    release/**              →  vX.Y.Z-rc.N"
 	@echo "    main                    →  vX.Y.Z"
 	@echo "    hotfix/**               →  vX.Y.(Z+1)"
+	@echo ""
+	@echo "Docker (ghcr.io/el-j/nexus-orchestrator):"
+	@echo "  make docker-build           Build image locally (nexus-daemon)"
+	@echo "  make docker-push            Push to ghcr.io"
+	@echo "  make docker-run             Run locally on :63987/:63988 with ~/.nexus as /data"
+	@echo "  (CI: .github/workflows/docker.yml auto-builds on every vX.Y.Z tag)"
 	@echo ""
 	@echo "Other:"
 	@echo "  make clean                  Remove build/ output subdirs"
