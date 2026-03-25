@@ -15,8 +15,8 @@ import (
 	"nexus-orchestrator/internal/core/domain"
 )
 
-// defaultBaseURL is the default LM Studio base URL. Override via NEXUS_LMSTUDIO_URL.
-const defaultBaseURL = "http://127.0.0.1:1234/v1"
+// DefaultBaseURL is the default LM Studio API endpoint. Override via NEXUS_LMSTUDIO_URL.
+const DefaultBaseURL = "http://127.0.0.1:1234/v1"
 
 // Adapter implements ports.LLMClient for LM Studio's OpenAI-compatible REST API.
 type Adapter struct {
@@ -24,9 +24,8 @@ type Adapter struct {
 	nativeBase   string // LM Studio-native base URL (without /v1 suffix)
 	httpClient   *http.Client
 	contextLimit int       // cached value; 0 = unknown
-	limitOnce    sync.Once // ensures the context-limit query runs at most once
 	activeModel  string    // cached active model ID
-	modelOnce    sync.Once // ensures the model query runs at most once
+	infoOnce     sync.Once // ensures the /api/v0/model query runs at most once
 }
 
 // NewLMStudioAdapter creates an Adapter pointing at the given LM Studio base URL
@@ -47,30 +46,42 @@ func (a *Adapter) ProviderName() string { return "LM Studio" }
 // BaseURL returns the configured endpoint URL for this adapter.
 func (a *Adapter) BaseURL() string { return a.baseURL }
 
+// fetchModelInfo queries /api/v0/model once and populates both activeModel and
+// contextLimit. Falls back to the OpenAI-compat /models list for the model ID
+// when the native endpoint is unavailable.
+func (a *Adapter) fetchModelInfo() {
+	resp, err := a.httpClient.Get(a.nativeBase + "/api/v0/model")
+	if err == nil {
+		defer resp.Body.Close()
+		var result struct {
+			Identifier    string `json:"identifier"`
+			ContextLength int    `json:"contextLength"`
+		}
+		if json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result) == nil {
+			if result.Identifier != "" {
+				a.activeModel = result.Identifier
+			}
+			if result.ContextLength > 0 {
+				a.contextLimit = result.ContextLength
+			}
+			if a.activeModel != "" {
+				return
+			}
+		}
+	}
+	// Fallback: first model ID from OpenAI-compat /models list
+	models, err2 := a.GetAvailableModels()
+	if err2 == nil && len(models) > 0 {
+		a.activeModel = models[0]
+	}
+}
+
 // ActiveModel returns the identifier of the model currently loaded in LM Studio.
 // It queries the native /api/v0/model endpoint; falls back to the first ID from
 // the OpenAI-compat /models list if the native endpoint is not available.
 // Returns empty string when LM Studio is not reachable.
 func (a *Adapter) ActiveModel() string {
-	a.modelOnce.Do(func() {
-		// Primary: LM Studio native endpoint returns {"identifier":"...", ...}
-		resp, err := a.httpClient.Get(a.nativeBase + "/api/v0/model")
-		if err == nil {
-			defer resp.Body.Close()
-			var result struct {
-				Identifier string `json:"identifier"`
-			}
-			if json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result) == nil && result.Identifier != "" {
-				a.activeModel = result.Identifier
-				return
-			}
-		}
-		// Fallback: first model ID from OpenAI-compat /models list
-		models, err2 := a.GetAvailableModels()
-		if err2 == nil && len(models) > 0 {
-			a.activeModel = models[0]
-		}
-	})
+	a.infoOnce.Do(a.fetchModelInfo)
 	return a.activeModel
 }
 
@@ -87,19 +98,7 @@ func (a *Adapter) activeModelOrDefault() string {
 // It queries the native LM Studio /api/v0/model endpoint which includes
 // contextLength; falls back to 0 when unavailable.
 func (a *Adapter) ContextLimit() int {
-	a.limitOnce.Do(func() {
-		resp, err := a.httpClient.Get(a.nativeBase + "/api/v0/model")
-		if err != nil {
-			return
-		}
-		defer resp.Body.Close()
-		var result struct {
-			ContextLength int `json:"contextLength"`
-		}
-		if json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result) == nil && result.ContextLength > 0 {
-			a.contextLimit = result.ContextLength
-		}
-	})
+	a.infoOnce.Do(a.fetchModelInfo)
 	return a.contextLimit
 }
 
@@ -185,16 +184,22 @@ func (a *Adapter) GenerateCode(prompt string) (string, error) {
 	return result.Choices[0].Message.Content, nil
 }
 
+// messagesToMaps converts a slice of domain.Message to the map representation
+// expected by OpenAI-compatible chat completion APIs.
+func messagesToMaps(msgs []domain.Message) []map[string]string {
+	out := make([]map[string]string, len(msgs))
+	for i, m := range msgs {
+		out[i] = map[string]string{"role": string(m.Role), "content": m.Content}
+	}
+	return out
+}
+
 // Chat sends a multi-turn conversation history to LM Studio and returns the
 // assistant reply. This is the preferred method for session-isolated generation.
 func (a *Adapter) Chat(messages []domain.Message) (string, error) {
-	msgs := make([]map[string]string, len(messages))
-	for i, m := range messages {
-		msgs[i] = map[string]string{"role": string(m.Role), "content": m.Content}
-	}
 	reqBody, err := json.Marshal(map[string]interface{}{
 		"model":       a.activeModelOrDefault(),
-		"messages":    msgs,
+		"messages":    messagesToMaps(messages),
 		"temperature": 0.2,
 	})
 	if err != nil {

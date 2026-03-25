@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"path/filepath"
 	"strings"
 	"time"
@@ -482,7 +483,9 @@ func scanTask(s scanner) (domain.Task, error) {
 		return t, fmt.Errorf("sqlite: unmarshal context files: %w", err)
 	}
 	if tagsJSON != "" && tagsJSON != "[]" {
-		_ = json.Unmarshal([]byte(tagsJSON), &t.Tags) // treat parse errors as empty slice
+		if err := json.Unmarshal([]byte(tagsJSON), &t.Tags); err != nil {
+			log.Printf("repo_sqlite: task %s: unmarshal tags: %v", t.ID, err)
+		}
 	}
 	return t, nil
 }

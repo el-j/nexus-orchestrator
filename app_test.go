@@ -108,6 +108,10 @@ func (m *mockOrchestrator) GetDiscoveredAgents(_ context.Context) ([]domain.Disc
 func (m *mockOrchestrator) DelegateToNexus(_ context.Context, _ string) (string, error) {
 	return "", nil
 }
+func (m *mockOrchestrator) HeartbeatTask(_ context.Context, _, _ string) error { return nil }
+func (m *mockOrchestrator) TerminateAISession(_ context.Context, _ string, _ bool) error {
+	return nil
+}
 
 var _ ports.Orchestrator = (*mockOrchestrator)(nil)
 

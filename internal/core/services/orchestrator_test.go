@@ -174,6 +174,10 @@ func (r *memRepo) GetTasksBySessionID(sessionID string) ([]domain.Task, error) {
 	return out, nil
 }
 
+func (r *memRepo) GetStaleProcessing(_ context.Context, _ time.Duration) ([]domain.Task, error) {
+	return nil, nil
+}
+
 type noopWriter struct{}
 
 func (w *noopWriter) WriteCodeToFile(_, _, _ string) error                  { return nil }

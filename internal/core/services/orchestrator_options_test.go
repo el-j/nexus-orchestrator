@@ -4,8 +4,10 @@
 package services
 
 import (
+	"context"
 	"sync"
 	"testing"
+	"time"
 
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
@@ -54,6 +56,9 @@ func (r *optRepo) Update(t domain.Task) error {
 }
 func (r *optRepo) GetAll() ([]domain.Task, error)                      { return nil, nil }
 func (r *optRepo) GetTasksBySessionID(_ string) ([]domain.Task, error) { return nil, nil }
+func (r *optRepo) GetStaleProcessing(_ context.Context, _ time.Duration) ([]domain.Task, error) {
+	return nil, nil
+}
 
 type optWriter struct{}
 

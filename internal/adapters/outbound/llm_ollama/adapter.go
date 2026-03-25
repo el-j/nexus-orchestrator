@@ -153,16 +153,22 @@ func (a *Adapter) ContextLimit() int {
 	return a.contextLimit
 }
 
+// messagesToMaps converts a slice of domain.Message to the map representation
+// expected by OpenAI-compatible chat completion APIs.
+func messagesToMaps(msgs []domain.Message) []map[string]string {
+	out := make([]map[string]string, len(msgs))
+	for i, m := range msgs {
+		out[i] = map[string]string{"role": string(m.Role), "content": m.Content}
+	}
+	return out
+}
+
 // Chat sends a multi-turn conversation history to Ollama using the /api/chat
 // endpoint and returns the assistant reply.
 func (a *Adapter) Chat(messages []domain.Message) (string, error) {
-	msgs := make([]map[string]string, len(messages))
-	for i, m := range messages {
-		msgs[i] = map[string]string{"role": string(m.Role), "content": m.Content}
-	}
 	reqBody, err := json.Marshal(map[string]interface{}{
 		"model":    a.model,
-		"messages": msgs,
+		"messages": messagesToMaps(messages),
 		"stream":   false,
 	})
 	if err != nil {

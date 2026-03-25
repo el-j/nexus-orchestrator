@@ -106,14 +106,20 @@ func (a *Adapter) GenerateCode(prompt string) (string, error) {
 	return a.chat([]map[string]string{{"role": "user", "content": prompt}})
 }
 
+// messagesToMaps converts a slice of domain.Message to the map representation
+// expected by OpenAI-compatible chat completion APIs.
+func messagesToMaps(msgs []domain.Message) []map[string]string {
+	out := make([]map[string]string, len(msgs))
+	for i, m := range msgs {
+		out[i] = map[string]string{"role": string(m.Role), "content": m.Content}
+	}
+	return out
+}
+
 // Chat converts the multi-turn conversation history into an OpenAI chat completion
 // request and returns the assistant reply.
 func (a *Adapter) Chat(messages []domain.Message) (string, error) {
-	msgs := make([]map[string]string, len(messages))
-	for i, m := range messages {
-		msgs[i] = map[string]string{"role": string(m.Role), "content": m.Content}
-	}
-	return a.chat(msgs)
+	return a.chat(messagesToMaps(messages))
 }
 
 func (a *Adapter) chat(messages []map[string]string) (string, error) {
