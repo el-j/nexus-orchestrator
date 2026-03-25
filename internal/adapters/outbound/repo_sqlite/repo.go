@@ -131,8 +131,26 @@ func migrate(db *sql.DB) error {
 		{"ai_sessions", "delegation_timestamp", "DATETIME"},
 		{"ai_sessions", "agent_capabilities", "TEXT NOT NULL DEFAULT '[]'"},
 		{"ai_sessions", "detection_method", "TEXT NOT NULL DEFAULT ''"},
+		{"ai_sessions", "model_id", "TEXT NOT NULL DEFAULT ''"},
 	} {
 		_, _ = db.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", col.table, col.name, col.def))
+	}
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS discovered_plan_files (
+			id            TEXT    PRIMARY KEY,
+			path          TEXT    NOT NULL UNIQUE,
+			kind          TEXT    NOT NULL,
+			format        TEXT    NOT NULL,
+			project_path  TEXT    NOT NULL,
+			summary       TEXT,
+			last_modified INTEGER NOT NULL,
+			is_active     INTEGER NOT NULL DEFAULT 0,
+			updated_at    INTEGER NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_discovered_plan_files_project_path ON discovered_plan_files(project_path);
+	`)
+	if err != nil {
+		return fmt.Errorf("sqlite: migrate discovered_plan_files: %w", err)
 	}
 	return nil
 }

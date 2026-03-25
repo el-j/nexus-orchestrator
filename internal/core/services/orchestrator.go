@@ -54,6 +54,11 @@ func WithDaemonAddr(addr string) Option {
 	return func(s *OrchestratorService) { s.daemonAddr = addr }
 }
 
+// WithPlanFileRepo sets the repository used to persist discovered plan files.
+func WithPlanFileRepo(r ports.DiscoveredPlanFileRepo) Option {
+	return func(o *OrchestratorService) { o.planFileRepo = r }
+}
+
 // OrchestratorService implements ports.Orchestrator and drives the worker loop.
 type OrchestratorService struct {
 	mu          sync.Mutex
@@ -78,6 +83,7 @@ type OrchestratorService struct {
 	aiSessionRepo      ports.AISessionRepository
 	agentScanner       ports.AgentScanner
 	agentRepo          discoveredAgentStore
+	planFileRepo       ports.DiscoveredPlanFileRepo
 	lastAgentScan      time.Time
 	lastAgentScanMu    sync.Mutex
 	maxRetries         int

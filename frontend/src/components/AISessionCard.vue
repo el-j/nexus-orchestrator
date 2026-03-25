@@ -21,7 +21,7 @@
       >
     </div>
 
-    <!-- Source badge + Delegated chip -->
+    <!-- Source badge + Delegated chip + Model badge -->
     <div class="flex items-center gap-2 mb-2 flex-wrap">
       <span class="text-[11px] px-2 py-0.5 rounded bg-white/5 text-slate-400">
         <template v-if="session.source === 'mcp'">🤖 MCP</template>
@@ -32,6 +32,11 @@
         v-if="session.delegatedToNexus"
         class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-medium"
         >✓ Delegated</span
+      >
+      <span
+        v-if="session.modelId"
+        class="bg-slate-100 text-slate-700 rounded px-1.5 text-xs font-mono"
+        >{{ shortModelName(session.modelId) }}</span
       >
     </div>
 
@@ -135,6 +140,10 @@ const shortPath = computed((): string => {
   const parts = props.session.projectPath.replace(/\\/g, '/').split('/').filter(Boolean);
   return parts.slice(-2).join('/');
 });
+
+function shortModelName(id: string): string {
+  return id.replace(/^claude-/, '');
+}
 
 function statusChipClass(status: TaskStatus | undefined): string {
   switch (status) {

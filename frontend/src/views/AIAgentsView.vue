@@ -84,30 +84,77 @@
             Discovered Agents
           </h2>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div
-              v-for="agent in discovered"
-              :key="agent.id"
-              class="rounded-xl border border-white/10 bg-white/[0.02] p-4"
-            >
-              <div class="flex items-center gap-2 mb-1">
-                <span
-                  class="w-2 h-2 rounded-full flex-shrink-0"
-                  :class="agent.isRunning ? 'bg-emerald-400' : 'bg-slate-600'"
-                ></span>
-                <span class="font-semibold text-sm text-white truncate">{{ agent.name }}</span>
-                <span
-                  class="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-slate-400 ml-auto flex-shrink-0"
-                  >{{ agent.kind }}</span
+            <template v-for="agent in agentTree.roots" :key="agent.id">
+              <!-- Root agent card -->
+              <div class="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                <div class="flex items-center gap-2 mb-1">
+                  <span
+                    class="w-2 h-2 rounded-full flex-shrink-0"
+                    :class="agent.isRunning ? 'bg-emerald-400' : 'bg-slate-600'"
+                  ></span>
+                  <span class="font-semibold text-sm text-white truncate">{{ agent.name }}</span>
+                  <span
+                    class="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-slate-400 ml-auto flex-shrink-0"
+                    >{{ agent.kind }}</span
+                  >
+                  <span
+                    v-if="agent.modelId"
+                    class="bg-slate-100 text-slate-700 rounded px-1.5 text-xs font-mono flex-shrink-0"
+                    >{{ shortModelName(agent.modelId) }}</span
+                  >
+                </div>
+                <div class="text-[11px] text-slate-500 mb-1">{{ agent.detectionMethod }}</div>
+                <div v-if="agent.workingDir" class="text-slate-500 text-xs mb-1">
+                  {{ shortWorkingDir(agent.workingDir) }}
+                </div>
+                <div v-if="agent.mcpEndpoint" class="text-[10px] text-slate-600 font-mono truncate">
+                  {{ agent.mcpEndpoint }}
+                </div>
+                <div class="text-[10px] text-slate-700 mt-1">
+                  Last seen {{ relativeTime(agent.lastSeen) }}
+                </div>
+
+                <!-- Sub-agents -->
+                <div
+                  v-if="agentTree.childrenOf[agent.id]?.length"
+                  class="mt-3 ml-6 border-l-2 border-slate-200/20 pl-2 space-y-2"
                 >
+                  <div
+                    v-for="sub in agentTree.childrenOf[agent.id]"
+                    :key="sub.id"
+                    class="rounded-lg border border-white/5 bg-white/[0.015] p-3"
+                  >
+                    <div class="flex items-center gap-2 mb-1">
+                      <span
+                        class="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                        :class="sub.isRunning ? 'bg-emerald-400' : 'bg-slate-600'"
+                      ></span>
+                      <span class="font-medium text-sm text-white truncate">{{ sub.name }}</span>
+                      <span
+                        class="text-[9px] px-1 py-0.5 rounded bg-violet-500/10 text-violet-400 flex-shrink-0"
+                        >sub-agent</span
+                      >
+                      <span
+                        class="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-slate-400 ml-auto flex-shrink-0"
+                        >{{ sub.kind }}</span
+                      >
+                      <span
+                        v-if="sub.modelId"
+                        class="bg-slate-100 text-slate-700 rounded px-1.5 text-xs font-mono flex-shrink-0"
+                        >{{ shortModelName(sub.modelId) }}</span
+                      >
+                    </div>
+                    <div class="text-[10px] text-slate-500 mb-1">{{ sub.detectionMethod }}</div>
+                    <div v-if="sub.workingDir" class="text-slate-500 text-xs mb-1">
+                      {{ shortWorkingDir(sub.workingDir) }}
+                    </div>
+                    <div class="text-[10px] text-slate-700 mt-1">
+                      Last seen {{ relativeTime(sub.lastSeen) }}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div class="text-[11px] text-slate-500 mb-1">{{ agent.detectionMethod }}</div>
-              <div v-if="agent.mcpEndpoint" class="text-[10px] text-slate-600 font-mono truncate">
-                {{ agent.mcpEndpoint }}
-              </div>
-              <div class="text-[10px] text-slate-700 mt-1">
-                Last seen {{ relativeTime(agent.lastSeen) }}
-              </div>
-            </div>
+            </template>
           </div>
         </section>
       </template>
@@ -138,6 +185,35 @@ const activeCount = computed(() => sessions.value.filter((s) => s.status === 'ac
 const hasActiveDelegatable = computed(() =>
   sessions.value.some((s) => s.status === 'active' && !s.delegatedToNexus),
 );
+
+const agentTree = computed(() => {
+  const roots: DiscoveredAgent[] = [];
+  const childrenOf: Record<string, DiscoveredAgent[]> = {};
+  const byId: Record<string, DiscoveredAgent> = {};
+
+  for (const agent of discovered.value) {
+    byId[agent.id] = agent;
+  }
+
+  for (const agent of discovered.value) {
+    if (agent.parentAgentId && byId[agent.parentAgentId]) {
+      if (!childrenOf[agent.parentAgentId]) childrenOf[agent.parentAgentId] = [];
+      childrenOf[agent.parentAgentId].push(agent);
+    } else {
+      roots.push(agent);
+    }
+  }
+
+  return { roots, childrenOf };
+});
+
+function shortModelName(id: string): string {
+  return id.replace(/^claude-/, '');
+}
+
+function shortWorkingDir(dir: string): string {
+  return dir.split('/').filter(Boolean).slice(-2).join('/');
+}
 
 async function fetchSessions() {
   try {

@@ -99,6 +99,7 @@ export interface AISession {
   agentCapabilities?: string[];
   createdAt: string;
   updatedAt: string;
+  modelId?: string;
 }
 
 export interface DiscoveredAgent {
@@ -110,4 +111,28 @@ export interface DiscoveredAgent {
   lastSeen: string;
   mcpEndpoint?: string;
   configPath?: string;
+  modelId?: string;
+  workingDir?: string;
+  parentAgentId?: string;
+  subAgentIds?: string[];
+}
+
+export type PlanFileKind =
+  | 'nexus'
+  | 'claude-task'
+  | 'markdown'
+  | 'cursor'
+  | 'mcp-config'
+  | 'crewai'
+  | 'claude';
+
+export interface DiscoveredPlanFile {
+  id: string;
+  path: string;
+  kind: PlanFileKind;
+  format: string;
+  projectPath: string;
+  summary?: string;
+  lastModified: string;
+  isActive: boolean;
 }

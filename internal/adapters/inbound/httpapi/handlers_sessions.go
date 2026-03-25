@@ -129,6 +129,36 @@ func (s *Server) handleGetDiscoveredAgents(w http.ResponseWriter, r *http.Reques
 	_ = json.NewEncoder(w).Encode(agents)
 }
 
+// handleGetDiscoveredPlanFiles handles GET /api/plans/discovered?projectPath=<path>
+func (s *Server) handleGetDiscoveredPlanFiles(w http.ResponseWriter, r *http.Request) {
+	projectPath := r.URL.Query().Get("projectPath")
+	files, err := s.orch.GetDiscoveredPlanFiles(r.Context(), projectPath)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if files == nil {
+		files = []domain.DiscoveredPlanFile{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(files)
+}
+
+// handleScanPlanFiles handles POST /api/plans/discovered/scan?projectPath=<path>
+func (s *Server) handleScanPlanFiles(w http.ResponseWriter, r *http.Request) {
+	projectPath := r.URL.Query().Get("projectPath")
+	files, err := s.orch.GetDiscoveredPlanFiles(r.Context(), projectPath)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if files == nil {
+		files = []domain.DiscoveredPlanFile{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(files)
+}
+
 func (s *Server) handleDelegateToNexus(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	instruction, err := s.orch.DelegateToNexus(r.Context(), id)

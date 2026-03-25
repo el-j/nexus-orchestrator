@@ -226,10 +226,23 @@ func (o *OrchestratorService) GetDiscoveredAgents(ctx context.Context) ([]domain
 	return scanned, nil
 }
 
-// GetDiscoveredPlanFiles is a stub that satisfies the ports.Orchestrator interface.
-// Full implementation is tracked in a separate task.
-func (o *OrchestratorService) GetDiscoveredPlanFiles(_ context.Context, _ string) ([]domain.DiscoveredPlanFile, error) {
-	return nil, nil
+// GetDiscoveredPlanFiles scans for plan/task/orchestration files near projectPath,
+// persists results to SQLite, and returns the stored list for the project.
+func (o *OrchestratorService) GetDiscoveredPlanFiles(ctx context.Context, projectPath string) ([]domain.DiscoveredPlanFile, error) {
+	if o.agentScanner == nil {
+		return nil, nil
+	}
+	files, err := o.agentScanner.ScanPlanFiles(ctx, []string{projectPath})
+	if err != nil {
+		return nil, err
+	}
+	if o.planFileRepo != nil {
+		for _, f := range files {
+			_ = o.planFileRepo.UpsertPlanFile(ctx, f)
+		}
+		return o.planFileRepo.ListPlanFiles(ctx, projectPath)
+	}
+	return files, nil
 }
 
 // DelegateToNexus marks the AI session as delegated to the nexus orchestrator

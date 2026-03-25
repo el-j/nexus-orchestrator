@@ -43,8 +43,8 @@ func (a *AISessionRepo) SaveAISession(ctx context.Context, s domain.AISession) e
 
 	_, err = a.db.ExecContext(ctx,
 		`INSERT OR REPLACE INTO ai_sessions
-		 (id, source, external_id, agent_name, project_path, status, last_activity, routed_task_ids, created_at, updated_at, delegated_to_nexus, delegation_timestamp, agent_capabilities, detection_method)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 (id, source, external_id, agent_name, project_path, status, last_activity, routed_task_ids, created_at, updated_at, delegated_to_nexus, delegation_timestamp, agent_capabilities, detection_method, model_id)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		s.ID, string(s.Source), s.ExternalID, s.AgentName, s.ProjectPath,
 		string(s.Status),
 		s.LastActivity.UTC().Format(time.RFC3339),
@@ -52,7 +52,7 @@ func (a *AISessionRepo) SaveAISession(ctx context.Context, s domain.AISession) e
 		s.CreatedAt.UTC().Format(time.RFC3339),
 		s.UpdatedAt.UTC().Format(time.RFC3339),
 		boolToInt(s.DelegatedToNexus), delegationTS,
-		string(capJSON), s.DetectionMethod,
+		string(capJSON), s.DetectionMethod, s.ModelID,
 	)
 	if err != nil {
 		return fmt.Errorf("repo_sqlite: save ai session: %w", err)
@@ -63,7 +63,7 @@ func (a *AISessionRepo) SaveAISession(ctx context.Context, s domain.AISession) e
 // GetAISessionByID returns the AI session with the given ID, or domain.ErrNotFound.
 func (a *AISessionRepo) GetAISessionByID(ctx context.Context, id string) (domain.AISession, error) {
 	row := a.db.QueryRowContext(ctx,
-		`SELECT id, source, external_id, agent_name, project_path, status, last_activity, routed_task_ids, created_at, updated_at, delegated_to_nexus, delegation_timestamp, agent_capabilities, detection_method
+		`SELECT id, source, external_id, agent_name, project_path, status, last_activity, routed_task_ids, created_at, updated_at, delegated_to_nexus, delegation_timestamp, agent_capabilities, detection_method, model_id
 		 FROM ai_sessions WHERE id = ?`, id,
 	)
 	s, err := scanAISession(row)
@@ -79,7 +79,7 @@ func (a *AISessionRepo) GetAISessionByID(ctx context.Context, id string) (domain
 // GetAISessionByExternalID returns the AI session with the given external ID, or domain.ErrNotFound.
 func (a *AISessionRepo) GetAISessionByExternalID(ctx context.Context, externalID string) (domain.AISession, error) {
 	row := a.db.QueryRowContext(ctx,
-		`SELECT id, source, external_id, agent_name, project_path, status, last_activity, routed_task_ids, created_at, updated_at, delegated_to_nexus, delegation_timestamp, agent_capabilities, detection_method
+		`SELECT id, source, external_id, agent_name, project_path, status, last_activity, routed_task_ids, created_at, updated_at, delegated_to_nexus, delegation_timestamp, agent_capabilities, detection_method, model_id
 		 FROM ai_sessions WHERE external_id = ? AND external_id != ''
 		 ORDER BY last_activity DESC LIMIT 1`, externalID,
 	)
@@ -96,7 +96,7 @@ func (a *AISessionRepo) GetAISessionByExternalID(ctx context.Context, externalID
 // ListAISessions returns all AI session records ordered by last activity descending.
 func (a *AISessionRepo) ListAISessions(ctx context.Context) ([]domain.AISession, error) {
 	rows, err := a.db.QueryContext(ctx,
-		`SELECT id, source, external_id, agent_name, project_path, status, last_activity, routed_task_ids, created_at, updated_at, delegated_to_nexus, delegation_timestamp, agent_capabilities, detection_method
+		`SELECT id, source, external_id, agent_name, project_path, status, last_activity, routed_task_ids, created_at, updated_at, delegated_to_nexus, delegation_timestamp, agent_capabilities, detection_method, model_id
 		 FROM ai_sessions ORDER BY last_activity DESC`,
 	)
 	if err != nil {
@@ -224,12 +224,13 @@ func scanAISession(s scanner) (domain.AISession, error) {
 	var delegationTSStr sql.NullString
 	var capabilitiesJSON string
 	var detectionMethod string
+	var modelID string
 
 	if err := s.Scan(
 		&sess.ID, &sourceStr, &sess.ExternalID, &sess.AgentName, &sess.ProjectPath,
 		&statusStr, &lastActivityStr, &routedTaskIDsJSON,
 		&createdAtStr, &updatedAtStr,
-		&delegatedToNexusInt, &delegationTSStr, &capabilitiesJSON, &detectionMethod,
+		&delegatedToNexusInt, &delegationTSStr, &capabilitiesJSON, &detectionMethod, &modelID,
 	); err != nil {
 		return domain.AISession{}, err
 	}
@@ -238,6 +239,7 @@ func scanAISession(s scanner) (domain.AISession, error) {
 	sess.Status = domain.AISessionStatus(statusStr)
 	sess.DelegatedToNexus = delegatedToNexusInt != 0
 	sess.DetectionMethod = detectionMethod
+	sess.ModelID = modelID
 
 	if delegationTSStr.Valid && delegationTSStr.String != "" {
 		t, err := time.Parse(time.RFC3339, delegationTSStr.String)

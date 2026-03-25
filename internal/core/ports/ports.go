@@ -243,3 +243,10 @@ type AISessionMonitor interface {
 	RegisterSession(s domain.AISession) error
 	ListActive() ([]domain.AISession, error)
 }
+
+// DiscoveredPlanFileRepo is the outbound port for persisting and querying discovered plan files.
+type DiscoveredPlanFileRepo interface {
+	UpsertPlanFile(ctx context.Context, f domain.DiscoveredPlanFile) error
+	ListPlanFiles(ctx context.Context, projectPath string) ([]domain.DiscoveredPlanFile, error)
+	DeleteStalePlanFiles(ctx context.Context, olderThan time.Duration) (int, error)
+}

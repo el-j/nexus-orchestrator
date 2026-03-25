@@ -76,6 +76,8 @@ func run() error {
 	orchestratorSvc.SetAgentScanner(scanner)
 	discoveredAgentRepo := repo_sqlite.NewDiscoveredAgentRepo(repo)
 	orchestratorSvc.SetDiscoveredAgentRepo(discoveredAgentRepo)
+	planFileRepo := repo_sqlite.NewPlanFileRepo(repo)
+	services.WithPlanFileRepo(planFileRepo)(orchestratorSvc)
 
 	// Load persisted provider configs and register each enabled one.
 	if cfgs, err := providerConfigRepo.ListProviderConfigs(context.Background()); err != nil {

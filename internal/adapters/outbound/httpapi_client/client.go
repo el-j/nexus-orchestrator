@@ -652,8 +652,26 @@ func (r *Client) DelegateToNexus(ctx context.Context, sessionID string) (string,
 	return result.Instruction, nil
 }
 
-// GetDiscoveredPlanFiles is a stub that satisfies the ports.Orchestrator interface.
-// Full remote implementation is tracked in a separate task.
-func (r *Client) GetDiscoveredPlanFiles(_ context.Context, _ string) ([]domain.DiscoveredPlanFile, error) {
-	return nil, nil
+// GetDiscoveredPlanFiles fetches plan/task/orchestration files discovered near projectPath
+// from the running nexusOrchestrator daemon.
+func (r *Client) GetDiscoveredPlanFiles(ctx context.Context, projectPath string) ([]domain.DiscoveredPlanFile, error) {
+	params := url.Values{}
+	params.Set("projectPath", projectPath)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, r.baseURL+"/api/plans/discovered?"+params.Encode(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("remote: build get discovered plan files request: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("remote: get discovered plan files: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("remote: get discovered plan files: unexpected status %d", resp.StatusCode)
+	}
+	var files []domain.DiscoveredPlanFile
+	if err := json.NewDecoder(resp.Body).Decode(&files); err != nil {
+		return nil, fmt.Errorf("remote: get discovered plan files: decode: %w", err)
+	}
+	return files, nil
 }

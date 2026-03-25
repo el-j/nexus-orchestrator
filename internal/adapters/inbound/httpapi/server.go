@@ -143,6 +143,10 @@ func (s *Server) Handler() http.Handler {
 	// GET /api/events — SSE stream for task lifecycle and log events
 	r.Get("/api/events", s.handleEvents)
 
+	// Plan file discovery endpoints
+	r.Get("/api/plans/discovered", s.handleGetDiscoveredPlanFiles)
+	r.Post("/api/plans/discovered/scan", s.handleScanPlanFiles)
+
 	// Discovery + how-to
 	r.Get("/api/howto", s.handleHowto)
 	r.Get("/.well-known/nexus.json", s.handleWellKnownNexus)

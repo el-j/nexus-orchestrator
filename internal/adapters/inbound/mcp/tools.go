@@ -87,6 +87,8 @@ func (s *Server) handleToolCall(w http.ResponseWriter, r *http.Request, req rpcR
 		result, err = s.toolPurgeDisconnectedSessions(r.Context())
 	case "get_discovered_agents":
 		result, err = s.toolGetDiscoveredAgents(r.Context())
+	case "get_discovered_plans":
+		result, err = s.toolGetDiscoveredPlans(r.Context(), p.Arguments)
 	case "delegate_to_nexus":
 		result, err = s.toolDelegateToNexus(r.Context(), p.Arguments)
 	case "howto":
@@ -574,6 +576,21 @@ func (s *Server) toolGetDiscoveredAgents(ctx context.Context) (callToolResult, e
 	return textResult(string(b)), nil
 }
 
+func (s *Server) toolGetDiscoveredPlans(ctx context.Context, args json.RawMessage) (callToolResult, error) {
+	var p struct {
+		ProjectPath string `json:"projectPath"`
+	}
+	if err := json.Unmarshal(args, &p); err != nil {
+		return callToolResult{}, fmt.Errorf("mcp: get_discovered_plans: invalid arguments: %w", err)
+	}
+	files, err := s.orch.GetDiscoveredPlanFiles(ctx, p.ProjectPath)
+	if err != nil {
+		return callToolResult{}, fmt.Errorf("mcp: get_discovered_plans: %w", err)
+	}
+	data, _ := json.Marshal(files)
+	return textResult(string(data)), nil
+}
+
 func (s *Server) toolDelegateToNexus(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		SessionID string `json:"session_id"`
@@ -655,6 +672,7 @@ ALL AVAILABLE TOOLS
 - purge_disconnected_sessions  remove all stale/disconnected sessions
 - get_discovered_agents        list discovered AI agents on this machine
 - delegate_to_nexus            get delegation instruction for an AI session
+- get_discovered_plans         scan for plan/task/orchestration files in a project directory
 
 HTTP ENDPOINTS (all at :63987 by default)
 GET  /.well-known/nexus.json  service discovery beacon
@@ -963,6 +981,16 @@ func toolList() []toolDef {
 					"session_id": {Type: "string", Description: "ID of the AI session to delegate."},
 				},
 				Required: []string{"session_id"},
+			},
+		},
+		{
+			Name:        "get_discovered_plans",
+			Description: "Scan for plan/task/orchestration files in a project directory. Returns nexus orchestrator.json, markdown task files, Cursor rules, MCP configs, and more.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project root to scan"},
+				},
 			},
 		},
 	}
