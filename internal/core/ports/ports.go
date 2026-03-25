@@ -165,6 +165,8 @@ type Orchestrator interface {
 	// and returns a canonical delegation instruction string for the caller to deliver
 	// to the external agent. Returns domain.ErrNotFound if sessionID does not exist.
 	DelegateToNexus(ctx context.Context, sessionID string) (string, error)
+	// GetDiscoveredPlanFiles returns plan/task/orchestration files found near projectPath.
+	GetDiscoveredPlanFiles(ctx context.Context, projectPath string) ([]domain.DiscoveredPlanFile, error)
 }
 
 // EventType identifies a task lifecycle event.
@@ -206,6 +208,8 @@ type SystemScanner interface {
 // Distinct from SystemScanner which probes LLM server endpoints.
 type AgentScanner interface {
 	ScanAgents(ctx context.Context) ([]domain.DiscoveredAgent, error)
+	// ScanPlanFiles scans the provided root directories for plan/task/orchestration files.
+	ScanPlanFiles(ctx context.Context, rootPaths []string) ([]domain.DiscoveredPlanFile, error)
 }
 
 // ProviderConfigRepository is the outbound port for persisting and querying

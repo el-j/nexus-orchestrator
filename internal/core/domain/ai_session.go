@@ -48,6 +48,7 @@ type AISession struct {
 	AgentCapabilities   []string        `json:"agentCapabilities,omitempty"`
 	DetectionMethod     string          `json:"detectionMethod,omitempty"`
 	PID                 int             `json:"pid,omitempty"`
+	ModelID             string          `json:"modelId,omitempty"`
 }
 
 // AISessionEvent is emitted by OrchestratorService when an AI agent session

@@ -3,9 +3,9 @@
  * registers it as an AISession with the nexusOrchestrator daemon.
  */
 
-import * as vscode from "vscode";
-import { NexusClient } from "./nexusClient";
-import { getNexusActivityChannel, logNexusActivity } from "./activityLog";
+import * as vscode from 'vscode';
+import { NexusClient } from './nexusClient';
+import { getNexusActivityChannel, logNexusActivity } from './activityLog';
 
 export class SessionMonitor {
   private sessionId: string | undefined;
@@ -17,7 +17,7 @@ export class SessionMonitor {
 
   constructor(
     private readonly client: NexusClient,
-    private readonly context: vscode.ExtensionContext
+    private readonly context: vscode.ExtensionContext,
   ) {
     this.outputChannel = getNexusActivityChannel();
   }
@@ -30,7 +30,7 @@ export class SessionMonitor {
       const retryDelays = [2000, 5000, 10000];
       for (const delay of retryDelays) {
         if (this.sessionId) break;
-        await new Promise<void>(resolve => {
+        await new Promise<void>((resolve) => {
           const t = setTimeout(resolve, delay);
           // Allow early exit if extension disposes
           this.context.subscriptions.push({ dispose: () => clearTimeout(t) });
@@ -74,28 +74,28 @@ export class SessionMonitor {
   private async detectAndRegister(): Promise<void> {
     try {
       // Check if Copilot is available
-      const models =
-        vscode.lm?.selectChatModels
-          ? await vscode.lm.selectChatModels({ vendor: "copilot" })
-          : [];
+      const models = vscode.lm?.selectChatModels
+        ? await vscode.lm.selectChatModels({ vendor: 'copilot' })
+        : [];
       if (models.length === 0) {
         logNexusActivity('copilot', 'models not available yet; waiting to register session');
         return; // Copilot not available
       }
 
-      const workspacePath =
-        vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "";
+      const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
       const externalId = `${vscode.env.machineId}:${workspacePath}`;
+      const modelId = models[0]?.id ?? models[0]?.name ?? '';
 
       const session = await this.client.registerSession({
-        agentName: "GitHub Copilot",
-        source: "vscode",
+        agentName: 'GitHub Copilot',
+        source: 'vscode',
         projectPath: workspacePath,
         externalId,
+        modelId,
       });
       this.sessionId = session.id;
       logNexusActivity('copilot', `session registered: ${session.id}`);
-      await this.context.workspaceState.update("nexus.sessionId", session.id);
+      await this.context.workspaceState.update('nexus.sessionId', session.id);
     } catch (error) {
       logNexusActivity('copilot', `registration failed: ${error}`);
     }
@@ -128,11 +128,14 @@ export class SessionMonitor {
     if (!this.sessionId) return;
     try {
       const tasks = await this.client.getTasks();
-      const queued = tasks.filter(t => t.status === "QUEUED");
+      const queued = tasks.filter((t) => t.status === 'QUEUED');
       for (const task of queued) {
         try {
           const claimed = await this.client.claimTask(task.id, this.sessionId);
-          logNexusActivity('copilot', `claimed task ${claimed.id} (${claimed.instruction.slice(0, 60)})`);
+          logNexusActivity(
+            'copilot',
+            `claimed task ${claimed.id} (${claimed.instruction.slice(0, 60)})`,
+          );
         } catch {
           // Another agent may have claimed it first — skip
         }

@@ -1,7 +1,9 @@
 package sys_scanner
 
 import (
+	"bufio"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -29,6 +31,7 @@ func (s *Scanner) ScanAgents(ctx context.Context) ([]domain.DiscoveredAgent, err
 		s.probeMCPPorts,
 		s.probeProcessFlags,
 		s.probeAgentProcesses,
+		s.probeClaudeSubAgents,
 	}
 
 	ch := make(chan []domain.DiscoveredAgent, len(probes))
@@ -62,6 +65,19 @@ func (s *Scanner) ScanAgents(ctx context.Context) ([]domain.DiscoveredAgent, err
 				merged[a.ID] = a
 			}
 		}
+	}
+
+	// Post-merge pass: populate SubAgentIDs on parent agents.
+	for id, a := range merged {
+		if a.ParentAgentID == "" {
+			continue
+		}
+		parent, ok := merged[a.ParentAgentID]
+		if !ok {
+			continue
+		}
+		parent.SubAgentIDs = append(parent.SubAgentIDs, id)
+		merged[a.ParentAgentID] = parent
 	}
 
 	out := make([]domain.DiscoveredAgent, 0, len(merged))
@@ -281,4 +297,183 @@ func (s *Scanner) probeAgentProcesses(ctx context.Context) []domain.DiscoveredAg
 		})
 	}
 	return results
+}
+
+// probeClaudeSubAgents reads Claude Code session JSONL files from
+// ~/.claude/projects/ to discover active Claude CLI sessions and sub-agents.
+func (s *Scanner) probeClaudeSubAgents(ctx context.Context) []domain.DiscoveredAgent {
+	return probeClaudeSubAgentsDir(ctx, "")
+}
+
+// probeClaudeSubAgentsDir is the testable inner implementation.
+// If homeDir is empty, os.UserHomeDir() is used.
+func probeClaudeSubAgentsDir(_ context.Context, homeDir string) []domain.DiscoveredAgent {
+	if homeDir == "" {
+		var err error
+		homeDir, err = os.UserHomeDir()
+		if err != nil {
+			return nil
+		}
+	}
+
+	projectsDir := filepath.Join(homeDir, ".claude", "projects")
+	if _, err := os.Stat(projectsDir); err != nil {
+		return nil
+	}
+
+	now := time.Now()
+	const staleThreshold = 2 * time.Hour
+	const activeThreshold = 5 * time.Minute
+	const maxLines = 500
+
+	var results []domain.DiscoveredAgent
+
+	// Walk up to 2 levels deep: projectsDir/<encoded-path>/<session>.jsonl
+	encodedDirs, err := os.ReadDir(projectsDir)
+	if err != nil {
+		return nil
+	}
+
+	for _, encodedEntry := range encodedDirs {
+		if !encodedEntry.IsDir() {
+			continue
+		}
+		encodedName := encodedEntry.Name()
+		encodedPath := filepath.Join(projectsDir, encodedName)
+
+		// Decode base64 directory name to get the working directory.
+		decodedBytes, decErr := base64.StdEncoding.DecodeString(encodedName)
+		workingDirFromDir := ""
+		if decErr == nil {
+			workingDirFromDir = string(decodedBytes)
+		}
+
+		sessionFiles, err := os.ReadDir(encodedPath)
+		if err != nil {
+			continue
+		}
+
+		for _, sessionEntry := range sessionFiles {
+			if sessionEntry.IsDir() {
+				continue
+			}
+			if !strings.HasSuffix(sessionEntry.Name(), ".jsonl") {
+				continue
+			}
+
+			filePath := filepath.Join(encodedPath, sessionEntry.Name())
+			info, err := sessionEntry.Info()
+			if err != nil {
+				continue
+			}
+			mtime := info.ModTime()
+			if now.Sub(mtime) > staleThreshold {
+				continue
+			}
+
+			agent := parseClaudeSessionFile(filePath, maxLines)
+			if agent == nil {
+				continue
+			}
+
+			// Fall back to directory-decoded working dir if JSONL cwd was empty.
+			if agent.WorkingDir == "" {
+				agent.WorkingDir = workingDirFromDir
+			}
+
+			// Build Name from working dir.
+			agent.Name = "Claude Code"
+			if agent.WorkingDir != "" {
+				agent.Name = "Claude Code " + filepath.Base(agent.WorkingDir)
+			}
+
+			agent.IsRunning = now.Sub(mtime) < activeThreshold
+			agent.Kind = domain.AgentKindClaudeCLI
+			agent.DetectionMethod = "claude-session-file"
+			agent.LastSeen = mtime
+
+			results = append(results, *agent)
+		}
+	}
+
+	return results
+}
+
+// parseClaudeSessionFile reads up to maxLines from a JSONL session file and
+// extracts agent metadata. Returns nil if no agentId was found.
+func parseClaudeSessionFile(filePath string, maxLines int) *domain.DiscoveredAgent {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+
+	type jsonlMsg struct {
+		AgentID     string `json:"agentId"`
+		IsSidechain bool   `json:"isSidechain"`
+		ParentUUID  string `json:"parentUuid"`
+		Model       string `json:"model"`
+		CWD         string `json:"cwd"`
+	}
+
+	var (
+		agentID     string
+		model       string
+		cwd         string
+		isSidechain bool
+		parentUUID  string
+	)
+
+	sc := bufio.NewScanner(f)
+	lineCount := 0
+	for sc.Scan() {
+		if lineCount >= maxLines {
+			break
+		}
+		lineCount++
+
+		line := strings.TrimSpace(sc.Text())
+		if line == "" {
+			continue
+		}
+
+		var msg jsonlMsg
+		if err := json.Unmarshal([]byte(line), &msg); err != nil {
+			continue
+		}
+
+		if agentID == "" && msg.AgentID != "" {
+			agentID = msg.AgentID
+		}
+		if model == "" && msg.Model != "" {
+			model = msg.Model
+		}
+		if cwd == "" && msg.CWD != "" {
+			cwd = msg.CWD
+		}
+		if msg.IsSidechain {
+			isSidechain = true
+		}
+		if parentUUID == "" && msg.ParentUUID != "" {
+			parentUUID = msg.ParentUUID
+		}
+	}
+
+	// Use filename (without extension) as fallback ID.
+	if agentID == "" {
+		base := filepath.Base(filePath)
+		agentID = strings.TrimSuffix(base, filepath.Ext(base))
+	}
+
+	agent := &domain.DiscoveredAgent{
+		ID:         agentID,
+		ModelID:    model,
+		WorkingDir: cwd,
+	}
+
+	if isSidechain && parentUUID != "" {
+		agent.ParentAgentID = parentUUID
+	}
+
+	return agent
 }

@@ -289,6 +289,9 @@ func (r *Client) GetDiscoveredProviders() ([]domain.DiscoveredProvider, error) {
 		return nil, fmt.Errorf("remote: get discovered providers: %w", err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("remote: get discovered providers: unexpected status %d", resp.StatusCode)
+	}
 	var providers []domain.DiscoveredProvider
 	if err := json.NewDecoder(resp.Body).Decode(&providers); err != nil {
 		return nil, fmt.Errorf("remote: decode discovered providers: %w", err)
@@ -306,7 +309,9 @@ func (r *Client) TriggerScan(_ context.Context) ([]domain.DiscoveredProvider, er
 		return nil, fmt.Errorf("remote: trigger scan: unexpected status %d", resp.StatusCode)
 	}
 	var providers []domain.DiscoveredProvider
-	_ = json.NewDecoder(resp.Body).Decode(&providers)
+	if err := json.NewDecoder(resp.Body).Decode(&providers); err != nil {
+		return nil, fmt.Errorf("remote: trigger scan: decode: %w", err)
+	}
 	return providers, nil
 }
 
@@ -516,8 +521,6 @@ func (r *Client) HeartbeatTask(ctx context.Context, taskID, sessionID string) er
 	if err != nil {
 		return fmt.Errorf("remote: build heartbeat task request: %w", err)
 	}
-	// Add sessionID query parameter? No, probably in body. We can skip it for a dummy cli implementation.
-	// Wait, the interface requires sessionID. We will implement it fully when adding the task HTTP API.
 	req.Header.Set("Content-Type", "application/json")
 	body, _ := json.Marshal(map[string]string{"sessionId": sessionID})
 	req.Body = io.NopCloser(bytes.NewReader(body))
@@ -572,6 +575,12 @@ func (r *Client) UpdateTaskStatus(ctx context.Context, taskID string, sessionID 
 		return domain.Task{}, fmt.Errorf("remote: update task status: %w", err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return domain.Task{}, fmt.Errorf("remote: update task status: %w", domain.ErrNotFound)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return domain.Task{}, fmt.Errorf("remote: update task status: unexpected status %d", resp.StatusCode)
+	}
 	var task domain.Task
 	if err := json.NewDecoder(resp.Body).Decode(&task); err != nil {
 		return domain.Task{}, fmt.Errorf("remote: update task status: decode: %w", err)
@@ -641,4 +650,10 @@ func (r *Client) DelegateToNexus(ctx context.Context, sessionID string) (string,
 		return "", fmt.Errorf("remote: delegate to nexus: decode: %w", err)
 	}
 	return result.Instruction, nil
+}
+
+// GetDiscoveredPlanFiles is a stub that satisfies the ports.Orchestrator interface.
+// Full remote implementation is tracked in a separate task.
+func (r *Client) GetDiscoveredPlanFiles(_ context.Context, _ string) ([]domain.DiscoveredPlanFile, error) {
+	return nil, nil
 }

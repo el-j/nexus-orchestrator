@@ -226,6 +226,12 @@ func (o *OrchestratorService) GetDiscoveredAgents(ctx context.Context) ([]domain
 	return scanned, nil
 }
 
+// GetDiscoveredPlanFiles is a stub that satisfies the ports.Orchestrator interface.
+// Full implementation is tracked in a separate task.
+func (o *OrchestratorService) GetDiscoveredPlanFiles(_ context.Context, _ string) ([]domain.DiscoveredPlanFile, error) {
+	return nil, nil
+}
+
 // DelegateToNexus marks the AI session as delegated to the nexus orchestrator
 // and returns a formatted instruction string for the agent.
 func (o *OrchestratorService) DelegateToNexus(ctx context.Context, sessionID string) (string, error) {

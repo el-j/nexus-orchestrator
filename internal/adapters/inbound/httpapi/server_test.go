@@ -186,6 +186,9 @@ func (m *mockOrchestrator) DelegateToNexus(_ context.Context, _ string) (string,
 func (m *mockOrchestrator) TerminateAISession(_ context.Context, _ string, _ bool) error {
 	return m.terminateAISessionErr
 }
+func (m *mockOrchestrator) GetDiscoveredPlanFiles(_ context.Context, _ string) ([]domain.DiscoveredPlanFile, error) {
+	return nil, nil
+}
 
 // newTestHandler builds a chi router with the same route/handler logic as StartServer.
 func newTestHandler(orch ports.Orchestrator) http.Handler {

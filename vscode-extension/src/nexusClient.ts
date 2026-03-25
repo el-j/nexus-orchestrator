@@ -8,15 +8,15 @@
 // ---- Domain types (mirror internal/core/domain/task.go) ----
 
 export type TaskStatus =
-  | "QUEUED"
-  | "PROCESSING"
-  | "COMPLETED"
-  | "FAILED"
-  | "CANCELLED"
-  | "TOO_LARGE"
-  | "NO_PROVIDER";
+  | 'QUEUED'
+  | 'PROCESSING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'TOO_LARGE'
+  | 'NO_PROVIDER';
 
-export type CommandType = "plan" | "execute" | "auto" | "";
+export type CommandType = 'plan' | 'execute' | 'auto' | '';
 
 export interface Task {
   id: string;
@@ -90,9 +90,10 @@ export interface DelegateResponse {
 
 export interface RegisterSessionRequest {
   agentName: string;
-  source: "vscode" | "mcp" | "http";
+  source: 'vscode' | 'mcp' | 'http';
   projectPath?: string;
   externalId?: string;
+  modelId?: string;
 }
 
 // ---- Internal response shape from POST /api/tasks ----
@@ -119,18 +120,18 @@ export class NexusClient {
    * immediately fetch the full task to return a complete Task object.
    */
   async submitTask(payload: SubmitTaskRequest): Promise<Task> {
-    const resp = await this.post<CreateTaskResponse>("/api/tasks", payload);
+    const resp = await this.post<CreateTaskResponse>('/api/tasks', payload);
     return this.getTask(resp.task_id);
   }
 
   /** Return all tasks currently in the queue. */
   async getTasks(): Promise<Task[]> {
-    return this.get<Task[]>("/api/tasks");
+    return this.get<Task[]>('/api/tasks');
   }
 
   /** Return ALL tasks regardless of status (completed, failed, queued, etc.). */
   async getAllTasks(): Promise<Task[]> {
-    return this.get<Task[]>('/api/tasks/all')
+    return this.get<Task[]>('/api/tasks/all');
   }
 
   /** Return a single task by ID. Throws if not found (404). */
@@ -144,33 +145,33 @@ export class NexusClient {
    */
   async cancelTask(id: string): Promise<void> {
     const url = `${this.baseUrl}/api/tasks/${encodeURIComponent(id)}`;
-    const resp = await fetch(url, { method: "DELETE" });
+    const resp = await fetch(url, { method: 'DELETE' });
     if (!resp.ok) {
-      const body = await resp.text().catch(() => "");
+      const body = await resp.text().catch(() => '');
       throw new Error(
-        `nexus: cancel task ${id}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ""}`
+        `nexus: cancel task ${id}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`,
       );
     }
   }
 
   /** Return all registered LLM providers and their liveness status. */
   async getProviders(): Promise<Provider[]> {
-    return this.get<Provider[]>("/api/providers");
+    return this.get<Provider[]>('/api/providers');
   }
 
   /** Register a new AI session with the daemon. */
   async registerSession(req: RegisterSessionRequest): Promise<AISession> {
-    return this.post<AISession>("/api/ai-sessions", req);
+    return this.post<AISession>('/api/ai-sessions', req);
   }
 
   /** Deregister an AI session by ID. */
   async deregisterSession(id: string): Promise<void> {
     const url = `${this.baseUrl}/api/ai-sessions/${encodeURIComponent(id)}`;
-    const resp = await fetch(url, { method: "DELETE" });
+    const resp = await fetch(url, { method: 'DELETE' });
     if (!resp.ok) {
-      const body = await resp.text().catch(() => "");
+      const body = await resp.text().catch(() => '');
       throw new Error(
-        `nexus: deregister session ${id}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ""}`
+        `nexus: deregister session ${id}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`,
       );
     }
   }
@@ -178,19 +179,19 @@ export class NexusClient {
   /** Send a heartbeat for an existing session to refresh its last-activity timestamp. */
   async heartbeatSession(id: string): Promise<void> {
     const url = `${this.baseUrl}/api/ai-sessions/${encodeURIComponent(id)}/heartbeat`;
-    const resp = await fetch(url, { method: "POST" });
+    const resp = await fetch(url, { method: 'POST' });
     if (!resp.ok && resp.status !== 404) {
       // 404 means the session was cleaned up — caller should re-register.
-      const body = await resp.text().catch(() => "");
+      const body = await resp.text().catch(() => '');
       throw new Error(
-        `nexus: heartbeat session ${id}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ""}`
+        `nexus: heartbeat session ${id}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`,
       );
     }
   }
 
   /** Return all registered AI sessions. */
   async getAISessions(): Promise<AISession[]> {
-    return this.get<AISession[]>("/api/ai-sessions");
+    return this.get<AISession[]>('/api/ai-sessions');
   }
 
   /** Claim a queued task for the given session. */
@@ -199,8 +200,17 @@ export class NexusClient {
   }
 
   /** Update a task's status (COMPLETED or FAILED). */
-  async updateTaskStatus(taskId: string, sessionId: string, status: "COMPLETED" | "FAILED", logs?: string): Promise<Task> {
-    return this.put<Task>(`/api/tasks/${encodeURIComponent(taskId)}/status`, { sessionId, status, logs });
+  async updateTaskStatus(
+    taskId: string,
+    sessionId: string,
+    status: 'COMPLETED' | 'FAILED',
+    logs?: string,
+  ): Promise<Task> {
+    return this.put<Task>(`/api/tasks/${encodeURIComponent(taskId)}/status`, {
+      sessionId,
+      status,
+      logs,
+    });
   }
 
   /** Get all tasks bound to a specific AI session. */
@@ -222,7 +232,7 @@ export class NexusClient {
   async delegateSession(sessionId: string): Promise<DelegateResponse> {
     return this.post<DelegateResponse>(
       `/api/ai-sessions/${encodeURIComponent(sessionId)}/delegate`,
-      {}
+      {},
     );
   }
 
@@ -237,7 +247,7 @@ export class NexusClient {
         return false;
       }
       const body = (await resp.json()) as HealthResponse;
-      return body.status === "ok";
+      return body.status === 'ok';
     } catch {
       return false;
     }
@@ -248,40 +258,34 @@ export class NexusClient {
   private async get<T>(path: string): Promise<T> {
     const resp = await fetch(`${this.baseUrl}${path}`);
     if (!resp.ok) {
-      const body = await resp.text().catch(() => "");
-      throw new Error(
-        `nexus: GET ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ""}`
-      );
+      const body = await resp.text().catch(() => '');
+      throw new Error(`nexus: GET ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`);
     }
     return resp.json() as Promise<T>;
   }
 
   private async post<T>(path: string, payload: unknown): Promise<T> {
     const resp = await fetch(`${this.baseUrl}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     if (!resp.ok) {
-      const body = await resp.text().catch(() => "");
-      throw new Error(
-        `nexus: POST ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ""}`
-      );
+      const body = await resp.text().catch(() => '');
+      throw new Error(`nexus: POST ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`);
     }
     return resp.json() as Promise<T>;
   }
 
   private async put<T>(path: string, payload: unknown): Promise<T> {
     const resp = await fetch(`${this.baseUrl}${path}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     if (!resp.ok) {
-      const body = await resp.text().catch(() => "");
-      throw new Error(
-        `nexus: PUT ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ""}`
-      );
+      const body = await resp.text().catch(() => '');
+      throw new Error(`nexus: PUT ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`);
     }
     return resp.json() as Promise<T>;
   }

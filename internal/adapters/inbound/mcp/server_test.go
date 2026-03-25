@@ -104,6 +104,9 @@ func (m *mockOrch) DelegateToNexus(_ context.Context, _ string) (string, error) 
 }
 func (m *mockOrch) HeartbeatTask(_ context.Context, _, _ string) error           { return nil }
 func (m *mockOrch) TerminateAISession(_ context.Context, _ string, _ bool) error { return nil }
+func (m *mockOrch) GetDiscoveredPlanFiles(_ context.Context, _ string) ([]domain.DiscoveredPlanFile, error) {
+	return nil, nil
+}
 
 // --- Helpers ---
 

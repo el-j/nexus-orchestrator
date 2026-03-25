@@ -11,16 +11,23 @@ export interface DetectedAgent {
   projectPath?: string;
   capabilities: string[];
   detectionMethod: string;
+  modelId?: string;
 }
 
 const knownAIExtensions: Record<string, { name: string; capabilities: string[] }> = {
-  'saoudrizwan.claude-dev':         { name: 'Cline',               capabilities: ['file-write', 'code-execute', 'terminal'] },
-  'continue.continue':              { name: 'Continue',            capabilities: ['file-write', 'code-execute', 'chat'] },
-  'codeium.codeium':                { name: 'Codeium',             capabilities: ['chat'] },
-  'codegpt.codegpt-4':              { name: 'CodeGPT',             capabilities: ['chat'] },
-  'anysphere.cursor-always-local':  { name: 'Cursor AI',           capabilities: ['file-write', 'code-execute'] },
-  'github.copilot':                 { name: 'GitHub Copilot',      capabilities: ['chat'] },
-  'github.copilot-chat':            { name: 'GitHub Copilot Chat', capabilities: ['chat'] },
+  'saoudrizwan.claude-dev': {
+    name: 'Cline',
+    capabilities: ['file-write', 'code-execute', 'terminal'],
+  },
+  'continue.continue': { name: 'Continue', capabilities: ['file-write', 'code-execute', 'chat'] },
+  'codeium.codeium': { name: 'Codeium', capabilities: ['chat'] },
+  'codegpt.codegpt-4': { name: 'CodeGPT', capabilities: ['chat'] },
+  'anysphere.cursor-always-local': {
+    name: 'Cursor AI',
+    capabilities: ['file-write', 'code-execute'],
+  },
+  'github.copilot': { name: 'GitHub Copilot', capabilities: ['chat'] },
+  'github.copilot-chat': { name: 'GitHub Copilot Chat', capabilities: ['chat'] },
 };
 
 export class AgentDetector implements vscode.Disposable {
@@ -36,8 +43,8 @@ export class AgentDetector implements vscode.Disposable {
     private readonly client: NexusClient,
     private readonly context: vscode.ExtensionContext,
   ) {
-    this.machineId = context.globalState.get<string>('machineId') ??
-      `m-${Math.random().toString(36).slice(2)}`;
+    this.machineId =
+      context.globalState.get<string>('machineId') ?? `m-${Math.random().toString(36).slice(2)}`;
     void context.globalState.update('machineId', this.machineId);
   }
 
@@ -85,7 +92,7 @@ export class AgentDetector implements vscode.Disposable {
     if (this.isDisposed) return;
     try {
       const detected = await this.detectAll();
-      const currentIds = new Set(detected.map(a => a.externalId));
+      const currentIds = new Set(detected.map((a) => a.externalId));
 
       // Register new agents
       for (const agent of detected) {
@@ -97,41 +104,70 @@ export class AgentDetector implements vscode.Disposable {
               source: 'vscode',
               externalId: agent.externalId,
               projectPath: agent.projectPath ?? workspacePath,
+              modelId: agent.modelId,
             });
             this.sessionMap.set(agent.externalId, session.id);
-          } catch (_) { /* silent */ }
+          } catch (_) {
+            /* silent */
+          }
         }
       }
 
       // Heartbeat existing agents
       for (const [externalId, sessionId] of this.sessionMap) {
         if (currentIds.has(externalId)) {
-          try { await this.client.heartbeatSession(sessionId); } catch (_) { /* silent */ }
+          try {
+            await this.client.heartbeatSession(sessionId);
+          } catch (_) {
+            /* silent */
+          }
         }
       }
 
       // Deregister disappeared agents
       for (const [externalId, sessionId] of this.sessionMap) {
         if (!currentIds.has(externalId)) {
-          try { await this.client.deregisterSession(sessionId); } catch (_) { /* silent */ }
+          try {
+            await this.client.deregisterSession(sessionId);
+          } catch (_) {
+            /* silent */
+          }
           this.sessionMap.delete(externalId);
         }
       }
 
       this._onDidChange.fire();
-    } catch (_) { /* silent */ }
+    } catch (_) {
+      /* silent */
+    }
   }
 
   private async detectVSCodeExtensions(): Promise<DetectedAgent[]> {
     const results: DetectedAgent[] = [];
+
+    // Pre-fetch Copilot models once for all Copilot extensions
+    let copilotModelId: string | undefined;
+    try {
+      if (vscode.lm?.selectChatModels) {
+        const copilotModels = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+        if (copilotModels.length > 0) {
+          copilotModelId = copilotModels[0].id ?? copilotModels[0].name;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+
     for (const [extId, info] of Object.entries(knownAIExtensions)) {
       if (vscode.extensions.getExtension(extId)) {
+        const isCopilot = extId === 'github.copilot' || extId === 'github.copilot-chat';
         results.push({
           agentName: info.name,
           source: 'vscode-discovered',
           externalId: `discover:${this.machineId}:ext:${extId}`,
           capabilities: info.capabilities,
           detectionMethod: 'vscode-extension',
+          ...(isCopilot && copilotModelId !== undefined ? { modelId: copilotModelId } : {}),
         });
       }
     }
@@ -144,8 +180,15 @@ export class AgentDetector implements vscode.Disposable {
 
     // Claude CLI
     try {
-      const data = JSON.parse(await fs.readFile(path.join(home, '.claude', 'settings.json'), 'utf8')) as unknown;
-      if (data && typeof data === 'object' && 'apiKey' in data && typeof (data as Record<string, unknown>).apiKey === 'string') {
+      const data = JSON.parse(
+        await fs.readFile(path.join(home, '.claude', 'settings.json'), 'utf8'),
+      ) as unknown;
+      if (
+        data &&
+        typeof data === 'object' &&
+        'apiKey' in data &&
+        typeof (data as Record<string, unknown>).apiKey === 'string'
+      ) {
         results.push({
           agentName: 'Claude CLI',
           source: 'vscode-discovered',
@@ -154,7 +197,9 @@ export class AgentDetector implements vscode.Disposable {
           detectionMethod: 'fs-config',
         });
       }
-    } catch (_) { /* not found */ }
+    } catch (_) {
+      /* not found */
+    }
 
     // Claude Desktop
     const desktopPaths = [
@@ -172,7 +217,9 @@ export class AgentDetector implements vscode.Disposable {
           detectionMethod: 'fs-config',
         });
         break;
-      } catch (_) { /* not found */ }
+      } catch (_) {
+        /* not found */
+      }
     }
 
     // MCP servers from Claude Desktop config
@@ -201,7 +248,9 @@ export class AgentDetector implements vscode.Disposable {
           }
         }
         break;
-      } catch (_) { /* not found */ }
+      } catch (_) {
+        /* not found */
+      }
     }
 
     return results;
@@ -238,11 +287,14 @@ export class AgentDetector implements vscode.Disposable {
               externalId: `discover:${this.machineId}:lm:${m.vendor}:${m.family}`,
               capabilities: ['chat'],
               detectionMethod: 'lm-participant',
+              modelId: m.id ?? m.name,
             });
           }
         }
       }
-    } catch (_) { /* lm not available */ }
+    } catch (_) {
+      /* lm not available */
+    }
     return results;
   }
 }

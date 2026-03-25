@@ -106,6 +106,9 @@ func (m *mockOrchestrator) HeartbeatTask(_ context.Context, _, _ string) error {
 func (m *mockOrchestrator) TerminateAISession(_ context.Context, _ string, _ bool) error {
 	return nil
 }
+func (m *mockOrchestrator) GetDiscoveredPlanFiles(_ context.Context, _ string) ([]domain.DiscoveredPlanFile, error) {
+	return nil, nil
+}
 
 // captureStdout redirects os.Stdout while fn runs and returns the collected
 // output. fn must not call t.Fatal/t.FailNow (runtime.Goexit) directly, as

@@ -642,8 +642,19 @@ ALL AVAILABLE TOOLS
 - update_task        update task fields
 - register_session   announce this AI session (call on startup + as heartbeat)
 - get_ai_sessions    list all registered AI sessions
-- claim_task         claim a queued task for execution
-- update_task_status report completion or failure
+- claim_task                   claim a queued task for execution
+- update_task_status           report completion or failure
+- heartbeat_task               keep a claimed task alive
+- terminate_ai_session         force-stop or gracefully end an AI session
+- list_provider_configs        list persisted provider configurations
+- add_provider_config          add a new provider configuration
+- update_provider_config       update an existing provider configuration
+- remove_provider_config       remove a provider configuration
+- deregister_ai_session        deregister an AI session
+- heartbeat_ai_session         send a keepalive for an AI session
+- purge_disconnected_sessions  remove all stale/disconnected sessions
+- get_discovered_agents        list discovered AI agents on this machine
+- delegate_to_nexus            get delegation instruction for an AI session
 
 HTTP ENDPOINTS (all at :63987 by default)
 GET  /.well-known/nexus.json  service discovery beacon

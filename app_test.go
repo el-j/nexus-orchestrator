@@ -112,6 +112,9 @@ func (m *mockOrchestrator) HeartbeatTask(_ context.Context, _, _ string) error {
 func (m *mockOrchestrator) TerminateAISession(_ context.Context, _ string, _ bool) error {
 	return nil
 }
+func (m *mockOrchestrator) GetDiscoveredPlanFiles(_ context.Context, _ string) ([]domain.DiscoveredPlanFile, error) {
+	return nil, nil
+}
 
 var _ ports.Orchestrator = (*mockOrchestrator)(nil)
 
