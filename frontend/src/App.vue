@@ -13,6 +13,10 @@
           <DiscoveryView v-else-if="currentView === 'discovery'" />
           <AISessionsView v-else-if="currentView === 'ai-sessions'" />
           <AIAgentsView v-else-if="currentView === 'ai-agents'" />
+          <ProjectActivityView
+            v-else-if="currentView === 'projects'"
+            @navigate="currentView = $event"
+          />
           <DiscoveredPlansView v-else-if="currentView === 'plans'" />
           <SettingsView v-else-if="currentView === 'settings'" />
         </main>
@@ -38,6 +42,7 @@ import DiscoveryView from './views/DiscoveryView.vue';
 import AISessionsView from './views/AISessionsView.vue';
 import AIAgentsView from './views/AIAgentsView.vue';
 import DiscoveredPlansView from './views/DiscoveredPlansView.vue';
+import ProjectActivityView from './views/ProjectActivityView.vue';
 import SettingsView from './views/SettingsView.vue';
 import LogPanel from './components/LogPanel.vue';
 import ErrorFallback from './components/ErrorFallback.vue';

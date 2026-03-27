@@ -132,6 +132,10 @@ func migrate(db *sql.DB) error {
 		{"ai_sessions", "agent_capabilities", "TEXT NOT NULL DEFAULT '[]'"},
 		{"ai_sessions", "detection_method", "TEXT NOT NULL DEFAULT ''"},
 		{"ai_sessions", "model_id", "TEXT NOT NULL DEFAULT ''"},
+		{"ai_sessions", "current_activity", "TEXT NOT NULL DEFAULT ''"},
+		{"ai_sessions", "message_count", "INTEGER NOT NULL DEFAULT 0"},
+		{"ai_sessions", "tokens_used", "INTEGER NOT NULL DEFAULT 0"},
+		{"ai_sessions", "last_message", "TEXT NOT NULL DEFAULT ''"},
 	} {
 		_, _ = db.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", col.table, col.name, col.def))
 	}
@@ -151,6 +155,27 @@ func migrate(db *sql.DB) error {
 	`)
 	if err != nil {
 		return fmt.Errorf("sqlite: migrate discovered_plan_files: %w", err)
+	}
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS ai_activities (
+			id            TEXT PRIMARY KEY,
+			session_id    TEXT NOT NULL DEFAULT '',
+			agent_name    TEXT NOT NULL,
+			activity_type TEXT NOT NULL,
+			summary       TEXT NOT NULL DEFAULT '',
+			project_path  TEXT NOT NULL DEFAULT '',
+			model         TEXT NOT NULL DEFAULT '',
+			tokens_in     INTEGER NOT NULL DEFAULT 0,
+			tokens_out    INTEGER NOT NULL DEFAULT 0,
+			timestamp     DATETIME NOT NULL,
+			metadata      TEXT NOT NULL DEFAULT '{}'
+		);
+		CREATE INDEX IF NOT EXISTS idx_ai_activities_timestamp ON ai_activities(timestamp);
+		CREATE INDEX IF NOT EXISTS idx_ai_activities_agent ON ai_activities(agent_name);
+		CREATE INDEX IF NOT EXISTS idx_ai_activities_project ON ai_activities(project_path);
+	`)
+	if err != nil {
+		return fmt.Errorf("sqlite: migrate ai_activities: %w", err)
 	}
 	return nil
 }

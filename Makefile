@@ -59,7 +59,8 @@ UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
         build-windows-amd64 \
         build-frontend build-vscode build-dev dev dev-daemon check-air \
         version version-sync release-alpha release-beta release-rc release \
-        docker-build docker-push docker-run
+        docker-build docker-push docker-run \
+        nice nice-go nice-frontend
 
 # ---------------------------------------------------------------------------
 # Default: native build (CLI + daemon)
@@ -115,22 +116,45 @@ check-air:
 # Start daemon with hot-reload + Vite HMR frontend in parallel.
 # Press Ctrl+C once to stop both.
 #
-#   Daemon  → http://127.0.0.1:63987  (air rebuilds on *.go changes)
-#   Frontend→ http://127.0.0.1:63989  (Vite HMR, proxies /api+/mcp → :63987)
+#   Daemon   → http://127.0.0.1:63987  (air rebuilds on *.go changes)
+#   MCP      → http://127.0.0.1:63988  (JSON-RPC 2.0)
+#   Frontend → http://127.0.0.1:63989  (Vite HMR, proxies /api → :63987, /mcp → :63988)
 dev: check-air
+	@cd frontend && npm install --prefer-offline --silent 2>/dev/null
 	@echo ""
-	@echo "┌──────────────────────────────────────────────────┐"
-	@echo "│  nexusOrchestrator — dev mode                    │"
-	@echo "│                                                  │"
-	@echo "│  Daemon  → http://127.0.0.1:63987  (air)         │"
-	@echo "│  Frontend→ http://127.0.0.1:63989  (vite HMR)    │"
-	@echo "│                                                  │"
-	@echo "│  Ctrl+C to stop both                            │"
-	@echo "└──────────────────────────────────────────────────┘"
+	@echo "┌──────────────────────────────────────────────────────────┐"
+	@echo "│  nexusOrchestrator — dev mode                            │"
+	@echo "│                                                          │"
+	@echo "│  Starting daemon via air (hot-reload)…                   │"
+	@echo "└──────────────────────────────────────────────────────────┘"
 	@echo ""
-	@cd frontend && npm install --prefer-offline --silent
 	@trap 'kill 0' INT; \
 	  air & \
+	  AIR_PID=$$!; \
+	  echo "⏳ Waiting for daemon to become healthy…"; \
+	  for i in $$(seq 1 30); do \
+	    if curl -sf http://127.0.0.1:63987/api/health >/dev/null 2>&1; then \
+	      echo "✓ Daemon healthy on :63987"; \
+	      break; \
+	    fi; \
+	    if [ "$$i" = "30" ]; then \
+	      echo "⚠  Daemon did not become healthy after 30s — starting frontend anyway"; \
+	    fi; \
+	    sleep 1; \
+	  done; \
+	  echo ""; \
+	  echo "┌──────────────────────────────────────────────────────────┐"; \
+	  echo "│  All services starting                                   │"; \
+	  echo "│                                                          │"; \
+	  echo "│  Daemon   → http://127.0.0.1:63987  (HTTP API)           │"; \
+	  echo "│  MCP      → http://127.0.0.1:63988  (JSON-RPC 2.0)      │"; \
+	  echo "│  Frontend → http://127.0.0.1:63989  (Vite HMR)          │"; \
+	  echo "│  Discovery→ http://127.0.0.1:63987/.well-known/nexus.json│"; \
+	  echo "│  How-to   → http://127.0.0.1:63987/api/howto             │"; \
+	  echo "│                                                          │"; \
+	  echo "│  Ctrl+C to stop all                                      │"; \
+	  echo "└──────────────────────────────────────────────────────────┘"; \
+	  echo ""; \
 	  (cd frontend && npm run dev) & \
 	  wait
 
@@ -257,7 +281,52 @@ vet:
 	go vet ./...
 
 lint:
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+		LINT_VER=$$(golangci-lint version 2>&1 | grep -oE 'v[0-9]+' | head -1); \
+		if [ "$$LINT_VER" = "v1" ]; then \
+			echo "  ⚠  golangci-lint v1 found but config requires v2 — upgrading…"; \
+			go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest; \
+		fi; \
+	fi
 	golangci-lint run ./...
+
+# ---------------------------------------------------------------------------
+# Code quality — format, fix, lint everything in one go
+# ---------------------------------------------------------------------------
+
+# Go: auto-format + vet + lint with auto-fix
+nice-go:
+	@echo "── Go: formatting ──"
+	@gofmt -w .
+	@echo "── Go: vet ──"
+	@go vet ./...
+	@echo "── Go: lint + auto-fix ──"
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+		LINT_VER=$$(golangci-lint version 2>&1 | grep -oE 'v[0-9]+' | head -1); \
+		if [ "$$LINT_VER" = "v1" ]; then \
+			echo "  ⚠  golangci-lint v1 found but config requires v2 — upgrading…"; \
+			go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest; \
+		fi; \
+		golangci-lint run --fix ./...; \
+	else \
+		echo "  ⚠  golangci-lint not installed — installing v2…"; \
+		go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest; \
+		golangci-lint run --fix ./...; \
+	fi
+	@echo "── Go: clean ✓ ──"
+
+# Frontend: type-check
+nice-frontend:
+	@echo "── Frontend: type-check ──"
+	@cd frontend && npx vue-tsc --noEmit
+	@echo "── Frontend: clean ✓ ──"
+
+# Everything: Go + Frontend
+nice: nice-go nice-frontend
+	@echo ""
+	@echo "┌──────────────────────────────────┐"
+	@echo "│  All nice — code is clean ✓      │"
+	@echo "└──────────────────────────────────┘"
 
 # ---------------------------------------------------------------------------
 # Housekeeping
@@ -346,7 +415,7 @@ help:
 	@echo "  make build-windows-amd64    Windows x86-64"
 	@echo ""
 	@echo "Dev:"
-	@echo "  make dev                    daemon (air) + Vite HMR in parallel"
+	@echo "  make dev                    daemon (air, health-wait) + Vite HMR"
 	@echo "  make dev-daemon             daemon hot-reload only"
 	@echo ""
 	@echo "Test & quality:"
@@ -355,6 +424,9 @@ help:
 	@echo "  make test-cover             Tests + HTML coverage report"
 	@echo "  make vet                    go vet ./..."
 	@echo "  make lint                   golangci-lint run ./..."
+	@echo "  make nice                   Format + vet + lint (Go + Frontend)"
+	@echo "  make nice-go                Format + vet + lint (Go only)"
+	@echo "  make nice-frontend          Type-check frontend (vue-tsc)"
 	@echo ""
 	@echo "Versioning:"
 	@echo "  make version                Show current version + commit + build date"

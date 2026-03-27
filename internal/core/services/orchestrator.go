@@ -422,7 +422,7 @@ func (o *OrchestratorService) runTaskWatchdog() {
 			for _, t := range tasks {
 				log.Printf("orchestrator: task watchdog: task %s stuck in PROCESSING, failing", t.ID)
 				t.Status = domain.StatusFailed
-				t.Logs = t.Logs + "\n\n[System] Task timed out while PROCESSING. Marked as FAILED by watchdog."
+				t.Logs += "\n\n[System] Task timed out while PROCESSING. Marked as FAILED by watchdog."
 				if err := o.repo.Update(t); err != nil {
 					log.Printf("orchestrator: task watchdog: update task %s fail: %v", t.ID, err)
 					continue

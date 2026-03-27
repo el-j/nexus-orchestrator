@@ -8,20 +8,17 @@
  *  - FAILED tasks in last hour → $(error) Nexus: N failed
  */
 
-import * as vscode from "vscode";
-import { NexusClient, AISession } from "./nexusClient";
-import { getActivitySnapshot } from "./activityLog";
+import * as vscode from 'vscode';
+import { NexusClient, AISession, AIActivity } from './nexusClient';
+import { getActivitySnapshot } from './activityLog';
 
 export class NexusStatusBar {
   private item: vscode.StatusBarItem;
   private pollTimer?: NodeJS.Timeout;
 
   constructor(private client: NexusClient) {
-    this.item = vscode.window.createStatusBarItem(
-      vscode.StatusBarAlignment.Left,
-      100
-    );
-    this.item.command = "nexus.statusBarAction";
+    this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+    this.item.command = 'nexus.statusBarAction';
     this.item.show();
   }
 
@@ -41,72 +38,91 @@ export class NexusStatusBar {
     try {
       const alive = await this.client.health();
       if (!alive) {
-        this.item.text = "$(warning) Nexus: offline";
-        this.item.tooltip = "Click to open actions";
+        this.item.text = '$(warning) Nexus: offline';
+        this.item.tooltip = 'Click to open actions';
         return;
       }
 
-      const [providersResult, tasksResult, aiSessionsResult] = await Promise.allSettled([
-        this.client.getProviders(),
-        this.client.getTasks(),
-        this.client.getAISessions(),
-      ]);
+      const [providersResult, tasksResult, aiSessionsResult, activitiesResult] =
+        await Promise.allSettled([
+          this.client.getProviders(),
+          this.client.getTasks(),
+          this.client.getAISessions(),
+          this.client.getActivities({ limit: 50 }),
+        ]);
 
       const providers = providersResult.status === 'fulfilled' ? providersResult.value : [];
       const tasks = tasksResult.status === 'fulfilled' ? tasksResult.value : [];
       const aiSessions = aiSessionsResult.status === 'fulfilled' ? aiSessionsResult.value : [];
+      const activities: AIActivity[] =
+        activitiesResult.status === 'fulfilled' ? activitiesResult.value : [];
       const isDegraded = providersResult.status === 'rejected' || tasksResult.status === 'rejected';
       if (isDegraded) {
         const failed = [
           providersResult.status === 'rejected' ? 'providers' : null,
           tasksResult.status === 'rejected' ? 'tasks' : null,
-        ].filter(Boolean).join(', ');
+        ]
+          .filter(Boolean)
+          .join(', ');
         console.warn('statusBar: degraded — failed to fetch:', failed);
       }
 
+      // Count unique agents active in the last 5 minutes
+      const fiveMinAgo = Date.now() - 5 * 60 * 1000;
+      const recentActivities = activities.filter(
+        (a) => new Date(a.timestamp).getTime() >= fiveMinAgo,
+      );
+      const activeAgentNames = new Set(recentActivities.map((a) => a.agentName));
+      const activeAgentCount = activeAgentNames.size;
+      const generatingCount = recentActivities.filter(
+        (a) => a.activityType === 'generation',
+      ).length;
+
       const activeProviders = providers.filter((p) => p.active);
-      const activeSessions = aiSessions.filter((s) => s.status === "active");
+      const activeSessions = aiSessions.filter((s) => s.status === 'active');
       const activeSessionCount = activeSessions.length;
-      const mcpSessions = activeSessions.filter((s) => s.source === "mcp").length;
-      const vscodeSessions = activeSessions.filter((s) => s.source === "vscode").length;
-      const httpSessions = activeSessions.filter((s) => s.source === "http").length;
+      const mcpSessions = activeSessions.filter((s) => s.source === 'mcp').length;
+      const vscodeSessions = activeSessions.filter((s) => s.source === 'vscode').length;
+      const httpSessions = activeSessions.filter((s) => s.source === 'http').length;
       const lastQueuedTaskId = getActivitySnapshot().lastQueuedTaskId;
       const oneHourAgo = Date.now() - 60 * 60 * 1000;
 
-      const activeTasks = tasks.filter(
-        (t) => t.status === "QUEUED" || t.status === "PROCESSING"
-      );
+      const activeTasks = tasks.filter((t) => t.status === 'QUEUED' || t.status === 'PROCESSING');
       const failedTasks = tasks.filter(
-        (t) =>
-          t.status === "FAILED" &&
-          new Date(t.updatedAt).getTime() >= oneHourAgo
+        (t) => t.status === 'FAILED' && new Date(t.updatedAt).getTime() >= oneHourAgo,
       );
 
       const tooltipLines = [
         `Providers active: ${activeProviders.length}`,
         `Nexus queue: ${activeTasks.length} active task(s)`,
+        `${activeAgentCount} AI agents active in last 5m`,
         `Copilot direct sessions: ${vscodeSessions}`,
         `MCP sessions: ${mcpSessions}`,
         `HTTP sessions: ${httpSessions}`,
         `AI sessions total: ${activeSessionCount}`,
       ];
       if (lastQueuedTaskId) {
-        tooltipLines.push(`Last queued by extension: #${lastQueuedTaskId.replace(/-/g, "").slice(0, 8)}`);
+        tooltipLines.push(
+          `Last queued by extension: #${lastQueuedTaskId.replace(/-/g, '').slice(0, 8)}`,
+        );
       }
       if (isDegraded) {
-        tooltipLines.push("Some daemon reads failed during the last refresh");
+        tooltipLines.push('Some daemon reads failed during the last refresh');
       }
-      tooltipLines.push("Click to open Nexus actions");
-      const tooltip = tooltipLines.join("\n");
+      tooltipLines.push('Click to open Nexus actions');
+      const tooltip = tooltipLines.join('\n');
 
       if (failedTasks.length > 0) {
         this.item.text = `$(error) Nexus Q${activeTasks.length} M${mcpSessions} V${vscodeSessions}`;
+        this.item.tooltip = tooltip;
+      } else if (activeAgentCount > 0) {
+        this.item.text = `🤖 ${activeAgentCount} agent(s) · ${generatingCount} generating`;
         this.item.tooltip = tooltip;
       } else if (activeTasks.length > 0) {
         this.item.text = `$(sync~spin) Nexus Q${activeTasks.length} M${mcpSessions} V${vscodeSessions}${isDegraded ? ' ~' : ''}`;
         this.item.tooltip = tooltip;
       } else if (isDegraded) {
-        this.item.text = "$(warning) Nexus: degraded";
+        this.item.text = '$(warning) Nexus: degraded';
         this.item.tooltip = tooltip;
       } else {
         this.item.text = `$(zap) Nexus Q0 M${mcpSessions} V${vscodeSessions}`;
@@ -114,8 +130,8 @@ export class NexusStatusBar {
       }
     } catch (error) {
       console.warn('statusBar: update failed:', error);
-      this.item.text = "$(warning) Nexus: offline";
-      this.item.tooltip = "Click to open actions";
+      this.item.text = '$(warning) Nexus: offline';
+      this.item.tooltip = 'Click to open actions';
     }
   }
 

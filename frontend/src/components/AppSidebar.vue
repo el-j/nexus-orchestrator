@@ -68,6 +68,7 @@ const navItems = [
   { id: 'discovery', label: 'Discovery', icon: 'pi-search' },
   { id: 'ai-sessions', label: 'AI Sessions', icon: 'pi-share-alt' },
   { id: 'ai-agents', label: 'AI Agents', icon: 'pi-users' },
+  { id: 'projects', label: 'Projects', icon: 'pi-folder' },
   { id: 'plans', label: 'Plans', icon: 'pi-file' },
   { id: 'settings', label: 'Settings', icon: 'pi-cog' },
 ];

@@ -80,6 +80,28 @@ func (h *Hub) BroadcastAISessionEvent(event domain.AISessionEvent) {
 	}
 }
 
+// BroadcastActivityEvent sends an AI activity event to all active SSE subscribers.
+func (h *Hub) BroadcastActivityEvent(a domain.AIActivity) {
+	type activityEvent struct {
+		Type     string            `json:"type"`
+		Activity domain.AIActivity `json:"activity"`
+	}
+	data, err := json.Marshal(activityEvent{Type: "ai_activity_new", Activity: a})
+	if err != nil {
+		return
+	}
+	msg := []byte(fmt.Sprintf("data: %s\n\n", data))
+
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for ch := range h.clients {
+		select {
+		case ch <- msg:
+		default:
+		}
+	}
+}
+
 // ServeSSE handles a single SSE connection for the lifetime of the request.
 func (h *Hub) ServeSSE(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)

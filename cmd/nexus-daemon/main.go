@@ -9,15 +9,20 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
 	"nexus-orchestrator/internal/adapters/inbound/httpapi"
 	"nexus-orchestrator/internal/adapters/inbound/mcp"
+	"nexus-orchestrator/internal/adapters/outbound/activity_claude"
+	"nexus-orchestrator/internal/adapters/outbound/activity_continue"
+	"nexus-orchestrator/internal/adapters/outbound/activity_network"
 	"nexus-orchestrator/internal/adapters/outbound/fs_writer"
 	"nexus-orchestrator/internal/adapters/outbound/repo_sqlite"
 	"nexus-orchestrator/internal/adapters/outbound/sys_scanner"
 	"nexus-orchestrator/internal/bootstrap"
+	"nexus-orchestrator/internal/core/ports"
 	"nexus-orchestrator/internal/core/services"
 )
 
@@ -58,7 +63,21 @@ func main() {
 
 	aiSessionRepo := repo_sqlite.NewAISessionRepo(repo)
 	orchestratorSvc.SetAISessionRepo(aiSessionRepo)
-
+	// 2b. Activity observatory
+	activityRepo := repo_sqlite.NewActivityRepo(repo)
+	var activityReaders []ports.ActivityReader
+	if homeDir, err := os.UserHomeDir(); err == nil {
+		if _, err := os.Stat(filepath.Join(homeDir, ".claude")); err == nil {
+			activityReaders = append(activityReaders, activity_claude.NewClaudeJSONLReader(), activity_claude.NewClaudeHistoryReader())
+		}
+		if _, err := os.Stat(filepath.Join(homeDir, ".continue")); err == nil {
+			activityReaders = append(activityReaders, activity_continue.NewContinueSessionReader())
+		}
+	}
+	activityReaders = append(activityReaders, activity_network.NewNetworkProbeReader())
+	activitySvc := services.NewActivityService(activityRepo, aiSessionRepo, activityReaders...)
+	activitySvc.Start()
+	defer activitySvc.Stop()
 	// Wire system scanner for provider discovery + agent detection.
 	scanner := sys_scanner.New()
 	orchestratorSvc.WithSystemScanner(scanner)
@@ -149,8 +168,8 @@ func main() {
 		}
 	}()
 
-	// StartServer blocks until ctx is cancelled, then gracefully shuts down
-	if err := httpapi.StartServer(ctx, orchestratorSvc, addr, logHub); err != nil {
+	// StartServerFull blocks until ctx is cancelled, then gracefully shuts down
+	if err := httpapi.StartServerFull(ctx, orchestratorSvc, addr, activitySvc, logHub); err != nil {
 		log.Printf("daemon: httpapi: %v", err)
 	}
 

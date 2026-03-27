@@ -250,3 +250,25 @@ type DiscoveredPlanFileRepo interface {
 	ListPlanFiles(ctx context.Context, projectPath string) ([]domain.DiscoveredPlanFile, error)
 	DeleteStalePlanFiles(ctx context.Context, olderThan time.Duration) (int, error)
 }
+
+// ActivityReader is the outbound port for reading AI activity from a single
+// passive data source (filesystem logs, network probes, etc.).
+type ActivityReader interface {
+	// ReadActivities returns activities from this source since the given timestamp.
+	ReadActivities(ctx context.Context, since time.Time) ([]domain.AIActivity, error)
+	// SourceName identifies this reader (e.g. "claude-jsonl", "continue-sessions").
+	SourceName() string
+}
+
+// AIActivityRepository is the outbound port for persisting observed AI activities.
+type AIActivityRepository interface {
+	SaveActivity(ctx context.Context, a domain.AIActivity) error
+	ListActivities(ctx context.Context, f domain.ActivityFilter) ([]domain.AIActivity, error)
+	PurgeOlderThan(ctx context.Context, cutoff time.Time) (int64, error)
+}
+
+// ActivityBroadcaster is an outbound port for broadcasting activity events
+// to connected SSE clients.
+type ActivityBroadcaster interface {
+	BroadcastActivityEvent(a domain.AIActivity)
+}

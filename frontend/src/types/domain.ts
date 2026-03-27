@@ -136,3 +136,19 @@ export interface DiscoveredPlanFile {
   lastModified: string;
   isActive: boolean;
 }
+
+export type ActivityType = 'message' | 'tool_use' | 'thinking' | 'file_edit' | 'generation';
+
+export interface AIActivity {
+  id: string;
+  sessionId?: string;
+  agentName: string;
+  activityType: ActivityType;
+  summary: string;
+  projectPath?: string;
+  model?: string;
+  tokensIn?: number;
+  tokensOut?: number;
+  timestamp: string;
+  metadata?: Record<string, string>;
+}

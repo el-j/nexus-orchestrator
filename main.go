@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/wailsapp/wails/v2"
@@ -18,10 +19,14 @@ import (
 	"nexus-orchestrator/internal/adapters/inbound/httpapi"
 	"nexus-orchestrator/internal/adapters/inbound/mcp"
 	"nexus-orchestrator/internal/adapters/inbound/tray"
+	"nexus-orchestrator/internal/adapters/outbound/activity_claude"
+	"nexus-orchestrator/internal/adapters/outbound/activity_continue"
+	"nexus-orchestrator/internal/adapters/outbound/activity_network"
 	"nexus-orchestrator/internal/adapters/outbound/fs_writer"
 	"nexus-orchestrator/internal/adapters/outbound/repo_sqlite"
 	"nexus-orchestrator/internal/adapters/outbound/sys_scanner"
 	"nexus-orchestrator/internal/bootstrap"
+	"nexus-orchestrator/internal/core/ports"
 	"nexus-orchestrator/internal/core/services"
 )
 
@@ -70,6 +75,22 @@ func run() error {
 	aiSessionRepo := repo_sqlite.NewAISessionRepo(repo)
 	orchestratorSvc.SetAISessionRepo(aiSessionRepo)
 
+	// 2b. Activity observatory
+	activityRepo := repo_sqlite.NewActivityRepo(repo)
+	var activityReaders []ports.ActivityReader
+	if homeDir, err := os.UserHomeDir(); err == nil {
+		if _, err := os.Stat(filepath.Join(homeDir, ".claude")); err == nil {
+			activityReaders = append(activityReaders, activity_claude.NewClaudeJSONLReader(), activity_claude.NewClaudeHistoryReader())
+		}
+		if _, err := os.Stat(filepath.Join(homeDir, ".continue")); err == nil {
+			activityReaders = append(activityReaders, activity_continue.NewContinueSessionReader())
+		}
+	}
+	activityReaders = append(activityReaders, activity_network.NewNetworkProbeReader())
+	activitySvc := services.NewActivityService(activityRepo, aiSessionRepo, activityReaders...)
+	activitySvc.Start()
+	defer activitySvc.Stop()
+
 	// Wire system scanner for provider discovery + agent detection.
 	scanner := sys_scanner.New()
 	orchestratorSvc.WithSystemScanner(scanner)
@@ -105,7 +126,7 @@ func run() error {
 		mcpAddr = "127.0.0.1:63988"
 	}
 	go func() {
-		if err := httpapi.StartServer(httpCtx, orchestratorSvc, httpAddr, logHub); err != nil {
+		if err := httpapi.StartServerFull(httpCtx, orchestratorSvc, httpAddr, activitySvc, logHub); err != nil {
 			log.Printf("httpapi: %v", err)
 		}
 	}()
@@ -146,7 +167,7 @@ func run() error {
 	}()
 
 	// 4. Initialise Wails app binding
-	app := NewApp(orchestratorSvc, httpAddr)
+	app := NewApp(orchestratorSvc, httpAddr).WithActivityService(activitySvc)
 
 	trayAdapter := tray.NewTrayAdapter(orchestratorSvc, func() {
 		runtime.WindowShow(app.ctx)

@@ -83,6 +83,22 @@ export interface DiscoveredAgent {
   lastSeen: string;
 }
 
+// ---- AI Activity types ----
+
+export interface AIActivity {
+  id: string;
+  sessionId?: string;
+  agentName: string;
+  activityType: 'message' | 'tool_use' | 'thinking' | 'file_edit' | 'generation';
+  summary: string;
+  projectPath?: string;
+  model?: string;
+  tokensIn?: number;
+  tokensOut?: number;
+  timestamp: string;
+  metadata?: Record<string, string>;
+}
+
 export interface DelegateResponse {
   instruction: string;
   sessionId: string;
@@ -226,6 +242,24 @@ export class NexusClient {
   /** Return all discovered AI agents on this machine. */
   async getDiscoveredAgents(): Promise<DiscoveredAgent[]> {
     return this.get<DiscoveredAgent[]>('/api/ai-sessions/discovered');
+  }
+
+  /** Return recent AI activities, optionally filtered by agent, project, or type. */
+  async getActivities(options?: {
+    agentName?: string;
+    projectPath?: string;
+    type?: string;
+    limit?: number;
+  }): Promise<AIActivity[]> {
+    const params = new URLSearchParams();
+    if (options?.agentName) params.set('agent', options.agentName);
+    if (options?.projectPath) params.set('project', options.projectPath);
+    if (options?.type) params.set('type', options.type);
+    if (options?.limit) params.set('limit', String(options.limit));
+    const url = `${this.baseUrl}/api/activities${params.size ? '?' + params.toString() : ''}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
+    if (!res.ok) return [];
+    return res.json() as Promise<AIActivity[]>;
   }
 
   /** Delegate a session to nexusOrchestrator for task handling. */

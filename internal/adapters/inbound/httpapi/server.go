@@ -22,9 +22,10 @@ import (
 
 // Server holds the HTTP API dependencies.
 type Server struct {
-	orch   ports.Orchestrator
-	hub    *Hub
-	logHub *LogHub
+	orch        ports.Orchestrator
+	hub         *Hub
+	logHub      *LogHub
+	activitySvc activityQuerier
 }
 
 // NewServer constructs a Server. hub may be nil to disable SSE.
@@ -35,6 +36,12 @@ func NewServer(orch ports.Orchestrator, hub *Hub) *Server {
 // WithLogHub configures the Server to capture and stream log entries via SSE.
 func (s *Server) WithLogHub(h *LogHub) *Server {
 	s.logHub = h
+	return s
+}
+
+// WithActivityService injects an activity querier for the activity endpoints.
+func (s *Server) WithActivityService(svc activityQuerier) *Server {
+	s.activitySvc = svc
 	return s
 }
 
@@ -143,6 +150,10 @@ func (s *Server) Handler() http.Handler {
 	// GET /api/events — SSE stream for task lifecycle and log events
 	r.Get("/api/events", s.handleEvents)
 
+	// Activity observatory endpoints
+	r.Get("/api/activities", s.handleListActivities)
+	r.Get("/api/activities/timeline", s.handleActivityTimeline)
+
 	// Plan file discovery endpoints
 	r.Get("/api/plans/discovered", s.handleGetDiscoveredPlanFiles)
 	r.Post("/api/plans/discovered/scan", s.handleScanPlanFiles)
@@ -165,6 +176,55 @@ func StartServer(ctx context.Context, orch ports.Orchestrator, addr string, logH
 	s := NewServer(orch, hub)
 	if len(logHub) > 0 && logHub[0] != nil {
 		s.WithLogHub(logHub[0])
+	}
+	srv := &http.Server{
+		Addr:         addr,
+		Handler:      s.Handler(),
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 0, // no write timeout — required for long-lived SSE connections
+		IdleTimeout:  60 * time.Second,
+	}
+
+	go func() {
+		<-ctx.Done()
+		shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(shutCtx); err != nil {
+			log.Printf("httpapi: shutdown: %v", err)
+		}
+	}()
+
+	log.Printf("httpapi: listening on %s", addr)
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+	return nil
+}
+
+// activityBroadcasterSetter is satisfied by *services.ActivityService.
+// Defined as a local interface to avoid importing the services package from an inbound adapter.
+type activityBroadcasterSetter interface {
+	SetBroadcaster(ports.ActivityBroadcaster)
+}
+
+// StartServerFull is like StartServer but also wires an activity service for
+// the activity observatory endpoints and SSE broadcasting of activity events.
+func StartServerFull(ctx context.Context, orch ports.Orchestrator, addr string, actSvc activityQuerier, logHub ...*LogHub) error {
+	hub := NewHub()
+	if bs, ok := orch.(broadcasterSetter); ok {
+		bs.SetBroadcaster(hub)
+	}
+	if actSvc != nil {
+		if abs, ok := actSvc.(activityBroadcasterSetter); ok {
+			abs.SetBroadcaster(hub)
+		}
+	}
+	s := NewServer(orch, hub)
+	if len(logHub) > 0 && logHub[0] != nil {
+		s.WithLogHub(logHub[0])
+	}
+	if actSvc != nil {
+		s.WithActivityService(actSvc)
 	}
 	srv := &http.Server{
 		Addr:         addr,

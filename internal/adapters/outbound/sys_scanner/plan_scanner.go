@@ -76,14 +76,6 @@ func scanDir(dir, root, home string, seen map[string]bool) ([]domain.DiscoveredP
 	}
 
 	// Handle glob subdirs: .claude/tasks/*.md and .cursor/rules/*.mdc
-	base := filepath.Base(dir)
-	parent := filepath.Dir(dir)
-	parentBase := filepath.Base(parent)
-
-	switch {
-	case base == ".claude" || (parentBase == ".claude" && base == "tasks"):
-		// Already handled by classifyFile; tasks subdir handled below.
-	}
 
 	// .claude/tasks/*.md
 	tasksDir := filepath.Join(dir, "tasks")

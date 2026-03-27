@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
+	"nexus-orchestrator/internal/core/services"
 )
 
 // App is the Wails application struct. Its exported methods are bound to the
@@ -14,6 +16,7 @@ type App struct {
 	ctx          context.Context
 	orchestrator ports.Orchestrator
 	httpAddr     string
+	activitySvc  *services.ActivityService
 }
 
 // NewApp creates a new App instance.
@@ -194,4 +197,50 @@ func (a *App) UpdateTaskStatus(taskID string, sessionID string, status string, l
 		return domain.Task{}, fmt.Errorf("app: update task status: %w", err)
 	}
 	return t, nil
+}
+
+// WithActivityService injects an ActivityService into the App for observatory bindings.
+func (a *App) WithActivityService(svc *services.ActivityService) *App {
+	a.activitySvc = svc
+	return a
+}
+
+// GetRecentActivities returns recent AI activities for the observatory dashboard.
+func (a *App) GetRecentActivities(agentName, projectPath, activityType, sinceRFC3339 string, limit int) ([]domain.AIActivity, error) {
+	if a.activitySvc == nil {
+		return nil, fmt.Errorf("app: activity service not available")
+	}
+	f := domain.ActivityFilter{
+		AgentName:   agentName,
+		ProjectPath: projectPath,
+	}
+	if activityType != "" {
+		f.Type = domain.ActivityType(activityType)
+	}
+	if sinceRFC3339 != "" {
+		if t, err := time.Parse(time.RFC3339, sinceRFC3339); err == nil {
+			f.Since = t
+		}
+	}
+	if limit > 0 {
+		f.Limit = limit
+	}
+	return a.activitySvc.GetRecentActivities(context.Background(), f)
+}
+
+// GetActivityTimeline returns a cross-agent chronological activity feed.
+func (a *App) GetActivityTimeline(sinceRFC3339 string, limit int) ([]domain.AIActivity, error) {
+	if a.activitySvc == nil {
+		return nil, fmt.Errorf("app: activity service not available")
+	}
+	since := time.Now().Add(-24 * time.Hour)
+	if sinceRFC3339 != "" {
+		if t, err := time.Parse(time.RFC3339, sinceRFC3339); err == nil {
+			since = t
+		}
+	}
+	if limit == 0 {
+		limit = 100
+	}
+	return a.activitySvc.GetTimeline(context.Background(), since, limit)
 }
