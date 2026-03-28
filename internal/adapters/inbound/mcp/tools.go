@@ -93,6 +93,8 @@ func (s *Server) handleToolCall(w http.ResponseWriter, r *http.Request, req rpcR
 		result, err = s.toolDelegateToNexus(r.Context(), p.Arguments)
 	case "howto":
 		result, err = s.toolHowto()
+	case "howto_brief":
+		result, err = s.toolHowtoBrief()
 	default:
 		writeError(w, req.ID, codeMethodNotFound, fmt.Sprintf("unknown tool: %s", p.Name))
 		return
@@ -686,6 +688,42 @@ GET  /api/tasks               list tasks
 	return textResult(guide), nil
 }
 
+// toolHowtoBrief returns an ultra-compact integration guide for small-context models.
+func (s *Server) toolHowtoBrief() (callToolResult, error) {
+	guide := `nexusOrchestrator — Quick Start (compact edition)
+==================================================
+You are connected to nexusOrchestrator, an AI task orchestration server.
+
+FIRST STEPS (run in order):
+  1. get_project_context {"project_path": "/path/to/project"}
+     → Returns active plan, task counts, guidance.
+  2. get_focused_context {"task_id": "TASK-NNN"}
+     → Returns implementation steps + files to read for one task.
+  3. claim_task {"task_id": "TASK-NNN", "session_id": "your-session-id"}
+     → Marks the task as yours (PROCESSING).
+  4. update_task_status {"task_id": "TASK-NNN", "status": "COMPLETED", "logs": "summary"}
+     → Marks done. Use "FAILED" if it failed.
+
+KEY TOOLS:
+  howto              — full guide (large context only)
+  howto_brief        — this guide
+  get_project_context — compact project snapshot
+  get_focused_context — task implementation bundle
+  get_queue          — list queued tasks (compact, prefer over get_all_tasks)
+  submit_task        — queue a new task for an LLM
+  health             — ping daemon
+  register_model_capabilities — store your context window size
+  get_model_capabilities      — look up known model profiles
+
+SMALL-CONTEXT TIPS:
+  Use get_project_context first, then get_focused_context for ONE task at a time.
+  Do NOT call get_all_tasks (response too large). Use get_queue instead.
+  Register: register_model_capabilities {"model_id": "...", "context_window": 32768}
+  Tool responses show [~N tokens] budget estimate where applicable.
+`
+	return textResult(guide), nil
+}
+
 // ----- Helpers -----
 
 func textResult(text string) callToolResult {
@@ -853,6 +891,11 @@ func toolList() []toolDef {
 		{
 			Name:        "howto",
 			Description: "Return a complete integration guide — what nexusOrchestrator does, all tools, workflow patterns for worker/planner/orchestrator roles, and HTTP endpoint reference. Call this first when you connect.",
+			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
+		},
+		{
+			Name:        "howto_brief",
+			Description: "Get the ultra-compact integration guide (~200 tokens). RECOMMENDED as first call for small-context models (< 64K token context window). Use howto for the full guide.",
 			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
 		},
 		{

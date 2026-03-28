@@ -272,3 +272,12 @@ type AIActivityRepository interface {
 type ActivityBroadcaster interface {
 	BroadcastActivityEvent(a domain.AIActivity)
 }
+
+// ModelCapabilityRepository is the outbound port for persisting and querying
+// model capability profiles. Built-in profiles can be overridden by user-defined records.
+type ModelCapabilityRepository interface {
+	Save(p domain.ModelCapabilityProfile) error
+	GetByModelID(modelID string) (domain.ModelCapabilityProfile, error)
+	Delete(modelID string) error
+	GetAll() ([]domain.ModelCapabilityProfile, error)
+}

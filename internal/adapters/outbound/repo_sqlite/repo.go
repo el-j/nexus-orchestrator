@@ -177,6 +177,20 @@ func migrate(db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("sqlite: migrate ai_activities: %w", err)
 	}
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS model_capabilities (
+			model_id               TEXT    PRIMARY KEY,
+			context_window         INTEGER NOT NULL DEFAULT 0,
+			recommended_max_output INTEGER NOT NULL DEFAULT 0,
+			notes                  TEXT    NOT NULL DEFAULT '',
+			built_in               INTEGER NOT NULL DEFAULT 0,
+			created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("sqlite: migrate model_capabilities: %w", err)
+	}
 	return nil
 }
 

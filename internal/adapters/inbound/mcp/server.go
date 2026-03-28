@@ -194,8 +194,9 @@ func (s *Server) handleInitialize(w http.ResponseWriter, req rpcRequest) {
 			Name:    "nexusOrchestrator",
 			Version: "1.0.0",
 			Instructions: "You are connected to nexusOrchestrator — a multi-LLM AI task " +
-				"orchestration server. Call the 'howto' tool first to receive a complete " +
-				"integration guide. Use 'register_session' to identify yourself, " +
+				"orchestration server. Call 'howto_brief' first if you have a small context " +
+				"window (< 64K tokens), or 'howto' for the full guide. " +
+				"Use 'register_session' to identify yourself, " +
 				"'get_queue' to see available tasks, and 'claim_task' to start working.",
 		},
 	}

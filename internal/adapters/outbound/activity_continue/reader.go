@@ -30,13 +30,15 @@ type sessionIndexEntry struct {
 type sessionFile struct {
 	SessionID string           `json:"sessionId"`
 	Title     string           `json:"title"`
+	ModelID   string           `json:"model,omitempty"`
 	History   []historyMessage `json:"history"`
 }
 
 type historyMessage struct {
-	Role      string      `json:"role"`
-	Content   interface{} `json:"content"`   // can be string or structured
-	Timestamp int64       `json:"timestamp"` // unix seconds
+	Role      string `json:"role"`
+	Content   any    `json:"content"`   // can be string or structured
+	Timestamp int64  `json:"timestamp"` // unix seconds
+	Model     string `json:"model,omitempty"`
 }
 
 // ContinueSessionReader reads ~/.continue/sessions/ to observe Continue IDE activity.
@@ -170,6 +172,17 @@ func (r *ContinueSessionReader) buildActivity(entry sessionIndexEntry, sessionPa
 
 	messageCount := len(sf.History)
 
+	// Extract model: prefer session-level, fall back to last assistant message.
+	modelID := sf.ModelID
+	if modelID == "" {
+		for i := len(sf.History) - 1; i >= 0; i-- {
+			if sf.History[i].Role == "assistant" && sf.History[i].Model != "" {
+				modelID = sf.History[i].Model
+				break
+			}
+		}
+	}
+
 	a := &domain.AIActivity{
 		ID:           "continue-" + entry.SessionID,
 		SessionID:    entry.SessionID,
@@ -177,9 +190,11 @@ func (r *ContinueSessionReader) buildActivity(entry sessionIndexEntry, sessionPa
 		ActivityType: domain.ActivityTypeMessage,
 		Summary:      title,
 		ProjectPath:  entry.WorkspaceDirectory,
+		Model:        modelID,
 		Timestamp:    ts,
 		Metadata: map[string]string{
 			"messageCount": strconv.Itoa(messageCount),
+			"model":        modelID,
 			"source":       "continue-sessions",
 		},
 	}
