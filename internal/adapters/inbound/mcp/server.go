@@ -5,11 +5,13 @@ package mcp
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -105,10 +107,13 @@ type Server struct {
 	mux            *http.ServeMux
 	sse            *sseManager
 	allowedOrigins map[string]bool
+	// authToken is the env-configured token (NEXUS_MCP_TOKEN). When set it
+	// takes precedence over persisted runtime config.
+	authToken string
 }
 
-// NewServer creates a Server and registers its HTTP handlers.
-func NewServer(orch ports.Orchestrator) *Server {
+// NewMcpServer creates a Server and registers its HTTP handlers.
+func NewMcpServer(orch ports.Orchestrator) *Server {
 	s := &Server{
 		orch: orch,
 		mux:  http.NewServeMux(),
@@ -119,6 +124,7 @@ func NewServer(orch ports.Orchestrator) *Server {
 			"https://localhost": true,
 			"https://127.0.0.1": true,
 		},
+		authToken: strings.TrimSpace(os.Getenv("NEXUS_MCP_TOKEN")),
 	}
 	s.mux.HandleFunc("/mcp", s.handleRPC)
 	s.mux.HandleFunc("/health", s.handleHealth)
@@ -140,6 +146,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	origin := r.Header.Get("Origin")
 	if origin != "" && !s.isAllowedOrigin(origin) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	if s.requiresAuth(r.Context(), r.URL.Path) && !s.isAuthorized(r.Context(), r.Header.Get("Authorization")) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -166,16 +177,61 @@ func (s *Server) writeCORSHeaders(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 	}
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Mcp-Session-Id, MCP-Protocol-Version")
+	w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Mcp-Session-Id, MCP-Protocol-Version")
 	w.Header().Set("Access-Control-Expose-Headers", "Mcp-Session-Id")
+}
+
+func (s *Server) requiresAuth(ctx context.Context, path string) bool {
+	if s.effectiveAuthToken(ctx) == "" {
+		return false
+	}
+	switch path {
+	case "/mcp", "/sse", "/messages":
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *Server) isAuthorized(ctx context.Context, authHeader string) bool {
+	expected := s.effectiveAuthToken(ctx)
+	if expected == "" {
+		return true
+	}
+	if len(authHeader) < len("Bearer ")+1 {
+		return false
+	}
+	if !strings.EqualFold(authHeader[:len("Bearer ")], "Bearer ") {
+		return false
+	}
+	token := strings.TrimSpace(authHeader[len("Bearer "):])
+	if token == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(token), []byte(expected)) == 1
+}
+
+func (s *Server) effectiveAuthToken(ctx context.Context) string {
+	if strings.TrimSpace(s.authToken) != "" {
+		return strings.TrimSpace(s.authToken)
+	}
+	if s.orch == nil {
+		return ""
+	}
+	cfg, err := s.orch.GetRuntimeConfig(ctx)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(cfg.MCPToken)
 }
 
 // StartMCPServer runs an HTTP server serving the MCP JSON-RPC 2.0 endpoint.
 // It blocks until ctx is cancelled, then shuts down gracefully.
 func StartMCPServer(ctx context.Context, orch ports.Orchestrator, addr string) error {
+	handler := NewMcpServer(orch)
 	srv := &http.Server{
 		Addr:        addr,
-		Handler:     NewServer(orch).mux,
+		Handler:     handler,
 		ReadTimeout: 15 * time.Second,
 		// WriteTimeout is 0 (no timeout) because SSE connections are long-lived.
 		// Individual request handlers should use context deadlines as needed.

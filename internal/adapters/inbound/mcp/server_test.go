@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -110,6 +111,24 @@ func (m *mockOrch) GetDiscoveredPlanFiles(_ context.Context, _ string) ([]domain
 	return nil, nil
 }
 
+func (m *mockOrch) GetRuntimeConfig(_ context.Context) (domain.RuntimeConfig, error) {
+	return domain.RuntimeConfig{QueueCap: 50}, nil
+}
+
+func (m *mockOrch) UpdateRuntimeConfig(_ context.Context, update domain.RuntimeConfigUpdate) (domain.RuntimeConfig, error) {
+	cfg := domain.RuntimeConfig{QueueCap: 50}
+	if update.QueueCap != nil {
+		cfg.QueueCap = *update.QueueCap
+	}
+	if update.APIToken != nil {
+		cfg.APIToken = *update.APIToken
+	}
+	if update.MCPToken != nil {
+		cfg.MCPToken = *update.MCPToken
+	}
+	return cfg, nil
+}
+
 // --- Helpers ---
 
 type rpcResp struct {
@@ -137,9 +156,29 @@ func postRPC(t *testing.T, srv *httptest.Server, body any) rpcResp {
 	return r
 }
 
+func postRPCRaw(t *testing.T, srv *httptest.Server, body any, authHeader string) (int, string) {
+	t.Helper()
+	b, _ := json.Marshal(body)
+	req, err := http.NewRequest(http.MethodPost, srv.URL+"/mcp", bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if authHeader != "" {
+		req.Header.Set("Authorization", authHeader)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /mcp: %v", err)
+	}
+	defer resp.Body.Close()
+	payload, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, string(payload)
+}
+
 func newServer(t *testing.T, orch *mockOrch) *httptest.Server {
 	t.Helper()
-	srv := httptest.NewServer(mcp.NewServer(orch))
+	srv := httptest.NewServer(mcp.NewMcpServer(orch))
 	t.Cleanup(srv.Close)
 	return srv
 }
@@ -155,6 +194,71 @@ func TestMCP_Health(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("status: want 200, got %d", resp.StatusCode)
+	}
+}
+
+func TestMCP_TokenAuth_RequiresBearer(t *testing.T) {
+	t.Setenv("NEXUS_MCP_TOKEN", "mcp-token")
+	srv := newServer(t, &mockOrch{})
+
+	status, _ := postRPCRaw(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 1, "method": "ping",
+	}, "")
+	if status != http.StatusUnauthorized {
+		t.Fatalf("no auth: want 401, got %d", status)
+	}
+
+	status, _ = postRPCRaw(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 1, "method": "ping",
+	}, "Bearer wrong")
+	if status != http.StatusUnauthorized {
+		t.Fatalf("wrong auth: want 401, got %d", status)
+	}
+
+	status, body := postRPCRaw(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 1, "method": "ping",
+	}, "Bearer mcp-token")
+	if status != http.StatusOK {
+		t.Fatalf("correct auth: want 200, got %d (%s)", status, body)
+	}
+}
+
+func TestMCP_TokenAuth_RejectsMissingBearer(t *testing.T) {
+	t.Setenv("NEXUS_MCP_TOKEN", "secret-token")
+	srv := newServer(t, &mockOrch{})
+	status, _ := postRPCRaw(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "ping",
+	}, "")
+	if status != http.StatusUnauthorized {
+		t.Fatalf("status: want 401, got %d", status)
+	}
+}
+
+func TestMCP_TokenAuth_RejectsWrongBearer(t *testing.T) {
+	t.Setenv("NEXUS_MCP_TOKEN", "secret-token")
+	srv := newServer(t, &mockOrch{})
+	status, _ := postRPCRaw(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "ping",
+	}, "Bearer wrong-token")
+	if status != http.StatusUnauthorized {
+		t.Fatalf("status: want 401, got %d", status)
+	}
+}
+
+func TestMCP_TokenAuth_AllowsValidBearer(t *testing.T) {
+	t.Setenv("NEXUS_MCP_TOKEN", "secret-token")
+	srv := newServer(t, &mockOrch{})
+	status, body := postRPCRaw(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "ping",
+	}, "Bearer secret-token")
+	if status != http.StatusOK {
+		t.Fatalf("status: want 200, got %d body=%s", status, body)
 	}
 }
 

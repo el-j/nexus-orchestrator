@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -75,7 +76,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 		if origin == "wails://wails.localhost" || strings.HasPrefix(origin, "http://localhost:") {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		}
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
@@ -85,11 +86,50 @@ func corsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func (s *Server) tokenAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := os.Getenv("NEXUS_API_TOKEN")
+		if token == "" && s.orch != nil {
+			if cfg, err := s.orch.GetRuntimeConfig(r.Context()); err == nil {
+				token = cfg.APIToken
+			}
+		}
+
+		// If no token is configured, allow requests (backward compatible default).
+		if token == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Only guard /api/* endpoints. UI routes remain public so the app can load.
+		path := r.URL.Path
+		if !strings.HasPrefix(path, "/api/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		// Allow unauthenticated health and discovery docs.
+		if path == "/api/health" || path == "/api/howto" || path == "/.well-known/nexus.json" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		auth := r.Header.Get("Authorization")
+		const prefix = "Bearer "
+		if !strings.HasPrefix(auth, prefix) || strings.TrimSpace(strings.TrimPrefix(auth, prefix)) != token {
+			writeJSONError(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (s *Server) Handler() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(corsMiddleware)
+	r.Use(s.tokenAuthMiddleware)
 	r.Use(maxBodySize)
 	r.Use(securityHeaders)
 
@@ -146,10 +186,12 @@ func (s *Server) Handler() http.Handler {
 
 	r.Get("/api/health", s.handleHealth)
 	r.Get("/api/logs", s.handleGetLogs)
+	// Runtime config
+	r.Get("/api/config", s.handleGetConfig)
+	r.Put("/api/config", s.handlePutConfig)
 
 	// GET /api/events — SSE stream for task lifecycle and log events
 	r.Get("/api/events", s.handleEvents)
-
 	// Activity observatory endpoints
 	r.Get("/api/activities", s.handleListActivities)
 	r.Get("/api/activities/timeline", s.handleActivityTimeline)

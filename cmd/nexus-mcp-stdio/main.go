@@ -18,6 +18,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -26,6 +27,7 @@ func main() {
 	if mcpURL == "" {
 		mcpURL = "http://127.0.0.1:63988/mcp"
 	}
+	mcpToken := strings.TrimSpace(os.Getenv("NEXUS_MCP_TOKEN"))
 
 	client := &http.Client{Timeout: 120 * time.Second}
 
@@ -40,7 +42,18 @@ func main() {
 			continue
 		}
 
-		resp, err := client.Post(mcpURL, "application/json", bytes.NewReader(line))
+		req, err := http.NewRequest(http.MethodPost, mcpURL, bytes.NewReader(line))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "nexus-mcp-stdio: new request error: %v\n", err)
+			writeErr("proxy request error")
+			continue
+		}
+		req.Header.Set("Content-Type", "application/json")
+		if mcpToken != "" {
+			req.Header.Set("Authorization", "Bearer "+mcpToken)
+		}
+
+		resp, err := client.Do(req)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "nexus-mcp-stdio: POST error: %v\n", err)
 			writeErr(err.Error())
@@ -59,9 +72,15 @@ func main() {
 			continue
 		}
 
-		os.Stdout.Write(body)
+		if _, err := fmt.Fprint(os.Stdout, string(body)); err != nil {
+			fmt.Fprintf(os.Stderr, "nexus-mcp-stdio: stdout write error: %v\n", err)
+			os.Exit(1)
+		}
 		if body[len(body)-1] != '\n' {
-			os.Stdout.Write([]byte{'\n'})
+			if _, err := fmt.Fprint(os.Stdout, "\n"); err != nil {
+				fmt.Fprintf(os.Stderr, "nexus-mcp-stdio: stdout newline error: %v\n", err)
+				os.Exit(1)
+			}
 		}
 	}
 

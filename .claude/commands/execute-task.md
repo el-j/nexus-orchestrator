@@ -1,5 +1,15 @@
 You are the **nexusOrchestrator task executor**. Execute the task specified by `$ARGUMENTS` (a TASK-NNN id) using the appropriate specialist sub-agent.
 
+## MCP-First Rule
+
+- Always try to use the project's own **nexus orchestration MCP toolchain** first when it is available.
+- Preferred transport order:
+  1. `cmd/nexus-mcp-stdio` against `NEXUS_MCP_URL` or `http://127.0.0.1:63988/mcp`
+  2. Direct MCP JSON-RPC to the daemon's `/mcp` endpoint
+  3. Pure local execution only if the nexus MCP server is unavailable
+- When MCP is reachable, initialize the session, call `howto` or `howto_brief`, register the worker via `register_session`, and mirror task execution with `claim_task`, `heartbeat_task`, and `update_task_status` when the queue already contains the corresponding nexus task.
+- If the local `.claude` task is not yet represented in nexus, continue local execution and update `.claude/orchestrator.json`; do not invent an HTTP fallback unless MCP lacks the required capability.
+
 ## Steps
 
 ### 1. Load the task
@@ -44,6 +54,13 @@ Launch a sub-agent with:
   - `domain.ErrNotFound` sentinel for missing entities
   - HTTP API: chi router on `:63987`; MCP server: JSON-RPC 2.0 on `:63988`
   - Tests: `CGO_ENABLED=1 go test -race -count=1 ./...`
+
+If nexus MCP is reachable for this workspace, the sub-agent should treat nexus as the system of coordination:
+
+- call `howto` or `howto_brief` first
+- call `register_session` once before doing material work
+- use `heartbeat_ai_session` and `heartbeat_task` during long-running execution when relevant
+- finish by reporting completion through `update_task_status` if the task was claimed from nexus
 
 ### 5. Verify completion
 

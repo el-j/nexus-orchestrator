@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -17,11 +18,34 @@ import (
 )
 
 // Client forwards orchestrator calls to the running nexusOrchestrator HTTP API.
-type Client struct{ baseURL string }
+type Client struct {
+	baseURL string
+	token   string
+	client  *http.Client
+}
 
 // NewClient returns a new Client that talks to the nexusOrchestrator daemon at baseURL.
 func NewClient(baseURL string) *Client {
-	return &Client{baseURL: baseURL}
+	return &Client{
+		baseURL: strings.TrimRight(baseURL, "/"),
+		token:   strings.TrimSpace(os.Getenv("NEXUS_API_TOKEN")),
+		client:  http.DefaultClient,
+	}
+}
+
+func (r *Client) newRequest(ctx context.Context, method, path string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, r.baseURL+path, body)
+	if err != nil {
+		return nil, err
+	}
+	if r.token != "" {
+		req.Header.Set("Authorization", "Bearer "+r.token)
+	}
+	return req, nil
+}
+
+func (r *Client) do(req *http.Request) (*http.Response, error) {
+	return r.client.Do(req)
 }
 
 func (r *Client) SubmitTask(task domain.Task) (string, error) {
@@ -29,7 +53,12 @@ func (r *Client) SubmitTask(task domain.Task) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("remote: marshal task: %w", err)
 	}
-	resp, err := http.Post(r.baseURL+"/api/tasks", "application/json", bytes.NewReader(body))
+	req, err := r.newRequest(context.Background(), http.MethodPost, "/api/tasks", bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("remote: build submit request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := r.do(req)
 	if err != nil {
 		return "", fmt.Errorf("remote: submit task: %w", err)
 	}
@@ -47,7 +76,11 @@ func (r *Client) SubmitTask(task domain.Task) (string, error) {
 }
 
 func (r *Client) GetTask(id string) (domain.Task, error) {
-	resp, err := http.Get(r.baseURL + "/api/tasks/" + url.PathEscape(id))
+	req, err := r.newRequest(context.Background(), http.MethodGet, "/api/tasks/"+url.PathEscape(id), nil)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("remote: build get task request: %w", err)
+	}
+	resp, err := r.do(req)
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("remote: get task: %w", err)
 	}
@@ -68,7 +101,11 @@ func (r *Client) GetTask(id string) (domain.Task, error) {
 }
 
 func (r *Client) GetQueue() ([]domain.Task, error) {
-	resp, err := http.Get(r.baseURL + "/api/tasks")
+	req, err := r.newRequest(context.Background(), http.MethodGet, "/api/tasks", nil)
+	if err != nil {
+		return nil, fmt.Errorf("remote: build get queue request: %w", err)
+	}
+	resp, err := r.do(req)
 	if err != nil {
 		return nil, fmt.Errorf("remote: get queue: %w", err)
 	}
@@ -86,7 +123,11 @@ func (r *Client) GetQueue() ([]domain.Task, error) {
 }
 
 func (r *Client) GetAllTasks() ([]domain.Task, error) {
-	resp, err := http.Get(r.baseURL + "/api/tasks/all")
+	req, err := r.newRequest(context.Background(), http.MethodGet, "/api/tasks/all", nil)
+	if err != nil {
+		return nil, fmt.Errorf("remote: build get all tasks request: %w", err)
+	}
+	resp, err := r.do(req)
 	if err != nil {
 		return nil, fmt.Errorf("remote: get all tasks: %w", err)
 	}
@@ -104,7 +145,11 @@ func (r *Client) GetAllTasks() ([]domain.Task, error) {
 }
 
 func (r *Client) GetProviders() ([]ports.ProviderInfo, error) {
-	resp, err := http.Get(r.baseURL + "/api/providers")
+	req, err := r.newRequest(context.Background(), http.MethodGet, "/api/providers", nil)
+	if err != nil {
+		return nil, fmt.Errorf("remote: build get providers request: %w", err)
+	}
+	resp, err := r.do(req)
 	if err != nil {
 		return nil, fmt.Errorf("remote: get providers: %w", err)
 	}
@@ -121,12 +166,63 @@ func (r *Client) GetProviders() ([]ports.ProviderInfo, error) {
 	return providers, nil
 }
 
+func (r *Client) GetRuntimeConfig(ctx context.Context) (domain.RuntimeConfig, error) {
+	req, err := r.newRequest(ctx, http.MethodGet, "/api/config", nil)
+	if err != nil {
+		return domain.RuntimeConfig{}, fmt.Errorf("remote: build get config request: %w", err)
+	}
+	resp, err := r.do(req)
+	if err != nil {
+		return domain.RuntimeConfig{}, fmt.Errorf("remote: get config: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return domain.RuntimeConfig{}, fmt.Errorf("remote: get config: unexpected status %d", resp.StatusCode)
+	}
+	var out struct {
+		QueueCap int `json:"queueCap"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return domain.RuntimeConfig{}, fmt.Errorf("remote: decode config: %w", err)
+	}
+	return domain.RuntimeConfig{QueueCap: out.QueueCap}, nil
+}
+
+func (r *Client) UpdateRuntimeConfig(ctx context.Context, update domain.RuntimeConfigUpdate) (domain.RuntimeConfig, error) {
+	body, err := json.Marshal(update)
+	if err != nil {
+		return domain.RuntimeConfig{}, fmt.Errorf("remote: marshal config update: %w", err)
+	}
+	req, err := r.newRequest(ctx, http.MethodPut, "/api/config", bytes.NewReader(body))
+	if err != nil {
+		return domain.RuntimeConfig{}, fmt.Errorf("remote: build update config request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := r.do(req)
+	if err != nil {
+		return domain.RuntimeConfig{}, fmt.Errorf("remote: update config: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return domain.RuntimeConfig{}, fmt.Errorf("remote: update config: unexpected status %d", resp.StatusCode)
+	}
+	var out struct {
+		QueueCap int    `json:"queueCap"`
+		APIToken string `json:"apiToken,omitempty"`
+		MCPToken string `json:"mcpToken,omitempty"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return domain.RuntimeConfig{}, fmt.Errorf("remote: decode updated config: %w", err)
+	}
+	return domain.RuntimeConfig{QueueCap: out.QueueCap, APIToken: out.APIToken, MCPToken: out.MCPToken}, nil
+}
+
 func (r *Client) CancelTask(id string) error {
-	req, err := http.NewRequest(http.MethodDelete, r.baseURL+"/api/tasks/"+url.PathEscape(id), nil)
+	req, err := r.newRequest(context.Background(), http.MethodDelete, "/api/tasks/"+url.PathEscape(id), nil)
 	if err != nil {
 		return fmt.Errorf("remote: build cancel request: %w", err)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return fmt.Errorf("remote: cancel task: %w", err)
 	}
@@ -142,7 +238,12 @@ func (r *Client) RegisterCloudProvider(cfg domain.ProviderConfig) error {
 	if err != nil {
 		return fmt.Errorf("remote: marshal provider config: %w", err)
 	}
-	resp, err := http.Post(r.baseURL+"/api/providers", "application/json", bytes.NewReader(body))
+	req, err := r.newRequest(context.Background(), http.MethodPost, "/api/providers", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("remote: build register provider request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := r.do(req)
 	if err != nil {
 		return fmt.Errorf("remote: register provider: %w", err)
 	}
@@ -154,11 +255,11 @@ func (r *Client) RegisterCloudProvider(cfg domain.ProviderConfig) error {
 }
 
 func (r *Client) RemoveProvider(name string) error {
-	req, err := http.NewRequest(http.MethodDelete, r.baseURL+"/api/providers/"+url.PathEscape(name), nil)
+	req, err := r.newRequest(context.Background(), http.MethodDelete, "/api/providers/"+url.PathEscape(name), nil)
 	if err != nil {
 		return fmt.Errorf("remote: build remove-provider request: %w", err)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return fmt.Errorf("remote: remove provider: %w", err)
 	}
@@ -173,7 +274,11 @@ func (r *Client) RemoveProvider(name string) error {
 }
 
 func (r *Client) GetProviderModels(name string) ([]string, error) {
-	resp, err := http.Get(r.baseURL + "/api/providers/" + url.PathEscape(name) + "/models")
+	req, err := r.newRequest(context.Background(), http.MethodGet, "/api/providers/"+url.PathEscape(name)+"/models", nil)
+	if err != nil {
+		return nil, fmt.Errorf("remote: build get provider models request: %w", err)
+	}
+	resp, err := r.do(req)
 	if err != nil {
 		return nil, fmt.Errorf("remote: get provider models: %w", err)
 	}

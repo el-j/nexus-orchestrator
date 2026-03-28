@@ -191,6 +191,17 @@ func migrate(db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("sqlite: migrate model_capabilities: %w", err)
 	}
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS runtime_config (
+			id         INTEGER PRIMARY KEY CHECK(id = 1),
+			json       TEXT    NOT NULL DEFAULT '{}',
+			updated_at INTEGER NOT NULL
+		);
+		INSERT OR IGNORE INTO runtime_config (id, updated_at) VALUES (1, CAST(strftime('%s','now') AS INTEGER) * 1000);
+	`)
+	if err != nil {
+		return fmt.Errorf("sqlite: migrate runtime_config: %w", err)
+	}
 	return nil
 }
 

@@ -51,6 +51,37 @@ func TestSSE_Connect_ReceivesEndpointEvent(t *testing.T) {
 	}
 }
 
+func TestSSE_TokenAuth_RejectsMissingBearer(t *testing.T) {
+	t.Setenv("NEXUS_MCP_TOKEN", "secret-token")
+	srv := newServer(t, &mockOrch{})
+	resp, err := http.Get(srv.URL + "/sse")
+	if err != nil {
+		t.Fatalf("GET /sse: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("status: want 401, got %d", resp.StatusCode)
+	}
+}
+
+func TestSSE_TokenAuth_AllowsValidBearer(t *testing.T) {
+	t.Setenv("NEXUS_MCP_TOKEN", "secret-token")
+	srv := newServer(t, &mockOrch{})
+	req, err := http.NewRequest(http.MethodGet, srv.URL+"/sse", nil)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer secret-token")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("GET /sse with auth: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status: want 200, got %d", resp.StatusCode)
+	}
+}
+
 func TestSSE_MessageExchange(t *testing.T) {
 	orch := &mockOrch{}
 	srv := newServer(t, orch)
@@ -128,11 +159,27 @@ func TestSSE_MessageExchange(t *testing.T) {
 	}
 }
 
-func TestSSE_MethodNotAllowed(t *testing.T) {
+func TestSSE_POST_MissingSessionID(t *testing.T) {
 	srv := newServer(t, &mockOrch{})
 	resp, err := http.Post(srv.URL+"/sse", "application/json", strings.NewReader("{}"))
 	if err != nil {
 		t.Fatalf("POST /sse: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("want 400, got %d", resp.StatusCode)
+	}
+}
+
+func TestSSE_MethodNotAllowed(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	req, err := http.NewRequest(http.MethodDelete, srv.URL+"/sse", nil)
+	if err != nil {
+		t.Fatalf("DELETE /sse request: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("DELETE /sse: %v", err)
 	}
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusMethodNotAllowed {
@@ -149,6 +196,19 @@ func TestSSE_MissingSessionID(t *testing.T) {
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("want 400, got %d", resp.StatusCode)
+	}
+}
+
+func TestMessages_TokenAuth_RejectsMissingBearer(t *testing.T) {
+	t.Setenv("NEXUS_MCP_TOKEN", "secret-token")
+	srv := newServer(t, &mockOrch{})
+	resp, err := http.Post(srv.URL+"/messages?sessionId=nonexistent", "application/json", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"ping"}`))
+	if err != nil {
+		t.Fatalf("POST /messages: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("want 401, got %d", resp.StatusCode)
 	}
 }
 
@@ -254,5 +314,8 @@ func TestMCP_CORS_Preflight(t *testing.T) {
 	}
 	if allow := resp.Header.Get("Access-Control-Allow-Methods"); !strings.Contains(allow, "POST") {
 		t.Errorf("Allow-Methods: want POST, got %q", allow)
+	}
+	if allow := resp.Header.Get("Access-Control-Allow-Headers"); !strings.Contains(allow, "Authorization") {
+		t.Errorf("Allow-Headers: want Authorization, got %q", allow)
 	}
 }

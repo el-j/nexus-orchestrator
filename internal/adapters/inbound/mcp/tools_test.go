@@ -82,7 +82,7 @@ func decodeToolText(t *testing.T, raw json.RawMessage, dest any) {
 
 func newToolServer(t *testing.T, orch *toolHarnessOrch) *httptest.Server {
 	t.Helper()
-	srv := httptest.NewServer(mcp.NewServer(orch))
+	srv := httptest.NewServer(mcp.NewMcpServer(orch))
 	t.Cleanup(srv.Close)
 	return srv
 }

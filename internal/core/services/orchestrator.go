@@ -5,12 +5,15 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 
+	"encoding/base64"
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
 )
@@ -54,6 +57,12 @@ func WithDaemonAddr(addr string) Option {
 	return func(s *OrchestratorService) { s.daemonAddr = addr }
 }
 
+// WithDisableBackgroundWorkers prevents the background worker/cleanup goroutines
+// from starting. Intended for deterministic unit tests.
+func WithDisableBackgroundWorkers() Option {
+	return func(s *OrchestratorService) { s.disableWorkers = true }
+}
+
 // WithPlanFileRepo sets the repository used to persist discovered plan files.
 func WithPlanFileRepo(r ports.DiscoveredPlanFileRepo) Option {
 	return func(o *OrchestratorService) { o.planFileRepo = r }
@@ -66,6 +75,7 @@ type OrchestratorService struct {
 	fileWriter  ports.FileWriter
 	repo        ports.TaskRepository
 	sessionRepo ports.SessionRepository
+	runtimeCfg  ports.RuntimeConfigRepository
 	broadcaster ports.EventBroadcaster // optional; nil = no event publishing
 	workCh      chan struct{}          // notified when a task is enqueued; capacity 1
 	stopCh      chan struct{}
@@ -91,6 +101,7 @@ type OrchestratorService struct {
 	cleanupInterval    time.Duration
 	daemonAddr         string // base URL of the running daemon; used in delegation instructions
 	staleThreshold     time.Duration
+	disableWorkers     bool
 }
 
 // NewOrchestrator constructs an OrchestratorService and starts the background
@@ -130,12 +141,14 @@ func NewOrchestrator(
 		opt(svc)
 	}
 	svc.recoverStuckTasks()
-	svc.workerWg.Add(1)
-	go svc.runWorker()
-	svc.workerWg.Add(1)
-	go svc.runSessionCleanup()
-	svc.workerWg.Add(1)
-	go svc.runTaskWatchdog()
+	if !svc.disableWorkers {
+		svc.workerWg.Add(1)
+		go svc.runWorker()
+		svc.workerWg.Add(1)
+		go svc.runSessionCleanup()
+		svc.workerWg.Add(1)
+		go svc.runTaskWatchdog()
+	}
 	return svc
 }
 
@@ -158,6 +171,14 @@ func (o *OrchestratorService) WithProviderConfigRepo(r ports.ProviderConfigRepos
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	o.providerConfigRepo = r
+	return o
+}
+
+// WithRuntimeConfigRepo sets the repository used to persist runtime-managed configuration.
+func (o *OrchestratorService) WithRuntimeConfigRepo(r ports.RuntimeConfigRepository) *OrchestratorService {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.runtimeCfg = r
 	return o
 }
 
@@ -186,6 +207,107 @@ func (o *OrchestratorService) WithQueueCap(n int) *OrchestratorService {
 	defer o.mu.Unlock()
 	o.queueCap = n
 	return o
+}
+
+func (o *OrchestratorService) GetRuntimeConfig(ctx context.Context) (domain.RuntimeConfig, error) {
+	o.mu.Lock()
+	queueCap := o.queueCap
+	repo := o.runtimeCfg
+	o.mu.Unlock()
+
+	effectiveCap := queueCap
+	if effectiveCap <= 0 {
+		effectiveCap = 50
+	}
+
+	cfg := domain.RuntimeConfig{
+		QueueCap: effectiveCap,
+		APIToken: os.Getenv("NEXUS_API_TOKEN"),
+		MCPToken: os.Getenv("NEXUS_MCP_TOKEN"),
+	}
+
+	if repo == nil {
+		return cfg, nil
+	}
+	stored, err := repo.GetRuntimeConfig(ctx)
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return domain.RuntimeConfig{}, fmt.Errorf("orchestrator: get runtime config: %w", err)
+	}
+	if err == nil {
+		// Prefer persisted values when env vars are not set.
+		if cfg.APIToken == "" {
+			cfg.APIToken = stored.APIToken
+		}
+		if cfg.MCPToken == "" {
+			cfg.MCPToken = stored.MCPToken
+		}
+		if stored.QueueCap > 0 {
+			cfg.QueueCap = stored.QueueCap
+		}
+		cfg.UpdatedAt = stored.UpdatedAt
+	}
+
+	return cfg, nil
+}
+
+func (o *OrchestratorService) UpdateRuntimeConfig(ctx context.Context, update domain.RuntimeConfigUpdate) (domain.RuntimeConfig, error) {
+	o.mu.Lock()
+	repo := o.runtimeCfg
+	o.mu.Unlock()
+
+	current, err := o.GetRuntimeConfig(ctx)
+	if err != nil {
+		return domain.RuntimeConfig{}, err
+	}
+
+	if update.QueueCap != nil {
+		if *update.QueueCap <= 0 {
+			return domain.RuntimeConfig{}, fmt.Errorf("orchestrator: update runtime config: queueCap must be > 0")
+		}
+		current.QueueCap = *update.QueueCap
+		o.WithQueueCap(current.QueueCap)
+	}
+
+	if update.RotateAPIToken {
+		tok, err := generateToken(32)
+		if err != nil {
+			return domain.RuntimeConfig{}, fmt.Errorf("orchestrator: rotate api token: %w", err)
+		}
+		current.APIToken = tok
+	}
+	if update.RotateMCPToken {
+		tok, err := generateToken(32)
+		if err != nil {
+			return domain.RuntimeConfig{}, fmt.Errorf("orchestrator: rotate mcp token: %w", err)
+		}
+		current.MCPToken = tok
+	}
+	if update.APIToken != nil {
+		current.APIToken = *update.APIToken
+	}
+	if update.MCPToken != nil {
+		current.MCPToken = *update.MCPToken
+	}
+
+	current.UpdatedAt = time.Now()
+	if repo != nil {
+		if err := repo.SaveRuntimeConfig(ctx, current); err != nil {
+			return domain.RuntimeConfig{}, fmt.Errorf("orchestrator: save runtime config: %w", err)
+		}
+	}
+
+	return current, nil
+}
+
+func generateToken(n int) (string, error) {
+	if n <= 0 {
+		return "", fmt.Errorf("token bytes must be > 0")
+	}
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 // SetAISessionRepo wires the repository used to persist AI agent sessions.

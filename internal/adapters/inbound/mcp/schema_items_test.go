@@ -11,7 +11,7 @@ import (
 // TestToolSchemaArrayItems verifies every array-type property has items defined
 // (required by JSON Schema / MCP client validators).
 func TestToolSchemaArrayItems(t *testing.T) {
-	srv := NewServer(nil)
+	srv := NewMcpServer(nil)
 	ts := httptest.NewServer(srv)
 	defer ts.Close()
 

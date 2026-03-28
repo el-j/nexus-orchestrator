@@ -64,7 +64,7 @@ func newMCPTestStack(t *testing.T) *mcpTestStack {
 	discovery := services.NewDiscoveryService(&integrationMockLLM{})
 	orch := services.NewOrchestrator(discovery, repo, writer, sessionRepo)
 
-	mcpSrv := mcp.NewServer(orch)
+	mcpSrv := mcp.NewMcpServer(orch)
 	srv := httptest.NewServer(mcpSrv)
 
 	t.Cleanup(func() {

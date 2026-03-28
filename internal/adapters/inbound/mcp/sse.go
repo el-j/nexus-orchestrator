@@ -93,6 +93,11 @@ func (c *captureWriter) WriteHeader(code int) {
 // ----- SSE HTTP handlers -----
 
 func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		s.handleSSEMessage(w, r)
+		return
+	}
+
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return

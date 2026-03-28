@@ -243,3 +243,162 @@ func TestScanPlanFiles_NexusSummary(t *testing.T) {
 		t.Errorf("summary has wrong task count: %q", nexus.Summary)
 	}
 }
+
+func TestScanPlanFiles_ExtendedDiscoveryPatterns(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(tmpDir, ".windsurfrules"), []byte("rules"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "tasks.json"), []byte(`{"version":1}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "tasks.yaml"), []byte("version: 1"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "agent.yaml"), []byte("name: test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, ".aider.conf.yml"), []byte("model: sonnet"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "CONVENTIONS.md"), []byte("# Conventions"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".continue"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, ".continue", "config.json"), []byte(`{"models":[]}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, ".continue", "config.yaml"), []byte("models: []"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(tmpDir, ".github"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, ".github", "copilot-instructions.md"), []byte("# Copilot"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	s := New()
+	results, err := s.ScanPlanFiles(context.Background(), []string{tmpDir})
+	if err != nil {
+		t.Fatalf("ScanPlanFiles returned error: %v", err)
+	}
+
+	foundByPath := map[string]domain.DiscoveredPlanFile{}
+	for _, r := range results {
+		foundByPath[r.Path] = r
+	}
+
+	mustFind := []string{
+		filepath.Join(tmpDir, ".windsurfrules"),
+		filepath.Join(tmpDir, "tasks.json"),
+		filepath.Join(tmpDir, "tasks.yaml"),
+		filepath.Join(tmpDir, "agent.yaml"),
+		filepath.Join(tmpDir, ".aider.conf.yml"),
+		filepath.Join(tmpDir, "CONVENTIONS.md"),
+		filepath.Join(tmpDir, ".continue", "config.json"),
+		filepath.Join(tmpDir, ".continue", "config.yaml"),
+		filepath.Join(tmpDir, ".github", "copilot-instructions.md"),
+	}
+	for _, path := range mustFind {
+		if _, ok := foundByPath[path]; !ok {
+			t.Fatalf("expected %s to be discovered", path)
+		}
+	}
+}
+
+func TestScanPlanFiles_RecursiveInstructionPromptDepthBound(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	depth3 := filepath.Join(tmpDir, "a", "b", "c")
+	if err := os.MkdirAll(depth3, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(depth3, "agent.instructions.md"), []byte("# Instructions"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	depth4 := filepath.Join(tmpDir, "d", "e", "f", "g")
+	if err := os.MkdirAll(depth4, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(depth4, "deep.prompt.md"), []byte("# Too Deep"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	githubDepth2 := filepath.Join(tmpDir, ".github", "prompts")
+	if err := os.MkdirAll(githubDepth2, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(githubDepth2, "review.prompt.md"), []byte("# Prompt"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	s := New()
+	results, err := s.ScanPlanFiles(context.Background(), []string{tmpDir})
+	if err != nil {
+		t.Fatalf("ScanPlanFiles returned error: %v", err)
+	}
+
+	paths := map[string]bool{}
+	for _, r := range results {
+		paths[r.Path] = true
+	}
+
+	if !paths[filepath.Join(depth3, "agent.instructions.md")] {
+		t.Fatalf("expected depth<=3 instructions file to be discovered")
+	}
+	if !paths[filepath.Join(githubDepth2, "review.prompt.md")] {
+		t.Fatalf("expected .github recursive prompt file to be discovered")
+	}
+	if paths[filepath.Join(depth4, "deep.prompt.md")] {
+		t.Fatalf("expected depth>3 prompt file to be excluded")
+	}
+}
+
+func TestScanPlanFiles_MarkdownHeuristicSummaryAndKind(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	content := `---
+id: TASK-999
+title: Heuristic Test
+---
+# Plan
+- [ ] item one
+- [x] item two
+## Steps
+`
+	path := filepath.Join(tmpDir, "workflow-notes.md")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	s := New()
+	results, err := s.ScanPlanFiles(context.Background(), []string{tmpDir})
+	if err != nil {
+		t.Fatalf("ScanPlanFiles returned error: %v", err)
+	}
+
+	var got *domain.DiscoveredPlanFile
+	for i := range results {
+		if results[i].Path == path {
+			got = &results[i]
+			break
+		}
+	}
+	if got == nil {
+		t.Fatalf("expected heuristic markdown file to be discovered")
+	}
+	if got.Kind != domain.PlanFileKindMarkdown {
+		t.Fatalf("expected kind markdown, got %s", got.Kind)
+	}
+	if !strings.Contains(got.Summary, "frontmatter") {
+		t.Fatalf("expected summary to include frontmatter heuristic, got %q", got.Summary)
+	}
+	if !strings.Contains(got.Summary, "checklist") {
+		t.Fatalf("expected summary to include checklist heuristic, got %q", got.Summary)
+	}
+}

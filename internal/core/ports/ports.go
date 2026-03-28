@@ -87,6 +87,14 @@ type SessionRepository interface {
 	AppendMessage(projectPath string, msg domain.Message) error
 }
 
+// RuntimeConfigRepository persists runtime-managed configuration.
+type RuntimeConfigRepository interface {
+	// GetRuntimeConfig returns the persisted runtime config or domain.ErrNotFound.
+	GetRuntimeConfig(ctx context.Context) (domain.RuntimeConfig, error)
+	// SaveRuntimeConfig overwrites the persisted runtime config.
+	SaveRuntimeConfig(ctx context.Context, cfg domain.RuntimeConfig) error
+}
+
 // PromoteResult is returned by PromoteTask.
 type PromoteResult struct {
 	Promoted bool   `json:"promoted"`
@@ -103,6 +111,12 @@ type Orchestrator interface {
 	GetAllTasks() ([]domain.Task, error)
 	// GetProviders returns a snapshot of all registered LLM backends and their liveness.
 	GetProviders() ([]ProviderInfo, error)
+	// GetRuntimeConfig returns the current effective runtime config. Tokens are
+	// included for internal use; adapters should mask secrets in responses.
+	GetRuntimeConfig(ctx context.Context) (domain.RuntimeConfig, error)
+	// UpdateRuntimeConfig applies a partial update to the runtime config and
+	// persists it when a repository is configured.
+	UpdateRuntimeConfig(ctx context.Context, update domain.RuntimeConfigUpdate) (domain.RuntimeConfig, error)
 	CancelTask(id string) error
 	// RegisterCloudProvider dynamically adds a new LLM backend using the supplied
 	// configuration. Returns an error if the kind is unknown or the name is already

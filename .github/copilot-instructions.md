@@ -134,6 +134,15 @@ No Makefile — use plain `go` toolchain commands.
 
 When the nexusOrchestrator MCP is available (`:63988`), **use it as the primary source of truth** for all planning and orchestration. The MCP tools replace ad-hoc task tracking.
 
+> **VS Code MCP Connection** — In `~/Library/Application Support/Code/User/mcp.json` use
+> `"type": "http"` (Streamable HTTP, stateless) **not** `"type": "sse"`. The SSE transport
+> holds a session in memory; a daemon restart invalidates it causing `400` errors and
+> "terminated / Failed to parse message" log noise. Correct config:
+>
+> ```json
+> { "servers": { "Nexus Orchestrator": { "type": "http", "url": "http://127.0.0.1:63988/mcp" } } }
+> ```
+
 ### Session Startup (every conversation)
 
 ```
@@ -189,3 +198,6 @@ mcp_nexus_orchest_delegate_to_nexus       — get delegation instructions for a 
 - HTTP timeout on LM Studio is 60 s; Ollama is 120 s. For large prompts, be aware of these limits when testing adapters.
 - `memRepo` / test stubs that share state with the orchestrator worker goroutine need `sync.Mutex` — omitting it causes data races under `-race`.
 - MCP `create_draft` `priority` field must be an **integer** (not string). `tags` must be a JSON array of strings.
+- SSE connections: `StartMCPServer` has a `ReadTimeout` that kills idle SSE after 15 s (TASK-404 fix pending). Use Streamable HTTP (`/mcp`) for reliable MCP connectivity until fixed.
+- When a task files uses YAML frontmatter, `status` is the key (e.g. `status: todo`); when body-level, look for `**Status:** todo`. Both forms exist in `.claude/tasks/`.
+- `counters.nextTaskId` in `orchestrator.json` is the source of truth for new task IDs — always read before creating new TASK files to avoid collisions.

@@ -190,6 +190,24 @@ func (m *mockOrchestrator) GetDiscoveredPlanFiles(_ context.Context, _ string) (
 	return nil, nil
 }
 
+func (m *mockOrchestrator) GetRuntimeConfig(_ context.Context) (domain.RuntimeConfig, error) {
+	return domain.RuntimeConfig{QueueCap: 50}, nil
+}
+
+func (m *mockOrchestrator) UpdateRuntimeConfig(_ context.Context, update domain.RuntimeConfigUpdate) (domain.RuntimeConfig, error) {
+	cfg := domain.RuntimeConfig{QueueCap: 50}
+	if update.QueueCap != nil {
+		cfg.QueueCap = *update.QueueCap
+	}
+	if update.APIToken != nil {
+		cfg.APIToken = *update.APIToken
+	}
+	if update.MCPToken != nil {
+		cfg.MCPToken = *update.MCPToken
+	}
+	return cfg, nil
+}
+
 // newTestHandler builds a chi router with the same route/handler logic as StartServer.
 func newTestHandler(orch ports.Orchestrator) http.Handler {
 	r := chi.NewRouter()
@@ -668,6 +686,88 @@ func TestGetHealth(t *testing.T) {
 	}
 	if result["service"] != "nexus-orchestrator" {
 		t.Errorf("expected service %q, got %q", "nexus-orchestrator", result["service"])
+	}
+}
+
+func TestHTTPAPI_TokenAuth_GuardsAPI(t *testing.T) {
+	t.Setenv("NEXUS_API_TOKEN", "test-token")
+
+	mock := &mockOrchestrator{}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	t.Cleanup(ts.Close)
+
+	// Health stays open.
+	resp, err := http.Get(ts.URL + "/api/health")
+	if err != nil {
+		t.Fatalf("GET /api/health: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("health: want 200, got %d", resp.StatusCode)
+	}
+
+	// Other /api endpoints require a bearer token.
+	resp, err = http.Get(ts.URL + "/api/tasks")
+	if err != nil {
+		t.Fatalf("GET /api/tasks: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("unauthenticated: want 401, got %d", resp.StatusCode)
+	}
+
+	req, _ := http.NewRequest(http.MethodGet, ts.URL+"/api/tasks", nil)
+	req.Header.Set("Authorization", "Bearer test-token")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("GET /api/tasks with auth: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("authenticated: want 200, got %d", resp.StatusCode)
+	}
+}
+
+func TestHTTPAPI_ConfigEndpoints(t *testing.T) {
+	mock := &mockOrchestrator{}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	t.Cleanup(ts.Close)
+
+	resp, err := http.Get(ts.URL + "/api/config")
+	if err != nil {
+		t.Fatalf("GET /api/config: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /api/config: want 200, got %d", resp.StatusCode)
+	}
+	var getResp map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&getResp); err != nil {
+		t.Fatalf("decode GET /api/config: %v", err)
+	}
+	if getResp["queueCap"] == nil {
+		t.Fatalf("expected queueCap in response, got %#v", getResp)
+	}
+
+	body := strings.NewReader(`{"queueCap":123}`)
+	req, _ := http.NewRequest(http.MethodPut, ts.URL+"/api/config", body)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PUT /api/config: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("PUT /api/config: want 200, got %d", resp.StatusCode)
+	}
+	var putResp map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&putResp); err != nil {
+		t.Fatalf("decode PUT /api/config: %v", err)
+	}
+	if putResp["queueCap"] != float64(123) {
+		t.Fatalf("expected queueCap=123, got %#v", putResp["queueCap"])
 	}
 }
 

@@ -31,6 +31,8 @@ func (s *Scanner) ScanPlanFiles(_ context.Context, rootPaths []string) ([]domain
 			absRoot,
 			filepath.Join(absRoot, ".claude"),
 			filepath.Join(absRoot, ".cursor"),
+			filepath.Join(absRoot, ".continue"),
+			filepath.Join(absRoot, ".github"),
 			filepath.Join(absRoot, ".github", "agents"),
 		}
 		for _, dir := range scanDirs {
@@ -40,6 +42,77 @@ func (s *Scanner) ScanPlanFiles(_ context.Context, rootPaths []string) ([]domain
 			}
 			results = append(results, found...)
 		}
+
+		// Recursively discover bounded markdown instruction/prompt artifacts.
+		recursiveRoots := []string{
+			absRoot,
+			filepath.Join(absRoot, ".github"),
+		}
+		for _, base := range recursiveRoots {
+			found, err := scanRecursiveInstructionFiles(base, home, seen, 3)
+			if err != nil {
+				continue
+			}
+			results = append(results, found...)
+		}
+	}
+	return results, nil
+}
+
+func scanRecursiveInstructionFiles(base, home string, seen map[string]bool, maxDepth int) ([]domain.DiscoveredPlanFile, error) {
+	if _, err := os.Stat(base); err != nil {
+		return nil, nil
+	}
+
+	var results []domain.DiscoveredPlanFile
+	err := filepath.WalkDir(base, func(path string, d os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return nil
+		}
+		if path == base {
+			return nil
+		}
+
+		rel, err := filepath.Rel(base, path)
+		if err != nil {
+			return nil
+		}
+		depth := strings.Count(rel, string(filepath.Separator))
+
+		if d.IsDir() {
+			if depth >= maxDepth {
+				return filepath.SkipDir
+			}
+			name := d.Name()
+			switch name {
+			case ".git", "node_modules", "vendor":
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if depth > maxDepth {
+			return nil
+		}
+
+		name := d.Name()
+		if !strings.HasSuffix(name, ".instructions.md") && !strings.HasSuffix(name, ".prompt.md") {
+			return nil
+		}
+		if seen[path] {
+			return nil
+		}
+		seen[path] = true
+
+		pf, err := buildPlanFile(path, domain.PlanFileKindMarkdown, "md", home)
+		if err != nil {
+			return nil
+		}
+		pf.ProjectPath = findProjectPath(filepath.Dir(path), home)
+		results = append(results, pf)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return results, nil
 }
@@ -171,6 +244,24 @@ func classifyFile(fullPath, dir, name string) (domain.PlanFileKind, string) {
 		return domain.PlanFileKindMarkdown, "md"
 	case "CLAUDE.md", "copilot-instructions.md":
 		return domain.PlanFileKindClaude, "md"
+	case ".windsurfrules":
+		return domain.PlanFileKindCursor, "md"
+	case ".aider.conf.yml":
+		return domain.PlanFileKindMCPConfig, "yaml"
+	case "CONVENTIONS.md":
+		return domain.PlanFileKindMarkdown, "md"
+	case "config.json":
+		if dirBase == ".continue" {
+			return domain.PlanFileKindMCPConfig, "json"
+		}
+	case "config.yaml", "config.yml":
+		if dirBase == ".continue" {
+			return domain.PlanFileKindMCPConfig, "yaml"
+		}
+	case "tasks.json", "agent.json":
+		return domain.PlanFileKindMarkdown, "json"
+	case "tasks.yaml", "tasks.yml", "agent.yaml", "agent.yml":
+		return domain.PlanFileKindMarkdown, "yaml"
 	// Cursor rules
 	case ".cursorrules":
 		return domain.PlanFileKindCursor, "md"
@@ -185,6 +276,12 @@ func classifyFile(fullPath, dir, name string) (domain.PlanFileKind, string) {
 		if containsCrewAI(fullPath) {
 			return domain.PlanFileKindCrewAI, "py"
 		}
+	}
+	if strings.HasSuffix(name, ".instructions.md") || strings.HasSuffix(name, ".prompt.md") {
+		return domain.PlanFileKindMarkdown, "md"
+	}
+	if strings.HasSuffix(name, ".md") && looksLikePlanMarkdown(fullPath) {
+		return domain.PlanFileKindMarkdown, "md"
 	}
 	return "", ""
 }
@@ -294,7 +391,98 @@ func readSummary(path string) string {
 	if len(summary) > 200 {
 		summary = summary[:200]
 	}
+	if strings.HasSuffix(strings.ToLower(path), ".md") {
+		summary = summarizeMarkdownHeuristics(raw, summary)
+	}
 	return summary
+}
+
+func summarizeMarkdownHeuristics(raw, summary string) string {
+	features := markdownFeatures(raw)
+	if len(features) == 0 {
+		return summary
+	}
+	prefix := "[" + strings.Join(features, ", ") + "] "
+	out := prefix + summary
+	if len(out) > 200 {
+		return out[:200]
+	}
+	return out
+}
+
+func markdownFeatures(raw string) []string {
+	text := strings.ReplaceAll(raw, "\r\n", "\n")
+	features := make([]string, 0, 3)
+	if hasYAMLFrontmatter(text) {
+		features = append(features, "frontmatter")
+	}
+	if checklistCount(text) >= 2 {
+		features = append(features, "checklist")
+	}
+	if headingCount(text) >= 2 {
+		features = append(features, "headings")
+	}
+	return features
+}
+
+func hasYAMLFrontmatter(text string) bool {
+	if !strings.HasPrefix(text, "---\n") {
+		return false
+	}
+	rest := text[4:]
+	return strings.Contains(rest, "\n---\n")
+}
+
+func checklistCount(text string) int {
+	count := 0
+	for _, line := range strings.Split(text, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "- [ ] ") || strings.HasPrefix(strings.ToLower(trimmed), "- [x] ") {
+			count++
+		}
+	}
+	return count
+}
+
+func headingCount(text string) int {
+	count := 0
+	for _, line := range strings.Split(text, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "# ") || strings.HasPrefix(trimmed, "## ") || strings.HasPrefix(trimmed, "### ") {
+			count++
+		}
+	}
+	return count
+}
+
+func looksLikePlanMarkdown(path string) bool {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	sample := string(data)
+	if len(sample) > 2048 {
+		sample = sample[:2048]
+	}
+	if hasYAMLFrontmatter(sample) || checklistCount(sample) >= 2 {
+		return true
+	}
+	for _, line := range strings.Split(sample, "\n") {
+		trimmed := strings.TrimSpace(strings.ToUpper(line))
+		if strings.HasPrefix(trimmed, "# PLAN") ||
+			strings.HasPrefix(trimmed, "## PLAN") ||
+			strings.HasPrefix(trimmed, "# TASK") ||
+			strings.HasPrefix(trimmed, "## TASK") ||
+			strings.HasPrefix(trimmed, "# ROADMAP") ||
+			strings.HasPrefix(trimmed, "## ROADMAP") ||
+			strings.HasPrefix(trimmed, "# TODO") ||
+			strings.HasPrefix(trimmed, "## TODO") ||
+			strings.HasPrefix(trimmed, "# WORKFLOW") ||
+			strings.HasPrefix(trimmed, "## WORKFLOW") {
+			return true
+		}
+	}
+	return false
 }
 
 // findProjectPath walks up from dir until it finds a .git directory or reaches the home dir.

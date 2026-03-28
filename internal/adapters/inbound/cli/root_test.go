@@ -112,6 +112,24 @@ func (m *mockOrchestrator) GetDiscoveredPlanFiles(_ context.Context, _ string) (
 	return nil, nil
 }
 
+func (m *mockOrchestrator) GetRuntimeConfig(_ context.Context) (domain.RuntimeConfig, error) {
+	return domain.RuntimeConfig{QueueCap: 50}, nil
+}
+
+func (m *mockOrchestrator) UpdateRuntimeConfig(_ context.Context, update domain.RuntimeConfigUpdate) (domain.RuntimeConfig, error) {
+	cfg := domain.RuntimeConfig{QueueCap: 50}
+	if update.QueueCap != nil {
+		cfg.QueueCap = *update.QueueCap
+	}
+	if update.APIToken != nil {
+		cfg.APIToken = *update.APIToken
+	}
+	if update.MCPToken != nil {
+		cfg.MCPToken = *update.MCPToken
+	}
+	return cfg, nil
+}
+
 // captureStdout redirects os.Stdout while fn runs and returns the collected
 // output. fn must not call t.Fatal/t.FailNow (runtime.Goexit) directly, as
 // that would skip the pipe teardown; capture the command error via a closure

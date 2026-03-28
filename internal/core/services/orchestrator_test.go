@@ -1627,7 +1627,7 @@ func setupClaimTestOrch(t *testing.T) (*services.OrchestratorService, *memRepo, 
 	repo := newMemRepo()
 	aiRepo := newMemAISessionRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil, services.WithDisableBackgroundWorkers())
 	orch.SetAISessionRepo(aiRepo)
 	t.Cleanup(orch.Stop)
 	return orch, repo, aiRepo

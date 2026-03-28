@@ -1,5 +1,15 @@
 You are the **parallel plan executor** for nexusOrchestrator. Execute all tasks in the active plan as fast as possible by running independent tasks in parallel waves, with each task handled by a dedicated specialist sub-agent.
 
+## MCP-First Rule
+
+- Always try to drive execution through the project's own **nexus orchestration MCP toolchain** when it is available.
+- Preferred transport order:
+  1. `cmd/nexus-mcp-stdio`
+  2. Direct MCP JSON-RPC to `/mcp`
+  3. Local-only execution as fallback
+- When MCP is reachable, initialize once, call `howto` or `howto_brief`, register an orchestration session with `register_session`, inspect work with `get_queue` / `get_all_tasks`, and keep remote task/session state current with `claim_task`, `heartbeat_task`, `heartbeat_ai_session`, and `update_task_status`.
+- Use raw HTTP only when MCP does not yet expose the required capability.
+
 ## Steps
 
 ### 1. Load plan
@@ -21,6 +31,7 @@ For each wave:
 
 1. Mark all tasks in the wave as `in-progress` in `orchestrator.json` (`startedAt = now`).
 2. Launch one sub-agent per task **in parallel** (same message turn).
+   - If nexus MCP is reachable, each sub-agent should join the shared nexus orchestration session first and treat MCP as the primary coordination layer.
 3. Wait for all sub-agents in the wave to complete.
 4. Run `go vet ./... && CGO_ENABLED=1 go build ./... && CGO_ENABLED=1 go test -race -count=1 ./...` after the wave.
 5. If any task fails verification: mark it `todo` again, report the failure, and stop.
