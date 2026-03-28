@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"nexus-orchestrator/internal/core/ports"
@@ -100,8 +101,10 @@ type callToolResult struct {
 
 // Server is the MCP inbound adapter.
 type Server struct {
-	orch ports.Orchestrator
-	mux  *http.ServeMux
+	orch           ports.Orchestrator
+	mux            *http.ServeMux
+	sse            *sseManager
+	allowedOrigins map[string]bool
 }
 
 // NewServer creates a Server and registers its HTTP handlers.
@@ -109,26 +112,74 @@ func NewServer(orch ports.Orchestrator) *Server {
 	s := &Server{
 		orch: orch,
 		mux:  http.NewServeMux(),
+		sse:  &sseManager{sessions: make(map[string]*sseSession)},
+		allowedOrigins: map[string]bool{
+			"http://localhost":  true,
+			"http://127.0.0.1":  true,
+			"https://localhost": true,
+			"https://127.0.0.1": true,
+		},
 	}
 	s.mux.HandleFunc("/mcp", s.handleRPC)
 	s.mux.HandleFunc("/health", s.handleHealth)
+	s.mux.HandleFunc("/sse", s.handleSSE)
+	s.mux.HandleFunc("/messages", s.handleSSEMessage)
 	return s
 }
 
 // ServeHTTP implements http.Handler so *Server can be passed to httptest.NewServer.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// CORS preflight.
+	if r.Method == http.MethodOptions {
+		s.writeCORSHeaders(w, r)
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	// Origin validation per MCP spec security requirements.
+	origin := r.Header.Get("Origin")
+	if origin != "" && !s.isAllowedOrigin(origin) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	s.writeCORSHeaders(w, r)
 	s.mux.ServeHTTP(w, r)
+}
+
+func (s *Server) isAllowedOrigin(origin string) bool {
+	if s.allowedOrigins[origin] {
+		return true
+	}
+	// Allow origins with any port on localhost/127.0.0.1.
+	for allowed := range s.allowedOrigins {
+		if strings.HasPrefix(origin, allowed+":") {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Server) writeCORSHeaders(w http.ResponseWriter, r *http.Request) {
+	origin := r.Header.Get("Origin")
+	if origin != "" && s.isAllowedOrigin(origin) {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+	}
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Mcp-Session-Id, MCP-Protocol-Version")
+	w.Header().Set("Access-Control-Expose-Headers", "Mcp-Session-Id")
 }
 
 // StartMCPServer runs an HTTP server serving the MCP JSON-RPC 2.0 endpoint.
 // It blocks until ctx is cancelled, then shuts down gracefully.
 func StartMCPServer(ctx context.Context, orch ports.Orchestrator, addr string) error {
 	srv := &http.Server{
-		Addr:         addr,
-		Handler:      NewServer(orch).mux,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 60 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		Addr:        addr,
+		Handler:     NewServer(orch).mux,
+		ReadTimeout: 15 * time.Second,
+		// WriteTimeout is 0 (no timeout) because SSE connections are long-lived.
+		// Individual request handlers should use context deadlines as needed.
+		IdleTimeout: 120 * time.Second,
 	}
 	errCh := make(chan error, 1)
 	go func() {
@@ -160,6 +211,15 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) handleRPC(w http.ResponseWriter, r *http.Request) {
+	// Streamable HTTP: POST for messages, GET returns 405 (no standalone SSE stream).
+	if r.Method == http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req rpcRequest
@@ -171,6 +231,12 @@ func (s *Server) handleRPC(w http.ResponseWriter, r *http.Request) {
 		writeError(w, req.ID, codeInvalidRequest, `invalid request: jsonrpc must be "2.0"`)
 		return
 	}
+	s.processRPC(w, r, req)
+}
+
+// processRPC handles a single JSON-RPC request and writes the response to w.
+// Used by both the direct HTTP transport and the SSE transport.
+func (s *Server) processRPC(w http.ResponseWriter, r *http.Request, req rpcRequest) {
 	switch req.Method {
 	case "initialize":
 		s.handleInitialize(w, req)
@@ -181,6 +247,15 @@ func (s *Server) handleRPC(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(resp)
 	case "tools/call":
 		s.handleToolCall(w, r, req)
+	case "ping":
+		resp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{}}
+		_ = json.NewEncoder(w).Encode(resp)
+	case "resources/list":
+		resp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"resources": []any{}}}
+		_ = json.NewEncoder(w).Encode(resp)
+	case "prompts/list":
+		resp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"prompts": []any{}}}
+		_ = json.NewEncoder(w).Encode(resp)
 	default:
 		writeError(w, req.ID, codeMethodNotFound, fmt.Sprintf("method not found: %s", req.Method))
 	}
@@ -200,6 +275,8 @@ func (s *Server) handleInitialize(w http.ResponseWriter, req rpcRequest) {
 				"'get_queue' to see available tasks, and 'claim_task' to start working.",
 		},
 	}
+	// Streamable HTTP session management (MCP 2025-03-26+).
+	w.Header().Set("Mcp-Session-Id", fmt.Sprintf("nexus-%d", time.Now().UnixNano()))
 	resp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: result}
 	_ = json.NewEncoder(w).Encode(resp)
 }

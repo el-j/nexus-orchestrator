@@ -40,13 +40,22 @@ func (p *PlanFileRepo) UpsertPlanFile(ctx context.Context, f domain.DiscoveredPl
 }
 
 // ListPlanFiles returns all discovered plan file records for the given project path.
+// If projectPath is empty, all plan files across all projects are returned.
 func (p *PlanFileRepo) ListPlanFiles(ctx context.Context, projectPath string) ([]domain.DiscoveredPlanFile, error) {
-	rows, err := p.db.QueryContext(ctx, `
-		SELECT id, path, kind, format, project_path, summary, last_modified, is_active
-		FROM discovered_plan_files
-		WHERE project_path = ?
-		ORDER BY last_modified DESC`, projectPath,
-	)
+	var rows *sql.Rows
+	var err error
+	if projectPath == "" {
+		rows, err = p.db.QueryContext(ctx, `
+			SELECT id, path, kind, format, project_path, summary, last_modified, is_active
+			FROM discovered_plan_files
+			ORDER BY last_modified DESC`)
+	} else {
+		rows, err = p.db.QueryContext(ctx, `
+			SELECT id, path, kind, format, project_path, summary, last_modified, is_active
+			FROM discovered_plan_files
+			WHERE project_path = ?
+			ORDER BY last_modified DESC`, projectPath)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("repo_sqlite: list plan files: %w", err)
 	}

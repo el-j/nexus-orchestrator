@@ -9,8 +9,8 @@
         <p class="text-xs text-slate-500">
           <span class="font-semibold text-cyan-400">{{ plans.length }}</span>
           discovered across
-          <span class="font-semibold text-cyan-400">{{ groupCount }}</span>
-          project{{ groupCount !== 1 ? 's' : '' }}
+          <span class="font-semibold text-cyan-400">{{ Object.keys(projectGroups).length }}</span>
+          project{{ Object.keys(projectGroups).length !== 1 ? 's' : '' }}
         </p>
       </div>
       <div class="flex items-center gap-2">
@@ -56,69 +56,125 @@
 
       <!-- Grouped by project -->
       <template v-else>
-        <section v-for="(group, projPath) in grouped" :key="projPath" class="mb-8">
+        <section v-for="(data, projPath) in projectGroups" :key="projPath" class="mb-10">
+          <!-- Project path header -->
           <h2
-            class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 font-mono truncate"
+            class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4 font-mono truncate"
             :title="String(projPath)"
           >
             {{ String(projPath) }}
           </h2>
-          <div class="grid grid-cols-1 gap-3">
-            <div
-              v-for="plan in group"
-              :key="plan.id"
-              class="rounded-xl border border-white/10 bg-white/[0.02] p-4 hover:bg-white/[0.04] transition-all"
-            >
-              <div class="flex items-start gap-3">
-                <!-- Active dot -->
-                <span
-                  class="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
-                  :class="plan.isActive ? 'bg-emerald-400' : 'bg-slate-600'"
-                  :title="plan.isActive ? 'Active' : 'Inactive'"
-                ></span>
 
-                <div class="flex-1 min-w-0">
-                  <!-- Filename + badges -->
-                  <div class="flex items-center gap-2 flex-wrap mb-1">
-                    <a
-                      :href="`file://${plan.path}`"
-                      class="font-semibold text-sm text-white truncate hover:text-violet-300 transition-colors"
-                      :title="plan.path"
-                    >
-                      {{ basename(plan.path) }}
-                    </a>
-                    <!-- Kind badge -->
-                    <span
-                      class="text-[10px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0"
-                      :class="kindBadgeClass(plan.kind)"
-                    >
-                      {{ plan.kind }}
-                    </span>
-                    <!-- Format chip -->
-                    <span
-                      class="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-slate-400 flex-shrink-0 font-mono"
-                    >
-                      {{ plan.format }}
-                    </span>
+          <!-- Project Brain card (nexus) -->
+          <div
+            v-if="data.nexus"
+            class="mb-5 rounded-xl border border-violet-500/30 bg-violet-500/[0.04] p-4"
+          >
+            <div class="flex items-start gap-3">
+              <span class="text-lg mt-0.5">🧠</span>
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="font-bold text-sm text-violet-300">Project Brain</span>
+                  <span
+                    class="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 font-semibold"
+                    >nexus</span
+                  >
+                  <span
+                    v-if="data.nexus.isActive"
+                    class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300"
+                    >active</span
+                  >
+                </div>
+                <p class="text-[11px] text-slate-300 font-mono mb-1">
+                  {{ basename(data.nexus.path) }}
+                </p>
+                <p v-if="data.nexus.summary" class="text-xs text-slate-400">
+                  {{ data.nexus.summary }}
+                </p>
+              </div>
+              <span class="text-[10px] text-slate-600">{{
+                formatDate(data.nexus.lastModified)
+              }}</span>
+            </div>
+          </div>
+
+          <!-- Plan groups with task files -->
+          <div v-if="data.planGroups.length > 0" class="mb-5">
+            <div v-for="[planId, taskFiles] in data.planGroups" :key="planId" class="mb-4">
+              <!-- Plan group header -->
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-xs font-semibold text-slate-400 font-mono">{{
+                  planId === 'ungrouped' ? 'Other Tasks' : planId
+                }}</span>
+                <span class="text-[10px] text-slate-600"
+                  >{{ taskFiles.length }} task{{ taskFiles.length !== 1 ? 's' : '' }}</span
+                >
+                <div class="flex-1 h-px bg-white/5 ml-1"></div>
+              </div>
+              <!-- Task file cards (compact) -->
+              <div class="grid grid-cols-1 gap-2">
+                <div
+                  v-for="plan in taskFiles"
+                  :key="plan.id"
+                  class="rounded-lg border border-white/[0.07] bg-white/[0.015] px-3 py-2 hover:bg-white/[0.03] transition-all flex items-start gap-2"
+                >
+                  <span
+                    class="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5"
+                    :class="plan.isActive ? 'bg-emerald-400' : 'bg-slate-700'"
+                  ></span>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs font-medium text-white truncate">{{
+                        basename(plan.path)
+                      }}</span>
+                      <span class="text-[10px] text-slate-600 font-mono ml-auto flex-shrink-0">{{
+                        formatDate(plan.lastModified)
+                      }}</span>
+                    </div>
+                    <p v-if="plan.summary" class="text-[11px] text-slate-500 truncate mt-0.5">
+                      {{ truncate(plan.summary.replace(/^#+\s*/, ''), 100) }}
+                    </p>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
-                  <!-- Summary -->
-                  <p v-if="plan.summary" class="text-[11px] text-slate-400 mb-1 line-clamp-1">
+          <!-- Other files (non-nexus, non-claude-task) -->
+          <div v-if="data.others.length > 0">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-xs font-semibold text-slate-600 uppercase tracking-wider"
+                >Other Files</span
+              >
+              <div class="flex-1 h-px bg-white/5 ml-1"></div>
+            </div>
+            <div class="grid grid-cols-1 gap-2">
+              <div
+                v-for="plan in data.others"
+                :key="plan.id"
+                class="rounded-lg border border-white/[0.07] bg-white/[0.015] px-3 py-2 hover:bg-white/[0.03] transition-all flex items-start gap-2"
+              >
+                <span
+                  class="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5"
+                  :class="plan.isActive ? 'bg-emerald-400' : 'bg-slate-700'"
+                ></span>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-medium text-white truncate">{{
+                      basename(plan.path)
+                    }}</span>
+                    <span
+                      :class="kindBadgeClass(plan.kind)"
+                      class="text-[10px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0"
+                      >{{ plan.kind }}</span
+                    >
+                    <span class="text-[10px] text-slate-600 font-mono ml-auto flex-shrink-0">{{
+                      formatDate(plan.lastModified)
+                    }}</span>
+                  </div>
+                  <p v-if="plan.summary" class="text-[11px] text-slate-500 truncate mt-0.5">
                     {{ truncate(plan.summary, 80) }}
                   </p>
-
-                  <!-- Path + last modified -->
-                  <div class="flex items-center gap-3 flex-wrap">
-                    <span
-                      class="text-[10px] text-slate-600 font-mono truncate max-w-xs"
-                      :title="plan.path"
-                    >
-                      {{ plan.path }}
-                    </span>
-                    <span class="text-[10px] text-slate-700 flex-shrink-0">
-                      {{ formatDate(plan.lastModified) }}
-                    </span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -130,24 +186,59 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import { useDiscoveredPlans } from '../composables/useDiscoveredPlans';
-import type { PlanFileKind } from '../types/domain';
+import { currentProject } from '../composables/useProjectState';
+import type { PlanFileKind, DiscoveredPlanFile } from '../types/domain';
 
-const projectPath = ref('');
-const { plans, loading, error, scan } = useDiscoveredPlans(projectPath);
+const { plans, loading, error, scan } = useDiscoveredPlans(currentProject);
 
-const grouped = computed(() => {
-  const map: Record<string, typeof plans.value> = {};
-  for (const plan of plans.value) {
-    const key = plan.projectPath || '(unknown project)';
-    if (!map[key]) map[key] = [];
-    map[key].push(plan);
+function extractParentPlan(file: DiscoveredPlanFile): string | null {
+  const m = file.summary?.match(/\*\*Plan:\*\*\s*(PLAN-\d+)/);
+  if (m) return m[1];
+  return null;
+}
+
+const projectGroups = computed(() => {
+  const map: Record<
+    string,
+    {
+      nexus?: DiscoveredPlanFile;
+      planGroups: [string, DiscoveredPlanFile[]][];
+      others: DiscoveredPlanFile[];
+    }
+  > = {};
+  const allProjectPaths = [...new Set(plans.value.map((p) => p.projectPath || '(unknown)'))];
+  for (const proj of allProjectPaths) {
+    const projectPlans = plans.value.filter((p) => p.projectPath === proj);
+    const nexus = projectPlans.find((p) => p.kind === 'nexus');
+    const taskFiles = projectPlans.filter((p) => p.kind === 'claude-task');
+    const others = projectPlans.filter((p) => p.kind !== 'nexus' && p.kind !== 'claude-task');
+
+    const groups: Record<string, DiscoveredPlanFile[]> = {};
+    for (const f of taskFiles) {
+      const planId = extractParentPlan(f) ?? 'ungrouped';
+      if (!groups[planId]) groups[planId] = [];
+      groups[planId].push(f);
+    }
+    for (const key of Object.keys(groups)) {
+      groups[key].sort((a, b) => {
+        const numA = parseInt(a.path.match(/TASK-(\d+)/)?.[1] ?? '0');
+        const numB = parseInt(b.path.match(/TASK-(\d+)/)?.[1] ?? '0');
+        return numB - numA;
+      });
+    }
+    const sortedGroups = Object.entries(groups).sort(([a], [b]) => {
+      if (a === 'ungrouped') return 1;
+      if (b === 'ungrouped') return -1;
+      const numA = parseInt(a.match(/PLAN-(\d+)/)?.[1] ?? '0');
+      const numB = parseInt(b.match(/PLAN-(\d+)/)?.[1] ?? '0');
+      return numB - numA;
+    });
+    map[proj] = { nexus, planGroups: sortedGroups, others };
   }
   return map;
 });
-
-const groupCount = computed(() => Object.keys(grouped.value).length);
 
 function basename(path: string): string {
   return path.split('/').pop() ?? path;

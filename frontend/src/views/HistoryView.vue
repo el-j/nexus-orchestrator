@@ -1,19 +1,46 @@
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->
-    <header
-      class="flex items-center justify-between px-5 py-3 border-b border-white/5 bg-[#0a0a10] shrink-0"
-    >
-      <div>
-        <h1 class="text-sm font-bold text-white">Task History</h1>
-        <p class="text-xs text-slate-500">
-          <span class="text-white font-semibold">{{ filteredTasks.length }}</span>
-          {{ filteredTasks.length === 1 ? 'task' : 'tasks' }}
-        </p>
+    <header class="flex flex-col border-b border-white/5 bg-[#0a0a10] shrink-0">
+      <!-- Title / count row -->
+      <div class="flex items-center justify-between px-5 py-3">
+        <div>
+          <h1 class="text-sm font-bold text-white">Task History</h1>
+          <p class="text-xs text-slate-500">
+            <span class="text-white font-semibold">{{ filteredTasks.length }}</span>
+            {{ filteredTasks.length === 1 ? 'task' : 'tasks' }}
+          </p>
+        </div>
       </div>
 
-      <!-- Status filter -->
-      <div class="flex items-center gap-1" role="group" aria-label="Filter tasks by status">
+      <!-- Status distribution summary bar -->
+      <div
+        v-if="summaryBadges.length > 0"
+        class="flex flex-wrap gap-2 px-5 py-2 border-b border-white/5"
+      >
+        <button
+          v-for="badge in summaryBadges"
+          :key="badge.status"
+          @click="toggleStatusFilter(badge.status)"
+          :aria-pressed="selectedFilter === badge.status"
+          :class="[
+            'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all cursor-pointer border',
+            badge.color,
+            selectedFilter === badge.status
+              ? 'border-current opacity-100'
+              : 'border-transparent opacity-75 hover:opacity-100',
+          ]"
+        >
+          {{ badge.label }}&nbsp;<span class="font-mono">{{ badge.count }}</span>
+        </button>
+      </div>
+
+      <!-- Status filter tabs -->
+      <div
+        class="flex items-center gap-1 px-5 py-2"
+        role="group"
+        aria-label="Filter tasks by status"
+      >
         <button
           v-for="f in filters"
           :key="f.value"
@@ -126,9 +153,44 @@ const filters: { label: string; value: FilterValue }[] = [
   { label: 'Cancelled', value: 'CANCELLED' },
 ];
 
-const selectedFilter = ref<FilterValue>('ALL');
+const selectedFilter = ref<TaskStatus | 'ALL'>('ALL');
 
 const historyStatuses = new Set<TaskStatus>(['COMPLETED', 'FAILED', 'CANCELLED']);
+
+const projectTasks = computed(() =>
+  currentProject.value === null
+    ? tasks.value
+    : tasks.value.filter((t) => t.projectPath === currentProject.value),
+);
+
+const statusColorMap: Record<string, { color: string; label: string }> = {
+  QUEUED: { color: 'bg-slate-500/20 text-slate-400', label: 'Queued' },
+  PROCESSING: { color: 'bg-yellow-500/20 text-yellow-300', label: 'Processing' },
+  COMPLETED: { color: 'bg-emerald-500/20 text-emerald-300', label: 'Completed' },
+  FAILED: { color: 'bg-red-500/20 text-red-300', label: 'Failed' },
+  CANCELLED: { color: 'bg-orange-500/20 text-orange-300', label: 'Cancelled' },
+  BACKLOG: { color: 'bg-violet-500/20 text-violet-300', label: 'Backlog' },
+  DRAFT: { color: 'bg-blue-500/20 text-blue-300', label: 'Draft' },
+};
+
+const statusSummary = computed<Partial<Record<TaskStatus, number>>>(() => {
+  const counts: Partial<Record<TaskStatus, number>> = {};
+  for (const task of projectTasks.value) {
+    counts[task.status] = (counts[task.status] ?? 0) + 1;
+  }
+  return counts;
+});
+
+const summaryBadges = computed(() =>
+  Object.entries(statusColorMap)
+    .filter(([status]) => (statusSummary.value[status as TaskStatus] ?? 0) > 0)
+    .map(([status, { color, label }]) => ({
+      status: status as TaskStatus,
+      label,
+      color,
+      count: statusSummary.value[status as TaskStatus] ?? 0,
+    })),
+);
 
 const historyTasks = computed(() =>
   tasks.value.filter(
@@ -199,6 +261,10 @@ onUnmounted(() => {
 function openDetail(task: Task) {
   selectedTask.value = task;
   detailOpen.value = true;
+}
+
+function toggleStatusFilter(status: TaskStatus) {
+  selectedFilter.value = selectedFilter.value === status ? 'ALL' : status;
 }
 
 function shortId(id: string): string {

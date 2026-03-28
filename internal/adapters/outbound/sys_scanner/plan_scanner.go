@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/sha1"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -208,6 +209,40 @@ func containsCrewAI(path string) bool {
 	return false
 }
 
+// summarizeOrchestratorJSON parses an orchestrator.json file and returns a human-readable summary.
+func summarizeOrchestratorJSON(path string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	var doc struct {
+		Counters struct {
+			NextPlanID int `json:"nextPlanId"`
+			NextTaskID int `json:"nextTaskId"`
+		} `json:"counters"`
+		Plans map[string]struct {
+			Status string `json:"status"`
+		} `json:"plans"`
+		UpdatedAt string `json:"updatedAt"`
+	}
+	if err := json.Unmarshal(data, &doc); err != nil {
+		return ""
+	}
+	totalPlans := len(doc.Plans)
+	completedPlans := 0
+	for _, p := range doc.Plans {
+		if p.Status == "completed" || p.Status == "done" {
+			completedPlans++
+		}
+	}
+	totalTasks := doc.Counters.NextTaskID - 1
+	if totalTasks < 0 {
+		totalTasks = 0
+	}
+	return fmt.Sprintf("plans: %d (%d completed) · tasks: %d · updated: %s",
+		totalPlans, completedPlans, totalTasks, doc.UpdatedAt)
+}
+
 // buildPlanFile creates a DiscoveredPlanFile from a path and its classification.
 func buildPlanFile(absPath string, kind domain.PlanFileKind, format, home string) (domain.DiscoveredPlanFile, error) {
 	fi, err := os.Stat(absPath)
@@ -216,7 +251,12 @@ func buildPlanFile(absPath string, kind domain.PlanFileKind, format, home string
 	}
 
 	id := fmt.Sprintf("%x", sha1.Sum([]byte(absPath)))[:12]
-	summary := readSummary(absPath)
+	var summary string
+	if kind == domain.PlanFileKindNexus {
+		summary = summarizeOrchestratorJSON(absPath)
+	} else {
+		summary = readSummary(absPath)
+	}
 	isActive := time.Since(fi.ModTime()) < 24*time.Hour
 	projectPath := findProjectPath(filepath.Dir(absPath), home)
 

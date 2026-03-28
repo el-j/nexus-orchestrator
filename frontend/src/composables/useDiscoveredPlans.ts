@@ -1,9 +1,9 @@
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import type { Ref } from 'vue';
 import type { DiscoveredPlanFile } from '../types/domain';
 import { resolveServerUrl } from './useServerUrl';
 
-export function useDiscoveredPlans(projectPath: Ref<string>) {
+export function useDiscoveredPlans(projectPath: Ref<string | null>) {
   const plans = ref<DiscoveredPlanFile[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
@@ -44,6 +44,8 @@ export function useDiscoveredPlans(projectPath: Ref<string>) {
     fetchPlans();
     setInterval(fetchPlans, 30_000);
   });
+
+  watch(projectPath, () => fetchPlans());
 
   return { plans, loading, error, fetchPlans, scan };
 }

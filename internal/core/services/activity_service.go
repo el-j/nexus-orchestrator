@@ -15,7 +15,7 @@ const (
 	activityRetentionWindow = 24 * time.Hour
 	retentionPurgeInterval  = 1 * time.Hour
 	idleTimeout             = 5 * time.Minute
-	disconnectTimeout       = 2 * time.Hour
+	disconnectTimeout       = 15 * time.Minute
 )
 
 // ActivityService polls activity readers, persists observations, bridges discovered

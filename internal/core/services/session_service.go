@@ -228,21 +228,33 @@ func (o *OrchestratorService) GetDiscoveredAgents(ctx context.Context) ([]domain
 
 // GetDiscoveredPlanFiles scans for plan/task/orchestration files near projectPath,
 // persists results to SQLite, and returns the stored list for the project.
+// If projectPath is empty, returns all stored plan files without scanning.
 func (o *OrchestratorService) GetDiscoveredPlanFiles(ctx context.Context, projectPath string) ([]domain.DiscoveredPlanFile, error) {
-	if o.agentScanner == nil {
+	if o.agentScanner == nil && o.planFileRepo == nil {
 		return nil, nil
 	}
-	files, err := o.agentScanner.ScanPlanFiles(ctx, []string{projectPath})
-	if err != nil {
-		return nil, err
+	// When no project specified, return all persisted plan files.
+	if projectPath == "" {
+		if o.planFileRepo != nil {
+			return o.planFileRepo.ListPlanFiles(ctx, "")
+		}
+		return nil, nil
+	}
+	if o.agentScanner != nil {
+		files, err := o.agentScanner.ScanPlanFiles(ctx, []string{projectPath})
+		if err != nil {
+			return nil, err
+		}
+		if o.planFileRepo != nil {
+			for _, f := range files {
+				_ = o.planFileRepo.UpsertPlanFile(ctx, f)
+			}
+		}
 	}
 	if o.planFileRepo != nil {
-		for _, f := range files {
-			_ = o.planFileRepo.UpsertPlanFile(ctx, f)
-		}
 		return o.planFileRepo.ListPlanFiles(ctx, projectPath)
 	}
-	return files, nil
+	return nil, nil
 }
 
 // DelegateToNexus marks the AI session as delegated to the nexus orchestrator

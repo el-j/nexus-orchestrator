@@ -54,7 +54,7 @@
       </div>
     </div>
 
-    <div class="flex-1 overflow-auto p-4 space-y-2">
+    <div class="flex-1 overflow-auto p-4">
       <template v-if="loading && activities.length === 0">
         <div class="flex items-center justify-center py-12">
           <div
@@ -72,7 +72,42 @@
         </div>
       </template>
 
-      <AIActivityCard v-for="a in filtered" :key="a.id" :activity="a" />
+      <div
+        v-for="group in sessionGroups"
+        :key="group.sessionId"
+        class="mb-4 rounded-xl border border-white/[0.06] bg-white/[0.01] overflow-hidden"
+      >
+        <!-- Session header -->
+        <div
+          class="flex items-center gap-3 px-4 py-2.5 bg-white/[0.03] border-b border-white/[0.06]"
+        >
+          <div
+            class="w-2 h-2 rounded-full shrink-0"
+            :class="isRecent(group.latestTime) ? 'bg-emerald-400' : 'bg-slate-600'"
+          ></div>
+          <span class="text-xs font-semibold truncate" :class="agentColor(group.agentName)">{{
+            group.agentName
+          }}</span>
+          <span v-if="group.model" class="text-[10px] font-mono text-slate-500 shrink-0">{{
+            group.model
+          }}</span>
+          <span v-if="group.totalTokens > 0" class="text-[10px] text-slate-500 shrink-0"
+            >🪙 {{ group.totalTokens.toLocaleString() }}</span
+          >
+          <span class="ml-auto text-[10px] text-slate-500 shrink-0">{{
+            timeAgo(group.latestTime)
+          }}</span>
+          <span v-if="group.projectPath" class="text-[10px] text-slate-600 shrink-0">{{
+            shortPath(group.projectPath)
+          }}</span>
+        </div>
+        <!-- Activities within group -->
+        <div class="divide-y divide-white/[0.04]">
+          <div v-for="a in group.activities" :key="a.id" class="px-3 py-1.5">
+            <AIActivityCard :activity="a" />
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -82,7 +117,8 @@ import { computed, ref } from 'vue';
 import AIActivityCard from '../components/AIActivityCard.vue';
 import { useActivities } from '../composables/useActivities';
 import { useDiscovery } from '../composables/useDiscovery';
-import type { ActivityType } from '../types/domain';
+import type { AIActivity, ActivityType } from '../types/domain';
+import { timeAgo } from '../utils/time';
 
 const { scanning, scanNow: triggerScan } = useDiscovery();
 const { activities, loading } = useActivities({ limit: 100 });
@@ -137,5 +173,88 @@ const activeCount = computed(() => new Set(activities.value.map((a) => a.agentNa
 function shortPath(projectPath: string): string {
   const parts = projectPath.replace(/\\/g, '/').split('/').filter(Boolean);
   return parts.slice(-2).join('/');
+}
+
+interface SessionGroup {
+  sessionId: string;
+  agentName: string;
+  projectPath: string;
+  model: string;
+  latestTime: string;
+  totalTokens: number;
+  activities: AIActivity[];
+}
+
+const sessionGroups = computed((): SessionGroup[] => {
+  const acts = filtered.value;
+  const groups = new Map<string, SessionGroup>();
+  const openGroups = new Map<string, { groupKey: string; lastTime: number }>();
+
+  // Sort ascending by timestamp for the grouping algorithm
+  const sorted = [...acts].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+  );
+
+  for (const activity of sorted) {
+    let groupKey: string;
+
+    if (activity.sessionId) {
+      groupKey = activity.sessionId;
+    } else {
+      // Time-based fallback: group consecutive same agent+project within 60 seconds
+      const comboKey = `${activity.agentName}|${activity.projectPath ?? ''}`;
+      const open = openGroups.get(comboKey);
+      const actTime = new Date(activity.timestamp).getTime();
+
+      if (open && actTime - open.lastTime <= 60_000) {
+        groupKey = open.groupKey;
+        open.lastTime = actTime;
+      } else {
+        groupKey = `${comboKey}|${activity.timestamp}`;
+        openGroups.set(comboKey, { groupKey, lastTime: actTime });
+      }
+    }
+
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, {
+        sessionId: groupKey,
+        agentName: activity.agentName,
+        projectPath: activity.projectPath ?? '',
+        model: activity.model ?? '',
+        latestTime: activity.timestamp,
+        totalTokens: 0,
+        activities: [],
+      });
+    }
+
+    const group = groups.get(groupKey)!;
+    group.activities.push(activity);
+    group.totalTokens += (activity.tokensIn ?? 0) + (activity.tokensOut ?? 0);
+
+    if (new Date(activity.timestamp) > new Date(group.latestTime)) {
+      group.latestTime = activity.timestamp;
+    }
+    if (!group.model && activity.model) group.model = activity.model;
+  }
+
+  // Within each group: newest first. Groups sorted newest-first.
+  return Array.from(groups.values())
+    .map((g) => ({ ...g, activities: g.activities.slice().reverse() }))
+    .sort((a, b) => new Date(b.latestTime).getTime() - new Date(a.latestTime).getTime());
+});
+
+function agentColor(name: string): string {
+  const lower = name.toLowerCase();
+  if (lower.includes('claude') || lower.includes('anthropic')) return 'text-violet-400';
+  if (lower.includes('copilot') || lower.includes('github')) return 'text-blue-400';
+  if (lower.includes('cursor')) return 'text-cyan-400';
+  if (lower.includes('continue')) return 'text-emerald-400';
+  if (lower.includes('lmstudio') || lower.includes('lm studio')) return 'text-orange-400';
+  if (lower.includes('ollama')) return 'text-green-400';
+  return 'text-slate-300';
+}
+
+function isRecent(timestamp: string): boolean {
+  return Date.now() - new Date(timestamp).getTime() < 60_000;
 }
 </script>

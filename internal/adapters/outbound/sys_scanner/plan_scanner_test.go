@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -188,5 +189,57 @@ func TestScanPlanFiles_EmptyDir(t *testing.T) {
 	}
 	if len(results) != 0 {
 		t.Errorf("expected 0 results for empty dir, got %d", len(results))
+	}
+}
+
+func TestScanPlanFiles_NexusSummary(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	claudeDir := filepath.Join(tmpDir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	content := `{
+		"counters": {"nextPlanId": 6, "nextTaskId": 373},
+		"plans": {
+			"PLAN-001": {"status": "completed"},
+			"PLAN-002": {"status": "done"},
+			"PLAN-003": {"status": "in-progress"}
+		},
+		"updatedAt": "2026-03-28"
+	}`
+	if err := os.WriteFile(filepath.Join(claudeDir, "orchestrator.json"), []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	s := New()
+	results, err := s.ScanPlanFiles(context.Background(), []string{tmpDir})
+	if err != nil {
+		t.Fatalf("ScanPlanFiles returned error: %v", err)
+	}
+
+	var nexus *domain.DiscoveredPlanFile
+	for i := range results {
+		if results[i].Kind == domain.PlanFileKindNexus {
+			nexus = &results[i]
+			break
+		}
+	}
+	if nexus == nil {
+		t.Fatal("expected a nexus result, got none")
+	}
+	if !strings.Contains(nexus.Summary, "plans:") {
+		t.Errorf("summary missing 'plans:': %q", nexus.Summary)
+	}
+	if !strings.Contains(nexus.Summary, "tasks:") {
+		t.Errorf("summary missing 'tasks:': %q", nexus.Summary)
+	}
+	// 3 plans total, 2 completed (completed + done)
+	if !strings.Contains(nexus.Summary, "3 (2 completed)") {
+		t.Errorf("summary has wrong plan counts: %q", nexus.Summary)
+	}
+	// nextTaskId=373 → totalTasks=372
+	if !strings.Contains(nexus.Summary, "tasks: 372") {
+		t.Errorf("summary has wrong task count: %q", nexus.Summary)
 	}
 }

@@ -1147,3 +1147,64 @@ func TestMCP_ToolCall_DelegateToNexus_MissingSessionID(t *testing.T) {
 		t.Errorf("code: want -32602, got %d", r.Error.Code)
 	}
 }
+
+func TestMCP_Ping(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 42, "method": "ping",
+	})
+	if r.Error != nil {
+		t.Fatalf("expected no error, got %+v", r.Error)
+	}
+	var result map[string]any
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if len(result) != 0 {
+		t.Errorf("expected empty result, got %v", result)
+	}
+}
+
+func TestMCP_ResourcesList(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 43, "method": "resources/list",
+	})
+	if r.Error != nil {
+		t.Fatalf("expected no error, got %+v", r.Error)
+	}
+	var result struct {
+		Resources []any `json:"resources"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if result.Resources == nil {
+		t.Fatal("expected resources key in result")
+	}
+	if len(result.Resources) != 0 {
+		t.Errorf("expected empty resources, got %v", result.Resources)
+	}
+}
+
+func TestMCP_PromptsList(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 44, "method": "prompts/list",
+	})
+	if r.Error != nil {
+		t.Fatalf("expected no error, got %+v", r.Error)
+	}
+	var result struct {
+		Prompts []any `json:"prompts"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if result.Prompts == nil {
+		t.Fatal("expected prompts key in result")
+	}
+	if len(result.Prompts) != 0 {
+		t.Errorf("expected empty prompts, got %v", result.Prompts)
+	}
+}
