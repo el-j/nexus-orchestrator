@@ -276,6 +276,9 @@ func StartServerFull(ctx context.Context, orch ports.Orchestrator, addr string, 
 		IdleTimeout:  60 * time.Second,
 	}
 
+	// Start periodic background plan discovery scans.
+	StartPlanScanWorker(ctx, orch, 5*time.Minute)
+
 	go func() {
 		<-ctx.Done()
 		shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

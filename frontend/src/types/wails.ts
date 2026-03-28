@@ -5,6 +5,8 @@ import type {
   ProviderConfig,
   AISession,
   TaskStatus,
+  RuntimeConfig,
+  RuntimeConfigUpdate,
 } from './domain';
 import type { DiscoveredProvider } from './discovery';
 
@@ -256,4 +258,20 @@ export async function updateTaskStatus(
   });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json() as Promise<Task>;
+}
+
+export async function getRuntimeConfig(): Promise<RuntimeConfig> {
+  const r = await fetch('/api/config');
+  if (!r.ok) throw new Error(`getConfig: ${r.status}`);
+  return r.json() as Promise<RuntimeConfig>;
+}
+
+export async function updateRuntimeConfig(update: RuntimeConfigUpdate): Promise<RuntimeConfig> {
+  const r = await fetch('/api/config', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(update),
+  });
+  if (!r.ok) throw new Error(`updateConfig: ${r.status}`);
+  return r.json() as Promise<RuntimeConfig>;
 }

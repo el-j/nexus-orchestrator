@@ -455,6 +455,28 @@ func headingCount(text string) int {
 	return count
 }
 
+func numberedListCount(text string) int {
+	count := 0
+	for _, line := range strings.Split(text, "\n") {
+		trimmed := strings.TrimLeft(line, " \t")
+		if len(trimmed) == 0 {
+			continue
+		}
+		// Find end of leading digits.
+		i := 0
+		for i < len(trimmed) && trimmed[i] >= '0' && trimmed[i] <= '9' {
+			i++
+		}
+		// Need at least one digit, then ". ", then non-whitespace.
+		if i > 0 && i+2 <= len(trimmed) && trimmed[i] == '.' && trimmed[i+1] == ' ' {
+			if strings.TrimSpace(trimmed[i+2:]) != "" {
+				count++
+			}
+		}
+	}
+	return count
+}
+
 func looksLikePlanMarkdown(path string) bool {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -464,7 +486,7 @@ func looksLikePlanMarkdown(path string) bool {
 	if len(sample) > 2048 {
 		sample = sample[:2048]
 	}
-	if hasYAMLFrontmatter(sample) || checklistCount(sample) >= 2 {
+	if hasYAMLFrontmatter(sample) || checklistCount(sample) >= 2 || headingCount(sample) >= 5 || numberedListCount(sample) >= 3 {
 		return true
 	}
 	for _, line := range strings.Split(sample, "\n") {
@@ -478,7 +500,19 @@ func looksLikePlanMarkdown(path string) bool {
 			strings.HasPrefix(trimmed, "# TODO") ||
 			strings.HasPrefix(trimmed, "## TODO") ||
 			strings.HasPrefix(trimmed, "# WORKFLOW") ||
-			strings.HasPrefix(trimmed, "## WORKFLOW") {
+			strings.HasPrefix(trimmed, "## WORKFLOW") ||
+			strings.HasPrefix(trimmed, "# SPRINT") ||
+			strings.HasPrefix(trimmed, "## SPRINT") ||
+			strings.HasPrefix(trimmed, "# EPIC") ||
+			strings.HasPrefix(trimmed, "## EPIC") ||
+			strings.HasPrefix(trimmed, "# MILESTONE") ||
+			strings.HasPrefix(trimmed, "## MILESTONE") ||
+			strings.HasPrefix(trimmed, "# BACKLOG") ||
+			strings.HasPrefix(trimmed, "## BACKLOG") ||
+			strings.HasPrefix(trimmed, "# OBJECTIVES") ||
+			strings.HasPrefix(trimmed, "## OBJECTIVES") ||
+			strings.HasPrefix(trimmed, "# IMPLEMENTATION") ||
+			strings.HasPrefix(trimmed, "## IMPLEMENTATION") {
 			return true
 		}
 	}

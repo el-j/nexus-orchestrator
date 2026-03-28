@@ -594,7 +594,41 @@ func (s *Server) toolGetDiscoveredPlans(ctx context.Context, args json.RawMessag
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_discovered_plans: %w", err)
 	}
-	data, _ := json.Marshal(files)
+
+	byKind := map[string]int{}
+	for _, f := range files {
+		byKind[string(f.Kind)]++
+	}
+
+	activeTool := "unknown"
+	if len(files) > 0 {
+		if byKind[string(domain.PlanFileKindNexus)] > 0 {
+			activeTool = string(domain.PlanFileKindNexus)
+		} else {
+			maxCount := 0
+			for k, c := range byKind {
+				if c > maxCount {
+					maxCount = c
+					activeTool = k
+				}
+			}
+		}
+	}
+
+	response := struct {
+		ProjectPath string                      `json:"projectPath"`
+		FileCount   int                         `json:"fileCount"`
+		ByKind      map[string]int              `json:"byKind"`
+		ActiveTool  string                      `json:"activeTool"`
+		Files       []domain.DiscoveredPlanFile `json:"files"`
+	}{
+		ProjectPath: p.ProjectPath,
+		FileCount:   len(files),
+		ByKind:      byKind,
+		ActiveTool:  activeTool,
+		Files:       files,
+	}
+	data, _ := json.Marshal(response)
 	return textResult(string(data)), nil
 }
 
@@ -1033,7 +1067,7 @@ func toolList() []toolDef {
 		},
 		{
 			Name:        "get_discovered_plans",
-			Description: "Scan for plan/task/orchestration files in a project directory. Returns nexus orchestrator.json, markdown task files, Cursor rules, MCP configs, and more.",
+			Description: "Scan for plan/task/orchestration files in a project directory. Returns nexus orchestrator.json, markdown task files, Cursor rules, MCP configs, and more. The response includes projectPath, fileCount, byKind (counts per tool kind), activeTool (dominant AI tool detected), and files (full list).",
 			InputSchema: inputSchema{
 				Type: "object",
 				Properties: map[string]property{

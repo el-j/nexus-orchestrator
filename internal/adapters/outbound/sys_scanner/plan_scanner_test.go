@@ -402,3 +402,120 @@ title: Heuristic Test
 		t.Fatalf("expected summary to include checklist heuristic, got %q", got.Summary)
 	}
 }
+
+// --- looksLikePlanMarkdown unit tests (via ScanPlanFiles with dynamic .md file) ---
+
+func writeTmpMD(t *testing.T, dir, name, content string) string {
+	t.Helper()
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func isDiscovered(results []domain.DiscoveredPlanFile, path string) bool {
+	for _, r := range results {
+		if r.Path == path {
+			return true
+		}
+	}
+	return false
+}
+
+func TestLooksLikePlanMarkdown_YAMLFrontmatter(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := writeTmpMD(t, tmpDir, "notes.md", "---\ntitle: Some Plan\n---\nBody text here.")
+	s := New()
+	results, _ := s.ScanPlanFiles(context.Background(), []string{tmpDir})
+	if !isDiscovered(results, path) {
+		t.Fatalf("expected YAML frontmatter file to be discovered")
+	}
+}
+
+func TestLooksLikePlanMarkdown_ChecklistThreshold(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := writeTmpMD(t, tmpDir, "todo.md", "Some notes\n- [ ] first task\n- [x] done task\n")
+	s := New()
+	results, _ := s.ScanPlanFiles(context.Background(), []string{tmpDir})
+	if !isDiscovered(results, path) {
+		t.Fatalf("expected 2-checklist file to be discovered")
+	}
+}
+
+func TestLooksLikePlanMarkdown_HeadingCountThreshold(t *testing.T) {
+	tmpDir := t.TempDir()
+	content := "# Intro\n## Section A\n## Section B\n## Section C\n## Section D\nsome text\n"
+	path := writeTmpMD(t, tmpDir, "structured.md", content)
+	s := New()
+	results, _ := s.ScanPlanFiles(context.Background(), []string{tmpDir})
+	if !isDiscovered(results, path) {
+		t.Fatalf("expected 5-heading file to be discovered via headingCount>=5 signal")
+	}
+}
+
+func TestLooksLikePlanMarkdown_NumberedListThreshold(t *testing.T) {
+	tmpDir := t.TempDir()
+	content := "Some intro text\n1. First step here\n2. Second step here\n3. Third step here\n"
+	path := writeTmpMD(t, tmpDir, "steps.md", content)
+	s := New()
+	results, _ := s.ScanPlanFiles(context.Background(), []string{tmpDir})
+	if !isDiscovered(results, path) {
+		t.Fatalf("expected 3-item numbered list file to be discovered")
+	}
+}
+
+func TestLooksLikePlanMarkdown_NewKeywords(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+	}{
+		{"SPRINT", "# Sprint 1\nsome content"},
+		{"EPIC", "## Epic: core features\nsome content"},
+		{"MILESTONE", "# Milestone v1.0\nsome content"},
+		{"BACKLOG", "## Backlog\nsome content"},
+		{"OBJECTIVES", "# Objectives\nsome content"},
+		{"IMPLEMENTATION", "## Implementation\nsome content"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			path := writeTmpMD(t, tmpDir, "doc.md", tc.content)
+			s := New()
+			results, _ := s.ScanPlanFiles(context.Background(), []string{tmpDir})
+			if !isDiscovered(results, path) {
+				t.Fatalf("expected %s keyword file to be discovered", tc.name)
+			}
+		})
+	}
+}
+
+func TestLooksLikePlanMarkdown_PlainTextNotDiscovered(t *testing.T) {
+	tmpDir := t.TempDir()
+	// Generic prose without any plan signals
+	path := writeTmpMD(t, tmpDir, "readme-notes.md", "This is a diary entry.\nI went to the store today.\n")
+	s := New()
+	results, _ := s.ScanPlanFiles(context.Background(), []string{tmpDir})
+	if isDiscovered(results, path) {
+		t.Fatalf("expected plain-text md file NOT to be discovered as a plan file")
+	}
+}
+
+func TestNumberedListCount(t *testing.T) {
+	cases := []struct {
+		text string
+		want int
+	}{
+		{"1. do something\n2. do another\n3. finish up\n", 3},
+		{"1. one\n2. two\n", 2},
+		{"no list here\njust text\n", 0},
+		{"  1. indented item\n  2. second\n  3. third\n", 3},
+		{"1.nospace\n2. has space\n3. also has space\n", 2}, // "1.nospace" has no space after dot
+	}
+	for _, c := range cases {
+		got := numberedListCount(c.text)
+		if got != c.want {
+			t.Errorf("numberedListCount(%q) = %d, want %d", c.text, got, c.want)
+		}
+	}
+}

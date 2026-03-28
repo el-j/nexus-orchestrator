@@ -9,6 +9,11 @@ import (
 	"time"
 )
 
+// sseKeepaliveInterval controls how often a SSE comment ping is sent to keep
+// the connection alive through proxies and VS Code's MCP client. Override in
+// tests by setting this to a shorter duration before the call.
+var sseKeepaliveInterval = 15 * time.Second
+
 // ----- SSE session & manager -----
 
 type sseSession struct {
@@ -126,10 +131,28 @@ func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Block until client disconnects or session is closed.
-	select {
-	case <-r.Context().Done():
-	case <-session.done:
+	// Block until client disconnects or session is closed, sending periodic
+	// SSE comment-pings to keep the connection alive through proxies.
+	pingTicker := time.NewTicker(sseKeepaliveInterval)
+	defer pingTicker.Stop()
+loop:
+	for {
+		select {
+		case <-pingTicker.C:
+			session.mu.Lock()
+			_, err := fmt.Fprintf(session.writer, ": ping\n\n")
+			if err == nil {
+				session.flusher.Flush()
+			}
+			session.mu.Unlock()
+			if err != nil {
+				break loop
+			}
+		case <-r.Context().Done():
+			break loop
+		case <-session.done:
+			break loop
+		}
 	}
 	log.Printf("mcp: sse session %s disconnected", sessionID)
 }

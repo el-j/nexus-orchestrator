@@ -152,3 +152,19 @@ export interface AIActivity {
   timestamp: string;
   metadata?: Record<string, string>;
 }
+
+export interface RuntimeConfig {
+  queueCap: number;
+  apiTokenEnabled: boolean;
+  mcpTokenEnabled: boolean;
+  apiToken?: string;
+  mcpToken?: string;
+}
+
+export interface RuntimeConfigUpdate {
+  queueCap?: number;
+  apiToken?: string;
+  mcpToken?: string;
+  rotateApiToken?: boolean;
+  rotateMcpToken?: boolean;
+}

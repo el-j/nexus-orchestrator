@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"nexus-orchestrator/internal/adapters/inbound/mcp"
 )
 
 // --- SSE Transport Tests ---
@@ -317,5 +319,53 @@ func TestMCP_CORS_Preflight(t *testing.T) {
 	}
 	if allow := resp.Header.Get("Access-Control-Allow-Headers"); !strings.Contains(allow, "Authorization") {
 		t.Errorf("Allow-Headers: want Authorization, got %q", allow)
+	}
+}
+
+// TestSSE_PingKeepalive verifies that the SSE stream emits a comment ping
+// before the keepalive interval elapses, keeping idle connections alive.
+func TestSSE_PingKeepalive(t *testing.T) {
+	// Speed up the keepalive for this test.
+	orig := *mcp.SseKeepaliveInterval
+	*mcp.SseKeepaliveInterval = 30 * time.Millisecond
+	t.Cleanup(func() { *mcp.SseKeepaliveInterval = orig })
+
+	srv := newServer(t, &mockOrch{})
+
+	resp, err := http.Get(srv.URL + "/sse")
+	if err != nil {
+		t.Fatalf("GET /sse: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+
+	scanner := bufio.NewScanner(resp.Body)
+	timeout := time.After(500 * time.Millisecond)
+	pingReceived := false
+
+	for !pingReceived {
+		lineCh := make(chan string, 1)
+		go func() {
+			if scanner.Scan() {
+				lineCh <- scanner.Text()
+			}
+			close(lineCh)
+		}()
+
+		select {
+		case line, ok := <-lineCh:
+			if !ok {
+				t.Fatal("SSE stream closed before ping received")
+			}
+			// SSE comment lines start with ':'
+			if strings.HasPrefix(line, ":") {
+				pingReceived = true
+			}
+		case <-timeout:
+			t.Fatal("timed out waiting for SSE ping keepalive event")
+		}
 	}
 }

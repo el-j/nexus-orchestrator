@@ -5,13 +5,15 @@ nav_order: 5
 ---
 
 # MCP Integration
+
 {: .no_toc }
 
 ## Table of contents
+
 {: .no_toc .text-delta }
 
 1. TOC
-{:toc}
+   {:toc}
 
 ---
 
@@ -42,22 +44,46 @@ Restart Claude Desktop after editing the configuration. The nexusOrchestrator to
 {: .note }
 Make sure the nexus-daemon is running before starting Claude Desktop.
 
+## VS Code Setup
+
+Add the following to your VS Code MCP configuration file:
+
+**macOS/Linux**: `~/Library/Application Support/Code/User/mcp.json`  
+**Windows**: `%APPDATA%\Code\User\mcp.json`
+
+```json
+{
+  "servers": {
+    "Nexus Orchestrator": {
+      "type": "http",
+      "url": "http://127.0.0.1:63988/mcp"
+    }
+  }
+}
+```
+
+{: .important }
+Use `"type": "http"` (Streamable HTTP), **not** `"type": "sse"`. The SSE transport holds a session in memory; a daemon restart invalidates it, causing `400` errors and `"terminated / Failed to parse message"` noise in the VS Code output panel. Streamable HTTP is stateless and reconnects cleanly every time.
+
+Reload the VS Code window after saving the configuration.
+
 ## Available Tools
 
-| Tool | Description |
-|------|-------------|
-| `submit_task` | Submit a code-generation task with project path, target file, and instruction |
-| `get_task` | Retrieve the status and output of a task by its ID |
-| `get_queue` | List all pending (QUEUED/PROCESSING) tasks |
-| `cancel_task` | Cancel a queued task before it is processed |
-| `get_providers` | List all registered LLM providers and their liveness status |
-| `health` | Check if the orchestrator daemon is running and responsive |
+| Tool            | Description                                                                   |
+| --------------- | ----------------------------------------------------------------------------- |
+| `submit_task`   | Submit a code-generation task with project path, target file, and instruction |
+| `get_task`      | Retrieve the status and output of a task by its ID                            |
+| `get_queue`     | List all pending (QUEUED/PROCESSING) tasks                                    |
+| `cancel_task`   | Cancel a queued task before it is processed                                   |
+| `get_providers` | List all registered LLM providers and their liveness status                   |
+| `health`        | Check if the orchestrator daemon is running and responsive                    |
 
 ## Usage Examples
 
 ### Submit a Task
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -76,6 +102,7 @@ Make sure the nexus-daemon is running before starting Claude Desktop.
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -94,6 +121,7 @@ Make sure the nexus-daemon is running before starting Claude Desktop.
 ### Get Task Status
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -111,6 +139,7 @@ Make sure the nexus-daemon is running before starting Claude Desktop.
 ### Check Available Providers
 
 **Request:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -123,6 +152,7 @@ Make sure the nexus-daemon is running before starting Claude Desktop.
 ```
 
 **Response:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -169,9 +199,9 @@ The MCP server supports both `initialize` and `tools/list` lifecycle methods, an
 {: .note }
 **No tools appearing**: Verify the URL in `claude_desktop_config.json` ends with `/mcp` (not just the host:port).
 
-| Issue | Solution |
-|-------|----------|
-| Connection refused | Start nexus-daemon first: `./nexus-daemon` |
-| Port conflict | Use `NEXUS_MCP_ADDR=:9090` to change the MCP port |
-| No tools in Claude | Check URL ends with `/mcp`, restart Claude Desktop |
+| Issue                | Solution                                                                |
+| -------------------- | ----------------------------------------------------------------------- |
+| Connection refused   | Start nexus-daemon first: `./nexus-daemon`                              |
+| Port conflict        | Use `NEXUS_MCP_ADDR=:9090` to change the MCP port                       |
+| No tools in Claude   | Check URL ends with `/mcp`, restart Claude Desktop                      |
 | Task stuck in QUEUED | Check `GET /api/providers` — ensure at least one LLM provider is active |

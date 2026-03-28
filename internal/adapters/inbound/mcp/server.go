@@ -230,11 +230,12 @@ func (s *Server) effectiveAuthToken(ctx context.Context) string {
 func StartMCPServer(ctx context.Context, orch ports.Orchestrator, addr string) error {
 	handler := NewMcpServer(orch)
 	srv := &http.Server{
-		Addr:        addr,
-		Handler:     handler,
-		ReadTimeout: 15 * time.Second,
-		// WriteTimeout is 0 (no timeout) because SSE connections are long-lived.
-		// Individual request handlers should use context deadlines as needed.
+		Addr:    addr,
+		Handler: handler,
+		// ReadTimeout is deliberately 0 so that long-lived SSE connections are not
+		// killed after an idle period. Individual RPC handlers impose their own
+		// context deadlines where needed.
+		ReadTimeout: 0,
 		IdleTimeout: 120 * time.Second,
 	}
 	errCh := make(chan error, 1)

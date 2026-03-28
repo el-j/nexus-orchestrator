@@ -210,10 +210,91 @@ func TestToolGetDiscoveredPlans_PassesProjectPath(t *testing.T) {
 	if orch.discoveredPlansPath != "/repo" {
 		t.Fatalf("expected projectPath to be forwarded, got %q", orch.discoveredPlansPath)
 	}
-	var payload []domain.DiscoveredPlanFile
+	var payload struct {
+		ProjectPath string                      `json:"projectPath"`
+		FileCount   int                         `json:"fileCount"`
+		ByKind      map[string]int              `json:"byKind"`
+		ActiveTool  string                      `json:"activeTool"`
+		Files       []domain.DiscoveredPlanFile `json:"files"`
+	}
 	decodeToolText(t, r.Result, &payload)
-	if len(payload) != 1 || payload[0].ID != "plan-1" {
-		t.Fatalf("unexpected discovered plans payload: %+v", payload)
+	if payload.ProjectPath != "/repo" {
+		t.Fatalf("expected projectPath=/repo, got %q", payload.ProjectPath)
+	}
+	if payload.FileCount != 1 {
+		t.Fatalf("expected fileCount=1, got %d", payload.FileCount)
+	}
+	if payload.ByKind["markdown"] != 1 {
+		t.Fatalf("expected byKind[markdown]=1, got %v", payload.ByKind)
+	}
+	if payload.ActiveTool != "markdown" {
+		t.Fatalf("expected activeTool=markdown, got %q", payload.ActiveTool)
+	}
+	if len(payload.Files) != 1 || payload.Files[0].ID != "plan-1" {
+		t.Fatalf("unexpected files payload: %+v", payload.Files)
+	}
+}
+
+func TestToolGetDiscoveredPlans_NexusTakesPriority(t *testing.T) {
+	orch := &toolHarnessOrch{discoveredPlans: []domain.DiscoveredPlanFile{
+		{ID: "n1", Kind: domain.PlanFileKindNexus, Format: "json"},
+		{ID: "m1", Kind: domain.PlanFileKindMarkdown, Format: "md"},
+		{ID: "m2", Kind: domain.PlanFileKindMarkdown, Format: "md"},
+	}}
+	srv := newToolServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      50,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "get_discovered_plans",
+			"arguments": map[string]any{"projectPath": "/repo"},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var payload struct {
+		ActiveTool string         `json:"activeTool"`
+		FileCount  int            `json:"fileCount"`
+		ByKind     map[string]int `json:"byKind"`
+	}
+	decodeToolText(t, r.Result, &payload)
+	if payload.ActiveTool != "nexus" {
+		t.Fatalf("expected activeTool=nexus (priority), got %q", payload.ActiveTool)
+	}
+	if payload.FileCount != 3 {
+		t.Fatalf("expected fileCount=3, got %d", payload.FileCount)
+	}
+}
+
+func TestToolGetDiscoveredPlans_EmptyReturnsUnknown(t *testing.T) {
+	orch := &toolHarnessOrch{discoveredPlans: []domain.DiscoveredPlanFile{}}
+	srv := newToolServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      51,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "get_discovered_plans",
+			"arguments": map[string]any{"projectPath": "/empty"},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var payload struct {
+		ActiveTool string `json:"activeTool"`
+		FileCount  int    `json:"fileCount"`
+	}
+	decodeToolText(t, r.Result, &payload)
+	if payload.ActiveTool != "unknown" {
+		t.Fatalf("expected activeTool=unknown for empty result, got %q", payload.ActiveTool)
+	}
+	if payload.FileCount != 0 {
+		t.Fatalf("expected fileCount=0, got %d", payload.FileCount)
 	}
 }
 

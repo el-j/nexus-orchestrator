@@ -27,6 +27,33 @@
 
     <!-- Content -->
     <div class="flex-1 overflow-auto p-5">
+      <!-- Kind filter chips — only when multiple kinds available -->
+      <div
+        v-if="availableKinds.length > 1"
+        class="flex flex-wrap gap-1.5 mb-4 pb-3 border-b border-white/5"
+      >
+        <button
+          v-for="kind in availableKinds"
+          :key="kind"
+          :class="[
+            'text-[10px] px-2.5 py-1 rounded-full border transition-colors font-medium',
+            activeFilters.has(kind)
+              ? kindBadgeClass(kind)
+              : 'border-white/10 text-slate-500 hover:text-slate-300 hover:border-white/20',
+          ]"
+          @click="toggleFilter(kind)"
+        >
+          {{ kindLabel(kind) }}
+        </button>
+        <button
+          v-if="activeFilters.size > 0"
+          class="text-[10px] px-2.5 py-1 rounded-full border border-white/10 text-slate-500 hover:text-slate-300 transition-colors"
+          @click="activeFilters = new Set()"
+        >
+          Clear filters
+        </button>
+      </div>
+
       <!-- Loading -->
       <div v-if="loading && plans.length === 0" class="flex items-center justify-center py-16">
         <div
@@ -56,7 +83,7 @@
 
       <!-- Grouped by project -->
       <template v-else>
-        <section v-for="(data, projPath) in projectGroups" :key="projPath" class="mb-10">
+        <section v-for="(data, projPath) in filteredProjectGroups" :key="projPath" class="mb-10">
           <!-- Project path header -->
           <h2
             class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4 font-mono truncate"
@@ -186,12 +213,52 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useDiscoveredPlans } from '../composables/useDiscoveredPlans';
 import { currentProject } from '../composables/useProjectState';
 import type { PlanFileKind, DiscoveredPlanFile } from '../types/domain';
 
 const { plans, loading, error, scan } = useDiscoveredPlans(currentProject);
+
+// --- Kind filtering ---
+const activeFilters = ref<Set<PlanFileKind>>(new Set());
+
+function toggleFilter(kind: PlanFileKind) {
+  if (activeFilters.value.has(kind)) {
+    activeFilters.value.delete(kind);
+  } else {
+    activeFilters.value.add(kind);
+  }
+  // Trigger Vue reactivity on Set change
+  activeFilters.value = new Set(activeFilters.value);
+}
+
+function kindLabel(kind: PlanFileKind): string {
+  const labels: Record<PlanFileKind, string> = {
+    nexus: 'Nexus',
+    'claude-task': 'Tasks',
+    claude: 'Instructions',
+    cursor: 'Cursor',
+    'mcp-config': 'Config',
+    crewai: 'CrewAI',
+    markdown: 'Markdown',
+  };
+  return labels[kind] ?? kind;
+}
+
+const availableKinds = computed<PlanFileKind[]>(() => {
+  const kinds = new Set<PlanFileKind>();
+  for (const plan of plans.value) kinds.add(plan.kind);
+  return [
+    ...[...kinds].filter((k) => k === 'nexus'),
+    ...[...kinds].filter((k) => k === 'claude-task'),
+    ...[...kinds].filter((k) => k === 'claude'),
+    ...[...kinds].filter((k) => k === 'cursor'),
+    ...[...kinds].filter((k) => k === 'mcp-config'),
+    ...[...kinds].filter((k) => k === 'crewai'),
+    ...[...kinds].filter((k) => k === 'markdown'),
+  ];
+});
 
 function extractParentPlan(file: DiscoveredPlanFile): string | null {
   const m = file.summary?.match(/\*\*Plan:\*\*\s*(PLAN-\d+)/);
@@ -238,6 +305,29 @@ const projectGroups = computed(() => {
     map[proj] = { nexus, planGroups: sortedGroups, others };
   }
   return map;
+});
+
+// Apply active filters to projectGroups
+const filteredProjectGroups = computed(() => {
+  if (activeFilters.value.size === 0) return projectGroups.value;
+  const filtered: typeof projectGroups.value = {};
+  for (const [proj, group] of Object.entries(projectGroups.value)) {
+    const nexus = group.nexus && activeFilters.value.has('nexus') ? group.nexus : undefined;
+    const planGroups = group.planGroups
+      .map(
+        ([planId, files]) =>
+          [planId, files.filter((f) => activeFilters.value.has('claude-task'))] as [
+            string,
+            DiscoveredPlanFile[],
+          ],
+      )
+      .filter(([_, files]) => files.length > 0);
+    const others = group.others.filter((f) => activeFilters.value.has(f.kind));
+    if (nexus || planGroups.length > 0 || others.length > 0) {
+      filtered[proj] = { nexus, planGroups, others };
+    }
+  }
+  return filtered;
 });
 
 function basename(path: string): string {
