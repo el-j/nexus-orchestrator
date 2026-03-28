@@ -131,7 +131,6 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import { getAllTasks } from '../types/wails';
 import type { Task, TaskStatus } from '../types/domain';
 import { currentProject } from '../composables/useProjectState';
 import { resolveServerUrl } from '../composables/useServerUrl';
@@ -209,7 +208,17 @@ const detailOpen = ref(false);
 const selectedTask = ref<Task | null>(null);
 
 async function refresh() {
-  tasks.value = (await getAllTasks()) ?? [];
+  const baseUrl = await resolveServerUrl();
+  const params = new URLSearchParams();
+  if (currentProject.value) {
+    params.set('projectPath', currentProject.value);
+  }
+  const query = params.toString();
+  const res = await fetch(`${baseUrl}/api/tasks/all${query ? `?${query}` : ''}`);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+  tasks.value = ((await res.json()) as Task[]) ?? [];
 }
 
 watch(currentProject, () => {

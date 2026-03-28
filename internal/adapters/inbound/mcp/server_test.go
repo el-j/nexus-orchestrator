@@ -77,7 +77,9 @@ func (m *mockOrch) CreateDraft(_ domain.Task) (string, error) {
 	return m.createDraftID, m.createDraftErr
 }
 func (m *mockOrch) GetBacklog(_ string) ([]domain.Task, error) { return m.backlogTasks, m.backlogErr }
-func (m *mockOrch) PromoteTask(_ string) error                 { return m.promoteErr }
+func (m *mockOrch) PromoteTask(_ string) (ports.PromoteResult, error) {
+	return ports.PromoteResult{Promoted: m.promoteErr == nil}, m.promoteErr
+}
 func (m *mockOrch) UpdateTask(_ string, _ domain.Task) (domain.Task, error) {
 	return m.updateResult, m.updateErr
 }
@@ -542,11 +544,11 @@ func TestMCP_PromoteTask_ReturnsBool(t *testing.T) {
 	if err := json.Unmarshal(r.Result, &result); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
-	var payload map[string]bool
+	var payload map[string]any
 	if err := json.Unmarshal([]byte(result.Content[0].Text), &payload); err != nil {
 		t.Fatalf("unmarshal payload: %v", err)
 	}
-	if !payload["promoted"] {
+	if promoted, _ := payload["promoted"].(bool); !promoted {
 		t.Error("promoted: want true, got false")
 	}
 }

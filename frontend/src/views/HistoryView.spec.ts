@@ -1,20 +1,16 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { currentProject } from '../composables/useProjectState'
-import type { Task } from '../types/domain'
-import HistoryView from './HistoryView.vue'
+import { flushPromises, mount } from '@vue/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { currentProject } from '../composables/useProjectState';
+import type { Task } from '../types/domain';
+import HistoryView from './HistoryView.vue';
 
-const { getAllTasks } = vi.hoisted(() => ({
-  getAllTasks: vi.fn<() => Promise<Task[] | undefined>>(),
-}))
-
-vi.mock('../types/wails', () => ({
-  getAllTasks,
-}))
+const { resolveServerUrl } = vi.hoisted(() => ({
+  resolveServerUrl: vi.fn(),
+}));
 
 vi.mock('../composables/useServerUrl', () => ({
-  resolveServerUrl: vi.fn().mockResolvedValue('http://127.0.0.1:63987'),
-}))
+  resolveServerUrl,
+}));
 
 function makeTask(overrides: Partial<Task> = {}): Task {
   return {
@@ -31,21 +27,26 @@ function makeTask(overrides: Partial<Task> = {}): Task {
     updatedAt: '2026-03-13T01:01:00.000Z',
     logs: '',
     ...overrides,
-  }
+  };
 }
 
 describe('HistoryView', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    currentProject.value = null
-  })
+    vi.clearAllMocks();
+    currentProject.value = null;
+    resolveServerUrl.mockResolvedValue('http://127.0.0.1:63987');
+  });
 
-  it('shows only terminal tasks from getAllTasks', async () => {
-    getAllTasks.mockResolvedValue([
-      makeTask({ id: 'completed-task', status: 'COMPLETED' }),
-      makeTask({ id: 'failed-task', status: 'FAILED' }),
-      makeTask({ id: 'queued-task', status: 'QUEUED' }),
-    ])
+  it('shows only terminal tasks from the HTTP history endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [
+        makeTask({ id: 'completed-task', status: 'COMPLETED' }),
+        makeTask({ id: 'failed-task', status: 'FAILED' }),
+        makeTask({ id: 'queued-task', status: 'QUEUED' }),
+      ],
+    });
+    vi.stubGlobal('fetch', fetchMock);
 
     const wrapper = mount(HistoryView, {
       global: {
@@ -60,21 +61,25 @@ describe('HistoryView', () => {
           },
         },
       },
-    })
+    });
 
-    await flushPromises()
+    await flushPromises();
 
-    expect(getAllTasks).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('complete')
-    expect(wrapper.text()).toContain('failed-task')
-    expect(wrapper.text()).not.toContain('queued-task')
-    expect(wrapper.text()).toContain('COMPLETED')
-    expect(wrapper.text()).toContain('FAILED')
-  })
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(wrapper.text()).toContain('complete');
+    expect(wrapper.text()).toContain('failed-task');
+    expect(wrapper.text()).not.toContain('queued-task');
+    expect(wrapper.text()).toContain('COMPLETED');
+    expect(wrapper.text()).toContain('FAILED');
+  });
 
   it('applies the current project filter and handles undefined task arrays', async () => {
-    currentProject.value = '/tmp/project'
-    getAllTasks.mockResolvedValue(undefined)
+    currentProject.value = '/tmp/project';
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => undefined,
+    });
+    vi.stubGlobal('fetch', fetchMock);
 
     const wrapper = mount(HistoryView, {
       global: {
@@ -83,11 +88,11 @@ describe('HistoryView', () => {
           TaskDetailDrawer: true,
         },
       },
-    })
+    });
 
-    await flushPromises()
+    await flushPromises();
 
-    expect(getAllTasks.mock.calls.length).toBeGreaterThanOrEqual(1)
-    expect(wrapper.text()).toContain('No task history yet.')
-  })
-})
+    expect(String(fetchMock.mock.calls[0][0])).toContain('projectPath=%2Ftmp%2Fproject');
+    expect(wrapper.text()).toContain('No task history yet.');
+  });
+});

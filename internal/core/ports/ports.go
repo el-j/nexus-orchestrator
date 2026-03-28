@@ -87,6 +87,12 @@ type SessionRepository interface {
 	AppendMessage(projectPath string, msg domain.Message) error
 }
 
+// PromoteResult is returned by PromoteTask.
+type PromoteResult struct {
+	Promoted bool   `json:"promoted"`
+	Warning  string `json:"warning,omitempty"`
+}
+
 // Orchestrator is the primary inbound port that the UI, CLI, and HTTP API call.
 type Orchestrator interface {
 	SubmitTask(task domain.Task) (string, error)
@@ -131,7 +137,7 @@ type Orchestrator interface {
 	// GetBacklog returns DRAFT and BACKLOG tasks for the given project, ordered by priority then creation time.
 	GetBacklog(projectPath string) ([]domain.Task, error)
 	// PromoteTask transitions a DRAFT or BACKLOG task to QUEUED and enqueues it.
-	PromoteTask(id string) error
+	PromoteTask(id string) (PromoteResult, error)
 	// UpdateTask updates mutable fields (instruction, priority, providerName, tags, status) on an existing task.
 	UpdateTask(id string, updates domain.Task) (domain.Task, error)
 	// RegisterAISession registers a new external AI agent session and persists it.

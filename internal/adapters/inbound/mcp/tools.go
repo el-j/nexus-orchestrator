@@ -270,10 +270,15 @@ func (s *Server) toolPromoteTask(args json.RawMessage) (callToolResult, error) {
 	if err := json.Unmarshal(args, &p); err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: promote_task: invalid arguments: %w", err)
 	}
-	if err := s.orch.PromoteTask(p.ID); err != nil {
+	result, err := s.orch.PromoteTask(p.ID)
+	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: promote_task: %w", err)
 	}
-	b, _ := json.Marshal(map[string]bool{"promoted": true})
+	resp := map[string]any{"promoted": result.Promoted}
+	if result.Warning != "" {
+		resp["warning"] = result.Warning
+	}
+	b, _ := json.Marshal(resp)
 	return textResult(string(b)), nil
 }
 

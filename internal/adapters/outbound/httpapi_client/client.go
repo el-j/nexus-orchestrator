@@ -369,19 +369,23 @@ func (r *Client) GetBacklog(projectPath string) ([]domain.Task, error) {
 	return tasks, nil
 }
 
-func (r *Client) PromoteTask(id string) error {
+func (r *Client) PromoteTask(id string) (ports.PromoteResult, error) {
 	resp, err := http.Post(r.baseURL+"/api/tasks/"+url.PathEscape(id)+"/promote", "application/json", nil)
 	if err != nil {
-		return fmt.Errorf("remote: promote task: %w", err)
+		return ports.PromoteResult{}, fmt.Errorf("remote: promote task: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusNotFound {
-		return fmt.Errorf("remote: promote task: %w", domain.ErrNotFound)
+		return ports.PromoteResult{}, fmt.Errorf("remote: promote task: %w", domain.ErrNotFound)
 	}
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("remote: promote task: unexpected status %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		return ports.PromoteResult{}, fmt.Errorf("remote: promote task: unexpected status %d", resp.StatusCode)
 	}
-	return nil
+	var result ports.PromoteResult
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return ports.PromoteResult{}, fmt.Errorf("remote: promote task: decode response: %w", err)
+	}
+	return result, nil
 }
 
 func (r *Client) UpdateTask(id string, updates domain.Task) (domain.Task, error) {

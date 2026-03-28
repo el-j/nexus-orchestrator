@@ -208,3 +208,69 @@ func TestRetryLimit(t *testing.T) {
 	t.Errorf("task did not reach StatusFailed within timeout; final status=%s RetryCount=%d",
 		saved.Status, saved.RetryCount)
 }
+
+func TestCancelTask_NoProviderState_Succeeds(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService() // no providers
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.CreateDraft(domain.Task{
+		ProjectPath: "/proj/cancel-noprovider",
+		Instruction: "stuck task",
+	})
+	if err != nil {
+		t.Fatalf("CreateDraft: %v", err)
+	}
+
+	// Manually place the task in NO_PROVIDER state via repo
+	if err := repo.UpdateStatus(id, domain.StatusNoProvider); err != nil {
+		t.Fatalf("UpdateStatus: %v", err)
+	}
+
+	if err := orch.CancelTask(id); err != nil {
+		t.Fatalf("CancelTask on NO_PROVIDER task: %v", err)
+	}
+
+	saved, err := repo.GetByID(id)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if saved.Status != domain.StatusCancelled {
+		t.Errorf("status after cancel: want CANCELLED, got %s", saved.Status)
+	}
+}
+
+func TestPromoteTask_NoProvider_ReturnsWarning(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService() // no providers registered
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.CreateDraft(domain.Task{
+		ProjectPath: "/proj/promote-noprovider",
+		Instruction: "needs a provider",
+	})
+	if err != nil {
+		t.Fatalf("CreateDraft: %v", err)
+	}
+
+	result, err := orch.PromoteTask(id)
+	if err != nil {
+		t.Fatalf("PromoteTask: %v", err)
+	}
+	if !result.Promoted {
+		t.Error("Promoted: want true, got false")
+	}
+	if result.Warning == "" {
+		t.Error("Warning: expected non-empty warning when no provider available, got empty")
+	}
+
+	saved, err := repo.GetByID(id)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if saved.Status != domain.StatusQueued {
+		t.Errorf("status after promote: want QUEUED, got %s", saved.Status)
+	}
+}

@@ -3,70 +3,70 @@
  * Implements TASK-134.
  */
 
-import * as vscode from 'vscode'
-import { NexusClient, Task, TaskStatus } from './nexusClient'
-import { getKnownTaskSource } from './activityLog'
+import * as vscode from 'vscode';
+import { NexusClient, Task, TaskStatus } from './nexusClient';
+import { getKnownTaskSource } from './activityLog';
 
 function statusEmoji(status: TaskStatus): string {
   switch (status) {
     case 'QUEUED':
     case 'PROCESSING':
-      return '🕐'
+      return '🕐';
     case 'COMPLETED':
-      return '✅'
+      return '✅';
     case 'FAILED':
-      return '❌'
+      return '❌';
     case 'CANCELLED':
-      return '⛔'
+      return '⛔';
     case 'TOO_LARGE':
-      return '📏'
+      return '📏';
     case 'NO_PROVIDER':
-      return '🔌'
+      return '🔌';
     default:
-      return '❓'
+      return '❓';
   }
 }
 
 function statusIcon(status: TaskStatus): vscode.ThemeIcon {
   switch (status) {
     case 'QUEUED':
-      return new vscode.ThemeIcon('clock')
+      return new vscode.ThemeIcon('clock');
     case 'PROCESSING':
-      return new vscode.ThemeIcon('loading~spin')
+      return new vscode.ThemeIcon('loading~spin');
     case 'COMPLETED':
-      return new vscode.ThemeIcon('pass')
+      return new vscode.ThemeIcon('pass');
     case 'FAILED':
-      return new vscode.ThemeIcon('error')
+      return new vscode.ThemeIcon('error');
     case 'CANCELLED':
-      return new vscode.ThemeIcon('circle-slash')
+      return new vscode.ThemeIcon('circle-slash');
     case 'TOO_LARGE':
-      return new vscode.ThemeIcon('file-binary')
+      return new vscode.ThemeIcon('file-binary');
     case 'NO_PROVIDER':
-      return new vscode.ThemeIcon('plug')
+      return new vscode.ThemeIcon('plug');
     default:
-      return new vscode.ThemeIcon('question')
+      return new vscode.ThemeIcon('question');
   }
 }
 
 function truncate(s: string, max: number): string {
-  return s.length > max ? s.slice(0, max) + '…' : s
+  return s.length > max ? s.slice(0, max) + '…' : s;
 }
 
 export class TaskItem extends vscode.TreeItem {
   constructor(public readonly task: Task) {
-    const emoji = statusEmoji(task.status)
-    const shortId = task.id.replace(/-/g, '').slice(0, 8)
+    const emoji = statusEmoji(task.status);
+    const shortId = task.id.replace(/-/g, '').slice(0, 8);
     super(
       `${emoji} #${shortId} — ${truncate(task.instruction, 25)}`,
-      vscode.TreeItemCollapsibleState.None
-    )
+      vscode.TreeItemCollapsibleState.None,
+    );
 
-    const parts: string[] = []
-    const source = getKnownTaskSource(task.id)
-    if (source) parts.push(source)
-    if (task.providerHint) parts.push(task.providerHint)
-    if (task.modelId) parts.push(task.modelId)
-    this.description = parts.join(' / ')
+    const parts: string[] = [];
+    const source = getKnownTaskSource(task.id);
+    if (source) parts.push(source);
+    if (task.providerHint) parts.push(task.providerHint);
+    if (task.modelId) parts.push(task.modelId);
+    this.description = parts.join(' / ');
 
     const tooltipLines = [
       `**Instruction:** ${task.instruction}`,
@@ -79,60 +79,80 @@ export class TaskItem extends vscode.TreeItem {
       `**Model:** ${task.modelId || '—'}`,
       `**Created:** ${task.createdAt}`,
       `**Updated:** ${task.updatedAt}`,
-    ]
+    ];
     if (task.logs) {
-      const safeLogs = task.logs.slice(0, 500).replace(/[<>&]/g, '') +
-        (task.logs.length > 500 ? '...' : '')
-      tooltipLines.push(`\n**Logs:**\n\`\`\`\n${safeLogs}\n\`\`\``)
+      const safeLogs =
+        task.logs.slice(0, 500).replace(/[<>&]/g, '') + (task.logs.length > 500 ? '...' : '');
+      tooltipLines.push(`\n**Logs:**\n\`\`\`\n${safeLogs}\n\`\`\``);
     }
-    this.tooltip = new vscode.MarkdownString(tooltipLines.join('\n\n'))
+    this.tooltip = new vscode.MarkdownString(tooltipLines.join('\n\n'));
 
-    this.iconPath = statusIcon(task.status)
-    this.contextValue = 'nexusTask'
+    this.iconPath = statusIcon(task.status);
+    this.contextValue = 'nexusTask';
   }
 }
 
 class DaemonOfflineItem extends vscode.TreeItem {
   constructor() {
-    super('Nexus daemon offline — start daemon to connect', vscode.TreeItemCollapsibleState.None)
-    this.iconPath = new vscode.ThemeIcon('debug-disconnect')
-    this.tooltip = 'The nexusOrchestrator daemon is not running. Start it to see tasks.'
-    this.contextValue = 'nexusDaemonOffline'
+    super('Nexus daemon offline — start daemon to connect', vscode.TreeItemCollapsibleState.None);
+    this.iconPath = new vscode.ThemeIcon('debug-disconnect');
+    this.tooltip = 'The nexusOrchestrator daemon is not running. Start it to see tasks.';
+    this.contextValue = 'nexusDaemonOffline';
   }
 }
 
 export class TaskQueueProvider implements vscode.TreeDataProvider<TaskItem | DaemonOfflineItem> {
-  private readonly _onDidChangeTreeData =
-    new vscode.EventEmitter<TaskItem | DaemonOfflineItem | undefined | void>()
-  readonly onDidChangeTreeData = this._onDidChangeTreeData.event
+  private readonly _onDidChangeTreeData = new vscode.EventEmitter<
+    TaskItem | DaemonOfflineItem | undefined | void
+  >();
+  readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+  private workspacePath: string | undefined;
+  private scopeToWorkspace: boolean;
 
-  constructor(private readonly client: NexusClient) {}
+  constructor(private readonly client: NexusClient) {
+    const cfg = vscode.workspace.getConfiguration('nexus');
+    this.scopeToWorkspace = cfg.get<boolean>('scopeToWorkspace', true);
+    this.workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  }
+
+  getScopeToWorkspace(): boolean {
+    return this.scopeToWorkspace;
+  }
+
+  setScopeToWorkspace(scoped: boolean): void {
+    this.scopeToWorkspace = scoped;
+    this.refresh();
+  }
 
   refresh(): void {
-    this._onDidChangeTreeData.fire()
+    this._onDidChangeTreeData.fire();
   }
 
   startPolling(intervalMs = 5000): vscode.Disposable {
-    const handle = setInterval(() => this.refresh(), intervalMs)
-    return new vscode.Disposable(() => clearInterval(handle))
+    const handle = setInterval(() => this.refresh(), intervalMs);
+    return new vscode.Disposable(() => clearInterval(handle));
   }
 
   getTreeItem(element: TaskItem | DaemonOfflineItem): vscode.TreeItem {
-    return element
+    return element;
   }
 
   async getChildren(): Promise<(TaskItem | DaemonOfflineItem)[]> {
     try {
-      const tasks = await this.client.getAllTasks()
-      const active = tasks
-        .filter(t => t.status === 'QUEUED' || t.status === 'PROCESSING')
-        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-      const recent = tasks
-        .filter(t => t.status !== 'QUEUED' && t.status !== 'PROCESSING')
-        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      return [...active, ...recent].map(t => new TaskItem(t))
+      const tasks = await this.client.getAllTasks();
+      const filtered =
+        this.scopeToWorkspace && this.workspacePath
+          ? tasks.filter((t) => t.projectPath === this.workspacePath)
+          : tasks;
+      const active = filtered
+        .filter((t) => t.status === 'QUEUED' || t.status === 'PROCESSING')
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      const recent = filtered
+        .filter((t) => t.status !== 'QUEUED' && t.status !== 'PROCESSING')
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      return [...active, ...recent].map((t) => new TaskItem(t));
     } catch {
-      return [new DaemonOfflineItem()]
+      return [new DaemonOfflineItem()];
     }
   }
 }

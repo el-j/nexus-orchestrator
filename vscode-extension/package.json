@@ -100,6 +100,12 @@
       {
         "command": "nexus.delegateAllSessions",
         "title": "Delegate All Active Agents"
+      },
+      {
+        "command": "nexus.toggleWorkspaceScope",
+        "title": "Nexus: Toggle Workspace Scope",
+        "category": "Nexus",
+        "icon": "$(filter)"
       }
     ],
     "menus": {
@@ -123,6 +129,11 @@
           "command": "nexus.refreshAISessions",
           "when": "view == nexus.aiSessions",
           "group": "navigation"
+        },
+        {
+          "command": "nexus.toggleWorkspaceScope",
+          "when": "view == nexus.taskQueue",
+          "group": "navigation@3"
         }
       ],
       "editor/title": [
@@ -179,6 +190,11 @@
           "type": "boolean",
           "default": true,
           "description": "When true, nexusOrchestrator probes a curated set of localhost ports for MCP-compatible servers during agent discovery. Disable if you experience unexpected connections to local services."
+        },
+        "nexus.scopeToWorkspace": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, the Task Queue panel shows only tasks for the current workspace folder. Toggle with the filter button or the 'Nexus: Toggle Workspace Scope' command."
         }
       }
     },

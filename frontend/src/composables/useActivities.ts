@@ -19,9 +19,13 @@ export function useActivities(options?: {
       const baseUrl = await resolveServerUrl();
       const limit = options?.limit ?? 100;
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const res = await fetch(
-        `${baseUrl}/api/activities/timeline?limit=${limit}&since=${encodeURIComponent(since)}`,
-      );
+      const params = new URLSearchParams();
+      params.set('limit', String(limit));
+      params.set('since', since);
+      if (options?.projectFilter) {
+        params.set('projectPath', options.projectFilter);
+      }
+      const res = await fetch(`${baseUrl}/api/activities/timeline?${params.toString()}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as AIActivity[];
       activities.value = data ?? [];

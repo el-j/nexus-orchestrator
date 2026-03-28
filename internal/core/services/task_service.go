@@ -67,9 +67,19 @@ func (o *OrchestratorService) GetAllTasks() ([]domain.Task, error) {
 	return o.repo.GetAll()
 }
 
-// CancelTask removes a QUEUED task before it is processed.
+// CancelTask removes a QUEUED or NO_PROVIDER task before it is processed.
 func (o *OrchestratorService) CancelTask(id string) error {
+	// First try QUEUED → CANCELLED
 	ok, err := o.repo.UpdateStatusIfCurrent(id, domain.StatusQueued, domain.StatusCancelled)
+	if err != nil {
+		return fmt.Errorf("orchestrator: cancel task: %w", err)
+	}
+	if ok {
+		o.emit(id, domain.StatusCancelled)
+		return nil
+	}
+	// Also allow NO_PROVIDER → CANCELLED (task was stuck waiting for provider)
+	ok, err = o.repo.UpdateStatusIfCurrent(id, domain.StatusNoProvider, domain.StatusCancelled)
 	if err != nil {
 		return fmt.Errorf("orchestrator: cancel task: %w", err)
 	}
@@ -134,27 +144,43 @@ func (o *OrchestratorService) GetBacklog(projectPath string) ([]domain.Task, err
 }
 
 // PromoteTask transitions a DRAFT or BACKLOG task to QUEUED and enqueues it.
-func (o *OrchestratorService) PromoteTask(id string) error {
+func (o *OrchestratorService) PromoteTask(id string) (ports.PromoteResult, error) {
 	task, err := o.repo.GetByID(id)
 	if err != nil {
-		return fmt.Errorf("orchestrator: promote task: %w", err)
+		return ports.PromoteResult{}, fmt.Errorf("orchestrator: promote task: %w", err)
 	}
 	if task.Status != domain.StatusDraft && task.Status != domain.StatusBacklog {
-		return fmt.Errorf("orchestrator: promote task: cannot promote task with status %s", task.Status)
+		return ports.PromoteResult{}, fmt.Errorf("orchestrator: promote task: cannot promote task with status %s", task.Status)
 	}
 	if err := o.validateQueueAdmission(task); err != nil {
-		return fmt.Errorf("orchestrator: promote task: %w", err)
+		return ports.PromoteResult{}, fmt.Errorf("orchestrator: promote task: %w", err)
+	}
+	// Soft pre-flight: check provider availability (no DB side effects)
+	var warning string
+	if _, provErr := o.selectProviderForTaskDryRun(task); provErr != nil {
+		warning = fmt.Sprintf("no active provider available (%s); task will execute when a provider comes online", provErr.Error())
 	}
 	ok, err := o.repo.UpdateStatusIfCurrent(id, task.Status, domain.StatusQueued)
 	if err != nil {
-		return fmt.Errorf("orchestrator: promote task: %w", err)
+		return ports.PromoteResult{}, fmt.Errorf("orchestrator: promote task: %w", err)
 	}
 	if !ok {
-		return fmt.Errorf("orchestrator: promote task: task state changed during promotion")
+		return ports.PromoteResult{}, fmt.Errorf("orchestrator: promote task: task state changed during promotion")
 	}
 	o.signalWorker()
 	o.emit(task.ID, domain.StatusQueued)
-	return nil
+	return ports.PromoteResult{Promoted: true, Warning: warning}, nil
+}
+
+// selectProviderForTaskDryRun checks provider availability without mutating task state.
+func (o *OrchestratorService) selectProviderForTaskDryRun(task domain.Task) (ports.LLMClient, error) {
+	if task.ProviderName != "" {
+		if client, ok := o.discovery.GetClientByName(task.ProviderName); ok {
+			return client, nil
+		}
+		return nil, fmt.Errorf("provider %q not found or not active", task.ProviderName)
+	}
+	return o.discovery.FindForModel(task.ModelID, task.ProviderHint)
 }
 
 // UpdateTask merges non-zero fields from updates into the stored task and persists.

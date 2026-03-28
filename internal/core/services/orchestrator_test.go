@@ -1054,7 +1054,7 @@ func TestPromoteTask_DraftToQueued(t *testing.T) {
 		t.Fatalf("CreateDraft: %v", err)
 	}
 
-	if err := orch.PromoteTask(id); err != nil {
+	if _, err := orch.PromoteTask(id); err != nil {
 		t.Fatalf("PromoteTask: %v", err)
 	}
 
@@ -1081,7 +1081,7 @@ func TestPromoteTask_ErrorOnAlreadyQueued(t *testing.T) {
 		t.Fatalf("SubmitTask: %v", err)
 	}
 
-	err = orch.PromoteTask(id)
+	_, err = orch.PromoteTask(id)
 	if err == nil {
 		t.Fatal("expected error when promoting already-queued task, got nil")
 	}
@@ -1112,7 +1112,7 @@ func TestPromoteTask_EnforcesQueueCap(t *testing.T) {
 		t.Fatalf("CreateDraft: %v", err)
 	}
 
-	err = orch.PromoteTask(id)
+	_, err = orch.PromoteTask(id)
 	if err == nil {
 		t.Fatal("expected queue cap error, got nil")
 	}

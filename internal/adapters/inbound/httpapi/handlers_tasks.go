@@ -57,6 +57,16 @@ func (s *Server) handleGetAllTasks(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
+	projectPath := r.URL.Query().Get("projectPath")
+	if projectPath != "" {
+		filtered := make([]domain.Task, 0, len(tasks))
+		for _, t := range tasks {
+			if t.ProjectPath == projectPath {
+				filtered = append(filtered, t)
+			}
+		}
+		tasks = filtered
+	}
 	if tasks == nil {
 		tasks = []domain.Task{}
 	}
@@ -131,7 +141,8 @@ func (s *Server) handleGetBacklog(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handlePromoteTask(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	if err := s.orch.PromoteTask(id); err != nil {
+	result, err := s.orch.PromoteTask(id)
+	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			writeJSONError(w, "task not found", http.StatusNotFound)
 			return
@@ -139,7 +150,7 @@ func (s *Server) handlePromoteTask(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	writeJSON(w, http.StatusOK, result)
 }
 
 func (s *Server) handleUpdateTask(w http.ResponseWriter, r *http.Request) {

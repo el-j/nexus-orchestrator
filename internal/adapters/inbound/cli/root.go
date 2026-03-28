@@ -179,7 +179,7 @@ func newPromoteCmd(orch ports.Orchestrator) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := args[0]
-			err := orch.PromoteTask(id)
+			result, err := orch.PromoteTask(id)
 			if err != nil {
 				if strings.Contains(err.Error(), "not found") {
 					fmt.Printf("Task %s not found\n", id)
@@ -188,6 +188,9 @@ func newPromoteCmd(orch ports.Orchestrator) *cobra.Command {
 				return fmt.Errorf("cli: promote: %w", err)
 			}
 			fmt.Printf("Task %s promoted to queue\n", id)
+			if result.Warning != "" {
+				fmt.Printf("Warning: %s\n", result.Warning)
+			}
 			return nil
 		},
 	}

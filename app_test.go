@@ -61,7 +61,9 @@ func (m *mockOrchestrator) GetProviders() ([]ports.ProviderInfo, error)         
 func (m *mockOrchestrator) RegisterCloudProvider(_ domain.ProviderConfig) error { return nil }
 func (m *mockOrchestrator) RemoveProvider(_ string) error                       { return nil }
 func (m *mockOrchestrator) GetProviderModels(_ string) ([]string, error)        { return nil, nil }
-func (m *mockOrchestrator) PromoteTask(_ string) error                          { return nil }
+func (m *mockOrchestrator) PromoteTask(_ string) (ports.PromoteResult, error) {
+	return ports.PromoteResult{Promoted: true}, nil
+}
 func (m *mockOrchestrator) UpdateTask(_ string, _ domain.Task) (domain.Task, error) {
 	return domain.Task{}, nil
 }

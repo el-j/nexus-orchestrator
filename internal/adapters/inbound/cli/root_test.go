@@ -75,7 +75,9 @@ func (m *mockOrchestrator) TriggerScan(_ context.Context) ([]domain.DiscoveredPr
 func (m *mockOrchestrator) PromoteProvider(_ context.Context, _ string) error { return nil }
 func (m *mockOrchestrator) CreateDraft(_ domain.Task) (string, error)         { return "", nil }
 func (m *mockOrchestrator) GetBacklog(_ string) ([]domain.Task, error)        { return nil, nil }
-func (m *mockOrchestrator) PromoteTask(_ string) error                        { return nil }
+func (m *mockOrchestrator) PromoteTask(_ string) (ports.PromoteResult, error) {
+	return ports.PromoteResult{Promoted: true}, nil
+}
 func (m *mockOrchestrator) UpdateTask(_ string, _ domain.Task) (domain.Task, error) {
 	return domain.Task{}, nil
 }

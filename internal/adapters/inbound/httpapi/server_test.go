@@ -144,8 +144,8 @@ func (m *mockOrchestrator) CreateDraft(_ domain.Task) (string, error) {
 func (m *mockOrchestrator) GetBacklog(_ string) ([]domain.Task, error) {
 	return m.getBacklogResult, m.getBacklogErr
 }
-func (m *mockOrchestrator) PromoteTask(_ string) error {
-	return m.promoteTaskErr
+func (m *mockOrchestrator) PromoteTask(_ string) (ports.PromoteResult, error) {
+	return ports.PromoteResult{Promoted: m.promoteTaskErr == nil}, m.promoteTaskErr
 }
 func (m *mockOrchestrator) UpdateTask(_ string, _ domain.Task) (domain.Task, error) {
 	return m.updateTaskResult, m.updateTaskErr
@@ -1010,6 +1010,40 @@ func TestHandleGetAllTasks_Returns200WithTasks(t *testing.T) {
 	}
 }
 
+func TestHandleGetAllTasks_ProjectPathFilter_ReturnsMatchingTasks(t *testing.T) {
+	tasks := []domain.Task{
+		{ID: "task-a", ProjectPath: "/repo/a", Status: domain.StatusDraft},
+		{ID: "task-b", ProjectPath: "/repo/b", Status: domain.StatusCompleted},
+		{ID: "task-a2", ProjectPath: "/repo/a", Status: domain.StatusFailed},
+	}
+	mock := &mockOrchestrator{getQueueResult: tasks}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/tasks/all?projectPath=/repo/a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("want 200, got %d", resp.StatusCode)
+	}
+	var result []domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("want 2 filtered tasks, got %d", len(result))
+	}
+	for _, task := range result {
+		if task.ProjectPath != "/repo/a" {
+			t.Fatalf("unexpected project path in result: %s", task.ProjectPath)
+		}
+	}
+}
+
 func TestHandlePromoteTask_Returns204(t *testing.T) {
 	mock := &mockOrchestrator{}
 	srv := httpapi.NewServer(mock, nil)
@@ -1026,8 +1060,8 @@ func TestHandlePromoteTask_Returns204(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusNoContent {
-		t.Errorf("want 204, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("want 200, got %d", resp.StatusCode)
 	}
 }
 

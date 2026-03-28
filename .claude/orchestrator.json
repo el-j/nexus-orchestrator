@@ -2,8 +2,8 @@
   "version": "2",
   "updatedAt": "2026-03-28T00:00:00Z",
   "counters": {
-    "nextTaskId": 373,
-    "nextPlanId": 55
+    "nextTaskId": 386,
+    "nextPlanId": 56
   },
   "activePlanId": null,
   "notes": [
@@ -21,7 +21,8 @@
     "SESSION 2026-03-28: Started PLAN-051 (Local Model Intelligence Layer). Goal: smart context broker for small-context local models (qwen3.5-35b-a3b via .continue). 10 tasks TASK-346..TASK-355 across 5 waves: Wave1 domain ModelCapabilityProfile + SQLite repo; Wave2 Continue reader model extraction; Wave3 MCP tools get_project_context + get_focused_context + howto_brief; Wave4 register/get_model_capabilities + context-budget headers; Wave5 delegate_to_nexus update + copilot-instructions.md.",
     "PLAN-052 complete (2026-03-28): MCP Standards Compliance — SSE/Streamable HTTP/stdio transports. TASK-356: added ping+resources/list+prompts/list standard methods. TASK-357: legacy SSE transport (GET /sse → endpoint event → POST /messages via captureWriter → SSE message responses) with sseManager session tracking. TASK-358: Streamable HTTP (POST-only /mcp with GET→405, Mcp-Session-Id on initialize). TASK-359: Origin validation (localhost allowed, foreign blocked with 403) + CORS headers + OPTIONS preflight. TASK-360: cmd/nexus-mcp-stdio stdio proxy binary (stdin→HTTP POST→stdout). TASK-361: fixed .continue/mcpServers config with SSE+streamable-http+stdio examples. TASK-362: 11 new tests (SSE connect/exchange/405/400/404, GET /mcp 405, Origin validation×3, CORS preflight). TASK-363: copilot-instructions.md MCP section updated. All 44 MCP tests pass -race. 8 tasks TASK-356..TASK-363, 7 waves.",
     "PLAN-053 complete (2026-03-28): GUI Data Quality & Session Visibility Fixes. TASK-364: DiscoveredPlansView.vue uses currentProject shared state instead of empty ref('') — plans now populate correctly. TASK-365: ListPlanFiles returns all plans when projectPath empty (removed WHERE clause filter). TASK-366: ActivityService disconnectTimeout reduced from 2h to 15m — stale sessions cleaned up faster. TASK-367: Added watch(projectPath) in useDiscoveredPlans to refetch on project filter change. GetDiscoveredPlanFiles skips scanning when projectPath empty, returns all persisted plans. 4 tasks TASK-364..TASK-367, 2 waves.",
-    "PLAN-054 complete (2026-03-28): Live Views Overhaul + MCP workflow integration. TASK-368: DiscoveredPlansView.vue rebuilt — 🧠 Project Brain card for nexus-kind, extractParentPlan() parsing **Plan:** PLAN-NNN from summaries, task files grouped under PLAN-NNN accordion headers newest-first, otherFiles section, projectGroups computed replacing grouped/groupCount. TASK-369: ProvidersView.vue 'AI Coding Tools' section added — fetches /api/ai-sessions/discovered, shows Copilot/Continue/Claude CLI/Cline with Active/Installed/Detected badges, agentLabel()+agentStatusClass() helpers. TASK-370: LiveActivityView.vue session-grouped thread view — SessionGroup interface, sessionGroups computed grouping by sessionId with 60s time-proximity fallback, session header bars with agent name colored dot/model/tokens/project. TASK-371: HistoryView.vue status summary bar — statusSummary+summaryBadges computeds, clickable pipeline badge pills (Queued/Processing/Completed/Failed/Backlog/Draft) that toggle selectedFilter. TASK-372: plan_scanner.go summarizeOrchestratorJSON() enriches nexus-kind with plans: N (N completed) · tasks: N · updated: ISO. MCP workflow documented in copilot-instructions.md: Session Startup/Planning/Execution/Orchestration sections, key conventions incl. IMPORTANT promote_task only for LLM code-gen tasks. 5 tasks TASK-368..372, 2 waves."
+    "PLAN-054 complete (2026-03-28): Live Views Overhaul + MCP workflow integration. TASK-368: DiscoveredPlansView.vue rebuilt — 🧠 Project Brain card for nexus-kind, extractParentPlan() parsing **Plan:** PLAN-NNN from summaries, task files grouped under PLAN-NNN accordion headers newest-first, otherFiles section, projectGroups computed replacing grouped/groupCount. TASK-369: ProvidersView.vue 'AI Coding Tools' section added — fetches /api/ai-sessions/discovered, shows Copilot/Continue/Claude CLI/Cline with Active/Installed/Detected badges, agentLabel()+agentStatusClass() helpers. TASK-370: LiveActivityView.vue session-grouped thread view — SessionGroup interface, sessionGroups computed grouping by sessionId with 60s time-proximity fallback, session header bars with agent name colored dot/model/tokens/project. TASK-371: HistoryView.vue status summary bar — statusSummary+summaryBadges computeds, clickable pipeline badge pills (Queued/Processing/Completed/Failed/Backlog/Draft) that toggle selectedFilter. TASK-372: plan_scanner.go summarizeOrchestratorJSON() enriches nexus-kind with plans: N (N completed) · tasks: N · updated: ISO. MCP workflow documented in copilot-instructions.md: Session Startup/Planning/Execution/Orchestration sections, key conventions incl. IMPORTANT promote_task only for LLM code-gen tasks. 5 tasks TASK-368..372, 2 waves.",
+    "PLAN-055 complete (2026-03-28): Production hardening and release-path test coverage. TASK-373..374 fixed the real MCP-discovered NO_PROVIDER lifecycle bugs by allowing NO_PROVIDER→CANCELLED and returning promote warnings before worker dispatch. TASK-375..377 hardened VS Code workspace isolation with scoped task queue filtering, a workspace-scope toggle, and extension test coverage while verifying WorkspaceOrchView already filtered per folder. TASK-378..379 pushed project filtering server-side in useActivities, HistoryView, and GET /api/tasks/all. TASK-380..381 added MCP tool RPC coverage and HTTP project filter/state-machine coverage. TASK-382..384 added frontend composable/view tests plus extension workspace isolation tests. TASK-385 added integration-tagged black-box HTTP+MCP tests against the live in-process stack. Validation passed: extension npm test, frontend npm test, go test for httpapi/mcp, and go test -tags=integration ./internal/e2e/...."
   ],
   "plans": {
     "PLAN-001": {
@@ -604,6 +605,29 @@
       "createdAt": "2026-03-28T18:30:00Z",
       "completedAt": "2026-03-28T20:00:00Z",
       "tasks": ["TASK-368", "TASK-369", "TASK-370", "TASK-371", "TASK-372"]
+    },
+    "PLAN-055": {
+      "id": "PLAN-055",
+      "title": "Production Hardening & Full E2E Test Coverage",
+      "goal": "Fix NO_PROVIDER lifecycle bugs, enforce workspace/project scoping in VS Code and frontend views, add MCP/HTTP/frontend/extension coverage, and validate the release path end-to-end",
+      "status": "completed",
+      "createdAt": "2026-03-28T18:59:40Z",
+      "completedAt": "2026-03-28T19:40:00Z",
+      "tasks": [
+        "TASK-373",
+        "TASK-374",
+        "TASK-375",
+        "TASK-376",
+        "TASK-377",
+        "TASK-378",
+        "TASK-379",
+        "TASK-380",
+        "TASK-381",
+        "TASK-382",
+        "TASK-383",
+        "TASK-384",
+        "TASK-385"
+      ]
     }
   },
   "tasks": {
@@ -3588,6 +3612,136 @@
       "dependencies": [],
       "createdAt": "2026-03-28T18:30:00Z",
       "completedAt": "2026-03-28T20:00:00Z"
+    },
+    "TASK-373": {
+      "id": "TASK-373",
+      "planId": "PLAN-055",
+      "status": "done",
+      "title": "Allow CancelTask to transition NO_PROVIDER tasks to CANCELLED",
+      "role": "backend",
+      "dependencies": [],
+      "createdAt": "2026-03-28T18:59:40Z",
+      "completedAt": "2026-03-28T19:40:00Z"
+    },
+    "TASK-374": {
+      "id": "TASK-374",
+      "planId": "PLAN-055",
+      "status": "done",
+      "title": "Add provider pre-flight warnings to PromoteTask",
+      "role": "backend",
+      "dependencies": ["TASK-373"],
+      "createdAt": "2026-03-28T18:59:40Z",
+      "completedAt": "2026-03-28T19:40:00Z"
+    },
+    "TASK-375": {
+      "id": "TASK-375",
+      "planId": "PLAN-055",
+      "status": "done",
+      "title": "Scope VS Code task queue to the active workspace with toggle support",
+      "role": "extension",
+      "dependencies": [],
+      "createdAt": "2026-03-28T18:59:40Z",
+      "completedAt": "2026-03-28T19:40:00Z"
+    },
+    "TASK-376": {
+      "id": "TASK-376",
+      "planId": "PLAN-055",
+      "status": "done",
+      "title": "Add workspace isolation tests for TaskQueueProvider",
+      "role": "extension",
+      "dependencies": ["TASK-375"],
+      "createdAt": "2026-03-28T18:59:40Z",
+      "completedAt": "2026-03-28T19:40:00Z"
+    },
+    "TASK-377": {
+      "id": "TASK-377",
+      "planId": "PLAN-055",
+      "status": "done",
+      "title": "Verify WorkspaceOrchView live tasks stay folder-scoped",
+      "role": "extension",
+      "dependencies": ["TASK-375"],
+      "createdAt": "2026-03-28T18:59:40Z",
+      "completedAt": "2026-03-28T19:40:00Z"
+    },
+    "TASK-378": {
+      "id": "TASK-378",
+      "planId": "PLAN-055",
+      "status": "done",
+      "title": "Wire useActivities projectFilter into the timeline API query",
+      "role": "frontend",
+      "dependencies": [],
+      "createdAt": "2026-03-28T18:59:40Z",
+      "completedAt": "2026-03-28T19:40:00Z"
+    },
+    "TASK-379": {
+      "id": "TASK-379",
+      "planId": "PLAN-055",
+      "status": "done",
+      "title": "Move HistoryView task filtering to the server with projectPath queries",
+      "role": "frontend",
+      "dependencies": ["TASK-378"],
+      "createdAt": "2026-03-28T18:59:40Z",
+      "completedAt": "2026-03-28T19:40:00Z"
+    },
+    "TASK-380": {
+      "id": "TASK-380",
+      "planId": "PLAN-055",
+      "status": "done",
+      "title": "Add focused MCP tools_test.go RPC coverage",
+      "role": "testing",
+      "dependencies": ["TASK-374"],
+      "createdAt": "2026-03-28T18:59:40Z",
+      "completedAt": "2026-03-28T19:40:00Z"
+    },
+    "TASK-381": {
+      "id": "TASK-381",
+      "planId": "PLAN-055",
+      "status": "done",
+      "title": "Add HTTP handler tests for projectPath filtering and state transitions",
+      "role": "testing",
+      "dependencies": ["TASK-373", "TASK-374"],
+      "createdAt": "2026-03-28T18:59:40Z",
+      "completedAt": "2026-03-28T19:40:00Z"
+    },
+    "TASK-382": {
+      "id": "TASK-382",
+      "planId": "PLAN-055",
+      "status": "done",
+      "title": "Add frontend composable tests for project state and discovered plans",
+      "role": "testing",
+      "dependencies": ["TASK-378", "TASK-379"],
+      "createdAt": "2026-03-28T18:59:40Z",
+      "completedAt": "2026-03-28T19:40:00Z"
+    },
+    "TASK-383": {
+      "id": "TASK-383",
+      "planId": "PLAN-055",
+      "status": "done",
+      "title": "Add frontend view tests for HistoryView and LiveActivityView",
+      "role": "testing",
+      "dependencies": ["TASK-379", "TASK-382"],
+      "createdAt": "2026-03-28T18:59:40Z",
+      "completedAt": "2026-03-28T19:40:00Z"
+    },
+    "TASK-384": {
+      "id": "TASK-384",
+      "planId": "PLAN-055",
+      "status": "done",
+      "title": "Expand VS Code extension test coverage for workspace isolation",
+      "role": "testing",
+      "dependencies": ["TASK-375", "TASK-376"],
+      "createdAt": "2026-03-28T18:59:40Z",
+      "completedAt": "2026-03-28T19:40:00Z"
+    },
+    "TASK-385": {
+      "id": "TASK-385",
+      "planId": "PLAN-055",
+      "status": "done",
+      "title": "Add integration-tagged black-box HTTP and MCP coverage",
+      "role": "testing",
+      "dependencies": ["TASK-380", "TASK-381", "TASK-383", "TASK-384"],
+      "createdAt": "2026-03-28T18:59:40Z",
+      "completedAt": "2026-03-28T19:40:00Z"
     }
   }
 }

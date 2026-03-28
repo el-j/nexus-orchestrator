@@ -128,7 +128,7 @@ func (a *App) GetBacklog(projectPath string) ([]domain.Task, error) {
 }
 
 // PromoteTask transitions a DRAFT or BACKLOG task to QUEUED and enqueues it for execution.
-func (a *App) PromoteTask(id string) error {
+func (a *App) PromoteTask(id string) (ports.PromoteResult, error) {
 	return a.orchestrator.PromoteTask(id)
 }
 
