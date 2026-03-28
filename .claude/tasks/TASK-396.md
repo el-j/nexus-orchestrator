@@ -3,7 +3,7 @@ id: TASK-396
 title: Add Playwright providers and discovery flow coverage
 role: testing
 planId: PLAN-056
-status: todo
+status: done
 dependencies: [TASK-392, TASK-398, TASK-399, TASK-400]
 createdAt: 2026-03-28T20:30:00Z
 ---

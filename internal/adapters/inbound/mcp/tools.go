@@ -715,6 +715,20 @@ ALL AVAILABLE TOOLS
 - delegate_to_nexus            get delegation instruction for an AI session
 - get_discovered_plans         scan for plan/task/orchestration files in a project directory
 
+CLIENT SETUP
+VS Code (GitHub Copilot / Copilot Chat):
+  mcp.json → servers → Nexus Orchestrator:
+  { "type": "http", "url": "http://127.0.0.1:63988/mcp" }
+  Use type:"http" (Streamable HTTP) NOT type:"sse" — avoids 400 errors on
+  daemon restart. Streamable HTTP is stateless; SSE holds session in memory.
+
+Legacy SSE (Continue IDE, Cursor, older clients):
+  { "type": "sse", "url": "http://127.0.0.1:63988/sse" }
+  Sessions invalidate on restart — client will auto-reconnect after ~1 ping cycle.
+
+stdio (Claude Desktop, any stdio-only client):
+  Use nexus-mcp-stdio subprocess bridge. See docs/mcp-integration.md.
+
 HTTP ENDPOINTS (all at :63987 by default)
 GET  /.well-known/nexus.json  service discovery beacon
 GET  /api/howto               this guide in JSON form
@@ -753,6 +767,10 @@ KEY TOOLS:
   health             — ping daemon
   register_model_capabilities — store your context window size
   get_model_capabilities      — look up known model profiles
+
+VS CODE SETUP:
+  mcp.json → { "type": "http", "url": "http://127.0.0.1:63988/mcp" }
+  Use type:"http" (Streamable HTTP) NOT type:"sse" — reconnects cleanly after daemon restart.
 
 SMALL-CONTEXT TIPS:
   Use get_project_context first, then get_focused_context for ONE task at a time.

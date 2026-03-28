@@ -3,7 +3,7 @@ id: TASK-403
 title: Add periodic background plan scanning
 role: backend
 planId: PLAN-056
-status: todo
+status: done
 dependencies: [TASK-398, TASK-399, TASK-400]
 createdAt: 2026-03-28T20:30:00Z
 ---

@@ -3,7 +3,7 @@ id: TASK-389
 title: Add runtime config storage and /api/config endpoints
 role: backend
 planId: PLAN-056
-status: in-progress
+status: done
 dependencies: [TASK-386]
 createdAt: 2026-03-28T20:30:00Z
 ---

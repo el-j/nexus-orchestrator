@@ -3,7 +3,7 @@ id: TASK-388
 title: Add bearer token middleware to the HTTP API server
 role: api
 planId: PLAN-056
-status: in-progress
+status: done
 dependencies: [TASK-386]
 createdAt: 2026-03-28T20:30:00Z
 ---

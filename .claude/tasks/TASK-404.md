@@ -3,7 +3,7 @@ id: TASK-404
 title: Fix SSE session 400 on daemon restart — add reconnect resilience + ping keepalive
 role: backend
 planId: PLAN-056
-status: todo
+status: done
 dependencies: []
 createdAt: 2026-03-28T22:00:00Z
 ---

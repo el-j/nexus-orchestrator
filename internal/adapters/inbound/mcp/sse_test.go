@@ -3,6 +3,7 @@ package mcp_test
 import (
 	"bufio"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -220,9 +221,26 @@ func TestSSE_InvalidSessionID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST /messages: %v", err)
 	}
+	body, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
-	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("want 404, got %d", resp.StatusCode)
+	// TASK-405: missing session must return either 204 (no body) or a parseable
+	// JSON response — NOT a plain-text 400/404 that MCP clients log as
+	// "Failed to parse message: \"\"".
+	switch resp.StatusCode {
+	case http.StatusNoContent:
+		// 204 is the preferred response — no body expected.
+		if len(body) != 0 {
+			t.Errorf("204 response should have empty body, got %q", body)
+		}
+	default:
+		// Any other response must carry valid JSON so clients can parse it.
+		if ct := resp.Header.Get("Content-Type"); !strings.Contains(ct, "application/json") {
+			t.Errorf("non-204 response must be application/json, got %q", ct)
+		}
+		var js json.RawMessage
+		if err := json.Unmarshal(body, &js); err != nil {
+			t.Errorf("non-204 response body must be valid JSON, got %q: %v", body, err)
+		}
 	}
 }
 
@@ -366,6 +384,175 @@ func TestSSE_PingKeepalive(t *testing.T) {
 			}
 		case <-timeout:
 			t.Fatal("timed out waiting for SSE ping keepalive event")
+		}
+	}
+}
+
+// TestSSE_ReconnectAfterSessionLoss simulates a server restart by using a
+// stale sessionId that no longer exists. The POST must return a parseable
+// response (204 No Content, or a valid JSON body). Then a fresh SSE
+// connection is established and initialize succeeds.
+func TestSSE_ReconnectAfterSessionLoss(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+
+	// Step 1: POST to /messages with a sessionId that was never registered
+	// (simulating a session that existed before a restart).
+	staleID := "stale-session-id-does-not-exist"
+	resp, err := http.Post(
+		srv.URL+"/messages?sessionId="+staleID,
+		"application/json",
+		strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"ping"}`),
+	)
+	if err != nil {
+		t.Fatalf("POST stale session: %v", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	// Must be 204 (preferred) or a response with a parseable JSON body — never
+	// a non-JSON body paired with a 4xx status.
+	switch resp.StatusCode {
+	case http.StatusNoContent:
+		if len(body) != 0 {
+			t.Errorf("204 should have empty body, got %q", body)
+		}
+	default:
+		ct := resp.Header.Get("Content-Type")
+		if !strings.Contains(ct, "application/json") {
+			t.Errorf("non-204 stale-session response must be application/json, got %q", ct)
+		}
+		var js json.RawMessage
+		if err := json.Unmarshal(body, &js); err != nil {
+			t.Errorf("non-204 body must be valid JSON, got %q: %v", body, err)
+		}
+	}
+
+	// Step 2: Open a fresh SSE connection and perform initialize.
+	sseResp, err := http.Get(srv.URL + "/sse")
+	if err != nil {
+		t.Fatalf("GET /sse (reconnect): %v", err)
+	}
+	defer sseResp.Body.Close()
+
+	if sseResp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /sse: want 200, got %d", sseResp.StatusCode)
+	}
+
+	scanner := bufio.NewScanner(sseResp.Body)
+	var newEndpoint string
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "data: ") {
+			newEndpoint = strings.TrimPrefix(line, "data: ")
+			break
+		}
+	}
+	if newEndpoint == "" {
+		t.Fatal("no endpoint received on fresh SSE connection")
+	}
+
+	// POST initialize to the new endpoint.
+	initResp, err := http.Post(
+		srv.URL+newEndpoint,
+		"application/json",
+		strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"initialize"}`),
+	)
+	if err != nil {
+		t.Fatalf("POST initialize: %v", err)
+	}
+	initResp.Body.Close()
+	if initResp.StatusCode != http.StatusAccepted {
+		t.Errorf("POST initialize: want 202, got %d", initResp.StatusCode)
+	}
+
+	// Verify initialize response arrives over the SSE stream.
+	var sseData string
+	timeout := time.After(5 * time.Second)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.HasPrefix(line, "data: ") {
+				sseData = strings.TrimPrefix(line, "data: ")
+				return
+			}
+		}
+	}()
+	select {
+	case <-done:
+	case <-timeout:
+		t.Fatal("timeout waiting for initialize response on fresh SSE stream")
+	}
+
+	var rpc struct {
+		JSONRPC string `json:"jsonrpc"`
+		Result  struct {
+			ProtocolVersion string `json:"protocolVersion"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal([]byte(sseData), &rpc); err != nil {
+		t.Fatalf("unmarshal initialize response: %v", err)
+	}
+	if rpc.Result.ProtocolVersion != "2024-11-05" {
+		t.Errorf("protocolVersion: want 2024-11-05, got %q", rpc.Result.ProtocolVersion)
+	}
+}
+
+// TestSSE_ConnectionSurvivesLongIdle verifies that an SSE connection remains
+// alive well past what the old hard-coded 15 s ReadTimeout would have killed
+// in tests (represented here by an accelerated keepalive + sleep cycle).
+func TestSSE_ConnectionSurvivesLongIdle(t *testing.T) {
+	// Use a very short keepalive so the test stays fast.
+	orig := *mcp.SseKeepaliveInterval
+	*mcp.SseKeepaliveInterval = 30 * time.Millisecond
+	t.Cleanup(func() { *mcp.SseKeepaliveInterval = orig })
+
+	srv := newServer(t, &mockOrch{})
+
+	resp, err := http.Get(srv.URL + "/sse")
+	if err != nil {
+		t.Fatalf("GET /sse: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+
+	// Drain the first event (endpoint) so the scanner is positioned past it.
+	scanner := bufio.NewScanner(resp.Body)
+	for scanner.Scan() {
+		if strings.HasPrefix(scanner.Text(), "data: ") {
+			break
+		}
+	}
+
+	// Simulate an idle period longer than the old ReadTimeout (scaled down).
+	time.Sleep(60 * time.Millisecond)
+
+	// After the idle period the stream must still deliver a ping comment.
+	timeout := time.After(500 * time.Millisecond)
+	pingReceived := false
+	for !pingReceived {
+		lineCh := make(chan string, 1)
+		go func() {
+			if scanner.Scan() {
+				lineCh <- scanner.Text()
+			}
+			close(lineCh)
+		}()
+
+		select {
+		case line, ok := <-lineCh:
+			if !ok {
+				t.Fatal("SSE stream closed after idle period — connection did not survive")
+			}
+			if strings.HasPrefix(line, ":") {
+				pingReceived = true
+			}
+		case <-timeout:
+			t.Fatal("timed out: SSE connection did not survive idle period")
 		}
 	}
 }

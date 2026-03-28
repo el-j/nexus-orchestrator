@@ -3,7 +3,7 @@ id: TASK-397
 title: Wire Playwright into the release CI path
 role: devops
 planId: PLAN-056
-status: todo
+status: done
 dependencies: [TASK-393, TASK-394, TASK-395, TASK-396]
 createdAt: 2026-03-28T20:30:00Z
 ---

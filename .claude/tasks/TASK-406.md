@@ -3,7 +3,7 @@ id: TASK-406
 title: Update MCP client setup docs + howto tool text for VS Code Streamable HTTP
 role: docs
 planId: PLAN-056
-status: todo
+status: done
 dependencies: [TASK-404]
 createdAt: 2026-03-28T22:00:00Z
 ---

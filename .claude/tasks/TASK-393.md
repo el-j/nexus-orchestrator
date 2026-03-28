@@ -3,7 +3,7 @@ id: TASK-393
 title: Add Playwright task lifecycle flow coverage
 role: testing
 planId: PLAN-056
-status: todo
+status: done
 dependencies: [TASK-392]
 createdAt: 2026-03-28T20:30:00Z
 ---

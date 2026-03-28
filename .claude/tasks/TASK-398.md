@@ -3,7 +3,7 @@ id: TASK-398
 title: Extend discovery with Windsurf, Aider, Continue, Copilot, and generic task files
 role: backend
 planId: PLAN-056
-status: in-progress
+status: done
 dependencies: [TASK-386]
 createdAt: 2026-03-28T20:30:00Z
 ---

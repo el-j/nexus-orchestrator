@@ -3,7 +3,7 @@ id: TASK-392
 title: Set up Playwright E2E infrastructure
 role: testing
 planId: PLAN-056
-status: todo
+status: done
 dependencies: [TASK-390, TASK-391]
 createdAt: 2026-03-28T20:30:00Z
 ---

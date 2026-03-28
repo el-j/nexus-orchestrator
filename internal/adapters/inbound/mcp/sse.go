@@ -171,7 +171,10 @@ func (s *Server) handleSSEMessage(w http.ResponseWriter, r *http.Request) {
 
 	session, ok := s.sse.get(sessionID)
 	if !ok {
-		http.Error(w, "session not found", http.StatusNotFound)
+		// Session not found (likely daemon restart). Return 204 No Content so
+		// clients can treat this as a reconnect signal without receiving an
+		// empty plain-text 400 body that confuses MCP clients.
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 

@@ -3,7 +3,7 @@ id: TASK-399
 title: Add recursive discovery for instruction and prompt files
 role: backend
 planId: PLAN-056
-status: in-progress
+status: done
 dependencies: [TASK-398]
 createdAt: 2026-03-28T20:30:00Z
 ---

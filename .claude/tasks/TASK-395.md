@@ -3,7 +3,7 @@ id: TASK-395
 title: Add Playwright backlog promotion flow coverage
 role: testing
 planId: PLAN-056
-status: todo
+status: done
 dependencies: [TASK-392]
 createdAt: 2026-03-28T20:30:00Z
 ---

@@ -3,7 +3,7 @@ id: TASK-390
 title: Build token management UX in SettingsView
 role: frontend
 planId: PLAN-056
-status: todo
+status: done
 dependencies: [TASK-387, TASK-388, TASK-389]
 createdAt: 2026-03-28T20:30:00Z
 ---

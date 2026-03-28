@@ -3,7 +3,7 @@ id: TASK-394
 title: Add Playwright settings and token flow coverage
 role: testing
 planId: PLAN-056
-status: todo
+status: done
 dependencies: [TASK-392, TASK-390]
 createdAt: 2026-03-28T20:30:00Z
 ---
