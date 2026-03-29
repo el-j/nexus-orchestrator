@@ -109,80 +109,29 @@ func TestProbeClaudeSubAgents(t *testing.T) {
 	ctx := context.Background()
 	agents := probeClaudeSubAgentsDir(ctx, home)
 
-	if len(agents) != 2 {
-		t.Fatalf("expected 2 agents, got %d: %v", len(agents), agents)
+	// After dedup: one agent per project directory, not one per session file.
+	if len(agents) != 1 {
+		t.Fatalf("expected 1 agent (folded per project dir), got %d: %v", len(agents), agents)
 	}
 
-	byID := make(map[string]struct {
-		parentAgentID string
-		modelID       string
-		workingDir    string
-		kind          string
-		detMethod     string
-	})
-	for _, a := range agents {
-		byID[a.ID] = struct {
-			parentAgentID string
-			modelID       string
-			workingDir    string
-			kind          string
-			detMethod     string
-		}{
-			parentAgentID: a.ParentAgentID,
-			modelID:       a.ModelID,
-			workingDir:    a.WorkingDir,
-			kind:          string(a.Kind),
-			detMethod:     a.DetectionMethod,
-		}
+	a := agents[0]
+	expectedID := "claude-cli-" + encodedDir
+	if a.ID != expectedID {
+		t.Errorf("expected ID %q, got %q", expectedID, a.ID)
 	}
-
-	root, ok := byID[rootAgentID]
-	if !ok {
-		t.Fatalf("root agent %q not found; got IDs: %v", rootAgentID, byID)
+	if a.WorkingDir != "/Users/foo/myproject" {
+		t.Errorf("expected workingDir /Users/foo/myproject, got %q", a.WorkingDir)
 	}
-	if root.parentAgentID != "" {
-		t.Errorf("root agent should have empty ParentAgentID, got %q", root.parentAgentID)
+	if a.DetectionMethod != "claude-session-file" {
+		t.Errorf("expected detectionMethod claude-session-file, got %q", a.DetectionMethod)
 	}
-	if root.modelID != "claude-sonnet-4-6" {
-		t.Errorf("root agent: expected model claude-sonnet-4-6, got %q", root.modelID)
+	if string(a.Kind) != "claude-cli" {
+		t.Errorf("expected kind %q, got %q", "claude-cli", a.Kind)
 	}
-	if root.workingDir != "/Users/foo/myproject" {
-		t.Errorf("root agent: expected workingDir /Users/foo/myproject, got %q", root.workingDir)
-	}
-	if root.detMethod != "claude-session-file" {
-		t.Errorf("root agent: expected detectionMethod claude-session-file, got %q", root.detMethod)
-	}
-
-	sub, ok := byID[subAgentID]
-	if !ok {
-		t.Fatalf("sub agent %q not found; got IDs: %v", subAgentID, byID)
-	}
-	if sub.parentAgentID != rootAgentID {
-		t.Errorf("sub agent: expected ParentAgentID %q, got %q", rootAgentID, sub.parentAgentID)
-	}
-
-	// Verify post-merge SubAgentIDs via ScanAgents (uses the real home, so just check probe directly).
-	// We test the merge logic separately by calling the merge inline.
-	// Build the merged map manually to verify SubAgentIDs population.
-	merged := map[string]struct{ subAgentIDs []string }{}
-	for _, a := range agents {
-		merged[a.ID] = struct{ subAgentIDs []string }{}
-	}
-	for _, a := range agents {
-		if a.ParentAgentID == "" {
-			continue
-		}
-		if parent, exists := merged[a.ParentAgentID]; exists {
-			parent.subAgentIDs = append(parent.subAgentIDs, a.ID)
-			merged[a.ParentAgentID] = parent
-		}
-	}
-	rootMerged, ok := merged[rootAgentID]
-	if !ok {
-		t.Fatal("root agent missing from merged map")
-	}
-	if len(rootMerged.subAgentIDs) != 1 || rootMerged.subAgentIDs[0] != subAgentID {
-		t.Errorf("expected root.SubAgentIDs = [%q], got %v", subAgentID, rootMerged.subAgentIDs)
+	// 2 session files → name should include count.
+	expectedName := "Claude Code myproject (2 sessions)"
+	if a.Name != expectedName {
+		t.Errorf("expected Name %q, got %q", expectedName, a.Name)
 	}
 }
 

@@ -26,6 +26,7 @@
       >
         ⟳ Refresh
       </button>
+      <RefreshIndicator :last-refreshed="lastRefreshed" />
     </header>
 
     <!-- Content -->
@@ -148,7 +149,94 @@
           </div>
         </div>
       </section>
+
+      <!-- Configuration (merged from Settings) -->
+      <section class="mt-8">
+        <button
+          @click="configExpanded = !configExpanded"
+          class="flex items-center gap-2 mb-3 group"
+        >
+          <i
+            :class="[
+              'pi text-xs text-slate-500',
+              configExpanded ? 'pi-chevron-down' : 'pi-chevron-right',
+            ]"
+          ></i>
+          <h2
+            class="text-xs font-semibold text-slate-500 uppercase tracking-wider group-hover:text-slate-400"
+          >
+            Configuration
+          </h2>
+          <span class="text-[10px] text-slate-600">({{ configs.length }} saved)</span>
+        </button>
+        <div v-show="configExpanded">
+          <div class="flex items-center justify-end mb-3">
+            <button
+              class="text-[10px] text-violet-400 hover:text-violet-300 transition-colors px-2 py-1 rounded-lg border border-violet-500/20 hover:border-violet-500/40 hover:bg-violet-500/5"
+              @click="openAdd"
+            >
+              ＋ Add Provider
+            </button>
+          </div>
+
+          <div
+            v-if="configs.length === 0"
+            class="text-sm text-slate-600 py-8 text-center rounded-xl border border-white/5 bg-white/[0.02]"
+          >
+            No provider configurations saved yet
+          </div>
+
+          <div v-else class="space-y-2">
+            <div
+              v-for="cfg in configs"
+              :key="cfg.id"
+              class="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors group"
+            >
+              <div class="flex items-center gap-3 min-w-0">
+                <span
+                  :class="[
+                    'w-2 h-2 rounded-full flex-shrink-0',
+                    cfg.enabled ? 'bg-emerald-400' : 'bg-slate-600',
+                  ]"
+                ></span>
+                <span class="text-sm font-medium text-white truncate">{{ cfg.name }}</span>
+                <span
+                  class="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300 font-medium flex-shrink-0"
+                  >{{ cfg.kind }}</span
+                >
+                <span class="text-xs text-slate-500 font-mono truncate max-w-[200px]">{{
+                  cfg.baseUrl
+                }}</span>
+              </div>
+              <div
+                class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+              >
+                <button
+                  class="text-slate-400 hover:text-violet-400 transition-colors text-xs px-2 py-1 rounded hover:bg-white/5"
+                  @click="openEdit(cfg)"
+                >
+                  Edit
+                </button>
+                <button
+                  class="text-slate-400 hover:text-red-400 transition-colors text-xs px-2 py-1 rounded hover:bg-white/5"
+                  @click="handleDeleteConfig(cfg)"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
+
+    <!-- ProviderConfigForm modal -->
+    <ProviderConfigForm
+      v-if="showForm"
+      :model-value="editingConfig"
+      :on-close="closeForm"
+      :on-save="handleSave"
+    />
   </div>
 </template>
 
@@ -158,11 +246,19 @@ import { useProviders } from '../composables/useProviders';
 import { useDiscovery } from '../composables/useDiscovery';
 import ProviderStatus from '../components/ProviderStatus.vue';
 import DiscoveredProvidersPanel from '../components/DiscoveredProvidersPanel.vue';
+import ProviderConfigForm from '../components/ProviderConfigForm.vue';
+import RefreshIndicator from '../components/RefreshIndicator.vue';
 import type { DiscoveredProvider } from '../types/discovery';
-import type { DiscoveredAgent } from '../types/domain';
+import type { DiscoveredAgent, ProviderConfig } from '../types/domain';
 import { resolveServerUrl } from '../composables/useServerUrl';
+import {
+  listProviderConfigs,
+  addProviderConfig,
+  updateProviderConfig,
+  removeProviderConfig,
+} from '../types/wails';
 
-const { providers, refresh } = useProviders();
+const { providers, refresh: originalRefresh } = useProviders();
 const {
   discovered,
   loading: discoveryLoading,
@@ -170,6 +266,12 @@ const {
   refresh: discoveryRefresh,
   scanNow,
 } = useDiscovery();
+
+const lastRefreshed = ref<Date | null>(null);
+async function refresh() {
+  await originalRefresh();
+  lastRefreshed.value = new Date();
+}
 
 const activeCount = computed(() => providers.value.filter((p) => p.active).length);
 
@@ -179,7 +281,10 @@ async function loadAgents() {
   const res = await fetch(`${base}/api/ai-sessions/discovered`);
   if (res.ok) agents.value = await res.json();
 }
-onMounted(loadAgents);
+onMounted(() => {
+  loadAgents();
+  lastRefreshed.value = new Date();
+});
 
 function agentLabel(a: DiscoveredAgent): string {
   const labels: Record<string, string> = {
@@ -198,10 +303,57 @@ function agentStatusClass(a: DiscoveredAgent): string {
   return 'bg-slate-500/20 text-slate-400';
 }
 
+// ── Provider Configuration CRUD ──────────────────────────────────────────────
+
+const configs = ref<ProviderConfig[]>([]);
+const showForm = ref(false);
+const editingConfig = ref<ProviderConfig | null>(null);
+const configExpanded = ref(false);
+
+async function loadConfigs() {
+  try {
+    configs.value = (await listProviderConfigs()) ?? [];
+  } catch {
+    /* silent fail */
+  }
+}
+onMounted(loadConfigs);
+
+function openAdd() {
+  editingConfig.value = null;
+  showForm.value = true;
+}
+
+function openEdit(cfg: ProviderConfig) {
+  editingConfig.value = cfg;
+  showForm.value = true;
+}
+
+function closeForm() {
+  showForm.value = false;
+  editingConfig.value = null;
+}
+
+async function handleSave(cfg: Partial<ProviderConfig>) {
+  if (editingConfig.value) {
+    await updateProviderConfig({ ...editingConfig.value, ...cfg } as ProviderConfig);
+  } else {
+    await addProviderConfig(cfg);
+  }
+  closeForm();
+  await loadConfigs();
+}
+
+async function handleDeleteConfig(cfg: ProviderConfig) {
+  if (!window.confirm(`Remove provider "${cfg.name}"?`)) return;
+  await removeProviderConfig(cfg.id);
+  await loadConfigs();
+}
+
 function handlePromote(provider: DiscoveredProvider) {
   // Pre-fill the configured provider form with discovered data
-  // For now, we open the add form — a future iteration can pre-fill fields
+  editingConfig.value = null;
+  showForm.value = true;
   console.log('Promote discovered provider:', provider.name, provider.baseUrl);
-  // TODO: open ProviderConfigForm pre-filled with provider.kind, provider.baseUrl, provider.name
 }
 </script>

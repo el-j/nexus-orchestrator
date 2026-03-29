@@ -1,11 +1,11 @@
 {
   "version": "2",
-  "updatedAt": "2026-03-29T11:30:00Z",
+  "updatedAt": "2026-03-29T10:20:14Z",
   "counters": {
     "nextTaskId": 433,
     "nextPlanId": 58
   },
-  "activePlanId": "PLAN-057",
+  "activePlanId": null,
   "notes": [
     "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix). PLAN-013 completed (update CI to latest action versions). PLAN-014 completed (unified publish.yml pipeline, fixed GITHUB_TOKEN cross-trigger bug, fixed CLI/desktop artifact naming collision, updated downloads.md). PLAN-015 completed (production-grade Node20 GitHub Action with TypeScript, built-in agent identity loading from el-j/agency-agents, 24 unit tests, action-ci.yml CI workflow). PLAN-016 completed (release pipeline finalization: deleted conflicting version.yml+release.yml, created CHANGELOG.md, fixed downloads.md desktop links). PLAN-017 completed (fix all broken download links: nexusOrchestrator\u2192nexus-orchestrator prefix, macOS .tar.gz\u2192.zip, add Gatekeeper workaround instructions). PLAN-018 completed (provider visibility: configurable Ollama/LM Studio URLs, BaseURL+Error in ProviderInfo, SQLite-persisted provider CRUD, GUI provider management panel, VS Code extension with submit/queue/status-bar). PLAN-019 completed (VS Code extension VSIX in release pipeline: vsce packaging with publisher+@vscode/vsce, build-vscode job in publish.yml+ci.yml, DownloadsView.vue/HomeView.vue/docs updated to mention extension). PLAN-020 completed (fix ProviderInfo TypeScript PascalCase\u2192camelCase type mismatch, wire AppSidebar routing, create ProvidersView.vue, dogfood confirmed COMPLETED via LM Studio qwen3-coder-next in 9s). PLAN-021 completed (SSE real-time updates via EventSource+fallback, ProviderConfig kind fix, CHANGELOG v0.8.0 \u2014 all 4 tasks dogfooded via daemon, LM Studio qwen3-coder-next). PLAN-022 completed (Universal AI Session Orchestration \u2014 AISession domain type, AISessionRepository+AISessionMonitor ports, SQLite AISessionRepo, HTTP /api/ai-sessions CRUD, MCP register_session+get_ai_sessions (14 tools total), GUI AISessionsView+useAISessions composable, VS Code SessionMonitor+Copilot detection, entry point wiring, 13 QA tests \u2014 all 9 tasks, 7 waves, all green). PLAN-023 active (System-Wide Provider Discovery + Background Service Mode \u2014 detect Claude CLI/Copilot/Antigravity/local AI tools, hide-to-tray, in-app log console, no console window \u2014 13 tasks across 8 waves). PLAN-024 completed (Multi-Project Planning & Idea Staging \u2014 DRAFT/BACKLOG statuses, ProviderName per-task routing, Priority+Tags, SQLite migrations, backlog CRUD on HTTP/MCP/CLI/Wails, BacklogView+BacklogList+ProjectSelector GUI, TaskSubmitForm split-button, 20 new QA tests \u2014 all 12 tasks, 7 waves, all green). PLAN-029 completed (Task Queue UI fix: DashboardView flex wrapper; AI Session dedup by externalId: idempotent RegisterAISession + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code extension heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-030 completed (Comprehensive Hardening: HeartbeatAISession+PromoteProvider bindings, error handling consistency, constructor nil-validation, HTTP API error format, frontend circular dep fix, VSCode memory leak+URLs, VSCode session monitor race fix, processNext decomposition into 4 helpers, silent catch blocks fixed, security hardening CSP nonce+file permissions+XSS, Vue error boundary+rejection handler, GitHub Action 53 tests, golangci-lint+eslint in CI, discovery error logging+configurable builder options, frontend accessibility ARIA labels). PLAN-031 completed (fix duplicate package decl in llm_openaicompat test, go fmt all files, add gofmt CI check + vet gate for test job \u2014 all 4 tasks green). EXPERIMENT 2026-03-12: go build passes even when _test.go files have syntax errors (build only compiles cmd/ entry points, never test files) \u2014 CI pattern Build\u2713 Vet\u2717 Test\u2717 gives false confidence; fixed by adding needs:[vet] gate to test job. EXPERIMENT 2026-03-12: duplicate package declarations caused by appending generated/scaffolded code to an existing file that already had a package line \u2014 always check for duplicate package decls after code generation. EXPERIMENT 2026-03-12: gofmt violations (multi-statement single lines with ;) not caught by go vet or go build \u2014 must add explicit gofmt -l check in lint CI job; find command: find . -name '*.go' | xargs gofmt -l. SESSION 2026-03-12: Completed PLAN-031 (CI hard-failure fix). Files changed: adapter_test.go (dup pkg decl), orchestrator_options_test.go (gofmt), .github/workflows/ci.yml (gofmt check + vet gate). Tests: all green. SESSION 2026-03-13: Completed PLAN-036 (formalized the release-readiness audit into .claude plan/task records and cleared the stale active-plan pointer). SESSION 2026-03-13: Started PLAN-037 (Wave 1 release-readiness hardening for queue authority, publish-gate parity, and provider promotion durability). SESSION 2026-03-13: Completed PLAN-037 (queued-task authority moved to persisted pending rows, publish gained full release-gate parity, provider promotion now persists enabled config, and Go race tests + daemon E2E + frontend/extension coverage all passed). SESSION 2026-03-13 (PLAN-039): Fixed CI failures from build-path unification \u2014 TASK-259: created build/frontend/.gitkeep + .gitignore glob fix so go embed works on fresh clone; TASK-260: bumped esbuild ^0.20.0\u2192^0.27.0 in vscode-extension/package.json + regenerated package-lock.json to fix npm ci sync error. SESSION 2026-03-13 (PLAN-040): Added Google Antigravity LLM provider \u2014 TASK-261: Antigravity now always registered in buildProviders() via NEXUS_ANTIGRAVITY_URL (default http://127.0.0.1:4315/v1); TASK-262: buildProviderFromConfig now handles ProviderKindDesktopApp/LocalAI/VLLM/TextGenUI via llm_openaicompat with /v1 normalization; TASK-263: copilot-instructions.md configuration section updated.",
     "PLAN-041 complete (2026-03-13): session purge (PurgeDisconnected on AISessionRepository + auto-purge in runSessionCleanup + DELETE /api/ai-sessions endpoint + Wails binding + Clear Disconnected button), Ollama /api/ps active-model detection, LiveActivityView, Live AI nav item. All 8 tasks TASK-264..TASK-271 done. Build + tests all green.",
@@ -49,6 +49,14 @@
       "date": "2026-03-29T11:30:00Z",
       "author": "copilot",
       "note": "PLAN-057 created: Mission Control Dashboard & UI Consolidation. 26 tasks (TASK-407..432) across 7 waves. Deep UX audit found 60% redundancy across 11 views. Plan consolidates to 6 views with unified Mission Control, enriched provider metadata, Claude agent dedup, global SSE, instruction text inline, and freshness indicators."
+    },
+    {
+      "ts": "2026-03-29T10:02:18Z",
+      "note": "Wave 1 complete (TASK-407 ProviderInfo enrichment, TASK-408 agent dedup, TASK-409 DurationMs). All 18 Go test packages pass."
+    },
+    {
+      "ts": "2026-03-29T10:20:14Z",
+      "note": "PLAN-057 completed. All 26 tasks done. 11 views to 6. All Go+Vitest tests pass."
     }
   ],
   "plans": {
@@ -660,7 +668,7 @@
       "id": "PLAN-057",
       "title": "Mission Control Dashboard & UI Consolidation",
       "goal": "Consolidate 11 views into 6 with a unified Mission Control dashboard, eliminate redundancy, enrich provider metadata, deduplicate agent cards, and add cross-cutting UX improvements.",
-      "status": "active",
+      "status": "completed",
       "createdAt": "2026-03-29T11:30:00Z",
       "tasks": [
         "TASK-407",
@@ -689,7 +697,8 @@
         "TASK-430",
         "TASK-431",
         "TASK-432"
-      ]
+      ],
+      "completedAt": "2026-03-29T10:20:14Z"
     }
   },
   "tasks": {
@@ -3808,236 +3817,262 @@
     "TASK-407": {
       "id": "TASK-407",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Enrich ProviderInfo with operational metadata",
       "role": "backend",
       "wave": 1,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-408": {
       "id": "TASK-408",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Dedup DiscoveredAgent for Claude session files",
       "role": "backend",
       "wave": 1,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-409": {
       "id": "TASK-409",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Add DurationMs computed field to Task responses",
       "role": "backend",
       "wave": 1,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-410": {
       "id": "TASK-410",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Build MissionControlView status bar + unified task list",
       "role": "frontend",
       "wave": 2,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-411": {
       "id": "TASK-411",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "MissionControlView agents panel",
       "role": "frontend",
       "wave": 2,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-412": {
       "id": "TASK-412",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "MissionControlView providers panel",
       "role": "frontend",
       "wave": 2,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-413": {
       "id": "TASK-413",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "MissionControlView recent completions panel",
       "role": "frontend",
       "wave": 2,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-414": {
       "id": "TASK-414",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "MissionControlView submit form",
       "role": "frontend",
       "wave": 2,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-415": {
       "id": "TASK-415",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Delete DiscoveryView merge into ProvidersView",
       "role": "frontend",
       "wave": 3,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-416": {
       "id": "TASK-416",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Merge AI Sessions + AI Agents into AgentsView",
       "role": "frontend",
       "wave": 3,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-417": {
       "id": "TASK-417",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Delete AISessionsView and AIAgentsView",
       "role": "frontend",
       "wave": 3,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-418": {
       "id": "TASK-418",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Merge Settings configuration into ProvidersView",
       "role": "frontend",
       "wave": 3,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-419": {
       "id": "TASK-419",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Restructure AppSidebar from 11 to 6 items",
       "role": "frontend",
       "wave": 3,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-420": {
       "id": "TASK-420",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Show task.instruction inline in all task lists",
       "role": "frontend",
       "wave": 4,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-421": {
       "id": "TASK-421",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Add last refreshed indicator to every view",
       "role": "frontend",
       "wave": 4,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-422": {
       "id": "TASK-422",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Global SSE connection shared across all views",
       "role": "frontend",
       "wave": 4,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-423": {
       "id": "TASK-423",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Merge Live AI into AgentsView as Activity tab",
       "role": "frontend",
       "wave": 5,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-424": {
       "id": "TASK-424",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Merge History into Mission Control",
       "role": "frontend",
       "wave": 5,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-425": {
       "id": "TASK-425",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Merge Backlog into Mission Control",
       "role": "frontend",
       "wave": 5,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-426": {
       "id": "TASK-426",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Track provider response latency",
       "role": "backend",
       "wave": 6,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-427": {
       "id": "TASK-427",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Detect and surface 429 rate-limit state",
       "role": "backend",
       "wave": 6,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-428": {
       "id": "TASK-428",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "ProvidersView enriched provider info display",
       "role": "frontend",
       "wave": 6,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-429": {
       "id": "TASK-429",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Vitest MissionControlView",
       "role": "testing",
       "wave": 7,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-430": {
       "id": "TASK-430",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Vitest AgentsView",
       "role": "testing",
       "wave": 7,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-431": {
       "id": "TASK-431",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Vitest ProvidersView enriched",
       "role": "testing",
       "wave": 7,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     },
     "TASK-432": {
       "id": "TASK-432",
       "planId": "PLAN-057",
-      "status": "todo",
+      "status": "done",
       "title": "Go tests ProviderInfo + dedup + DurationMs",
       "role": "testing",
       "wave": 7,
-      "createdAt": "2026-03-29T11:30:00Z"
+      "createdAt": "2026-03-29T11:30:00Z",
+      "completedAt": "2026-03-29T10:20:14Z"
     }
   }
 }

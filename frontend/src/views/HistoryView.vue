@@ -11,6 +11,7 @@
             {{ filteredTasks.length === 1 ? 'task' : 'tasks' }}
           </p>
         </div>
+        <RefreshIndicator :last-refreshed="lastRefreshed" />
       </div>
 
       <!-- Status distribution summary bar -->
@@ -83,9 +84,10 @@
     <div v-else class="flex-1 overflow-auto p-4">
       <!-- Table header -->
       <div
-        class="grid grid-cols-[6rem_1fr_1fr_7rem_8rem] gap-3 px-4 py-2 mb-1 text-xs font-semibold text-slate-600 uppercase tracking-wider"
+        class="grid grid-cols-[6rem_2fr_1fr_1fr_7rem_8rem] gap-3 px-4 py-2 mb-1 text-xs font-semibold text-slate-600 uppercase tracking-wider"
       >
         <span>ID</span>
+        <span>Instruction</span>
         <span>Project</span>
         <span>Target file</span>
         <span>Status</span>
@@ -97,12 +99,17 @@
         v-for="task in filteredTasks"
         :key="task.id"
         @click="openDetail(task)"
-        class="grid grid-cols-[6rem_1fr_1fr_7rem_8rem] gap-3 items-center px-4 py-3 mb-1 rounded-xl border border-white/5 bg-nexus-800 hover:border-violet-500/20 hover:bg-nexus-700 cursor-pointer transition-all"
+        class="grid grid-cols-[6rem_2fr_1fr_1fr_7rem_8rem] gap-3 items-center px-4 py-3 mb-1 rounded-xl border border-white/5 bg-nexus-800 hover:border-violet-500/20 hover:bg-nexus-700 cursor-pointer transition-all"
       >
         <!-- Short ID -->
         <span class="font-mono text-xs text-slate-400 truncate" :title="task.id">
           {{ shortId(task.id) }}
         </span>
+
+        <!-- Instruction -->
+        <p class="text-sm font-medium text-white truncate" :title="task.instruction">
+          {{ task.instruction }}
+        </p>
 
         <!-- Project (last path segment) -->
         <span class="text-xs text-slate-300 truncate font-mono" :title="task.projectPath">
@@ -136,10 +143,12 @@ import { currentProject } from '../composables/useProjectState';
 import { resolveServerUrl } from '../composables/useServerUrl';
 import TaskStatusBadge from '../components/TaskStatusBadge.vue';
 import TaskDetailDrawer from '../components/TaskDetailDrawer.vue';
+import RefreshIndicator from '../components/RefreshIndicator.vue';
 import { formatDate } from '../utils/time';
 
 const tasks = ref<Task[]>([]);
 const loading = ref(false);
+const lastRefreshed = ref<Date | null>(null);
 let interval: ReturnType<typeof setInterval> | null = null;
 let eventSource: EventSource | null = null;
 
@@ -219,6 +228,7 @@ async function refresh() {
     throw new Error(`HTTP ${res.status}`);
   }
   tasks.value = ((await res.json()) as Task[]) ?? [];
+  lastRefreshed.value = new Date();
 }
 
 watch(currentProject, () => {

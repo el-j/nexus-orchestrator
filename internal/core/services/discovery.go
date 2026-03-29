@@ -22,6 +22,9 @@ type providerHealth struct {
 	models           []string
 	checkedAt        time.Time
 	consecutiveFails int
+	latencyMs        int64  // last probe round-trip in ms
+	rateLimited      bool   // true if last error was 429 / rate-limit
+	lastError        string // last error message (empty when healthy)
 }
 
 // DiscoveryService probes registered LLM clients and returns the first active one.
@@ -151,10 +154,16 @@ func (s *DiscoveryService) ListProviders() []ports.ProviderInfo {
 	for _, c := range clients {
 		h := s.cachedHealth(c)
 		info := ports.ProviderInfo{
-			Name:    c.ProviderName(),
-			Active:  h.alive,
-			BaseURL: c.BaseURL(),
+			Name:             c.ProviderName(),
+			Active:           h.alive,
+			BaseURL:          c.BaseURL(),
+			ContextLimit:     c.ContextLimit(),
+			LastChecked:      h.checkedAt,
+			ConsecutiveFails: h.consecutiveFails,
 		}
+		info.LatencyMs = h.latencyMs
+		info.RateLimited = h.rateLimited
+		info.LastError = h.lastError
 		if h.alive {
 			info.ActiveModel = h.activeModel
 			info.Models = h.models
@@ -224,10 +233,13 @@ func (s *DiscoveryService) cachedHealth(c ports.LLMClient) *providerHealth {
 	}
 
 	// Cache is stale or missing — probe now.
+	start := time.Now()
 	alive := c.Ping()
+	latMs := time.Since(start).Milliseconds()
 	updated := &providerHealth{
 		alive:     alive,
 		checkedAt: time.Now(),
+		latencyMs: latMs,
 	}
 	if ok {
 		updated.consecutiveFails = h.consecutiveFails
@@ -240,8 +252,12 @@ func (s *DiscoveryService) cachedHealth(c ports.LLMClient) *providerHealth {
 			updated.models = models
 		}
 		updated.consecutiveFails = 0
+		updated.rateLimited = false
+		updated.lastError = ""
 	} else {
 		updated.consecutiveFails++
+		updated.lastError = name + " unreachable"
+		updated.rateLimited = false
 	}
 	s.healthCache[name] = updated
 	return updated

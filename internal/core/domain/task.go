@@ -88,6 +88,7 @@ type Task struct {
 	Status      TaskStatus  `json:"status"`
 	CreatedAt   time.Time   `json:"createdAt"`
 	UpdatedAt   time.Time   `json:"updatedAt"`
+	DurationMs  int64       `json:"durationMs,omitempty"`
 	RetryCount  int         `json:"retryCount,omitempty"`
 	Logs        string      `json:"logs,omitempty"`
 	AISessionID string      `json:"aiSessionId,omitempty"`
@@ -96,4 +97,12 @@ type Task struct {
 // IsExecutable returns true if the task can enter the execution queue.
 func (t Task) IsExecutable() bool {
 	return t.Status == StatusQueued
+}
+
+// ComputeDuration sets DurationMs from CreatedAt and UpdatedAt.
+func (t *Task) ComputeDuration() {
+	if t.CreatedAt.IsZero() || t.UpdatedAt.IsZero() || t.UpdatedAt.Before(t.CreatedAt) {
+		return
+	}
+	t.DurationMs = t.UpdatedAt.Sub(t.CreatedAt).Milliseconds()
 }

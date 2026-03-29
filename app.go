@@ -42,17 +42,36 @@ func (a *App) SubmitTask(task domain.Task) (string, error) {
 
 // GetTask retrieves a specific task by ID.
 func (a *App) GetTask(id string) (domain.Task, error) {
-	return a.orchestrator.GetTask(id)
+	t, err := a.orchestrator.GetTask(id)
+	if err != nil {
+		return t, err
+	}
+	t.ComputeDuration()
+	return t, nil
 }
 
 // GetQueue returns all pending tasks for the dashboard.
 func (a *App) GetQueue() ([]domain.Task, error) {
-	return a.orchestrator.GetQueue()
+	tasks, err := a.orchestrator.GetQueue()
+	if err != nil {
+		return nil, err
+	}
+	for i := range tasks {
+		tasks[i].ComputeDuration()
+	}
+	return tasks, nil
 }
 
 // GetAllTasks returns every task regardless of status.
 func (a *App) GetAllTasks() ([]domain.Task, error) {
-	return a.orchestrator.GetAllTasks()
+	tasks, err := a.orchestrator.GetAllTasks()
+	if err != nil {
+		return nil, err
+	}
+	for i := range tasks {
+		tasks[i].ComputeDuration()
+	}
+	return tasks, nil
 }
 
 // GetProviders returns the status of all registered LLM backends.
@@ -124,7 +143,14 @@ func (a *App) CreateDraft(task domain.Task) (string, error) {
 
 // GetBacklog returns DRAFT and BACKLOG tasks for the given project path.
 func (a *App) GetBacklog(projectPath string) ([]domain.Task, error) {
-	return a.orchestrator.GetBacklog(projectPath)
+	tasks, err := a.orchestrator.GetBacklog(projectPath)
+	if err != nil {
+		return nil, err
+	}
+	for i := range tasks {
+		tasks[i].ComputeDuration()
+	}
+	return tasks, nil
 }
 
 // PromoteTask transitions a DRAFT or BACKLOG task to QUEUED and enqueues it for execution.
@@ -134,7 +160,12 @@ func (a *App) PromoteTask(id string) (ports.PromoteResult, error) {
 
 // UpdateTask updates mutable fields on an existing task.
 func (a *App) UpdateTask(id string, updates domain.Task) (domain.Task, error) {
-	return a.orchestrator.UpdateTask(id, updates)
+	t, err := a.orchestrator.UpdateTask(id, updates)
+	if err != nil {
+		return t, err
+	}
+	t.ComputeDuration()
+	return t, nil
 }
 
 // ListAISessions returns all registered AI sessions.
@@ -187,6 +218,7 @@ func (a *App) ClaimTask(taskID string, sessionID string) (domain.Task, error) {
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("app: claim task: %w", err)
 	}
+	t.ComputeDuration()
 	return t, nil
 }
 
@@ -196,6 +228,7 @@ func (a *App) UpdateTaskStatus(taskID string, sessionID string, status string, l
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("app: update task status: %w", err)
 	}
+	t.ComputeDuration()
 	return t, nil
 }
 

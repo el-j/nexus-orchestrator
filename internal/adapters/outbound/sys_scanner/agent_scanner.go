@@ -353,6 +353,10 @@ func probeClaudeSubAgentsDir(_ context.Context, homeDir string) []domain.Discove
 			continue
 		}
 
+		// Collect all valid sessions for this directory, then emit one agent.
+		var dirSessions []domain.DiscoveredAgent
+		var latestMtime time.Time
+
 		for _, sessionEntry := range sessionFiles {
 			if sessionEntry.IsDir() {
 				continue
@@ -381,19 +385,44 @@ func probeClaudeSubAgentsDir(_ context.Context, homeDir string) []domain.Discove
 				agent.WorkingDir = workingDirFromDir
 			}
 
-			// Build Name from working dir.
-			agent.Name = "Claude Code"
-			if agent.WorkingDir != "" {
-				agent.Name = "Claude Code " + filepath.Base(agent.WorkingDir)
-			}
-
 			agent.IsRunning = now.Sub(mtime) < activeThreshold
 			agent.Kind = domain.AgentKindClaudeCLI
 			agent.DetectionMethod = "claude-session-file"
 			agent.LastSeen = mtime
 
-			results = append(results, *agent)
+			dirSessions = append(dirSessions, *agent)
+			if mtime.After(latestMtime) {
+				latestMtime = mtime
+			}
 		}
+
+		if len(dirSessions) == 0 {
+			continue
+		}
+
+		// Pick the most recently seen session as the representative.
+		var rep domain.DiscoveredAgent
+		for _, s := range dirSessions {
+			if s.LastSeen.Equal(latestMtime) {
+				rep = s
+				break
+			}
+		}
+
+		// Stable ID per project directory (not per session file).
+		rep.ID = "claude-cli-" + encodedName
+
+		// Build Name with session count.
+		baseName := "Claude Code"
+		if rep.WorkingDir != "" {
+			baseName = "Claude Code " + filepath.Base(rep.WorkingDir)
+		}
+		if len(dirSessions) > 1 {
+			baseName += " (" + strconv.Itoa(len(dirSessions)) + " sessions)"
+		}
+		rep.Name = baseName
+
+		results = append(results, rep)
 	}
 
 	return results

@@ -225,3 +225,38 @@ func TestDiscovery_RegisterProvider_ConcurrentSafe(t *testing.T) {
 		t.Errorf("expected 20 providers after concurrent registration, got %d", len(infos))
 	}
 }
+
+func TestListProviders_ProviderInfoEnrichment(t *testing.T) {
+	p := &mockLLMClient{
+		alive:        true,
+		name:         "Enriched",
+		baseURL:      "http://localhost:1234",
+		activeModel:  "test-model",
+		models:       []string{"test-model"},
+		contextLimit: 32768,
+	}
+	svc := services.NewDiscoveryService(p)
+
+	infos := svc.ListProviders()
+	if len(infos) != 1 {
+		t.Fatalf("expected 1 provider info, got %d", len(infos))
+	}
+	info := infos[0]
+
+	// ContextLimit must be populated from the client
+	if info.ContextLimit != 32768 {
+		t.Errorf("expected ContextLimit=32768, got %d", info.ContextLimit)
+	}
+	// LastChecked must be non-zero (set by cachedHealth)
+	if info.LastChecked.IsZero() {
+		t.Error("expected LastChecked to be non-zero")
+	}
+	// LatencyMs must be ≥ 0 (Ping is instant on mock)
+	if info.LatencyMs < 0 {
+		t.Errorf("expected LatencyMs >= 0, got %d", info.LatencyMs)
+	}
+	// BaseURL must be populated
+	if info.BaseURL != "http://localhost:1234" {
+		t.Errorf("expected BaseURL=http://localhost:1234, got %q", info.BaseURL)
+	}
+}

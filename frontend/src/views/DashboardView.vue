@@ -12,11 +12,14 @@
           <span class="text-white font-semibold">{{ tasks.length }}</span> total
         </p>
       </div>
-      <ProviderStatus
-        :providers="providers"
-        :refresh="refreshProviders"
-        :model-states="providerStates"
-      />
+      <div class="flex items-center gap-3">
+        <RefreshIndicator :last-refreshed="lastRefreshed" />
+        <ProviderStatus
+          :providers="providers"
+          :refresh="refreshProviders"
+          :model-states="providerStates"
+        />
+      </div>
     </header>
 
     <!-- Task list (scrollable) -->
@@ -44,11 +47,18 @@ import TaskQueue from '../components/TaskQueue.vue';
 import TaskSubmitForm from '../components/TaskSubmitForm.vue';
 import TaskDetailDrawer from '../components/TaskDetailDrawer.vue';
 import ProviderStatus from '../components/ProviderStatus.vue';
+import RefreshIndicator from '../components/RefreshIndicator.vue';
 
-const { tasks, loading, refresh } = useTasks();
+const { tasks, loading, refresh: originalRefresh } = useTasks();
 const { providers, refresh: refreshProviders } = useProviders();
 const { providerStates } = useProviderActivity();
 const toast = useToast();
+
+const lastRefreshed = ref<Date | null>(null);
+async function refresh() {
+  await originalRefresh();
+  lastRefreshed.value = new Date();
+}
 
 const detailOpen = ref(false);
 const selectedTask = ref<Task | null>(null);

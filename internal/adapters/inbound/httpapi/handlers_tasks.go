@@ -36,6 +36,13 @@ func (s *Server) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// computeTaskDurations sets the DurationMs field on each task in the slice.
+func computeTaskDurations(tasks []domain.Task) {
+	for i := range tasks {
+		tasks[i].ComputeDuration()
+	}
+}
+
 func (s *Server) handleListTasks(w http.ResponseWriter, r *http.Request) {
 	tasks, err := s.orch.GetQueue()
 	if err != nil {
@@ -46,6 +53,7 @@ func (s *Server) handleListTasks(w http.ResponseWriter, r *http.Request) {
 	if tasks == nil {
 		tasks = []domain.Task{}
 	}
+	computeTaskDurations(tasks)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(tasks)
 }
@@ -70,6 +78,7 @@ func (s *Server) handleGetAllTasks(w http.ResponseWriter, r *http.Request) {
 	if tasks == nil {
 		tasks = []domain.Task{}
 	}
+	computeTaskDurations(tasks)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(tasks)
 }
@@ -86,6 +95,7 @@ func (s *Server) handleGetTask(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
+	task.ComputeDuration()
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(task)
 }
@@ -135,6 +145,7 @@ func (s *Server) handleGetBacklog(w http.ResponseWriter, r *http.Request) {
 	if tasks == nil {
 		tasks = []domain.Task{}
 	}
+	computeTaskDurations(tasks)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(tasks)
 }
@@ -169,6 +180,7 @@ func (s *Server) handleUpdateTask(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	updated.ComputeDuration()
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(updated)
 }
@@ -196,6 +208,7 @@ func (s *Server) handleClaimTask(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
+	task.ComputeDuration()
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(task)
@@ -234,6 +247,7 @@ func (s *Server) handleUpdateTaskStatus(w http.ResponseWriter, r *http.Request) 
 		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
+	task.ComputeDuration()
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(task)

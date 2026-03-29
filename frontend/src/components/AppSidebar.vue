@@ -58,16 +58,11 @@ import ProjectSelector from './ProjectSelector.vue';
 
 const emit = defineEmits<{ (e: 'view-change', id: string): void }>();
 
-const activeView = ref('dashboard');
+const activeView = ref('mission-control');
 const navItems = [
-  { id: 'dashboard', label: 'Task Queue', icon: 'pi-list' },
-  { id: 'backlog', label: 'Backlog', icon: 'pi-bookmark' },
-  { id: 'history', label: 'History', icon: 'pi-clock' },
-  { id: 'live-activity', label: 'Live AI', icon: 'pi-eye' },
+  { id: 'mission-control', label: 'Mission Control', icon: 'pi-home' },
+  { id: 'agents', label: 'Agents', icon: 'pi-users' },
   { id: 'providers', label: 'Providers', icon: 'pi-server' },
-  { id: 'discovery', label: 'Discovery', icon: 'pi-search' },
-  { id: 'ai-sessions', label: 'AI Sessions', icon: 'pi-share-alt' },
-  { id: 'ai-agents', label: 'AI Agents', icon: 'pi-users' },
   { id: 'projects', label: 'Projects', icon: 'pi-folder' },
   { id: 'plans', label: 'Plans', icon: 'pi-file' },
   { id: 'settings', label: 'Settings', icon: 'pi-cog' },

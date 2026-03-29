@@ -17,6 +17,7 @@
       >
         {{ scanning ? '⏳ Scanning…' : '⟳ Scan Now' }}
       </button>
+      <RefreshIndicator :last-refreshed="lastRefreshed" />
     </header>
 
     <div class="flex items-center gap-3 px-5 py-2 border-b border-white/5 shrink-0 flex-wrap">
@@ -113,15 +114,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import AIActivityCard from '../components/AIActivityCard.vue';
+import RefreshIndicator from '../components/RefreshIndicator.vue';
 import { useActivities } from '../composables/useActivities';
 import { useDiscovery } from '../composables/useDiscovery';
 import type { AIActivity, ActivityType } from '../types/domain';
 import { timeAgo } from '../utils/time';
 
-const { scanning, scanNow: triggerScan } = useDiscovery();
+const { scanning, scanNow: originalScan } = useDiscovery();
 const { activities, loading } = useActivities({ limit: 100 });
+
+const lastRefreshed = ref<Date | null>(null);
+
+async function triggerScan() {
+  await originalScan();
+  lastRefreshed.value = new Date();
+}
+
+onMounted(() => {
+  lastRefreshed.value = new Date();
+});
 
 const selectedAgent = ref('');
 const selectedProject = ref('');

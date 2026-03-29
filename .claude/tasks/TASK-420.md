@@ -1,7 +1,7 @@
 ---
 id: TASK-420
 plan: PLAN-057
-status: todo
+status: done
 role: frontend
 wave: 4
 ---

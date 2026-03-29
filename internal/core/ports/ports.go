@@ -68,12 +68,19 @@ type FileWriter interface {
 
 // ProviderInfo summarises the liveness status of a single LLM backend.
 type ProviderInfo struct {
-	Name        string   `json:"name"`
-	Active      bool     `json:"active"`
-	ActiveModel string   `json:"activeModel,omitempty"`
-	Models      []string `json:"models,omitempty"`
-	BaseURL     string   `json:"baseURL,omitempty"`
-	Error       string   `json:"error,omitempty"`
+	Name             string    `json:"name"`
+	Active           bool      `json:"active"`
+	ActiveModel      string    `json:"activeModel,omitempty"`
+	Models           []string  `json:"models,omitempty"`
+	BaseURL          string    `json:"baseURL,omitempty"`
+	Error            string    `json:"error,omitempty"`
+	ContextLimit     int       `json:"contextLimit,omitempty"`
+	TimeoutSec       int       `json:"timeoutSec,omitempty"`
+	LastChecked      time.Time `json:"lastChecked"`
+	ConsecutiveFails int       `json:"consecutiveFails,omitempty"`
+	LatencyMs        int64     `json:"latencyMs,omitempty"`
+	RateLimited      bool      `json:"rateLimited,omitempty"`
+	LastError        string    `json:"lastError,omitempty"`
 }
 
 // SessionRepository is the port for persisting per-project conversation history.

@@ -26,6 +26,7 @@ export interface Task {
   retryCount?: number;
   logs: string;
   providerName?: string;
+  durationMs?: number;
   priority?: number;
   tags?: string[];
 }
@@ -47,6 +48,10 @@ export interface ProviderInfo {
   models: string[];
   baseURL?: string;
   error?: string;
+  contextLimit?: number;
+  timeoutSec?: number;
+  lastChecked?: string;
+  consecutiveFails?: number;
 }
 
 export interface ProviderConfig {

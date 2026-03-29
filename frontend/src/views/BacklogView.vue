@@ -11,6 +11,7 @@
           {{ backlogTasks.length === 1 ? 'item' : 'items' }}
         </p>
       </div>
+      <RefreshIndicator :last-refreshed="lastRefreshed" />
     </header>
 
     <!-- List (scrollable) -->
@@ -27,14 +28,17 @@ import { getBacklog } from '../types/wails';
 import { currentProject } from '../composables/useProjectState';
 import { resolveServerUrl } from '../composables/useServerUrl';
 import BacklogList from '../components/BacklogList.vue';
+import RefreshIndicator from '../components/RefreshIndicator.vue';
 
 const backlogTasks = ref<Task[]>([]);
+const lastRefreshed = ref<Date | null>(null);
 
 let interval: ReturnType<typeof setInterval> | null = null;
 let eventSource: EventSource | null = null;
 
 async function refresh() {
   backlogTasks.value = (await getBacklog(currentProject.value ?? '')) ?? [];
+  lastRefreshed.value = new Date();
 }
 
 watch(currentProject, () => {
