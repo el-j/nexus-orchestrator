@@ -1,9 +1,9 @@
 {
   "version": "2",
-  "updatedAt": "2026-03-29T10:20:14Z",
+  "updatedAt": "2026-03-29T12:50:00Z",
   "counters": {
-    "nextTaskId": 433,
-    "nextPlanId": 58
+    "nextTaskId": 441,
+    "nextPlanId": 59
   },
   "activePlanId": null,
   "notes": [
@@ -57,6 +57,10 @@
     {
       "ts": "2026-03-29T10:20:14Z",
       "note": "PLAN-057 completed. All 26 tasks done. 11 views to 6. All Go+Vitest tests pass."
+    },
+    {
+      "ts": "2026-03-29T12:50:00Z",
+      "note": "PLAN-058 completed. 8 tasks (TASK-433..440): LogPanel flex fix (reclaims space on collapse), AgentsView+ProvidersView sorting (active first + toggle), filtering (search + status chips), AI Tools grouped by kind with descriptions, Plans collapsible tree with stats, dense card layout. vue-tsc clean, 25 Vitest pass, go vet clean."
     }
   ],
   "plans": {
@@ -699,6 +703,24 @@
         "TASK-432"
       ],
       "completedAt": "2026-03-29T10:20:14Z"
+    },
+    "PLAN-058": {
+      "id": "PLAN-058",
+      "title": "UX Polish — Sorting, Filtering, Grouping & Layout Fixes",
+      "goal": "Sort active items first, add filtering, group AI tools by kind, collapsible plans tree, fix LogPanel space, denser cards",
+      "status": "completed",
+      "createdAt": "2026-03-29T12:45:00Z",
+      "tasks": [
+        "TASK-433",
+        "TASK-434",
+        "TASK-435",
+        "TASK-436",
+        "TASK-437",
+        "TASK-438",
+        "TASK-439",
+        "TASK-440"
+      ],
+      "completedAt": "2026-03-29T12:50:00Z"
     }
   },
   "tasks": {

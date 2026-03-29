@@ -16,6 +16,12 @@
       <div class="flex items-center gap-2">
         <button
           class="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:border-violet-500/40 transition-all"
+          @click="allCollapsed ? expandAll() : collapseAll()"
+        >
+          {{ allCollapsed ? '⊞ Expand All' : '⊟ Collapse All' }}
+        </button>
+        <button
+          class="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:border-violet-500/40 transition-all"
           :disabled="loading"
           @click="scan"
         >
@@ -83,65 +89,123 @@
 
       <!-- Grouped by project -->
       <template v-else>
-        <section v-for="(data, projPath) in filteredProjectGroups" :key="projPath" class="mb-10">
-          <!-- Project path header -->
-          <h2
-            class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4 font-mono truncate"
-            :title="String(projPath)"
+        <section v-for="(data, projPath) in filteredProjectGroups" :key="projPath" class="mb-6">
+          <!-- Project path header (clickable, collapsible) -->
+          <button
+            class="flex items-center gap-2 w-full text-left mb-3 group"
+            @click="toggleProject(String(projPath))"
           >
-            {{ String(projPath) }}
-          </h2>
+            <span
+              class="text-xs text-slate-600 transition-transform"
+              :class="collapsedProjects.has(String(projPath)) ? '' : 'rotate-90'"
+              >▶</span
+            >
+            <h2
+              class="text-xs font-semibold text-slate-500 uppercase tracking-wider font-mono truncate"
+            >
+              {{ String(projPath).split('/').filter(Boolean).slice(-2).join('/') }}
+            </h2>
+            <span class="text-[10px] text-slate-600 shrink-0">
+              {{ projectStats(data).planCount }} plans · {{ projectStats(data).taskCount }} tasks
+              <template v-if="projectStats(data).otherCount">
+                · {{ projectStats(data).otherCount }} other</template
+              >
+            </span>
+            <span
+              v-if="projectStats(data).hasActive"
+              class="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"
+            ></span>
+            <div class="flex-1 h-px bg-white/5 ml-1"></div>
+          </button>
 
-          <!-- Project Brain card (nexus) -->
-          <div
-            v-if="data.nexus"
-            class="mb-5 rounded-xl border border-violet-500/30 bg-violet-500/[0.04] p-4"
-          >
-            <div class="flex items-start gap-3">
-              <span class="text-lg mt-0.5">🧠</span>
-              <div class="flex-1">
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="font-bold text-sm text-violet-300">Project Brain</span>
-                  <span
-                    class="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 font-semibold"
-                    >nexus</span
-                  >
-                  <span
-                    v-if="data.nexus.isActive"
-                    class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300"
-                    >active</span
-                  >
+          <!-- Collapsible content -->
+          <div v-show="!collapsedProjects.has(String(projPath))">
+            <!-- Project Brain card (nexus) -->
+            <div
+              v-if="data.nexus"
+              class="mb-5 rounded-xl border border-violet-500/30 bg-violet-500/[0.04] p-3"
+            >
+              <div class="flex items-start gap-3">
+                <span class="text-lg mt-0.5">🧠</span>
+                <div class="flex-1">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="font-bold text-sm text-violet-300">Project Brain</span>
+                    <span
+                      class="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 font-semibold"
+                      >nexus</span
+                    >
+                    <span
+                      v-if="data.nexus.isActive"
+                      class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300"
+                      >active</span
+                    >
+                  </div>
+                  <p class="text-[11px] text-slate-300 font-mono mb-1">
+                    {{ basename(data.nexus.path) }}
+                  </p>
+                  <p v-if="data.nexus.summary" class="text-xs text-slate-400">
+                    {{ data.nexus.summary }}
+                  </p>
                 </div>
-                <p class="text-[11px] text-slate-300 font-mono mb-1">
-                  {{ basename(data.nexus.path) }}
-                </p>
-                <p v-if="data.nexus.summary" class="text-xs text-slate-400">
-                  {{ data.nexus.summary }}
-                </p>
-              </div>
-              <span class="text-[10px] text-slate-600">{{
-                formatDate(data.nexus.lastModified)
-              }}</span>
-            </div>
-          </div>
-
-          <!-- Plan groups with task files -->
-          <div v-if="data.planGroups.length > 0" class="mb-5">
-            <div v-for="[planId, taskFiles] in data.planGroups" :key="planId" class="mb-4">
-              <!-- Plan group header -->
-              <div class="flex items-center gap-2 mb-2">
-                <span class="text-xs font-semibold text-slate-400 font-mono">{{
-                  planId === 'ungrouped' ? 'Other Tasks' : planId
+                <span class="text-[10px] text-slate-600">{{
+                  formatDate(data.nexus.lastModified)
                 }}</span>
-                <span class="text-[10px] text-slate-600"
-                  >{{ taskFiles.length }} task{{ taskFiles.length !== 1 ? 's' : '' }}</span
+              </div>
+            </div>
+
+            <!-- Plan groups with task files -->
+            <div v-if="data.planGroups.length > 0" class="mb-5">
+              <div v-for="[planId, taskFiles] in data.planGroups" :key="planId" class="mb-4">
+                <!-- Plan group header -->
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-xs font-semibold text-slate-400 font-mono">{{
+                    planId === 'ungrouped' ? 'Other Tasks' : planId
+                  }}</span>
+                  <span class="text-[10px] text-slate-600"
+                    >{{ taskFiles.length }} task{{ taskFiles.length !== 1 ? 's' : '' }}</span
+                  >
+                  <div class="flex-1 h-px bg-white/5 ml-1"></div>
+                </div>
+                <!-- Task file cards (compact) -->
+                <div class="grid grid-cols-1 gap-2">
+                  <div
+                    v-for="plan in taskFiles"
+                    :key="plan.id"
+                    class="rounded-lg border border-white/[0.07] bg-white/[0.015] px-3 py-2 hover:bg-white/[0.03] transition-all flex items-start gap-2"
+                  >
+                    <span
+                      class="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5"
+                      :class="plan.isActive ? 'bg-emerald-400' : 'bg-slate-700'"
+                    ></span>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2">
+                        <span class="text-xs font-medium text-white truncate">{{
+                          basename(plan.path)
+                        }}</span>
+                        <span class="text-[10px] text-slate-600 font-mono ml-auto flex-shrink-0">{{
+                          formatDate(plan.lastModified)
+                        }}</span>
+                      </div>
+                      <p v-if="plan.summary" class="text-[11px] text-slate-500 truncate mt-0.5">
+                        {{ truncate(plan.summary.replace(/^#+\s*/, ''), 100) }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Other files (non-nexus, non-claude-task) -->
+            <div v-if="data.others.length > 0">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-xs font-semibold text-slate-600 uppercase tracking-wider"
+                  >Other Files</span
                 >
                 <div class="flex-1 h-px bg-white/5 ml-1"></div>
               </div>
-              <!-- Task file cards (compact) -->
               <div class="grid grid-cols-1 gap-2">
                 <div
-                  v-for="plan in taskFiles"
+                  v-for="plan in data.others"
                   :key="plan.id"
                   class="rounded-lg border border-white/[0.07] bg-white/[0.015] px-3 py-2 hover:bg-white/[0.03] transition-all flex items-start gap-2"
                 >
@@ -154,54 +218,19 @@
                       <span class="text-xs font-medium text-white truncate">{{
                         basename(plan.path)
                       }}</span>
+                      <span
+                        :class="kindBadgeClass(plan.kind)"
+                        class="text-[10px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0"
+                        >{{ plan.kind }}</span
+                      >
                       <span class="text-[10px] text-slate-600 font-mono ml-auto flex-shrink-0">{{
                         formatDate(plan.lastModified)
                       }}</span>
                     </div>
                     <p v-if="plan.summary" class="text-[11px] text-slate-500 truncate mt-0.5">
-                      {{ truncate(plan.summary.replace(/^#+\s*/, ''), 100) }}
+                      {{ truncate(plan.summary, 80) }}
                     </p>
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Other files (non-nexus, non-claude-task) -->
-          <div v-if="data.others.length > 0">
-            <div class="flex items-center gap-2 mb-2">
-              <span class="text-xs font-semibold text-slate-600 uppercase tracking-wider"
-                >Other Files</span
-              >
-              <div class="flex-1 h-px bg-white/5 ml-1"></div>
-            </div>
-            <div class="grid grid-cols-1 gap-2">
-              <div
-                v-for="plan in data.others"
-                :key="plan.id"
-                class="rounded-lg border border-white/[0.07] bg-white/[0.015] px-3 py-2 hover:bg-white/[0.03] transition-all flex items-start gap-2"
-              >
-                <span
-                  class="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5"
-                  :class="plan.isActive ? 'bg-emerald-400' : 'bg-slate-700'"
-                ></span>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2">
-                    <span class="text-xs font-medium text-white truncate">{{
-                      basename(plan.path)
-                    }}</span>
-                    <span
-                      :class="kindBadgeClass(plan.kind)"
-                      class="text-[10px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0"
-                      >{{ plan.kind }}</span
-                    >
-                    <span class="text-[10px] text-slate-600 font-mono ml-auto flex-shrink-0">{{
-                      formatDate(plan.lastModified)
-                    }}</span>
-                  </div>
-                  <p v-if="plan.summary" class="text-[11px] text-slate-500 truncate mt-0.5">
-                    {{ truncate(plan.summary, 80) }}
-                  </p>
                 </div>
               </div>
             </div>
@@ -213,12 +242,52 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useDiscoveredPlans } from '../composables/useDiscoveredPlans';
 import { currentProject } from '../composables/useProjectState';
 import type { PlanFileKind, DiscoveredPlanFile } from '../types/domain';
 
 const { plans, loading, error, scan } = useDiscoveredPlans(currentProject);
+
+// --- Collapse state ---
+const collapsedProjects = ref<Set<string>>(new Set());
+
+function toggleProject(projPath: string) {
+  if (collapsedProjects.value.has(projPath)) {
+    collapsedProjects.value.delete(projPath);
+  } else {
+    collapsedProjects.value.add(projPath);
+  }
+  collapsedProjects.value = new Set(collapsedProjects.value);
+}
+
+function collapseAll() {
+  collapsedProjects.value = new Set(Object.keys(filteredProjectGroups.value));
+}
+
+function expandAll() {
+  collapsedProjects.value = new Set();
+}
+
+const allCollapsed = computed(() => {
+  const keys = Object.keys(filteredProjectGroups.value);
+  return keys.length > 0 && keys.every((k) => collapsedProjects.value.has(k));
+});
+
+function projectStats(data: {
+  nexus?: DiscoveredPlanFile;
+  planGroups: [string, DiscoveredPlanFile[]][];
+  others: DiscoveredPlanFile[];
+}) {
+  const planCount = data.planGroups.length;
+  const taskCount = data.planGroups.reduce((sum, [, files]) => sum + files.length, 0);
+  const otherCount = data.others.length;
+  const hasActive =
+    data.nexus?.isActive ||
+    data.planGroups.some(([, files]) => files.some((f) => f.isActive)) ||
+    data.others.some((f) => f.isActive);
+  return { planCount, taskCount, otherCount, hasActive };
+}
 
 // --- Kind filtering ---
 const activeFilters = ref<Set<PlanFileKind>>(new Set());
@@ -363,4 +432,22 @@ const kindColors: Record<PlanFileKind, string> = {
 function kindBadgeClass(kind: PlanFileKind): string {
   return kindColors[kind] ?? 'bg-white/5 text-slate-400';
 }
+
+// Auto-collapse projects without active items on first load
+let initialized = false;
+watch(
+  filteredProjectGroups,
+  (groups) => {
+    if (initialized || Object.keys(groups).length === 0) return;
+    initialized = true;
+    for (const [projPath, data] of Object.entries(groups)) {
+      const stats = projectStats(data);
+      if (!stats.hasActive) {
+        collapsedProjects.value.add(projPath);
+      }
+    }
+    collapsedProjects.value = new Set(collapsedProjects.value);
+  },
+  { immediate: true },
+);
 </script>

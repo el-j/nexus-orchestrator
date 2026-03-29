@@ -17,6 +17,13 @@
           <span class="text-cyan-400 font-semibold">{{ discovered.length }}</span> discovered
         </p>
       </div>
+      <select
+        v-model="sortMode"
+        class="text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-300 focus:outline-none focus:border-violet-500/40"
+      >
+        <option value="active">Active first</option>
+        <option value="name">Name A-Z</option>
+      </select>
       <button
         class="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:border-violet-500/40 transition-all"
         @click="
@@ -36,14 +43,45 @@
         <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
           Active Providers
         </h2>
+        <div class="flex items-center gap-2 mb-3">
+          <input
+            v-model="providerSearch"
+            type="text"
+            placeholder="Search providers…"
+            class="text-xs bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-slate-300 placeholder-slate-600 focus:outline-none focus:border-violet-500/40 w-40"
+          />
+          <button
+            v-for="opt in [
+              { v: '', l: 'All' },
+              { v: 'active', l: 'Active' },
+              { v: 'unreachable', l: 'Unreachable' },
+            ]"
+            :key="'pf-' + opt.v"
+            @click="providerStatusFilter = opt.v as any"
+            :class="[
+              'text-[10px] px-2 py-1 rounded-full border transition-colors font-medium',
+              providerStatusFilter === opt.v
+                ? 'bg-violet-600/20 text-violet-300 border-violet-500/30'
+                : 'border-white/10 text-slate-500 hover:text-slate-300',
+            ]"
+          >
+            {{ opt.l }}
+          </button>
+        </div>
         <div v-if="providers.length === 0" class="text-sm text-slate-600 py-8 text-center">
           No providers detected — start LM Studio or Ollama
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div
+          v-else-if="filteredProviders.length === 0"
+          class="text-sm text-slate-600 py-8 text-center"
+        >
+          No matching providers
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div
-            v-for="p in providers"
+            v-for="p in filteredProviders"
             :key="p.name"
-            class="rounded-xl border p-4 transition-all"
+            class="rounded-xl border p-3 transition-all"
             :class="
               p.active ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/20 bg-red-500/5'
             "
@@ -118,34 +156,86 @@
           </h2>
           <span class="text-xs text-slate-600">detected on this system</span>
         </div>
+        <div class="flex items-center gap-2 mb-3">
+          <input
+            v-model="toolSearch"
+            type="text"
+            placeholder="Search tools…"
+            class="text-xs bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-slate-300 placeholder-slate-600 focus:outline-none focus:border-violet-500/40 w-40"
+          />
+          <button
+            v-for="opt in [
+              { v: '', l: 'All' },
+              { v: 'running', l: 'Running' },
+              { v: 'installed', l: 'Installed' },
+              { v: 'detected', l: 'Detected' },
+            ]"
+            :key="'tf-' + opt.v"
+            @click="toolStatusFilter = opt.v as any"
+            :class="[
+              'text-[10px] px-2 py-1 rounded-full border transition-colors font-medium',
+              toolStatusFilter === opt.v
+                ? 'bg-violet-600/20 text-violet-300 border-violet-500/30'
+                : 'border-white/10 text-slate-500 hover:text-slate-300',
+            ]"
+          >
+            {{ opt.l }}
+          </button>
+        </div>
         <div v-if="agents.length === 0" class="text-xs text-slate-600 italic p-3">
           No AI coding tools detected — install GitHub Copilot, Continue, or run Claude CLI
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div
-            v-for="agent in agents"
-            :key="agent.id"
-            class="rounded-xl border border-white/10 bg-white/[0.02] p-4"
-          >
-            <div class="flex items-center justify-between mb-2">
-              <span class="font-semibold text-sm text-white">{{ agentLabel(agent) }}</span>
-              <span
-                :class="agentStatusClass(agent)"
-                class="text-[10px] px-2 py-0.5 rounded font-semibold"
-              >
-                {{
-                  agent.isRunning
-                    ? 'Active'
-                    : agent.detectionMethod === 'vscode-extension'
-                      ? 'Installed'
-                      : 'Detected'
-                }}
-              </span>
+        <div v-else-if="filteredAgents.length === 0" class="text-xs text-slate-500 p-3">
+          No matching tools
+        </div>
+        <div v-else class="space-y-4">
+          <div v-for="[kind, kindAgents] in groupedAgents" :key="kind">
+            <!-- Group header -->
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-xs font-semibold text-slate-400">{{
+                agentLabel({ kind } as any)
+              }}</span>
+              <span class="text-[10px] text-slate-600">({{ kindAgents.length }})</span>
+              <div class="flex-1 h-px bg-white/5 ml-1"></div>
             </div>
-            <p class="text-[11px] text-slate-500 font-mono truncate">
-              {{ agent.configPath || agent.workingDir || agent.detectionMethod }}
+            <p v-if="kindDescriptions[kind]" class="text-[10px] text-slate-600 mb-2 -mt-1">
+              {{ kindDescriptions[kind] }}
             </p>
-            <p class="text-[10px] text-slate-700 mt-1">via {{ agent.detectionMethod }}</p>
+            <!-- Dense card grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+              <div
+                v-for="agent in kindAgents"
+                :key="agent.id"
+                class="rounded-lg border border-white/[0.07] bg-white/[0.02] p-3 hover:bg-white/[0.04] transition-colors"
+              >
+                <div class="flex items-center justify-between mb-1">
+                  <div class="flex items-center gap-1.5 min-w-0">
+                    <span
+                      class="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                      :class="agent.isRunning ? 'bg-emerald-400' : 'bg-slate-600'"
+                    ></span>
+                    <span class="font-medium text-xs text-white truncate">{{
+                      agent.name || agentLabel(agent)
+                    }}</span>
+                  </div>
+                  <span
+                    :class="agentStatusClass(agent)"
+                    class="text-[9px] px-1.5 py-0.5 rounded font-semibold shrink-0"
+                  >
+                    {{
+                      agent.isRunning
+                        ? 'Active'
+                        : agent.detectionMethod === 'vscode-extension'
+                          ? 'Installed'
+                          : 'Detected'
+                    }}
+                  </span>
+                </div>
+                <p class="text-[10px] text-slate-500 font-mono truncate">
+                  {{ agent.configPath || agent.workingDir || agent.detectionMethod }}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -274,6 +364,88 @@ async function refresh() {
 }
 
 const activeCount = computed(() => providers.value.filter((p) => p.active).length);
+
+const sortMode = ref<'active' | 'name'>('active');
+
+const sortedProviders = computed(() => {
+  const list = [...providers.value];
+  if (sortMode.value === 'active') {
+    return list.sort(
+      (a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0) || a.name.localeCompare(b.name),
+    );
+  }
+  return list.sort((a, b) => a.name.localeCompare(b.name));
+});
+
+const sortedAgents = computed(() => {
+  const list = [...agents.value];
+  if (sortMode.value === 'active') {
+    return list.sort(
+      (a, b) =>
+        (b.isRunning ? 1 : 0) - (a.isRunning ? 1 : 0) ||
+        (a.name ?? a.kind).localeCompare(b.name ?? b.kind),
+    );
+  }
+  return list.sort((a, b) => (a.name ?? a.kind).localeCompare(b.name ?? b.kind));
+});
+
+const providerSearch = ref('');
+const providerStatusFilter = ref<'' | 'active' | 'unreachable'>('');
+const toolSearch = ref('');
+const toolStatusFilter = ref<'' | 'running' | 'installed' | 'detected'>('');
+
+const filteredProviders = computed(() => {
+  let list = sortedProviders.value;
+  if (providerStatusFilter.value === 'active') list = list.filter((p) => p.active);
+  else if (providerStatusFilter.value === 'unreachable') list = list.filter((p) => !p.active);
+  if (providerSearch.value) {
+    const q = providerSearch.value.toLowerCase();
+    list = list.filter(
+      (p) => p.name.toLowerCase().includes(q) || p.baseURL.toLowerCase().includes(q),
+    );
+  }
+  return list;
+});
+
+const filteredAgents = computed(() => {
+  let list = sortedAgents.value;
+  if (toolStatusFilter.value === 'running') list = list.filter((a) => a.isRunning);
+  else if (toolStatusFilter.value === 'installed')
+    list = list.filter((a) => !a.isRunning && a.detectionMethod === 'vscode-extension');
+  else if (toolStatusFilter.value === 'detected')
+    list = list.filter((a) => !a.isRunning && a.detectionMethod !== 'vscode-extension');
+  if (toolSearch.value) {
+    const q = toolSearch.value.toLowerCase();
+    list = list.filter(
+      (a) => (a.name ?? '').toLowerCase().includes(q) || a.kind.toLowerCase().includes(q),
+    );
+  }
+  return list;
+});
+
+const kindDescriptions: Record<string, string> = {
+  copilot: 'AI pair programmer — inline suggestions, chat, and code generation',
+  'claude-cli': 'Terminal AI assistant — task automation, code review, file editing',
+  continue: 'Open-source AI code assistant — autocomplete, chat, and model flexibility',
+  cline: 'VS Code AI agent — autonomous code changes with approval workflow',
+  cursor: 'AI-native code editor — smart rewrites and multi-file edits',
+};
+
+const groupedAgents = computed(() => {
+  const groups: Record<string, DiscoveredAgent[]> = {};
+  for (const agent of filteredAgents.value) {
+    const key = agent.kind || 'other';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(agent);
+  }
+  // Sort groups: groups with running agents first, then alphabetical
+  return Object.entries(groups).sort(([aKey, aList], [bKey, bList]) => {
+    const aHasRunning = aList.some((a) => a.isRunning) ? 1 : 0;
+    const bHasRunning = bList.some((b) => b.isRunning) ? 1 : 0;
+    if (bHasRunning !== aHasRunning) return bHasRunning - aHasRunning;
+    return aKey.localeCompare(bKey);
+  });
+});
 
 const agents = ref<DiscoveredAgent[]>([]);
 async function loadAgents() {

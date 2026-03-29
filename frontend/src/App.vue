@@ -4,7 +4,7 @@
     <div class="flex h-screen bg-[#050508] overflow-hidden">
       <AppSidebar @view-change="currentView = $event" />
       <div class="flex-1 flex flex-col overflow-hidden">
-        <main class="flex-1 flex flex-col overflow-hidden" style="padding-bottom: 208px">
+        <main class="flex-1 flex flex-col overflow-hidden min-h-0">
           <MissionControlView v-if="currentView === 'mission-control'" />
           <AgentsView v-else-if="currentView === 'agents'" />
           <ProvidersView v-else-if="currentView === 'providers'" />

@@ -18,6 +18,14 @@
         </p>
       </div>
       <div class="flex items-center gap-2">
+        <select
+          v-model="sortMode"
+          class="text-xs bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-slate-300 focus:outline-none focus:border-violet-500/40"
+        >
+          <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </option>
+        </select>
         <button
           class="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:border-violet-500/40 transition-all"
           @click="refreshAll"
@@ -49,6 +57,36 @@
       >
         {{ tab.label }}
       </button>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="flex items-center gap-2 px-5 py-2 border-b border-white/5 bg-[#0a0a10] shrink-0">
+      <input
+        v-model="searchQuery"
+        type="text"
+        placeholder="Search…"
+        class="text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-slate-300 placeholder-slate-600 focus:outline-none focus:border-violet-500/40 w-48"
+      />
+      <template v-if="activeTab === 'sessions'">
+        <button
+          v-for="opt in [
+            { v: '', l: 'All' },
+            { v: 'active', l: 'Active' },
+            { v: 'idle', l: 'Idle' },
+            { v: 'disconnected', l: 'Off' },
+          ]"
+          :key="'ss-' + opt.v"
+          @click="sessionStatusFilter = opt.v as any"
+          :class="[
+            'text-[10px] px-2 py-1 rounded-full border transition-colors font-medium',
+            sessionStatusFilter === opt.v
+              ? 'bg-violet-600/20 text-violet-300 border-violet-500/30'
+              : 'border-white/10 text-slate-500 hover:text-slate-300 hover:border-white/20',
+          ]"
+        >
+          {{ opt.l }}
+        </button>
+      </template>
     </div>
 
     <!-- Content -->
@@ -83,16 +121,29 @@
         </div>
 
         <template v-else>
+          <!-- Filtered empty state -->
+          <div
+            v-if="
+              (sessions.length > 0 || agents.length > 0) &&
+              filteredSessions.length === 0 &&
+              filteredAgentRoots.length === 0
+            "
+            class="flex flex-col items-center justify-center py-12 text-center"
+          >
+            <p class="text-sm text-slate-500">No matches found</p>
+            <p class="text-xs text-slate-600 mt-1">Try adjusting your search or filters</p>
+          </div>
+
           <!-- Registered Sessions -->
-          <section v-if="sessions.length > 0" class="mb-6">
+          <section v-if="filteredSessions.length > 0" class="mb-6">
             <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
               Registered Sessions
             </h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div
-                v-for="s in sessions"
+                v-for="s in filteredSessions"
                 :key="s.id"
-                class="rounded-xl border bg-white/[0.03] p-4 transition-all border-l-4"
+                class="rounded-xl border bg-white/[0.03] p-3 transition-all border-l-4"
                 :class="{
                   'border-l-emerald-500/60': s.status === 'active',
                   'border-l-yellow-500/60': s.status === 'idle',
@@ -145,7 +196,7 @@
                 </div>
 
                 <!-- Last activity -->
-                <div class="text-[11px] text-slate-600 mb-3">
+                <div class="text-[11px] text-slate-600 mb-2">
                   Last active: {{ relativeTime(s.lastActivity) }}
                 </div>
 
@@ -162,13 +213,13 @@
           </section>
 
           <!-- Discovered Agents -->
-          <section v-if="agents.length > 0">
+          <section v-if="filteredAgentRoots.length > 0">
             <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
               Discovered Agents
             </h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <template v-for="agent in agentTree.roots" :key="agent.id">
-                <div class="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <template v-for="agent in filteredAgentRoots" :key="agent.id">
+                <div class="rounded-xl border border-white/10 bg-white/[0.02] p-3">
                   <div class="flex items-center gap-2 mb-1">
                     <span
                       class="w-2 h-2 rounded-full flex-shrink-0"
@@ -338,6 +389,19 @@ import { relativeTime } from '../utils/time';
 
 const { sessions, loading, error, refresh, deregister, purgeDisconnected } = useAISessions();
 
+// --- Sort ---
+const sortMode = ref<'active' | 'recent' | 'name'>('active');
+const sortOptions = [
+  { value: 'active', label: 'Active first' },
+  { value: 'recent', label: 'Recent first' },
+  { value: 'name', label: 'Name A-Z' },
+] as const;
+
+// --- Filter ---
+const searchQuery = ref('');
+const sessionStatusFilter = ref<'' | 'active' | 'idle' | 'disconnected'>('');
+const agentStatusFilter = ref<'' | 'running' | 'stopped'>('');
+
 // --- Tabs ---
 const tabs = [
   { id: 'sessions', label: 'Sessions' },
@@ -403,6 +467,28 @@ let discoveredInterval: ReturnType<typeof setInterval> | null = null;
 
 const activeCount = computed(() => sessions.value.filter((s) => s.status === 'active').length);
 
+const statusOrder: Record<string, number> = { active: 0, idle: 1, disconnected: 2 };
+
+const sortedSessions = computed(() => {
+  const list = [...sessions.value];
+  switch (sortMode.value) {
+    case 'active':
+      return list.sort(
+        (a, b) =>
+          (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9) ||
+          new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime(),
+      );
+    case 'recent':
+      return list.sort(
+        (a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime(),
+      );
+    case 'name':
+      return list.sort((a, b) => a.agentName.localeCompare(b.agentName));
+    default:
+      return list;
+  }
+});
+
 const agentTree = computed(() => {
   const roots: DiscoveredAgent[] = [];
   const childrenOf: Record<string, DiscoveredAgent[]> = {};
@@ -422,6 +508,60 @@ const agentTree = computed(() => {
   }
 
   return { roots, childrenOf };
+});
+
+const sortedAgentRoots = computed(() => {
+  const list = [...agentTree.value.roots];
+  switch (sortMode.value) {
+    case 'active':
+      return list.sort(
+        (a, b) =>
+          (b.isRunning ? 1 : 0) - (a.isRunning ? 1 : 0) ||
+          new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime(),
+      );
+    case 'recent':
+      return list.sort((a, b) => new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime());
+    case 'name':
+      return list.sort((a, b) => a.name.localeCompare(b.name));
+    default:
+      return list;
+  }
+});
+
+const filteredSessions = computed(() => {
+  let list = sortedSessions.value;
+  if (sessionStatusFilter.value) {
+    list = list.filter((s) => s.status === sessionStatusFilter.value);
+  }
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase();
+    list = list.filter(
+      (s) =>
+        s.agentName.toLowerCase().includes(q) ||
+        (s.externalId && s.externalId.toLowerCase().includes(q)) ||
+        (s.projectPath && s.projectPath.toLowerCase().includes(q)),
+    );
+  }
+  return list;
+});
+
+const filteredAgentRoots = computed(() => {
+  let list = sortedAgentRoots.value;
+  if (agentStatusFilter.value === 'running') {
+    list = list.filter((a) => a.isRunning);
+  } else if (agentStatusFilter.value === 'stopped') {
+    list = list.filter((a) => !a.isRunning);
+  }
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase();
+    list = list.filter(
+      (a) =>
+        a.name.toLowerCase().includes(q) ||
+        a.kind.toLowerCase().includes(q) ||
+        (a.workingDir && a.workingDir.toLowerCase().includes(q)),
+    );
+  }
+  return list;
 });
 
 async function loadAgents() {
