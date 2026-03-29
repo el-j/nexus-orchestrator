@@ -1,12 +1,58 @@
 # PLAN-056: UX Hardening, Playwright E2E, Token Auth & Universal AI Workflow Discovery
 
-**Status:** active  
+**Status:** Completed  
 **Created:** 2026-03-28  
-**Priority:** 1 — Release Quality Gate
+**Completed:** 2026-03-28T23:43:38Z
 
-## Problem Statement
+## Tasks
 
-Post PLAN-055 hardening, four independent problem classes remain that block shipping as a polished, security-conscious product:
+| ID       | Title                                                                                        | Role     | Completed |
+| -------- | -------------------------------------------------------------------------------------------- | -------- | --------- |
+| TASK-386 | Fix errcheck lint in nexus-mcp-stdio                                                         | backend  | ✅        |
+| TASK-387 | Add bearer token middleware to MCP server                                                    | mcp      | ✅        |
+| TASK-388 | Add bearer token middleware to HTTP API server                                               | api      | ✅        |
+| TASK-389 | Add runtime config storage and /api/config endpoints                                         | backend  | ✅        |
+| TASK-390 | Build token management UX in SettingsView                                                    | frontend | ✅        |
+| TASK-391 | Read live queue cap and config in SettingsView                                               | frontend | ✅        |
+| TASK-392 | Set up Playwright E2E infrastructure                                                         | testing  | ✅        |
+| TASK-393 | Add Playwright task lifecycle flow coverage                                                  | testing  | ✅        |
+| TASK-394 | Add Playwright settings and token flow coverage                                              | testing  | ✅        |
+| TASK-395 | Add Playwright backlog promotion flow coverage                                               | testing  | ✅        |
+| TASK-396 | Add Playwright providers and discovery flow coverage                                         | testing  | ✅        |
+| TASK-397 | Wire Playwright into the release CI path                                                     | devops   | ✅        |
+| TASK-398 | Extend discovery with Windsurf, Aider, Continue, Copilot, and generic task files             | backend  | ✅        |
+| TASK-399 | Add recursive discovery for instruction and prompt files                                     | backend  | ✅        |
+| TASK-400 | Improve markdown discovery heuristics                                                        | backend  | ✅        |
+| TASK-401 | Group and filter discovered plans in the frontend                                            | frontend | ✅        |
+| TASK-402 | Enrich MCP discovered plan responses                                                         | mcp      | ✅        |
+| TASK-403 | Add periodic background plan scanning                                                        | backend  | ✅        |
+| TASK-404 | Fix SSE 400 on restart: remove ReadTimeout, add ping keepalive, fix missing-session response | backend  | ✅        |
+| TASK-405 | SSE tests: ping keepalive, missing-session parseable response, reconnect after session loss  | testing  | ✅        |
+| TASK-406 | Update MCP client setup docs + howto tool text for VS Code Streamable HTTP                   | docs     | ✅        |
+
+## Summary
+
+Closed 4 release-quality gap classes after PLAN-055:
+
+**Class A — Lint:** Replaced `os.Stdout.Write` with `fmt.Fprint` in `cmd/nexus-mcp-stdio/main.go` (TASK-386). `make nice` now exits 0.
+
+**Class B — Token Auth:** Added `tokenAuthMiddleware` to both MCP (`:63988`) and HTTP API (`:63987`) servers, gated by `NEXUS_MCP_TOKEN` / `NEXUS_API_TOKEN` env vars. Added SQLite `settings` table + `GET/PUT /api/config` endpoints. SettingsView gained a Token Management section to generate, rotate, and copy tokens, and now reads live queue cap from the server instead of hardcoding "50".
+
+**Class C — Playwright E2E:** Installed `@playwright/test`, wrote `playwright.config.ts` with a test server fixture, and created 4 spec files covering dashboard task lifecycle, settings/token flow, backlog promotion, and providers/discovery. Wired into CI via `.github/workflows/e2e.yml` with HTML report artifact.
+
+**Class D — AI Workflow Discovery:** Extended `plan_scanner.go` with Windsurf (`.windsurfrules`), Aider (`.aider.conf.yml`, `CONVENTIONS.md`), Continue config, `tasks.json/yaml`, `agent.yaml`, and `*.instructions.md`/`*.prompt.md` with depth-3 recursive scan. Added YAML frontmatter + checkbox/heading heuristics. `DiscoveredPlansView` now groups by AI tool with filter checkboxes. Background scan goroutine runs on a 5-min `stopCh` ticker. MCP `get_discovered_plans` enriched with `detectedTools[]`, `totalActive`, `scanRoots[]`.
+
+**Class E — SSE Transport:** Removed `ReadTimeout: 15s` from the MCP server (left POST `/mcp` handler using a per-request timeout instead). Added a 15s `: ping` keepalive ticker in `handleSSE`. Fixed missing-session responses to return JSON-RPC error (vs plain-text 400). Updated `copilot-instructions.md` and `howto`/`howto_brief` MCP tools to recommend `type:"http"` Streamable HTTP transport for VS Code.
+
+**Bonus:** Added `CancelTask` DRAFT+BACKLOG lifecycle transitions (previously only QUEUED/NO_PROVIDER) + 2 new hardening tests. Added Dismiss button in `BacklogList.vue`. Reconciled 21 stale DRAFT rows in `nexus.db` → CANCELLED.
+
+**Validation:** All 18 Go packages pass `go test -race -count=1 ./...`. Frontend `npm test` clean. `BacklogView.spec.ts` 2/2. `make nice` exits 0.
+
+---
+
+_Planning document archived — see git history for original problem statement and wave plan._
+
+## ~~ Planning Document (archived below) ~~
 
 ### 🔴 Class A — Build / Lint Breakage
 
