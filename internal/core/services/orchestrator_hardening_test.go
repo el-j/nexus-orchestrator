@@ -241,6 +241,65 @@ func TestCancelTask_NoProviderState_Succeeds(t *testing.T) {
 	}
 }
 
+func TestCancelTask_DraftState_Succeeds(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.CreateDraft(domain.Task{
+		ProjectPath: "/proj/cancel-draft",
+		Instruction: "dismiss this draft",
+	})
+	if err != nil {
+		t.Fatalf("CreateDraft: %v", err)
+	}
+
+	if err := orch.CancelTask(id); err != nil {
+		t.Fatalf("CancelTask on DRAFT task: %v", err)
+	}
+
+	saved, err := repo.GetByID(id)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if saved.Status != domain.StatusCancelled {
+		t.Errorf("status after cancel: want CANCELLED, got %s", saved.Status)
+	}
+}
+
+func TestCancelTask_BacklogState_Succeeds(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	now := time.Now()
+	task := domain.Task{
+		ID:          "backlog-cancel-1",
+		ProjectPath: "/proj/cancel-backlog",
+		Instruction: "dismiss this backlog item",
+		Status:      domain.StatusBacklog,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	if err := repo.Save(task); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	if err := orch.CancelTask(task.ID); err != nil {
+		t.Fatalf("CancelTask on BACKLOG task: %v", err)
+	}
+
+	saved, err := repo.GetByID(task.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if saved.Status != domain.StatusCancelled {
+		t.Errorf("status after cancel: want CANCELLED, got %s", saved.Status)
+	}
+}
+
 func TestPromoteTask_NoProvider_ReturnsWarning(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService() // no providers registered

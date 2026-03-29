@@ -87,6 +87,23 @@ func (o *OrchestratorService) CancelTask(id string) error {
 		o.emit(id, domain.StatusCancelled)
 		return nil
 	}
+	// Allow dismissing non-executing backlog items.
+	ok, err = o.repo.UpdateStatusIfCurrent(id, domain.StatusDraft, domain.StatusCancelled)
+	if err != nil {
+		return fmt.Errorf("orchestrator: cancel task: %w", err)
+	}
+	if ok {
+		o.emit(id, domain.StatusCancelled)
+		return nil
+	}
+	ok, err = o.repo.UpdateStatusIfCurrent(id, domain.StatusBacklog, domain.StatusCancelled)
+	if err != nil {
+		return fmt.Errorf("orchestrator: cancel task: %w", err)
+	}
+	if ok {
+		o.emit(id, domain.StatusCancelled)
+		return nil
+	}
 	task, err := o.repo.GetByID(id)
 	if err != nil {
 		return fmt.Errorf("orchestrator: cancel task: %w", err)

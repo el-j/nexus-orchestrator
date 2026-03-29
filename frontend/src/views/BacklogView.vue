@@ -1,7 +1,9 @@
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->
-    <header class="flex items-center justify-between px-5 py-3 border-b border-white/5 bg-[#0a0a10] shrink-0">
+    <header
+      class="flex items-center justify-between px-5 py-3 border-b border-white/5 bg-[#0a0a10] shrink-0"
+    >
       <div>
         <h1 class="text-sm font-bold text-white">Backlog</h1>
         <p class="text-xs text-slate-500">
@@ -13,68 +15,68 @@
 
     <!-- List (scrollable) -->
     <div class="flex-1 overflow-auto p-4">
-      <BacklogList :items="backlogTasks" @promoted="refresh" />
+      <BacklogList :items="backlogTasks" @promoted="refresh" @dismissed="refresh" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
-import type { Task } from '../types/domain'
-import { getBacklog } from '../types/wails'
-import { currentProject } from '../composables/useProjectState'
-import { resolveServerUrl } from '../composables/useServerUrl'
-import BacklogList from '../components/BacklogList.vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue';
+import type { Task } from '../types/domain';
+import { getBacklog } from '../types/wails';
+import { currentProject } from '../composables/useProjectState';
+import { resolveServerUrl } from '../composables/useServerUrl';
+import BacklogList from '../components/BacklogList.vue';
 
-const backlogTasks = ref<Task[]>([])
+const backlogTasks = ref<Task[]>([]);
 
-let interval: ReturnType<typeof setInterval> | null = null
-let eventSource: EventSource | null = null
+let interval: ReturnType<typeof setInterval> | null = null;
+let eventSource: EventSource | null = null;
 
 async function refresh() {
-  backlogTasks.value = (await getBacklog(currentProject.value ?? '')) ?? []
+  backlogTasks.value = (await getBacklog(currentProject.value ?? '')) ?? [];
 }
 
 watch(currentProject, () => {
-  void refresh()
-})
+  void refresh();
+});
 
 onMounted(async () => {
-  await refresh()
+  await refresh();
 
   if (typeof EventSource !== 'undefined') {
     try {
-      const baseUrl = await resolveServerUrl()
-      eventSource = new EventSource(`${baseUrl}/api/events`)
+      const baseUrl = await resolveServerUrl();
+      eventSource = new EventSource(`${baseUrl}/api/events`);
       eventSource.onmessage = (event) => {
-        const data = JSON.parse(event.data)
+        const data = JSON.parse(event.data);
         if (data.type !== 'connected') {
-          void refresh()
+          void refresh();
         }
-      }
+      };
       eventSource.onerror = () => {
-        eventSource?.close()
-        eventSource = null
+        eventSource?.close();
+        eventSource = null;
         if (!interval) {
           interval = setInterval(() => {
-            void refresh()
-          }, 2000)
+            void refresh();
+          }, 2000);
         }
-      }
+      };
     } catch {
       interval = setInterval(() => {
-        void refresh()
-      }, 2000)
+        void refresh();
+      }, 2000);
     }
   } else {
     interval = setInterval(() => {
-      void refresh()
-    }, 2000)
+      void refresh();
+    }, 2000);
   }
-})
+});
 
 onUnmounted(() => {
-  if (interval) clearInterval(interval)
-  if (eventSource) eventSource.close()
-})
+  if (interval) clearInterval(interval);
+  if (eventSource) eventSource.close();
+});
 </script>
