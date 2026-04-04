@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -54,8 +53,7 @@ func (s *Server) handleListActivities(w http.ResponseWriter, r *http.Request) {
 	if activities == nil {
 		activities = []domain.AIActivity{}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(activities)
+	writeJSON(w, http.StatusOK, activities)
 }
 
 // handleActivityTimeline serves GET /api/activities/timeline
@@ -87,6 +85,5 @@ func (s *Server) handleActivityTimeline(w http.ResponseWriter, r *http.Request) 
 	if activities == nil {
 		activities = []domain.AIActivity{}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(activities)
+	writeJSON(w, http.StatusOK, activities)
 }

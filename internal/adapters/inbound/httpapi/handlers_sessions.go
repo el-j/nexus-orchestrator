@@ -31,9 +31,7 @@ func (s *Server) handleRegisterAISession(w http.ResponseWriter, r *http.Request)
 		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(created)
+	writeJSON(w, http.StatusCreated, created)
 }
 
 func (s *Server) handleListAISessions(w http.ResponseWriter, r *http.Request) {
@@ -46,8 +44,7 @@ func (s *Server) handleListAISessions(w http.ResponseWriter, r *http.Request) {
 	if sessions == nil {
 		sessions = []domain.AISession{}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(sessions)
+	writeJSON(w, http.StatusOK, sessions)
 }
 
 func (s *Server) handleDeregisterAISession(w http.ResponseWriter, r *http.Request) {
@@ -73,8 +70,7 @@ func (s *Server) handlePurgeDisconnectedSessions(w http.ResponseWriter, r *http.
 		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]int{"deleted": n})
+	writeJSON(w, http.StatusOK, map[string]int{"deleted": n})
 }
 
 func (s *Server) handleHeartbeatAISession(w http.ResponseWriter, r *http.Request) {
@@ -118,15 +114,13 @@ func (s *Server) handleGetDiscoveredAgents(w http.ResponseWriter, r *http.Reques
 	agents, err := s.orch.GetDiscoveredAgents(r.Context())
 	if err != nil {
 		log.Printf("httpapi: get discovered agents: %v", err)
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode([]domain.DiscoveredAgent{})
+		writeJSON(w, http.StatusOK, []domain.DiscoveredAgent{})
 		return
 	}
 	if agents == nil {
 		agents = []domain.DiscoveredAgent{}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(agents)
+	writeJSON(w, http.StatusOK, agents)
 }
 
 // handleGetDiscoveredPlanFiles handles GET /api/plans/discovered?projectPath=<path>
@@ -140,8 +134,7 @@ func (s *Server) handleGetDiscoveredPlanFiles(w http.ResponseWriter, r *http.Req
 	if files == nil {
 		files = []domain.DiscoveredPlanFile{}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(files)
+	writeJSON(w, http.StatusOK, files)
 }
 
 // handleScanPlanFiles handles POST /api/plans/discovered/scan?projectPath=<path>
@@ -155,8 +148,7 @@ func (s *Server) handleScanPlanFiles(w http.ResponseWriter, r *http.Request) {
 	if files == nil {
 		files = []domain.DiscoveredPlanFile{}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(files)
+	writeJSON(w, http.StatusOK, files)
 }
 
 func (s *Server) handleDelegateToNexus(w http.ResponseWriter, r *http.Request) {
@@ -170,8 +162,7 @@ func (s *Server) handleDelegateToNexus(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{
+	writeJSON(w, http.StatusOK, map[string]string{
 		"instruction": instruction,
 		"sessionId":   id,
 	})

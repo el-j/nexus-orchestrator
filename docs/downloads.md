@@ -2,7 +2,7 @@
 layout: default
 title: Downloads
 nav_order: 2
-description: "Download nexusOrchestrator desktop app and CLI tools for macOS, Windows, and Linux"
+description: 'Download nexusOrchestrator desktop app and CLI tools for macOS, Windows, and Linux'
 ---
 
 <style>
@@ -357,7 +357,7 @@ Get-FileHash .\nexus-orchestrator-windows-amd64.zip -Algorithm SHA256
   <div class="dl-info-card">
     <h4>🔧 Build from Source</h4>
     <ul>
-      <li>Go 1.24+ with <code>CGO_ENABLED=1</code></li>
+      <li>Go 1.26+ with <code>CGO_ENABLED=1</code></li>
       <li>C compiler (gcc / clang) for sqlite3</li>
       <li><a href="https://wails.io/">Wails v2</a> for Desktop builds</li>
     </ul>

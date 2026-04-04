@@ -280,6 +280,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import Skeleton from 'primevue/skeleton';
+import { useToast } from 'primevue/usetoast';
 import { useTasks } from '../composables/useTasks';
 import { useProviders } from '../composables/useProviders';
 import { useAISessions } from '../composables/useAISessions';
@@ -290,6 +291,7 @@ import TaskDetailDrawer from '../components/TaskDetailDrawer.vue';
 import TaskSubmitForm from '../components/TaskSubmitForm.vue';
 
 // --- Composables ---
+const toast = useToast();
 const { tasks, loading: tasksLoading, refresh: refreshTasks, promoteTask } = useTasks();
 const { providers, loading: providersLoading } = useProviders();
 const { sessions, loading: sessionsLoading } = useAISessions();
@@ -312,6 +314,7 @@ async function handlePromote(id: string) {
     await refreshHistory();
   } catch (e) {
     console.warn('Promote failed:', e);
+    toast.add({ severity: 'error', summary: 'Promote Failed', detail: String(e), life: 5000 });
   } finally {
     promoting.value = null;
   }

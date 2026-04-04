@@ -8,7 +8,7 @@ import type {
   RuntimeConfig,
   RuntimeConfigUpdate,
 } from './domain';
-import type { DiscoveredProvider } from './discovery';
+import type { DiscoveredProvider } from './domain';
 
 // Wails Go bindings are injected at runtime via window.go
 declare global {
@@ -37,7 +37,7 @@ declare global {
           DeregisterAISession(id: string): Promise<void>;
           PurgeDisconnectedSessions(): Promise<number>;
           GetServerAddr(): Promise<string>;
-          HeartbeatAISession(id: string): Promise<Error>;
+          HeartbeatAISession(id: string): Promise<void>;
           ClaimTask(taskID: string, sessionID: string): Promise<Task>;
           UpdateTaskStatus(
             taskID: string,

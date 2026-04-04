@@ -237,39 +237,45 @@ watch(currentProject, () => {
 
 onMounted(async () => {
   loading.value = true;
-  await refresh();
+  try {
+    await refresh();
 
-  if (typeof EventSource !== 'undefined') {
-    try {
-      const baseUrl = await resolveServerUrl();
-      eventSource = new EventSource(`${baseUrl}/api/events`);
-      eventSource.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type !== 'connected') {
-          void refresh();
-        }
-      };
-      eventSource.onerror = () => {
-        eventSource?.close();
-        eventSource = null;
-        if (!interval) {
-          interval = setInterval(() => {
+    if (typeof EventSource !== 'undefined') {
+      try {
+        const baseUrl = await resolveServerUrl();
+        eventSource = new EventSource(`${baseUrl}/api/events`);
+        eventSource.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          if (data.type !== 'connected') {
             void refresh();
-          }, 2000);
-        }
-      };
-    } catch {
+          }
+        };
+        eventSource.onerror = () => {
+          eventSource?.close();
+          eventSource = null;
+          if (!interval) {
+            interval = setInterval(() => {
+              void refresh();
+            }, 2000);
+          }
+        };
+      } catch {
+        interval = setInterval(() => {
+          void refresh();
+        }, 2000);
+      }
+    } else {
       interval = setInterval(() => {
         void refresh();
       }, 2000);
     }
-  } else {
+  } catch {
     interval = setInterval(() => {
       void refresh();
     }, 2000);
+  } finally {
+    loading.value = false;
   }
-
-  loading.value = false;
 });
 
 onUnmounted(() => {

@@ -85,6 +85,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import Button from 'primevue/button';
+import { useToast } from 'primevue/usetoast';
 import { useTasks } from '../composables/useTasks';
 import type { Task } from '../types/domain';
 
@@ -96,6 +97,7 @@ const emit = defineEmits<{
 defineProps<{ items: Task[] }>();
 
 const { promoteTask, cancelTask } = useTasks();
+const toast = useToast();
 const promoting = ref<string | null>(null);
 const dismissing = ref<string | null>(null);
 
@@ -123,6 +125,7 @@ async function onPromote(id: string) {
     emit('promoted', id);
   } catch (e) {
     console.warn('BacklogList: promote failed:', e);
+    toast.add({ severity: 'error', summary: 'Promote Failed', detail: String(e), life: 5000 });
   } finally {
     promoting.value = null;
   }
@@ -136,6 +139,7 @@ async function onDismiss(id: string) {
     emit('dismissed', id);
   } catch (e) {
     console.warn('BacklogList: dismiss failed:', e);
+    toast.add({ severity: 'error', summary: 'Dismiss Failed', detail: String(e), life: 5000 });
   } finally {
     dismissing.value = null;
   }

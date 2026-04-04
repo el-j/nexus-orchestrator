@@ -1,9 +1,9 @@
 {
   "version": "2",
-  "updatedAt": "2026-03-29T12:50:00Z",
+  "updatedAt": "2026-03-29T15:00:00Z",
   "counters": {
-    "nextTaskId": 441,
-    "nextPlanId": 59
+    "nextTaskId": 460,
+    "nextPlanId": 61
   },
   "activePlanId": null,
   "notes": [
@@ -61,6 +61,14 @@
     {
       "ts": "2026-03-29T12:50:00Z",
       "note": "PLAN-058 completed. 8 tasks (TASK-433..440): LogPanel flex fix (reclaims space on collapse), AgentsView+ProvidersView sorting (active first + toggle), filtering (search + status chips), AI Tools grouped by kind with descriptions, Plans collapsible tree with stats, dense card layout. vue-tsc clean, 25 Vitest pass, go vet clean."
+    },
+    {
+      "ts": "2026-03-29T14:30:00Z",
+      "note": "PLAN-059 completed. 13 tasks (TASK-441..453): Fixed black screen (LiveActivityView+HistoryView+BacklogView wired in App.vue), deleted dead DashboardView.vue, fixed useDiscoveredPlans interval memory leak, added useGlobalSSE disconnect+exponential backoff, wails.ts HeartbeatAISession type fix, ProvidersView handlePromote pre-fill+debug log removed, DiscoveredProvider type consolidated, MissionControlView/BacklogList/ProviderStatus toast on errors, composable error refs, 36 writeJSON fixes in httpapi, tray stub documented, execution_engine error propagation. vue-tsc clean, 25 Vitest pass, 18 Go packages pass -race."
+    },
+    {
+      "ts": "2026-03-29T15:20:00Z",
+      "note": "PLAN-060 completed. 6 tasks (TASK-454..459): Vue Router migration. router/index.ts with 9 lazy-loaded routes (createWebHashHistory), routes.ts re-export stub fixed, main.ts wired app.use(router), AppSidebar migrated to useRouter/useRoute (no more emit/activeView ref), App.vue simplified to clean RouterView shell (removed all 9 v-if view imports and currentView ref), ProjectActivityView replaced emit('navigate') with router.push('/projects/live-activity'). vue-tsc clean, 25 Vitest pass."
     }
   ],
   "plans": {
@@ -721,6 +729,38 @@
         "TASK-440"
       ],
       "completedAt": "2026-03-29T12:50:00Z"
+    },
+    "PLAN-059": {
+      "id": "PLAN-059",
+      "title": "Comprehensive Codebase Hardening & Gap Closure",
+      "goal": "Fix black screen bug, memory leaks, type errors, stub code, error handling gaps across frontend and Go backend",
+      "status": "completed",
+      "createdAt": "2026-03-29T14:00:00Z",
+      "completedAt": "2026-03-29T14:30:00Z",
+      "tasks": [
+        "TASK-441",
+        "TASK-442",
+        "TASK-443",
+        "TASK-444",
+        "TASK-445",
+        "TASK-446",
+        "TASK-447",
+        "TASK-448",
+        "TASK-449",
+        "TASK-450",
+        "TASK-451",
+        "TASK-452",
+        "TASK-453"
+      ]
+    },
+    "PLAN-060": {
+      "id": "PLAN-060",
+      "title": "Vue Router Migration",
+      "goal": "Replace manual currentView ref + v-if chain with Vue Router. All views become named routes. Sidebar uses router.push. App.vue becomes a clean RouterView shell.",
+      "status": "completed",
+      "createdAt": "2026-03-29T15:00:00Z",
+      "completedAt": "2026-03-29T15:20:00Z",
+      "tasks": ["TASK-454", "TASK-455", "TASK-456", "TASK-457", "TASK-458", "TASK-459"]
     }
   },
   "tasks": {

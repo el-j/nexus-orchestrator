@@ -5,19 +5,21 @@ nav_order: 4
 ---
 
 # Getting Started
+
 {: .no_toc }
 
 ## Table of contents
+
 {: .no_toc .text-delta }
 
 1. TOC
-{:toc}
+   {:toc}
 
 ---
 
 ## Prerequisites
 
-- **Go 1.24+** with CGO support (`CGO_ENABLED=1`)
+- **Go 1.26+** with CGO support (`CGO_ENABLED=1`)
 - **C compiler** — `gcc` or `clang` (required by `go-sqlite3`)
 - **At least one LLM provider**:
   - [LM Studio](https://lmstudio.ai/) running on `127.0.0.1:1234`, or
@@ -100,6 +102,7 @@ curl -s -X POST http://localhost:63987/api/tasks \
 ```
 
 Response:
+
 ```json
 {
   "id": "a1b2c3d4-...",
@@ -152,6 +155,7 @@ curl -X DELETE http://localhost:63987/api/providers/My%20OpenAI
 ## Using the Dashboard
 
 Open `http://localhost:63987/ui` in your browser for a live dashboard that:
+
 - Shows all tasks with real-time status updates via SSE
 - Allows submitting new tasks
 - Displays provider status and model information

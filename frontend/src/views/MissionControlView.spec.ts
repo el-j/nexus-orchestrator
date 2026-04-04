@@ -48,6 +48,11 @@ vi.mock('../types/wails', () => ({
   submitTask: vi.fn(),
 }));
 
+// Mock PrimeVue useToast
+vi.mock('primevue/usetoast', () => ({
+  useToast: () => ({ add: vi.fn() }),
+}));
+
 // Mock useServerUrl
 vi.mock('../composables/useServerUrl', () => ({
   resolveServerUrl: vi.fn().mockResolvedValue('http://localhost:63987'),

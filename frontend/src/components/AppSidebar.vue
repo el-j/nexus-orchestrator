@@ -27,12 +27,12 @@
     <!-- Nav -->
     <nav class="flex-1 p-2">
       <button
-        v-for="item in navItems"
-        :key="item.label"
-        @click="navigate(item.id)"
+        v-for="item in navRoutes"
+        :key="item.name"
+        @click="navigate(item.path as string)"
         :class="[
           'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all mb-1',
-          activeView === item.id
+          isActive(item.path)
             ? 'bg-violet-600/15 text-violet-300 border border-violet-500/20'
             : 'text-slate-500 hover:text-slate-300 hover:bg-white/5',
         ]"
@@ -53,23 +53,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import ProjectSelector from './ProjectSelector.vue';
+import routes from '../router/routes';
+const router = useRouter();
+const route = useRoute();
 
-const emit = defineEmits<{ (e: 'view-change', id: string): void }>();
+const navRoutes = routes.filter((r) => r.nav);
 
-const activeView = ref('mission-control');
-const navItems = [
-  { id: 'mission-control', label: 'Mission Control', icon: 'pi-home' },
-  { id: 'agents', label: 'Agents', icon: 'pi-users' },
-  { id: 'providers', label: 'Providers', icon: 'pi-server' },
-  { id: 'projects', label: 'Projects', icon: 'pi-folder' },
-  { id: 'plans', label: 'Plans', icon: 'pi-file' },
-  { id: 'settings', label: 'Settings', icon: 'pi-cog' },
-];
+function navigate(path: string) {
+  void router.push(path);
+}
 
-function navigate(id: string) {
-  activeView.value = id;
-  emit('view-change', id);
+function isActive(path: string): boolean {
+  if (path === '/') return route.path === '/';
+  return route.path.startsWith(path);
 }
 </script>

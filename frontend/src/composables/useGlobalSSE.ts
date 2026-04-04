@@ -6,6 +6,7 @@ type SSEHandler = (data: { type: string; [key: string]: unknown }) => void;
 const handlers = new Map<string, Set<SSEHandler>>();
 let eventSource: EventSource | null = null;
 const connected = ref(false);
+let reconnectDelay = 3000;
 
 async function connect() {
   if (eventSource) return;
@@ -13,6 +14,7 @@ async function connect() {
   eventSource = new EventSource(`${baseUrl}/api/events`);
   eventSource.onopen = () => {
     connected.value = true;
+    reconnectDelay = 3000;
   };
   eventSource.onmessage = (event) => {
     try {
@@ -24,16 +26,22 @@ async function connect() {
       const typeSet = handlers.get(data.type);
       if (typeSet) typeSet.forEach((h) => h(data));
     } catch {
-      /* ignore parse errors */
+      console.warn('[SSE] Failed to parse event:', event.data);
     }
   };
   eventSource.onerror = () => {
     connected.value = false;
     eventSource?.close();
     eventSource = null;
-    // Reconnect after 3s
-    setTimeout(connect, 3000);
+    setTimeout(connect, reconnectDelay);
+    reconnectDelay = Math.min(reconnectDelay * 2, 30_000);
   };
+}
+
+function disconnect() {
+  eventSource?.close();
+  eventSource = null;
+  connected.value = false;
 }
 
 export function useGlobalSSE() {
@@ -46,5 +54,5 @@ export function useGlobalSSE() {
     handlers.get(type)?.delete(handler);
   }
 
-  return { connected, on, off, connect };
+  return { connected, on, off, connect, disconnect };
 }

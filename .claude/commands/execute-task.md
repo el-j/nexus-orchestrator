@@ -47,7 +47,7 @@ Launch a sub-agent with:
 
 - The full content of the task file as the prompt
 - Key project rules:
-  - Module: `nexus-orchestrator`, Go 1.24, `CGO_ENABLED=1` required for sqlite3
+  - Module: `nexus-orchestrator`, Go 1.26, `CGO_ENABLED=1` required for sqlite3
   - Architecture: Hexagonal — core never imports adapters
   - Error wrapping: `fmt.Errorf("package: operation: %w", err)`
   - Concurrency: `sync.Mutex` for shared state; no goroutines in `internal/core/services/`

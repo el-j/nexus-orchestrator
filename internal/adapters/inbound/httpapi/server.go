@@ -300,7 +300,9 @@ func StartServerFull(ctx context.Context, orch ports.Orchestrator, addr string, 
 func writeJSONError(w http.ResponseWriter, msg string, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
+	if err := json.NewEncoder(w).Encode(map[string]string{"error": msg}); err != nil {
+		log.Printf("httpapi: json encode: %v", err)
+	}
 }
 
 // writeJSON sets Content-Type to application/json, writes the given HTTP status
@@ -308,12 +310,13 @@ func writeJSONError(w http.ResponseWriter, msg string, code int) {
 func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		log.Printf("httpapi: json encode: %v", err)
+	}
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{
+	writeJSON(w, http.StatusOK, map[string]string{
 		"status":  "ok",
 		"service": "nexus-orchestrator",
 	})
@@ -327,8 +330,7 @@ func (s *Server) handleGetLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	entries := s.logHub.Buffer()
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(entries)
+	writeJSON(w, http.StatusOK, entries)
 }
 
 // handleEvents serves a Server-Sent Events stream that multiplexes task lifecycle

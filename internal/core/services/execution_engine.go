@@ -118,7 +118,16 @@ func (o *OrchestratorService) buildChatContext(task domain.Task, llm ports.LLMCl
 	if len(task.ContextFiles) > 0 && o.fileWriter != nil {
 		ctx, err := o.fileWriter.ReadContextFiles(task.ProjectPath, task.ContextFiles)
 		if err != nil {
-			log.Printf("orchestrator: read context for task %s: %v", task.ID, err)
+			logEntry := fmt.Sprintf("failed reading context files: %v", err)
+			log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
+			if err2 := o.repo.UpdateLogs(task.ID, logEntry); err2 != nil {
+				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err2)
+			}
+			if err2 := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err2 != nil {
+				log.Printf("orchestrator: update status for task %s: %v", task.ID, err2)
+			}
+			o.emit(task.ID, domain.StatusFailed)
+			return "", nil, fmt.Errorf("orchestrator: read context files: %w", err)
 		} else if strings.TrimSpace(ctx) != "" {
 			prompt = ctx + "\n\n" + prompt
 		}
@@ -130,7 +139,16 @@ func (o *OrchestratorService) buildChatContext(task domain.Task, llm ports.LLMCl
 	if o.sessionRepo != nil {
 		sess, err := o.sessionRepo.GetByProjectPath(task.ProjectPath)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
-			log.Printf("orchestrator: load session for task %s: %v", task.ID, err)
+			logEntry := fmt.Sprintf("failed loading session history: %v", err)
+			log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
+			if err2 := o.repo.UpdateLogs(task.ID, logEntry); err2 != nil {
+				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err2)
+			}
+			if err2 := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err2 != nil {
+				log.Printf("orchestrator: update status for task %s: %v", task.ID, err2)
+			}
+			o.emit(task.ID, domain.StatusFailed)
+			return "", nil, fmt.Errorf("orchestrator: load session: %w", err)
 		}
 		sessionHistory = sess.Messages
 	}

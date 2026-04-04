@@ -43,8 +43,7 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 		APITokenEnabled: cfg.APIToken != "",
 		MCPTokenEnabled: cfg.MCPToken != "",
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(resp)
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (s *Server) handlePutConfig(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +84,5 @@ func (s *Server) handlePutConfig(w http.ResponseWriter, r *http.Request) {
 		resp.MCPToken = cfg.MCPToken
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(resp)
+	writeJSON(w, http.StatusOK, resp)
 }

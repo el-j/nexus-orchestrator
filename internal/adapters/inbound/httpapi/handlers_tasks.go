@@ -28,9 +28,7 @@ func (s *Server) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(map[string]string{
+	writeJSON(w, http.StatusCreated, map[string]string{
 		"task_id": taskID,
 		"status":  string(domain.StatusQueued),
 	})
@@ -54,8 +52,7 @@ func (s *Server) handleListTasks(w http.ResponseWriter, r *http.Request) {
 		tasks = []domain.Task{}
 	}
 	computeTaskDurations(tasks)
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(tasks)
+	writeJSON(w, http.StatusOK, tasks)
 }
 
 func (s *Server) handleGetAllTasks(w http.ResponseWriter, r *http.Request) {
@@ -79,8 +76,7 @@ func (s *Server) handleGetAllTasks(w http.ResponseWriter, r *http.Request) {
 		tasks = []domain.Task{}
 	}
 	computeTaskDurations(tasks)
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(tasks)
+	writeJSON(w, http.StatusOK, tasks)
 }
 
 func (s *Server) handleGetTask(w http.ResponseWriter, r *http.Request) {
@@ -96,8 +92,7 @@ func (s *Server) handleGetTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	task.ComputeDuration()
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(task)
+	writeJSON(w, http.StatusOK, task)
 }
 
 func (s *Server) handleCancelTask(w http.ResponseWriter, r *http.Request) {
@@ -129,9 +124,7 @@ func (s *Server) handleCreateDraft(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(map[string]string{"id": id, "status": "DRAFT"})
+	writeJSON(w, http.StatusCreated, map[string]string{"id": id, "status": "DRAFT"})
 }
 
 func (s *Server) handleGetBacklog(w http.ResponseWriter, r *http.Request) {
@@ -146,8 +139,7 @@ func (s *Server) handleGetBacklog(w http.ResponseWriter, r *http.Request) {
 		tasks = []domain.Task{}
 	}
 	computeTaskDurations(tasks)
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(tasks)
+	writeJSON(w, http.StatusOK, tasks)
 }
 
 func (s *Server) handlePromoteTask(w http.ResponseWriter, r *http.Request) {
@@ -181,8 +173,7 @@ func (s *Server) handleUpdateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	updated.ComputeDuration()
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(updated)
+	writeJSON(w, http.StatusOK, updated)
 }
 
 func (s *Server) handleClaimTask(w http.ResponseWriter, r *http.Request) {
@@ -209,9 +200,7 @@ func (s *Server) handleClaimTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	task.ComputeDuration()
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(task)
+	writeJSON(w, http.StatusOK, task)
 }
 
 func (s *Server) handleUpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
@@ -248,9 +237,7 @@ func (s *Server) handleUpdateTaskStatus(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	task.ComputeDuration()
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(task)
+	writeJSON(w, http.StatusOK, task)
 }
 
 func (s *Server) handleHeartbeatTask(w http.ResponseWriter, r *http.Request) {
@@ -293,6 +280,5 @@ func (s *Server) handleGetSessionTasks(w http.ResponseWriter, r *http.Request) {
 	if sessionTasks == nil {
 		sessionTasks = []domain.Task{}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(sessionTasks)
+	writeJSON(w, http.StatusOK, sessionTasks)
 }

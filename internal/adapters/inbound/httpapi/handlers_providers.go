@@ -22,8 +22,7 @@ func (s *Server) handleProviders(w http.ResponseWriter, r *http.Request) {
 	if providers == nil {
 		providers = []ports.ProviderInfo{}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(providers)
+	writeJSON(w, http.StatusOK, providers)
 }
 
 func (s *Server) handleRegisterProvider(w http.ResponseWriter, r *http.Request) {
@@ -44,9 +43,7 @@ func (s *Server) handleRegisterProvider(w http.ResponseWriter, r *http.Request) 
 		writeJSONError(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(map[string]string{"name": cfg.Name, "kind": string(cfg.Kind)})
+	writeJSON(w, http.StatusCreated, map[string]string{"name": cfg.Name, "kind": string(cfg.Kind)})
 }
 
 func (s *Server) handleRemoveProvider(w http.ResponseWriter, r *http.Request) {
@@ -78,8 +75,7 @@ func (s *Server) handleProviderModels(w http.ResponseWriter, r *http.Request) {
 	if models == nil {
 		models = []string{}
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(models)
+	writeJSON(w, http.StatusOK, models)
 }
 
 // maskAPIKey returns a masked representation of an API key:
@@ -115,9 +111,7 @@ func (s *Server) handleAddProviderConfig(w http.ResponseWriter, r *http.Request)
 		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(maskedProviderConfig(created))
+	writeJSON(w, http.StatusCreated, maskedProviderConfig(created))
 }
 
 func (s *Server) handleListProviderConfigs(w http.ResponseWriter, r *http.Request) {
@@ -131,8 +125,7 @@ func (s *Server) handleListProviderConfigs(w http.ResponseWriter, r *http.Reques
 	for i, c := range cfgs {
 		masked[i] = maskedProviderConfig(c)
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(masked)
+	writeJSON(w, http.StatusOK, masked)
 }
 
 func (s *Server) handleUpdateProviderConfig(w http.ResponseWriter, r *http.Request) {
@@ -153,8 +146,7 @@ func (s *Server) handleUpdateProviderConfig(w http.ResponseWriter, r *http.Reque
 		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(maskedProviderConfig(updated))
+	writeJSON(w, http.StatusOK, maskedProviderConfig(updated))
 }
 
 func (s *Server) handleRemoveProviderConfig(w http.ResponseWriter, r *http.Request) {
@@ -177,8 +169,7 @@ func (s *Server) handleGetDiscoveredProviders(w http.ResponseWriter, r *http.Req
 		writeJSONError(w, "failed to get discovered providers", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(providers)
+	writeJSON(w, http.StatusOK, providers)
 }
 
 func (s *Server) handleTriggerScan(w http.ResponseWriter, r *http.Request) {
@@ -187,8 +178,7 @@ func (s *Server) handleTriggerScan(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, "scan failed", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(providers)
+	writeJSON(w, http.StatusOK, providers)
 }
 
 func (s *Server) handlePromoteProvider(w http.ResponseWriter, r *http.Request) {

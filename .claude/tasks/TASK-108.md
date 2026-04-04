@@ -11,6 +11,7 @@ createdAt: 2026-03-10T22:00:00.000Z
 ## Context
 
 Three separate GitHub Actions workflows exist today:
+
 - `.github/workflows/version.yml` — calculates version via GitVersion, creates a `v*.*.*` git tag using `GITHUB_TOKEN`
 - `.github/workflows/release.yml` — triggers on `push: tags: v*.*.*`, builds CLI+daemon for 5 platforms, publishes GitHub Release
 - `.github/workflows/desktop.yml` — triggers on `push: tags: v*.*.*`, builds Wails desktop app for 4 platforms, attaches to GitHub Release
@@ -32,9 +33,9 @@ Create `.github/workflows/publish.yml` — a single unified workflow that:
 
 - `permissions: contents: write` at workflow level
 - `concurrency: group: publish-${{ github.ref }}, cancel-in-progress: true`
-- All jobs have `if: needs.version.outputs.exists == 'false'` (except `version` job itself)  
+- All jobs have `if: needs.version.outputs.exists == 'false'` (except `version` job itself)
 - `version` job outputs: `semVer`, `tag` (e.g. `v0.2.1`), `exists` (true/false)
-- Go version: `1.24`, Wails version: `v2.11.0`, Zig version: `0.14.0`
+- Go version: `1.26`, Wails version: `v2.11.0`, Zig version: `0.14.0`
 - Upload artifacts via `actions/upload-artifact@v4`, download via `actions/download-artifact@v4`
 - CLI artifact names: `nexusOrchestrator-{os}-{arch}.tar.gz` / `.zip` (preserves `install.sh` compatibility)
 - Desktop artifact names: `nexusOrchestrator-desktop-{os}-{arch}.tar.gz` / `.zip`
@@ -58,6 +59,6 @@ Create `.github/workflows/publish.yml` — a single unified workflow that:
 - File created with valid YAML
 - All 6 jobs defined with correct `needs`, `if`, and `matrix` entries
 - All artifact upload/download steps consistent with exact file names
-- SHA256SUMS step covers CLI archives; SHA256SUMS-desktop.txt covers desktop archives  
+- SHA256SUMS step covers CLI archives; SHA256SUMS-desktop.txt covers desktop archives
 - `softprops/action-gh-release@v2` attaches all archives + both checksum files
 - `go vet` and YAML lint would pass

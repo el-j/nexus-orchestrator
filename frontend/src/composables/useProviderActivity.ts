@@ -10,6 +10,7 @@ export interface ProviderModelState {
 
 export function useProviderActivity() {
   const providerStates = ref<ProviderModelState[]>([]);
+  const error = ref<string | null>(null);
   let interval: ReturnType<typeof setInterval> | null = null;
 
   async function refresh() {
@@ -44,8 +45,9 @@ export function useProviderActivity() {
         lastSeen: data.lastSeen,
         active: data.lastSeen >= thirtySecsAgo,
       }));
-    } catch {
-      // silently fail
+      error.value = null;
+    } catch (e) {
+      error.value = String(e);
     }
   }
 
@@ -57,5 +59,5 @@ export function useProviderActivity() {
     if (interval) clearInterval(interval);
   });
 
-  return { providerStates, refresh };
+  return { providerStates, error, refresh };
 }

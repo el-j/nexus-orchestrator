@@ -524,8 +524,17 @@ async function handleDeleteConfig(cfg: ProviderConfig) {
 
 function handlePromote(provider: DiscoveredProvider) {
   // Pre-fill the configured provider form with discovered data
-  editingConfig.value = null;
+  editingConfig.value = {
+    id: '',
+    name: provider.name,
+    kind: (provider.kind as ProviderConfig['kind']) || 'openaicompat',
+    baseUrl: provider.baseUrl || '',
+    apiKey: '',
+    model: '',
+    enabled: true,
+    createdAt: '',
+    updatedAt: '',
+  };
   showForm.value = true;
-  console.log('Promote discovered provider:', provider.name, provider.baseUrl);
 }
 </script>

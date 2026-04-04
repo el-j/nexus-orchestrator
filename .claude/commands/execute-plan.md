@@ -57,7 +57,7 @@ When all tasks in the plan are `done`:
 
 ## Key Project Rules (pass to every sub-agent)
 
-- Module: `nexus-orchestrator`, Go 1.24, `CGO_ENABLED=1` required
+- Module: `nexus-orchestrator`, Go 1.26, `CGO_ENABLED=1` required
 - Hexagonal architecture: core never imports adapters
 - `fmt.Errorf("package: operation: %w", err)` error wrapping everywhere
 - No goroutines inside `internal/core/services/`

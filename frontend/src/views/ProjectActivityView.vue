@@ -84,7 +84,7 @@
           <div class="px-4 py-2.5 flex justify-end border-t border-white/[0.04]">
             <button
               class="text-[11px] text-violet-400 hover:text-violet-300 transition-colors"
-              @click="emit('navigate', 'live-activity')"
+              @click="router.push('/projects/live-activity')"
             >
               View timeline →
             </button>
@@ -97,13 +97,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
 import type { AIActivity } from '../types/domain';
 import { resolveServerUrl } from '../composables/useServerUrl';
 import { timeAgo } from '../utils/time';
 
-const emit = defineEmits<{
-  (e: 'navigate', view: string): void;
-}>();
+const router = useRouter();
 
 interface ProjectGroup {
   path: string;
@@ -182,9 +181,12 @@ function activityEmoji(type: AIActivity['activityType']): string {
 
 onMounted(async () => {
   loading.value = true;
-  await fetchActivities();
-  loading.value = false;
-  pollInterval = setInterval(fetchActivities, 15_000);
+  try {
+    await fetchActivities();
+  } finally {
+    loading.value = false;
+    pollInterval = setInterval(fetchActivities, 15_000);
+  }
 });
 
 onUnmounted(() => {

@@ -1,4 +1,7 @@
-// Package tray provides the system tray inbound adapter for the nexusOrchestrator desktop application.
+// Package tray provides the system tray inbound adapter for the nexusOrchestrator
+// desktop application. It is currently a stub: the full systray integration is
+// blocked on macOS main-thread coordination with Wails. All methods are safe to
+// call and satisfy the adapter interface, but no tray icon is displayed.
 package tray
 
 import (
@@ -44,7 +47,7 @@ func (t *TrayAdapter) Start() {
 }
 
 // UpdateStatus refreshes the tray tooltip with the current provider and queue counts.
-// When systray is not yet wired the formatted string is discarded.
+// TODO(tray): use the formatted string to update systray tooltip once wired.
 func (t *TrayAdapter) UpdateStatus() {
 	providers, err := t.orch.GetProviders()
 	if err != nil {
@@ -54,6 +57,7 @@ func (t *TrayAdapter) UpdateStatus() {
 	if err != nil {
 		return
 	}
+	// Formatted for future systray tooltip; currently discarded.
 	_ = fmt.Sprintf("nexusOrchestrator — %d providers, %d tasks queued", len(providers), len(queue))
 	// Would update tray tooltip once systray is wired.
 }

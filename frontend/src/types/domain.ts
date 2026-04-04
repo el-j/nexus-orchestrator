@@ -85,6 +85,10 @@ export interface DiscoveredProvider {
   cliPath?: string;
   processName?: string;
   models?: string[];
+  /** Models currently loaded in memory (Ollama /api/ps). Non-empty means actively in use. */
+  activeModels?: string[];
+  /** True when the provider is actively generating a response right now. */
+  generating?: boolean;
   lastSeen: string;
 }
 

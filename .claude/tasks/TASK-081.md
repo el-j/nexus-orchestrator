@@ -1,6 +1,6 @@
 ---
 id: TASK-081
-title: "Pages: Getting Started + MCP Integration guide"
+title: 'Pages: Getting Started + MCP Integration guide'
 role: devops
 planId: PLAN-009
 status: todo
@@ -9,9 +9,11 @@ createdAt: 2026-03-10T15:00:00.000Z
 ---
 
 ## Context
+
 A step-by-step getting started guide and MCP integration page for users who want to set up nexusOrchestrator quickly and connect it to Claude Desktop or other MCP clients.
 
 ## Files to Read
+
 - `README.md`
 - `cmd/nexus-daemon/main.go`
 - `cmd/nexus-cli/main.go`
@@ -19,7 +21,9 @@ A step-by-step getting started guide and MCP integration page for users who want
 - `.github/copilot-instructions.md`
 
 ## Implementation Steps
+
 1. Create `docs/getting-started.md`:
+
    ```yaml
    ---
    layout: default
@@ -27,8 +31,9 @@ A step-by-step getting started guide and MCP integration page for users who want
    nav_order: 4
    ---
    ```
+
    Content:
-   - **Prerequisites**: Go 1.24+, CGO_ENABLED=1, C compiler (gcc/clang), at least one LLM provider
+   - **Prerequisites**: Go 1.26+, CGO_ENABLED=1, C compiler (gcc/clang), at least one LLM provider
    - **Installation**: Clone, build daemon, build CLI
    - **Starting the Daemon**: `./nexus-daemon` with env var config
    - **Submitting Your First Task**: curl example with POST /api/tasks
@@ -54,6 +59,7 @@ A step-by-step getting started guide and MCP integration page for users who want
    - **Troubleshooting**: Common issues (daemon not running, port conflicts)
 
 ## Acceptance Criteria
+
 - [ ] `docs/getting-started.md` exists with step-by-step guide
 - [ ] `docs/mcp-integration.md` exists with Claude Desktop config
 - [ ] Curl examples for HTTP API
@@ -61,5 +67,6 @@ A step-by-step getting started guide and MCP integration page for users who want
 - [ ] No Go source files modified
 
 ## Anti-patterns to Avoid
+
 - NEVER modify any Go source files
 - NEVER include placeholder "TODO" content — every section must be complete

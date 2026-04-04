@@ -1,7 +1,6 @@
 package httpapi
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 )
@@ -212,9 +211,8 @@ func (s *Server) handleHowto(w http.ResponseWriter, r *http.Request) {
 	}
 	baseURL := fmt.Sprintf("%s://%s", scheme, r.Host)
 	doc := buildHowToDoc(baseURL)
-	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "public, max-age=60")
-	_ = json.NewEncoder(w).Encode(doc)
+	writeJSON(w, http.StatusOK, doc)
 }
 
 // handleWellKnownNexus serves GET /.well-known/nexus.json — the lightweight
@@ -254,7 +252,6 @@ func (s *Server) handleWellKnownNexus(w http.ResponseWriter, r *http.Request) {
 			"backlog-drafts",
 		},
 	}
-	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "public, max-age=300")
-	_ = json.NewEncoder(w).Encode(doc)
+	writeJSON(w, http.StatusOK, doc)
 }

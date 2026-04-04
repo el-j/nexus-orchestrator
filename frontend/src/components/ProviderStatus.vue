@@ -134,6 +134,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useToast } from 'primevue/usetoast';
 import type { ProviderInfo, ProviderConfig } from '../types/domain';
 import type { ProviderModelState } from '../composables/useProviderActivity';
 import {
@@ -166,12 +167,14 @@ function stateFor(p: ProviderInfo): ProviderModelState | undefined {
 const configs = ref<ProviderConfig[]>([]);
 const showForm = ref(false);
 const editingConfig = ref<ProviderConfig | null>(null);
+const toast = useToast();
 
 async function loadConfigs() {
   try {
     configs.value = await listProviderConfigs();
   } catch (e) {
     console.warn('ProviderStatus: loadConfigs failed:', e);
+    toast.add({ severity: 'error', summary: 'Load Configs Failed', detail: String(e), life: 5000 });
   }
 }
 

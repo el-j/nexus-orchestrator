@@ -1,4 +1,4 @@
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import type { Ref } from 'vue';
 import type { DiscoveredPlanFile } from '../types/domain';
 import { resolveServerUrl } from './useServerUrl';
@@ -40,9 +40,15 @@ export function useDiscoveredPlans(projectPath: Ref<string | null>) {
     }
   }
 
+  let intervalId: ReturnType<typeof setInterval> | undefined;
+
   onMounted(() => {
     fetchPlans();
-    setInterval(fetchPlans, 30_000);
+    intervalId = setInterval(fetchPlans, 30_000);
+  });
+
+  onUnmounted(() => {
+    clearInterval(intervalId);
   });
 
   watch(projectPath, () => fetchPlans());
