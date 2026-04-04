@@ -65,31 +65,26 @@ describe('TaskQueueProvider', () => {
     mockScopeToWorkspace = true;
   });
 
-  it('renders queue items with local provenance when known', async () => {
-    const { TaskQueueProvider } = await import('./taskQueueProvider');
-    const client = {
-      getAllTasks: vi.fn<() => Promise<Task[]>>().mockResolvedValue([
-        {
-          id: 'task-1',
-          projectPath: '/workspace',
-          targetFile: 'file.ts',
-          instruction: 'Queued via extension',
-          contextFiles: [],
-          providerHint: 'MockProvider',
-          modelId: 'mock-model',
-          status: 'QUEUED',
-          createdAt: '2026-03-13T01:00:00.000Z',
-          updatedAt: '2026-03-13T01:00:01.000Z',
-        },
-      ]),
-    } as unknown as NexusClient;
+  it('renders local provenance in task metadata when known', async () => {
+    const { TaskItem } = await import('./taskQueueProvider');
 
-    const provider = new TaskQueueProvider(client);
-    const children = await provider.getChildren();
+    const item = new TaskItem({
+      id: 'task-1',
+      projectPath: '/workspace',
+      targetFile: 'file.ts',
+      instruction: 'Queued via extension',
+      contextFiles: [],
+      providerHint: 'MockProvider',
+      modelId: 'mock-model',
+      status: 'QUEUED',
+      createdAt: '2026-03-13T01:00:00.000Z',
+      updatedAt: '2026-03-13T01:00:01.000Z',
+    } as Task);
 
-    expect(children).toHaveLength(1);
-    expect(children[0].description).toContain('vscode queue');
-    expect((children[0].tooltip as { value: string }).value).toContain('Source');
+    expect(item.description).toContain('vscode queue');
+    expect(item.description).toContain('MockProvider');
+    expect(item.description).toContain('mock-model');
+    expect((item.tooltip as { value: string }).value).toContain('**Source:** vscode queue');
   });
 
   it('filters to current workspace when scope is enabled', async () => {

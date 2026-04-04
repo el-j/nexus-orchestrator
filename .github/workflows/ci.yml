@@ -55,6 +55,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Ensure embedded frontend path exists
+        run: |
+          mkdir -p build/frontend
+          test -f build/frontend/.gitkeep || touch build/frontend/.gitkeep
+
       - uses: actions/setup-go@v6
         with:
           go-version: "1.26"
@@ -74,6 +79,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
+
+      - name: Ensure embedded frontend path exists
+        run: |
+          mkdir -p build/frontend
+          test -f build/frontend/.gitkeep || touch build/frontend/.gitkeep
 
       - uses: actions/setup-go@v6
         with:
@@ -100,6 +110,11 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
+
+      - name: Ensure embedded frontend path exists
+        run: |
+          mkdir -p build/frontend
+          test -f build/frontend/.gitkeep || touch build/frontend/.gitkeep
 
       - uses: actions/setup-go@v6
         with:
@@ -178,6 +193,10 @@ jobs:
       - name: Install dependencies
         working-directory: vscode-extension
         run: npm ci
+
+      - name: Type-check extension
+        working-directory: vscode-extension
+        run: npx tsc --noEmit
 
       - name: Run extension smoke coverage
         working-directory: vscode-extension
