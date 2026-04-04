@@ -217,6 +217,18 @@ export async function heartbeatAISession(id: string): Promise<void> {
   await fetch(`/api/ai-sessions/${id}/heartbeat`, { method: 'POST' });
 }
 
+export async function heartbeatAISession(id: string): Promise<void> {
+  if (isWails()) {
+    try {
+      await window.go!.main!.App!.HeartbeatAISession(id)
+    } catch (e) {
+      console.warn('heartbeatAISession: failed:', e)
+    }
+    return
+  }
+  await fetch(`/api/ai-sessions/${id}/heartbeat`, { method: 'POST' })
+}
+
 export async function deregisterAISession(id: string): Promise<void> {
   if (isWails()) return window.go!.main!.App!.DeregisterAISession(id);
   const r = await fetch(`/api/ai-sessions/${id}`, { method: 'DELETE' });

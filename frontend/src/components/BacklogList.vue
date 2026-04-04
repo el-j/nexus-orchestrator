@@ -15,8 +15,7 @@
     <div
       v-for="task in items"
       :key="task.id"
-          class="group flex items-start gap-4 p-4 rounded-xl border border-white/5 bg-nexus-800
-            hover:border-violet-500/20 hover:bg-nexus-700 transition-all"
+      class="group flex items-start gap-4 p-4 rounded-xl border border-white/5 bg-nexus-800 hover:border-violet-500/20 hover:bg-nexus-700 transition-all"
     >
       <!-- Priority badge -->
       <span :class="['text-xs font-semibold mt-0.5 w-14 shrink-0', priorityColor(task.priority)]">
