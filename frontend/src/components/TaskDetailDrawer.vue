@@ -19,6 +19,7 @@
           <span class="font-mono text-xs text-violet-400 uppercase">{{
             task.command || 'auto'
           }}</span>
+
         </div>
         <div class="flex justify-between items-center">
           <span class="text-slate-500 text-xs">Created</span>
