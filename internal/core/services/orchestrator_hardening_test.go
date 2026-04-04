@@ -1,6 +1,7 @@
 package services_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -331,5 +332,98 @@ func TestPromoteTask_NoProvider_ReturnsWarning(t *testing.T) {
 	}
 	if saved.Status != domain.StatusQueued {
 		t.Errorf("status after promote: want QUEUED, got %s", saved.Status)
+	}
+}
+
+// ---- TASK-498: stale-task watchdog ------------------------------------------
+
+// staleAwareRepo wraps memRepo and returns tasks whose UpdatedAt is older than
+// the given threshold when GetStaleProcessing is called.
+type staleAwareRepo struct {
+	*memRepo
+}
+
+func (r *staleAwareRepo) GetStaleProcessing(_ context.Context, threshold time.Duration) ([]domain.Task, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	cutoff := time.Now().Add(-threshold)
+	var out []domain.Task
+	for _, t := range r.tasks {
+		if t.Status == domain.StatusProcessing && t.UpdatedAt.Before(cutoff) {
+			out = append(out, t)
+		}
+	}
+	return out, nil
+}
+
+// TestWatchdog_StaleProcessingTaskFailed verifies that a PROCESSING task whose
+// UpdatedAt is older than the stale threshold is marked FAILED by the watchdog.
+func TestWatchdog_StaleProcessingTaskFailed(t *testing.T) {
+	base := newMemRepo()
+	repo := &staleAwareRepo{base}
+
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil,
+		services.WithWatchdogInterval(200*time.Millisecond),
+	)
+	defer orch.Stop()
+
+	// Seed AFTER orchestrator starts so startup recovery (which runs on construction)
+	// does not re-queue the task before the watchdog can fail it.
+	staleTask := domain.Task{
+		ID:          "stale-task-watchdog",
+		ProjectPath: "/tmp/watchdog",
+		Instruction: "stale",
+		Status:      domain.StatusProcessing,
+		CreatedAt:   time.Now().Add(-10 * time.Minute),
+		UpdatedAt:   time.Now().Add(-10 * time.Minute), // older than 5-minute threshold
+	}
+	if err := repo.Save(staleTask); err != nil {
+		t.Fatalf("seed stale task: %v", err)
+	}
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		time.Sleep(150 * time.Millisecond)
+		saved, _ := repo.GetByID(staleTask.ID)
+		if saved.Status == domain.StatusFailed {
+			return // success
+		}
+	}
+	saved, _ := repo.GetByID(staleTask.ID)
+	t.Errorf("stale task not FAILED by watchdog; final status: %s", saved.Status)
+}
+
+// TestWatchdog_FreshProcessingTaskUntouched verifies that a PROCESSING task with
+// a recent UpdatedAt is NOT failed by the watchdog.
+func TestWatchdog_FreshProcessingTaskUntouched(t *testing.T) {
+	base := newMemRepo()
+	repo := &staleAwareRepo{base}
+
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil,
+		services.WithWatchdogInterval(200*time.Millisecond),
+	)
+	defer orch.Stop()
+
+	// Seed AFTER orchestrator starts so startup recovery doesn't re-queue it.
+	freshTask := domain.Task{
+		ID:          "fresh-task-watchdog",
+		ProjectPath: "/tmp/watchdog-fresh",
+		Instruction: "fresh",
+		Status:      domain.StatusProcessing,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(), // brand new → not stale
+	}
+	if err := repo.Save(freshTask); err != nil {
+		t.Fatalf("seed fresh task: %v", err)
+	}
+
+	// Wait long enough for 3+ watchdog cycles.
+	time.Sleep(700 * time.Millisecond)
+
+	saved, _ := repo.GetByID(freshTask.ID)
+	if saved.Status != domain.StatusProcessing {
+		t.Errorf("fresh task should remain PROCESSING; got %s", saved.Status)
 	}
 }

@@ -45,6 +45,8 @@ declare global {
             status: TaskStatus,
             logs: string,
           ): Promise<Task>;
+          GetRuntimeConfig(): Promise<RuntimeConfig>;
+          UpdateRuntimeConfig(update: RuntimeConfigUpdate): Promise<RuntimeConfig>;
         };
       };
     };
@@ -211,8 +213,8 @@ export async function heartbeatAISession(id: string): Promise<void> {
   if (isWails()) {
     try {
       await window.go!.main!.App!.HeartbeatAISession(id);
-    } catch (e) {
-      console.warn('heartbeatAISession: failed:', e);
+    } catch {
+      // heartbeat failures are expected during daemon downtime
     }
     return;
   }
@@ -261,12 +263,14 @@ export async function updateTaskStatus(
 }
 
 export async function getRuntimeConfig(): Promise<RuntimeConfig> {
+  if (isWails()) return window.go!.main!.App!.GetRuntimeConfig();
   const r = await fetch('/api/config');
   if (!r.ok) throw new Error(`getConfig: ${r.status}`);
   return r.json() as Promise<RuntimeConfig>;
 }
 
 export async function updateRuntimeConfig(update: RuntimeConfigUpdate): Promise<RuntimeConfig> {
+  if (isWails()) return window.go!.main!.App!.UpdateRuntimeConfig(update);
   const r = await fetch('/api/config', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },

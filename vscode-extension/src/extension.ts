@@ -11,6 +11,7 @@ import {
   submitTaskCommand,
   selectProviderCommand,
   viewQueueCommand,
+  showProvidersCommand,
 } from './commands';
 import { NexusStatusBar } from './statusBar';
 import { TaskItem, TaskQueueProvider } from './taskQueueProvider';
@@ -41,6 +42,29 @@ function daemonUrl(): string {
   );
 }
 
+/** Reads the configured MCP port. */
+function mcpPort(): number {
+  return vscode.workspace.getConfiguration('nexus').get<number>('mcpPort') ?? 63988;
+}
+
+/** Builds a new NexusClient from current settings, optionally running port sweep. */
+async function buildClient(): Promise<NexusClient> {
+  const url = daemonUrl();
+  const port = mcpPort();
+  const sweep =
+    vscode.workspace.getConfiguration('nexus').get<boolean>('enableMCPPortSweep') ?? true;
+  const c = new NexusClient(url, port);
+  if (sweep) {
+    const candidates = [...new Set([port, 63988, 63987, 63989, 63990, 63986])];
+    try {
+      await c.tryConnect(candidates);
+    } catch {
+      // no port responded — proceed with configured url
+    }
+  }
+  return c;
+}
+
 /** Returns the shared NexusStatusBar instance (available after activation). */
 export function getStatusBar(): NexusStatusBar {
   if (!statusBar) {
@@ -50,7 +74,18 @@ export function getStatusBar(): NexusStatusBar {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  client = new NexusClient(daemonUrl());
+  client = new NexusClient(daemonUrl(), mcpPort());
+  // Fire-and-forget port sweep on activation
+  void buildClient()
+    .then((c) => {
+      client = c;
+      statusBar?.dispose();
+      statusBar = new NexusStatusBar(client);
+      context.subscriptions.push(statusBar.startPolling(30000));
+    })
+    .catch(() => {
+      /* ignore — client already set above */
+    });
   context.subscriptions.push(getNexusActivityChannel());
 
   // ── Session monitor (GitHub Copilot activity → daemon AISession) ────────────
@@ -81,15 +116,37 @@ export function activate(context: vscode.ExtensionContext): void {
   statusBar = new NexusStatusBar(client);
   context.subscriptions.push(statusBar.startPolling(30000)); // matches backend health cache TTL (30 s)
 
-  // Re-create the client and refresh status bar whenever the daemon URL changes.
+  // Re-create the client and refresh status bar whenever the daemon URL or MCP port changes.
   // Dispose the old status bar first to prevent accumulating pollers.
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration('nexus.daemonUrl')) {
-        client = new NexusClient(daemonUrl());
+      if (
+        e.affectsConfiguration('nexus.daemonUrl') ||
+        e.affectsConfiguration('nexus.mcpPort') ||
+        e.affectsConfiguration('nexus.enableMCPPortSweep')
+      ) {
+        void buildClient().then((c) => {
+          client = c;
+          statusBar?.dispose();
+          statusBar = new NexusStatusBar(client);
+          context.subscriptions.push(statusBar.startPolling(30000));
+        });
+      }
+    }),
+  );
+
+  // ── nexus.reconnect ─────────────────────────────────────────────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand('nexus.reconnect', async () => {
+      try {
+        client = await buildClient();
         statusBar?.dispose();
         statusBar = new NexusStatusBar(client);
-        context.subscriptions.push(statusBar.startPolling(30000)); // matches backend health cache TTL (30 s)
+        context.subscriptions.push(statusBar.startPolling(30000));
+        vscode.window.showInformationMessage('Nexus: reconnected to daemon');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        vscode.window.showErrorMessage(`Nexus: reconnect failed — ${msg}`);
       }
     }),
   );
@@ -190,7 +247,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // ── nexus.showProviders ─────────────────────────────────────────────────────
   context.subscriptions.push(
     vscode.commands.registerCommand('nexus.showProviders', async () => {
-      vscode.window.showInformationMessage('Nexus: Show Providers — coming in TASK-135');
+      await showProvidersCommand(getClient());
     }),
   );
 

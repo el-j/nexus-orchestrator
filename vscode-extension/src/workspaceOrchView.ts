@@ -239,6 +239,10 @@ export class WorkspaceOrchViewProvider implements vscode.TreeDataProvider<OrchNo
   async getChildren(element?: OrchNode): Promise<OrchNode[]> {
     // Root: one FolderNode per workspace folder that has an orchestrator.json
     if (!element) {
+      const folders = vscode.workspace.workspaceFolders ?? [];
+      if (folders.length === 0) {
+        return [];
+      }
       const orchs = this.scanner.getOrchestrations();
       if (orchs.length === 0) {
         return [new EmptyNode('No orchestrator.json found in workspace')];

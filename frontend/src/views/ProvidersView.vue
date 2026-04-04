@@ -327,16 +327,29 @@
       :on-close="closeForm"
       :on-save="handleSave"
     />
+
+    <AppConfirmDialog
+      :open="confirmDialog.open"
+      :title="confirmDialog.title"
+      :message="confirmDialog.message"
+      :danger="true"
+      @confirm="
+        confirmDialog.onConfirm();
+        confirmDialog.open = false;
+      "
+      @cancel="confirmDialog.open = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, reactive } from 'vue';
 import { useProviders } from '../composables/useProviders';
 import { useDiscovery } from '../composables/useDiscovery';
 import ProviderStatus from '../components/ProviderStatus.vue';
 import DiscoveredProvidersPanel from '../components/DiscoveredProvidersPanel.vue';
 import ProviderConfigForm from '../components/ProviderConfigForm.vue';
+import AppConfirmDialog from '../components/AppConfirmDialog.vue';
 import RefreshIndicator from '../components/RefreshIndicator.vue';
 import type { DiscoveredProvider } from '../types/discovery';
 import type { DiscoveredAgent, ProviderConfig } from '../types/domain';
@@ -482,6 +495,19 @@ const showForm = ref(false);
 const editingConfig = ref<ProviderConfig | null>(null);
 const configExpanded = ref(false);
 
+const confirmDialog = reactive({
+  open: false,
+  title: '',
+  message: '',
+  onConfirm: () => {},
+});
+function showConfirm(title: string, message: string, onConfirm: () => void) {
+  confirmDialog.title = title;
+  confirmDialog.message = message;
+  confirmDialog.onConfirm = onConfirm;
+  confirmDialog.open = true;
+}
+
 async function loadConfigs() {
   try {
     configs.value = (await listProviderConfigs()) ?? [];
@@ -516,10 +542,15 @@ async function handleSave(cfg: Partial<ProviderConfig>) {
   await loadConfigs();
 }
 
-async function handleDeleteConfig(cfg: ProviderConfig) {
-  if (!window.confirm(`Remove provider "${cfg.name}"?`)) return;
-  await removeProviderConfig(cfg.id);
-  await loadConfigs();
+function handleDeleteConfig(cfg: ProviderConfig) {
+  showConfirm(
+    `Remove provider "${cfg.name}"?`,
+    'This will permanently delete this provider configuration.',
+    async () => {
+      await removeProviderConfig(cfg.id);
+      await loadConfigs();
+    },
+  );
 }
 
 function handlePromote(provider: DiscoveredProvider) {

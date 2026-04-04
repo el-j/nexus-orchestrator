@@ -8,14 +8,19 @@ import {
   cancelTask as wailsCancelTask,
 } from '../types/wails';
 import { currentProject } from './useProjectState';
-import { resolveServerUrl } from './useServerUrl';
+import { useGlobalSSE } from './useGlobalSSE';
 
 export function useTasks() {
   const tasks = ref<Task[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
   let interval: ReturnType<typeof setInterval> | null = null;
-  let eventSource: EventSource | null = null;
+
+  const { on, off } = useGlobalSSE();
+
+  function sseHandler(data: { type: string; [key: string]: unknown }) {
+    if (data.type !== 'connected') refresh();
+  }
 
   const queuedTasks = computed(() =>
     tasks.value.filter(
@@ -59,37 +64,14 @@ export function useTasks() {
   onMounted(async () => {
     loading.value = true;
     await refresh();
-
-    if (typeof EventSource !== 'undefined') {
-      try {
-        const baseUrl = await resolveServerUrl();
-        eventSource = new EventSource(`${baseUrl}/api/events`);
-        eventSource.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          if (data.type !== 'connected') {
-            refresh();
-          }
-        };
-        eventSource.onerror = () => {
-          console.warn('SSE connection error — falling back to polling');
-          eventSource?.close();
-          eventSource = null;
-          interval = setInterval(refresh, 2000);
-        };
-      } catch {
-        // EventSource unavailable or failed to connect — fall back to polling
-        interval = setInterval(refresh, 2000);
-      }
-    } else {
-      interval = setInterval(refresh, 2000);
-    }
-
+    on('*', sseHandler);
+    interval = setInterval(refresh, 15_000);
     loading.value = false;
   });
 
   onUnmounted(() => {
+    off('*', sseHandler);
     if (interval) clearInterval(interval);
-    if (eventSource) eventSource.close();
   });
 
   return {

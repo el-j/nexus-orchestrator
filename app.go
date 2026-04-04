@@ -277,3 +277,21 @@ func (a *App) GetActivityTimeline(sinceRFC3339 string, limit int) ([]domain.AIAc
 	}
 	return a.activitySvc.GetTimeline(context.Background(), since, limit)
 }
+
+// GetRuntimeConfig returns the current effective runtime configuration.
+func (a *App) GetRuntimeConfig() (domain.RuntimeConfig, error) {
+	cfg, err := a.orchestrator.GetRuntimeConfig(context.Background())
+	if err != nil {
+		return domain.RuntimeConfig{}, fmt.Errorf("app: get runtime config: %w", err)
+	}
+	return cfg, nil
+}
+
+// UpdateRuntimeConfig applies a partial update to the runtime configuration.
+func (a *App) UpdateRuntimeConfig(update domain.RuntimeConfigUpdate) (domain.RuntimeConfig, error) {
+	cfg, err := a.orchestrator.UpdateRuntimeConfig(context.Background(), update)
+	if err != nil {
+		return domain.RuntimeConfig{}, fmt.Errorf("app: update runtime config: %w", err)
+	}
+	return cfg, nil
+}

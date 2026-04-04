@@ -72,6 +72,14 @@ func run() error {
 	providerConfigRepo := repo_sqlite.NewProviderConfigRepo(repo)
 	orchestratorSvc.WithProviderConfigRepo(providerConfigRepo)
 
+	runtimeConfigRepo := repo_sqlite.NewRuntimeConfigRepo(repo)
+	orchestratorSvc.WithRuntimeConfigRepo(runtimeConfigRepo)
+	if cfg, err := orchestratorSvc.GetRuntimeConfig(context.Background()); err != nil {
+		log.Printf("startup: get runtime config: %v", err)
+	} else if cfg.QueueCap > 0 {
+		orchestratorSvc.WithQueueCap(cfg.QueueCap)
+	}
+
 	aiSessionRepo := repo_sqlite.NewAISessionRepo(repo)
 	orchestratorSvc.SetAISessionRepo(aiSessionRepo)
 

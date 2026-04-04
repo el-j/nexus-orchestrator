@@ -1,6 +1,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import type { AIActivity, ActivityType } from '../types/domain';
 import { resolveServerUrl } from './useServerUrl';
+import { useGlobalSSE } from './useGlobalSSE';
 
 export function useActivities(options?: {
   agentFilter?: string;
@@ -12,7 +13,14 @@ export function useActivities(options?: {
   const loading = ref(false);
   const error = ref<string | null>(null);
   let interval: ReturnType<typeof setInterval> | null = null;
-  let eventSource: EventSource | null = null;
+
+  const { on, off } = useGlobalSSE();
+
+  function sseHandler(data: { type: string; [key: string]: unknown }) {
+    if (data.type === 'ai_activity_new' && data.activity) {
+      activities.value = [data.activity as AIActivity, ...activities.value];
+    }
+  }
 
   async function refresh() {
     try {
@@ -52,40 +60,14 @@ export function useActivities(options?: {
   onMounted(async () => {
     loading.value = true;
     await refresh();
-
-    if (typeof EventSource !== 'undefined') {
-      try {
-        const baseUrl = await resolveServerUrl();
-        eventSource = new EventSource(`${baseUrl}/api/events`);
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data) as { type: string; activity?: AIActivity };
-            if (data.type === 'ai_activity_new' && data.activity) {
-              activities.value = [data.activity, ...activities.value];
-            }
-          } catch {
-            // ignore malformed SSE frames
-          }
-        };
-        eventSource.onerror = () => {
-          console.warn('SSE connection error — falling back to polling');
-          eventSource?.close();
-          eventSource = null;
-          interval = setInterval(refresh, 5000);
-        };
-      } catch {
-        interval = setInterval(refresh, 5000);
-      }
-    } else {
-      interval = setInterval(refresh, 5000);
-    }
-
+    on('ai_activity_new', sseHandler);
+    interval = setInterval(refresh, 15_000);
     loading.value = false;
   });
 
   onUnmounted(() => {
+    off('ai_activity_new', sseHandler);
     if (interval) clearInterval(interval);
-    if (eventSource) eventSource.close();
   });
 
   return { activities, filtered, loading, error, refresh };

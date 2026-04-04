@@ -1,4 +1,5 @@
 import * as https from 'https';
+import * as core from '@actions/core';
 
 const AGENCY_BASE = 'https://raw.githubusercontent.com/el-j/agency-agents';
 
@@ -90,11 +91,50 @@ export function httpsGet(url: string): Promise<string> {
   });
 }
 
+interface FetchResult {
+  statusCode: number;
+  contentType: string;
+  retryAfter: string | undefined;
+  body: string;
+}
+
+/** Internal: GET with full status/header access. Follows one level of redirects. */
+function httpsGetFull(url: string): Promise<FetchResult> {
+  return new Promise((resolve, reject) => {
+    https
+      .get(url, { timeout: 10_000 }, (res) => {
+        if (res.statusCode === 301 || res.statusCode === 302) {
+          const loc = res.headers.location;
+          if (loc != null && loc.length > 0) {
+            resolve(httpsGetFull(loc));
+            return;
+          }
+        }
+        const statusCode = res.statusCode ?? 0;
+        const contentType = (res.headers['content-type'] as string | undefined) ?? '';
+        const retryAfter = res.headers['retry-after'] as string | undefined;
+        const chunks: Uint8Array[] = [];
+        res.on('data', (c: Uint8Array) => chunks.push(c));
+        res.on('end', () =>
+          resolve({
+            statusCode,
+            contentType,
+            retryAfter,
+            body: Buffer.concat(chunks).toString('utf-8'),
+          }),
+        );
+        res.on('error', reject);
+      })
+      .on('error', reject)
+      .on('timeout', () => reject(new Error(`Request timed out: ${url}`)));
+  });
+}
+
 /** Fetch a single agent markdown file and parse it */
 export async function fetchAgent(
   category: string,
   filename: string,
-  ref = 'main'
+  ref = 'main',
 ): Promise<AgentIdentity | null> {
   const url = `${AGENCY_BASE}/${ref}/${category}/${filename}`;
   let raw: string;
@@ -118,24 +158,46 @@ export async function fetchAgent(
 
 /**
  * Fetch the full agent index for a category by listing the GitHub API tree.
- * Falls back gracefully if the API is rate-limited.
+ * Logs actionable warnings on rate-limit (403/429) or HTML responses instead
+ * of failing silently.
  */
-export async function fetchCategoryIndex(
-  category: string,
-  ref = 'main'
-): Promise<string[]> {
+export async function fetchCategoryIndex(category: string, ref = 'main'): Promise<string[]> {
   const url = `https://api.github.com/repos/el-j/agency-agents/contents/${category}?ref=${ref}`;
-  let raw: string;
+  let result: FetchResult;
   try {
-    raw = await httpsGet(url);
+    result = await httpsGetFull(url);
   } catch {
     return [];
   }
+
+  const { statusCode, contentType, retryAfter, body } = result;
+
+  // GitHub returns HTML when the API rate limit is exceeded (no Accept header)
+  if (contentType.startsWith('text/html')) {
+    core.warning('GitHub API rate limit hit — agent discovery skipped');
+    return [];
+  }
+
+  if (statusCode === 403) {
+    core.warning('GitHub API access denied (403) — check GITHUB_TOKEN permissions');
+    return [];
+  }
+
+  if (statusCode === 429) {
+    core.warning(
+      'GitHub API rate limited (429) — retry after ' +
+        (retryAfter != null ? retryAfter + 's' : 'unknown'),
+    );
+    return [];
+  }
+
+  if (statusCode !== 200) {
+    return [];
+  }
+
   try {
-    const items = JSON.parse(raw) as Array<{ name: string; type: string }>;
-    return items
-      .filter((i) => i.type === 'file' && i.name.endsWith('.md'))
-      .map((i) => i.name);
+    const items = JSON.parse(body) as Array<{ name: string; type: string }>;
+    return items.filter((i) => i.type === 'file' && i.name.endsWith('.md')).map((i) => i.name);
   } catch {
     return [];
   }
@@ -151,15 +213,13 @@ export async function fetchCategoryIndex(
  */
 export async function resolveAgents(
   slugsOrNames: string[],
-  ref = 'main'
+  ref = 'main',
 ): Promise<AgentIdentity[]> {
   const results: AgentIdentity[] = [];
   for (const input of slugsOrNames) {
     const norm = slugify(input.trim());
     // Fast path: slug already has a known category prefix
-    const matchingCategory = AGENT_CATEGORIES.find((cat) =>
-      norm.startsWith(cat + '-')
-    );
+    const matchingCategory = AGENT_CATEGORIES.find((cat) => norm.startsWith(cat + '-'));
     if (matchingCategory != null) {
       const filename = `${norm}.md`;
       const agent = await fetchAgent(matchingCategory, filename, ref);
@@ -187,7 +247,7 @@ export async function resolveAgents(
     if (!found) {
       throw new Error(
         `Agent "${input}" not found in el-j/agency-agents@${ref}. ` +
-          `Check slugs at https://github.com/el-j/agency-agents`
+          `Check slugs at https://github.com/el-j/agency-agents`,
       );
     }
   }
@@ -195,19 +255,12 @@ export async function resolveAgents(
 }
 
 /** Fetch ALL agents from a given category */
-export async function resolveCategory(
-  category: string,
-  ref = 'main'
-): Promise<AgentIdentity[]> {
+export async function resolveCategory(category: string, ref = 'main'): Promise<AgentIdentity[]> {
   if (!(AGENT_CATEGORIES as readonly string[]).includes(category)) {
-    throw new Error(
-      `Unknown category "${category}". Valid: ${AGENT_CATEGORIES.join(', ')}`
-    );
+    throw new Error(`Unknown category "${category}". Valid: ${AGENT_CATEGORIES.join(', ')}`);
   }
   const files = await fetchCategoryIndex(category, ref);
-  const agents = await Promise.all(
-    files.map((f) => fetchAgent(category, f, ref))
-  );
+  const agents = await Promise.all(files.map((f) => fetchAgent(category, f, ref)));
   return agents.filter((a): a is AgentIdentity => a !== null);
 }
 
@@ -215,7 +268,7 @@ export async function resolveCategory(
 export function buildSwarmPrompt(
   agents: AgentIdentity[],
   swarmName = 'Agency Swarm',
-  mission = ''
+  mission = '',
 ): string {
   const summaries = agents
     .map((a) => `### ${a.name} (${a.category})\n> ${a.description}`)
@@ -241,9 +294,7 @@ export function buildSwarmPrompt(
     '',
     '## Agent System Prompts',
     '',
-    ...agents.map(
-      (a) => `### ${a.name}\n\n<system-prompt>\n${a.systemPrompt}\n</system-prompt>`
-    ),
+    ...agents.map((a) => `### ${a.name}\n\n<system-prompt>\n${a.systemPrompt}\n</system-prompt>`),
   ]
     .join('\n')
     .trim();

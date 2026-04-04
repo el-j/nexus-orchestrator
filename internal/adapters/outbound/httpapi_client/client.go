@@ -24,6 +24,28 @@ type Client struct {
 	client  *http.Client
 }
 
+type submitTaskResponse struct {
+	TaskID string `json:"task_id"`
+}
+
+type createDraftResponse struct {
+	ID string `json:"id"`
+}
+
+type terminateAISessionRequest struct {
+	Force bool `json:"force"`
+}
+
+type sessionIDRequest struct {
+	SessionID string `json:"sessionId"`
+}
+
+type updateTaskStatusRequest struct {
+	SessionID string `json:"sessionId"`
+	Status    string `json:"status"`
+	Logs      string `json:"logs,omitempty"`
+}
+
 // NewClient returns a new Client that talks to the nexusOrchestrator daemon at baseURL.
 func NewClient(baseURL string) *Client {
 	return &Client{
@@ -31,6 +53,14 @@ func NewClient(baseURL string) *Client {
 		token:   strings.TrimSpace(os.Getenv("NEXUS_API_TOKEN")),
 		client:  http.DefaultClient,
 	}
+}
+
+// NewClientWithHTTP returns a Client that uses the provided *http.Client for all requests.
+// This allows injecting custom timeouts, TLS config, or test transports.
+func NewClientWithHTTP(baseURL string, httpClient *http.Client) *Client {
+	c := NewClient(baseURL)
+	c.client = httpClient
+	return c
 }
 
 func (r *Client) newRequest(ctx context.Context, method, path string, body io.Reader) (*http.Request, error) {
@@ -68,11 +98,11 @@ func (r *Client) SubmitTask(task domain.Task) (string, error) {
 		return "", fmt.Errorf("remote: submit task: unexpected status %d", resp.StatusCode)
 	}
 
-	var result map[string]string
+	var result submitTaskResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return "", fmt.Errorf("remote: decode response: %w", err)
 	}
-	return result["task_id"], nil
+	return result.TaskID, nil
 }
 
 func (r *Client) GetTask(id string) (domain.Task, error) {
@@ -301,12 +331,12 @@ func (r *Client) AddProviderConfig(ctx context.Context, cfg domain.ProviderConfi
 	if err != nil {
 		return domain.ProviderConfig{}, fmt.Errorf("remote: marshal provider config: %w", err)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.baseURL+"/api/providers/config", bytes.NewReader(body))
+	req, err := r.newRequest(ctx, http.MethodPost, "/api/providers/config", bytes.NewReader(body))
 	if err != nil {
 		return domain.ProviderConfig{}, fmt.Errorf("remote: build add provider config request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return domain.ProviderConfig{}, fmt.Errorf("remote: add provider config: %w", err)
 	}
@@ -326,12 +356,12 @@ func (r *Client) UpdateProviderConfig(ctx context.Context, cfg domain.ProviderCo
 	if err != nil {
 		return domain.ProviderConfig{}, fmt.Errorf("remote: marshal provider config: %w", err)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, r.baseURL+"/api/providers/config/"+url.PathEscape(cfg.ID), bytes.NewReader(body))
+	req, err := r.newRequest(ctx, http.MethodPut, "/api/providers/config/"+url.PathEscape(cfg.ID), bytes.NewReader(body))
 	if err != nil {
 		return domain.ProviderConfig{}, fmt.Errorf("remote: build update provider config request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return domain.ProviderConfig{}, fmt.Errorf("remote: update provider config: %w", err)
 	}
@@ -350,11 +380,11 @@ func (r *Client) UpdateProviderConfig(ctx context.Context, cfg domain.ProviderCo
 }
 
 func (r *Client) RemoveProviderConfig(ctx context.Context, id string) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, r.baseURL+"/api/providers/config/"+url.PathEscape(id), nil)
+	req, err := r.newRequest(ctx, http.MethodDelete, "/api/providers/config/"+url.PathEscape(id), nil)
 	if err != nil {
 		return fmt.Errorf("remote: build remove provider config request: %w", err)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return fmt.Errorf("remote: remove provider config: %w", err)
 	}
@@ -369,11 +399,11 @@ func (r *Client) RemoveProviderConfig(ctx context.Context, id string) error {
 }
 
 func (r *Client) ListProviderConfigs(ctx context.Context) ([]domain.ProviderConfig, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, r.baseURL+"/api/providers/config", nil)
+	req, err := r.newRequest(ctx, http.MethodGet, "/api/providers/config", nil)
 	if err != nil {
 		return nil, fmt.Errorf("remote: build list provider configs request: %w", err)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return nil, fmt.Errorf("remote: list provider configs: %w", err)
 	}
@@ -389,7 +419,11 @@ func (r *Client) ListProviderConfigs(ctx context.Context) ([]domain.ProviderConf
 }
 
 func (r *Client) GetDiscoveredProviders() ([]domain.DiscoveredProvider, error) {
-	resp, err := http.Get(r.baseURL + "/api/providers/discovered")
+	req, err := r.newRequest(context.Background(), http.MethodGet, "/api/providers/discovered", nil)
+	if err != nil {
+		return nil, fmt.Errorf("remote: build get discovered providers request: %w", err)
+	}
+	resp, err := r.do(req)
 	if err != nil {
 		return nil, fmt.Errorf("remote: get discovered providers: %w", err)
 	}
@@ -405,7 +439,12 @@ func (r *Client) GetDiscoveredProviders() ([]domain.DiscoveredProvider, error) {
 }
 
 func (r *Client) TriggerScan(_ context.Context) ([]domain.DiscoveredProvider, error) {
-	resp, err := http.Post(r.baseURL+"/api/providers/discovered/scan", "application/json", nil)
+	req, err := r.newRequest(context.Background(), http.MethodPost, "/api/providers/discovered/scan", nil)
+	if err != nil {
+		return nil, fmt.Errorf("remote: build trigger scan request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := r.do(req)
 	if err != nil {
 		return nil, fmt.Errorf("remote: trigger scan: %w", err)
 	}
@@ -421,11 +460,11 @@ func (r *Client) TriggerScan(_ context.Context) ([]domain.DiscoveredProvider, er
 }
 
 func (r *Client) PromoteProvider(ctx context.Context, id string) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.baseURL+"/api/providers/promote/"+url.PathEscape(id), nil)
+	req, err := r.newRequest(ctx, http.MethodPost, "/api/providers/promote/"+url.PathEscape(id), nil)
 	if err != nil {
 		return fmt.Errorf("cli: promote provider: build request: %w", err)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return fmt.Errorf("cli: promote provider: %w", err)
 	}
@@ -441,7 +480,12 @@ func (r *Client) CreateDraft(task domain.Task) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("remote: marshal draft task: %w", err)
 	}
-	resp, err := http.Post(r.baseURL+"/api/tasks/draft", "application/json", bytes.NewReader(body))
+	req, err := r.newRequest(context.Background(), http.MethodPost, "/api/tasks/draft", bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("remote: build create draft request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := r.do(req)
 	if err != nil {
 		return "", fmt.Errorf("remote: create draft: %w", err)
 	}
@@ -449,17 +493,21 @@ func (r *Client) CreateDraft(task domain.Task) (string, error) {
 	if resp.StatusCode != http.StatusCreated {
 		return "", fmt.Errorf("remote: create draft: unexpected status %d", resp.StatusCode)
 	}
-	var result map[string]string
+	var result createDraftResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return "", fmt.Errorf("remote: decode draft response: %w", err)
 	}
-	return result["id"], nil
+	return result.ID, nil
 }
 
 func (r *Client) GetBacklog(projectPath string) ([]domain.Task, error) {
 	params := url.Values{}
 	params.Set("project", projectPath)
-	resp, err := http.Get(r.baseURL + "/api/tasks/backlog?" + params.Encode())
+	req, err := r.newRequest(context.Background(), http.MethodGet, "/api/tasks/backlog?"+params.Encode(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("remote: build get backlog request: %w", err)
+	}
+	resp, err := r.do(req)
 	if err != nil {
 		return nil, fmt.Errorf("remote: get backlog: %w", err)
 	}
@@ -475,7 +523,12 @@ func (r *Client) GetBacklog(projectPath string) ([]domain.Task, error) {
 }
 
 func (r *Client) PromoteTask(id string) (ports.PromoteResult, error) {
-	resp, err := http.Post(r.baseURL+"/api/tasks/"+url.PathEscape(id)+"/promote", "application/json", nil)
+	req, err := r.newRequest(context.Background(), http.MethodPost, "/api/tasks/"+url.PathEscape(id)+"/promote", nil)
+	if err != nil {
+		return ports.PromoteResult{}, fmt.Errorf("remote: build promote task request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := r.do(req)
 	if err != nil {
 		return ports.PromoteResult{}, fmt.Errorf("remote: promote task: %w", err)
 	}
@@ -498,12 +551,12 @@ func (r *Client) UpdateTask(id string, updates domain.Task) (domain.Task, error)
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("remote: marshal task updates: %w", err)
 	}
-	req, err := http.NewRequest(http.MethodPut, r.baseURL+"/api/tasks/"+url.PathEscape(id), bytes.NewReader(body))
+	req, err := r.newRequest(context.Background(), http.MethodPut, "/api/tasks/"+url.PathEscape(id), bytes.NewReader(body))
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("remote: build update task request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("remote: update task: %w", err)
 	}
@@ -526,12 +579,12 @@ func (r *Client) RegisterAISession(ctx context.Context, s domain.AISession) (dom
 	if err != nil {
 		return domain.AISession{}, fmt.Errorf("remote: marshal ai session: %w", err)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.baseURL+"/api/ai-sessions", bytes.NewReader(body))
+	req, err := r.newRequest(ctx, http.MethodPost, "/api/ai-sessions", bytes.NewReader(body))
 	if err != nil {
 		return domain.AISession{}, fmt.Errorf("remote: build register ai session request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return domain.AISession{}, fmt.Errorf("remote: register ai session: %w", err)
 	}
@@ -547,11 +600,11 @@ func (r *Client) RegisterAISession(ctx context.Context, s domain.AISession) (dom
 }
 
 func (r *Client) ListAISessions(ctx context.Context) ([]domain.AISession, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, r.baseURL+"/api/ai-sessions", nil)
+	req, err := r.newRequest(ctx, http.MethodGet, "/api/ai-sessions", nil)
 	if err != nil {
 		return nil, fmt.Errorf("remote: build list ai sessions request: %w", err)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return nil, fmt.Errorf("remote: list ai sessions: %w", err)
 	}
@@ -567,11 +620,11 @@ func (r *Client) ListAISessions(ctx context.Context) ([]domain.AISession, error)
 }
 
 func (r *Client) DeregisterAISession(ctx context.Context, id string) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, r.baseURL+"/api/ai-sessions/"+url.PathEscape(id), nil)
+	req, err := r.newRequest(ctx, http.MethodDelete, "/api/ai-sessions/"+url.PathEscape(id), nil)
 	if err != nil {
 		return fmt.Errorf("remote: build deregister ai session request: %w", err)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return fmt.Errorf("remote: deregister ai session: %w", err)
 	}
@@ -586,13 +639,16 @@ func (r *Client) DeregisterAISession(ctx context.Context, id string) error {
 }
 
 func (r *Client) TerminateAISession(ctx context.Context, id string, force bool) error {
-	payload, _ := json.Marshal(map[string]bool{"force": force})
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.baseURL+"/api/ai-sessions/"+url.PathEscape(id)+"/terminate", bytes.NewReader(payload))
+	payload, err := json.Marshal(terminateAISessionRequest{Force: force})
+	if err != nil {
+		return fmt.Errorf("remote: marshal terminate ai session body: %w", err)
+	}
+	req, err := r.newRequest(ctx, http.MethodPost, "/api/ai-sessions/"+url.PathEscape(id)+"/terminate", bytes.NewReader(payload))
 	if err != nil {
 		return fmt.Errorf("remote: build terminate ai session request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return fmt.Errorf("remote: terminate ai session: %w", err)
 	}
@@ -607,11 +663,11 @@ func (r *Client) TerminateAISession(ctx context.Context, id string, force bool) 
 }
 
 func (r *Client) HeartbeatAISession(ctx context.Context, id string) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.baseURL+"/api/ai-sessions/"+url.PathEscape(id)+"/heartbeat", nil)
+	req, err := r.newRequest(ctx, http.MethodPost, "/api/ai-sessions/"+url.PathEscape(id)+"/heartbeat", nil)
 	if err != nil {
 		return fmt.Errorf("remote: build heartbeat ai session request: %w", err)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return fmt.Errorf("remote: heartbeat ai session: %w", err)
 	}
@@ -626,15 +682,16 @@ func (r *Client) HeartbeatAISession(ctx context.Context, id string) error {
 }
 
 func (r *Client) HeartbeatTask(ctx context.Context, taskID, sessionID string) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.baseURL+"/api/tasks/"+url.PathEscape(taskID)+"/heartbeat", nil)
+	body, err := json.Marshal(sessionIDRequest{SessionID: sessionID})
+	if err != nil {
+		return fmt.Errorf("remote: marshal heartbeat task body: %w", err)
+	}
+	req, err := r.newRequest(ctx, http.MethodPost, "/api/tasks/"+url.PathEscape(taskID)+"/heartbeat", bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("remote: build heartbeat task request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	body, _ := json.Marshal(map[string]string{"sessionId": sessionID})
-	req.Body = io.NopCloser(bytes.NewReader(body))
-
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return fmt.Errorf("remote: heartbeat task: %w", err)
 	}
@@ -646,13 +703,16 @@ func (r *Client) HeartbeatTask(ctx context.Context, taskID, sessionID string) er
 }
 
 func (r *Client) ClaimTask(ctx context.Context, taskID string, sessionID string) (domain.Task, error) {
-	body := fmt.Sprintf(`{"sessionId":%q}`, sessionID)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.baseURL+"/api/tasks/"+url.PathEscape(taskID)+"/claim", strings.NewReader(body))
+	body, err := json.Marshal(sessionIDRequest{SessionID: sessionID})
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("remote: marshal claim task body: %w", err)
+	}
+	req, err := r.newRequest(ctx, http.MethodPost, "/api/tasks/"+url.PathEscape(taskID)+"/claim", bytes.NewReader(body))
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("remote: build claim task request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("remote: claim task: %w", err)
 	}
@@ -668,18 +728,21 @@ func (r *Client) ClaimTask(ctx context.Context, taskID string, sessionID string)
 }
 
 func (r *Client) UpdateTaskStatus(ctx context.Context, taskID string, sessionID string, status domain.TaskStatus, logs string) (domain.Task, error) {
-	payload := struct {
-		SessionID string `json:"sessionId"`
-		Status    string `json:"status"`
-		Logs      string `json:"logs,omitempty"`
-	}{sessionID, string(status), logs}
-	data, _ := json.Marshal(payload)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, r.baseURL+"/api/tasks/"+url.PathEscape(taskID)+"/status", bytes.NewReader(data))
+	payload := updateTaskStatusRequest{
+		SessionID: sessionID,
+		Status:    string(status),
+		Logs:      logs,
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("remote: marshal update task status body: %w", err)
+	}
+	req, err := r.newRequest(ctx, http.MethodPut, "/api/tasks/"+url.PathEscape(taskID)+"/status", bytes.NewReader(data))
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("remote: build update task status request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("remote: update task status: %w", err)
 	}
@@ -698,11 +761,11 @@ func (r *Client) UpdateTaskStatus(ctx context.Context, taskID string, sessionID 
 }
 
 func (r *Client) PurgeDisconnectedSessions(ctx context.Context) (int, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, r.baseURL+"/api/ai-sessions", nil)
+	req, err := r.newRequest(ctx, http.MethodDelete, "/api/ai-sessions", nil)
 	if err != nil {
 		return 0, fmt.Errorf("remote: build purge disconnected sessions request: %w", err)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return 0, fmt.Errorf("remote: purge disconnected sessions: %w", err)
 	}
@@ -717,11 +780,11 @@ func (r *Client) PurgeDisconnectedSessions(ctx context.Context) (int, error) {
 }
 
 func (r *Client) GetDiscoveredAgents(ctx context.Context) ([]domain.DiscoveredAgent, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, r.baseURL+"/api/ai-sessions/discovered", nil)
+	req, err := r.newRequest(ctx, http.MethodGet, "/api/ai-sessions/discovered", nil)
 	if err != nil {
 		return nil, fmt.Errorf("remote: build get discovered agents request: %w", err)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return nil, fmt.Errorf("remote: get discovered agents: %w", err)
 	}
@@ -737,11 +800,11 @@ func (r *Client) GetDiscoveredAgents(ctx context.Context) ([]domain.DiscoveredAg
 }
 
 func (r *Client) DelegateToNexus(ctx context.Context, sessionID string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, r.baseURL+"/api/ai-sessions/"+url.PathEscape(sessionID)+"/delegate", nil)
+	req, err := r.newRequest(ctx, http.MethodPost, "/api/ai-sessions/"+url.PathEscape(sessionID)+"/delegate", nil)
 	if err != nil {
 		return "", fmt.Errorf("remote: build delegate to nexus request: %w", err)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return "", fmt.Errorf("remote: delegate to nexus: %w", err)
 	}
@@ -761,16 +824,14 @@ func (r *Client) DelegateToNexus(ctx context.Context, sessionID string) (string,
 	return result.Instruction, nil
 }
 
-// GetDiscoveredPlanFiles fetches plan/task/orchestration files discovered near projectPath
-// from the running nexusOrchestrator daemon.
 func (r *Client) GetDiscoveredPlanFiles(ctx context.Context, projectPath string) ([]domain.DiscoveredPlanFile, error) {
 	params := url.Values{}
 	params.Set("projectPath", projectPath)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, r.baseURL+"/api/plans/discovered?"+params.Encode(), nil)
+	req, err := r.newRequest(ctx, http.MethodGet, "/api/plans/discovered?"+params.Encode(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("remote: build get discovered plan files request: %w", err)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.do(req)
 	if err != nil {
 		return nil, fmt.Errorf("remote: get discovered plan files: %w", err)
 	}

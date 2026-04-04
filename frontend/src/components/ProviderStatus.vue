@@ -129,11 +129,24 @@
       :on-close="closeForm"
       :on-save="handleSave"
     />
+
+    <!-- Confirm dialog -->
+    <AppConfirmDialog
+      :open="confirmDialog.open"
+      :title="confirmDialog.title"
+      :message="confirmDialog.message"
+      :danger="true"
+      @confirm="
+        confirmDialog.onConfirm();
+        confirmDialog.open = false;
+      "
+      @cancel="confirmDialog.open = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, reactive } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import type { ProviderInfo, ProviderConfig } from '../types/domain';
 import type { ProviderModelState } from '../composables/useProviderActivity';
@@ -144,6 +157,23 @@ import {
   removeProviderConfig,
 } from '../types/wails';
 import ProviderConfigForm from './ProviderConfigForm.vue';
+import AppConfirmDialog from './AppConfirmDialog.vue';
+
+// ── Confirm dialog state ───────────────────────────────────────────────
+
+const confirmDialog = reactive({
+  open: false,
+  title: '',
+  message: '',
+  onConfirm: () => {},
+});
+
+function showConfirm(title: string, message: string, onConfirm: () => void) {
+  confirmDialog.title = title;
+  confirmDialog.message = message;
+  confirmDialog.onConfirm = onConfirm;
+  confirmDialog.open = true;
+}
 
 const props = defineProps<{
   providers: ProviderInfo[];
@@ -173,7 +203,6 @@ async function loadConfigs() {
   try {
     configs.value = await listProviderConfigs();
   } catch (e) {
-    console.warn('ProviderStatus: loadConfigs failed:', e);
     toast.add({ severity: 'error', summary: 'Load Configs Failed', detail: String(e), life: 5000 });
   }
 }
@@ -207,9 +236,14 @@ async function handleSave(cfg: Partial<ProviderConfig>) {
 }
 
 async function handleDelete(cfg: ProviderConfig) {
-  if (!window.confirm(`Delete provider "${cfg.name}"?`)) return;
-  await removeProviderConfig(cfg.id);
-  await loadConfigs();
-  props.refresh?.();
+  showConfirm(
+    `Delete provider "${cfg.name}"?`,
+    'This will remove the provider configuration permanently.',
+    async () => {
+      await removeProviderConfig(cfg.id);
+      await loadConfigs();
+      props.refresh?.();
+    },
+  );
 }
 </script>

@@ -1,22 +1,26 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import type { DiscoveredProvider } from '../types/discovery';
 import { getDiscoveredProviders, triggerScan } from '../types/wails';
-import { resolveServerUrl } from './useServerUrl';
+import { useGlobalSSE } from './useGlobalSSE';
 
 export function useDiscovery() {
   const discovered = ref<DiscoveredProvider[]>([]);
   const loading = ref(false);
   const scanning = ref(false);
   const error = ref<string | null>(null);
-  let eventSource: EventSource | null = null;
   let interval: ReturnType<typeof setInterval> | null = null;
+
+  const { on, off } = useGlobalSSE();
+
+  function sseHandler() {
+    refresh();
+  }
 
   async function refresh() {
     try {
       discovered.value = (await getDiscoveredProviders()) ?? [];
       error.value = null;
     } catch (e) {
-      console.warn('useDiscovery: refresh failed:', e);
       error.value = String(e);
     }
   }
@@ -29,51 +33,22 @@ export function useDiscovery() {
       await new Promise((r) => setTimeout(r, 1500));
       await refresh();
     } catch (e) {
-      console.warn('useDiscovery: scan failed:', e);
       error.value = String(e);
     } finally {
       scanning.value = false;
     }
   }
 
-  function connectSSE(baseUrl: string): boolean {
-    if (typeof EventSource === 'undefined') return false;
-    try {
-      eventSource = new EventSource(`${baseUrl}/api/events`);
-      eventSource.addEventListener('provider_discovered', () => {
-        refresh();
-      });
-      eventSource.onerror = () => {
-        eventSource?.close();
-        eventSource = null;
-        // Fall back to polling
-        if (!interval) {
-          interval = setInterval(refresh, 10000);
-        }
-      };
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   onMounted(async () => {
     loading.value = true;
     await refresh();
+    on('provider_discovered', sseHandler);
+    interval = setInterval(refresh, 15_000);
     loading.value = false;
-    let baseUrl = 'http://127.0.0.1:63987';
-    try {
-      baseUrl = await resolveServerUrl();
-    } catch {
-      /* use default */
-    }
-    if (!connectSSE(baseUrl)) {
-      interval = setInterval(refresh, 10000);
-    }
   });
 
   onUnmounted(() => {
-    if (eventSource) eventSource.close();
+    off('provider_discovered', sseHandler);
     if (interval) clearInterval(interval);
   });
 

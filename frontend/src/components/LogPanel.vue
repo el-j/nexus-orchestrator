@@ -8,6 +8,7 @@
           :class="['status-dot', connected ? 'connected' : 'disconnected']"
           :title="connected ? 'Connected' : 'Disconnected'"
         ></span>
+        <span v-if="error" class="log-warning" :title="error">Reconnecting...</span>
         <span v-if="!collapsed" class="log-count">({{ logs.length }})</span>
       </div>
       <div class="log-header-right">
@@ -52,7 +53,7 @@ import { ref, computed, watch, nextTick } from 'vue';
 import type { LogEntry } from '../types/domain';
 import { useLogs } from '../composables/useLogs';
 
-const { logs, connected, clear } = useLogs();
+const { logs, connected, error, clear } = useLogs();
 
 const levelFilter = ref('');
 const collapsed = ref(false);
@@ -159,6 +160,10 @@ function onDragEnd() {
 }
 .status-dot.disconnected {
   background: #f38ba8;
+}
+.log-warning {
+  color: #f9e2af;
+  font-size: 11px;
 }
 .log-count {
   color: #6c7086;

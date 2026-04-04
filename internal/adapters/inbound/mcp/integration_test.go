@@ -60,9 +60,11 @@ func newMCPTestStack(t *testing.T) *mcpTestStack {
 	}
 
 	sessionRepo := repo_sqlite.NewSessionRepo(repo)
+	aiSessionRepo := repo_sqlite.NewAISessionRepo(repo)
 	writer := fs_writer.New()
 	discovery := services.NewDiscoveryService(&integrationMockLLM{})
 	orch := services.NewOrchestrator(discovery, repo, writer, sessionRepo)
+	orch.SetAISessionRepo(aiSessionRepo)
 
 	mcpSrv := mcp.NewMcpServer(orch)
 	srv := httptest.NewServer(mcpSrv)
@@ -270,5 +272,206 @@ func TestMCPIntegration_HealthTool(t *testing.T) {
 
 	if !strings.Contains(text, "ok") {
 		t.Errorf("expected health result to contain 'ok', got: %s", text)
+	}
+}
+
+// ---- TASK-497: claim_task → update_task_status integration tests ------------
+
+// registerSession registers an AI session via MCP and returns the session ID.
+func registerSession(t *testing.T, ts *mcpTestStack, name string) string {
+	t.Helper()
+	r := callTool(t, ts.srv, 99, "register_session", map[string]any{
+		"agent_name": name,
+	})
+	if r.Error != nil {
+		t.Fatalf("register_session: code=%d msg=%s", r.Error.Code, r.Error.Message)
+	}
+	text := extractToolText(t, r)
+	var sess map[string]any
+	if err := json.Unmarshal([]byte(text), &sess); err != nil {
+		t.Fatalf("unmarshal session: %v", err)
+	}
+	// register_session returns {"session_id": "...", "status": "registered"}
+	id, _ := sess["session_id"].(string)
+	if id == "" {
+		t.Fatalf("expected non-empty session_id, got: %s", text)
+	}
+	return id
+}
+
+// submitQueuedTask submits a task and ensures it reaches QUEUED status.
+func submitQueuedTask(t *testing.T, ts *mcpTestStack) string {
+	t.Helper()
+	r := callTool(t, ts.srv, 100, "submit_task", map[string]any{
+		"projectPath": ts.tmpDir,
+		"targetFile":  "",
+		"instruction": "test claim task flow",
+	})
+	text := extractToolText(t, r)
+	var payload map[string]string
+	if err := json.Unmarshal([]byte(text), &payload); err != nil {
+		t.Fatalf("unmarshal submit: %v", err)
+	}
+	taskID := payload["id"]
+	if taskID == "" {
+		t.Fatalf("expected non-empty task id")
+	}
+	return taskID
+}
+
+// TestMCPIntegration_ClaimAndComplete is the happy path:
+// create QUEUED task → claim_task → verify PROCESSING → update_task_status COMPLETED → verify COMPLETED.
+func TestMCPIntegration_ClaimAndComplete(t *testing.T) {
+	ts := newMCPTestStack(t)
+	sessID := registerSession(t, ts, "test-agent-happy")
+
+	// Submit task. Use WithDisableBackgroundWorkers so the LLM worker doesn't race
+	// with our manual claim — but we have no option for that on an already-running orch.
+	// Instead, seed directly into the repo at QUEUED status.
+	task := domain.Task{
+		ID:          "claim-complete-task",
+		Instruction: "claim me",
+		ProjectPath: ts.tmpDir,
+		Status:      domain.StatusQueued,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	if err := ts.repo.Save(task); err != nil {
+		t.Fatalf("seed task: %v", err)
+	}
+
+	// claim_task
+	claimR := callTool(t, ts.srv, 1, "claim_task", map[string]any{
+		"task_id":    task.ID,
+		"session_id": sessID,
+	})
+	if claimR.Error != nil {
+		t.Fatalf("claim_task error: %s", claimR.Error.Message)
+	}
+	claimText := extractToolText(t, claimR)
+	var claimedTask domain.Task
+	if err := json.Unmarshal([]byte(claimText), &claimedTask); err != nil {
+		t.Fatalf("unmarshal claimed task: %v", err)
+	}
+	if claimedTask.Status != domain.StatusProcessing {
+		t.Errorf("after claim: want PROCESSING, got %s", claimedTask.Status)
+	}
+
+	// update_task_status → COMPLETED
+	updateR := callTool(t, ts.srv, 2, "update_task_status", map[string]any{
+		"task_id":    task.ID,
+		"session_id": sessID,
+		"status":     "COMPLETED",
+		"logs":       "done",
+	})
+	if updateR.Error != nil {
+		t.Fatalf("update_task_status error: %s", updateR.Error.Message)
+	}
+	updateText := extractToolText(t, updateR)
+	var updatedTask domain.Task
+	if err := json.Unmarshal([]byte(updateText), &updatedTask); err != nil {
+		t.Fatalf("unmarshal updated task: %v", err)
+	}
+	if updatedTask.Status != domain.StatusCompleted {
+		t.Errorf("after update: want COMPLETED, got %s", updatedTask.Status)
+	}
+
+	// Verify DB
+	saved, err := ts.repo.GetByID(task.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if saved.Status != domain.StatusCompleted {
+		t.Errorf("DB status: want COMPLETED, got %s", saved.Status)
+	}
+}
+
+// TestMCPIntegration_ExclusiveOwnership verifies that a second session cannot
+// claim an already-PROCESSING task.
+func TestMCPIntegration_ExclusiveOwnership(t *testing.T) {
+	ts := newMCPTestStack(t)
+	sess1 := registerSession(t, ts, "agent-owner")
+	sess2 := registerSession(t, ts, "agent-thief")
+
+	task := domain.Task{
+		ID:          "exclusive-task",
+		Instruction: "only one owner",
+		ProjectPath: ts.tmpDir,
+		Status:      domain.StatusQueued,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	if err := ts.repo.Save(task); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	// First claim succeeds.
+	r1 := callTool(t, ts.srv, 1, "claim_task", map[string]any{
+		"task_id":    task.ID,
+		"session_id": sess1,
+	})
+	if r1.Error != nil {
+		t.Fatalf("first claim failed: %s", r1.Error.Message)
+	}
+
+	// Second claim must fail.
+	r2 := callTool(t, ts.srv, 2, "claim_task", map[string]any{
+		"task_id":    task.ID,
+		"session_id": sess2,
+	})
+	if r2.Error == nil {
+		t.Error("expected second claim to return an error; got nil")
+	}
+
+	// Status must still be PROCESSING (owned by sess1).
+	saved, _ := ts.repo.GetByID(task.ID)
+	if saved.Status != domain.StatusProcessing {
+		t.Errorf("status after second claim attempt: want PROCESSING, got %s", saved.Status)
+	}
+}
+
+// TestMCPIntegration_WrongSessionUpdate verifies that update_task_status is
+// rejected when the session_id does not match the task's owner.
+func TestMCPIntegration_WrongSessionUpdate(t *testing.T) {
+	ts := newMCPTestStack(t)
+	realOwner := registerSession(t, ts, "real-owner")
+	intruder := registerSession(t, ts, "intruder")
+
+	task := domain.Task{
+		ID:          "wrong-sess-task",
+		Instruction: "protected task",
+		ProjectPath: ts.tmpDir,
+		Status:      domain.StatusQueued,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	if err := ts.repo.Save(task); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	// Claim by the real owner.
+	claimR := callTool(t, ts.srv, 1, "claim_task", map[string]any{
+		"task_id":    task.ID,
+		"session_id": realOwner,
+	})
+	if claimR.Error != nil {
+		t.Fatalf("claim: %s", claimR.Error.Message)
+	}
+
+	// Intruder tries to update status — must be rejected.
+	updateR := callTool(t, ts.srv, 2, "update_task_status", map[string]any{
+		"task_id":    task.ID,
+		"session_id": intruder,
+		"status":     "COMPLETED",
+		"logs":       "hijacked",
+	})
+	if updateR.Error == nil {
+		t.Error("expected error for wrong session_id; got nil")
+	}
+
+	// Status must still be PROCESSING.
+	saved, _ := ts.repo.GetByID(task.ID)
+	if saved.Status != domain.StatusProcessing {
+		t.Errorf("status after rejected update: want PROCESSING, got %s", saved.Status)
 	}
 }

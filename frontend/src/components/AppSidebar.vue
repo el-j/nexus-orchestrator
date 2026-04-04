@@ -44,22 +44,43 @@
 
     <!-- Footer -->
     <div class="p-3 border-t border-white/5">
-      <div class="hidden lg:flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.03]">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0"></span>
-        <span class="text-xs text-slate-500 truncate">nexus-daemon</span>
+      <div
+        class="hidden lg:flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.03]"
+        :title="daemonStatusTooltip"
+      >
+        <span
+          class="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse"
+          :class="connected ? 'bg-emerald-400' : 'bg-red-500'"
+        ></span>
+        <span class="text-xs text-slate-500 truncate">
+          nexus-daemon
+          <span :class="connected ? 'text-emerald-500' : 'text-red-500'">
+            {{ connected ? 'connected' : 'offline' }}
+          </span>
+        </span>
       </div>
     </div>
   </aside>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import ProjectSelector from './ProjectSelector.vue';
 import routes from '../router/routes';
+import { useDaemonHealth } from '../composables/useDaemonHealth';
+
 const router = useRouter();
 const route = useRoute();
+const { connected, lastChecked } = useDaemonHealth();
 
 const navRoutes = routes.filter((r) => r.nav);
+
+const daemonStatusTooltip = computed(() => {
+  const status = connected.value ? 'connected' : 'offline';
+  const checked = lastChecked.value ? lastChecked.value.toLocaleTimeString() : 'not checked yet';
+  return `nexus-daemon: ${status}\nLast checked: ${checked}`;
+});
 
 function navigate(path: string) {
   void router.push(path);

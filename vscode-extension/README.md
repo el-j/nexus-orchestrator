@@ -23,23 +23,23 @@ code --install-extension nexus-orchestrator-0.1.0.vsix
 
 ## Configuration
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `nexus.daemonUrl` | `http://127.0.0.1:63987` | URL of running daemon |
-| `nexus.defaultProvider` | `` | Pre-selected provider name |
-| `nexus.defaultModel` | `` | Pre-selected model |
+| Setting                 | Default                  | Description                |
+| ----------------------- | ------------------------ | -------------------------- |
+| `nexus.daemonUrl`       | `http://127.0.0.1:63987` | URL of running daemon      |
+| `nexus.defaultProvider` | ``                       | Pre-selected provider name |
+| `nexus.defaultModel`    | ``                       | Pre-selected model         |
 
 Set these in **File → Preferences → Settings** (`⌘,`) and search for `nexus`.
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| Nexus: Submit Task | Submit a code task to the orchestrator |
-| Nexus: View Task Queue | Focus the Task Queue panel |
-| Nexus: Select Provider / Model | Choose default provider + model |
-| Nexus: Show Providers | Same as selecting providers |
-| Nexus: Cancel Task | Cancel a queued/running task |
+| Command                        | Description                            |
+| ------------------------------ | -------------------------------------- |
+| Nexus: Submit Task             | Submit a code task to the orchestrator |
+| Nexus: View Task Queue         | Focus the Task Queue panel             |
+| Nexus: Select Provider / Model | Choose default provider + model        |
+| Nexus: Show Providers          | Same as selecting providers            |
+| Nexus: Cancel Task             | Cancel a queued/running task           |
 
 All commands are accessible via the Command Palette (`⌘⇧P` / `Ctrl+Shift+P`).
 
@@ -68,8 +68,19 @@ Submit tasks to route Copilot-style requests through any configured provider —
 
 ## Troubleshooting
 
-| Symptom | Fix |
-|---------|-----|
-| `⚠ Nexus: offline` in status bar | Start `nexus-daemon` or the desktop app |
-| Wrong daemon port | Set `nexus.daemonUrl` in VS Code settings |
-| No providers in picker | Add providers via the Nexus GUI or set `NEXUS_OLLAMA_URL` / `NEXUS_LMSTUDIO_URL` |
+| Symptom                          | Fix                                                                              |
+| -------------------------------- | -------------------------------------------------------------------------------- |
+| `⚠ Nexus: offline` in status bar | Start `nexus-daemon` or the desktop app                                          |
+| Wrong daemon port                | Set `nexus.daemonUrl` in VS Code settings                                        |
+| No providers in picker           | Add providers via the Nexus GUI or set `NEXUS_OLLAMA_URL` / `NEXUS_LMSTUDIO_URL` |
+
+## Release
+
+To publish a new version to the VS Code Marketplace and Open VSX Registry, the CI pipeline requires the following repository secrets:
+
+| Secret     | Description                                                                                                                                                                                                                                  |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VSCE_PAT` | Personal access token for the [VS Code Marketplace](https://marketplace.visualstudio.com/). Generate one at [dev.azure.com](https://dev.azure.com) under **User Settings → Personal Access Tokens** with the **Marketplace → Manage** scope. |
+| `OVSX_PAT` | Personal access token for the [Open VSX Registry](https://open-vsx.org/). Generate one at `https://open-vsx.org/user-settings/tokens` after logging in.                                                                                      |
+
+Both publish steps only run when a `refs/tags/v*` tag is pushed (or a GitHub Release is published). If a secret is absent the corresponding step is silently skipped, so the CI will still succeed.

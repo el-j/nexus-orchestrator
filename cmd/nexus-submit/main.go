@@ -127,14 +127,26 @@ func waitForCompletion(addr, taskID string, timeout time.Duration) {
 		resp.Body.Close()
 
 		fmt.Printf("  [%s] status=%s\n", time.Now().Format("15:04:05"), t.Status)
-		if t.Status == "COMPLETED" || t.Status == "FAILED" {
+		switch t.Status {
+		case "COMPLETED":
 			if t.Logs != "" {
 				fmt.Println("logs:", t.Logs)
 			}
-			if t.Status == "FAILED" {
-				os.Exit(1)
-			}
 			return
+		case "FAILED":
+			if t.Logs != "" {
+				fmt.Println("logs:", t.Logs)
+			}
+			os.Exit(1)
+		case "CANCELLED":
+			fmt.Fprintln(os.Stderr, "Task cancelled")
+			os.Exit(1)
+		case "TOO_LARGE":
+			fmt.Fprintln(os.Stderr, "Task rejected: prompt exceeds model context limit")
+			os.Exit(2)
+		case "NO_PROVIDER":
+			fmt.Fprintln(os.Stderr, "Task failed: no LLM provider available")
+			os.Exit(3)
 		}
 	}
 	fmt.Fprintln(os.Stderr, "error: timed out waiting for task completion")

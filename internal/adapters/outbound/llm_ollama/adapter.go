@@ -85,12 +85,26 @@ func (a *Adapter) GetAvailableModels() ([]string, error) {
 	return names, nil
 }
 
+// generateRequest is the request body for the Ollama /api/generate endpoint.
+type generateRequest struct {
+	Model  string `json:"model"`
+	Prompt string `json:"prompt"`
+	Stream bool   `json:"stream"`
+}
+
+// ollamaChatRequest is the request body for the Ollama /api/chat endpoint.
+type ollamaChatRequest struct {
+	Model    string              `json:"model"`
+	Messages []map[string]string `json:"messages"`
+	Stream   bool                `json:"stream"`
+}
+
 // GenerateCode sends a chat completion request to Ollama and returns the generated text.
 func (a *Adapter) GenerateCode(prompt string) (string, error) {
-	reqBody, err := json.Marshal(map[string]interface{}{
-		"model":  a.model,
-		"prompt": prompt,
-		"stream": false,
+	reqBody, err := json.Marshal(generateRequest{
+		Model:  a.model,
+		Prompt: prompt,
+		Stream: false,
 	})
 	if err != nil {
 		return "", fmt.Errorf("ollama: marshal request: %w", err)
@@ -166,10 +180,10 @@ func messagesToMaps(msgs []domain.Message) []map[string]string {
 // Chat sends a multi-turn conversation history to Ollama using the /api/chat
 // endpoint and returns the assistant reply.
 func (a *Adapter) Chat(messages []domain.Message) (string, error) {
-	reqBody, err := json.Marshal(map[string]interface{}{
-		"model":    a.model,
-		"messages": messagesToMaps(messages),
-		"stream":   false,
+	reqBody, err := json.Marshal(ollamaChatRequest{
+		Model:    a.model,
+		Messages: messagesToMaps(messages),
+		Stream:   false,
 	})
 	if err != nil {
 		return "", fmt.Errorf("ollama: marshal chat request: %w", err)

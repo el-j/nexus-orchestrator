@@ -81,9 +81,10 @@
         class="flex flex-col items-center justify-center py-20 text-center"
       >
         <div class="text-4xl mb-4 opacity-40">📂</div>
-        <p class="text-sm font-medium text-slate-400">No plan files discovered</p>
+        <p class="text-sm font-medium text-slate-400">No plan files found.</p>
         <p class="text-xs text-slate-600 mt-1 max-w-sm">
-          Click "Scan Now" to search your projects for plan, task, and orchestration files.
+          Create a <span class="font-mono text-slate-400">.claude/plans/PLAN-NNN.md</span> file to
+          get started.
         </p>
       </div>
 
@@ -155,7 +156,16 @@
 
             <!-- Plan groups with task files -->
             <div v-if="data.planGroups.length > 0" class="mb-5">
-              <div v-for="[planId, taskFiles] in data.planGroups" :key="planId" class="mb-4">
+              <div
+                v-for="[planId, taskFiles] in data.planGroups"
+                :key="planId"
+                :class="[
+                  'mb-4 pl-2',
+                  taskFiles.some((f) => ['todo', 'in-progress'].includes(parseStatus(f) ?? ''))
+                    ? 'border-l-2 border-violet-500/50'
+                    : 'border-l-2 border-transparent',
+                ]"
+              >
                 <!-- Plan group header -->
                 <div class="flex items-center gap-2 mb-2">
                   <span class="text-xs font-semibold text-slate-400 font-mono">{{
@@ -178,10 +188,16 @@
                       :class="plan.isActive ? 'bg-emerald-400' : 'bg-slate-700'"
                     ></span>
                     <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-2">
+                      <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-xs font-medium text-white truncate">{{
                           basename(plan.path)
                         }}</span>
+                        <span
+                          v-if="parseStatus(plan)"
+                          :class="statusBadgeClass(parseStatus(plan)!)"
+                          class="text-[10px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0"
+                          >{{ parseStatus(plan) }}</span
+                        >
                         <span class="text-[10px] text-slate-600 font-mono ml-auto flex-shrink-0">{{
                           formatDate(plan.lastModified)
                         }}</span>
@@ -190,6 +206,14 @@
                         {{ truncate(plan.summary.replace(/^#+\s*/, ''), 100) }}
                       </p>
                     </div>
+                    <button
+                      v-if="parseStatus(plan) === 'todo'"
+                      class="text-[10px] px-2 py-1 rounded border border-violet-500/40 text-violet-400 hover:bg-violet-500/20 transition-colors flex-shrink-0 mt-0.5"
+                      :disabled="promoting === plan.id"
+                      @click="handlePromote(plan)"
+                    >
+                      {{ promoting === plan.id ? '…' : 'Promote' }}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -245,6 +269,7 @@
 import { computed, ref, watch } from 'vue';
 import { useDiscoveredPlans } from '../composables/useDiscoveredPlans';
 import { currentProject } from '../composables/useProjectState';
+import { createDraft } from '../types/wails';
 import type { PlanFileKind, DiscoveredPlanFile } from '../types/domain';
 
 const { plans, loading, error, scan } = useDiscoveredPlans(currentProject);
@@ -431,6 +456,46 @@ const kindColors: Record<PlanFileKind, string> = {
 
 function kindBadgeClass(kind: PlanFileKind): string {
   return kindColors[kind] ?? 'bg-white/5 text-slate-400';
+}
+
+// Status parsing from plan file summary (YAML frontmatter or body-level)
+function parseStatus(plan: DiscoveredPlanFile): string | null {
+  if (!plan.summary) return null;
+  // YAML frontmatter: "status: todo"
+  const yamlMatch = plan.summary.match(/\bstatus:\s*([^\n\r]+)/i);
+  if (yamlMatch) return yamlMatch[1].trim().toLowerCase();
+  // Body-level: "**Status:** todo"
+  const bodyMatch = plan.summary.match(/\*\*Status:\*\*\s*([^\n\r]+)/i);
+  if (bodyMatch) return bodyMatch[1].trim().toLowerCase();
+  return null;
+}
+
+const statusBadgeColors: Record<string, string> = {
+  todo: 'bg-yellow-500/20 text-yellow-300',
+  'in-progress': 'bg-blue-500/20 text-blue-300',
+  done: 'bg-emerald-500/20 text-emerald-300',
+  completed: 'bg-emerald-500/20 text-emerald-300',
+  blocked: 'bg-red-500/20 text-red-300',
+};
+
+function statusBadgeClass(status: string): string {
+  return statusBadgeColors[status] ?? 'bg-white/5 text-slate-400';
+}
+
+// Promote plan task to nexus queue
+const promoting = ref<string | null>(null);
+
+async function handlePromote(plan: DiscoveredPlanFile) {
+  promoting.value = plan.id;
+  try {
+    await createDraft({
+      projectPath: plan.projectPath,
+      instruction: plan.summary ?? `Execute task from ${plan.path}`,
+      targetFile: plan.path,
+    });
+  } finally {
+    promoting.value = null;
+  }
 }
 
 // Auto-collapse projects without active items on first load

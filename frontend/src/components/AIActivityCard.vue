@@ -55,6 +55,8 @@ const emoji = computed(() => {
       return '📄';
     case 'generation':
       return '⚡';
+    default:
+      return '';
   }
 });
 
@@ -70,6 +72,8 @@ const borderClass = computed(() => {
       return 'border-orange-400';
     case 'generation':
       return 'border-yellow-400';
+    default:
+      return '';
   }
 });
 
@@ -85,6 +89,8 @@ const accentClass = computed(() => {
       return 'text-orange-400';
     case 'generation':
       return 'text-yellow-400';
+    default:
+      return '';
   }
 });
 

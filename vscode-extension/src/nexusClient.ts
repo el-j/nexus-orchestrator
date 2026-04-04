@@ -5,6 +5,8 @@
  * Uses native fetch (Node 18+ / VS Code's built-in runtime).
  */
 
+import { z } from 'zod';
+
 // ---- Domain types (mirror internal/core/domain/task.go) ----
 
 export type TaskStatus =
@@ -39,8 +41,13 @@ export interface Task {
 export interface Provider {
   name: string;
   active: boolean;
+  kind?: string;
   activeModel?: string;
   models?: string[];
+  baseURL?: string;
+  details?: string;
+  error?: string;
+  contextLimit?: number;
 }
 
 // ---- Request types ----
@@ -126,10 +133,141 @@ interface HealthResponse {
   service: string;
 }
 
+// ---- Provider config (mirrors daemon ProviderConfig) ----
+
+export interface ProviderConfig {
+  id: string;
+  name: string;
+  kind: string;
+  baseURL?: string;
+  model?: string;
+  enabled: boolean;
+}
+
+// ---- Validation error ----
+
+export class NexusClientError extends Error {
+  constructor(
+    message: string,
+    readonly cause?: unknown,
+  ) {
+    super(message);
+    this.name = 'NexusClientError';
+  }
+}
+
+// ---- Zod schemas for runtime validation of critical API responses ----
+
+const TaskStatusSchema = z.enum([
+  'QUEUED',
+  'PROCESSING',
+  'COMPLETED',
+  'FAILED',
+  'CANCELLED',
+  'TOO_LARGE',
+  'NO_PROVIDER',
+]);
+
+const TaskSchema = z
+  .object({
+    id: z.string(),
+    projectPath: z.string(),
+    targetFile: z.string(),
+    instruction: z.string(),
+    contextFiles: z
+      .array(z.string())
+      .nullish()
+      .transform((v) => v ?? []),
+    modelId: z.string().optional(),
+    providerHint: z.string().optional(),
+    command: z.enum(['plan', 'execute', 'auto', '']).optional(),
+    status: TaskStatusSchema,
+    createdAt: z.string(),
+    updatedAt: z.string(),
+    logs: z.string().optional(),
+    aiSessionId: z.string().optional(),
+    claimedBy: z.string().optional(),
+    claimedAt: z.string().optional(),
+    retryCount: z.number().optional(),
+  })
+  .passthrough();
+
+const AISessionSchema = z
+  .object({
+    id: z.string(),
+    agentName: z.string(),
+    source: z.string(),
+    status: z.string(),
+    lastActivity: z.string(),
+    projectPath: z.string().optional(),
+    delegatedToNexus: z.boolean().optional(),
+    delegationTimestamp: z.string().optional(),
+    agentCapabilities: z.array(z.string()).optional(),
+    detectionMethod: z.string().optional(),
+  })
+  .passthrough();
+
+const ProviderSchema = z
+  .object({
+    name: z.string(),
+    active: z.boolean(),
+    kind: z.string().optional(),
+    activeModel: z.string().optional(),
+    models: z.array(z.string()).optional(),
+    baseURL: z.string().optional(),
+    details: z.string().optional(),
+    error: z.string().optional(),
+    contextLimit: z.number().optional(),
+  })
+  .passthrough();
+
+const ProviderConfigSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    kind: z.string(),
+    baseURL: z.string().optional(),
+    model: z.string().optional(),
+    enabled: z.boolean(),
+  })
+  .passthrough();
+
 // ---- Client ----
 
 export class NexusClient {
-  constructor(private readonly baseUrl: string) {}
+  constructor(
+    private baseUrl: string,
+    private mcpPort: number = 63988,
+  ) {}
+
+  /** Expose the configured MCP port. */
+  getMcpPort(): number {
+    return this.mcpPort;
+  }
+
+  /**
+   * Probe each port with HEAD /health and return the first responding port.
+   * Deduplicates the list; user-supplied port is probed first.
+   */
+  async tryConnect(ports: number[]): Promise<number> {
+    const seen = new Set<number>();
+    const url = new URL(this.baseUrl);
+    for (const port of ports) {
+      if (seen.has(port)) continue;
+      seen.add(port);
+      try {
+        const probeUrl = `${url.protocol}//${url.hostname}:${port}/health`;
+        const resp = await fetch(probeUrl, {
+          method: 'HEAD',
+          signal: AbortSignal.timeout(1500),
+        });
+        if (resp.ok) return port;
+      } catch {
+        // port not responding — try next
+      }
+    }
+    throw new Error('nexus: no responding daemon found on any candidate port');
+  }
 
   /**
    * Submit a new task. The daemon returns only {task_id, status}, so we
@@ -142,17 +280,17 @@ export class NexusClient {
 
   /** Return all tasks currently in the queue. */
   async getTasks(): Promise<Task[]> {
-    return this.get<Task[]>('/api/tasks');
+    return this.get('/api/tasks', z.array(TaskSchema));
   }
 
   /** Return ALL tasks regardless of status (completed, failed, queued, etc.). */
   async getAllTasks(): Promise<Task[]> {
-    return this.get<Task[]>('/api/tasks/all');
+    return this.get('/api/tasks/all', z.array(TaskSchema));
   }
 
   /** Return a single task by ID. Throws if not found (404). */
   async getTask(id: string): Promise<Task> {
-    return this.get<Task>(`/api/tasks/${encodeURIComponent(id)}`);
+    return this.get(`/api/tasks/${encodeURIComponent(id)}`, TaskSchema);
   }
 
   /**
@@ -172,12 +310,12 @@ export class NexusClient {
 
   /** Return all registered LLM providers and their liveness status. */
   async getProviders(): Promise<Provider[]> {
-    return this.get<Provider[]>('/api/providers');
+    return this.get('/api/providers', z.array(ProviderSchema));
   }
 
   /** Register a new AI session with the daemon. */
   async registerSession(req: RegisterSessionRequest): Promise<AISession> {
-    return this.post<AISession>('/api/ai-sessions', req);
+    return this.post('/api/ai-sessions', req, AISessionSchema);
   }
 
   /** Deregister an AI session by ID. */
@@ -207,12 +345,12 @@ export class NexusClient {
 
   /** Return all registered AI sessions. */
   async getAISessions(): Promise<AISession[]> {
-    return this.get<AISession[]>('/api/ai-sessions');
+    return this.get('/api/ai-sessions', z.array(AISessionSchema));
   }
 
   /** Claim a queued task for the given session. */
   async claimTask(taskId: string, sessionId: string): Promise<Task> {
-    return this.post<Task>(`/api/tasks/${encodeURIComponent(taskId)}/claim`, { sessionId });
+    return this.post(`/api/tasks/${encodeURIComponent(taskId)}/claim`, { sessionId }, TaskSchema);
   }
 
   /** Update a task's status (COMPLETED or FAILED). */
@@ -222,21 +360,25 @@ export class NexusClient {
     status: 'COMPLETED' | 'FAILED',
     logs?: string,
   ): Promise<Task> {
-    return this.put<Task>(`/api/tasks/${encodeURIComponent(taskId)}/status`, {
-      sessionId,
-      status,
-      logs,
-    });
+    return this.put(
+      `/api/tasks/${encodeURIComponent(taskId)}/status`,
+      {
+        sessionId,
+        status,
+        logs,
+      },
+      TaskSchema,
+    );
   }
 
   /** Get all tasks bound to a specific AI session. */
   async getSessionTasks(sessionId: string): Promise<Task[]> {
-    return this.get<Task[]>(`/api/ai-sessions/${encodeURIComponent(sessionId)}/tasks`);
+    return this.get(`/api/ai-sessions/${encodeURIComponent(sessionId)}/tasks`, z.array(TaskSchema));
   }
 
   /** Return all registered AI sessions (alias with explicit name). */
   async listAISessions(): Promise<AISession[]> {
-    return this.get<AISession[]>('/api/ai-sessions');
+    return this.get('/api/ai-sessions', z.array(AISessionSchema));
   }
 
   /** Return all discovered AI agents on this machine. */
@@ -289,16 +431,28 @@ export class NexusClient {
 
   // ---- Private helpers ----
 
-  private async get<T>(path: string): Promise<T> {
+  private parseResponse<T>(schema: z.ZodSchema<T>, data: unknown): T {
+    const result = schema.safeParse(data);
+    if (!result.success) {
+      throw new NexusClientError(
+        `nexus: response validation failed: ${result.error.message}`,
+        result.error,
+      );
+    }
+    return result.data;
+  }
+
+  private async get<T>(path: string, schema?: z.ZodSchema<T>): Promise<T> {
     const resp = await fetch(`${this.baseUrl}${path}`);
     if (!resp.ok) {
       const body = await resp.text().catch(() => '');
       throw new Error(`nexus: GET ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`);
     }
-    return resp.json() as Promise<T>;
+    const data: unknown = await resp.json();
+    return schema ? this.parseResponse(schema, data) : (data as T);
   }
 
-  private async post<T>(path: string, payload: unknown): Promise<T> {
+  private async post<T>(path: string, payload: unknown, schema?: z.ZodSchema<T>): Promise<T> {
     const resp = await fetch(`${this.baseUrl}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -308,10 +462,11 @@ export class NexusClient {
       const body = await resp.text().catch(() => '');
       throw new Error(`nexus: POST ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`);
     }
-    return resp.json() as Promise<T>;
+    const data: unknown = await resp.json();
+    return schema ? this.parseResponse(schema, data) : (data as T);
   }
 
-  private async put<T>(path: string, payload: unknown): Promise<T> {
+  private async put<T>(path: string, payload: unknown, schema?: z.ZodSchema<T>): Promise<T> {
     const resp = await fetch(`${this.baseUrl}${path}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -321,6 +476,7 @@ export class NexusClient {
       const body = await resp.text().catch(() => '');
       throw new Error(`nexus: PUT ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`);
     }
-    return resp.json() as Promise<T>;
+    const data: unknown = await resp.json();
+    return schema ? this.parseResponse(schema, data) : (data as T);
   }
 }

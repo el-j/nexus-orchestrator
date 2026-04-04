@@ -140,15 +140,20 @@ func (a *Adapter) GetAvailableModels() ([]string, error) {
 	return ids, nil
 }
 
+// chatCompletionRequest is the request body for the LM Studio /chat/completions endpoint.
+type chatCompletionRequest struct {
+	Model       string              `json:"model"`
+	Messages    []map[string]string `json:"messages"`
+	Temperature float64             `json:"temperature"`
+}
+
 // GenerateCode sends a chat completion request to LM Studio and returns the
 // generated text.
 func (a *Adapter) GenerateCode(prompt string) (string, error) {
-	reqBody, err := json.Marshal(map[string]interface{}{
-		"model": a.activeModelOrDefault(),
-		"messages": []map[string]string{
-			{"role": "user", "content": prompt},
-		},
-		"temperature": 0.2,
+	reqBody, err := json.Marshal(chatCompletionRequest{
+		Model:       a.activeModelOrDefault(),
+		Messages:    []map[string]string{{"role": "user", "content": prompt}},
+		Temperature: 0.2,
 	})
 	if err != nil {
 		return "", fmt.Errorf("lmstudio: marshal request: %w", err)
@@ -197,10 +202,10 @@ func messagesToMaps(msgs []domain.Message) []map[string]string {
 // Chat sends a multi-turn conversation history to LM Studio and returns the
 // assistant reply. This is the preferred method for session-isolated generation.
 func (a *Adapter) Chat(messages []domain.Message) (string, error) {
-	reqBody, err := json.Marshal(map[string]interface{}{
-		"model":       a.activeModelOrDefault(),
-		"messages":    messagesToMaps(messages),
-		"temperature": 0.2,
+	reqBody, err := json.Marshal(chatCompletionRequest{
+		Model:       a.activeModelOrDefault(),
+		Messages:    messagesToMaps(messages),
+		Temperature: 0.2,
 	})
 	if err != nil {
 		return "", fmt.Errorf("lmstudio: marshal chat request: %w", err)

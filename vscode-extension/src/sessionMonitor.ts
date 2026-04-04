@@ -10,6 +10,7 @@ import { getNexusActivityChannel, logNexusActivity } from './activityLog';
 export class SessionMonitor {
   private sessionId: string | undefined;
   private isReregistering = false;
+  private started = false;
   private heartbeatTimer: NodeJS.Timeout | undefined;
   private claimTimer: NodeJS.Timeout | undefined;
   private modelChangeListener: vscode.Disposable | undefined;
@@ -23,6 +24,11 @@ export class SessionMonitor {
   }
 
   async start(): Promise<void> {
+    if (this.started) {
+      return;
+    }
+    this.started = true;
+
     await this.detectAndRegister();
 
     // Retry if initial detection failed (Copilot may still be initializing)
@@ -50,16 +56,22 @@ export class SessionMonitor {
     }
     // Heartbeat every 60s
     this.heartbeatTimer = setInterval(() => void this.heartbeat(), 60_000);
-    // Poll for QUEUED tasks to auto-claim every 10s
-    this.claimTimer = setInterval(() => void this.pollAndClaim(), 10_000);
+    // Refresh queue state for display every 30s
+    this.claimTimer = setInterval(() => void this.refreshQueue(), 30_000);
   }
 
   async stop(): Promise<void> {
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = undefined;
     }
     if (this.claimTimer) {
       clearInterval(this.claimTimer);
+      this.claimTimer = undefined;
+    }
+    if (this.modelChangeListener) {
+      this.modelChangeListener.dispose();
+      this.modelChangeListener = undefined;
     }
     if (this.sessionId) {
       try {
@@ -69,6 +81,7 @@ export class SessionMonitor {
       }
     }
     this.sessionId = undefined;
+    this.started = false;
   }
 
   private async detectAndRegister(): Promise<void> {
@@ -124,22 +137,14 @@ export class SessionMonitor {
     }
   }
 
-  private async pollAndClaim(): Promise<void> {
+  /** Reads queue state for display purposes only. Does not claim tasks. */
+  private async refreshQueue(): Promise<void> {
     if (!this.sessionId) return;
     try {
       const tasks = await this.client.getTasks();
-      const queued = tasks.filter((t) => t.status === 'QUEUED');
-      for (const task of queued) {
-        try {
-          const claimed = await this.client.claimTask(task.id, this.sessionId);
-          logNexusActivity(
-            'copilot',
-            `claimed task ${claimed.id} (${claimed.instruction.slice(0, 60)})`,
-          );
-        } catch {
-          // Another agent may have claimed it first — skip
-        }
-      }
+      const queued = tasks.filter((t) => t.status === 'QUEUED').length;
+      const processing = tasks.filter((t) => t.status === 'PROCESSING').length;
+      logNexusActivity('copilot', `queue: ${queued} queued, ${processing} processing`);
     } catch {
       // Daemon may be unreachable — skip silently
     }

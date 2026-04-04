@@ -26,8 +26,10 @@ type ActivityService struct {
 	readers      []ports.ActivityReader
 	broadcaster  ports.ActivityBroadcaster // optional; may be nil
 
-	stopCh chan struct{}
-	mu     sync.Mutex
+	stopCh   chan struct{}
+	stopOnce sync.Once
+	wg       sync.WaitGroup
+	mu       sync.Mutex
 	// lastSeen tracks when we last received activity per key "agentName\x00projectPath"
 	lastSeen map[string]time.Time
 }
@@ -55,13 +57,18 @@ func (s *ActivityService) SetBroadcaster(b ports.ActivityBroadcaster) {
 // Start launches the background polling and purge goroutines.
 // It is safe to call multiple times but only one goroutine is started.
 func (s *ActivityService) Start() {
+	s.wg.Add(2)
 	go s.pollLoop()
 	go s.purgeLoop()
 }
 
-// Stop signals the background goroutines to exit gracefully.
+// Stop signals the background goroutines to exit gracefully and waits until
+// they have fully exited. Safe to call multiple times.
 func (s *ActivityService) Stop() {
-	close(s.stopCh)
+	s.stopOnce.Do(func() {
+		close(s.stopCh)
+	})
+	s.wg.Wait()
 }
 
 // GetRecentActivities queries the repository with the given filter.
@@ -75,6 +82,7 @@ func (s *ActivityService) GetTimeline(ctx context.Context, since time.Time, limi
 }
 
 func (s *ActivityService) pollLoop() {
+	defer s.wg.Done()
 	ticker := time.NewTicker(activityPollInterval)
 	defer ticker.Stop()
 
@@ -92,6 +100,7 @@ func (s *ActivityService) pollLoop() {
 }
 
 func (s *ActivityService) purgeLoop() {
+	defer s.wg.Done()
 	ticker := time.NewTicker(retentionPurgeInterval)
 	defer ticker.Stop()
 	for {

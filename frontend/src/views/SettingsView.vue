@@ -14,6 +14,14 @@
 
     <!-- Content -->
     <div class="flex-1 overflow-auto p-5 space-y-6">
+      <!-- Config / token error -->
+      <div
+        v-if="configError || tokenError"
+        class="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl p-4"
+      >
+        {{ configError ?? tokenError }}
+      </div>
+
       <!-- 1. Queue Settings -->
       <section>
         <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
@@ -63,23 +71,26 @@
               </span>
               <button
                 v-if="!runtimeConfig?.apiTokenEnabled"
-                class="text-[10px] px-2.5 py-1 rounded border border-violet-500/30 text-violet-400 hover:bg-violet-500/10 transition-colors"
+                class="text-[10px] px-2.5 py-1 rounded border border-violet-500/30 text-violet-400 hover:bg-violet-500/10 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                :disabled="tokenOperation !== null"
                 @click="rotateToken('api')"
               >
-                Generate Token
+                {{ isTokenActionBusy('api', 'rotate') ? 'Working…' : 'Generate Token' }}
               </button>
               <template v-else>
                 <button
-                  class="text-[10px] px-2.5 py-1 rounded border border-violet-500/30 text-violet-400 hover:bg-violet-500/10 transition-colors"
+                  class="text-[10px] px-2.5 py-1 rounded border border-violet-500/30 text-violet-400 hover:bg-violet-500/10 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  :disabled="tokenOperation !== null"
                   @click="rotateToken('api')"
                 >
-                  Rotate
+                  {{ isTokenActionBusy('api', 'rotate') ? 'Working…' : 'Rotate' }}
                 </button>
                 <button
-                  class="text-[10px] px-2.5 py-1 rounded border border-white/10 text-slate-400 hover:text-red-400 hover:border-red-500/30 transition-colors"
+                  class="text-[10px] px-2.5 py-1 rounded border border-white/10 text-slate-400 hover:text-red-400 hover:border-red-500/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  :disabled="tokenOperation !== null"
                   @click="disableToken('api')"
                 >
-                  Disable
+                  {{ isTokenActionBusy('api', 'disable') ? 'Disabling…' : 'Disable' }}
                 </button>
               </template>
             </div>
@@ -108,23 +119,26 @@
               </span>
               <button
                 v-if="!runtimeConfig?.mcpTokenEnabled"
-                class="text-[10px] px-2.5 py-1 rounded border border-violet-500/30 text-violet-400 hover:bg-violet-500/10 transition-colors"
+                class="text-[10px] px-2.5 py-1 rounded border border-violet-500/30 text-violet-400 hover:bg-violet-500/10 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                :disabled="tokenOperation !== null"
                 @click="rotateToken('mcp')"
               >
-                Generate Token
+                {{ isTokenActionBusy('mcp', 'rotate') ? 'Working…' : 'Generate Token' }}
               </button>
               <template v-else>
                 <button
-                  class="text-[10px] px-2.5 py-1 rounded border border-violet-500/30 text-violet-400 hover:bg-violet-500/10 transition-colors"
+                  class="text-[10px] px-2.5 py-1 rounded border border-violet-500/30 text-violet-400 hover:bg-violet-500/10 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  :disabled="tokenOperation !== null"
                   @click="rotateToken('mcp')"
                 >
-                  Rotate
+                  {{ isTokenActionBusy('mcp', 'rotate') ? 'Working…' : 'Rotate' }}
                 </button>
                 <button
-                  class="text-[10px] px-2.5 py-1 rounded border border-white/10 text-slate-400 hover:text-red-400 hover:border-red-500/30 transition-colors"
+                  class="text-[10px] px-2.5 py-1 rounded border border-white/10 text-slate-400 hover:text-red-400 hover:border-red-500/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  :disabled="tokenOperation !== null"
                   @click="disableToken('mcp')"
                 >
-                  Disable
+                  {{ isTokenActionBusy('mcp', 'disable') ? 'Disabling…' : 'Disable' }}
                 </button>
               </template>
             </div>
@@ -199,58 +213,107 @@
         </p>
       </section>
     </div>
+
+    <!-- Confirm dialog -->
+    <AppConfirmDialog
+      :open="confirmDialog.open"
+      :title="confirmDialog.title"
+      :message="confirmDialog.message"
+      :danger="true"
+      @confirm="
+        confirmDialog.onConfirm();
+        confirmDialog.open = false;
+      "
+      @cancel="confirmDialog.open = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed, reactive } from 'vue';
 import type { RuntimeConfig } from '../types/domain';
 import { getRuntimeConfig, updateRuntimeConfig } from '../types/wails';
+import { resolveServerUrl } from '../composables/useServerUrl';
+import AppConfirmDialog from '../components/AppConfirmDialog.vue';
+
+// ── Confirm dialog state ──────────────────────────────────────────────────────
+
+const confirmDialog = reactive({
+  open: false,
+  title: '',
+  message: '',
+  onConfirm: () => {},
+});
+
+function showConfirm(title: string, message: string, onConfirm: () => void) {
+  confirmDialog.title = title;
+  confirmDialog.message = message;
+  confirmDialog.onConfirm = onConfirm;
+  confirmDialog.open = true;
+}
 
 // ── Runtime Config ────────────────────────────────────────────────────────────
 
 const runtimeConfig = ref<RuntimeConfig | null>(null);
+const configError = ref<string | null>(null);
 
 async function loadConfig() {
   try {
     runtimeConfig.value = await getRuntimeConfig();
-  } catch {
-    /* silent fail */
+    configError.value = null;
+  } catch (e) {
+    configError.value = e instanceof Error ? e.message : 'Failed to load configuration';
   }
 }
-
-onMounted(() => {
-  loadConfig();
-});
 
 // ── Security / Token Management ───────────────────────────────────────────────
 
 const newToken = ref<{ kind: 'api' | 'mcp'; value: string } | null>(null);
+const tokenError = ref<string | null>(null);
+const tokenOperation = ref<{ kind: 'api' | 'mcp'; action: 'rotate' | 'disable' } | null>(null);
+
+function isTokenActionBusy(kind: 'api' | 'mcp', action: 'rotate' | 'disable'): boolean {
+  return tokenOperation.value?.kind === kind && tokenOperation.value?.action === action;
+}
 
 async function rotateToken(kind: 'api' | 'mcp') {
+  if (tokenOperation.value) return;
   newToken.value = null;
+  tokenError.value = null;
   const update = kind === 'api' ? { rotateApiToken: true } : { rotateMcpToken: true };
+  tokenOperation.value = { kind, action: 'rotate' };
   try {
     const cfg = await updateRuntimeConfig(update);
     const val = kind === 'api' ? cfg.apiToken : cfg.mcpToken;
     if (val) newToken.value = { kind, value: val };
     await loadConfig();
-  } catch {
-    /* silent fail */
+  } catch (e) {
+    tokenError.value = e instanceof Error ? e.message : 'Failed to rotate token';
+  } finally {
+    tokenOperation.value = null;
   }
 }
 
 async function disableToken(kind: 'api' | 'mcp') {
-  if (!window.confirm(`Disable ${kind === 'api' ? 'HTTP API' : 'MCP'} token authentication?`))
-    return;
-  const update = kind === 'api' ? { apiToken: '' } : { mcpToken: '' };
-  try {
-    await updateRuntimeConfig(update);
-    newToken.value = null;
-    await loadConfig();
-  } catch {
-    /* silent fail */
-  }
+  showConfirm(
+    `Disable ${kind === 'api' ? 'HTTP API' : 'MCP'} token`,
+    `This will remove token authentication from the ${kind === 'api' ? 'HTTP API' : 'MCP'} endpoint.`,
+    async () => {
+      if (tokenOperation.value) return;
+      const update = kind === 'api' ? { apiToken: '' } : { mcpToken: '' };
+      tokenOperation.value = { kind, action: 'disable' };
+      try {
+        await updateRuntimeConfig(update);
+        newToken.value = null;
+        tokenError.value = null;
+        await loadConfig();
+      } catch (e) {
+        tokenError.value = e instanceof Error ? e.message : 'Failed to disable token';
+      } finally {
+        tokenOperation.value = null;
+      }
+    },
+  );
 }
 
 const tokenCopied = ref(false);
@@ -271,10 +334,24 @@ async function copyToken() {
 
 // ── Server Addresses ──────────────────────────────────────────────────────────
 
-const serverAddresses = [
-  { label: 'HTTP API', url: 'http://127.0.0.1:63987' },
-  { label: 'MCP Server', url: 'http://127.0.0.1:63988/mcp' },
-];
+const resolvedApiUrl = ref('http://127.0.0.1:63987');
+const resolvedMcpUrl = ref('http://127.0.0.1:63988/mcp');
+
+onMounted(async () => {
+  loadConfig();
+  try {
+    const base = await resolveServerUrl();
+    resolvedApiUrl.value = base;
+    resolvedMcpUrl.value = base.replace(':63987', ':63988') + '/mcp';
+  } catch {
+    /* keep defaults */
+  }
+});
+
+const serverAddresses = computed(() => [
+  { label: 'HTTP API', url: resolvedApiUrl.value },
+  { label: 'MCP Server', url: resolvedMcpUrl.value },
+]);
 
 const copied = ref<string | null>(null);
 let copyTimer: ReturnType<typeof setTimeout> | null = null;

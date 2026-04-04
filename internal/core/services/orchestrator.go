@@ -68,6 +68,11 @@ func WithPlanFileRepo(r ports.DiscoveredPlanFileRepo) Option {
 	return func(o *OrchestratorService) { o.planFileRepo = r }
 }
 
+// WithWatchdogInterval sets how often the task watchdog checks for stale tasks. Default: 1 minute.
+func WithWatchdogInterval(d time.Duration) Option {
+	return func(s *OrchestratorService) { s.watchdogInterval = d }
+}
+
 // OrchestratorService implements ports.Orchestrator and drives the worker loop.
 type OrchestratorService struct {
 	mu          sync.Mutex
@@ -99,6 +104,7 @@ type OrchestratorService struct {
 	maxRetries         int
 	maxResponseTokens  int
 	cleanupInterval    time.Duration
+	watchdogInterval   time.Duration
 	daemonAddr         string // base URL of the running daemon; used in delegation instructions
 	staleThreshold     time.Duration
 	disableWorkers     bool
@@ -319,11 +325,15 @@ func (o *OrchestratorService) SetAISessionRepo(r ports.AISessionRepository) {
 
 // SetAgentScanner wires the scanner used to detect running AI agent tools.
 func (o *OrchestratorService) SetAgentScanner(s ports.AgentScanner) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
 	o.agentScanner = s
 }
 
 // SetDiscoveredAgentRepo wires the repository used to persist discovered agents.
 func (o *OrchestratorService) SetDiscoveredAgentRepo(r discoveredAgentStore) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
 	o.agentRepo = r
 }
 
@@ -527,8 +537,11 @@ func (o *OrchestratorService) runTaskWatchdog() {
 		cancel()
 	}()
 	defer cancel()
-	// Check every minute
-	ticker := time.NewTicker(time.Minute)
+	watchdogInterval := o.watchdogInterval
+	if watchdogInterval <= 0 {
+		watchdogInterval = time.Minute
+	}
+	ticker := time.NewTicker(watchdogInterval)
 	defer ticker.Stop()
 	for {
 		select {

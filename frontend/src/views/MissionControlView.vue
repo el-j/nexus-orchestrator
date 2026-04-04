@@ -313,7 +313,6 @@ async function handlePromote(id: string) {
     await promoteTask(id);
     await refreshHistory();
   } catch (e) {
-    console.warn('Promote failed:', e);
     toast.add({ severity: 'error', summary: 'Promote Failed', detail: String(e), life: 5000 });
   } finally {
     promoting.value = null;

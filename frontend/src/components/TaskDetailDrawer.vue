@@ -85,6 +85,20 @@
           @click="handleCancel"
         />
       </div>
+
+      <div v-if="task.status === 'PROCESSING'" class="pt-2 flex flex-col gap-2">
+        <Button
+          label="Interrupt"
+          icon="pi pi-stop"
+          size="small"
+          title="Force cancel a running task"
+          :loading="cancelling"
+          class="!bg-amber-500/20 !text-amber-400 !border-amber-500/40 hover:!bg-amber-500/30"
+          outlined
+          @click="handleCancel"
+        />
+        <p v-if="cancelError" class="text-xs text-red-400">{{ cancelError }}</p>
+      </div>
     </div>
   </Drawer>
 </template>
@@ -103,6 +117,7 @@ const props = defineProps<{ task: Task | null; modelValue: boolean }>();
 const emit = defineEmits<{
   'update:modelValue': [v: boolean];
   cancelled: [id: string];
+  close: [];
 }>();
 
 const visible = computed({
@@ -112,20 +127,25 @@ const visible = computed({
 
 const toast = useToast();
 const cancelling = ref(false);
+const cancelError = ref<string | null>(null);
 
 async function handleCancel() {
   if (!props.task) return;
   cancelling.value = true;
+  cancelError.value = null;
   try {
     await cancelTask(props.task.id);
     toast.add({ severity: 'success', summary: 'Task cancelled', life: 2000 });
     emit('cancelled', props.task.id);
+    emit('close');
     visible.value = false;
   } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    cancelError.value = msg;
     toast.add({
       severity: 'error',
       summary: 'Cancel failed',
-      detail: e instanceof Error ? e.message : String(e),
+      detail: msg,
       life: 4000,
     });
   } finally {

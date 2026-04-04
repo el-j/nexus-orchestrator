@@ -141,6 +141,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import type { Task, TaskStatus } from '../types/domain';
 import { currentProject } from '../composables/useProjectState';
 import { resolveServerUrl } from '../composables/useServerUrl';
+import { useGlobalSSE } from '../composables/useGlobalSSE';
 import TaskStatusBadge from '../components/TaskStatusBadge.vue';
 import TaskDetailDrawer from '../components/TaskDetailDrawer.vue';
 import RefreshIndicator from '../components/RefreshIndicator.vue';
@@ -150,7 +151,33 @@ const tasks = ref<Task[]>([]);
 const loading = ref(false);
 const lastRefreshed = ref<Date | null>(null);
 let interval: ReturnType<typeof setInterval> | null = null;
-let eventSource: EventSource | null = null;
+const { on, off, connected } = useGlobalSSE();
+
+function sseHandler(data: { type: string; [key: string]: unknown }) {
+  if (data.type === 'connected' || data.type === 'log') return;
+  void refresh();
+}
+
+function startPolling() {
+  if (interval) return;
+  interval = setInterval(() => {
+    void refresh();
+  }, 2000);
+}
+
+function stopPolling() {
+  if (!interval) return;
+  clearInterval(interval);
+  interval = null;
+}
+
+function syncPolling(isConnected: boolean) {
+  if (isConnected) {
+    stopPolling();
+    return;
+  }
+  startPolling();
+}
 
 type FilterValue = 'ALL' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
@@ -235,52 +262,27 @@ watch(currentProject, () => {
   void refresh();
 });
 
+watch(connected, (isConnected) => {
+  syncPolling(isConnected);
+  if (!isConnected) {
+    void refresh();
+  }
+});
+
 onMounted(async () => {
   loading.value = true;
   try {
     await refresh();
-
-    if (typeof EventSource !== 'undefined') {
-      try {
-        const baseUrl = await resolveServerUrl();
-        eventSource = new EventSource(`${baseUrl}/api/events`);
-        eventSource.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          if (data.type !== 'connected') {
-            void refresh();
-          }
-        };
-        eventSource.onerror = () => {
-          eventSource?.close();
-          eventSource = null;
-          if (!interval) {
-            interval = setInterval(() => {
-              void refresh();
-            }, 2000);
-          }
-        };
-      } catch {
-        interval = setInterval(() => {
-          void refresh();
-        }, 2000);
-      }
-    } else {
-      interval = setInterval(() => {
-        void refresh();
-      }, 2000);
-    }
-  } catch {
-    interval = setInterval(() => {
-      void refresh();
-    }, 2000);
   } finally {
+    on('*', sseHandler);
+    syncPolling(connected.value);
     loading.value = false;
   }
 });
 
 onUnmounted(() => {
-  if (interval) clearInterval(interval);
-  if (eventSource) eventSource.close();
+  off('*', sseHandler);
+  stopPolling();
 });
 
 function openDetail(task: Task) {

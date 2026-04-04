@@ -1,9 +1,9 @@
 {
   "version": "2",
-  "updatedAt": "2026-03-29T15:00:00Z",
+  "updatedAt": "2026-04-04T13:21:26Z",
   "counters": {
-    "nextTaskId": 460,
-    "nextPlanId": 61
+    "nextTaskId": 505,
+    "nextPlanId": 65
   },
   "activePlanId": null,
   "notes": [
@@ -69,7 +69,9 @@
     {
       "ts": "2026-03-29T15:20:00Z",
       "note": "PLAN-060 completed. 6 tasks (TASK-454..459): Vue Router migration. router/index.ts with 9 lazy-loaded routes (createWebHashHistory), routes.ts re-export stub fixed, main.ts wired app.use(router), AppSidebar migrated to useRouter/useRoute (no more emit/activeView ref), App.vue simplified to clean RouterView shell (removed all 9 v-if view imports and currentView ref), ProjectActivityView replaced emit('navigate') with router.push('/projects/live-activity'). vue-tsc clean, 25 Vitest pass."
-    }
+    },
+    "SESSION 2026-04-04T13:02:34Z: Implemented and validated Wave 1 blockers across PLAN-061/062/063. Done: TASK-460..464, TASK-470..476, TASK-483, TASK-484, TASK-488. Validation green: go test -race (services + httpapi_client), go vet httpapi_client, frontend vue-tsc + vitest (src/views + src/composables), vscode-extension compile+build. Plans remain active for remaining tasks.",
+    "SESSION 2026-04-04T13:21:26Z: Repaired .claude execution-layer gaps by instantiating missing task records for PLAN-063 (TASK-485..487, TASK-489..492) and PLAN-064 (TASK-493..504). Plans now have full orchestrator tracking."
   ],
   "plans": {
     "PLAN-001": {
@@ -714,7 +716,7 @@
     },
     "PLAN-058": {
       "id": "PLAN-058",
-      "title": "UX Polish — Sorting, Filtering, Grouping & Layout Fixes",
+      "title": "UX Polish \u2014 Sorting, Filtering, Grouping & Layout Fixes",
       "goal": "Sort active items first, add filtering, group AI tools by kind, collapsible plans tree, fix LogPanel space, denser cards",
       "status": "completed",
       "createdAt": "2026-03-29T12:45:00Z",
@@ -761,6 +763,91 @@
       "createdAt": "2026-03-29T15:00:00Z",
       "completedAt": "2026-03-29T15:20:00Z",
       "tasks": ["TASK-454", "TASK-455", "TASK-456", "TASK-457", "TASK-458", "TASK-459"]
+    },
+    "PLAN-061": {
+      "id": "PLAN-061",
+      "title": "Go Backend \u2014 Pre-Launch Critical Fixes",
+      "goal": "Pre-launch audit of the Go backend identified 10 issues requiring fixes before a production release. Six are critical (data loss, race conditions, silent failures) and four are high-priority (type safety, dead code, missing test coverage). All must be resolved before the v1.0 release gate.",
+      "status": "completed",
+      "createdAt": "2026-04-04T13:02:34Z",
+      "tasks": [
+        "TASK-460",
+        "TASK-461",
+        "TASK-462",
+        "TASK-463",
+        "TASK-464",
+        "TASK-465",
+        "TASK-466",
+        "TASK-467",
+        "TASK-468",
+        "TASK-469"
+      ],
+      "completedAt": "2026-04-04T14:45:25Z"
+    },
+    "PLAN-062": {
+      "id": "PLAN-062",
+      "title": "Frontend: Pre-Launch Critical Fixes",
+      "goal": "Audit-driven critical and high-priority fixes for the Vue 3 frontend identified during the pre-launch review. Covers five categories of production-blocking issues: - Broken Wails desktop bindings (runtime config calls hit HTTP with no `isWails()` guard) - Redundant SSE connections (5-6 concurrent EventSources instead of one shared bus) - Permanent disconnects in composables with no reconnect logic - UX regressions: hardcoded status indicators, silent failures, `window.confirm` in webview - Dead ",
+      "status": "completed",
+      "createdAt": "2026-04-04T13:02:34Z",
+      "tasks": [
+        "TASK-470",
+        "TASK-471",
+        "TASK-472",
+        "TASK-473",
+        "TASK-474",
+        "TASK-475",
+        "TASK-476",
+        "TASK-477",
+        "TASK-478",
+        "TASK-479",
+        "TASK-480",
+        "TASK-481",
+        "TASK-482"
+      ],
+      "completedAt": "2026-04-04T14:45:25Z"
+    },
+    "PLAN-063": {
+      "id": "PLAN-063",
+      "title": "VS Code Extension: Feature Completion & Distribution",
+      "goal": "Pre-launch audit of the VS Code extension and associated release tooling exposed ten gaps ranging from commands that ship as empty stubs, a session monitor that permanently blocks the daemon worker queue, a CI pipeline that never actually publishes to the Marketplace, and a `nexus-submit` CLI that loops forever on cancelled tasks. This plan drives all ten to done before the first public release. Critical work (TASK-483 \u2013 TASK-488) must ship together; high-priority work (TASK-489 \u2013 TASK-492) can ",
+      "status": "completed",
+      "createdAt": "2026-04-04T13:02:34Z",
+      "tasks": [
+        "TASK-483",
+        "TASK-484",
+        "TASK-485",
+        "TASK-486",
+        "TASK-487",
+        "TASK-488",
+        "TASK-489",
+        "TASK-490",
+        "TASK-491",
+        "TASK-492"
+      ],
+      "completedAt": "2026-04-04T14:45:25Z"
+    },
+    "PLAN-064": {
+      "id": "PLAN-064",
+      "title": "Test Coverage: Critical Path Hardening",
+      "goal": "Pre-launch audit identified systemic test coverage gaps across the Go backend, frontend composables, and GitHub Action. The core execution engine, primary frontend mutation surfaces, MCP state-machine transitions, and the CLI transport layer all have zero isolation coverage despite running on every user-visible flow. This plan addresses those gaps in priority order: critical zero-coverage production paths first, then medium-risk edge cases.",
+      "status": "completed",
+      "createdAt": "2026-04-04T13:02:34Z",
+      "tasks": [
+        "TASK-493",
+        "TASK-494",
+        "TASK-495",
+        "TASK-496",
+        "TASK-497",
+        "TASK-498",
+        "TASK-499",
+        "TASK-500",
+        "TASK-501",
+        "TASK-502",
+        "TASK-503",
+        "TASK-504"
+      ],
+      "completedAt": "2026-04-04T14:45:25Z"
     }
   },
   "tasks": {
@@ -4135,6 +4222,489 @@
       "wave": 7,
       "createdAt": "2026-03-29T11:30:00Z",
       "completedAt": "2026-03-29T10:20:14Z"
+    },
+    "TASK-460": {
+      "id": "TASK-460",
+      "planId": "PLAN-061",
+      "status": "done",
+      "title": "Fix httpapi_client \u2014 replace http.DefaultClient bypasses",
+      "role": "implementation",
+      "wave": 1,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T13:02:34Z"
+    },
+    "TASK-461": {
+      "id": "TASK-461",
+      "planId": "PLAN-061",
+      "status": "done",
+      "title": "Fix main.go (Wails) \u2014 wire WithRuntimeConfigRepo",
+      "role": "implementation",
+      "wave": 1,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T13:02:34Z"
+    },
+    "TASK-462": {
+      "id": "TASK-462",
+      "planId": "PLAN-061",
+      "status": "done",
+      "title": "Fix ActivityService.Stop() \u2014 add WaitGroup for goroutine cleanup",
+      "role": "implementation",
+      "wave": 2,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T13:02:34Z"
+    },
+    "TASK-463": {
+      "id": "TASK-463",
+      "planId": "PLAN-061",
+      "status": "done",
+      "title": "Fix llm_openaicompat sync.Once permanent error caching",
+      "role": "implementation",
+      "wave": 2,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T13:02:34Z"
+    },
+    "TASK-464": {
+      "id": "TASK-464",
+      "planId": "PLAN-061",
+      "status": "done",
+      "title": "Fix SetAgentScanner/SetDiscoveredAgentRepo \u2014 missing mutex",
+      "role": "implementation",
+      "wave": 2,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T13:02:34Z"
+    },
+    "TASK-465": {
+      "id": "TASK-465",
+      "planId": "PLAN-061",
+      "status": "completed",
+      "title": "Investigate and implement fs_writeback adapter",
+      "role": "implementation",
+      "wave": 3,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "Removed empty fs_writeback directory"
+    },
+    "TASK-466": {
+      "id": "TASK-466",
+      "planId": "PLAN-061",
+      "status": "completed",
+      "title": "Implement ContextLimit() for Anthropic and OpenAI-compat adapters",
+      "role": "implementation",
+      "wave": 4,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "Implemented ContextLimit() for Anthropic (200000) and OpenAI-compat (131072 when model loaded)"
+    },
+    "TASK-467": {
+      "id": "TASK-467",
+      "planId": "PLAN-061",
+      "status": "completed",
+      "title": "Replace map[string]interface{} with typed structs in LLM adapters",
+      "role": "implementation",
+      "wave": 4,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "Replaced map[string]interface{} with typed structs in all LLM adapters"
+    },
+    "TASK-468": {
+      "id": "TASK-468",
+      "planId": "PLAN-061",
+      "status": "completed",
+      "title": "Remove dead wailsbind package",
+      "role": "implementation",
+      "wave": 5,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "Removed dead wailsbind package"
+    },
+    "TASK-469": {
+      "id": "TASK-469",
+      "planId": "PLAN-061",
+      "status": "completed",
+      "title": "Add httpapi_client test suite",
+      "role": "implementation",
+      "wave": 5,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "httpapi_client test suite already existed and passes"
+    },
+    "TASK-470": {
+      "id": "TASK-470",
+      "planId": "PLAN-062",
+      "status": "done",
+      "title": "Fix wails.ts getRuntimeConfig/updateRuntimeConfig \u2014 broken in desktop mode",
+      "role": "implementation",
+      "wave": 1,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T13:02:34Z"
+    },
+    "TASK-471": {
+      "id": "TASK-471",
+      "planId": "PLAN-062",
+      "status": "done",
+      "title": "Fix useGlobalSSE \u2014 currently bypassed, 5-6 concurrent SSE connections",
+      "role": "implementation",
+      "wave": 1,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T13:02:34Z"
+    },
+    "TASK-472": {
+      "id": "TASK-472",
+      "planId": "PLAN-062",
+      "status": "done",
+      "title": "Fix useLogs SSE \u2014 no reconnect causes permanent disconnect",
+      "role": "implementation",
+      "wave": 1,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T13:02:34Z"
+    },
+    "TASK-473": {
+      "id": "TASK-473",
+      "planId": "PLAN-062",
+      "status": "done",
+      "title": "Fix AppSidebar daemon status \u2014 always green hardcoded pulse",
+      "role": "implementation",
+      "wave": 2,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T13:02:34Z"
+    },
+    "TASK-474": {
+      "id": "TASK-474",
+      "planId": "PLAN-062",
+      "status": "done",
+      "title": "Fix BacklogView error handling \u2014 no try/catch on refresh",
+      "role": "implementation",
+      "wave": 2,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T13:02:34Z"
+    },
+    "TASK-475": {
+      "id": "TASK-475",
+      "planId": "PLAN-062",
+      "status": "done",
+      "title": "Fix SettingsView \u2014 hardcoded server addresses and silent token operation failures",
+      "role": "implementation",
+      "wave": 2,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T13:02:34Z"
+    },
+    "TASK-476": {
+      "id": "TASK-476",
+      "planId": "PLAN-062",
+      "status": "done",
+      "title": "Replace window.confirm with component-level confirmation dialogs",
+      "role": "implementation",
+      "wave": 2,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T13:02:34Z"
+    },
+    "TASK-477": {
+      "id": "TASK-477",
+      "planId": "PLAN-062",
+      "status": "done",
+      "title": "Remove/wire AgentDetailDrawer dead code",
+      "role": "implementation",
+      "wave": 3,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T13:02:34Z"
+    },
+    "TASK-478": {
+      "id": "TASK-478",
+      "planId": "PLAN-062",
+      "status": "done",
+      "title": "Fix AIActivityCard \u2014 undefined :class binding",
+      "role": "implementation",
+      "wave": 3,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T13:02:34Z"
+    },
+    "TASK-479": {
+      "id": "TASK-479",
+      "planId": "PLAN-062",
+      "status": "completed",
+      "title": "Fix useProjectFilter \u2014 misses completed projects",
+      "role": "implementation",
+      "wave": 3,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "useProjectFilter now fetches getAllTasks() for completed project paths with 60s interval"
+    },
+    "TASK-480": {
+      "id": "TASK-480",
+      "planId": "PLAN-062",
+      "status": "completed",
+      "title": "Fix DiscoveredPlansView \u2014 display-only cards with no actions",
+      "role": "implementation",
+      "wave": 3,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "DiscoveredPlansView gains status badges, Promote buttons, empty state, left border accents"
+    },
+    "TASK-481": {
+      "id": "TASK-481",
+      "planId": "PLAN-062",
+      "status": "completed",
+      "title": "Fix TaskDetailDrawer \u2014 no cancel for PROCESSING tasks",
+      "role": "implementation",
+      "wave": 3,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "TaskDetailDrawer adds Interrupt button (amber) for PROCESSING tasks"
+    },
+    "TASK-482": {
+      "id": "TASK-482",
+      "planId": "PLAN-062",
+      "status": "done",
+      "title": "Replace all console.warn/console.error with structured error state",
+      "role": "implementation",
+      "wave": 3,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T13:02:34Z"
+    },
+    "TASK-483": {
+      "id": "TASK-483",
+      "planId": "PLAN-063",
+      "status": "done",
+      "title": "Implement nexus.showProviders command",
+      "role": "implementation",
+      "wave": 1,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T13:02:34Z"
+    },
+    "TASK-484": {
+      "id": "TASK-484",
+      "planId": "PLAN-063",
+      "status": "done",
+      "title": "Fix SessionMonitor \u2014 remove auto-claim behaviour",
+      "role": "implementation",
+      "wave": 1,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T13:02:34Z"
+    },
+    "TASK-488": {
+      "id": "TASK-488",
+      "planId": "PLAN-063",
+      "status": "done",
+      "title": "Fix waitForCompletion \u2014 terminal state handling",
+      "role": "implementation",
+      "wave": 1,
+      "createdAt": "2026-04-04T13:02:34Z",
+      "completedAt": "2026-04-04T13:02:34Z"
+    },
+    "TASK-485": {
+      "id": "TASK-485",
+      "planId": "PLAN-063",
+      "status": "completed",
+      "title": "Implement Marketplace publishing in CI pipeline",
+      "role": "release",
+      "wave": 2,
+      "createdAt": "2026-04-04T13:21:26Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "Added vsce publish and ovsx publish steps to publish.yml; release.sh syncs ext version"
+    },
+    "TASK-486": {
+      "id": "TASK-486",
+      "planId": "PLAN-063",
+      "status": "completed",
+      "title": "Fix nexusClient.ts \u2014 remove blind JSON casts",
+      "role": "extension",
+      "wave": 2,
+      "createdAt": "2026-04-04T13:21:26Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "nexusClient.ts: zod installed, schemas for Task/AISession/Provider/ProviderConfig, parseResponse helper"
+    },
+    "TASK-487": {
+      "id": "TASK-487",
+      "planId": "PLAN-063",
+      "status": "completed",
+      "title": "Wire nexus.mcpPort / nexus.enableMCPPortSweep settings",
+      "role": "extension",
+      "wave": 2,
+      "createdAt": "2026-04-04T13:21:26Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "Wire nexus.mcpPort/enableMCPPortSweep: tryConnect(), nexus.reconnect command, onDidChangeConfiguration"
+    },
+    "TASK-489": {
+      "id": "TASK-489",
+      "planId": "PLAN-063",
+      "status": "completed",
+      "title": "Add workspaceOrchView and workspaceScanner unit tests",
+      "role": "testing",
+      "wave": 3,
+      "createdAt": "2026-04-04T13:21:26Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "workspaceOrchView.test.ts and workspaceScanner.test.ts: 5+4 tests each"
+    },
+    "TASK-490": {
+      "id": "TASK-490",
+      "planId": "PLAN-063",
+      "status": "completed",
+      "title": "Add sessionMonitor unit tests",
+      "role": "testing",
+      "wave": 3,
+      "createdAt": "2026-04-04T13:21:26Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "sessionMonitor.test.ts: 6 tests covering registration, heartbeat, stop, timer leak"
+    },
+    "TASK-491": {
+      "id": "TASK-491",
+      "planId": "PLAN-063",
+      "status": "completed",
+      "title": "Fix github-action resolveAgents \u2014 rate-limit error handling",
+      "role": "github-action",
+      "wave": 4,
+      "createdAt": "2026-04-04T13:21:26Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "github-action agents.ts: rate-limit/403/429/HTML error handling with core.warning"
+    },
+    "TASK-492": {
+      "id": "TASK-492",
+      "planId": "PLAN-063",
+      "status": "completed",
+      "title": "Fix release.sh \u2014 rebuild github-action/dist and extension before commit",
+      "role": "release",
+      "wave": 4,
+      "createdAt": "2026-04-04T13:21:26Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "release.sh: rebuilds github-action/dist and vscode-extension before git commit"
+    },
+    "TASK-493": {
+      "id": "TASK-493",
+      "planId": "PLAN-064",
+      "status": "completed",
+      "title": "Add execution_engine.go unit tests",
+      "role": "testing",
+      "wave": 1,
+      "createdAt": "2026-04-04T13:21:26Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "execution_engine_test.go: 9 tests covering selectProvider, executeGeneration, extractCode, writeOutput"
+    },
+    "TASK-494": {
+      "id": "TASK-494",
+      "planId": "PLAN-064",
+      "status": "completed",
+      "title": "Add useTasks composable tests",
+      "role": "testing",
+      "wave": 2,
+      "createdAt": "2026-04-04T13:21:26Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "useTasks.test.ts: 7 tests covering fetch, SSE, cancel, promote, error paths"
+    },
+    "TASK-495": {
+      "id": "TASK-495",
+      "planId": "PLAN-064",
+      "status": "completed",
+      "title": "Add useGlobalSSE composable tests",
+      "role": "testing",
+      "wave": 2,
+      "createdAt": "2026-04-04T13:21:26Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "useGlobalSSE.test.ts: 7 tests covering connect, routing, cleanup, reconnect backoff"
+    },
+    "TASK-496": {
+      "id": "TASK-496",
+      "planId": "PLAN-064",
+      "status": "completed",
+      "title": "Add useAISessions composable tests",
+      "role": "testing",
+      "wave": 2,
+      "createdAt": "2026-04-04T13:21:26Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "useAISessions.test.ts: 6 tests covering fetch, deregister, heartbeat, SSE, error"
+    },
+    "TASK-497": {
+      "id": "TASK-497",
+      "planId": "PLAN-064",
+      "status": "completed",
+      "title": "Add MCP claim_task \u2192 update_task_status integration test",
+      "role": "testing",
+      "wave": 3,
+      "createdAt": "2026-04-04T13:21:26Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "MCP integration_test.go: 3 tests \u2014 happy path, exclusive ownership, wrong-session rejection"
+    },
+    "TASK-498": {
+      "id": "TASK-498",
+      "planId": "PLAN-064",
+      "status": "completed",
+      "title": "Add stale-task watchdog test",
+      "role": "testing",
+      "wave": 1,
+      "createdAt": "2026-04-04T13:21:26Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "orchestrator_hardening_test.go: 2 watchdog tests \u2014 stale task re-queued, fresh task untouched"
+    },
+    "TASK-499": {
+      "id": "TASK-499",
+      "planId": "PLAN-064",
+      "status": "completed",
+      "title": "Add httpapi_client test suite (Go)",
+      "role": "testing",
+      "wave": 1,
+      "createdAt": "2026-04-04T13:21:26Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "httpapi_client client_test.go extended to 17+ test cases"
+    },
+    "TASK-500": {
+      "id": "TASK-500",
+      "planId": "PLAN-064",
+      "status": "completed",
+      "title": "Add SettingsView and BacklogView component tests",
+      "role": "testing",
+      "wave": 3,
+      "createdAt": "2026-04-04T13:21:26Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "SettingsView.spec.ts (5 tests) + BacklogView.spec.ts (5 tests) created"
+    },
+    "TASK-501": {
+      "id": "TASK-501",
+      "planId": "PLAN-064",
+      "status": "completed",
+      "title": "Add execution engine provider failover test",
+      "role": "testing",
+      "wave": 4,
+      "createdAt": "2026-04-04T13:21:26Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "execution_engine_test.go: 2 failover tests \u2014 dead provider skipped, all fail \u2192 FAILED status"
+    },
+    "TASK-502": {
+      "id": "TASK-502",
+      "planId": "PLAN-064",
+      "status": "completed",
+      "title": "Add MissionControlView interaction tests",
+      "role": "testing",
+      "wave": 4,
+      "createdAt": "2026-04-04T13:21:26Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "MissionControlView.spec.ts extended to 13 tests (+5 new interaction tests)"
+    },
+    "TASK-503": {
+      "id": "TASK-503",
+      "planId": "PLAN-064",
+      "status": "completed",
+      "title": "Add GitHub Action full-flow integration test with mock daemon",
+      "role": "testing",
+      "wave": 4,
+      "createdAt": "2026-04-04T13:21:26Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "github-action/__tests__/integration.test.ts: 4 integration tests with mock HTTP server"
+    },
+    "TASK-504": {
+      "id": "TASK-504",
+      "planId": "PLAN-064",
+      "status": "completed",
+      "title": "E2E smoke test hardening",
+      "role": "testing",
+      "wave": 4,
+      "createdAt": "2026-04-04T13:21:26Z",
+      "completedAt": "2026-04-04T14:44:57Z",
+      "result": "scripts/e2e-smoke.sh: skip guard + concurrent submission + SSE verification tests"
     }
-  }
+  },
+  "sessionNotes": [
+    {
+      "date": "2026-04-04T14:44:57Z",
+      "summary": "Wave 2-5 implementation complete across all 4 plans. 29 tasks implemented via 6 parallel subagent swarms. All tests pass: go test -race (0), vue-tsc (0), vitest (60 tests), vscode-extension npm test (26 tests), github-action npm test (57 tests)."
+    }
+  ]
 }

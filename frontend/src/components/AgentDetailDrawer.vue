@@ -128,6 +128,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 import type { AIActivity } from '../types/domain';
 import { useActivities } from '../composables/useActivities';
 import { timeAgo } from '../utils/time';
@@ -139,8 +140,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelVisible', val: boolean): void;
-  (e: 'navigate', view: string): void;
 }>();
+
+const router = useRouter();
 
 const { activities, loading } = useActivities({
   agentFilter: computed(() => props.agentName).value,
@@ -187,8 +189,8 @@ function close() {
 }
 
 function viewInTimeline() {
-  emit('navigate', 'live-activity');
   close();
+  router.push({ name: 'live-activity', query: { agent: props.agentName } });
 }
 </script>
 

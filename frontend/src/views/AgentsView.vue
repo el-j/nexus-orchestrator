@@ -143,12 +143,13 @@
               <div
                 v-for="s in filteredSessions"
                 :key="s.id"
-                class="rounded-xl border bg-white/[0.03] p-3 transition-all border-l-4"
+                class="rounded-xl border bg-white/[0.03] p-3 transition-all border-l-4 cursor-pointer hover:bg-white/[0.05]"
                 :class="{
                   'border-l-emerald-500/60': s.status === 'active',
                   'border-l-yellow-500/60': s.status === 'idle',
                   'border-l-slate-600/60': s.status === 'disconnected',
                 }"
+                @click="openDrawer(s.agentName)"
               >
                 <!-- Header: status dot + agent name + status badge -->
                 <div class="flex items-center gap-2 mb-2">
@@ -377,12 +378,19 @@
       </template>
     </div>
   </div>
+
+  <AgentDetailDrawer
+    :agent-name="selectedAgent"
+    :model-visible="drawerOpen"
+    @update:model-visible="drawerOpen = $event"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useAISessions } from '../composables/useAISessions';
 import { useActivities } from '../composables/useActivities';
+import AgentDetailDrawer from '../components/AgentDetailDrawer.vue';
 import type { DiscoveredAgent, ActivityType } from '../types/domain';
 import { resolveServerUrl } from '../composables/useServerUrl';
 import { relativeTime } from '../utils/time';
@@ -598,4 +606,11 @@ onMounted(async () => {
 onUnmounted(() => {
   if (discoveredInterval) clearInterval(discoveredInterval);
 });
+
+const selectedAgent = ref('');
+const drawerOpen = ref(false);
+function openDrawer(agentName: string) {
+  selectedAgent.value = agentName;
+  drawerOpen.value = true;
+}
 </script>

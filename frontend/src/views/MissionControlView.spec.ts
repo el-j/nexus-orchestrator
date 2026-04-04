@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { shallowMount } from '@vue/test-utils';
+import { shallowMount, flushPromises } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import MissionControlView from './MissionControlView.vue';
+import * as wailsMocks from '../types/wails';
 
 // Mock wails bindings
 vi.mock('../types/wails', () => ({
@@ -196,5 +197,131 @@ describe('MissionControlView', () => {
     expect(html).toContain('Providers');
     // 5. Submit form
     expect(wrapper.findComponent({ name: 'TaskSubmitForm' }).exists()).toBe(true);
+  });
+});
+
+// ── Additional interaction tests (TASK-502) ───────────────────────────────────
+
+describe('MissionControlView — interactions', () => {
+  const STUBS = {
+    global: {
+      stubs: {
+        Skeleton: true,
+        TaskStatusBadge: true,
+        TaskDetailDrawer: true,
+        TaskSubmitForm: true,
+      },
+    },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('TaskSubmitForm @submitted event triggers refreshTasks (getQueue called again)', async () => {
+    const wrapper = shallowMount(MissionControlView, STUBS);
+    await flushPromises();
+
+    const callsBefore = vi.mocked(wailsMocks.getQueue).mock.calls.length;
+
+    // Emit the submitted event from the TaskSubmitForm stub
+    await wrapper.findComponent({ name: 'TaskSubmitForm' }).trigger('submitted');
+    await flushPromises();
+
+    expect(vi.mocked(wailsMocks.getQueue).mock.calls.length).toBeGreaterThan(callsBefore);
+  });
+
+  it('clicking the Active work filter button applies the active CSS class', async () => {
+    const wrapper = shallowMount(MissionControlView, STUBS);
+    await flushPromises();
+
+    // The filter buttons contain 'All', 'Active', 'Drafts/Backlog'
+    const filterButtons = wrapper
+      .findAll('button')
+      .filter((b) => ['All', 'Active', 'Drafts/Backlog'].includes(b.text().trim()));
+
+    const activeBtn = filterButtons.find((b) => b.text().trim() === 'Active');
+    expect(activeBtn).toBeDefined();
+
+    await activeBtn!.trigger('click');
+    await nextTick();
+
+    // Active filter button should have violet/active class
+    expect(activeBtn!.classes().join(' ')).toMatch(/violet|bg-/);
+  });
+
+  it('DRAFT task shows Promote button; clicking it calls promoteTask', async () => {
+    vi.mocked(wailsMocks.getQueue).mockResolvedValue([
+      {
+        id: 'D-mc-1',
+        instruction: 'Draft instruction',
+        status: 'DRAFT',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        projectPath: '/test',
+        targetFile: 'test.go',
+        logs: '',
+      },
+    ]);
+
+    const wrapper = shallowMount(MissionControlView, STUBS);
+    await flushPromises();
+
+    // Find the Promote button
+    const promoteBtn = wrapper.findAll('button').find((b) => b.text().includes('Promote'));
+    expect(promoteBtn).toBeDefined();
+
+    await promoteBtn!.trigger('click');
+    await flushPromises();
+
+    expect(vi.mocked(wailsMocks.promoteTask)).toHaveBeenCalledWith('D-mc-1');
+  });
+
+  it('Show All History toggle button changes visible history section', async () => {
+    const wrapper = shallowMount(MissionControlView, STUBS);
+    await flushPromises();
+
+    // "Show All History" button should be present
+    const toggleBtn = wrapper.findAll('button').find((b) => b.text().includes('Show All History'));
+    expect(toggleBtn).toBeDefined();
+
+    await toggleBtn!.trigger('click');
+    await nextTick();
+
+    // After click, button text changes to reflect expanded state
+    const htmlAfter = wrapper.html();
+    expect(htmlAfter).toContain('Show Recent');
+  });
+
+  it('Drafts/Backlog filter hides QUEUED tasks (shows empty state)', async () => {
+    // Default mock returns a QUEUED task — selecting Drafts filter should hide it
+    vi.mocked(wailsMocks.getQueue).mockResolvedValue([
+      {
+        id: 'T-q',
+        instruction: 'Queue task',
+        status: 'QUEUED',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        projectPath: '/test',
+        targetFile: 'test.go',
+        logs: '',
+      },
+    ]);
+
+    const wrapper = shallowMount(MissionControlView, STUBS);
+    await flushPromises();
+
+    const filterButtons = wrapper
+      .findAll('button')
+      .filter((b) => ['All', 'Active', 'Drafts/Backlog'].includes(b.text().trim()));
+
+    const draftsBtn = filterButtons.find((b) => b.text().trim() === 'Drafts/Backlog');
+    expect(draftsBtn).toBeDefined();
+
+    await draftsBtn!.trigger('click');
+    await nextTick();
+
+    // With only a QUEUED task, drafts view shows empty state
+    expect(wrapper.html()).toMatch(/No draft\/backlog|No active/i);
   });
 });

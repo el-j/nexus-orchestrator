@@ -64,6 +64,21 @@ fi
 # Sync package manifests
 bash "$(dirname "$0")/version-sync.sh" "${TAG#v}"
 
+# Sync vscode-extension version explicitly
+RELEASE_VERSION="${TAG#v}"
+if command -v jq >/dev/null 2>&1; then
+  jq --arg v "$RELEASE_VERSION" '.version = $v' vscode-extension/package.json > /tmp/vsext_pkg.json && mv /tmp/vsext_pkg.json vscode-extension/package.json
+else
+  cd vscode-extension && npm version "$RELEASE_VERSION" --no-git-tag-version && cd ..
+fi
+
+# Rebuild github-action and vscode-extension dist before commit
+echo "→ Rebuilding github-action dist..."
+(cd github-action && npm ci && npm run build)
+echo "→ Rebuilding vscode-extension dist..."
+(cd vscode-extension && npm ci && npm run build)
+git add github-action/dist/ vscode-extension/dist/ 2>/dev/null || true
+
 # Stage manifest changes
 git add frontend/package.json vscode-extension/package.json wails.json 2>/dev/null || true
 

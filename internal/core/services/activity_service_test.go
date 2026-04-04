@@ -217,3 +217,45 @@ func (b *stubBroadcaster) BroadcastActivityEvent(a domain.AIActivity) {
 }
 
 var _ ports.ActivityBroadcaster = (*stubBroadcaster)(nil)
+
+func TestActivityService_StopReturnsProperly(t *testing.T) {
+	repo := &actMemActivityRepo{}
+	svc := services.NewActivityService(repo, newMemAISessionRepo())
+
+	svc.Start()
+
+	done := make(chan struct{})
+	go func() {
+		svc.Stop()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Stop returned within 2 seconds — pass
+	case <-time.After(2 * time.Second):
+		t.Fatal("Stop() did not return within 2 seconds")
+	}
+}
+
+func TestActivityService_StopIdempotent(t *testing.T) {
+	repo := &actMemActivityRepo{}
+	svc := services.NewActivityService(repo, newMemAISessionRepo())
+
+	svc.Start()
+	svc.Stop()
+
+	// Second Stop must not panic (e.g. close on closed channel).
+	panicked := func() (panicked bool) {
+		defer func() {
+			if r := recover(); r != nil {
+				panicked = true
+			}
+		}()
+		svc.Stop()
+		return false
+	}()
+	if panicked {
+		t.Fatal("second Stop() call panicked")
+	}
+}

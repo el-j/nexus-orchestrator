@@ -124,7 +124,6 @@ async function onPromote(id: string) {
     await promoteTask(id);
     emit('promoted', id);
   } catch (e) {
-    console.warn('BacklogList: promote failed:', e);
     toast.add({ severity: 'error', summary: 'Promote Failed', detail: String(e), life: 5000 });
   } finally {
     promoting.value = null;
@@ -138,7 +137,6 @@ async function onDismiss(id: string) {
     await cancelTask(id);
     emit('dismissed', id);
   } catch (e) {
-    console.warn('BacklogList: dismiss failed:', e);
     toast.add({ severity: 'error', summary: 'Dismiss Failed', detail: String(e), life: 5000 });
   } finally {
     dismissing.value = null;
