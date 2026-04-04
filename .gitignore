@@ -18,6 +18,8 @@ build/frontend/*
 !build/frontend/.gitkeep
 *.exe
 
+/**/dist/*
+
 # SQLite databases
 *.db
 *.db-journal
