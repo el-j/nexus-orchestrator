@@ -156,7 +156,7 @@
           <div class="rounded-xl border border-red-500/20 bg-red-500/5 p-4 flex items-start gap-3 mb-4">
             <i class="pi pi-exclamation-triangle text-red-400 text-sm mt-0.5 flex-shrink-0"></i>
             <p class="text-sm text-red-300">
-              <strong>Connection refused:</strong> Make sure the nexus-daemon is running and the MCP port (default 9998) is not blocked by a firewall.
+              <strong>Connection refused:</strong> Make sure the nexus-daemon is running and the MCP port (default 63988) is not blocked by a firewall.
             </p>
           </div>
           <div class="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 flex items-start gap-3 mb-6">
@@ -261,7 +261,7 @@ const toc = [
 const claudeConfig = `{
   "mcpServers": {
     "nexus-orchestrator": {
-      "url": "http://localhost:9998/mcp"
+      "url": "http://localhost:63988/mcp"
     }
   }
 }`
@@ -361,7 +361,7 @@ const protocolDetails = [
   { label: 'Protocol', value: 'JSON-RPC 2.0' },
   { label: 'Version', value: '2024-11-05' },
   { label: 'Endpoint', value: 'POST /mcp' },
-  { label: 'Default Port', value: '9998' },
+  { label: 'Default Port', value: '63988' },
 ]
 
 const troubleshootingRows = [
@@ -458,6 +458,6 @@ const actionInputs = [
   { name: 'timeout_seconds', default: '300', desc: 'Seconds to wait for task completion before failing' },
   { name: 'nexus_version', default: 'latest', desc: 'Release version to install (e.g. v0.2.0)' },
   { name: 'start_daemon', default: 'true', desc: 'Download + start a local daemon; set false to use daemon_url' },
-  { name: 'daemon_url', default: 'http://127.0.0.1:9999', desc: 'URL of existing daemon (only when start_daemon=false)' },
+  { name: 'daemon_url', default: 'http://127.0.0.1:63987', desc: 'URL of existing daemon (only when start_daemon=false)' },
 ]
 </script>

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -48,6 +49,7 @@ func (m *mockOrch) SubmitTask(t domain.Task) (string, error) {
 }
 func (m *mockOrch) GetTask(_ string) (domain.Task, error) { return m.getTask, m.getErr }
 func (m *mockOrch) GetQueue() ([]domain.Task, error)      { return m.queue, m.queueErr }
+func (m *mockOrch) GetAllTasks() ([]domain.Task, error)   { return m.queue, m.queueErr }
 func (m *mockOrch) CancelTask(_ string) error             { return m.cancelErr }
 func (m *mockOrch) GetProviders() ([]ports.ProviderInfo, error) {
 	return m.providers, m.provErr
@@ -76,7 +78,9 @@ func (m *mockOrch) CreateDraft(_ domain.Task) (string, error) {
 	return m.createDraftID, m.createDraftErr
 }
 func (m *mockOrch) GetBacklog(_ string) ([]domain.Task, error) { return m.backlogTasks, m.backlogErr }
-func (m *mockOrch) PromoteTask(_ string) error                 { return m.promoteErr }
+func (m *mockOrch) PromoteTask(_ string) (ports.PromoteResult, error) {
+	return ports.PromoteResult{Promoted: m.promoteErr == nil}, m.promoteErr
+}
 func (m *mockOrch) UpdateTask(_ string, _ domain.Task) (domain.Task, error) {
 	return m.updateResult, m.updateErr
 }
@@ -86,6 +90,44 @@ func (m *mockOrch) RegisterAISession(_ context.Context, s domain.AISession) (dom
 func (m *mockOrch) ListAISessions(_ context.Context) ([]domain.AISession, error) { return nil, nil }
 func (m *mockOrch) DeregisterAISession(_ context.Context, _ string) error        { return nil }
 func (m *mockOrch) HeartbeatAISession(_ context.Context, _ string) error         { return nil }
+func (m *mockOrch) ClaimTask(_ context.Context, _ string, _ string) (domain.Task, error) {
+	return domain.Task{}, nil
+}
+func (m *mockOrch) UpdateTaskStatus(_ context.Context, _ string, _ string, _ domain.TaskStatus, _ string) (domain.Task, error) {
+	return domain.Task{}, nil
+}
+func (m *mockOrch) PurgeDisconnectedSessions(_ context.Context) (int, error) {
+	return 0, nil
+}
+func (m *mockOrch) GetDiscoveredAgents(_ context.Context) ([]domain.DiscoveredAgent, error) {
+	return nil, nil
+}
+func (m *mockOrch) DelegateToNexus(_ context.Context, _ string) (string, error) {
+	return "", nil
+}
+func (m *mockOrch) HeartbeatTask(_ context.Context, _, _ string) error           { return nil }
+func (m *mockOrch) TerminateAISession(_ context.Context, _ string, _ bool) error { return nil }
+func (m *mockOrch) GetDiscoveredPlanFiles(_ context.Context, _ string) ([]domain.DiscoveredPlanFile, error) {
+	return nil, nil
+}
+
+func (m *mockOrch) GetRuntimeConfig(_ context.Context) (domain.RuntimeConfig, error) {
+	return domain.RuntimeConfig{QueueCap: 50}, nil
+}
+
+func (m *mockOrch) UpdateRuntimeConfig(_ context.Context, update domain.RuntimeConfigUpdate) (domain.RuntimeConfig, error) {
+	cfg := domain.RuntimeConfig{QueueCap: 50}
+	if update.QueueCap != nil {
+		cfg.QueueCap = *update.QueueCap
+	}
+	if update.APIToken != nil {
+		cfg.APIToken = *update.APIToken
+	}
+	if update.MCPToken != nil {
+		cfg.MCPToken = *update.MCPToken
+	}
+	return cfg, nil
+}
 
 // --- Helpers ---
 
@@ -114,9 +156,29 @@ func postRPC(t *testing.T, srv *httptest.Server, body any) rpcResp {
 	return r
 }
 
+func postRPCRaw(t *testing.T, srv *httptest.Server, body any, authHeader string) (int, string) {
+	t.Helper()
+	b, _ := json.Marshal(body)
+	req, err := http.NewRequest(http.MethodPost, srv.URL+"/mcp", bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if authHeader != "" {
+		req.Header.Set("Authorization", authHeader)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST /mcp: %v", err)
+	}
+	defer resp.Body.Close()
+	payload, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, string(payload)
+}
+
 func newServer(t *testing.T, orch *mockOrch) *httptest.Server {
 	t.Helper()
-	srv := httptest.NewServer(mcp.NewServer(orch))
+	srv := httptest.NewServer(mcp.NewMcpServer(orch))
 	t.Cleanup(srv.Close)
 	return srv
 }
@@ -132,6 +194,71 @@ func TestMCP_Health(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("status: want 200, got %d", resp.StatusCode)
+	}
+}
+
+func TestMCP_TokenAuth_RequiresBearer(t *testing.T) {
+	t.Setenv("NEXUS_MCP_TOKEN", "mcp-token")
+	srv := newServer(t, &mockOrch{})
+
+	status, _ := postRPCRaw(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 1, "method": "ping",
+	}, "")
+	if status != http.StatusUnauthorized {
+		t.Fatalf("no auth: want 401, got %d", status)
+	}
+
+	status, _ = postRPCRaw(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 1, "method": "ping",
+	}, "Bearer wrong")
+	if status != http.StatusUnauthorized {
+		t.Fatalf("wrong auth: want 401, got %d", status)
+	}
+
+	status, body := postRPCRaw(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 1, "method": "ping",
+	}, "Bearer mcp-token")
+	if status != http.StatusOK {
+		t.Fatalf("correct auth: want 200, got %d (%s)", status, body)
+	}
+}
+
+func TestMCP_TokenAuth_RejectsMissingBearer(t *testing.T) {
+	t.Setenv("NEXUS_MCP_TOKEN", "secret-token")
+	srv := newServer(t, &mockOrch{})
+	status, _ := postRPCRaw(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "ping",
+	}, "")
+	if status != http.StatusUnauthorized {
+		t.Fatalf("status: want 401, got %d", status)
+	}
+}
+
+func TestMCP_TokenAuth_RejectsWrongBearer(t *testing.T) {
+	t.Setenv("NEXUS_MCP_TOKEN", "secret-token")
+	srv := newServer(t, &mockOrch{})
+	status, _ := postRPCRaw(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "ping",
+	}, "Bearer wrong-token")
+	if status != http.StatusUnauthorized {
+		t.Fatalf("status: want 401, got %d", status)
+	}
+}
+
+func TestMCP_TokenAuth_AllowsValidBearer(t *testing.T) {
+	t.Setenv("NEXUS_MCP_TOKEN", "secret-token")
+	srv := newServer(t, &mockOrch{})
+	status, body := postRPCRaw(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "ping",
+	}, "Bearer secret-token")
+	if status != http.StatusOK {
+		t.Fatalf("status: want 200, got %d body=%s", status, body)
 	}
 }
 
@@ -162,7 +289,7 @@ func TestMCP_Initialize(t *testing.T) {
 	}
 }
 
-func TestMCP_ToolsList_Returns14Tools(t *testing.T) {
+func TestMCP_ToolsList_Returns31Tools(t *testing.T) {
 	srv := newServer(t, &mockOrch{})
 	r := postRPC(t, srv, map[string]any{
 		"jsonrpc": "2.0",
@@ -180,8 +307,8 @@ func TestMCP_ToolsList_Returns14Tools(t *testing.T) {
 	if err := json.Unmarshal(r.Result, &result); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
-	if len(result.Tools) != 14 {
-		t.Errorf("expected 14 tools, got %d", len(result.Tools))
+	if len(result.Tools) != 31 {
+		t.Errorf("expected 31 tools, got %d", len(result.Tools))
 	}
 }
 
@@ -252,6 +379,36 @@ func TestMCP_ToolCall_GetQueue(t *testing.T) {
 	}
 	if len(tasks) != 2 {
 		t.Errorf("expected 2 tasks, got %d", len(tasks))
+	}
+}
+
+func TestMCP_ToolCall_GetAllTasks(t *testing.T) {
+	orch := &mockOrch{queue: []domain.Task{{ID: "t1"}, {ID: "t2"}, {ID: "t3"}}}
+	srv := newServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      41,
+		"method":  "tools/call",
+		"params":  map[string]any{"name": "get_all_tasks", "arguments": map[string]any{}},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	var tasks []domain.Task
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &tasks); err != nil {
+		t.Fatalf("unmarshal tasks: %v", err)
+	}
+	if len(tasks) != 3 {
+		t.Errorf("expected 3 tasks, got %d", len(tasks))
 	}
 }
 
@@ -491,11 +648,11 @@ func TestMCP_PromoteTask_ReturnsBool(t *testing.T) {
 	if err := json.Unmarshal(r.Result, &result); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
-	var payload map[string]bool
+	var payload map[string]any
 	if err := json.Unmarshal([]byte(result.Content[0].Text), &payload); err != nil {
 		t.Fatalf("unmarshal payload: %v", err)
 	}
-	if !payload["promoted"] {
+	if promoted, _ := payload["promoted"].(bool); !promoted {
 		t.Error("promoted: want true, got false")
 	}
 }
@@ -676,5 +833,484 @@ func TestMCP_GetAISessions_ReturnsList(t *testing.T) {
 	var sessions []domain.AISession
 	if err := json.Unmarshal([]byte(result.Content[0].Text), &sessions); err != nil {
 		t.Fatalf("result text is not a valid JSON session list: %v", err)
+	}
+}
+
+// --- Tests for 9 new tools added in TASK-305 ---------------------------------
+
+func TestMCP_ToolCall_ListProviderConfigs(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      50,
+		"method":  "tools/call",
+		"params":  map[string]any{"name": "list_provider_configs", "arguments": map[string]any{}},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("expected content in result")
+	}
+	// mock returns nil; valid JSON null or array
+	var cfgs []domain.ProviderConfig
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &cfgs); err != nil {
+		t.Fatalf("result text is not a valid JSON provider config list: %v", err)
+	}
+}
+
+func TestMCP_ToolCall_AddProviderConfig_Success(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      51,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "add_provider_config",
+			"arguments": map[string]any{
+				"kind":    "lmstudio",
+				"name":    "My LM Studio",
+				"enabled": true,
+			},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("expected content in result")
+	}
+	var cfg domain.ProviderConfig
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &cfg); err != nil {
+		t.Fatalf("unmarshal provider config: %v", err)
+	}
+	if cfg.Name != "My LM Studio" {
+		t.Errorf("name: want My LM Studio, got %q", cfg.Name)
+	}
+}
+
+func TestMCP_ToolCall_AddProviderConfig_MissingKind(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      52,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "add_provider_config",
+			"arguments": map[string]any{"name": "No Kind"},
+		},
+	})
+	if r.Error == nil {
+		t.Fatal("expected error for missing kind")
+	}
+	if r.Error.Code != -32602 {
+		t.Errorf("code: want -32602, got %d", r.Error.Code)
+	}
+}
+
+func TestMCP_ToolCall_UpdateProviderConfig_Success(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      53,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "update_provider_config",
+			"arguments": map[string]any{
+				"id":      "cfg-1",
+				"kind":    "lmstudio",
+				"name":    "Updated Name",
+				"enabled": true,
+			},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("expected content in result")
+	}
+	var cfg domain.ProviderConfig
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &cfg); err != nil {
+		t.Fatalf("unmarshal provider config: %v", err)
+	}
+	if cfg.Name != "Updated Name" {
+		t.Errorf("name: want Updated Name, got %q", cfg.Name)
+	}
+}
+
+func TestMCP_ToolCall_UpdateProviderConfig_MissingID(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      54,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "update_provider_config",
+			"arguments": map[string]any{"kind": "lmstudio", "name": "No ID"},
+		},
+	})
+	if r.Error == nil {
+		t.Fatal("expected error for missing id")
+	}
+	if r.Error.Code != -32602 {
+		t.Errorf("code: want -32602, got %d", r.Error.Code)
+	}
+}
+
+func TestMCP_ToolCall_RemoveProviderConfig_Success(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      55,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "remove_provider_config",
+			"arguments": map[string]any{"id": "cfg-1"},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("expected content in result")
+	}
+	var payload map[string]bool
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &payload); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+	if !payload["ok"] {
+		t.Error("ok: want true, got false")
+	}
+}
+
+func TestMCP_ToolCall_RemoveProviderConfig_MissingID(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      56,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "remove_provider_config",
+			"arguments": map[string]any{},
+		},
+	})
+	if r.Error == nil {
+		t.Fatal("expected error for missing id")
+	}
+	if r.Error.Code != -32602 {
+		t.Errorf("code: want -32602, got %d", r.Error.Code)
+	}
+}
+
+func TestMCP_ToolCall_DeregisterAISession_Success(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      57,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "deregister_ai_session",
+			"arguments": map[string]any{"session_id": "sess-1"},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("expected content in result")
+	}
+	var payload map[string]bool
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &payload); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+	if !payload["ok"] {
+		t.Error("ok: want true, got false")
+	}
+}
+
+func TestMCP_ToolCall_DeregisterAISession_MissingSessionID(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      58,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "deregister_ai_session",
+			"arguments": map[string]any{},
+		},
+	})
+	if r.Error == nil {
+		t.Fatal("expected error for missing session_id")
+	}
+	if r.Error.Code != -32602 {
+		t.Errorf("code: want -32602, got %d", r.Error.Code)
+	}
+}
+
+func TestMCP_ToolCall_HeartbeatAISession_Success(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      59,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "heartbeat_ai_session",
+			"arguments": map[string]any{"session_id": "sess-2"},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("expected content in result")
+	}
+	var payload map[string]bool
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &payload); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+	if !payload["ok"] {
+		t.Error("ok: want true, got false")
+	}
+}
+
+func TestMCP_ToolCall_HeartbeatAISession_MissingSessionID(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      60,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "heartbeat_ai_session",
+			"arguments": map[string]any{},
+		},
+	})
+	if r.Error == nil {
+		t.Fatal("expected error for missing session_id")
+	}
+	if r.Error.Code != -32602 {
+		t.Errorf("code: want -32602, got %d", r.Error.Code)
+	}
+}
+
+func TestMCP_ToolCall_PurgeDisconnectedSessions(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      61,
+		"method":  "tools/call",
+		"params":  map[string]any{"name": "purge_disconnected_sessions", "arguments": map[string]any{}},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("expected content in result")
+	}
+	var payload map[string]int
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &payload); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+	if _, ok := payload["purged"]; !ok {
+		t.Error("result must contain purged key")
+	}
+}
+
+func TestMCP_ToolCall_GetDiscoveredAgents(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      62,
+		"method":  "tools/call",
+		"params":  map[string]any{"name": "get_discovered_agents", "arguments": map[string]any{}},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("expected content in result")
+	}
+	// mock returns nil; valid JSON null or array
+	var agents []domain.DiscoveredAgent
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &agents); err != nil {
+		t.Fatalf("result text is not a valid JSON agent list: %v", err)
+	}
+}
+
+func TestMCP_ToolCall_DelegateToNexus_Success(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      63,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "delegate_to_nexus",
+			"arguments": map[string]any{"session_id": "sess-3"},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("expected content in result")
+	}
+	var payload map[string]string
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &payload); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+	if _, ok := payload["instruction"]; !ok {
+		t.Error("result must contain instruction key")
+	}
+}
+
+func TestMCP_ToolCall_DelegateToNexus_MissingSessionID(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      64,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "delegate_to_nexus",
+			"arguments": map[string]any{},
+		},
+	})
+	if r.Error == nil {
+		t.Fatal("expected error for missing session_id")
+	}
+	if r.Error.Code != -32602 {
+		t.Errorf("code: want -32602, got %d", r.Error.Code)
+	}
+}
+
+func TestMCP_Ping(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 42, "method": "ping",
+	})
+	if r.Error != nil {
+		t.Fatalf("expected no error, got %+v", r.Error)
+	}
+	var result map[string]any
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if len(result) != 0 {
+		t.Errorf("expected empty result, got %v", result)
+	}
+}
+
+func TestMCP_ResourcesList(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 43, "method": "resources/list",
+	})
+	if r.Error != nil {
+		t.Fatalf("expected no error, got %+v", r.Error)
+	}
+	var result struct {
+		Resources []any `json:"resources"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if result.Resources == nil {
+		t.Fatal("expected resources key in result")
+	}
+	if len(result.Resources) != 0 {
+		t.Errorf("expected empty resources, got %v", result.Resources)
+	}
+}
+
+func TestMCP_PromptsList(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 44, "method": "prompts/list",
+	})
+	if r.Error != nil {
+		t.Fatalf("expected no error, got %+v", r.Error)
+	}
+	var result struct {
+		Prompts []any `json:"prompts"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal result: %v", err)
+	}
+	if result.Prompts == nil {
+		t.Fatal("expected prompts key in result")
+	}
+	if len(result.Prompts) != 0 {
+		t.Errorf("expected empty prompts, got %v", result.Prompts)
 	}
 }

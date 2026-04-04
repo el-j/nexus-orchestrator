@@ -22,7 +22,7 @@ export default defineConfig({
     dirStyle: 'nested',
   },
   build: {
-    outDir: 'dist',
+    outDir: '../build/docs',
     emptyOutDir: true,
   },
 })

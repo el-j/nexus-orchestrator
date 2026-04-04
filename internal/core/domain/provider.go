@@ -73,5 +73,10 @@ type DiscoveredProvider struct {
 	CLIPath     string          `json:"cliPath,omitempty"`
 	ProcessName string          `json:"processName,omitempty"`
 	Models      []string        `json:"models,omitempty"`
-	LastSeen    time.Time       `json:"lastSeen"`
+	// ActiveModels lists models currently loaded in memory (non-empty means in-use).
+	// Currently populated for Ollama via /api/ps.
+	ActiveModels []string `json:"activeModels,omitempty"`
+	// Generating is true when the provider is actively producing a response right now.
+	Generating bool      `json:"generating,omitempty"`
+	LastSeen   time.Time `json:"lastSeen"`
 }

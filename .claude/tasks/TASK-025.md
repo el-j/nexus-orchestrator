@@ -69,15 +69,15 @@ After starting the daemon:
 sleep 1
 
 # Submit a task
-curl -s -X POST http://127.0.0.1:9999/api/tasks \
+curl -s -X POST http://127.0.0.1:63987/api/tasks \
   -H "Content-Type: application/json" \
   -d '{"projectPath":"/tmp/smoke","prompt":"hello world"}' | jq .id
 
 # List queue
-curl -s http://127.0.0.1:9999/api/tasks | jq length
+curl -s http://127.0.0.1:63987/api/tasks | jq length
 
 # MCP health
-curl -s -X POST http://127.0.0.1:9998/mcp \
+curl -s -X POST http://127.0.0.1:63988/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | jq '.result.tools | length'
 # Expected: 6

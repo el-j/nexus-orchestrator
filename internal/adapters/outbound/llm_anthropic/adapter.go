@@ -41,10 +41,28 @@ func NewAdapter(apiKey, model string) *Adapter {
 	}
 }
 
+// claudeContextLimits maps known Claude model IDs to their context window sizes.
+var claudeContextLimits = map[string]int{
+	"claude-3-opus-20240229":     200000,
+	"claude-3-sonnet-20240229":   200000,
+	"claude-3-haiku-20240307":    200000,
+	"claude-3-5-sonnet-20241022": 200000,
+	"claude-3-5-sonnet-20240620": 200000,
+	"claude-3-5-haiku-20241022":  200000,
+}
+
 func (a *Adapter) ProviderName() string { return "Anthropic" }
 func (a *Adapter) ActiveModel() string  { return a.model }
 func (a *Adapter) BaseURL() string      { return a.baseURL }
-func (a *Adapter) ContextLimit() int    { return 0 }
+
+// ContextLimit returns the context window size for the configured Claude model.
+// Defaults to 200000 for unknown models (all modern Claude models support 200K).
+func (a *Adapter) ContextLimit() int {
+	if limit, ok := claudeContextLimits[a.model]; ok {
+		return limit
+	}
+	return 200000
+}
 
 // Ping checks Anthropic API reachability via the /v1/models endpoint.
 func (a *Adapter) Ping() bool {
@@ -122,11 +140,18 @@ func toAnthropicMessages(msgs []domain.Message) []anthropicMessage {
 	return out
 }
 
+// anthropicRequest is the request body for the Anthropic /v1/messages endpoint.
+type anthropicRequest struct {
+	Model     string             `json:"model"`
+	MaxTokens int                `json:"max_tokens"`
+	Messages  []anthropicMessage `json:"messages"`
+}
+
 func (a *Adapter) sendMessages(messages []anthropicMessage) (string, error) {
-	reqBody, err := json.Marshal(map[string]interface{}{
-		"model":      a.model,
-		"max_tokens": defaultMaxTokens,
-		"messages":   messages,
+	reqBody, err := json.Marshal(anthropicRequest{
+		Model:     a.model,
+		MaxTokens: defaultMaxTokens,
+		Messages:  messages,
 	})
 	if err != nil {
 		return "", fmt.Errorf("anthropic: marshal request: %w", err)

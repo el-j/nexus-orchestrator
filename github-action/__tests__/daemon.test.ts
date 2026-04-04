@@ -43,17 +43,17 @@ describe('waitForHealth', () => {
 
   it('resolves when server responds 200', async () => {
     respondWith(200);
-    await expect(waitForHealth('http://127.0.0.1:9999/api/health', 5000)).resolves.toBeUndefined();
+    await expect(waitForHealth('http://127.0.0.1:63987/api/health', 5000)).resolves.toBeUndefined();
   });
 
   it('rejects after timeout when server always refuses', async () => {
     refuseConnection();
-    await expect(waitForHealth('http://127.0.0.1:9999/api/health', 200)).rejects.toThrow('did not become healthy');
+    await expect(waitForHealth('http://127.0.0.1:63987/api/health', 200)).rejects.toThrow('did not become healthy');
   });
 
   it('rejects when server returns non-200 status', async () => {
     respondWith(503);
-    await expect(waitForHealth('http://127.0.0.1:9999/api/health', 200)).rejects.toThrow('did not become healthy');
+    await expect(waitForHealth('http://127.0.0.1:63987/api/health', 200)).rejects.toThrow('did not become healthy');
   });
 });
 

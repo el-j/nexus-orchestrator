@@ -2,12 +2,22 @@
   "name": "nexus-orchestrator",
   "displayName": "Nexus Orchestrator",
   "description": "Route AI code-generation tasks through nexusOrchestrator",
-  "version": "0.2.0",
+  "version": "0.9.4",
   "publisher": "el-j",
-  "engines": { "vscode": "^1.99.0" },
-  "categories": ["AI", "Other"],
-  "repository": { "type": "git", "url": "https://github.com/el-j/nexus-orchestrator" },
-  "activationEvents": ["onStartupFinished"],
+  "engines": {
+    "vscode": "^1.99.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/el-j/nexus-orchestrator"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {
@@ -29,23 +39,119 @@
           "id": "nexus.workspaceAgents",
           "name": "Workspace Agents",
           "icon": "$(organization)"
+        },
+        {
+          "id": "nexus.aiSessions",
+          "name": "AI Agents",
+          "icon": "$(robot)",
+          "when": "true"
         }
       ]
     },
     "commands": [
-      { "command": "nexus.submitTask", "title": "Nexus: Submit Task" },
-      { "command": "nexus.viewQueue", "title": "Nexus: View Task Queue" },
-      { "command": "nexus.selectProvider", "title": "Nexus: Select Provider / Model" },
-      { "command": "nexus.showProviders", "title": "Nexus: Show Providers" },
-      { "command": "nexus.statusBarAction", "title": "Nexus: Status Bar Actions" },
-      { "command": "nexus.cancelTask", "title": "Nexus: Cancel Task", "icon": "$(trash)" },
-      { "command": "nexus.refreshWorkspaceAgents", "title": "Nexus: Refresh Workspace Agents", "icon": "$(refresh)" }
+      {
+        "command": "nexus.sendCurrentContext",
+        "title": "Nexus: Send Current Context To Queue"
+      },
+      {
+        "command": "nexus.submitTask",
+        "title": "Nexus: Compose Manual Task"
+      },
+      {
+        "command": "nexus.viewQueue",
+        "title": "Nexus: View Task Queue"
+      },
+      {
+        "command": "nexus.showActivityLog",
+        "title": "Nexus: Show Activity Log"
+      },
+      {
+        "command": "nexus.selectProvider",
+        "title": "Nexus: Select Provider / Model"
+      },
+      {
+        "command": "nexus.showProviders",
+        "title": "Nexus: Show Providers"
+      },
+      {
+        "command": "nexus.statusBarAction",
+        "title": "Nexus: Status Bar Actions"
+      },
+      {
+        "command": "nexus.cancelTask",
+        "title": "Nexus: Cancel Task",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "nexus.refreshWorkspaceAgents",
+        "title": "Nexus: Refresh Workspace Agents",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "nexus.refreshAISessions",
+        "title": "Refresh AI Agents",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "nexus.delegateToNexus",
+        "title": "Send to Nexus Orchestrator",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "nexus.delegateAllSessions",
+        "title": "Delegate All Active Agents"
+      },
+      {
+        "command": "nexus.toggleWorkspaceScope",
+        "title": "Nexus: Toggle Workspace Scope",
+        "category": "Nexus",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "nexus.reconnect",
+        "title": "Nexus: Reconnect to Daemon",
+        "category": "Nexus"
+      }
     ],
     "menus": {
       "view/title": [
         {
+          "command": "nexus.sendCurrentContext",
+          "when": "view == nexus.taskQueue",
+          "group": "navigation"
+        },
+        {
+          "command": "nexus.showActivityLog",
+          "when": "view == nexus.taskQueue",
+          "group": "navigation@2"
+        },
+        {
           "command": "nexus.refreshWorkspaceAgents",
           "when": "view == nexus.workspaceAgents",
+          "group": "navigation"
+        },
+        {
+          "command": "nexus.refreshAISessions",
+          "when": "view == nexus.aiSessions",
+          "group": "navigation"
+        },
+        {
+          "command": "nexus.toggleWorkspaceScope",
+          "when": "view == nexus.taskQueue",
+          "group": "navigation@3"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "nexus.sendCurrentContext",
+          "when": "resourceScheme == file",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "nexus.sendCurrentContext",
+          "when": "editorHasSelection",
           "group": "navigation"
         }
       ],
@@ -53,6 +159,11 @@
         {
           "command": "nexus.cancelTask",
           "when": "viewItem == nexusTask",
+          "group": "inline"
+        },
+        {
+          "command": "nexus.delegateToNexus",
+          "when": "view == nexus.aiSessions && viewItem == aiSession",
           "group": "inline"
         }
       ]
@@ -62,7 +173,7 @@
       "properties": {
         "nexus.daemonUrl": {
           "type": "string",
-          "default": "http://127.0.0.1:9999",
+          "default": "http://127.0.0.1:63987",
           "description": "URL of the nexusOrchestrator daemon"
         },
         "nexus.defaultProvider": {
@@ -77,8 +188,18 @@
         },
         "nexus.mcpPort": {
           "type": "number",
-          "default": 9998,
+          "default": 63988,
           "description": "Port of the nexusOrchestrator MCP server (JSON-RPC 2.0). Must match NEXUS_MCP_ADDR on the daemon."
+        },
+        "nexus.enableMCPPortSweep": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, nexusOrchestrator probes a curated set of localhost ports for MCP-compatible servers during agent discovery. Disable if you experience unexpected connections to local services."
+        },
+        "nexus.scopeToWorkspace": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, the Task Queue panel shows only tasks for the current workspace folder. Toggle with the filter button or the 'Nexus: Toggle Workspace Scope' command."
         }
       }
     },
@@ -91,15 +212,23 @@
     }
   },
   "scripts": {
+    "compile": "npm run build",
     "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
     "watch": "npm run build -- --watch",
-    "package": "vsce package --no-dependencies"
+    "package": "vsce package --no-dependencies",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
-    "@types/vscode": "^1.85.0",
     "@types/node": "^20.0.0",
-    "esbuild": "^0.20.0",
+    "@types/vscode": "^1.85.0",
+    "@vitest/coverage-v8": "^4.1.0",
+    "@vscode/vsce": "^3.4.0",
+    "esbuild": "^0.27.0",
     "typescript": "^5.3.0",
-    "@vscode/vsce": "^3.4.0"
+    "vitest": "^4.1.0"
+  },
+  "dependencies": {
+    "zod": "^4.3.6"
   }
 }

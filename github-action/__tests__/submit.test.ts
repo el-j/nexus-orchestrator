@@ -17,7 +17,7 @@ describe('NexusClient', () => {
     mockGetJson = jest.fn();
     MockHttpClient.prototype.postJson = mockPostJson;
     MockHttpClient.prototype.getJson = mockGetJson;
-    client = new NexusClient('http://127.0.0.1:9999');
+    client = new NexusClient('http://127.0.0.1:63987');
   });
 
   describe('submitTask', () => {
@@ -36,7 +36,7 @@ describe('NexusClient', () => {
       expect(res.task_id).toBe('abc-123');
       expect(res.status).toBe('QUEUED');
       expect(mockPostJson).toHaveBeenCalledWith(
-        'http://127.0.0.1:9999/api/tasks',
+        'http://127.0.0.1:63987/api/tasks',
         expect.objectContaining({ instruction: 'Do the thing' })
       );
     });

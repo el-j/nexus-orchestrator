@@ -4,7 +4,9 @@
       <!-- Sidebar TOC -->
       <aside class="lg:col-span-1">
         <div class="sticky top-24 space-y-1">
-          <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-4">On this page</h4>
+          <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-4">
+            On this page
+          </h4>
           <nav class="space-y-1">
             <a
               v-for="item in toc"
@@ -12,7 +14,8 @@
               :href="`#${item.id}`"
               @click.prevent="scrollToId(item.id)"
               class="block text-sm text-slate-500 hover:text-violet-400 transition-colors py-0.5 cursor-pointer"
-            >{{ item.label }}</a>
+              >{{ item.label }}</a
+            >
           </nav>
         </div>
       </aside>
@@ -21,12 +24,18 @@
       <main class="lg:col-span-3 space-y-16">
         <!-- Hero -->
         <div class="reveal">
-          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-sm text-violet-300 mb-4">
+          <div
+            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-sm text-violet-300 mb-4"
+          >
             <i class="pi pi-book text-xs"></i>
             Step-by-step guide
           </div>
-          <h1 class="text-4xl font-black mb-4">Getting <span class="gradient-text">Started</span></h1>
-          <p class="text-lg text-slate-400">Be up and running with nexus-orchestrator in under 5 minutes.</p>
+          <h1 class="text-4xl font-black mb-4">
+            Getting <span class="gradient-text">Started</span>
+          </h1>
+          <p class="text-lg text-slate-400">
+            Be up and running with nexus-orchestrator in under 5 minutes.
+          </p>
         </div>
 
         <!-- Prerequisites -->
@@ -37,8 +46,10 @@
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div class="rounded-xl border border-white/8 bg-[#0d0d14] p-4">
               <div class="text-lg mb-2">🔷</div>
-              <div class="font-bold text-white text-sm mb-1">Go 1.24+</div>
-              <div class="text-xs text-slate-500">With CGO_ENABLED=1 and a C compiler (gcc/clang)</div>
+              <div class="font-bold text-white text-sm mb-1">Go 1.26+</div>
+              <div class="text-xs text-slate-500">
+                With CGO_ENABLED=1 and a C compiler (gcc/clang)
+              </div>
             </div>
             <div class="rounded-xl border border-white/8 bg-[#0d0d14] p-4">
               <div class="text-lg mb-2">🗄️</div>
@@ -51,11 +62,23 @@
               <div class="text-xs text-slate-500">LM Studio, Ollama, or cloud API keys</div>
             </div>
           </div>
-          <div class="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-300">
+          <div
+            class="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-300"
+          >
             <strong>Provider options:</strong>
             <ul class="mt-2 space-y-1 list-disc list-inside text-amber-400/80">
-              <li><a href="https://lmstudio.ai/" target="_blank" rel="noopener" class="underline">LM Studio</a> running on 127.0.0.1:1234</li>
-              <li><a href="https://ollama.ai/" target="_blank" rel="noopener" class="underline">Ollama</a> running on 127.0.0.1:11434</li>
+              <li>
+                <a href="https://lmstudio.ai/" target="_blank" rel="noopener" class="underline"
+                  >LM Studio</a
+                >
+                running on 127.0.0.1:1234
+              </li>
+              <li>
+                <a href="https://ollama.ai/" target="_blank" rel="noopener" class="underline"
+                  >Ollama</a
+                >
+                running on 127.0.0.1:11434
+              </li>
               <li>Cloud API keys for OpenAI, Anthropic, or GitHub Copilot</li>
             </ul>
           </div>
@@ -121,10 +144,15 @@
           </h2>
           <div class="rounded-xl border border-white/8 bg-[#0d0d14] p-6">
             <p class="text-slate-400 text-sm mb-3">
-              Open <code class="text-violet-300">http://localhost:9999/ui</code> in your browser for a live dashboard that:
+              Open <code class="text-violet-300">http://localhost:63987/ui</code> in your browser
+              for a live dashboard that:
             </p>
             <ul class="space-y-2 list-none p-0">
-              <li v-for="feature in dashboardFeatures" :key="feature" class="flex items-start gap-2 text-sm text-slate-400">
+              <li
+                v-for="feature in dashboardFeatures"
+                :key="feature"
+                class="flex items-start gap-2 text-sm text-slate-400"
+              >
                 <i class="pi pi-check-circle text-emerald-500 text-xs mt-0.5 flex-shrink-0"></i>
                 {{ feature }}
               </li>
@@ -153,7 +181,11 @@
               class="rounded-xl border border-white/8 bg-[#0d0d14] hover:border-violet-500/30 p-5 transition-all group"
             >
               <div class="text-xl mb-2">{{ next.icon }}</div>
-              <div class="font-bold text-white text-sm mb-1 group-hover:text-violet-300 transition-colors">{{ next.title }}</div>
+              <div
+                class="font-bold text-white text-sm mb-1 group-hover:text-violet-300 transition-colors"
+              >
+                {{ next.title }}
+              </div>
               <div class="text-xs text-slate-500">{{ next.desc }}</div>
             </RouterLink>
           </div>
@@ -164,9 +196,9 @@
 </template>
 
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
-import CodeBlock from '../components/CodeBlock.vue'
-import { scrollToId } from '../utils/scroll'
+import { RouterLink } from 'vue-router';
+import CodeBlock from '../components/CodeBlock.vue';
+import { scrollToId } from '../utils/scroll';
 
 const toc = [
   { id: 'prerequisites', label: 'Prerequisites' },
@@ -178,7 +210,7 @@ const toc = [
   { id: 'dashboard', label: 'Using the Dashboard' },
   { id: 'testing', label: 'Running Tests' },
   { id: 'next-steps', label: 'Next Steps' },
-]
+];
 
 const codeInstall = `# Clone the repository
 git clone https://github.com/el-j/nexus-orchestrator.git
@@ -189,19 +221,19 @@ CGO_ENABLED=1 go build ./...
 
 # Or build specific binaries
 CGO_ENABLED=1 go build -o nexus-daemon ./cmd/nexus-daemon/...
-CGO_ENABLED=1 go build -o nexus-cli ./cmd/nexus-cli/...`
+CGO_ENABLED=1 go build -o nexus-cli ./cmd/nexus-cli/...`;
 
 const codeDaemonBasic = `# Start with default settings
 ./nexus-daemon
-# HTTP API:   http://127.0.0.1:9999
-# MCP server: http://127.0.0.1:9998/mcp
-# Dashboard:  http://127.0.0.1:9999/ui`
+# HTTP API:   http://127.0.0.1:63987
+# MCP server: http://127.0.0.1:63988/mcp
+# Dashboard:  http://127.0.0.1:63987/ui`;
 
 const codeDaemonCustom = `# Use environment variables for custom settings
 NEXUS_DB_PATH=/path/to/nexus.db \\
 NEXUS_LISTEN_ADDR=:8080 \\
 NEXUS_MCP_ADDR=:8081 \\
-./nexus-daemon`
+./nexus-daemon`;
 
 const codeDaemonCloud = `# OpenAI
 NEXUS_OPENAI_API_KEY=sk-... NEXUS_OPENAI_MODEL=gpt-4o-mini ./nexus-daemon
@@ -210,16 +242,16 @@ NEXUS_OPENAI_API_KEY=sk-... NEXUS_OPENAI_MODEL=gpt-4o-mini ./nexus-daemon
 NEXUS_ANTHROPIC_API_KEY=sk-ant-... NEXUS_ANTHROPIC_MODEL=claude-3-5-sonnet-20241022 ./nexus-daemon
 
 # GitHub Copilot
-NEXUS_GITHUBCOPILOT_TOKEN=ghu_... NEXUS_GITHUBCOPILOT_MODEL=gpt-4o ./nexus-daemon`
+NEXUS_GITHUBCOPILOT_TOKEN=ghu_... NEXUS_GITHUBCOPILOT_MODEL=gpt-4o ./nexus-daemon`;
 
 const codeFirstTask = `# Submit a code-generation task
-curl -s -X POST http://localhost:9999/api/tasks \\
+curl -s -X POST http://localhost:63987/api/tasks \\
   -H "Content-Type: application/json" \\
   -d '{
     "projectPath": "'$PWD'",
     "targetFile": "hello.go",
     "instruction": "Write a Go function that returns Hello World"
-  }' | jq .`
+  }' | jq .`;
 
 const codeFirstTaskResponse = `{
   "id": "a1b2c3d4-...",
@@ -228,22 +260,22 @@ const codeFirstTaskResponse = `{
   "instruction": "Write a Go function...",
   "status": "QUEUED",
   "createdAt": "2025-01-01T00:00:00Z"
-}`
+}`;
 
 const codeStatus = `# Get task by ID
-curl -s http://localhost:9999/api/tasks/TASK_ID | jq .
+curl -s http://localhost:63987/api/tasks/TASK_ID | jq .
 
 # List all pending tasks
-curl -s http://localhost:9999/api/tasks | jq .`
+curl -s http://localhost:63987/api/tasks | jq .`;
 
-const codeCancel = `curl -X DELETE http://localhost:9999/api/tasks/TASK_ID
-# Returns 204 No Content on success`
+const codeCancel = `curl -X DELETE http://localhost:63987/api/tasks/TASK_ID
+# Returns 204 No Content on success`;
 
 const codeProviders = `# List all providers
-curl -s http://localhost:9999/api/providers | jq .
+curl -s http://localhost:63987/api/providers | jq .
 
 # Register a new cloud provider
-curl -s -X POST http://localhost:9999/api/providers \\
+curl -s -X POST http://localhost:63987/api/providers \\
   -H "Content-Type: application/json" \\
   -d '{
     "name": "My OpenAI",
@@ -254,7 +286,7 @@ curl -s -X POST http://localhost:9999/api/providers \\
   }' | jq .
 
 # Remove a provider
-curl -X DELETE http://localhost:9999/api/providers/My%20OpenAI`
+curl -X DELETE http://localhost:63987/api/providers/My%20OpenAI`;
 
 const codeTesting = `# Full test suite with race detection
 CGO_ENABLED=1 go test -race ./...
@@ -263,18 +295,33 @@ CGO_ENABLED=1 go test -race ./...
 CGO_ENABLED=1 go test ./internal/core/services/...
 
 # Lint
-go vet ./...`
+go vet ./...`;
 
 const dashboardFeatures = [
   'Shows all tasks with real-time status updates via SSE',
   'Allows submitting new tasks directly',
   'Displays provider status and model information',
   'Auto-refreshes every 2 seconds',
-]
+];
 
 const nextSteps = [
-  { icon: '📡', title: 'API Reference', desc: 'Full HTTP and MCP endpoint docs', to: '/api-reference' },
-  { icon: '🔌', title: 'MCP Integration', desc: 'Connect with Claude Desktop', to: '/mcp-integration' },
-  { icon: '🏗️', title: 'Architecture', desc: 'Understand the hexagonal design', to: '/architecture' },
-]
+  {
+    icon: '📡',
+    title: 'API Reference',
+    desc: 'Full HTTP and MCP endpoint docs',
+    to: '/api-reference',
+  },
+  {
+    icon: '🔌',
+    title: 'MCP Integration',
+    desc: 'Connect with Claude Desktop',
+    to: '/mcp-integration',
+  },
+  {
+    icon: '🏗️',
+    title: 'Architecture',
+    desc: 'Understand the hexagonal design',
+    to: '/architecture',
+  },
+];
 </script>

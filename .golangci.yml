@@ -90,7 +90,6 @@ linters:
     paths:
       - "frontend/.*"
       - "build/.*"
-      - "dist/.*"
       - "vendor/.*"
       - ".*\\.pb\\.go"
       - "wailsjs/.*"

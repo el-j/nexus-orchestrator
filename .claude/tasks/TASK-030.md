@@ -32,7 +32,7 @@ After this command runs, the source project's `orchestrator.json` is updated wit
      b. Filter tasks: if `$ARGUMENTS` is a specific task ID, push only that one; if `all` or empty, push all tasks with `status: "todo"` in the active plan.
      c. For each task to push:
         - Read its `.claude/tasks/TASK-NNN.md` file to extract the full implementation description as the prompt (use the entire file content).
-        - Call `POST http://127.0.0.1:9999/api/tasks` with:
+        - Call `POST http://127.0.0.1:63987/api/tasks` with:
           ```json
           {
             "projectPath": "<absolute path of current workspace>",
@@ -46,7 +46,7 @@ After this command runs, the source project's `orchestrator.json` is updated wit
         - Update task status to `"pushed"` in orchestrator.json.
      d. Print summary: "Pushed N tasks to nexusOrchestrator. Run /sync-from-nexus to retrieve results."
 
-   Note: Use `NEXUS_ADDR` env var for the base URL (default `http://127.0.0.1:9999`).
+   Note: Use `NEXUS_ADDR` env var for the base URL (default `http://127.0.0.1:63987`).
 
 2. The command file is a Copilot instruction file (plain Markdown), NOT Go code. The agent (Copilot/Claude) reads it and executes the HTTP calls via tool calls.
 

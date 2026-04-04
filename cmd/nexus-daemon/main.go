@@ -9,24 +9,28 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
 	"nexus-orchestrator/internal/adapters/inbound/httpapi"
 	"nexus-orchestrator/internal/adapters/inbound/mcp"
+	"nexus-orchestrator/internal/adapters/outbound/activity_claude"
+	"nexus-orchestrator/internal/adapters/outbound/activity_continue"
+	"nexus-orchestrator/internal/adapters/outbound/activity_network"
 	"nexus-orchestrator/internal/adapters/outbound/fs_writer"
-	"nexus-orchestrator/internal/adapters/outbound/llm_anthropic"
-	"nexus-orchestrator/internal/adapters/outbound/llm_lmstudio"
-	"nexus-orchestrator/internal/adapters/outbound/llm_ollama"
-	"nexus-orchestrator/internal/adapters/outbound/llm_openaicompat"
 	"nexus-orchestrator/internal/adapters/outbound/repo_sqlite"
 	"nexus-orchestrator/internal/adapters/outbound/sys_scanner"
-	"nexus-orchestrator/internal/core/domain"
+	"nexus-orchestrator/internal/bootstrap"
 	"nexus-orchestrator/internal/core/ports"
 	"nexus-orchestrator/internal/core/services"
 )
 
-var version = "dev"
+var (
+	version   = "dev"
+	commit    = "unknown"
+	buildDate = "unknown"
+)
 
 func main() {
 	// 0. Log hub — capture log output for SSE streaming before anything logs.
@@ -49,20 +53,47 @@ func main() {
 	writer := fs_writer.New()
 
 	// 2. Core services
-	discoverySvc := services.NewDiscoveryService(buildProviders()...)
+	discoverySvc := services.NewDiscoveryService(bootstrap.BuildProviders()...)
 	sessionRepo := repo_sqlite.NewSessionRepo(repo)
 	orchestratorSvc := services.NewOrchestrator(discoverySvc, repo, writer, sessionRepo)
-	orchestratorSvc.WithProviderFactory(buildProviderFromConfig)
+	orchestratorSvc.WithProviderFactory(bootstrap.BuildProviderFromConfig)
 
 	providerConfigRepo := repo_sqlite.NewProviderConfigRepo(repo)
 	orchestratorSvc.WithProviderConfigRepo(providerConfigRepo)
 
+	runtimeCfgRepo := repo_sqlite.NewRuntimeConfigRepo(repo)
+	orchestratorSvc.WithRuntimeConfigRepo(runtimeCfgRepo)
+	if cfg, err := orchestratorSvc.GetRuntimeConfig(context.Background()); err != nil {
+		log.Printf("startup: get runtime config: %v", err)
+	} else if cfg.QueueCap > 0 {
+		orchestratorSvc.WithQueueCap(cfg.QueueCap)
+	}
+
 	aiSessionRepo := repo_sqlite.NewAISessionRepo(repo)
 	orchestratorSvc.SetAISessionRepo(aiSessionRepo)
-
-	// Wire system scanner for provider discovery.
+	// 2b. Activity observatory
+	activityRepo := repo_sqlite.NewActivityRepo(repo)
+	var activityReaders []ports.ActivityReader
+	if homeDir, err := os.UserHomeDir(); err == nil {
+		if _, err := os.Stat(filepath.Join(homeDir, ".claude")); err == nil {
+			activityReaders = append(activityReaders, activity_claude.NewClaudeJSONLReader(), activity_claude.NewClaudeHistoryReader())
+		}
+		if _, err := os.Stat(filepath.Join(homeDir, ".continue")); err == nil {
+			activityReaders = append(activityReaders, activity_continue.NewContinueSessionReader())
+		}
+	}
+	activityReaders = append(activityReaders, activity_network.NewNetworkProbeReader())
+	activitySvc := services.NewActivityService(activityRepo, aiSessionRepo, activityReaders...)
+	activitySvc.Start()
+	defer activitySvc.Stop()
+	// Wire system scanner for provider discovery + agent detection.
 	scanner := sys_scanner.New()
 	orchestratorSvc.WithSystemScanner(scanner)
+	orchestratorSvc.SetAgentScanner(scanner)
+	discoveredAgentRepo := repo_sqlite.NewDiscoveredAgentRepo(repo)
+	orchestratorSvc.SetDiscoveredAgentRepo(discoveredAgentRepo)
+	planFileRepo := repo_sqlite.NewPlanFileRepo(repo)
+	services.WithPlanFileRepo(planFileRepo)(orchestratorSvc)
 
 	// Load persisted provider configs and register each enabled one.
 	if cfgs, err := providerConfigRepo.ListProviderConfigs(context.Background()); err != nil {
@@ -82,7 +113,7 @@ func main() {
 	// 3. Context that cancels on SIGINT / SIGTERM — drives HTTP graceful shutdown
 	addr := os.Getenv("NEXUS_LISTEN_ADDR")
 	if addr == "" {
-		addr = "127.0.0.1:9999"
+		addr = "127.0.0.1:63987"
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -90,9 +121,26 @@ func main() {
 
 	mcpAddr := os.Getenv("NEXUS_MCP_ADDR")
 	if mcpAddr == "" {
-		mcpAddr = "127.0.0.1:9998"
+		mcpAddr = "127.0.0.1:63988"
 	}
-	log.Printf("nexus-daemon %s starting...", version)
+	log.Printf("nexus-daemon %s (%s %s) starting...", version, commit, buildDate)
+	// Print a human- and AI-readable ready banner once both servers are about to start.
+	go func() {
+		// Brief pause so the log context lines printed above appear first.
+		time.Sleep(50 * time.Millisecond)
+		httpBase := "http://" + addr
+		fmt.Printf("\n")
+		fmt.Printf("┌────────────────────────────────────────────────────────┐\n")
+		fmt.Printf("│  nexusOrchestrator %s — ready                     │\n", version)
+		fmt.Printf("├────────────────────────────────────────────────────────┤\n")
+		fmt.Printf("│  HTTP API  →  %-39s  │\n", httpBase)
+		fmt.Printf("│  Dashboard →  %-39s  │\n", httpBase+"/ui")
+		fmt.Printf("│  How-to    →  %-39s  │\n", httpBase+"/api/howto")
+		fmt.Printf("│  Discovery →  %-39s  │\n", httpBase+"/.well-known/nexus.json")
+		fmt.Printf("│  MCP       →  %-39s  │\n", "http://"+mcpAddr+"/mcp")
+		fmt.Printf("└────────────────────────────────────────────────────────┘\n")
+		fmt.Printf("\n")
+	}()
 	// Initial non-blocking scan.
 	go func() {
 		if _, err := orchestratorSvc.TriggerScan(context.Background()); err != nil {
@@ -128,72 +176,10 @@ func main() {
 		}
 	}()
 
-	// StartServer blocks until ctx is cancelled, then gracefully shuts down
-	if err := httpapi.StartServer(ctx, orchestratorSvc, addr, logHub); err != nil {
+	// StartServerFull blocks until ctx is cancelled, then gracefully shuts down
+	if err := httpapi.StartServerFull(ctx, orchestratorSvc, addr, activitySvc, logHub); err != nil {
 		log.Printf("daemon: httpapi: %v", err)
 	}
 
 	fmt.Println("nexusOrchestrator daemon shutting down.")
-}
-
-// buildProviders assembles all configured LLM adapters.
-// Local providers are always included; cloud providers require env-var API keys.
-func buildProviders() []ports.LLMClient {
-	lmStudioURL := os.Getenv("NEXUS_LMSTUDIO_URL")
-	if lmStudioURL == "" {
-		lmStudioURL = "http://127.0.0.1:1234/v1"
-	}
-	ollamaURL := os.Getenv("NEXUS_OLLAMA_URL")
-	if ollamaURL == "" {
-		ollamaURL = llm_ollama.DefaultBaseURL
-	}
-	providers := []ports.LLMClient{
-		llm_lmstudio.NewLMStudioAdapter(lmStudioURL),
-		llm_ollama.NewOllamaAdapter(ollamaURL, "codellama"),
-	}
-	if key := os.Getenv("NEXUS_OPENAI_API_KEY"); key != "" {
-		model := os.Getenv("NEXUS_OPENAI_MODEL")
-		if model == "" {
-			model = "gpt-4o-mini"
-		}
-		providers = append(providers, llm_openaicompat.NewAdapter("OpenAI", "https://api.openai.com/v1", key, model))
-	}
-	if token := os.Getenv("NEXUS_GITHUBCOPILOT_TOKEN"); token != "" {
-		model := os.Getenv("NEXUS_GITHUBCOPILOT_MODEL")
-		if model == "" {
-			model = "gpt-4o"
-		}
-		providers = append(providers, llm_openaicompat.NewAdapter("GitHub Copilot", "https://api.githubcopilot.com", token, model))
-	}
-	if key := os.Getenv("NEXUS_ANTHROPIC_API_KEY"); key != "" {
-		model := os.Getenv("NEXUS_ANTHROPIC_MODEL")
-		if model == "" {
-			model = "claude-3-5-sonnet-20241022"
-		}
-		providers = append(providers, llm_anthropic.NewAdapter(key, model))
-	}
-	return providers
-}
-
-// buildProviderFromConfig constructs a single LLM adapter from a runtime ProviderConfig.
-// Injected into OrchestratorService to keep the services package free of adapter imports.
-func buildProviderFromConfig(cfg domain.ProviderConfig) (ports.LLMClient, error) {
-	switch cfg.Kind {
-	case domain.ProviderKindLMStudio:
-		if cfg.BaseURL == "" {
-			cfg.BaseURL = "http://127.0.0.1:1234/v1"
-		}
-		return llm_lmstudio.NewLMStudioAdapter(cfg.BaseURL), nil
-	case domain.ProviderKindOllama:
-		if cfg.BaseURL == "" {
-			cfg.BaseURL = "http://127.0.0.1:11434"
-		}
-		return llm_ollama.NewOllamaAdapter(cfg.BaseURL, cfg.Model), nil
-	case domain.ProviderKindOpenAICompat:
-		return llm_openaicompat.NewAdapter(cfg.Name, cfg.BaseURL, cfg.APIKey, cfg.Model), nil
-	case domain.ProviderKindAnthropic:
-		return llm_anthropic.NewAdapter(cfg.APIKey, cfg.Model), nil
-	default:
-		return nil, fmt.Errorf("unknown provider kind: %q", cfg.Kind)
-	}
 }

@@ -16,7 +16,7 @@ Use nexusOrchestrator to implement its own PLAN-002 backlog. This directly valid
 | Item | Status | Notes |
 |------|--------|-------|
 | `CGO_ENABLED=1 go build ./...` | ✅ passes | No blocking issues |
-| daemon starts on :9999/:9998 | ✅ works | session isolation, MCP |
+| daemon starts on :63987/:63988 | ✅ works | session isolation, MCP |
 | LM Studio / Ollama | ⚠️ required | provider must be online |
 | JSON struct tags on domain types | ❌ missing | breaks web UI + nexus-submit |
 | Web dashboard | ❌ missing | needed for live progress |
@@ -57,7 +57,7 @@ Once PLAN-003 tasks are implemented:
 
 ```
 nexus-daemon &                # start orchestrator
-open http://localhost:9999/ui  # open dashboard
+open http://localhost:63987/ui  # open dashboard
 
 # Submit PLAN-002 tasks to process themselves
 nexus-submit --task-file .claude/tasks/TASK-013.md \
@@ -75,7 +75,7 @@ The LLM generates the Go implementation; the dashboard shows progress in real ti
 
 - [ ] `CGO_ENABLED=1 go build ./... ` exits 0, including `cmd/nexus-submit`
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` exits 0
-- [ ] `GET http://localhost:9999/ui` returns 200 with valid HTML
+- [ ] `GET http://localhost:63987/ui` returns 200 with valid HTML
 - [ ] `nexus-submit` binary built; submitting a TASK-NNN.md returns a task ID
 - [ ] Dashboard shows live queue updates (proves HTTP polling path works)
 - [ ] `scripts/dogfood-plan002.sh` exists and is executable

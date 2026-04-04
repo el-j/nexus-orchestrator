@@ -268,3 +268,40 @@ func TestOpenAICompat_Chat_ForwardsAllMessages(t *testing.T) {
 		t.Errorf("expected 3 messages forwarded, got %d", len(captured.Messages))
 	}
 }
+
+// TestOpenAICompat_GetAvailableModels_FailureNotCached verifies that a failed
+// GetAvailableModels call does not poison the cache: a subsequent call to a
+// working server must succeed.
+func TestOpenAICompat_GetAvailableModels_FailureNotCached(t *testing.T) {
+	// First: a server that returns 500.
+	failServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "unavailable", http.StatusInternalServerError)
+	}))
+	a := NewAdapter("TestProvider", failServer.URL, "", "gpt-4o")
+
+	_, err := a.GetAvailableModels()
+	if err == nil {
+		t.Fatal("expected error from failing server")
+	}
+	failServer.Close()
+
+	// Second: point the adapter at a working server.
+	okServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"data": []map[string]interface{}{{"id": "gpt-4o"}},
+		})
+	}))
+	defer okServer.Close()
+
+	// Override baseURL to point at the ok server (same adapter instance).
+	a.baseURL = okServer.URL
+
+	models, err := a.GetAvailableModels()
+	if err != nil {
+		t.Fatalf("second call (to working server) returned error: %v", err)
+	}
+	if len(models) != 1 || models[0] != "gpt-4o" {
+		t.Errorf("unexpected models: %v", models)
+	}
+}

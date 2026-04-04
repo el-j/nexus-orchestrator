@@ -1,63 +1,51 @@
-import { ref, onMounted, onUnmounted } from 'vue'
-import type { AISession } from '../types/domain'
-import { listAISessions, deregisterAISession } from '../types/wails'
-import { resolveServerUrl } from './useServerUrl'
+import { ref, onMounted, onUnmounted } from 'vue';
+import type { AISession } from '../types/domain';
+import { listAISessions, deregisterAISession, purgeDisconnectedSessions } from '../types/wails';
+import { useGlobalSSE } from './useGlobalSSE';
 
 export function useAISessions() {
-  const sessions = ref<AISession[]>([])
-  const loading = ref(false)
-  const error = ref<string | null>(null)
-  let interval: ReturnType<typeof setInterval> | null = null
-  let eventSource: EventSource | null = null
+  const sessions = ref<AISession[]>([]);
+  const loading = ref(false);
+  const error = ref<string | null>(null);
+  let interval: ReturnType<typeof setInterval> | null = null;
+
+  const { on, off } = useGlobalSSE();
+
+  function sseHandler() {
+    refresh();
+  }
 
   async function refresh() {
     try {
-      sessions.value = await listAISessions()
-      error.value = null
+      sessions.value = (await listAISessions()) ?? [];
+      error.value = null;
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to load AI sessions'
+      error.value = e instanceof Error ? e.message : 'Failed to load AI sessions';
     }
   }
 
   async function deregister(id: string) {
-    await deregisterAISession(id)
-    await refresh()
+    await deregisterAISession(id);
+    await refresh();
+  }
+
+  async function purgeDisconnected() {
+    await purgeDisconnectedSessions();
+    await refresh();
   }
 
   onMounted(async () => {
-    loading.value = true
-    await refresh()
-
-    if (typeof EventSource !== 'undefined') {
-      try {
-        const baseUrl = await resolveServerUrl()
-        eventSource = new EventSource(`${baseUrl}/api/events`)
-        eventSource.onmessage = (event) => {
-          const data = JSON.parse(event.data) as { type: string }
-          if (data.type === 'ai_session_changed') {
-            refresh()
-          }
-        }
-        eventSource.onerror = () => {
-          console.warn('SSE connection error — falling back to polling')
-          eventSource?.close()
-          eventSource = null
-          interval = setInterval(refresh, 5000)
-        }
-      } catch {
-        interval = setInterval(refresh, 5000)
-      }
-    } else {
-      interval = setInterval(refresh, 5000)
-    }
-
-    loading.value = false
-  })
+    loading.value = true;
+    await refresh();
+    on('ai_session_changed', sseHandler);
+    interval = setInterval(refresh, 15_000);
+    loading.value = false;
+  });
 
   onUnmounted(() => {
-    if (interval) clearInterval(interval)
-    if (eventSource) eventSource.close()
-  })
+    off('ai_session_changed', sseHandler);
+    if (interval) clearInterval(interval);
+  });
 
-  return { sessions, loading, error, refresh, deregister }
+  return { sessions, loading, error, refresh, deregister, purgeDisconnected };
 }

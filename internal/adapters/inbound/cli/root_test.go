@@ -42,6 +42,10 @@ func (m *mockOrchestrator) GetQueue() ([]domain.Task, error) {
 	return m.queueResult, m.queueErr
 }
 
+func (m *mockOrchestrator) GetAllTasks() ([]domain.Task, error) {
+	return m.queueResult, m.queueErr
+}
+
 func (m *mockOrchestrator) GetProviders() ([]ports.ProviderInfo, error) {
 	return m.providersList, m.providersErr
 }
@@ -71,7 +75,9 @@ func (m *mockOrchestrator) TriggerScan(_ context.Context) ([]domain.DiscoveredPr
 func (m *mockOrchestrator) PromoteProvider(_ context.Context, _ string) error { return nil }
 func (m *mockOrchestrator) CreateDraft(_ domain.Task) (string, error)         { return "", nil }
 func (m *mockOrchestrator) GetBacklog(_ string) ([]domain.Task, error)        { return nil, nil }
-func (m *mockOrchestrator) PromoteTask(_ string) error                        { return nil }
+func (m *mockOrchestrator) PromoteTask(_ string) (ports.PromoteResult, error) {
+	return ports.PromoteResult{Promoted: true}, nil
+}
 func (m *mockOrchestrator) UpdateTask(_ string, _ domain.Task) (domain.Task, error) {
 	return domain.Task{}, nil
 }
@@ -83,6 +89,46 @@ func (m *mockOrchestrator) ListAISessions(_ context.Context) ([]domain.AISession
 }
 func (m *mockOrchestrator) DeregisterAISession(_ context.Context, _ string) error { return nil }
 func (m *mockOrchestrator) HeartbeatAISession(_ context.Context, _ string) error  { return nil }
+func (m *mockOrchestrator) ClaimTask(_ context.Context, _ string, _ string) (domain.Task, error) {
+	return domain.Task{}, nil
+}
+func (m *mockOrchestrator) UpdateTaskStatus(_ context.Context, _ string, _ string, _ domain.TaskStatus, _ string) (domain.Task, error) {
+	return domain.Task{}, nil
+}
+func (m *mockOrchestrator) PurgeDisconnectedSessions(_ context.Context) (int, error) {
+	return 0, nil
+}
+func (m *mockOrchestrator) GetDiscoveredAgents(_ context.Context) ([]domain.DiscoveredAgent, error) {
+	return nil, nil
+}
+func (m *mockOrchestrator) DelegateToNexus(_ context.Context, _ string) (string, error) {
+	return "", nil
+}
+func (m *mockOrchestrator) HeartbeatTask(_ context.Context, _, _ string) error { return nil }
+func (m *mockOrchestrator) TerminateAISession(_ context.Context, _ string, _ bool) error {
+	return nil
+}
+func (m *mockOrchestrator) GetDiscoveredPlanFiles(_ context.Context, _ string) ([]domain.DiscoveredPlanFile, error) {
+	return nil, nil
+}
+
+func (m *mockOrchestrator) GetRuntimeConfig(_ context.Context) (domain.RuntimeConfig, error) {
+	return domain.RuntimeConfig{QueueCap: 50}, nil
+}
+
+func (m *mockOrchestrator) UpdateRuntimeConfig(_ context.Context, update domain.RuntimeConfigUpdate) (domain.RuntimeConfig, error) {
+	cfg := domain.RuntimeConfig{QueueCap: 50}
+	if update.QueueCap != nil {
+		cfg.QueueCap = *update.QueueCap
+	}
+	if update.APIToken != nil {
+		cfg.APIToken = *update.APIToken
+	}
+	if update.MCPToken != nil {
+		cfg.MCPToken = *update.MCPToken
+	}
+	return cfg, nil
+}
 
 // captureStdout redirects os.Stdout while fn runs and returns the collected
 // output. fn must not call t.Fatal/t.FailNow (runtime.Goexit) directly, as

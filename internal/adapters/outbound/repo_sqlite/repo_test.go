@@ -1,6 +1,7 @@
 package repo_sqlite_test
 
 import (
+	"context"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -160,6 +161,88 @@ func TestRepository_GetPending_Empty(t *testing.T) {
 	}
 	if len(pending) != 0 {
 		t.Errorf("expected 0 pending tasks, got %d", len(pending))
+	}
+}
+
+func TestRepository_ClaimNextQueued_ClaimsOldestQueuedAndMarksProcessing(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	base := time.Now().Add(-5 * time.Minute)
+	queuedOldest := newTask("queued-oldest", domain.StatusQueued, base)
+	queuedNewest := newTask("queued-newest", domain.StatusQueued, base.Add(time.Minute))
+	processing := newTask("already-processing", domain.StatusProcessing, base.Add(2*time.Minute))
+
+	for _, task := range []domain.Task{queuedNewest, processing, queuedOldest} {
+		if err := repo.Save(task); err != nil {
+			t.Fatalf("Save %s: %v", task.ID, err)
+		}
+	}
+
+	claimed, err := repo.ClaimNextQueued()
+	if err != nil {
+		t.Fatalf("ClaimNextQueued: %v", err)
+	}
+	if claimed.ID != queuedOldest.ID {
+		t.Fatalf("claimed task: want %q, got %q", queuedOldest.ID, claimed.ID)
+	}
+	if claimed.Status != domain.StatusProcessing {
+		t.Fatalf("claimed status: want %s, got %s", domain.StatusProcessing, claimed.Status)
+	}
+
+	saved, err := repo.GetByID(queuedOldest.ID)
+	if err != nil {
+		t.Fatalf("GetByID claimed task: %v", err)
+	}
+	if saved.Status != domain.StatusProcessing {
+		t.Fatalf("persisted claimed status: want %s, got %s", domain.StatusProcessing, saved.Status)
+	}
+}
+
+func TestRepository_ClaimNextQueued_ReturnsErrNotFoundWhenEmpty(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	_, err := repo.ClaimNextQueued()
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("expected domain.ErrNotFound, got %v", err)
+	}
+}
+
+func TestRepository_UpdateStatusIfCurrent(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	task := newTask("conditional-status", domain.StatusQueued, time.Now())
+	if err := repo.Save(task); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	ok, err := repo.UpdateStatusIfCurrent(task.ID, domain.StatusQueued, domain.StatusCancelled)
+	if err != nil {
+		t.Fatalf("UpdateStatusIfCurrent: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected transition to succeed")
+	}
+
+	ok, err = repo.UpdateStatusIfCurrent(task.ID, domain.StatusQueued, domain.StatusCompleted)
+	if err != nil {
+		t.Fatalf("UpdateStatusIfCurrent second transition: %v", err)
+	}
+	if ok {
+		t.Fatal("expected second transition to fail because status no longer matches")
+	}
+
+	saved, err := repo.GetByID(task.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if saved.Status != domain.StatusCancelled {
+		t.Fatalf("status after guarded update: want %s, got %s", domain.StatusCancelled, saved.Status)
 	}
 }
 
@@ -488,6 +571,145 @@ func TestUpdate_ReturnsErrNotFound_ForUnknownID(t *testing.T) {
 	}
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("expected domain.ErrNotFound, got %v", err)
+	}
+}
+
+func TestGetStaleProcessing_ReturnsOnlyStale(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	ctx := context.Background()
+	now := time.Now()
+
+	staleTask := domain.Task{
+		ID:          "stale-task",
+		ProjectPath: "/proj/stale",
+		TargetFile:  "main.go",
+		Instruction: "old work",
+		Status:      domain.StatusProcessing,
+		CreatedAt:   now.Add(-10 * time.Minute),
+		UpdatedAt:   now.Add(-10 * time.Minute),
+	}
+	freshTask := domain.Task{
+		ID:          "fresh-task",
+		ProjectPath: "/proj/stale",
+		TargetFile:  "main.go",
+		Instruction: "new work",
+		Status:      domain.StatusProcessing,
+		CreatedAt:   now.Add(-1 * time.Minute),
+		UpdatedAt:   now.Add(-1 * time.Minute),
+	}
+
+	if err := repo.Save(staleTask); err != nil {
+		t.Fatalf("Save staleTask: %v", err)
+	}
+	if err := repo.Save(freshTask); err != nil {
+		t.Fatalf("Save freshTask: %v", err)
+	}
+
+	got, err := repo.GetStaleProcessing(ctx, 5*time.Minute)
+	if err != nil {
+		t.Fatalf("GetStaleProcessing: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("expected 1 stale task, got %d", len(got))
+	}
+	if got[0].ID != "stale-task" {
+		t.Errorf("expected stale-task, got %q", got[0].ID)
+	}
+}
+
+func TestGetStaleProcessing_Empty(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	ctx := context.Background()
+
+	got, err := repo.GetStaleProcessing(ctx, 5*time.Minute)
+	if err != nil {
+		t.Fatalf("GetStaleProcessing on empty DB: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected 0 stale tasks, got %d", len(got))
+	}
+}
+
+func TestGetTasksBySessionID_ReturnsOnlyMatching(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	now := time.Now()
+
+	tasks := []domain.Task{
+		{
+			ID:          "sess-task-1",
+			ProjectPath: "/proj/sess",
+			TargetFile:  "a.go",
+			Instruction: "one",
+			Status:      domain.StatusQueued,
+			AISessionID: "session-A",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+		{
+			ID:          "sess-task-2",
+			ProjectPath: "/proj/sess",
+			TargetFile:  "b.go",
+			Instruction: "two",
+			Status:      domain.StatusQueued,
+			AISessionID: "session-A",
+			CreatedAt:   now.Add(-time.Second),
+			UpdatedAt:   now.Add(-time.Second),
+		},
+		{
+			ID:          "sess-task-3",
+			ProjectPath: "/proj/sess",
+			TargetFile:  "c.go",
+			Instruction: "three",
+			Status:      domain.StatusQueued,
+			AISessionID: "session-B",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+	}
+
+	for _, task := range tasks {
+		if err := repo.Save(task); err != nil {
+			t.Fatalf("Save %q: %v", task.ID, err)
+		}
+	}
+
+	got, err := repo.GetTasksBySessionID("session-A")
+	if err != nil {
+		t.Fatalf("GetTasksBySessionID: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected 2 tasks for session-A, got %d", len(got))
+	}
+	// Ordered by created_at DESC: sess-task-1 then sess-task-2
+	if got[0].ID != "sess-task-1" {
+		t.Errorf("got[0]: want sess-task-1, got %q", got[0].ID)
+	}
+	if got[1].ID != "sess-task-2" {
+		t.Errorf("got[1]: want sess-task-2, got %q", got[1].ID)
+	}
+	for _, task := range got {
+		if task.AISessionID != "session-A" {
+			t.Errorf("unexpected AISessionID %q in results", task.AISessionID)
+		}
+	}
+}
+
+func TestGetTasksBySessionID_Empty(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	got, err := repo.GetTasksBySessionID("no-such-session")
+	if err != nil {
+		t.Fatalf("GetTasksBySessionID: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("expected 0 tasks, got %d", len(got))
 	}
 }
 

@@ -2,37 +2,72 @@
   <div class="flex flex-col gap-1">
     <!-- Live provider status -->
     <template v-if="!props.hideDiscovered">
-    <div class="flex items-center justify-between gap-3">
-      <span class="text-xs text-slate-500 font-medium">Providers:</span>
-      <button
-        class="text-[10px] text-slate-500 hover:text-slate-300 transition-colors px-1.5 py-0.5 rounded hover:bg-white/5 leading-none"
-        @click="refresh?.()"
-      >⟳ Refresh</button>
-    </div>
-    <div class="flex items-start gap-2 flex-wrap">
-      <div v-for="p in providers" :key="p.name"
-           class="flex items-start gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-all"
-           :class="p.active
-             ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-             : 'border-red-500/20 bg-red-500/5 text-slate-500'">
-        <span :class="['w-1.5 h-1.5 rounded-full mt-[3px] flex-shrink-0', p.active ? 'bg-emerald-400 animate-pulse' : 'bg-red-500']"></span>
-        <div class="flex flex-col min-w-0">
-          <div class="flex items-center gap-1">
-            <span>{{ p.name }}</span>
-            <span v-if="p.active && p.activeModel" class="text-slate-500 font-mono text-[10px] max-w-[80px] truncate">
-              {{ p.activeModel }}
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-xs text-slate-500 font-medium">Providers:</span>
+        <button
+          class="text-[10px] text-slate-500 hover:text-slate-300 transition-colors px-1.5 py-0.5 rounded hover:bg-white/5 leading-none"
+          @click="refresh?.()"
+        >
+          ⟳ Refresh
+        </button>
+      </div>
+      <div class="flex items-start gap-2 flex-wrap">
+        <div
+          v-for="p in providers"
+          :key="p.name"
+          class="flex items-start gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-all"
+          :class="
+            p.active
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+              : 'border-red-500/20 bg-red-500/5 text-slate-500'
+          "
+        >
+          <span
+            :class="[
+              'w-1.5 h-1.5 rounded-full mt-[3px] flex-shrink-0',
+              p.active ? 'bg-emerald-400 animate-pulse' : 'bg-red-500',
+            ]"
+          ></span>
+          <div class="flex flex-col min-w-0">
+            <div class="flex items-center gap-1">
+              <span>{{ p.name }}</span>
+              <span
+                v-if="p.active && p.activeModel"
+                class="text-slate-500 font-mono text-[10px] max-w-[80px] truncate"
+              >
+                {{ p.activeModel }}
+              </span>
+            </div>
+            <span v-if="p.baseURL" class="text-slate-600 text-[10px] font-mono mt-0.5">{{
+              p.baseURL
+            }}</span>
+            <span v-if="!p.active && p.error" class="text-amber-500/80 text-[10px] mt-0.5">
+              {{ p.error.length > 80 ? p.error.slice(0, 80) + '\u2026' : p.error }}
             </span>
+            <!-- Activity-based model state -->
+            <template v-for="ms in [stateFor(p)]" :key="'ms'">
+              <div v-if="ms && ms.models.length > 0" class="flex items-center gap-1 mt-0.5">
+                <span
+                  :class="[
+                    'w-1 h-1 rounded-full flex-shrink-0',
+                    ms.active ? 'bg-sky-400 animate-pulse' : 'bg-slate-500',
+                  ]"
+                ></span>
+                <span class="text-[10px] text-slate-400 truncate max-w-[120px]">
+                  {{
+                    ms.models.length === 1
+                      ? ms.models[0] + ' loaded'
+                      : ms.models.length + ' models loaded'
+                  }}
+                </span>
+              </div>
+            </template>
           </div>
-          <span v-if="p.baseURL" class="text-slate-600 text-[10px] font-mono mt-0.5">{{ p.baseURL }}</span>
-          <span v-if="!p.active && p.error" class="text-amber-500/80 text-[10px] mt-0.5">
-            {{ p.error.length > 80 ? p.error.slice(0, 80) + '\u2026' : p.error }}
-          </span>
+        </div>
+        <div v-if="providers.length === 0" class="text-xs text-slate-600">
+          No providers detected &#8212; start LM Studio or Ollama
         </div>
       </div>
-      <div v-if="providers.length === 0" class="text-xs text-slate-600">
-        No providers detected &#8212; start LM Studio or Ollama
-      </div>
-    </div>
     </template>
 
     <!-- Configured providers management -->
@@ -42,12 +77,12 @@
         <button
           class="text-[10px] text-purple-400 hover:text-purple-300 transition-colors px-1.5 py-0.5 rounded hover:bg-purple-500/10 leading-none"
           @click="openAddForm"
-        >＋ Add Provider</button>
+        >
+          ＋ Add Provider
+        </button>
       </div>
 
-      <div v-if="configs.length === 0" class="text-xs text-slate-600">
-        No configured providers
-      </div>
+      <div v-if="configs.length === 0" class="text-xs text-slate-600">No configured providers</div>
 
       <div
         v-for="cfg in configs"
@@ -56,22 +91,33 @@
       >
         <div class="flex items-center gap-2 min-w-0">
           <span
-            :class="['w-1.5 h-1.5 rounded-full flex-shrink-0', cfg.enabled ? 'bg-emerald-400' : 'bg-slate-600']"
+            :class="[
+              'w-1.5 h-1.5 rounded-full flex-shrink-0',
+              cfg.enabled ? 'bg-emerald-400' : 'bg-slate-600',
+            ]"
           ></span>
           <span class="text-xs text-slate-300 truncate">{{ cfg.name }}</span>
-          <span class="text-[10px] text-slate-600 font-mono truncate max-w-[120px]">{{ cfg.baseUrl }}</span>
+          <span class="text-[10px] text-slate-600 font-mono truncate max-w-[120px]">{{
+            cfg.baseUrl
+          }}</span>
         </div>
-        <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+        <div
+          class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+        >
           <button
             class="text-slate-400 hover:text-purple-400 transition-colors p-0.5 rounded"
             title="Edit"
             @click="openEditForm(cfg)"
-          >✎</button>
+          >
+            ✎
+          </button>
           <button
             class="text-slate-400 hover:text-red-400 transition-colors p-0.5 rounded"
             title="Delete"
             @click="handleDelete(cfg)"
-          >🗑</button>
+          >
+            🗑
+          </button>
         </div>
       </div>
     </div>
@@ -83,60 +129,121 @@
       :on-close="closeForm"
       :on-save="handleSave"
     />
+
+    <!-- Confirm dialog -->
+    <AppConfirmDialog
+      :open="confirmDialog.open"
+      :title="confirmDialog.title"
+      :message="confirmDialog.message"
+      :danger="true"
+      @confirm="
+        confirmDialog.onConfirm();
+        confirmDialog.open = false;
+      "
+      @cancel="confirmDialog.open = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import type { ProviderInfo, ProviderConfig } from '../types/domain'
-import { listProviderConfigs, addProviderConfig, updateProviderConfig, removeProviderConfig } from '../types/wails'
-import ProviderConfigForm from './ProviderConfigForm.vue'
+import { ref, onMounted, reactive } from 'vue';
+import { useToast } from 'primevue/usetoast';
+import type { ProviderInfo, ProviderConfig } from '../types/domain';
+import type { ProviderModelState } from '../composables/useProviderActivity';
+import {
+  listProviderConfigs,
+  addProviderConfig,
+  updateProviderConfig,
+  removeProviderConfig,
+} from '../types/wails';
+import ProviderConfigForm from './ProviderConfigForm.vue';
+import AppConfirmDialog from './AppConfirmDialog.vue';
 
-const props = defineProps<{ providers: ProviderInfo[], refresh?: () => void, hideDiscovered?: boolean }>()
+// ── Confirm dialog state ───────────────────────────────────────────────
 
-const configs = ref<ProviderConfig[]>([])
-const showForm = ref(false)
-const editingConfig = ref<ProviderConfig | null>(null)
+const confirmDialog = reactive({
+  open: false,
+  title: '',
+  message: '',
+  onConfirm: () => {},
+});
+
+function showConfirm(title: string, message: string, onConfirm: () => void) {
+  confirmDialog.title = title;
+  confirmDialog.message = message;
+  confirmDialog.onConfirm = onConfirm;
+  confirmDialog.open = true;
+}
+
+const props = defineProps<{
+  providers: ProviderInfo[];
+  refresh?: () => void;
+  hideDiscovered?: boolean;
+  modelStates?: ProviderModelState[];
+}>();
+
+function stateFor(p: ProviderInfo): ProviderModelState | undefined {
+  if (!props.modelStates?.length) return undefined;
+  const n = p.name.toLowerCase().replace(/[\s-]/g, '');
+  return props.modelStates.find((s) => {
+    const sp = s.provider.toLowerCase().replace(/[\s-]/g, '');
+    if (sp === 'lmstudio') return n.includes('lmstudio') || n.includes('lm');
+    if (sp === 'ollama') return n.includes('ollama');
+    if (sp === 'antigravity') return n.includes('antigravity');
+    return n.includes(sp) || sp.includes(n);
+  });
+}
+
+const configs = ref<ProviderConfig[]>([]);
+const showForm = ref(false);
+const editingConfig = ref<ProviderConfig | null>(null);
+const toast = useToast();
 
 async function loadConfigs() {
   try {
-    configs.value = await listProviderConfigs()
-  } catch (e) { console.warn('ProviderStatus: loadConfigs failed:', e) }
+    configs.value = await listProviderConfigs();
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Load Configs Failed', detail: String(e), life: 5000 });
+  }
 }
 
-onMounted(loadConfigs)
+onMounted(loadConfigs);
 
 function openAddForm() {
-  editingConfig.value = null
-  showForm.value = true
+  editingConfig.value = null;
+  showForm.value = true;
 }
 
 function openEditForm(cfg: ProviderConfig) {
-  editingConfig.value = cfg
-  showForm.value = true
+  editingConfig.value = cfg;
+  showForm.value = true;
 }
 
 function closeForm() {
-  showForm.value = false
-  editingConfig.value = null
+  showForm.value = false;
+  editingConfig.value = null;
 }
 
 async function handleSave(cfg: Partial<ProviderConfig>) {
   if (editingConfig.value) {
-    await updateProviderConfig({ ...editingConfig.value, ...cfg } as ProviderConfig)
+    await updateProviderConfig({ ...editingConfig.value, ...cfg } as ProviderConfig);
   } else {
-    await addProviderConfig(cfg)
+    await addProviderConfig(cfg);
   }
-  closeForm()
-  await loadConfigs()
-  await props.refresh?.()
+  closeForm();
+  await loadConfigs();
+  await props.refresh?.();
 }
 
 async function handleDelete(cfg: ProviderConfig) {
-  if (!window.confirm(`Delete provider "${cfg.name}"?`)) return
-  await removeProviderConfig(cfg.id)
-  await loadConfigs()
-  props.refresh?.()
+  showConfirm(
+    `Delete provider "${cfg.name}"?`,
+    'This will remove the provider configuration permanently.',
+    async () => {
+      await removeProviderConfig(cfg.id);
+      await loadConfigs();
+      props.refresh?.();
+    },
+  );
 }
 </script>
-

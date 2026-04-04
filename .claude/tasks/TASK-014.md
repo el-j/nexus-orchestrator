@@ -3,7 +3,8 @@ id: TASK-014
 title: Retry limits + exponential backoff + ProjectPath normalization + queue cap
 role: backend
 planId: PLAN-002
-status: todo
+status: done
+completedAt: 2026-03-14T18:30:00.000Z
 dependencies: []
 createdAt: 2026-03-09T12:00:00.000Z
 ---
@@ -11,6 +12,7 @@ createdAt: 2026-03-09T12:00:00.000Z
 ## Context
 
 Four MEDIUM/HIGH failsafe issues degrade reliability under load or LLM unavailability:
+
 - **D2 (HIGH):** When the LLM is unavailable, the task is immediately re-queued and retried every 2 seconds forever — infinite tight loop, no backoff.
 - **B3 (MEDIUM):** The in-memory queue has no size cap — malicious or buggy clients can exhaust memory via HTTP/MCP.
 - **B5/F1 (MEDIUM):** `task.ProjectPath` is stored and used as a session key without `filepath.Clean()` — `/proj/a` and `/proj/a/` resolve to different sessions.
@@ -33,6 +35,7 @@ Four MEDIUM/HIGH failsafe issues degrade reliability under load or LLM unavailab
    - Update all `INSERT`, `SELECT`, and `UPDATE` queries to include `retry_count`.
 
 3. **Implement retry limit with exponential backoff** in `processNext()`:
+
    ```go
    const maxRetries = 5
 
@@ -56,9 +59,11 @@ Four MEDIUM/HIGH failsafe issues degrade reliability under load or LLM unavailab
    o.queue = append(o.queue, task)
    o.mu.Unlock()
    ```
+
    Update `repo.Save`/`UpdateStatus` (or add `repo.UpdateRetryCount`) so `retry_count` is persisted before re-queuing.
 
 4. **Add queue size cap** controlled by env var `NEXUS_MAX_QUEUE` (default 500):
+
    ```go
    func maxQueueSize() int {
        if s := os.Getenv("NEXUS_MAX_QUEUE"); s != "" {
@@ -69,12 +74,15 @@ Four MEDIUM/HIGH failsafe issues degrade reliability under load or LLM unavailab
        return 500
    }
    ```
+
    In `SubmitTask`, after acquiring `o.mu.Lock()` check `len(o.queue) >= maxQueueSize()` and return `fmt.Errorf("orchestrator: submit task: queue at capacity (%d)", maxQueueSize())`.
 
 5. **Normalize ProjectPath** in `SubmitTask` using `filepath.Clean`:
+
    ```go
    task.ProjectPath = filepath.Clean(task.ProjectPath)
    ```
+
    Add this line immediately after the task struct is populated, before `repo.Save`.
 
 6. **Fix the race window in `SubmitTask`** — move `repo.Save` inside the mutex:

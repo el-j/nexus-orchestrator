@@ -3,10 +3,12 @@
 package repo_sqlite
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"path/filepath"
 	"strings"
 	"time"
@@ -87,6 +89,19 @@ func migrate(db *sql.DB) error {
 			created_at       DATETIME NOT NULL,
 			updated_at       DATETIME NOT NULL
 		);
+		CREATE TABLE IF NOT EXISTS discovered_agents (
+			id               TEXT PRIMARY KEY,
+			kind             TEXT NOT NULL,
+			name             TEXT NOT NULL,
+			detection_method TEXT NOT NULL DEFAULT '',
+			process_name     TEXT NOT NULL DEFAULT '',
+			cli_path         TEXT NOT NULL DEFAULT '',
+			config_path      TEXT NOT NULL DEFAULT '',
+			mcp_endpoint     TEXT NOT NULL DEFAULT '',
+			is_running       INTEGER NOT NULL DEFAULT 0,
+			last_seen        DATETIME NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_discovered_agents_kind ON discovered_agents(kind);
 	`)
 	if err != nil {
 		return fmt.Errorf("sqlite: migrate: %w", err)
@@ -107,8 +122,85 @@ func migrate(db *sql.DB) error {
 		{"priority", "INTEGER NOT NULL DEFAULT 2"},
 		{"tags", "TEXT NOT NULL DEFAULT '[]'"},
 		{"retry_count", "INTEGER NOT NULL DEFAULT 0"},
+		{"ai_session_id", "TEXT NOT NULL DEFAULT ''"},
 	} {
 		_, _ = db.Exec(fmt.Sprintf("ALTER TABLE tasks ADD COLUMN %s %s", col.name, col.def))
+	}
+	for _, col := range []struct{ table, name, def string }{
+		{"ai_sessions", "delegated_to_nexus", "INTEGER NOT NULL DEFAULT 0"},
+		{"ai_sessions", "delegation_timestamp", "DATETIME"},
+		{"ai_sessions", "agent_capabilities", "TEXT NOT NULL DEFAULT '[]'"},
+		{"ai_sessions", "detection_method", "TEXT NOT NULL DEFAULT ''"},
+		{"ai_sessions", "model_id", "TEXT NOT NULL DEFAULT ''"},
+		{"ai_sessions", "current_activity", "TEXT NOT NULL DEFAULT ''"},
+		{"ai_sessions", "message_count", "INTEGER NOT NULL DEFAULT 0"},
+		{"ai_sessions", "tokens_used", "INTEGER NOT NULL DEFAULT 0"},
+		{"ai_sessions", "last_message", "TEXT NOT NULL DEFAULT ''"},
+	} {
+		_, _ = db.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", col.table, col.name, col.def))
+	}
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS discovered_plan_files (
+			id            TEXT    PRIMARY KEY,
+			path          TEXT    NOT NULL UNIQUE,
+			kind          TEXT    NOT NULL,
+			format        TEXT    NOT NULL,
+			project_path  TEXT    NOT NULL,
+			summary       TEXT,
+			last_modified INTEGER NOT NULL,
+			is_active     INTEGER NOT NULL DEFAULT 0,
+			updated_at    INTEGER NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_discovered_plan_files_project_path ON discovered_plan_files(project_path);
+	`)
+	if err != nil {
+		return fmt.Errorf("sqlite: migrate discovered_plan_files: %w", err)
+	}
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS ai_activities (
+			id            TEXT PRIMARY KEY,
+			session_id    TEXT NOT NULL DEFAULT '',
+			agent_name    TEXT NOT NULL,
+			activity_type TEXT NOT NULL,
+			summary       TEXT NOT NULL DEFAULT '',
+			project_path  TEXT NOT NULL DEFAULT '',
+			model         TEXT NOT NULL DEFAULT '',
+			tokens_in     INTEGER NOT NULL DEFAULT 0,
+			tokens_out    INTEGER NOT NULL DEFAULT 0,
+			timestamp     DATETIME NOT NULL,
+			metadata      TEXT NOT NULL DEFAULT '{}'
+		);
+		CREATE INDEX IF NOT EXISTS idx_ai_activities_timestamp ON ai_activities(timestamp);
+		CREATE INDEX IF NOT EXISTS idx_ai_activities_agent ON ai_activities(agent_name);
+		CREATE INDEX IF NOT EXISTS idx_ai_activities_project ON ai_activities(project_path);
+	`)
+	if err != nil {
+		return fmt.Errorf("sqlite: migrate ai_activities: %w", err)
+	}
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS model_capabilities (
+			model_id               TEXT    PRIMARY KEY,
+			context_window         INTEGER NOT NULL DEFAULT 0,
+			recommended_max_output INTEGER NOT NULL DEFAULT 0,
+			notes                  TEXT    NOT NULL DEFAULT '',
+			built_in               INTEGER NOT NULL DEFAULT 0,
+			created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("sqlite: migrate model_capabilities: %w", err)
+	}
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS runtime_config (
+			id         INTEGER PRIMARY KEY CHECK(id = 1),
+			json       TEXT    NOT NULL DEFAULT '{}',
+			updated_at INTEGER NOT NULL
+		);
+		INSERT OR IGNORE INTO runtime_config (id, updated_at) VALUES (1, CAST(strftime('%s','now') AS INTEGER) * 1000);
+	`)
+	if err != nil {
+		return fmt.Errorf("sqlite: migrate runtime_config: %w", err)
 	}
 	return nil
 }
@@ -127,13 +219,13 @@ func (r *Repository) Save(t domain.Task) error {
 		}
 	}
 	_, err = r.db.Exec(
-		`INSERT INTO tasks (id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO tasks (id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		t.ID, t.ProjectPath, t.TargetFile, t.Instruction,
 		string(ctxJSON), string(t.Status),
 		t.CreatedAt.UnixMilli(), t.UpdatedAt.UnixMilli(),
 		t.Logs, t.ModelID, t.ProviderHint, string(t.Command),
-		t.ProviderName, t.Priority, string(tagsJSON), t.RetryCount,
+		t.ProviderName, t.Priority, string(tagsJSON), t.RetryCount, t.AISessionID,
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: insert task: %w", err)
@@ -144,7 +236,7 @@ func (r *Repository) Save(t domain.Task) error {
 // GetByID retrieves a single task by its ID.
 // Returns domain.ErrNotFound when no row matches.
 func (r *Repository) GetByID(id string) (domain.Task, error) {
-	row := r.db.QueryRow(`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count FROM tasks WHERE id = ?`, id)
+	row := r.db.QueryRow(`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id FROM tasks WHERE id = ?`, id)
 	t, err := scanTask(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Task{}, fmt.Errorf("sqlite: get task: %w", domain.ErrNotFound)
@@ -155,7 +247,7 @@ func (r *Repository) GetByID(id string) (domain.Task, error) {
 // GetPending returns all tasks in QUEUED or PROCESSING state.
 func (r *Repository) GetPending() ([]domain.Task, error) {
 	rows, err := r.db.Query(
-		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count
+		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id
 		 FROM tasks WHERE status IN ('QUEUED','PROCESSING') ORDER BY created_at ASC`,
 	)
 	if err != nil {
@@ -163,7 +255,7 @@ func (r *Repository) GetPending() ([]domain.Task, error) {
 	}
 	defer rows.Close()
 
-	var tasks []domain.Task
+	tasks := []domain.Task{}
 	for rows.Next() {
 		t, err := scanTask(rows)
 		if err != nil {
@@ -172,6 +264,50 @@ func (r *Repository) GetPending() ([]domain.Task, error) {
 		tasks = append(tasks, t)
 	}
 	return tasks, rows.Err()
+}
+
+// ClaimNextQueued atomically claims the oldest queued task and marks it PROCESSING.
+func (r *Repository) ClaimNextQueued() (domain.Task, error) {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("sqlite: begin claim next queued: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	row := tx.QueryRow(
+		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id
+		 FROM tasks WHERE status = 'QUEUED' ORDER BY created_at ASC LIMIT 1`,
+	)
+	task, err := scanTask(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.Task{}, fmt.Errorf("sqlite: claim next queued: %w", domain.ErrNotFound)
+		}
+		return domain.Task{}, fmt.Errorf("sqlite: claim next queued: %w", err)
+	}
+
+	res, err := tx.Exec(
+		`UPDATE tasks SET status = ?, updated_at = ? WHERE id = ? AND status = 'QUEUED'`,
+		string(domain.StatusProcessing), time.Now().UnixMilli(), task.ID,
+	)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("sqlite: claim next queued: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("sqlite: claim next queued rows affected: %w", err)
+	}
+	if n == 0 {
+		return domain.Task{}, fmt.Errorf("sqlite: claim next queued: %w", domain.ErrNotFound)
+	}
+	if err := tx.Commit(); err != nil {
+		return domain.Task{}, fmt.Errorf("sqlite: claim next queued commit: %w", err)
+	}
+	task.Status = domain.StatusProcessing
+	task.UpdatedAt = time.Now()
+	return task, nil
 }
 
 // UpdateStatus changes the status of a task identified by id.
@@ -193,6 +329,22 @@ func (r *Repository) UpdateStatus(id string, status domain.TaskStatus) error {
 	return nil
 }
 
+// UpdateStatusIfCurrent changes the status only when the current status matches from.
+func (r *Repository) UpdateStatusIfCurrent(id string, from, to domain.TaskStatus) (bool, error) {
+	res, err := r.db.Exec(
+		`UPDATE tasks SET status = ?, updated_at = ? WHERE id = ? AND status = ?`,
+		string(to), time.Now().UnixMilli(), id, string(from),
+	)
+	if err != nil {
+		return false, fmt.Errorf("sqlite: update status if current: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("sqlite: update status if current rows affected: %w", err)
+	}
+	return n == 1, nil
+}
+
 // UpdateLogs replaces the logs field for the task identified by id.
 func (r *Repository) UpdateLogs(id, logs string) error {
 	res, err := r.db.Exec(
@@ -212,11 +364,33 @@ func (r *Repository) UpdateLogs(id, logs string) error {
 	return nil
 }
 
+// GetAll returns every task, ordered by creation time descending.
+func (r *Repository) GetAll() ([]domain.Task, error) {
+	rows, err := r.db.Query(
+		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id
+		 FROM tasks ORDER BY created_at DESC`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: query all tasks: %w", err)
+	}
+	defer rows.Close()
+
+	tasks := []domain.Task{}
+	for rows.Next() {
+		t, err := scanTask(rows)
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, t)
+	}
+	return tasks, rows.Err()
+}
+
 // GetByProjectPath returns all tasks for the given project path, ordered by creation time descending.
 func (r *Repository) GetByProjectPath(projectPath string) ([]domain.Task, error) {
 	projectPath = filepath.Clean(projectPath)
 	rows, err := r.db.Query(
-		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count
+		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id
 		 FROM tasks WHERE project_path = ? ORDER BY created_at DESC`,
 		projectPath,
 	)
@@ -225,7 +399,7 @@ func (r *Repository) GetByProjectPath(projectPath string) ([]domain.Task, error)
 	}
 	defer rows.Close()
 
-	var tasks []domain.Task
+	tasks := []domain.Task{}
 	for rows.Next() {
 		t, err := scanTask(rows)
 		if err != nil {
@@ -251,7 +425,7 @@ func (r *Repository) GetByProjectPathAndStatus(projectPath string, statuses ...d
 		args = append(args, string(s))
 	}
 	query := fmt.Sprintf(
-		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count
+		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id
 		 FROM tasks WHERE project_path = ? AND status IN (%s) ORDER BY priority ASC, created_at ASC`,
 		strings.Join(placeholders, ","),
 	)
@@ -282,8 +456,8 @@ func (r *Repository) Update(t domain.Task) error {
 		}
 	}
 	res, err := r.db.Exec(
-		`UPDATE tasks SET instruction=?, target_file=?, provider_name=?, priority=?, tags=?, status=?, retry_count=?, updated_at=? WHERE id=?`,
-		t.Instruction, t.TargetFile, t.ProviderName, t.Priority, string(tagsJSON), string(t.Status), t.RetryCount, t.UpdatedAt.UnixMilli(), t.ID,
+		`UPDATE tasks SET instruction=?, target_file=?, provider_name=?, priority=?, tags=?, status=?, retry_count=?, ai_session_id=?, updated_at=? WHERE id=?`,
+		t.Instruction, t.TargetFile, t.ProviderName, t.Priority, string(tagsJSON), string(t.Status), t.RetryCount, t.AISessionID, t.UpdatedAt.UnixMilli(), t.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: update task: %w", err)
@@ -301,7 +475,53 @@ func (r *Repository) Update(t domain.Task) error {
 // Close releases the underlying database connection.
 func (r *Repository) Close() error { return r.db.Close() }
 
-// scanner is satisfied by both *sql.Row and *sql.Rows.
+// GetTasksBySessionID returns all tasks claimed by the given AI session, ordered by creation time descending.
+func (r *Repository) GetTasksBySessionID(sessionID string) ([]domain.Task, error) {
+	rows, err := r.db.Query(
+		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id
+		 FROM tasks WHERE ai_session_id = ? ORDER BY created_at DESC`,
+		sessionID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: query tasks by session id: %w", err)
+	}
+	defer rows.Close()
+
+	tasks := []domain.Task{}
+	for rows.Next() {
+		t, err := scanTask(rows)
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, t)
+	}
+	return tasks, rows.Err()
+}
+
+// GetStaleProcessing returns tasks in PROCESSING status that haven't been updated for the threshold duration.
+func (r *Repository) GetStaleProcessing(ctx context.Context, threshold time.Duration) ([]domain.Task, error) {
+	cutoff := time.Now().Add(-threshold).UnixMilli()
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id
+		 FROM tasks WHERE status = 'PROCESSING' AND updated_at < ? ORDER BY updated_at ASC`,
+		cutoff,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: query stale processing: %w", err)
+	}
+	defer rows.Close()
+
+	tasks := []domain.Task{}
+	for rows.Next() {
+		t, err := scanTask(rows)
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, t)
+	}
+	return tasks, rows.Err()
+}
+
 type scanner interface {
 	Scan(dest ...interface{}) error
 }
@@ -317,7 +537,7 @@ func scanTask(s scanner) (domain.Task, error) {
 	if err := s.Scan(
 		&t.ID, &t.ProjectPath, &t.TargetFile, &t.Instruction,
 		&ctxJSON, &status, &createdMS, &updatedMS, &t.Logs,
-		&t.ModelID, &t.ProviderHint, &command, &t.ProviderName, &t.Priority, &tagsJSON, &t.RetryCount,
+		&t.ModelID, &t.ProviderHint, &command, &t.ProviderName, &t.Priority, &tagsJSON, &t.RetryCount, &t.AISessionID,
 	); err != nil {
 		return t, fmt.Errorf("sqlite: scan task: %w", err)
 	}
@@ -331,7 +551,9 @@ func scanTask(s scanner) (domain.Task, error) {
 		return t, fmt.Errorf("sqlite: unmarshal context files: %w", err)
 	}
 	if tagsJSON != "" && tagsJSON != "[]" {
-		_ = json.Unmarshal([]byte(tagsJSON), &t.Tags) // treat parse errors as empty slice
+		if err := json.Unmarshal([]byte(tagsJSON), &t.Tags); err != nil {
+			log.Printf("repo_sqlite: task %s: unmarshal tags: %v", t.ID, err)
+		}
 	}
 	return t, nil
 }

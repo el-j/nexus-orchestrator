@@ -349,10 +349,10 @@ const ports = [
 ]
 
 const inboundAdapters = [
-  { adapter: 'HTTP API', pkg: 'httpapi', proto: 'REST + SSE', port: ':9999' },
-  { adapter: 'MCP Server', pkg: 'mcp', proto: 'JSON-RPC 2.0', port: ':9998' },
+  { adapter: 'HTTP API', pkg: 'httpapi', proto: 'REST + SSE', port: ':63987' },
+  { adapter: 'MCP Server', pkg: 'mcp', proto: 'JSON-RPC 2.0', port: ':63988' },
   { adapter: 'CLI Client', pkg: 'cli', proto: 'HTTP → daemon', port: '—' },
-  { adapter: 'Wails GUI', pkg: 'wailsbind', proto: 'Native + embedded HTTP', port: ':9999' },
+  { adapter: 'Wails GUI', pkg: 'wailsbind', proto: 'Native + embedded HTTP', port: ':63987' },
   { adapter: 'System Tray', pkg: 'tray', proto: 'OS native', port: '—' },
 ]
 

@@ -1,63 +1,98 @@
-import { ref, onMounted, onUnmounted } from 'vue'
-import type { LogEntry } from '../types/domain'
-import { resolveServerUrl } from './useServerUrl'
+import { ref, onMounted, onUnmounted, watch } from 'vue';
+import type { LogEntry } from '../types/domain';
+import { resolveServerUrl } from './useServerUrl';
+import { useGlobalSSE } from './useGlobalSSE';
 
-const MAX_LOGS = 2000
+const MAX_LOGS = 2000;
+const POLL_INTERVAL_MS = 3_000;
+const DISCONNECTED_WARNING =
+  'Realtime log stream disconnected. Polling fallback active while reconnecting.';
 
 export function useLogs() {
-  const logs = ref<LogEntry[]>([])
-  const connected = ref(false)
-  let es: EventSource | null = null
+  const logs = ref<LogEntry[]>([]);
+  const error = ref<string | null>(null);
+  let pollTimer: ReturnType<typeof setInterval> | null = null;
 
-  async function fetchInitial() {
-    try {
-      const baseUrl = await resolveServerUrl()
-      const res = await fetch(`${baseUrl}/api/logs`)
-      if (res.ok) {
-        const data: LogEntry[] = await res.json()
-        logs.value = data
-      }
-    } catch (err) {
-      // Daemon not running yet — non-fatal at startup.
-      console.warn('useLogs: fetchInitial failed:', err)
+  const { connected, on, off } = useGlobalSSE();
+
+  function append(entry: LogEntry) {
+    logs.value.push(entry);
+    if (logs.value.length > MAX_LOGS) {
+      logs.value.splice(0, logs.value.length - MAX_LOGS);
     }
   }
 
-  async function connect() {
+  function handleLogEvent(data: { type: string; [key: string]: unknown }) {
+    if (data.type !== 'log') return;
+    const entry = {
+      timestamp: data.timestamp,
+      level: data.level,
+      source: data.source,
+      message: data.message,
+    } as LogEntry;
+    append(entry);
+  }
+
+  async function fetchLogs() {
     try {
-      const baseUrl = await resolveServerUrl()
-      es = new EventSource(`${baseUrl}/api/events`)
-      es.addEventListener('log', (event: MessageEvent) => {
-        try {
-          const entry: LogEntry = JSON.parse(event.data as string)
-          logs.value.push(entry)
-          if (logs.value.length > MAX_LOGS) {
-            logs.value.splice(0, logs.value.length - MAX_LOGS)
-          }
-        } catch (err) {
-          console.warn('useLogs: malformed log event:', err)
-        }
-      })
-      es.onopen = () => { connected.value = true }
-      es.onerror = () => { connected.value = false }
+      const baseUrl = await resolveServerUrl();
+      const res = await fetch(`${baseUrl}/api/logs`);
+      if (res.ok) {
+        const data: LogEntry[] = await res.json();
+        logs.value = data.slice(-MAX_LOGS);
+        error.value = connected.value ? null : DISCONNECTED_WARNING;
+      }
     } catch (err) {
-      console.warn('useLogs: connect failed, will retry on next mount:', err)
+      if (!connected.value) {
+        error.value = DISCONNECTED_WARNING;
+        return;
+      }
+      error.value = err instanceof Error ? err.message : 'Failed to load logs';
     }
+  }
+
+  function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(() => {
+      void fetchLogs();
+    }, POLL_INTERVAL_MS);
+  }
+
+  function stopPolling() {
+    if (!pollTimer) return;
+    clearInterval(pollTimer);
+    pollTimer = null;
   }
 
   function clear() {
-    logs.value = []
+    logs.value = [];
   }
 
+  watch(connected, (isConnected) => {
+    if (isConnected) {
+      error.value = null;
+      stopPolling();
+      void fetchLogs();
+      return;
+    }
+    error.value = DISCONNECTED_WARNING;
+    startPolling();
+    void fetchLogs();
+  });
+
   onMounted(() => {
-    void fetchInitial()
-    void connect()
-  })
+    on('log', handleLogEvent);
+    void fetchLogs();
+    if (!connected.value) {
+      error.value = DISCONNECTED_WARNING;
+      startPolling();
+    }
+  });
 
   onUnmounted(() => {
-    es?.close()
-    es = null
-  })
+    off('log', handleLogEvent);
+    stopPolling();
+  });
 
-  return { logs, connected, clear }
+  return { logs, connected, error, clear };
 }

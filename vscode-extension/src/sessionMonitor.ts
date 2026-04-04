@@ -3,25 +3,32 @@
  * registers it as an AISession with the nexusOrchestrator daemon.
  */
 
-import * as vscode from "vscode";
-import { NexusClient } from "./nexusClient";
+import * as vscode from 'vscode';
+import { NexusClient } from './nexusClient';
+import { getNexusActivityChannel, logNexusActivity } from './activityLog';
 
 export class SessionMonitor {
   private sessionId: string | undefined;
   private isReregistering = false;
+  private started = false;
   private heartbeatTimer: NodeJS.Timeout | undefined;
+  private claimTimer: NodeJS.Timeout | undefined;
   private modelChangeListener: vscode.Disposable | undefined;
   private readonly outputChannel: vscode.OutputChannel;
 
   constructor(
     private readonly client: NexusClient,
-    private readonly context: vscode.ExtensionContext
+    private readonly context: vscode.ExtensionContext,
   ) {
-    this.outputChannel = vscode.window.createOutputChannel('Nexus Orchestrator');
-    this.context.subscriptions.push(this.outputChannel);
+    this.outputChannel = getNexusActivityChannel();
   }
 
   async start(): Promise<void> {
+    if (this.started) {
+      return;
+    }
+    this.started = true;
+
     await this.detectAndRegister();
 
     // Retry if initial detection failed (Copilot may still be initializing)
@@ -29,7 +36,7 @@ export class SessionMonitor {
       const retryDelays = [2000, 5000, 10000];
       for (const delay of retryDelays) {
         if (this.sessionId) break;
-        await new Promise<void>(resolve => {
+        await new Promise<void>((resolve) => {
           const t = setTimeout(resolve, delay);
           // Allow early exit if extension disposes
           this.context.subscriptions.push({ dispose: () => clearTimeout(t) });
@@ -49,11 +56,22 @@ export class SessionMonitor {
     }
     // Heartbeat every 60s
     this.heartbeatTimer = setInterval(() => void this.heartbeat(), 60_000);
+    // Refresh queue state for display every 30s
+    this.claimTimer = setInterval(() => void this.refreshQueue(), 30_000);
   }
 
   async stop(): Promise<void> {
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = undefined;
+    }
+    if (this.claimTimer) {
+      clearInterval(this.claimTimer);
+      this.claimTimer = undefined;
+    }
+    if (this.modelChangeListener) {
+      this.modelChangeListener.dispose();
+      this.modelChangeListener = undefined;
     }
     if (this.sessionId) {
       try {
@@ -63,35 +81,36 @@ export class SessionMonitor {
       }
     }
     this.sessionId = undefined;
+    this.started = false;
   }
 
   private async detectAndRegister(): Promise<void> {
     try {
       // Check if Copilot is available
-      const models =
-        vscode.lm?.selectChatModels
-          ? await vscode.lm.selectChatModels({ vendor: "copilot" })
-          : [];
+      const models = vscode.lm?.selectChatModels
+        ? await vscode.lm.selectChatModels({ vendor: 'copilot' })
+        : [];
       if (models.length === 0) {
-        this.outputChannel.appendLine('[SessionMonitor] Copilot models not available yet — will retry');
+        logNexusActivity('copilot', 'models not available yet; waiting to register session');
         return; // Copilot not available
       }
 
-      const workspacePath =
-        vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "";
+      const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
       const externalId = `${vscode.env.machineId}:${workspacePath}`;
+      const modelId = models[0]?.id ?? models[0]?.name ?? '';
 
       const session = await this.client.registerSession({
-        agentName: "GitHub Copilot",
-        source: "vscode",
+        agentName: 'GitHub Copilot',
+        source: 'vscode',
         projectPath: workspacePath,
         externalId,
+        modelId,
       });
       this.sessionId = session.id;
-      this.outputChannel.appendLine(`[SessionMonitor] Copilot session registered: ${session.id}`);
-      await this.context.workspaceState.update("nexus.sessionId", session.id);
+      logNexusActivity('copilot', `session registered: ${session.id}`);
+      await this.context.workspaceState.update('nexus.sessionId', session.id);
     } catch (error) {
-      this.outputChannel.appendLine(`[SessionMonitor] Registration failed: ${error}`);
+      logNexusActivity('copilot', `registration failed: ${error}`);
     }
   }
 
@@ -104,7 +123,7 @@ export class SessionMonitor {
     } catch (error) {
       // If the session no longer exists on the server (e.g. cleaned up after
       // being idle), fall back to a full re-registration.
-      this.outputChannel.appendLine(`[SessionMonitor] Heartbeat failed (${error}), re-registering`);
+      logNexusActivity('copilot', `heartbeat failed (${error}); re-registering`);
       if (this.isReregistering) {
         return;
       }
@@ -115,6 +134,19 @@ export class SessionMonitor {
       } finally {
         this.isReregistering = false;
       }
+    }
+  }
+
+  /** Reads queue state for display purposes only. Does not claim tasks. */
+  private async refreshQueue(): Promise<void> {
+    if (!this.sessionId) return;
+    try {
+      const tasks = await this.client.getTasks();
+      const queued = tasks.filter((t) => t.status === 'QUEUED').length;
+      const processing = tasks.filter((t) => t.status === 'PROCESSING').length;
+      logNexusActivity('copilot', `queue: ${queued} queued, ${processing} processing`);
+    } catch {
+      // Daemon may be unreachable — skip silently
     }
   }
 }

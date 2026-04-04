@@ -39,15 +39,23 @@ type TaskRepository interface {
 	Save(t domain.Task) error
 	GetByID(id string) (domain.Task, error)
 	GetPending() ([]domain.Task, error)
+	ClaimNextQueued() (domain.Task, error)
 	// GetByProjectPath returns all tasks for the given project path.
 	GetByProjectPath(projectPath string) ([]domain.Task, error)
 	UpdateStatus(id string, status domain.TaskStatus) error
+	UpdateStatusIfCurrent(id string, from, to domain.TaskStatus) (bool, error)
 	// UpdateLogs replaces the Logs field on the task identified by id.
 	UpdateLogs(id, logs string) error
+	// GetAll returns every task, ordered by creation time descending.
+	GetAll() ([]domain.Task, error)
 	// GetByProjectPathAndStatus returns tasks for a project filtered by one or more statuses.
 	GetByProjectPathAndStatus(projectPath string, statuses ...domain.TaskStatus) ([]domain.Task, error)
 	// Update persists changes to an existing task's mutable fields.
 	Update(t domain.Task) error
+	// GetTasksBySessionID returns all tasks claimed by the given AI session.
+	GetTasksBySessionID(sessionID string) ([]domain.Task, error)
+	// GetStaleProcessing returns tasks in PROCESSING state longer than threshold.
+	GetStaleProcessing(ctx context.Context, threshold time.Duration) ([]domain.Task, error)
 }
 
 // FileWriter is the port for reading context from disk and writing generated code back.
@@ -60,12 +68,19 @@ type FileWriter interface {
 
 // ProviderInfo summarises the liveness status of a single LLM backend.
 type ProviderInfo struct {
-	Name        string   `json:"name"`
-	Active      bool     `json:"active"`
-	ActiveModel string   `json:"activeModel,omitempty"`
-	Models      []string `json:"models,omitempty"`
-	BaseURL     string   `json:"baseURL,omitempty"`
-	Error       string   `json:"error,omitempty"`
+	Name             string    `json:"name"`
+	Active           bool      `json:"active"`
+	ActiveModel      string    `json:"activeModel,omitempty"`
+	Models           []string  `json:"models,omitempty"`
+	BaseURL          string    `json:"baseURL,omitempty"`
+	Error            string    `json:"error,omitempty"`
+	ContextLimit     int       `json:"contextLimit,omitempty"`
+	TimeoutSec       int       `json:"timeoutSec,omitempty"`
+	LastChecked      time.Time `json:"lastChecked"`
+	ConsecutiveFails int       `json:"consecutiveFails,omitempty"`
+	LatencyMs        int64     `json:"latencyMs,omitempty"`
+	RateLimited      bool      `json:"rateLimited,omitempty"`
+	LastError        string    `json:"lastError,omitempty"`
 }
 
 // SessionRepository is the port for persisting per-project conversation history.
@@ -79,14 +94,36 @@ type SessionRepository interface {
 	AppendMessage(projectPath string, msg domain.Message) error
 }
 
+// RuntimeConfigRepository persists runtime-managed configuration.
+type RuntimeConfigRepository interface {
+	// GetRuntimeConfig returns the persisted runtime config or domain.ErrNotFound.
+	GetRuntimeConfig(ctx context.Context) (domain.RuntimeConfig, error)
+	// SaveRuntimeConfig overwrites the persisted runtime config.
+	SaveRuntimeConfig(ctx context.Context, cfg domain.RuntimeConfig) error
+}
+
+// PromoteResult is returned by PromoteTask.
+type PromoteResult struct {
+	Promoted bool   `json:"promoted"`
+	Warning  string `json:"warning,omitempty"`
+}
+
 // Orchestrator is the primary inbound port that the UI, CLI, and HTTP API call.
 type Orchestrator interface {
 	SubmitTask(task domain.Task) (string, error)
 	// GetTask returns the task with the given ID, or domain.ErrNotFound.
 	GetTask(id string) (domain.Task, error)
 	GetQueue() ([]domain.Task, error)
+	// GetAllTasks returns every task regardless of status.
+	GetAllTasks() ([]domain.Task, error)
 	// GetProviders returns a snapshot of all registered LLM backends and their liveness.
 	GetProviders() ([]ProviderInfo, error)
+	// GetRuntimeConfig returns the current effective runtime config. Tokens are
+	// included for internal use; adapters should mask secrets in responses.
+	GetRuntimeConfig(ctx context.Context) (domain.RuntimeConfig, error)
+	// UpdateRuntimeConfig applies a partial update to the runtime config and
+	// persists it when a repository is configured.
+	UpdateRuntimeConfig(ctx context.Context, update domain.RuntimeConfigUpdate) (domain.RuntimeConfig, error)
 	CancelTask(id string) error
 	// RegisterCloudProvider dynamically adds a new LLM backend using the supplied
 	// configuration. Returns an error if the kind is unknown or the name is already
@@ -121,7 +158,7 @@ type Orchestrator interface {
 	// GetBacklog returns DRAFT and BACKLOG tasks for the given project, ordered by priority then creation time.
 	GetBacklog(projectPath string) ([]domain.Task, error)
 	// PromoteTask transitions a DRAFT or BACKLOG task to QUEUED and enqueues it.
-	PromoteTask(id string) error
+	PromoteTask(id string) (PromoteResult, error)
 	// UpdateTask updates mutable fields (instruction, priority, providerName, tags, status) on an existing task.
 	UpdateTask(id string, updates domain.Task) (domain.Task, error)
 	// RegisterAISession registers a new external AI agent session and persists it.
@@ -132,8 +169,31 @@ type Orchestrator interface {
 	ListAISessions(ctx context.Context) ([]domain.AISession, error)
 	// DeregisterAISession marks the session identified by id as disconnected.
 	DeregisterAISession(ctx context.Context, id string) error
+	// TerminateAISession attempts to gracefully shut down or force kill the
+	// external agent process associated with the given session ID.
+	TerminateAISession(ctx context.Context, id string, force bool) error
 	// HeartbeatAISession refreshes the last-activity timestamp of a session.
 	HeartbeatAISession(ctx context.Context, id string) error
+	// ClaimTask assigns a QUEUED task to the given AI session, transitioning it to PROCESSING.
+	// Returns domain.ErrNotFound if the task or session does not exist.
+	ClaimTask(ctx context.Context, taskID string, sessionID string) (domain.Task, error)
+	// UpdateTaskStatus allows an external AI session to report task completion or failure.
+	// Only the session that claimed the task (matching AISessionID) may update its status.
+	UpdateTaskStatus(ctx context.Context, taskID string, sessionID string, status domain.TaskStatus, logs string) (domain.Task, error)
+	// HeartbeatTask keeps a PROCESSING task alive, preventing the watchdog from failing it.
+	HeartbeatTask(ctx context.Context, taskID string, sessionID string) error
+	// PurgeDisconnectedSessions deletes all AI sessions with status "disconnected"
+	// that have been inactive for more than 2 hours. Returns the count deleted.
+	PurgeDisconnectedSessions(ctx context.Context) (int, error)
+	// GetDiscoveredAgents returns agents detected by the last AgentScanner run,
+	// triggering an on-demand scan if the cache is older than 30 seconds.
+	GetDiscoveredAgents(ctx context.Context) ([]domain.DiscoveredAgent, error)
+	// DelegateToNexus marks the AISession as delegated to the orchestrator queue
+	// and returns a canonical delegation instruction string for the caller to deliver
+	// to the external agent. Returns domain.ErrNotFound if sessionID does not exist.
+	DelegateToNexus(ctx context.Context, sessionID string) (string, error)
+	// GetDiscoveredPlanFiles returns plan/task/orchestration files found near projectPath.
+	GetDiscoveredPlanFiles(ctx context.Context, projectPath string) ([]domain.DiscoveredPlanFile, error)
 }
 
 // EventType identifies a task lifecycle event.
@@ -171,6 +231,14 @@ type SystemScanner interface {
 	Scan(ctx context.Context) ([]domain.DiscoveredProvider, error)
 }
 
+// AgentScanner scans the local system for running AI agent tools.
+// Distinct from SystemScanner which probes LLM server endpoints.
+type AgentScanner interface {
+	ScanAgents(ctx context.Context) ([]domain.DiscoveredAgent, error)
+	// ScanPlanFiles scans the provided root directories for plan/task/orchestration files.
+	ScanPlanFiles(ctx context.Context, rootPaths []string) ([]domain.DiscoveredPlanFile, error)
+}
+
 // ProviderConfigRepository is the outbound port for persisting and querying
 // provider configuration records across restarts.
 type ProviderConfigRepository interface {
@@ -190,10 +258,53 @@ type AISessionRepository interface {
 	ListAISessions(ctx context.Context) ([]domain.AISession, error)
 	UpdateAISessionStatus(ctx context.Context, id string, status domain.AISessionStatus, lastActivity time.Time) error
 	DeleteAISession(ctx context.Context, id string) error
+	// AppendRoutedTaskID adds a task ID to the session's routed task list (no duplicates).
+	AppendRoutedTaskID(ctx context.Context, sessionID string, taskID string) error
+	// PurgeDisconnected deletes all sessions with status "disconnected" whose
+	// last_activity is older than olderThan. Returns the number of rows deleted.
+	PurgeDisconnected(ctx context.Context, olderThan time.Duration) (int, error)
 }
 
 // AISessionMonitor is the optional inbound port for push-based session discovery adapters.
 type AISessionMonitor interface {
 	RegisterSession(s domain.AISession) error
 	ListActive() ([]domain.AISession, error)
+}
+
+// DiscoveredPlanFileRepo is the outbound port for persisting and querying discovered plan files.
+type DiscoveredPlanFileRepo interface {
+	UpsertPlanFile(ctx context.Context, f domain.DiscoveredPlanFile) error
+	ListPlanFiles(ctx context.Context, projectPath string) ([]domain.DiscoveredPlanFile, error)
+	DeleteStalePlanFiles(ctx context.Context, olderThan time.Duration) (int, error)
+}
+
+// ActivityReader is the outbound port for reading AI activity from a single
+// passive data source (filesystem logs, network probes, etc.).
+type ActivityReader interface {
+	// ReadActivities returns activities from this source since the given timestamp.
+	ReadActivities(ctx context.Context, since time.Time) ([]domain.AIActivity, error)
+	// SourceName identifies this reader (e.g. "claude-jsonl", "continue-sessions").
+	SourceName() string
+}
+
+// AIActivityRepository is the outbound port for persisting observed AI activities.
+type AIActivityRepository interface {
+	SaveActivity(ctx context.Context, a domain.AIActivity) error
+	ListActivities(ctx context.Context, f domain.ActivityFilter) ([]domain.AIActivity, error)
+	PurgeOlderThan(ctx context.Context, cutoff time.Time) (int64, error)
+}
+
+// ActivityBroadcaster is an outbound port for broadcasting activity events
+// to connected SSE clients.
+type ActivityBroadcaster interface {
+	BroadcastActivityEvent(a domain.AIActivity)
+}
+
+// ModelCapabilityRepository is the outbound port for persisting and querying
+// model capability profiles. Built-in profiles can be overridden by user-defined records.
+type ModelCapabilityRepository interface {
+	Save(p domain.ModelCapabilityProfile) error
+	GetByModelID(modelID string) (domain.ModelCapabilityProfile, error)
+	Delete(modelID string) error
+	GetAll() ([]domain.ModelCapabilityProfile, error)
 }

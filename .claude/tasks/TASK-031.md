@@ -29,7 +29,7 @@ Note: `fs_writeback` (TASK-027/028) does this automatically on the nexusOrchestr
    - `$ARGUMENTS` = optional planId filter (default: sync all tasks for current project)
    - Steps:
      a. Determine current workspace path.
-     b. Call `GET http://127.0.0.1:9999/api/tasks?sourceProjectPath=<encoded-workspace-path>` to find all tasks submitted from this project.
+     b. Call `GET http://127.0.0.1:63987/api/tasks?sourceProjectPath=<encoded-workspace-path>` to find all tasks submitted from this project.
      c. Filter response: tasks with `status: "completed"` or `status: "failed"` that have a matching `sourceTaskId` in the local orchestrator.json.
      d. For each matched remote task:
         - Read `GET /api/tasks/<nexusTaskId>` to get full task data.

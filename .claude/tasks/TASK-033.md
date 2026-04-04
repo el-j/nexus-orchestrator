@@ -46,7 +46,7 @@ func main() {
         project  = flag.String("project", "", "project root path (default: $PWD)")
         target   = flag.String("target", "", "relative target file path for output (e.g. internal/foo/bar.go)")
         context  = flag.String("context", "", "comma-separated relative file paths for context")
-        addr     = flag.String("addr", getEnv("NEXUS_ADDR", "http://127.0.0.1:9999"), "daemon base URL")
+        addr     = flag.String("addr", getEnv("NEXUS_ADDR", "http://127.0.0.1:63987"), "daemon base URL")
         wait     = flag.Bool("wait", false, "poll until task completes and print result")
         timeout  = flag.Duration("timeout", 5*time.Minute, "max wait time when --wait is set")
     )
@@ -185,7 +185,7 @@ nexus-submit \
   --context internal/adapters/inbound/httpapi/server.go,internal/core/ports/ports.go
 
 # Submit with custom daemon address
-NEXUS_ADDR=http://192.168.1.10:9999 nexus-submit --task-file .claude/tasks/TASK-013.md ...
+NEXUS_ADDR=http://192.168.1.10:63987 nexus-submit --task-file .claude/tasks/TASK-013.md ...
 ```
 
 ## Acceptance Criteria

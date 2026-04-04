@@ -5,6 +5,7 @@
 import * as path from "path";
 import * as vscode from "vscode";
 import { NexusClient, Provider, TaskStatus } from "../nexusClient";
+import { logNexusActivity, rememberQueuedTask, showNexusActivityLog } from "../activityLog";
 
 const TERMINAL_STATUSES: ReadonlySet<TaskStatus> = new Set<TaskStatus>([
   "COMPLETED",
@@ -36,13 +37,56 @@ interface ProviderPickItem extends vscode.QuickPickItem {
   modelId?: string;
 }
 
-function buildProviderItems(providers: Provider[]): ProviderPickItem[] {
+interface ContextPickItem extends vscode.QuickPickItem {
+  contextFiles: string[];
+}
+
+interface SubmissionDraft {
+  instruction: string;
+  projectPath: string;
+  targetFile?: string;
+  providerHint?: string;
+  modelId?: string;
+  contextFiles: string[];
+  routeLabel: string;
+}
+
+function shortTaskId(taskId: string): string {
+  return taskId.replace(/-/g, "").slice(0, 8);
+}
+
+function getWorkspaceDefaults(): { providerHint?: string; modelId?: string } {
+  const cfg = vscode.workspace.getConfiguration("nexus");
+  const providerHint = cfg.get<string>("defaultProvider")?.trim();
+  const modelId = cfg.get<string>("defaultModel")?.trim();
+  return {
+    providerHint: providerHint || undefined,
+    modelId: modelId || undefined,
+  };
+}
+
+function buildProviderItems(
+  providers: Provider[],
+  defaults: { providerHint?: string; modelId?: string }
+): ProviderPickItem[] {
   const items: ProviderPickItem[] = [
-    {
-      label: "Auto (let Nexus choose)",
-      description: "Use the default provider and model",
-    },
+    defaults.providerHint || defaults.modelId
+      ? {
+          label: `Workspace default (${defaults.providerHint ?? "Auto"}${defaults.modelId ? ` / ${defaults.modelId}` : ""})`,
+          description: "Use the workspace default route",
+          providerHint: defaults.providerHint,
+          modelId: defaults.modelId,
+        }
+      : {
+          label: "Auto (let Nexus choose)",
+          description: "Use the default provider and model",
+        },
   ];
+
+  items.push({
+    label: "Auto (let Nexus choose)",
+    description: "Use the daemon's current routing decision",
+  });
 
   for (const p of providers) {
     if (p.models && p.models.length > 0) {
@@ -57,85 +101,223 @@ function buildProviderItems(providers: Provider[]): ProviderPickItem[] {
   return items;
 }
 
-export async function submitTaskCommand(
-  client: NexusClient,
-  daemonUrl: string
-): Promise<void> {
-  // 1. Pre-fill instruction from selected text in the active editor
-  const editor = vscode.window.activeTextEditor;
-  const selectedText = editor?.document.getText(editor.selection).trim() ?? "";
-
-  // 2. Instruction input box
-  const instruction = await vscode.window.showInputBox({
-    prompt: "Task instruction",
-    value: selectedText,
-    ignoreFocusOut: true,
-  });
-  if (instruction === undefined) {
-    return; // user cancelled
+function workspaceRelativePath(wsRoot: string, filePath: string): string | undefined {
+  if (!filePath.startsWith(wsRoot)) {
+    return undefined;
   }
+  return path.relative(wsRoot, filePath);
+}
 
-  // 3. Require an open workspace folder for projectPath
-  const workspaceFolders = vscode.workspace.workspaceFolders;
-  if (!workspaceFolders || workspaceFolders.length === 0) {
-    vscode.window.showErrorMessage("Open a folder to submit a task");
-    return;
-  }
-  const wsRoot = workspaceFolders[0].uri.fsPath;
-  const projectPath = wsRoot;
+function collectWorkspacePaths(wsRoot: string, editor: vscode.TextEditor | undefined): ContextPickItem[] {
+  const items: ContextPickItem[] = [];
+  const activePath = editor ? workspaceRelativePath(wsRoot, editor.document.uri.fsPath) : undefined;
 
-  // 4. Target file — relative path from active editor, or ask
-  let targetFile: string | undefined;
-  if (editor) {
-    const filePath = editor.document.uri.fsPath;
-    targetFile = filePath.startsWith(wsRoot)
-      ? path.relative(wsRoot, filePath)
-      : filePath;
-  } else {
-    targetFile = await vscode.window.showInputBox({
-      prompt: "Target file path (relative to project root)",
-      ignoreFocusOut: true,
+  if (activePath) {
+    items.push({
+      label: "Active file",
+      description: activePath,
+      contextFiles: [activePath],
+      picked: true,
     });
-    if (targetFile === undefined) {
-      return; // user cancelled
+  }
+
+  const modifiedPaths = Array.from(
+    new Set(
+      vscode.workspace.textDocuments
+        .filter((doc) => doc.isDirty && doc.uri.scheme === "file")
+        .map((doc) => workspaceRelativePath(wsRoot, doc.uri.fsPath))
+        .filter((value): value is string => Boolean(value))
+    )
+  ).filter((candidate) => candidate !== activePath);
+
+  if (modifiedPaths.length > 0) {
+    items.push({
+      label: `Modified workspace files (${modifiedPaths.length})`,
+      description: modifiedPaths.join(", "),
+      contextFiles: modifiedPaths,
+    });
+  }
+
+  const openEditorPaths = Array.from(
+    new Set(
+      vscode.workspace.textDocuments
+        .filter((doc) => !doc.isUntitled && doc.uri.scheme === "file")
+        .map((doc) => workspaceRelativePath(wsRoot, doc.uri.fsPath))
+        .filter((value): value is string => Boolean(value))
+    )
+  ).filter((candidate) => candidate !== activePath && !modifiedPaths.includes(candidate));
+
+  if (openEditorPaths.length > 0) {
+    items.push({
+      label: `Open editors (${openEditorPaths.length})`,
+      description: openEditorPaths.join(", "),
+      contextFiles: openEditorPaths,
+    });
+  }
+
+  return items;
+}
+
+async function pickContextFiles(
+  wsRoot: string,
+  editor: vscode.TextEditor | undefined
+): Promise<string[] | undefined> {
+  const items = collectWorkspacePaths(wsRoot, editor);
+  if (items.length === 0) {
+    return [];
+  }
+
+  const picked = await vscode.window.showQuickPick(items, {
+    canPickMany: true,
+    ignoreFocusOut: true,
+    title: "Nexus: Choose Context To Queue",
+    placeHolder: "Select the workspace files Nexus should use as context",
+  });
+  if (!picked) {
+    return undefined;
+  }
+
+  return Array.from(new Set(picked.flatMap((item) => item.contextFiles)));
+}
+
+async function promptForTargetFile(
+  wsRoot: string,
+  editor: vscode.TextEditor | undefined,
+  mode: "manual" | "current-context"
+): Promise<string | undefined> {
+  if (editor) {
+    const relative = workspaceRelativePath(wsRoot, editor.document.uri.fsPath);
+    if (relative) {
+      return relative;
     }
   }
 
-  // 5. Provider / model quick-pick
+  return vscode.window.showInputBox({
+    prompt:
+      mode === "current-context"
+        ? "Target file path (relative to project root)"
+        : "Target file path (relative to project root)",
+    ignoreFocusOut: true,
+  });
+}
+
+async function selectRoute(client: NexusClient): Promise<ProviderPickItem | undefined> {
   let providers: Provider[] = [];
   try {
     providers = await client.getProviders();
   } catch {
-    // non-fatal — fall through with empty list so "Auto" is still offered
+    // non-fatal — fall through with workspace defaults and auto route
   }
 
-  const picked = await vscode.window.showQuickPick(buildProviderItems(providers), {
+  return vscode.window.showQuickPick(buildProviderItems(providers, getWorkspaceDefaults()), {
     placeHolder: "Select provider and model",
     ignoreFocusOut: true,
   });
-  if (picked === undefined) {
-    return; // user cancelled
+}
+
+async function collectSubmissionDraft(
+  client: NexusClient,
+  mode: "manual" | "current-context"
+): Promise<SubmissionDraft | undefined> {
+  const editor = vscode.window.activeTextEditor;
+  const instruction = await vscode.window.showInputBox({
+    prompt: mode === "current-context" ? "Task instruction" : "Task instruction",
+    placeHolder:
+      mode === "current-context"
+        ? "Describe what Nexus should change; context is selected next"
+        : "Describe the task to queue",
+    ignoreFocusOut: true,
+  });
+  if (instruction === undefined) {
+    return undefined;
   }
+
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (!workspaceFolders || workspaceFolders.length === 0) {
+    vscode.window.showErrorMessage("Open a folder to submit a task");
+    return undefined;
+  }
+
+  const wsRoot = workspaceFolders[0].uri.fsPath;
+  const targetFile = await promptForTargetFile(wsRoot, editor, mode);
+  if (targetFile === undefined) {
+    return undefined;
+  }
+
+  const contextFiles =
+    mode === "current-context" ? await pickContextFiles(wsRoot, editor) : [];
+  if (contextFiles === undefined) {
+    return undefined;
+  }
+
+  const pickedRoute = await selectRoute(client);
+  if (pickedRoute === undefined) {
+    return undefined;
+  }
+
+  return {
+    instruction,
+    projectPath: wsRoot,
+    targetFile,
+    providerHint: pickedRoute.providerHint,
+    modelId: pickedRoute.modelId,
+    contextFiles,
+    routeLabel: pickedRoute.label,
+  };
+}
+
+async function confirmDraft(draft: SubmissionDraft): Promise<boolean> {
+  const action = await vscode.window.showInformationMessage(
+    `Queue in Nexus? Target: ${draft.targetFile || "—"}; Context files: ${draft.contextFiles.length}; Route: ${draft.routeLabel}`,
+    { modal: true },
+    "Queue Task"
+  );
+  return action === "Queue Task";
+}
+
+async function runSubmissionFlow(
+  client: NexusClient,
+  daemonUrl: string,
+  mode: "manual" | "current-context"
+): Promise<void> {
+  const draft = await collectSubmissionDraft(client, mode);
+  if (!draft) {
+    return;
+  }
+
+  if (!(await confirmDraft(draft))) {
+    return;
+  }
+
+  logNexusActivity(
+    "queue",
+    `${mode === "current-context" ? "explicit queue" : "manual task"} requested: target=${draft.targetFile || "—"}, context=${draft.contextFiles.length}, route=${draft.routeLabel}`
+  );
 
   // 6. Submit the task
   let taskId: string;
   try {
     const task = await client.submitTask({
-      instruction,
-      projectPath,
-      targetFile,
-      providerHint: (picked as ProviderPickItem).providerHint,
-      modelId: (picked as ProviderPickItem).modelId,
+      instruction: draft.instruction,
+      projectPath: draft.projectPath,
+      targetFile: draft.targetFile,
+      providerHint: draft.providerHint,
+      modelId: draft.modelId,
+      contextFiles: draft.contextFiles,
     });
     taskId = task.id;
+    rememberQueuedTask(taskId);
+    logNexusActivity("queue", `submitted from vscode command: #${shortTaskId(taskId)}`);
   } catch (err) {
     if (isDaemonUnreachable(err)) {
       vscode.window.showErrorMessage(
         `Nexus daemon is not running at ${daemonUrl}. Start it with 'nexus-daemon' or the desktop app.`
       );
+      logNexusActivity("queue", `submission failed: daemon unreachable at ${daemonUrl}`);
     } else {
       const msg = err instanceof Error ? err.message : String(err);
       vscode.window.showErrorMessage(`Nexus: failed to submit task — ${msg}`);
+      logNexusActivity("queue", `submission failed: ${msg}`);
     }
     return;
   }
@@ -149,11 +331,13 @@ export async function submitTaskCommand(
     },
     async (progress, token) => {
       let userCancelled = false;
+      let lastStatus: TaskStatus | undefined;
 
       token.onCancellationRequested(async () => {
         userCancelled = true;
         try {
           await client.cancelTask(taskId);
+          logNexusActivity("queue", `task #${shortTaskId(taskId)} cancelled from VS Code`);
         } catch {
           // best-effort cancel — ignore errors
         }
@@ -192,6 +376,10 @@ export async function submitTaskCommand(
         }
 
         progress.report({ message: task.status });
+        if (task.status !== lastStatus) {
+          lastStatus = task.status;
+          logNexusActivity("queue", `task #${shortTaskId(taskId)} -> ${task.status}`);
+        }
 
         if (!TERMINAL_STATUSES.has(task.status)) {
           continue;
@@ -205,11 +393,19 @@ export async function submitTaskCommand(
               ? task.targetFile
               : path.join(task.projectPath, task.targetFile);
             const action = await vscode.window.showInformationMessage(
-              "✓ Nexus task completed",
-              "Open File"
+              `Queued in Nexus: #${shortTaskId(task.id)}`,
+              "Open Queue",
+              "Open File",
+              "Show Activity Log"
             );
+            if (action === "Open Queue") {
+              await vscode.commands.executeCommand("nexus.viewQueue");
+            }
             if (action === "Open File") {
               await vscode.window.showTextDocument(vscode.Uri.file(absTarget));
+            }
+            if (action === "Show Activity Log") {
+              showNexusActivityLog();
             }
             break;
           }
@@ -218,24 +414,42 @@ export async function submitTaskCommand(
             vscode.window.showErrorMessage(
               `Nexus: task failed — ${task.logs ?? "no details available"}`
             );
+            logNexusActivity("queue", `task #${shortTaskId(task.id)} failed: ${task.logs ?? "no details available"}`);
             break;
           case "TOO_LARGE":
             vscode.window.showErrorMessage(
               "Nexus: task rejected — input too large for the selected model"
             );
+            logNexusActivity("queue", `task #${shortTaskId(task.id)} rejected as TOO_LARGE`);
             break;
           case "NO_PROVIDER":
             vscode.window.showErrorMessage(
               "Nexus: task failed — no LLM provider is currently available"
             );
+            logNexusActivity("queue", `task #${shortTaskId(task.id)} failed: no provider`);
             break;
           case "CANCELLED":
             // 11. Cancelled externally (e.g. from daemon/CLI)
             vscode.window.showInformationMessage("Nexus: Task cancelled");
+            logNexusActivity("queue", `task #${shortTaskId(task.id)} cancelled externally`);
             break;
         }
         return;
       }
     }
   );
+}
+
+export async function sendCurrentContextCommand(
+  client: NexusClient,
+  daemonUrl: string
+): Promise<void> {
+  await runSubmissionFlow(client, daemonUrl, "current-context");
+}
+
+export async function submitTaskCommand(
+  client: NexusClient,
+  daemonUrl: string
+): Promise<void> {
+  await runSubmissionFlow(client, daemonUrl, "manual");
 }

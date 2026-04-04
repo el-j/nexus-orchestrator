@@ -5,19 +5,25 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"log"
-	"path/filepath"
-	"strings"
+	"os"
 	"sync"
 	"time"
 
+	"encoding/base64"
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
-
-	"github.com/google/uuid"
 )
+
+// discoveredAgentStore is the minimal subset of the discovered-agent storage
+// interface used by OrchestratorService.
+type discoveredAgentStore interface {
+	UpsertDiscoveredAgent(ctx context.Context, a domain.DiscoveredAgent) error
+	ListDiscoveredAgents(ctx context.Context) ([]domain.DiscoveredAgent, error)
+}
 
 // ErrQueueFull is returned by SubmitTask when the number of QUEUED tasks reaches the queue cap.
 var ErrQueueFull = errors.New("queue is full")
@@ -45,14 +51,36 @@ func WithStaleThreshold(d time.Duration) Option {
 	return func(s *OrchestratorService) { s.staleThreshold = d }
 }
 
+// WithDaemonAddr sets the base URL of the running daemon used in delegation instructions.
+// Defaults to http://127.0.0.1:63987.
+func WithDaemonAddr(addr string) Option {
+	return func(s *OrchestratorService) { s.daemonAddr = addr }
+}
+
+// WithDisableBackgroundWorkers prevents the background worker/cleanup goroutines
+// from starting. Intended for deterministic unit tests.
+func WithDisableBackgroundWorkers() Option {
+	return func(s *OrchestratorService) { s.disableWorkers = true }
+}
+
+// WithPlanFileRepo sets the repository used to persist discovered plan files.
+func WithPlanFileRepo(r ports.DiscoveredPlanFileRepo) Option {
+	return func(o *OrchestratorService) { o.planFileRepo = r }
+}
+
+// WithWatchdogInterval sets how often the task watchdog checks for stale tasks. Default: 1 minute.
+func WithWatchdogInterval(d time.Duration) Option {
+	return func(s *OrchestratorService) { s.watchdogInterval = d }
+}
+
 // OrchestratorService implements ports.Orchestrator and drives the worker loop.
 type OrchestratorService struct {
 	mu          sync.Mutex
-	queue       []domain.Task
 	discovery   *DiscoveryService
 	fileWriter  ports.FileWriter
 	repo        ports.TaskRepository
 	sessionRepo ports.SessionRepository
+	runtimeCfg  ports.RuntimeConfigRepository
 	broadcaster ports.EventBroadcaster // optional; nil = no event publishing
 	workCh      chan struct{}          // notified when a task is enqueued; capacity 1
 	stopCh      chan struct{}
@@ -68,10 +96,18 @@ type OrchestratorService struct {
 	lastScan           []domain.DiscoveredProvider
 	scanMu             sync.RWMutex // guards lastScan; separate from task-queue mu
 	aiSessionRepo      ports.AISessionRepository
+	agentScanner       ports.AgentScanner
+	agentRepo          discoveredAgentStore
+	planFileRepo       ports.DiscoveredPlanFileRepo
+	lastAgentScan      time.Time
+	lastAgentScanMu    sync.Mutex
 	maxRetries         int
 	maxResponseTokens  int
 	cleanupInterval    time.Duration
+	watchdogInterval   time.Duration
+	daemonAddr         string // base URL of the running daemon; used in delegation instructions
 	staleThreshold     time.Duration
+	disableWorkers     bool
 }
 
 // NewOrchestrator constructs an OrchestratorService and starts the background
@@ -105,134 +141,21 @@ func NewOrchestrator(
 		maxResponseTokens: 512,
 		cleanupInterval:   2 * time.Minute,
 		staleThreshold:    5 * time.Minute,
+		daemonAddr:        "http://127.0.0.1:63987",
 	}
 	for _, opt := range opts {
 		opt(svc)
 	}
 	svc.recoverStuckTasks()
-	svc.workerWg.Add(1)
-	go svc.runWorker()
-	svc.workerWg.Add(1)
-	go svc.runSessionCleanup()
+	if !svc.disableWorkers {
+		svc.workerWg.Add(1)
+		go svc.runWorker()
+		svc.workerWg.Add(1)
+		go svc.runSessionCleanup()
+		svc.workerWg.Add(1)
+		go svc.runTaskWatchdog()
+	}
 	return svc
-}
-
-// SubmitTask enqueues a new Task and returns its generated ID.
-func (o *OrchestratorService) SubmitTask(task domain.Task) (string, error) {
-	o.mu.Lock()
-	stopped := o.stopped
-	queueCap := o.queueCap
-	o.mu.Unlock()
-	if stopped {
-		return "", fmt.Errorf("orchestrator: submit task: service is stopped")
-	}
-	if queueCap <= 0 {
-		queueCap = 50
-	}
-
-	// Command validation
-	if !task.Command.IsValid() {
-		return "", fmt.Errorf("orchestrator: submit task: invalid command type %q", task.Command)
-	}
-	if task.Command == "" {
-		task.Command = domain.CommandAuto
-	}
-
-	// Normalize ProjectPath to an absolute, cleaned path before any repo queries.
-	if task.ProjectPath != "" {
-		if abs, absErr := filepath.Abs(task.ProjectPath); absErr == nil {
-			task.ProjectPath = filepath.Clean(abs)
-		}
-	}
-
-	// Queue cap: count QUEUED tasks from the repo; reject if at or above the limit.
-	pending, err := o.repo.GetPending()
-	if err != nil {
-		return "", fmt.Errorf("orchestrator: submit task: check queue cap: %w", err)
-	}
-	queued := 0
-	for _, qt := range pending {
-		if qt.Status == domain.StatusQueued {
-			queued++
-		}
-	}
-	if queued >= queueCap {
-		return "", fmt.Errorf("orchestrator: submit task: %w", ErrQueueFull)
-	}
-
-	// If execute is requested, verify a completed plan task exists for this project
-	if task.Command == domain.CommandExecute {
-		existing, err := o.repo.GetByProjectPath(task.ProjectPath)
-		if err != nil {
-			return "", fmt.Errorf("orchestrator: submit task: %w", err)
-		}
-		hasPlan := false
-		for _, t := range existing {
-			if t.Command == domain.CommandPlan && t.Status == domain.StatusCompleted {
-				hasPlan = true
-				break
-			}
-		}
-		if !hasPlan {
-			return "", fmt.Errorf("orchestrator: submit task: %w", domain.ErrNoPlan)
-		}
-	}
-
-	task.ID = uuid.NewString()
-	task.Status = domain.StatusQueued
-	task.CreatedAt = time.Now()
-	task.UpdatedAt = time.Now()
-
-	if err := o.repo.Save(task); err != nil {
-		return "", fmt.Errorf("orchestrator: save task: %w", err)
-	}
-	o.emit(task.ID, domain.StatusQueued)
-
-	o.mu.Lock()
-	o.queue = append(o.queue, task)
-	o.mu.Unlock()
-
-	// Wake the worker without blocking if it is already awake.
-	select {
-	case o.workCh <- struct{}{}:
-	default:
-	}
-
-	return task.ID, nil
-}
-
-// GetTask retrieves a single task by ID from the repository.
-// Returns domain.ErrNotFound when no task matches.
-func (o *OrchestratorService) GetTask(id string) (domain.Task, error) {
-	t, err := o.repo.GetByID(id)
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("orchestrator: get task: %w", err)
-	}
-	return t, nil
-}
-
-// GetQueue returns all pending (QUEUED or PROCESSING) tasks.
-func (o *OrchestratorService) GetQueue() ([]domain.Task, error) {
-	return o.repo.GetPending()
-}
-
-// GetProviders returns the liveness status of every registered LLM backend.
-func (o *OrchestratorService) GetProviders() ([]ports.ProviderInfo, error) {
-	return o.discovery.ListProviders(), nil
-}
-
-// CancelTask removes a QUEUED task before it is processed.
-func (o *OrchestratorService) CancelTask(id string) error {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-
-	for i, t := range o.queue {
-		if t.ID == id {
-			o.queue = append(o.queue[:i], o.queue[i+1:]...)
-			return o.repo.UpdateStatus(id, domain.StatusCancelled)
-		}
-	}
-	return fmt.Errorf("orchestrator: cancel task: %w", domain.ErrNotFound)
 }
 
 // Stop signals the worker goroutine to exit and waits for it to finish.
@@ -257,6 +180,14 @@ func (o *OrchestratorService) WithProviderConfigRepo(r ports.ProviderConfigRepos
 	return o
 }
 
+// WithRuntimeConfigRepo sets the repository used to persist runtime-managed configuration.
+func (o *OrchestratorService) WithRuntimeConfigRepo(r ports.RuntimeConfigRepository) *OrchestratorService {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.runtimeCfg = r
+	return o
+}
+
 // WithProviderFactory sets the factory used by RegisterCloudProvider to construct
 // new LLM adapters from a ProviderConfig. Must be called before the first
 // RegisterCloudProvider call.
@@ -265,245 +196,6 @@ func (o *OrchestratorService) WithProviderFactory(fn func(domain.ProviderConfig)
 	defer o.mu.Unlock()
 	o.providerFactory = fn
 	return o
-}
-
-// RegisterCloudProvider builds a new LLM adapter from cfg using the registered
-// factory and adds it to the DiscoveryService.
-func (o *OrchestratorService) RegisterCloudProvider(cfg domain.ProviderConfig) error {
-	o.mu.Lock()
-	factory := o.providerFactory
-	o.mu.Unlock()
-	if factory == nil {
-		return fmt.Errorf("orchestrator: no provider factory configured")
-	}
-	client, err := factory(cfg)
-	if err != nil {
-		return fmt.Errorf("orchestrator: register cloud provider: %w", err)
-	}
-	o.discovery.RegisterProvider(client)
-	return nil
-}
-
-// RemoveProvider deregisters the named provider from DiscoveryService.
-// Returns domain.ErrNotFound when no provider with that name is registered.
-func (o *OrchestratorService) RemoveProvider(providerName string) error {
-	if ok := o.discovery.RemoveProvider(providerName); !ok {
-		return fmt.Errorf("orchestrator: remove provider: %w", domain.ErrNotFound)
-	}
-	return nil
-}
-
-// AddProviderConfig persists a new provider config and, when Enabled, instantiates
-// and registers an adapter via the configured providerFactory.
-func (o *OrchestratorService) AddProviderConfig(ctx context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
-	o.mu.Lock()
-	repo := o.providerConfigRepo
-	factory := o.providerFactory
-	o.mu.Unlock()
-
-	if cfg.ID == "" {
-		cfg.ID = uuid.NewString()
-	}
-	now := time.Now()
-	if cfg.CreatedAt.IsZero() {
-		cfg.CreatedAt = now
-	}
-	cfg.UpdatedAt = now
-
-	if repo != nil {
-		if err := repo.SaveProviderConfig(ctx, cfg); err != nil {
-			return domain.ProviderConfig{}, fmt.Errorf("orchestrator: add provider config: %w", err)
-		}
-	}
-
-	if cfg.Enabled && factory != nil {
-		client, err := factory(cfg)
-		if err != nil {
-			return domain.ProviderConfig{}, fmt.Errorf("orchestrator: add provider config: build adapter: %w", err)
-		}
-		o.discovery.RegisterProvider(client)
-	}
-
-	return cfg, nil
-}
-
-// UpdateProviderConfig overwrites an existing provider config and refreshes its
-// in-process adapter registration.
-func (o *OrchestratorService) UpdateProviderConfig(ctx context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
-	o.mu.Lock()
-	repo := o.providerConfigRepo
-	factory := o.providerFactory
-	o.mu.Unlock()
-
-	if repo == nil {
-		return domain.ProviderConfig{}, fmt.Errorf("orchestrator: update provider config: no config repo configured")
-	}
-
-	old, err := repo.GetProviderConfig(ctx, cfg.ID)
-	if err != nil {
-		return domain.ProviderConfig{}, fmt.Errorf("orchestrator: update provider config: %w", err)
-	}
-
-	cfg.CreatedAt = old.CreatedAt
-	cfg.UpdatedAt = time.Now()
-
-	if err := repo.SaveProviderConfig(ctx, cfg); err != nil {
-		return domain.ProviderConfig{}, fmt.Errorf("orchestrator: update provider config: %w", err)
-	}
-
-	// Remove old adapter registration (name may have changed).
-	o.discovery.RemoveProvider(old.Name)
-
-	if cfg.Enabled && factory != nil {
-		client, err := factory(cfg)
-		if err != nil {
-			return domain.ProviderConfig{}, fmt.Errorf("orchestrator: update provider config: build adapter: %w", err)
-		}
-		o.discovery.RegisterProvider(client)
-	}
-
-	return cfg, nil
-}
-
-// RemoveProviderConfig deletes the persisted provider config identified by id
-// and deregisters its adapter.
-func (o *OrchestratorService) RemoveProviderConfig(ctx context.Context, id string) error {
-	o.mu.Lock()
-	repo := o.providerConfigRepo
-	o.mu.Unlock()
-
-	if repo == nil {
-		return fmt.Errorf("orchestrator: remove provider config: no config repo configured")
-	}
-
-	cfg, err := repo.GetProviderConfig(ctx, id)
-	if err != nil {
-		return fmt.Errorf("orchestrator: remove provider config: %w", err)
-	}
-
-	if err := repo.DeleteProviderConfig(ctx, id); err != nil {
-		return fmt.Errorf("orchestrator: remove provider config: %w", err)
-	}
-
-	o.discovery.RemoveProvider(cfg.Name)
-	return nil
-}
-
-// ListProviderConfigs returns all persisted provider configuration records.
-// Returns an empty slice when no repository is configured.
-func (o *OrchestratorService) ListProviderConfigs(ctx context.Context) ([]domain.ProviderConfig, error) {
-	o.mu.Lock()
-	repo := o.providerConfigRepo
-	o.mu.Unlock()
-
-	if repo == nil {
-		return []domain.ProviderConfig{}, nil
-	}
-
-	cfgs, err := repo.ListProviderConfigs(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("orchestrator: list provider configs: %w", err)
-	}
-	if cfgs == nil {
-		return []domain.ProviderConfig{}, nil
-	}
-	return cfgs, nil
-}
-
-// GetProviderModels returns the model catalogue of the named provider.
-// Returns domain.ErrNotFound when no provider with that name is registered.
-func (o *OrchestratorService) GetProviderModels(providerName string) ([]string, error) {
-	client, ok := o.discovery.GetClientByName(providerName)
-	if !ok {
-		return nil, fmt.Errorf("orchestrator: get provider models: %w", domain.ErrNotFound)
-	}
-	models, err := client.GetAvailableModels()
-	if err != nil {
-		return nil, fmt.Errorf("orchestrator: get provider models: %w", err)
-	}
-	return models, nil
-}
-
-// GetDiscoveredProviders returns auto-detected AI tools from the local system
-// that have NOT yet been promoted to active/configured providers.
-func (o *OrchestratorService) GetDiscoveredProviders() ([]domain.DiscoveredProvider, error) {
-	o.scanMu.RLock()
-	defer o.scanMu.RUnlock()
-	if o.lastScan == nil {
-		return []domain.DiscoveredProvider{}, nil
-	}
-	result := make([]domain.DiscoveredProvider, len(o.lastScan))
-	copy(result, o.lastScan)
-	return result, nil
-}
-
-// TriggerScan requests an immediate re-scan of the local system for AI providers.
-func (o *OrchestratorService) TriggerScan(ctx context.Context) ([]domain.DiscoveredProvider, error) {
-	o.mu.Lock()
-	scanner := o.scanner
-	o.mu.Unlock()
-
-	if scanner == nil {
-		return []domain.DiscoveredProvider{}, fmt.Errorf("orchestrator: trigger scan: scanner not configured")
-	}
-
-	results, err := scanner.Scan(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("orchestrator: trigger scan: %w", err)
-	}
-
-	o.scanMu.Lock()
-	o.lastScan = results
-	o.scanMu.Unlock()
-
-	o.discovery.InvalidateHealthCache()
-
-	return results, nil
-}
-
-// PromoteProvider converts a discovered provider into an active registered backend.
-func (o *OrchestratorService) PromoteProvider(ctx context.Context, discoveredID string) error {
-	o.scanMu.RLock()
-	var found *domain.DiscoveredProvider
-	for i := range o.lastScan {
-		if o.lastScan[i].ID == discoveredID {
-			discovered := o.lastScan[i]
-			found = &discovered
-			break
-		}
-	}
-	o.scanMu.RUnlock()
-
-	if found == nil {
-		return fmt.Errorf("orchestrator: promote provider: %w", domain.ErrNotFound)
-	}
-	if found.Status != domain.DiscoveryStatusReachable {
-		return fmt.Errorf("orchestrator: promote provider: provider %q is not reachable (status: %s)", found.Name, found.Status)
-	}
-	if found.BaseURL == "" {
-		return fmt.Errorf("orchestrator: promote provider: discovered provider has no base URL")
-	}
-
-	cfg := domain.ProviderConfig{
-		ID:      found.ID,
-		Name:    found.Name,
-		Kind:    found.Kind,
-		BaseURL: found.BaseURL,
-	}
-
-	// Register as live provider via discovery service.
-	if err := o.RegisterCloudProvider(cfg); err != nil {
-		return fmt.Errorf("orchestrator: promote provider: %w", err)
-	}
-
-	// Also persist if repo is available (non-fatal on failure).
-	if o.providerConfigRepo != nil {
-		if _, err := o.AddProviderConfig(ctx, cfg); err != nil {
-			log.Printf("orchestrator: promote provider: persist: %v", err)
-		}
-	}
-
-	return nil
 }
 
 // WithSystemScanner sets the SystemScanner used for provider discovery.
@@ -523,6 +215,107 @@ func (o *OrchestratorService) WithQueueCap(n int) *OrchestratorService {
 	return o
 }
 
+func (o *OrchestratorService) GetRuntimeConfig(ctx context.Context) (domain.RuntimeConfig, error) {
+	o.mu.Lock()
+	queueCap := o.queueCap
+	repo := o.runtimeCfg
+	o.mu.Unlock()
+
+	effectiveCap := queueCap
+	if effectiveCap <= 0 {
+		effectiveCap = 50
+	}
+
+	cfg := domain.RuntimeConfig{
+		QueueCap: effectiveCap,
+		APIToken: os.Getenv("NEXUS_API_TOKEN"),
+		MCPToken: os.Getenv("NEXUS_MCP_TOKEN"),
+	}
+
+	if repo == nil {
+		return cfg, nil
+	}
+	stored, err := repo.GetRuntimeConfig(ctx)
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return domain.RuntimeConfig{}, fmt.Errorf("orchestrator: get runtime config: %w", err)
+	}
+	if err == nil {
+		// Prefer persisted values when env vars are not set.
+		if cfg.APIToken == "" {
+			cfg.APIToken = stored.APIToken
+		}
+		if cfg.MCPToken == "" {
+			cfg.MCPToken = stored.MCPToken
+		}
+		if stored.QueueCap > 0 {
+			cfg.QueueCap = stored.QueueCap
+		}
+		cfg.UpdatedAt = stored.UpdatedAt
+	}
+
+	return cfg, nil
+}
+
+func (o *OrchestratorService) UpdateRuntimeConfig(ctx context.Context, update domain.RuntimeConfigUpdate) (domain.RuntimeConfig, error) {
+	o.mu.Lock()
+	repo := o.runtimeCfg
+	o.mu.Unlock()
+
+	current, err := o.GetRuntimeConfig(ctx)
+	if err != nil {
+		return domain.RuntimeConfig{}, err
+	}
+
+	if update.QueueCap != nil {
+		if *update.QueueCap <= 0 {
+			return domain.RuntimeConfig{}, fmt.Errorf("orchestrator: update runtime config: queueCap must be > 0")
+		}
+		current.QueueCap = *update.QueueCap
+		o.WithQueueCap(current.QueueCap)
+	}
+
+	if update.RotateAPIToken {
+		tok, err := generateToken(32)
+		if err != nil {
+			return domain.RuntimeConfig{}, fmt.Errorf("orchestrator: rotate api token: %w", err)
+		}
+		current.APIToken = tok
+	}
+	if update.RotateMCPToken {
+		tok, err := generateToken(32)
+		if err != nil {
+			return domain.RuntimeConfig{}, fmt.Errorf("orchestrator: rotate mcp token: %w", err)
+		}
+		current.MCPToken = tok
+	}
+	if update.APIToken != nil {
+		current.APIToken = *update.APIToken
+	}
+	if update.MCPToken != nil {
+		current.MCPToken = *update.MCPToken
+	}
+
+	current.UpdatedAt = time.Now()
+	if repo != nil {
+		if err := repo.SaveRuntimeConfig(ctx, current); err != nil {
+			return domain.RuntimeConfig{}, fmt.Errorf("orchestrator: save runtime config: %w", err)
+		}
+	}
+
+	return current, nil
+}
+
+func generateToken(n int) (string, error) {
+	if n <= 0 {
+		return "", fmt.Errorf("token bytes must be > 0")
+	}
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
 // SetAISessionRepo wires the repository used to persist AI agent sessions.
 func (o *OrchestratorService) SetAISessionRepo(r ports.AISessionRepository) {
 	o.mu.Lock()
@@ -530,229 +323,18 @@ func (o *OrchestratorService) SetAISessionRepo(r ports.AISessionRepository) {
 	o.aiSessionRepo = r
 }
 
-// CreateDraft creates a task with StatusDraft without entering the execution queue.
-func (o *OrchestratorService) CreateDraft(task domain.Task) (string, error) {
-	if task.Instruction == "" {
-		return "", fmt.Errorf("orchestrator: create draft: instruction is required")
-	}
-	if task.ProjectPath == "" {
-		return "", fmt.Errorf("orchestrator: create draft: project path is required")
-	}
-	// Normalize ProjectPath to an absolute, cleaned path.
-	if abs, absErr := filepath.Abs(task.ProjectPath); absErr == nil {
-		task.ProjectPath = filepath.Clean(abs)
-	}
-	task.ID = uuid.NewString()
-	task.Status = domain.StatusDraft
-	task.CreatedAt = time.Now()
-	task.UpdatedAt = time.Now()
-	if task.Priority == 0 {
-		task.Priority = 2
-	}
-	if err := o.repo.Save(task); err != nil {
-		return "", fmt.Errorf("orchestrator: create draft: %w", err)
-	}
-	o.emit(task.ID, domain.StatusDraft)
-	return task.ID, nil
-}
-
-// GetBacklog returns DRAFT and BACKLOG tasks for the given project.
-func (o *OrchestratorService) GetBacklog(projectPath string) ([]domain.Task, error) {
-	tasks, err := o.repo.GetByProjectPathAndStatus(projectPath, domain.StatusDraft, domain.StatusBacklog)
-	if err != nil {
-		return nil, fmt.Errorf("orchestrator: get backlog: %w", err)
-	}
-	return tasks, nil
-}
-
-// PromoteTask transitions a DRAFT or BACKLOG task to QUEUED and enqueues it.
-func (o *OrchestratorService) PromoteTask(id string) error {
+// SetAgentScanner wires the scanner used to detect running AI agent tools.
+func (o *OrchestratorService) SetAgentScanner(s ports.AgentScanner) {
 	o.mu.Lock()
-
-	task, err := o.repo.GetByID(id)
-	if err != nil {
-		o.mu.Unlock()
-		return fmt.Errorf("orchestrator: promote task: %w", err)
-	}
-	if task.Status != domain.StatusDraft && task.Status != domain.StatusBacklog {
-		o.mu.Unlock()
-		return fmt.Errorf("orchestrator: promote task: cannot promote task with status %s", task.Status)
-	}
-	task.Status = domain.StatusQueued
-	task.UpdatedAt = time.Now()
-	if err := o.repo.Update(task); err != nil {
-		o.mu.Unlock()
-		return fmt.Errorf("orchestrator: promote task: %w", err)
-	}
-	o.queue = append(o.queue, task)
-	o.mu.Unlock()
-
-	select {
-	case o.workCh <- struct{}{}:
-	default:
-	}
-	o.emit(task.ID, domain.StatusQueued)
-	return nil
+	defer o.mu.Unlock()
+	o.agentScanner = s
 }
 
-// UpdateTask merges non-zero fields from updates into the stored task and persists.
-// Status transitions are only allowed for non-executing states (DRAFT, BACKLOG, QUEUED).
-func (o *OrchestratorService) UpdateTask(id string, updates domain.Task) (domain.Task, error) {
-	task, err := o.repo.GetByID(id)
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("orchestrator: update task: %w", err)
-	}
-	if updates.Instruction != "" {
-		task.Instruction = updates.Instruction
-	}
-	if updates.TargetFile != "" {
-		task.TargetFile = updates.TargetFile
-	}
-	if updates.ProviderName != "" {
-		task.ProviderName = updates.ProviderName
-	}
-	if updates.ModelID != "" {
-		task.ModelID = updates.ModelID
-	}
-	if updates.ProviderHint != "" {
-		task.ProviderHint = updates.ProviderHint
-	}
-	if updates.Priority != 0 {
-		task.Priority = updates.Priority
-	}
-	if updates.Tags != nil {
-		task.Tags = updates.Tags
-	}
-	if updates.Status != "" &&
-		(updates.Status == domain.StatusDraft ||
-			updates.Status == domain.StatusBacklog ||
-			updates.Status == domain.StatusQueued) {
-		task.Status = updates.Status
-	}
-	task.UpdatedAt = time.Now()
-	if err := o.repo.Update(task); err != nil {
-		return domain.Task{}, fmt.Errorf("orchestrator: update task: %w", err)
-	}
-	o.emit(task.ID, task.Status)
-	return task, nil
-}
-
-// RegisterAISession registers an AI agent session, persists it, and broadcasts an event.
-// If the session carries a non-empty ExternalID and a session with that ExternalID already
-// exists, the existing session's last-activity is refreshed and it is returned unchanged
-// (idempotent). This prevents multiple heartbeat calls from creating duplicate rows.
-func (o *OrchestratorService) RegisterAISession(ctx context.Context, s domain.AISession) (domain.AISession, error) {
+// SetDiscoveredAgentRepo wires the repository used to persist discovered agents.
+func (o *OrchestratorService) SetDiscoveredAgentRepo(r discoveredAgentStore) {
 	o.mu.Lock()
-	repo := o.aiSessionRepo
-	b := o.broadcaster
-	o.mu.Unlock()
-
-	if repo == nil {
-		return domain.AISession{}, fmt.Errorf("orchestrator: register ai session: no session repo configured")
-	}
-
-	now := time.Now()
-
-	// Idempotency: if an externalId is provided, re-use the existing session.
-	if s.ExternalID != "" {
-		existing, err := repo.GetAISessionByExternalID(ctx, s.ExternalID)
-		if err == nil {
-			// Session already exists — just refresh its last-activity timestamp.
-			existing.LastActivity = now
-			existing.UpdatedAt = now
-			existing.Status = domain.SessionStatusActive
-			if saveErr := repo.SaveAISession(ctx, existing); saveErr != nil {
-				return domain.AISession{}, fmt.Errorf("orchestrator: register ai session: refresh existing: %w", saveErr)
-			}
-			if b != nil {
-				b.BroadcastAISessionEvent(domain.AISessionEvent{
-					Type:        "ai_session_changed",
-					AISessionID: existing.ID,
-					Status:      existing.Status,
-					Timestamp:   time.Now(),
-				})
-			}
-			return existing, nil
-		}
-		// ErrNotFound is expected for the first registration — fall through.
-	}
-
-	if s.ID == "" {
-		s.ID = uuid.NewString()
-	}
-	s.Status = domain.SessionStatusActive
-	s.CreatedAt = now
-	s.UpdatedAt = now
-	s.LastActivity = now
-
-	if err := repo.SaveAISession(ctx, s); err != nil {
-		return domain.AISession{}, fmt.Errorf("orchestrator: register ai session: %w", err)
-	}
-	if b != nil {
-		b.BroadcastAISessionEvent(domain.AISessionEvent{
-			Type:        "ai_session_changed",
-			AISessionID: s.ID,
-			Status:      s.Status,
-			Timestamp:   time.Now(),
-		})
-	}
-	return s, nil
-}
-
-// HeartbeatAISession refreshes the last-activity timestamp on an active session.
-// It is intended to be called periodically by connected agents to signal liveness.
-func (o *OrchestratorService) HeartbeatAISession(ctx context.Context, id string) error {
-	o.mu.Lock()
-	repo := o.aiSessionRepo
-	o.mu.Unlock()
-
-	if repo == nil {
-		return fmt.Errorf("orchestrator: heartbeat ai session: no session repo configured")
-	}
-	if err := repo.UpdateAISessionStatus(ctx, id, domain.SessionStatusActive, time.Now()); err != nil {
-		return fmt.Errorf("orchestrator: heartbeat ai session: %w", err)
-	}
-	return nil
-}
-
-// ListAISessions returns all persisted AI agent sessions.
-func (o *OrchestratorService) ListAISessions(ctx context.Context) ([]domain.AISession, error) {
-	o.mu.Lock()
-	repo := o.aiSessionRepo
-	o.mu.Unlock()
-
-	if repo == nil {
-		return []domain.AISession{}, nil
-	}
-	sessions, err := repo.ListAISessions(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("orchestrator: list ai sessions: %w", err)
-	}
-	return sessions, nil
-}
-
-// DeregisterAISession marks the session as disconnected and broadcasts an event.
-func (o *OrchestratorService) DeregisterAISession(ctx context.Context, id string) error {
-	o.mu.Lock()
-	repo := o.aiSessionRepo
-	b := o.broadcaster
-	o.mu.Unlock()
-
-	if repo == nil {
-		return fmt.Errorf("orchestrator: deregister ai session: no session repo configured")
-	}
-	if err := repo.UpdateAISessionStatus(ctx, id, domain.SessionStatusDisconnected, time.Now()); err != nil {
-		return fmt.Errorf("orchestrator: deregister ai session: %w", err)
-	}
-	if b != nil {
-		b.BroadcastAISessionEvent(domain.AISessionEvent{
-			Type:        "ai_session_changed",
-			AISessionID: id,
-			Status:      domain.SessionStatusDisconnected,
-			Timestamp:   time.Now(),
-		})
-	}
-	return nil
+	defer o.mu.Unlock()
+	o.agentRepo = r
 }
 
 // SetBroadcaster wires an optional EventBroadcaster for task lifecycle events.
@@ -763,38 +345,51 @@ func (o *OrchestratorService) SetBroadcaster(b ports.EventBroadcaster) {
 	o.broadcaster = b
 }
 
-// emit publishes a TaskEvent if a broadcaster is configured.
-// It acquires the mutex only to read the broadcaster pointer, then releases it
-// before calling Broadcast so the hub's own lock is never nested under o.mu.
-func (o *OrchestratorService) emit(taskID string, status domain.TaskStatus) {
-	o.mu.Lock()
-	b := o.broadcaster
-	o.mu.Unlock()
-	if b == nil {
-		return
+func (o *OrchestratorService) signalWorker() {
+	select {
+	case o.workCh <- struct{}{}:
+	default:
 	}
-	b.Broadcast(ports.TaskEvent{
-		Type:   statusEventType(status),
-		TaskID: taskID,
-		Status: status,
-	})
 }
 
-// statusEventType maps a TaskStatus to its corresponding EventType.
-var statusEventMap = map[domain.TaskStatus]ports.EventType{
-	domain.StatusQueued:     ports.EventTaskQueued,
-	domain.StatusProcessing: ports.EventTaskProcessing,
-	domain.StatusCompleted:  ports.EventTaskCompleted,
-	domain.StatusFailed:     ports.EventTaskFailed,
-	domain.StatusCancelled:  ports.EventTaskCancelled,
-	domain.StatusTooLarge:   ports.EventTaskTooLarge,
-	domain.StatusNoProvider: ports.EventTaskNoProvider,
-	domain.StatusDraft:      ports.EventTaskDraft,
-	domain.StatusBacklog:    ports.EventTaskBacklog,
-}
+func (o *OrchestratorService) validateQueueAdmission(task domain.Task) error {
+	o.mu.Lock()
+	stopped := o.stopped
+	queueCap := o.queueCap
+	o.mu.Unlock()
+	if stopped {
+		return fmt.Errorf("orchestrator: queue task: service is stopped")
+	}
+	if queueCap <= 0 {
+		queueCap = 50
+	}
 
-func statusEventType(s domain.TaskStatus) ports.EventType {
-	return statusEventMap[s]
+	pending, err := o.repo.GetPending()
+	if err != nil {
+		return fmt.Errorf("orchestrator: queue task: check queue cap: %w", err)
+	}
+	if len(pending) >= queueCap {
+		return fmt.Errorf("orchestrator: queue task: %w", ErrQueueFull)
+	}
+
+	if task.Command == domain.CommandExecute {
+		existing, err := o.repo.GetByProjectPath(task.ProjectPath)
+		if err != nil {
+			return fmt.Errorf("orchestrator: queue task: %w", err)
+		}
+		hasPlan := false
+		for _, existingTask := range existing {
+			if existingTask.Command == domain.CommandPlan && existingTask.Status == domain.StatusCompleted {
+				hasPlan = true
+				break
+			}
+		}
+		if !hasPlan {
+			return fmt.Errorf("orchestrator: queue task: %w", domain.ErrNoPlan)
+		}
+	}
+
+	return nil
 }
 
 // recoverStuckTasks re-queues any tasks that were in PROCESSING state when the
@@ -806,24 +401,29 @@ func (o *OrchestratorService) recoverStuckTasks() {
 		log.Printf("orchestrator: startup recovery: get pending: %v", err)
 		return
 	}
-	count := 0
+	requeued := 0
+	hasQueued := false
 	for _, t := range pending {
+		if t.Status == domain.StatusQueued {
+			hasQueued = true
+		}
 		if t.Status == domain.StatusProcessing {
-			if err := o.repo.UpdateStatus(t.ID, domain.StatusQueued); err != nil {
+			ok, err := o.repo.UpdateStatusIfCurrent(t.ID, domain.StatusProcessing, domain.StatusQueued)
+			if err != nil {
 				log.Printf("orchestrator: startup recovery: re-queue task %s: %v", t.ID, err)
 				continue
 			}
-			t.Status = domain.StatusQueued
-			o.queue = append(o.queue, t)
-			count++
+			if ok {
+				requeued++
+				hasQueued = true
+			}
 		}
 	}
-	if count > 0 {
-		log.Printf("orchestrator: startup recovery: re-queued %d stuck tasks", count)
-		select {
-		case o.workCh <- struct{}{}:
-		default:
-		}
+	if requeued > 0 {
+		log.Printf("orchestrator: startup recovery: re-queued %d stuck tasks", requeued)
+	}
+	if hasQueued {
+		o.signalWorker()
 	}
 }
 
@@ -843,13 +443,7 @@ func (o *OrchestratorService) requeueForRetry(task domain.Task) bool {
 		return false
 	}
 	log.Printf("orchestrator: task %s: retry %d/%d", task.ID, task.RetryCount, o.maxRetries)
-	o.mu.Lock()
-	o.queue = append(o.queue, task)
-	o.mu.Unlock()
-	select {
-	case o.workCh <- struct{}{}:
-	default:
-	}
+	o.signalWorker()
 	o.emit(task.ID, domain.StatusQueued)
 	return true
 }
@@ -865,18 +459,14 @@ func (o *OrchestratorService) runWorker() {
 			return
 		case <-o.workCh:
 			for {
-				o.mu.Lock()
-				empty := len(o.queue) == 0
-				o.mu.Unlock()
-				if empty {
-					break
-				}
 				select {
 				case <-o.stopCh:
 					return
 				default:
 				}
-				o.processNext()
+				if !o.processNext() {
+					break
+				}
 			}
 		}
 	}
@@ -929,247 +519,56 @@ func (o *OrchestratorService) runSessionCleanup() {
 					}
 				}
 			}
+			// Purge disconnected sessions older than 2 hours to prevent unbounded growth.
+			if n, purgeErr := repo.PurgeDisconnected(ctx, 2*time.Hour); purgeErr != nil {
+				log.Printf("orchestrator: session cleanup: purge: %v", purgeErr)
+			} else if n > 0 {
+				log.Printf("orchestrator: session cleanup: purged %d stale disconnected sessions", n)
+			}
 		}
 	}
 }
 
-func (o *OrchestratorService) processNext() {
-	o.mu.Lock()
-	if len(o.queue) == 0 {
-		o.mu.Unlock()
-		return
+func (o *OrchestratorService) runTaskWatchdog() {
+	defer o.workerWg.Done()
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-o.stopCh
+		cancel()
+	}()
+	defer cancel()
+	watchdogInterval := o.watchdogInterval
+	if watchdogInterval <= 0 {
+		watchdogInterval = time.Minute
 	}
-	task := o.queue[0]
-	o.queue = o.queue[1:]
-	o.mu.Unlock()
-
-	llm, err := o.selectProviderForTask(task)
-	if err != nil {
-		return
-	}
-
-	if err := o.repo.UpdateStatus(task.ID, domain.StatusProcessing); err != nil {
-		log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
-	}
-	o.emit(task.ID, domain.StatusProcessing)
-
-	prompt, sessionHistory, err := o.buildChatContext(task, llm)
-	if err != nil {
-		return
-	}
-
-	code, err := o.executeGeneration(task, llm, prompt, sessionHistory)
-	if err != nil {
-		return
-	}
-
-	o.writeTaskOutput(task, code, llm.ProviderName())
-}
-
-// selectProviderForTask resolves the LLM client for the task by provider name or
-// by model/hint lookup. On failure it sets StatusNoProvider, logs the reason, and emits the event.
-func (o *OrchestratorService) selectProviderForTask(task domain.Task) (ports.LLMClient, error) {
-	if task.ProviderName != "" {
-		client, ok := o.discovery.GetClientByName(task.ProviderName)
-		if !ok {
-			logMsg := fmt.Sprintf("provider '%s' not found or not active", task.ProviderName)
-			log.Printf("orchestrator: no provider for task %s: %s", task.ID, logMsg)
-			if err := o.repo.UpdateLogs(task.ID, logMsg); err != nil {
-				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
-			}
-			if err := o.repo.UpdateStatus(task.ID, domain.StatusNoProvider); err != nil {
-				log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
-			}
-			o.emit(task.ID, domain.StatusNoProvider)
-			return nil, fmt.Errorf("provider %q not found or not active", task.ProviderName)
-		}
-		return client, nil
-	}
-	llm, err := o.discovery.FindForModel(task.ModelID, task.ProviderHint)
-	if err != nil {
-		log.Printf("orchestrator: no provider for task %s (model=%q): %v", task.ID, task.ModelID, err)
-		if err2 := o.repo.UpdateLogs(task.ID, err.Error()); err2 != nil {
-			log.Printf("orchestrator: update logs for task %s: %v", task.ID, err2)
-		}
-		if err2 := o.repo.UpdateStatus(task.ID, domain.StatusNoProvider); err2 != nil {
-			log.Printf("orchestrator: update status for task %s: %v", task.ID, err2)
-		}
-		o.emit(task.ID, domain.StatusNoProvider)
-		return nil, err
-	}
-	return llm, nil
-}
-
-// buildChatContext constructs the prompt with optional context file content prepended,
-// loads session history, and guards against context-window overflow.
-// On overflow it sets StatusTooLarge, logs the reason, and emits the event.
-func (o *OrchestratorService) buildChatContext(task domain.Task, llm ports.LLMClient) (string, []domain.Message, error) {
-	// Build the prompt with optional context files.
-	prompt := task.Instruction
-	if len(task.ContextFiles) > 0 && o.fileWriter != nil {
-		ctx, err := o.fileWriter.ReadContextFiles(task.ProjectPath, task.ContextFiles)
-		if err != nil {
-			log.Printf("orchestrator: read context for task %s: %v", task.ID, err)
-		} else if strings.TrimSpace(ctx) != "" {
-			prompt = ctx + "\n\n" + prompt
-		}
-	}
-
-	// Load session history once — reused for both the pre-flight token check and
-	// the Chat call to avoid double GetByProjectPath.
-	var sessionHistory []domain.Message
-	if o.sessionRepo != nil {
-		sess, err := o.sessionRepo.GetByProjectPath(task.ProjectPath)
-		if err != nil && !errors.Is(err, domain.ErrNotFound) {
-			log.Printf("orchestrator: load session for task %s: %v", task.ID, err)
-		}
-		sessionHistory = sess.Messages
-	}
-
-	// Pre-flight: guard against context-window overflow before spending LLM time.
-	if limit := llm.ContextLimit(); limit > 0 {
-		estHistory := make([]domain.Message, len(sessionHistory)+1)
-		copy(estHistory, sessionHistory)
-		estHistory[len(sessionHistory)] = domain.Message{Role: domain.RoleUser, Content: prompt}
-		if estimated := estimateTokens(estHistory); estimated > limit-o.maxResponseTokens {
-			logEntry := fmt.Sprintf(
-				"context too large: ~%d tokens estimated, model limit is %d (headroom %d) — shorten the instruction or reduce context files",
-				estimated, limit, o.maxResponseTokens,
-			)
-			log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
-			if err := o.repo.UpdateLogs(task.ID, logEntry); err != nil {
-				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
-			}
-			if err := o.repo.UpdateStatus(task.ID, domain.StatusTooLarge); err != nil {
-				log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
-			}
-			o.emit(task.ID, domain.StatusTooLarge)
-			return "", nil, fmt.Errorf("context too large")
-		}
-	}
-
-	return prompt, sessionHistory, nil
-}
-
-// executeGeneration dispatches to Chat (when sessionRepo is set) or GenerateCode,
-// with retry on transient failures. On fatal failure it persists StatusFailed.
-// On success with a sessionRepo it appends the user and assistant messages to the session.
-func (o *OrchestratorService) executeGeneration(task domain.Task, llm ports.LLMClient, prompt string, sessionHistory []domain.Message) (string, error) {
-	if o.sessionRepo != nil {
-		// Build the chat history using the already-loaded session (no second DB call).
-		userMsg := domain.Message{Role: domain.RoleUser, Content: prompt, CreatedAt: time.Now()}
-		history := append(append([]domain.Message(nil), sessionHistory...), userMsg)
-		code, err := llm.Chat(history)
-		if err != nil {
-			logEntry := fmt.Sprintf("failed via %s: %v", llm.ProviderName(), err)
-			log.Printf("orchestrator: chat for task %s: %v", task.ID, err)
-			if o.requeueForRetry(task) {
-				return "", err
-			}
-			if err2 := o.repo.UpdateLogs(task.ID, logEntry); err2 != nil {
-				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err2)
-			}
-			if err2 := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err2 != nil {
-				log.Printf("orchestrator: update status for task %s: %v", task.ID, err2)
-			}
-			o.emit(task.ID, domain.StatusFailed)
-			return "", err
-		}
-		// Only persist messages after a successful response.
-		assistantMsg := domain.Message{Role: domain.RoleAssistant, Content: code, CreatedAt: time.Now()}
-		if err := o.sessionRepo.AppendMessage(task.ProjectPath, userMsg); err != nil {
-			log.Printf("orchestrator: append user message for task %s: %v", task.ID, err)
-		}
-		if err := o.sessionRepo.AppendMessage(task.ProjectPath, assistantMsg); err != nil {
-			log.Printf("orchestrator: append assistant message for task %s: %v", task.ID, err)
-		}
-		return code, nil
-	}
-
-	code, err := llm.GenerateCode(prompt)
-	if err != nil {
-		logEntry := fmt.Sprintf("failed via %s: %v", llm.ProviderName(), err)
-		log.Printf("orchestrator: generate code for task %s: %v", task.ID, err)
-		if o.requeueForRetry(task) {
-			return "", err
-		}
-		if err2 := o.repo.UpdateLogs(task.ID, logEntry); err2 != nil {
-			log.Printf("orchestrator: update logs for task %s: %v", task.ID, err2)
-		}
-		if err2 := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err2 != nil {
-			log.Printf("orchestrator: update status for task %s: %v", task.ID, err2)
-		}
-		o.emit(task.ID, domain.StatusFailed)
-		return "", err
-	}
-	return code, nil
-}
-
-// writeTaskOutput optionally writes the generated code to disk and marks the task
-// as COMPLETED. On write failure it persists StatusFailed and emits the event.
-func (o *OrchestratorService) writeTaskOutput(task domain.Task, code string, providerName string) {
-	if o.fileWriter != nil && task.TargetFile != "" {
-		if err := o.fileWriter.WriteCodeToFile(task.ProjectPath, task.TargetFile, extractCode(code)); err != nil {
-			logEntry := fmt.Sprintf("failed writing output via %s: %v", providerName, err)
-			log.Printf("orchestrator: write file for task %s: %v", task.ID, err)
-			if err2 := o.repo.UpdateLogs(task.ID, logEntry); err2 != nil {
-				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err2)
-			}
-			if err2 := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err2 != nil {
-				log.Printf("orchestrator: update status for task %s: %v", task.ID, err2)
-			}
-			o.emit(task.ID, domain.StatusFailed)
+	ticker := time.NewTicker(watchdogInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-o.stopCh:
 			return
+		case <-ticker.C:
+			// 5 minutes timeout for processing tasks
+			tasks, err := o.repo.GetStaleProcessing(ctx, 5*time.Minute)
+			if err != nil {
+				log.Printf("orchestrator: task watchdog: get stale tasks: %v", err)
+				continue
+			}
+			for _, t := range tasks {
+				log.Printf("orchestrator: task watchdog: task %s stuck in PROCESSING, failing", t.ID)
+				t.Status = domain.StatusFailed
+				t.Logs += "\n\n[System] Task timed out while PROCESSING. Marked as FAILED by watchdog."
+				if err := o.repo.Update(t); err != nil {
+					log.Printf("orchestrator: task watchdog: update task %s fail: %v", t.ID, err)
+					continue
+				}
+				o.emit(t.ID, domain.StatusFailed)
+				if o.broadcaster != nil {
+					o.broadcaster.Broadcast(ports.TaskEvent{
+						Type: ports.EventTaskFailed, TaskID: t.ID, Status: domain.StatusFailed,
+					})
+				}
+			}
 		}
 	}
-
-	logEntry := fmt.Sprintf("completed via %s at %s", providerName, time.Now().UTC().Format(time.RFC3339))
-	if err := o.repo.UpdateLogs(task.ID, logEntry); err != nil {
-		log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
-	}
-	if err := o.repo.UpdateStatus(task.ID, domain.StatusCompleted); err != nil {
-		log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
-	}
-	o.emit(task.ID, domain.StatusCompleted)
-	log.Printf("orchestrator: task %s completed via %s", task.ID, providerName)
-}
-
-// extractCode strips the first markdown code fence from s, returning the raw
-// source within. If no fence is found, s is returned unchanged.
-func extractCode(s string) string {
-	lines := strings.Split(s, "\n")
-	start := -1
-	for i, l := range lines {
-		if strings.HasPrefix(strings.TrimSpace(l), "```") {
-			start = i
-			break
-		}
-	}
-	if start == -1 {
-		return s
-	}
-	end := -1
-	for i := start + 1; i < len(lines); i++ {
-		if strings.TrimSpace(lines[i]) == "```" {
-			end = i
-			break
-		}
-	}
-	if end == -1 {
-		return strings.Join(lines[start+1:], "\n")
-	}
-	return strings.Join(lines[start+1:end], "\n")
-}
-
-// estimateTokens approximates the total token count for a message slice using
-// the widely-accepted heuristic of 4 characters per token, plus 4 overhead
-// tokens per message (role + chat-formatting separators).
-// It deliberately over-estimates slightly to stay safely within the model's
-// context window.
-func estimateTokens(messages []domain.Message) int {
-	total := 0
-	for _, m := range messages {
-		total += (len(m.Content)+3)/4 + 4
-	}
-	return total
 }

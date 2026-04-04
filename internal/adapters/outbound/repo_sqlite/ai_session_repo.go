@@ -32,16 +32,28 @@ func (a *AISessionRepo) SaveAISession(ctx context.Context, s domain.AISession) e
 		return fmt.Errorf("repo_sqlite: save ai session: marshal routed task ids: %w", err)
 	}
 
+	var delegationTS sql.NullString
+	if s.DelegationTimestamp != nil {
+		delegationTS = sql.NullString{String: s.DelegationTimestamp.Format(time.RFC3339), Valid: true}
+	}
+	capJSON, capErr := json.Marshal(s.AgentCapabilities)
+	if capErr != nil || len(capJSON) == 0 {
+		capJSON = []byte("[]")
+	}
+
 	_, err = a.db.ExecContext(ctx,
 		`INSERT OR REPLACE INTO ai_sessions
-		 (id, source, external_id, agent_name, project_path, status, last_activity, routed_task_ids, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 (id, source, external_id, agent_name, project_path, status, last_activity, routed_task_ids, created_at, updated_at, delegated_to_nexus, delegation_timestamp, agent_capabilities, detection_method, model_id, current_activity, message_count, tokens_used, last_message)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		s.ID, string(s.Source), s.ExternalID, s.AgentName, s.ProjectPath,
 		string(s.Status),
 		s.LastActivity.UTC().Format(time.RFC3339),
 		string(idsJSON),
 		s.CreatedAt.UTC().Format(time.RFC3339),
 		s.UpdatedAt.UTC().Format(time.RFC3339),
+		boolToInt(s.DelegatedToNexus), delegationTS,
+		string(capJSON), s.DetectionMethod, s.ModelID,
+		s.CurrentActivity, s.MessageCount, s.TokensUsed, s.LastMessage,
 	)
 	if err != nil {
 		return fmt.Errorf("repo_sqlite: save ai session: %w", err)
@@ -52,7 +64,7 @@ func (a *AISessionRepo) SaveAISession(ctx context.Context, s domain.AISession) e
 // GetAISessionByID returns the AI session with the given ID, or domain.ErrNotFound.
 func (a *AISessionRepo) GetAISessionByID(ctx context.Context, id string) (domain.AISession, error) {
 	row := a.db.QueryRowContext(ctx,
-		`SELECT id, source, external_id, agent_name, project_path, status, last_activity, routed_task_ids, created_at, updated_at
+		`SELECT id, source, external_id, agent_name, project_path, status, last_activity, routed_task_ids, created_at, updated_at, delegated_to_nexus, delegation_timestamp, agent_capabilities, detection_method, model_id, current_activity, message_count, tokens_used, last_message
 		 FROM ai_sessions WHERE id = ?`, id,
 	)
 	s, err := scanAISession(row)
@@ -68,7 +80,7 @@ func (a *AISessionRepo) GetAISessionByID(ctx context.Context, id string) (domain
 // GetAISessionByExternalID returns the AI session with the given external ID, or domain.ErrNotFound.
 func (a *AISessionRepo) GetAISessionByExternalID(ctx context.Context, externalID string) (domain.AISession, error) {
 	row := a.db.QueryRowContext(ctx,
-		`SELECT id, source, external_id, agent_name, project_path, status, last_activity, routed_task_ids, created_at, updated_at
+		`SELECT id, source, external_id, agent_name, project_path, status, last_activity, routed_task_ids, created_at, updated_at, delegated_to_nexus, delegation_timestamp, agent_capabilities, detection_method, model_id, current_activity, message_count, tokens_used, last_message
 		 FROM ai_sessions WHERE external_id = ? AND external_id != ''
 		 ORDER BY last_activity DESC LIMIT 1`, externalID,
 	)
@@ -85,7 +97,7 @@ func (a *AISessionRepo) GetAISessionByExternalID(ctx context.Context, externalID
 // ListAISessions returns all AI session records ordered by last activity descending.
 func (a *AISessionRepo) ListAISessions(ctx context.Context) ([]domain.AISession, error) {
 	rows, err := a.db.QueryContext(ctx,
-		`SELECT id, source, external_id, agent_name, project_path, status, last_activity, routed_task_ids, created_at, updated_at
+		`SELECT id, source, external_id, agent_name, project_path, status, last_activity, routed_task_ids, created_at, updated_at, delegated_to_nexus, delegation_timestamp, agent_capabilities, detection_method, model_id, current_activity, message_count, tokens_used, last_message
 		 FROM ai_sessions ORDER BY last_activity DESC`,
 	)
 	if err != nil {
@@ -93,7 +105,7 @@ func (a *AISessionRepo) ListAISessions(ctx context.Context) ([]domain.AISession,
 	}
 	defer rows.Close()
 
-	var sessions []domain.AISession
+	sessions := []domain.AISession{}
 	for rows.Next() {
 		s, err := scanAISession(rows)
 		if err != nil {
@@ -137,22 +149,106 @@ func (a *AISessionRepo) DeleteAISession(ctx context.Context, id string) error {
 	return nil
 }
 
+// AppendRoutedTaskID adds a task ID to the session's routed task list without duplicates.
+func (a *AISessionRepo) AppendRoutedTaskID(ctx context.Context, sessionID string, taskID string) error {
+	tx, err := a.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("repo_sqlite: append routed task id: begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var idsJSON string
+	err = tx.QueryRowContext(ctx, `SELECT routed_task_ids FROM ai_sessions WHERE id = ?`, sessionID).Scan(&idsJSON)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("repo_sqlite: append routed task id: %w", domain.ErrNotFound)
+		}
+		return fmt.Errorf("repo_sqlite: append routed task id: %w", err)
+	}
+
+	var ids []string
+	if err := json.Unmarshal([]byte(idsJSON), &ids); err != nil {
+		ids = []string{}
+	}
+
+	// Deduplicate
+	for _, id := range ids {
+		if id == taskID {
+			return nil // already present
+		}
+	}
+	ids = append(ids, taskID)
+
+	updatedJSON, err := json.Marshal(ids)
+	if err != nil {
+		return fmt.Errorf("repo_sqlite: append routed task id: marshal: %w", err)
+	}
+
+	now := time.Now().UTC().Format(time.RFC3339)
+	_, err = tx.ExecContext(ctx,
+		`UPDATE ai_sessions SET routed_task_ids = ?, updated_at = ? WHERE id = ?`,
+		string(updatedJSON), now, sessionID,
+	)
+	if err != nil {
+		return fmt.Errorf("repo_sqlite: append routed task id: update: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("repo_sqlite: append routed task id: commit: %w", err)
+	}
+	return nil
+}
+
+// PurgeDisconnected deletes all AI sessions with status "disconnected" whose
+// last_activity is older than olderThan. Returns the number of rows deleted.
+func (a *AISessionRepo) PurgeDisconnected(ctx context.Context, olderThan time.Duration) (int, error) {
+	cutoff := time.Now().Add(-olderThan).UTC().Format(time.RFC3339)
+	res, err := a.db.ExecContext(ctx,
+		`DELETE FROM ai_sessions WHERE status = 'disconnected' AND last_activity < ?`, cutoff,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("repo_sqlite: purge disconnected: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("repo_sqlite: purge disconnected: rows affected: %w", err)
+	}
+	return int(n), nil
+}
+
 func scanAISession(s scanner) (domain.AISession, error) {
 	var sess domain.AISession
 	var sourceStr, statusStr string
 	var lastActivityStr, createdAtStr, updatedAtStr string
 	var routedTaskIDsJSON string
+	var delegatedToNexusInt int
+	var delegationTSStr sql.NullString
+	var capabilitiesJSON string
+	var detectionMethod string
+	var modelID string
 
 	if err := s.Scan(
 		&sess.ID, &sourceStr, &sess.ExternalID, &sess.AgentName, &sess.ProjectPath,
 		&statusStr, &lastActivityStr, &routedTaskIDsJSON,
 		&createdAtStr, &updatedAtStr,
+		&delegatedToNexusInt, &delegationTSStr, &capabilitiesJSON, &detectionMethod, &modelID,
+		&sess.CurrentActivity, &sess.MessageCount, &sess.TokensUsed, &sess.LastMessage,
 	); err != nil {
 		return domain.AISession{}, err
 	}
 
 	sess.Source = domain.AISessionSource(sourceStr)
 	sess.Status = domain.AISessionStatus(statusStr)
+	sess.DelegatedToNexus = delegatedToNexusInt != 0
+	sess.DetectionMethod = detectionMethod
+	sess.ModelID = modelID
+
+	if delegationTSStr.Valid && delegationTSStr.String != "" {
+		t, err := time.Parse(time.RFC3339, delegationTSStr.String)
+		if err == nil {
+			sess.DelegationTimestamp = &t
+		}
+	}
 
 	var parseErr error
 	sess.LastActivity, parseErr = time.Parse(time.RFC3339, lastActivityStr)
@@ -170,6 +266,12 @@ func scanAISession(s scanner) (domain.AISession, error) {
 
 	if err := json.Unmarshal([]byte(routedTaskIDsJSON), &sess.RoutedTaskIDs); err != nil {
 		return domain.AISession{}, fmt.Errorf("scan ai session: unmarshal routed_task_ids: %w", err)
+	}
+
+	if capabilitiesJSON != "" {
+		if err := json.Unmarshal([]byte(capabilitiesJSON), &sess.AgentCapabilities); err != nil {
+			sess.AgentCapabilities = nil
+		}
 	}
 
 	return sess, nil

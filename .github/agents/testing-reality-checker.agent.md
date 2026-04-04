@@ -30,18 +30,18 @@ CGO_ENABLED=1 go test -race -count=1 ./...
 
 ### STEP 3: HTTP API Smoke Test (daemon must be running)
 ```bash
-curl -s http://127.0.0.1:9999/api/health | jq .
-curl -s http://127.0.0.1:9999/api/providers | jq .
-curl -s http://127.0.0.1:9999/api/tasks | jq .
+curl -s http://127.0.0.1:63987/api/health | jq .
+curl -s http://127.0.0.1:63987/api/providers | jq .
+curl -s http://127.0.0.1:63987/api/tasks | jq .
 ```
 
 ### STEP 4: MCP Server Smoke Test
 ```bash
-curl -s -X POST http://127.0.0.1:9998/mcp \
+curl -s -X POST http://127.0.0.1:63988/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | jq .
 
-curl -s -X POST http://127.0.0.1:9998/mcp \
+curl -s -X POST http://127.0.0.1:63988/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | jq '.result.tools[].name'
 ```

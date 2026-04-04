@@ -1,0 +1,39 @@
+# Build outputs
+build/
+dist/
+
+# Node modules
+node_modules/
+frontend/node_modules/
+vscode-extension/node_modules/
+docs/node_modules/
+github-action/node_modules/
+
+# Frontend / VS Code build artifacts (not needed in daemon image)
+frontend/dist/
+vscode-extension/dist/
+vscode-extension/coverage/
+*.vsix
+
+# Wails desktop resources (not needed in daemon image)
+build/darwin/
+build/windows/
+
+# Dev / test files
+coverage.out
+coverage.html
+*.test
+
+# VCS
+.git/
+
+# Local config
+.env
+.env.*
+*.local
+
+# Claude orchestrator state (not needed in image)
+.claude/
+
+# Docs
+docs/

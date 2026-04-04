@@ -599,8 +599,8 @@ After=network.target
 Type=simple
 ExecStart=/usr/local/bin/nexus-daemon
 Environment=NEXUS_DB_PATH=/var/lib/nexus/nexus.db
-Environment=NEXUS_LISTEN_ADDR=127.0.0.1:9999
-Environment=NEXUS_MCP_ADDR=127.0.0.1:9998
+Environment=NEXUS_LISTEN_ADDR=127.0.0.1:63987
+Environment=NEXUS_MCP_ADDR=127.0.0.1:63988
 Environment=NEXUS_PID_FILE=/run/nexus-daemon.pid
 Restart=on-failure
 RestartSec=5

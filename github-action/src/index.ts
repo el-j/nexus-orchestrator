@@ -37,7 +37,7 @@ function getInputs(): ActionInputs {
     agentRef: core.getInput('agent_ref').trim() || 'main',
     systemPrompt: core.getInput('system_prompt').trim(),
     daemonUrl:
-      core.getInput('daemon_url').trim() || 'http://127.0.0.1:9999',
+      core.getInput('daemon_url').trim() || 'http://127.0.0.1:63987',
     startDaemon: core.getInput('start_daemon').trim() !== 'false',
     nexusVersion: core.getInput('nexus_version').trim() || 'latest',
     timeoutSeconds: parseInt(core.getInput('timeout_seconds').trim() || '300', 10),
@@ -123,8 +123,8 @@ async function run(): Promise<void> {
       const binPath = await installDaemon(inputs.nexusVersion);
       daemonHandle = await startDaemon({
         binPath,
-        listenAddr: '127.0.0.1:9999',
-        mcpAddr: '127.0.0.1:9998',
+        listenAddr: '127.0.0.1:63987',
+        mcpAddr: '127.0.0.1:63988',
         dbPath: path.join(tmpDir, 'nexus-action.db'),
         logFile: path.join(tmpDir, 'nexus-daemon.log'),
         openaiApiKey: inputs.openaiApiKey,
@@ -134,7 +134,7 @@ async function run(): Promise<void> {
         githubCopilotToken: inputs.githubCopilotToken,
         githubCopilotModel: inputs.githubCopilotModel,
       });
-      daemonUrl = 'http://127.0.0.1:9999';
+      daemonUrl = 'http://127.0.0.1:63987';
     }
 
     // 2. Resolve agent identity / system prompt

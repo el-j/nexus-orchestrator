@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -189,19 +190,71 @@ func (s *Scanner) probePort(ctx context.Context, t portTarget) ([]domain.Discove
 	}
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return []domain.DiscoveredProvider{makePortProvider(t, nil)}, nil
+		return []domain.DiscoveredProvider{makePortProvider(t, nil, nil, false)}, nil
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 256*1024))
-	return []domain.DiscoveredProvider{makePortProvider(t, parseModels(body))}, nil
+	models := parseModels(body)
+
+	// For Ollama, also probe /api/ps to detect actively loaded / generating models.
+	var activeModels []string
+	generating := false
+	if t.kind == domain.ProviderKindOllama {
+		activeModels, generating = s.probeOllamaPS(ctx, t.port)
+	}
+
+	return []domain.DiscoveredProvider{makePortProvider(t, models, activeModels, generating)}, nil
 }
 
-func makePortProvider(t portTarget, models []string) domain.DiscoveredProvider {
+// probeOllamaPS calls the Ollama /api/ps endpoint to discover models currently
+// loaded in memory and whether any generation is actively in progress.
+func (s *Scanner) probeOllamaPS(ctx context.Context, port int) (activeModels []string, generating bool) {
+	url := fmt.Sprintf("http://127.0.0.1:%d/api/ps", port)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, false
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return nil, false
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+
+	var ps struct {
+		Models []struct {
+			Name  string `json:"name"`
+			Model string `json:"model"`
+		} `json:"models"`
+	}
+	if err := json.Unmarshal(body, &ps); err != nil {
+		return nil, false
+	}
+	for _, m := range ps.Models {
+		name := m.Name
+		if name == "" {
+			name = m.Model
+		}
+		if name != "" {
+			activeModels = append(activeModels, name)
+			generating = true // at least one model is loaded/active
+		}
+	}
+	return activeModels, generating
+}
+
+func makePortProvider(t portTarget, models []string, activeModels []string, generating bool) domain.DiscoveredProvider {
 	return domain.DiscoveredProvider{
 		ID: fmt.Sprintf("port-%d", t.port), Name: t.name, Kind: t.kind,
 		Method: domain.DiscoveryMethodPort, Status: domain.DiscoveryStatusReachable,
-		BaseURL: fmt.Sprintf("http://127.0.0.1:%d", t.port),
-		Models:  models, LastSeen: time.Now().UTC(),
+		BaseURL:      fmt.Sprintf("http://127.0.0.1:%d", t.port),
+		Models:       models,
+		ActiveModels: activeModels,
+		Generating:   generating,
+		LastSeen:     time.Now().UTC(),
 	}
 }
 
@@ -264,7 +317,7 @@ func (s *Scanner) probeProcess(ctx context.Context, p processPattern) ([]domain.
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	found, matched, err := detectProcess(ctx, p.pattern)
+	found, matched, _, err := detectProcess(ctx, p.pattern)
 	if err != nil || !found {
 		return nil, nil
 	}
@@ -276,37 +329,39 @@ func (s *Scanner) probeProcess(ctx context.Context, p processPattern) ([]domain.
 	}}, nil
 }
 
-func detectProcess(ctx context.Context, pattern string) (bool, string, error) {
+func detectProcess(ctx context.Context, pattern string) (bool, string, int, error) {
 	if runtime.GOOS == "windows" {
 		return detectProcessWindows(ctx, pattern)
 	}
 	return detectProcessPgrep(ctx, pattern)
 }
 
-func detectProcessPgrep(ctx context.Context, pattern string) (bool, string, error) {
+func detectProcessPgrep(ctx context.Context, pattern string) (bool, string, int, error) {
 	out, err := exec.CommandContext(ctx, "pgrep", "-lf", pattern).Output()
 	if err != nil {
-		return false, "", nil
+		return false, "", 0, nil
 	}
 	line := strings.TrimSpace(string(out))
 	if line == "" {
-		return false, "", nil
+		return false, "", 0, nil
 	}
 	parts := strings.SplitN(line, " ", 2)
 	name := pattern
+	pid := 0
 	if len(parts) == 2 {
+		pid, _ = strconv.Atoi(parts[0])
 		name = strings.TrimSpace(parts[1])
 		if idx := strings.Index(name, " "); idx > 0 {
 			name = name[:idx]
 		}
 	}
-	return true, name, nil
+	return true, name, pid, nil
 }
 
-func detectProcessWindows(ctx context.Context, pattern string) (bool, string, error) {
+func detectProcessWindows(ctx context.Context, pattern string) (bool, string, int, error) {
 	out, err := exec.CommandContext(ctx, "tasklist", "/fo", "csv", "/nh").Output()
 	if err != nil {
-		return false, "", fmt.Errorf("sys_scanner: tasklist: %w", err)
+		return false, "", 0, fmt.Errorf("sys_scanner: tasklist: %w", err)
 	}
 	lower := strings.ToLower(pattern)
 	for _, line := range strings.Split(string(out), "\n") {
@@ -314,12 +369,20 @@ func detectProcessWindows(ctx context.Context, pattern string) (bool, string, er
 			continue
 		}
 		line = strings.TrimSpace(line)
+
+		pid := 0
+		parts := strings.Split(line, ",")
+		if len(parts) > 1 {
+			pidStr := strings.Trim(parts[1], `"`)
+			pid, _ = strconv.Atoi(pidStr)
+		}
+
 		if len(line) > 0 && line[0] == '"' {
 			if end := strings.Index(line[1:], "\""); end >= 0 {
-				return true, line[1 : end+1], nil
+				return true, line[1 : end+1], pid, nil
 			}
 		}
-		return true, pattern, nil
+		return true, pattern, pid, nil
 	}
-	return false, "", nil
+	return false, "", 0, nil
 }

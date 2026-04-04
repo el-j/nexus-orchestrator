@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -22,9 +23,10 @@ import (
 
 // Server holds the HTTP API dependencies.
 type Server struct {
-	orch   ports.Orchestrator
-	hub    *Hub
-	logHub *LogHub
+	orch        ports.Orchestrator
+	hub         *Hub
+	logHub      *LogHub
+	activitySvc activityQuerier
 }
 
 // NewServer constructs a Server. hub may be nil to disable SSE.
@@ -35,6 +37,12 @@ func NewServer(orch ports.Orchestrator, hub *Hub) *Server {
 // WithLogHub configures the Server to capture and stream log entries via SSE.
 func (s *Server) WithLogHub(h *LogHub) *Server {
 	s.logHub = h
+	return s
+}
+
+// WithActivityService injects an activity querier for the activity endpoints.
+func (s *Server) WithActivityService(svc activityQuerier) *Server {
+	s.activitySvc = svc
 	return s
 }
 
@@ -67,8 +75,8 @@ func corsMiddleware(next http.Handler) http.Handler {
 		origin := r.Header.Get("Origin")
 		if origin == "wails://wails.localhost" || strings.HasPrefix(origin, "http://localhost:") {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		}
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
@@ -78,11 +86,50 @@ func corsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func (s *Server) tokenAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := os.Getenv("NEXUS_API_TOKEN")
+		if token == "" && s.orch != nil {
+			if cfg, err := s.orch.GetRuntimeConfig(r.Context()); err == nil {
+				token = cfg.APIToken
+			}
+		}
+
+		// If no token is configured, allow requests (backward compatible default).
+		if token == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Only guard /api/* endpoints. UI routes remain public so the app can load.
+		path := r.URL.Path
+		if !strings.HasPrefix(path, "/api/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		// Allow unauthenticated health and discovery docs.
+		if path == "/api/health" || path == "/api/howto" || path == "/.well-known/nexus.json" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		auth := r.Header.Get("Authorization")
+		const prefix = "Bearer "
+		if !strings.HasPrefix(auth, prefix) || strings.TrimSpace(strings.TrimPrefix(auth, prefix)) != token {
+			writeJSONError(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (s *Server) Handler() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(corsMiddleware)
+	r.Use(s.tokenAuthMiddleware)
 	r.Use(maxBodySize)
 	r.Use(securityHeaders)
 
@@ -95,6 +142,7 @@ func (s *Server) Handler() http.Handler {
 	// Task endpoints — literal segments must be registered before wildcard {id}
 	r.Post("/api/tasks", s.handleCreateTask)
 	r.Get("/api/tasks", s.handleListTasks)
+	r.Get("/api/tasks/all", s.handleGetAllTasks)
 	r.Post("/api/tasks/draft", s.handleCreateDraft)
 	r.Get("/api/tasks/backlog", s.handleGetBacklog)
 	r.Get("/api/tasks/{id}", s.handleGetTask)
@@ -123,14 +171,38 @@ func (s *Server) Handler() http.Handler {
 	// AI session endpoints — literal segment before wildcard {id}
 	r.Post("/api/ai-sessions", s.handleRegisterAISession)
 	r.Get("/api/ai-sessions", s.handleListAISessions)
+	r.Delete("/api/ai-sessions", s.handlePurgeDisconnectedSessions)
+	r.Get("/api/ai-sessions/discovered", s.handleGetDiscoveredAgents)
 	r.Delete("/api/ai-sessions/{id}", s.handleDeregisterAISession)
 	r.Post("/api/ai-sessions/{id}/heartbeat", s.handleHeartbeatAISession)
+	r.Post("/api/ai-sessions/{id}/terminate", s.handleTerminateAISession)
+	r.Get("/api/ai-sessions/{id}/tasks", s.handleGetSessionTasks)
+	r.Post("/api/ai-sessions/{id}/delegate", s.handleDelegateToNexus)
+
+	// Task claim + external status update
+	r.Post("/api/tasks/{id}/claim", s.handleClaimTask)
+	r.Put("/api/tasks/{id}/status", s.handleUpdateTaskStatus)
+	r.Post("/api/tasks/{id}/heartbeat", s.handleHeartbeatTask)
 
 	r.Get("/api/health", s.handleHealth)
 	r.Get("/api/logs", s.handleGetLogs)
+	// Runtime config
+	r.Get("/api/config", s.handleGetConfig)
+	r.Put("/api/config", s.handlePutConfig)
 
 	// GET /api/events — SSE stream for task lifecycle and log events
 	r.Get("/api/events", s.handleEvents)
+	// Activity observatory endpoints
+	r.Get("/api/activities", s.handleListActivities)
+	r.Get("/api/activities/timeline", s.handleActivityTimeline)
+
+	// Plan file discovery endpoints
+	r.Get("/api/plans/discovered", s.handleGetDiscoveredPlanFiles)
+	r.Post("/api/plans/discovered/scan", s.handleScanPlanFiles)
+
+	// Discovery + how-to
+	r.Get("/api/howto", s.handleHowto)
+	r.Get("/.well-known/nexus.json", s.handleWellKnownNexus)
 
 	return r
 }
@@ -171,349 +243,83 @@ func StartServer(ctx context.Context, orch ports.Orchestrator, addr string, logH
 	return nil
 }
 
+// activityBroadcasterSetter is satisfied by *services.ActivityService.
+// Defined as a local interface to avoid importing the services package from an inbound adapter.
+type activityBroadcasterSetter interface {
+	SetBroadcaster(ports.ActivityBroadcaster)
+}
+
+// StartServerFull is like StartServer but also wires an activity service for
+// the activity observatory endpoints and SSE broadcasting of activity events.
+func StartServerFull(ctx context.Context, orch ports.Orchestrator, addr string, actSvc activityQuerier, logHub ...*LogHub) error {
+	hub := NewHub()
+	if bs, ok := orch.(broadcasterSetter); ok {
+		bs.SetBroadcaster(hub)
+	}
+	if actSvc != nil {
+		if abs, ok := actSvc.(activityBroadcasterSetter); ok {
+			abs.SetBroadcaster(hub)
+		}
+	}
+	s := NewServer(orch, hub)
+	if len(logHub) > 0 && logHub[0] != nil {
+		s.WithLogHub(logHub[0])
+	}
+	if actSvc != nil {
+		s.WithActivityService(actSvc)
+	}
+	srv := &http.Server{
+		Addr:         addr,
+		Handler:      s.Handler(),
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 0, // no write timeout — required for long-lived SSE connections
+		IdleTimeout:  60 * time.Second,
+	}
+
+	// Start periodic background plan discovery scans.
+	StartPlanScanWorker(ctx, orch, 5*time.Minute)
+
+	go func() {
+		<-ctx.Done()
+		shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(shutCtx); err != nil {
+			log.Printf("httpapi: shutdown: %v", err)
+		}
+	}()
+
+	log.Printf("httpapi: listening on %s", addr)
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+	return nil
+}
+
 // writeJSONError sets Content-Type to application/json, writes the HTTP status
 // code, and encodes {"error":"<msg>"} as the response body.
 func writeJSONError(w http.ResponseWriter, msg string, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
+	if err := json.NewEncoder(w).Encode(map[string]string{"error": msg}); err != nil {
+		log.Printf("httpapi: json encode: %v", err)
+	}
 }
 
-func (s *Server) handleCreateTask(w http.ResponseWriter, r *http.Request) {
-	var req domain.Task
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	taskID, err := s.orch.SubmitTask(req)
-	if err != nil {
-		if errors.Is(err, domain.ErrNoPlan) {
-			writeJSONError(w, "planning required before execution; submit a 'plan' task first", http.StatusUnprocessableEntity)
-			return
-		}
-		log.Printf("httpapi: create task: %v", err)
-		writeJSONError(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
+// writeJSON sets Content-Type to application/json, writes the given HTTP status
+// code, and encodes v as the response body.
+func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(map[string]string{
-		"task_id": taskID,
-		"status":  string(domain.StatusQueued),
-	})
-}
-
-func (s *Server) handleListTasks(w http.ResponseWriter, r *http.Request) {
-	tasks, err := s.orch.GetQueue()
-	if err != nil {
-		log.Printf("httpapi: list tasks: %v", err)
-		writeJSONError(w, "internal server error", http.StatusInternalServerError)
-		return
+	w.WriteHeader(code)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		log.Printf("httpapi: json encode: %v", err)
 	}
-	if tasks == nil {
-		tasks = []domain.Task{}
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(tasks)
-}
-
-func (s *Server) handleGetTask(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	task, err := s.orch.GetTask(id)
-	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			writeJSONError(w, "task not found", http.StatusNotFound)
-			return
-		}
-		log.Printf("httpapi: get task %s: %v", id, err)
-		writeJSONError(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(task)
-}
-
-func (s *Server) handleCancelTask(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if err := s.orch.CancelTask(id); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			writeJSONError(w, "task not found", http.StatusNotFound)
-			return
-		}
-		log.Printf("httpapi: cancel task %s: %v", id, err)
-		writeJSONError(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func (s *Server) handleCreateDraft(w http.ResponseWriter, r *http.Request) {
-	var task domain.Task
-	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
-		writeJSONError(w, "invalid JSON", http.StatusBadRequest)
-		return
-	}
-	id, err := s.orch.CreateDraft(task)
-	if err != nil {
-		writeJSONError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(map[string]string{"id": id, "status": "DRAFT"})
-}
-
-func (s *Server) handleGetBacklog(w http.ResponseWriter, r *http.Request) {
-	projectPath := r.URL.Query().Get("project")
-	if projectPath == "" {
-		writeJSONError(w, "project query parameter required", http.StatusBadRequest)
-		return
-	}
-	tasks, err := s.orch.GetBacklog(projectPath)
-	if err != nil {
-		log.Printf("httpapi: get backlog: %v", err)
-		writeJSONError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if tasks == nil {
-		tasks = []domain.Task{}
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(tasks)
-}
-
-func (s *Server) handlePromoteTask(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if err := s.orch.PromoteTask(id); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			writeJSONError(w, "task not found", http.StatusNotFound)
-			return
-		}
-		writeJSONError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func (s *Server) handleUpdateTask(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	var updates domain.Task
-	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		writeJSONError(w, "invalid JSON", http.StatusBadRequest)
-		return
-	}
-	updated, err := s.orch.UpdateTask(id, updates)
-	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			writeJSONError(w, "task not found", http.StatusNotFound)
-			return
-		}
-		writeJSONError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(updated)
-}
-
-func (s *Server) handleProviders(w http.ResponseWriter, r *http.Request) {
-	providers, err := s.orch.GetProviders()
-	if err != nil {
-		log.Printf("httpapi: get providers: %v", err)
-		writeJSONError(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	if providers == nil {
-		providers = []ports.ProviderInfo{}
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(providers)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{
+	writeJSON(w, http.StatusOK, map[string]string{
 		"status":  "ok",
 		"service": "nexus-orchestrator",
 	})
-}
-
-func (s *Server) handleRegisterProvider(w http.ResponseWriter, r *http.Request) {
-	var cfg domain.ProviderConfig
-	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
-		writeJSONError(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	if cfg.Name == "" || cfg.Kind == "" {
-		writeJSONError(w, "name and kind are required", http.StatusBadRequest)
-		return
-	}
-	if err := s.orch.RegisterCloudProvider(cfg); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			writeJSONError(w, err.Error(), http.StatusConflict)
-			return
-		}
-		writeJSONError(w, err.Error(), http.StatusUnprocessableEntity)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(map[string]string{"name": cfg.Name, "kind": string(cfg.Kind)})
-}
-
-func (s *Server) handleRemoveProvider(w http.ResponseWriter, r *http.Request) {
-	name := chi.URLParam(r, "name")
-	if err := s.orch.RemoveProvider(name); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			writeJSONError(w, "provider not found", http.StatusNotFound)
-			return
-		}
-		log.Printf("httpapi: remove provider %s: %v", name, err)
-		writeJSONError(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func (s *Server) handleProviderModels(w http.ResponseWriter, r *http.Request) {
-	name := chi.URLParam(r, "name")
-	models, err := s.orch.GetProviderModels(name)
-	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			writeJSONError(w, "provider not found", http.StatusNotFound)
-			return
-		}
-		log.Printf("httpapi: provider models %s: %v", name, err)
-		writeJSONError(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	if models == nil {
-		models = []string{}
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(models)
-}
-
-// maskAPIKey returns a masked representation of an API key:
-// if longer than 4 characters, the last 4 are preserved; otherwise "****".
-func maskAPIKey(key string) string {
-	if len(key) > 4 {
-		return "****" + key[len(key)-4:]
-	}
-	return "****"
-}
-
-// maskedProviderConfig returns a copy of cfg with the APIKey field masked.
-func maskedProviderConfig(cfg domain.ProviderConfig) domain.ProviderConfig {
-	if cfg.APIKey != "" {
-		cfg.APIKey = maskAPIKey(cfg.APIKey)
-	}
-	return cfg
-}
-
-func (s *Server) handleAddProviderConfig(w http.ResponseWriter, r *http.Request) {
-	var cfg domain.ProviderConfig
-	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
-		writeJSONError(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	if cfg.Name == "" || cfg.Kind == "" {
-		writeJSONError(w, "name and kind are required", http.StatusBadRequest)
-		return
-	}
-	created, err := s.orch.AddProviderConfig(r.Context(), cfg)
-	if err != nil {
-		log.Printf("httpapi: add provider config: %v", err)
-		writeJSONError(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(maskedProviderConfig(created))
-}
-
-func (s *Server) handleListProviderConfigs(w http.ResponseWriter, r *http.Request) {
-	cfgs, err := s.orch.ListProviderConfigs(r.Context())
-	if err != nil {
-		log.Printf("httpapi: list provider configs: %v", err)
-		writeJSONError(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	masked := make([]domain.ProviderConfig, len(cfgs))
-	for i, c := range cfgs {
-		masked[i] = maskedProviderConfig(c)
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(masked)
-}
-
-func (s *Server) handleUpdateProviderConfig(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	var cfg domain.ProviderConfig
-	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
-		writeJSONError(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	cfg.ID = id
-	updated, err := s.orch.UpdateProviderConfig(r.Context(), cfg)
-	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			writeJSONError(w, "provider config not found", http.StatusNotFound)
-			return
-		}
-		log.Printf("httpapi: update provider config %s: %v", id, err)
-		writeJSONError(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(maskedProviderConfig(updated))
-}
-
-func (s *Server) handleRemoveProviderConfig(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if err := s.orch.RemoveProviderConfig(r.Context(), id); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			writeJSONError(w, "provider config not found", http.StatusNotFound)
-			return
-		}
-		log.Printf("httpapi: remove provider config %s: %v", id, err)
-		writeJSONError(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func (s *Server) handleGetDiscoveredProviders(w http.ResponseWriter, r *http.Request) {
-	providers, err := s.orch.GetDiscoveredProviders()
-	if err != nil {
-		writeJSONError(w, "failed to get discovered providers", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(providers)
-}
-
-func (s *Server) handleTriggerScan(w http.ResponseWriter, r *http.Request) {
-	providers, err := s.orch.TriggerScan(r.Context())
-	if err != nil {
-		writeJSONError(w, "scan failed", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(providers)
-}
-
-func (s *Server) handlePromoteProvider(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	err := s.orch.PromoteProvider(r.Context(), id)
-	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			writeJSONError(w, "provider not found", http.StatusNotFound)
-			return
-		}
-		writeJSONError(w, "failed to promote provider", http.StatusBadRequest)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleGetLogs returns a JSON array of buffered log entries from the ring buffer.
@@ -524,75 +330,7 @@ func (s *Server) handleGetLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	entries := s.logHub.Buffer()
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(entries)
-}
-
-func (s *Server) handleRegisterAISession(w http.ResponseWriter, r *http.Request) {
-	var session domain.AISession
-	if err := json.NewDecoder(r.Body).Decode(&session); err != nil {
-		writeJSONError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if session.AgentName == "" {
-		writeJSONError(w, "agentName is required", http.StatusBadRequest)
-		return
-	}
-	if session.Source != domain.SessionSourceMCP && session.Source != domain.SessionSourceVSCode && session.Source != domain.SessionSourceHTTP {
-		writeJSONError(w, "source must be one of: mcp, vscode, http", http.StatusBadRequest)
-		return
-	}
-	created, err := s.orch.RegisterAISession(r.Context(), session)
-	if err != nil {
-		log.Printf("httpapi: register ai session: %v", err)
-		writeJSONError(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(created)
-}
-
-func (s *Server) handleListAISessions(w http.ResponseWriter, r *http.Request) {
-	sessions, err := s.orch.ListAISessions(r.Context())
-	if err != nil {
-		log.Printf("httpapi: list ai sessions: %v", err)
-		writeJSONError(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	if sessions == nil {
-		sessions = []domain.AISession{}
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(sessions)
-}
-
-func (s *Server) handleDeregisterAISession(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if err := s.orch.DeregisterAISession(r.Context(), id); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			writeJSONError(w, "ai session not found", http.StatusNotFound)
-			return
-		}
-		log.Printf("httpapi: deregister ai session %s: %v", id, err)
-		writeJSONError(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func (s *Server) handleHeartbeatAISession(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if err := s.orch.HeartbeatAISession(r.Context(), id); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			writeJSONError(w, "ai session not found", http.StatusNotFound)
-			return
-		}
-		log.Printf("httpapi: heartbeat ai session %s: %v", id, err)
-		writeJSONError(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
+	writeJSON(w, http.StatusOK, entries)
 }
 
 // handleEvents serves a Server-Sent Events stream that multiplexes task lifecycle

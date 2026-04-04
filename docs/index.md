@@ -34,10 +34,10 @@ Automatically discovers and routes tasks to LM Studio, Ollama, OpenAI, Anthropic
 Every project path gets its own SQLite-backed conversation history. Multi-turn interactions maintain context across tasks, so your LLM always knows what came before.
 
 ### MCP Server (Model Context Protocol)
-Built-in JSON-RPC 2.0 server on port 9998, compatible with Claude Desktop and any MCP client. Six tools: submit_task, get_task, get_queue, cancel_task, get_providers, and health.
+Built-in JSON-RPC 2.0 server on port 63988, compatible with Claude Desktop and any MCP client. Six tools: submit_task, get_task, get_queue, cancel_task, get_providers, and health.
 
 ### Full HTTP REST API
-Complete task management on port 9999 — submit, list, cancel, and monitor tasks. Real-time updates via Server-Sent Events (SSE). Provider CRUD for dynamic backend management.
+Complete task management on port 63987 — submit, list, cancel, and monitor tasks. Real-time updates via Server-Sent Events (SSE). Provider CRUD for dynamic backend management.
 
 ### Context-Window Guard
 Pre-flight token estimation prevents prompt overflow before it reaches the LLM. Tasks exceeding the model's context limit are flagged as TOO_LARGE immediately.
@@ -64,14 +64,14 @@ CGO_ENABLED=1 go build -o nexus-daemon ./cmd/nexus-daemon/...
 
 # Start it
 ./nexus-daemon
-# HTTP API:  http://localhost:9999
-# MCP server: http://localhost:9998/mcp
-# Dashboard:  http://localhost:9999/ui
+# HTTP API:  http://localhost:63987
+# MCP server: http://localhost:63988/mcp
+# Dashboard:  http://localhost:63987/ui
 ```
 
 ```sh
 # Submit a task via curl
-curl -X POST http://localhost:9999/api/tasks \
+curl -X POST http://localhost:63987/api/tasks \
   -H "Content-Type: application/json" \
   -d '{
     "projectPath": "/path/to/your/project",

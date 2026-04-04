@@ -60,28 +60,28 @@ export function useTasks() {
 ```
 
 ## SSE endpoint details
-- URL: `http://127.0.0.1:9999/api/events` (but use relative path `/api/events` in the Vite dev
-  proxy environment; in Wails build the wails.ts helpers rewrite base URL to `:9999` already)
+- URL: `http://127.0.0.1:63987/api/events` (but use relative path `/api/events` in the Vite dev
+  proxy environment; in Wails build the wails.ts helpers rewrite base URL to `:63987` already)
 - Event format: plain SSE, `data:` lines only, no `event:` field used
 - Each `data:` payload is JSON: `{ "type": "task_updated" | "connected", "taskId": "...", "status": "..." }`
 - Connection sends an initial `data: {"type":"connected"}` ping on connect
 
 ## Wails compatibility note
 In Wails desktop builds, `getQueue()` is a native binding. However `EventSource` connecting to
-`http://127.0.0.1:9999/api/events` must work because Wails exposes the HTTP API on `:9999`.
+`http://127.0.0.1:63987/api/events` must work because Wails exposes the HTTP API on `:63987`.
 To detect the base URL, import and use `getBaseURL()` from `../types/wails` if it exists, otherwise
-default to `http://127.0.0.1:9999`.
+default to `http://127.0.0.1:63987`.
 
 Actually: keep it simple — use a relative URL `/api/events` for browser (Vite proxy will handle it)
-and `http://127.0.0.1:9999/api/events` for Wails. Check `window.__WAILS__` or
+and `http://127.0.0.1:63987/api/events` for Wails. Check `window.__WAILS__` or
 `typeof window !== 'undefined' && (window as any).__wails !== undefined` to detect Wails context.
-If detection is complex, just use `http://127.0.0.1:9999/api/events` unconditionally — it works
+If detection is complex, just use `http://127.0.0.1:63987/api/events` unconditionally — it works
 in both environments.
 
 ## Implementation Steps
 1. Keep all existing exports (`tasks`, `loading`, `error`, `refresh`) unchanged.
 2. Replace `setInterval` with an `EventSource` connection when `typeof EventSource !== 'undefined'`:
-   a. Create `new EventSource('http://127.0.0.1:9999/api/events')`.
+   a. Create `new EventSource('http://127.0.0.1:63987/api/events')`.
    b. On `es.onmessage`: parse `event.data` as JSON, if `type !== 'connected'` call `refresh()`.
    c. On `es.onerror`: close EventSource, log a console.warn, fall back to polling every 2 s (set
       `interval = setInterval(refresh, 2000)`).

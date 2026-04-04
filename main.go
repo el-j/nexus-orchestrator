@@ -1,5 +1,5 @@
 // Command nexus-orchestrator is the nexusOrchestrator desktop application.
-// It runs a native GUI via Wails with an embedded HTTP API on :9999 and MCP server on :9998.
+// It runs a native GUI via Wails with an embedded HTTP API on :63987 and MCP server on :63988.
 package main
 
 import (
@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/wailsapp/wails/v2"
@@ -18,21 +19,20 @@ import (
 	"nexus-orchestrator/internal/adapters/inbound/httpapi"
 	"nexus-orchestrator/internal/adapters/inbound/mcp"
 	"nexus-orchestrator/internal/adapters/inbound/tray"
+	"nexus-orchestrator/internal/adapters/outbound/activity_claude"
+	"nexus-orchestrator/internal/adapters/outbound/activity_continue"
+	"nexus-orchestrator/internal/adapters/outbound/activity_network"
 	"nexus-orchestrator/internal/adapters/outbound/fs_writer"
-	"nexus-orchestrator/internal/adapters/outbound/llm_anthropic"
-	"nexus-orchestrator/internal/adapters/outbound/llm_lmstudio"
-	"nexus-orchestrator/internal/adapters/outbound/llm_ollama"
-	"nexus-orchestrator/internal/adapters/outbound/llm_openaicompat"
 	"nexus-orchestrator/internal/adapters/outbound/repo_sqlite"
 	"nexus-orchestrator/internal/adapters/outbound/sys_scanner"
-	"nexus-orchestrator/internal/core/domain"
+	"nexus-orchestrator/internal/bootstrap"
 	"nexus-orchestrator/internal/core/ports"
 	"nexus-orchestrator/internal/core/services"
 )
 
 var version = "dev"
 
-//go:embed all:frontend/dist
+//go:embed all:build/frontend
 var assets embed.FS
 
 func main() {
@@ -64,20 +64,49 @@ func run() error {
 	writer := fs_writer.New()
 
 	// 2. Core services (Hexagonal wiring)
-	discoverySvc := services.NewDiscoveryService(buildProviders()...)
+	discoverySvc := services.NewDiscoveryService(bootstrap.BuildProviders()...)
 	sessionRepo := repo_sqlite.NewSessionRepo(repo)
 	orchestratorSvc := services.NewOrchestrator(discoverySvc, repo, writer, sessionRepo)
-	orchestratorSvc.WithProviderFactory(buildProviderFromConfig)
+	orchestratorSvc.WithProviderFactory(bootstrap.BuildProviderFromConfig)
 
 	providerConfigRepo := repo_sqlite.NewProviderConfigRepo(repo)
 	orchestratorSvc.WithProviderConfigRepo(providerConfigRepo)
 
+	runtimeConfigRepo := repo_sqlite.NewRuntimeConfigRepo(repo)
+	orchestratorSvc.WithRuntimeConfigRepo(runtimeConfigRepo)
+	if cfg, err := orchestratorSvc.GetRuntimeConfig(context.Background()); err != nil {
+		log.Printf("startup: get runtime config: %v", err)
+	} else if cfg.QueueCap > 0 {
+		orchestratorSvc.WithQueueCap(cfg.QueueCap)
+	}
+
 	aiSessionRepo := repo_sqlite.NewAISessionRepo(repo)
 	orchestratorSvc.SetAISessionRepo(aiSessionRepo)
 
-	// Wire system scanner for provider discovery.
+	// 2b. Activity observatory
+	activityRepo := repo_sqlite.NewActivityRepo(repo)
+	var activityReaders []ports.ActivityReader
+	if homeDir, err := os.UserHomeDir(); err == nil {
+		if _, err := os.Stat(filepath.Join(homeDir, ".claude")); err == nil {
+			activityReaders = append(activityReaders, activity_claude.NewClaudeJSONLReader(), activity_claude.NewClaudeHistoryReader())
+		}
+		if _, err := os.Stat(filepath.Join(homeDir, ".continue")); err == nil {
+			activityReaders = append(activityReaders, activity_continue.NewContinueSessionReader())
+		}
+	}
+	activityReaders = append(activityReaders, activity_network.NewNetworkProbeReader())
+	activitySvc := services.NewActivityService(activityRepo, aiSessionRepo, activityReaders...)
+	activitySvc.Start()
+	defer activitySvc.Stop()
+
+	// Wire system scanner for provider discovery + agent detection.
 	scanner := sys_scanner.New()
 	orchestratorSvc.WithSystemScanner(scanner)
+	orchestratorSvc.SetAgentScanner(scanner)
+	discoveredAgentRepo := repo_sqlite.NewDiscoveredAgentRepo(repo)
+	orchestratorSvc.SetDiscoveredAgentRepo(discoveredAgentRepo)
+	planFileRepo := repo_sqlite.NewPlanFileRepo(repo)
+	services.WithPlanFileRepo(planFileRepo)(orchestratorSvc)
 
 	// Load persisted provider configs and register each enabled one.
 	if cfgs, err := providerConfigRepo.ListProviderConfigs(context.Background()); err != nil {
@@ -98,14 +127,14 @@ func run() error {
 	httpCtx, cancelHTTP := context.WithCancel(context.Background())
 	httpAddr := os.Getenv("NEXUS_LISTEN_ADDR")
 	if httpAddr == "" {
-		httpAddr = "127.0.0.1:9999"
+		httpAddr = "127.0.0.1:63987"
 	}
 	mcpAddr := os.Getenv("NEXUS_MCP_ADDR")
 	if mcpAddr == "" {
-		mcpAddr = "127.0.0.1:9998"
+		mcpAddr = "127.0.0.1:63988"
 	}
 	go func() {
-		if err := httpapi.StartServer(httpCtx, orchestratorSvc, httpAddr, logHub); err != nil {
+		if err := httpapi.StartServerFull(httpCtx, orchestratorSvc, httpAddr, activitySvc, logHub); err != nil {
 			log.Printf("httpapi: %v", err)
 		}
 	}()
@@ -146,7 +175,7 @@ func run() error {
 	}()
 
 	// 4. Initialise Wails app binding
-	app := NewApp(orchestratorSvc, httpAddr)
+	app := NewApp(orchestratorSvc, httpAddr).WithActivityService(activitySvc)
 
 	trayAdapter := tray.NewTrayAdapter(orchestratorSvc, func() {
 		runtime.WindowShow(app.ctx)
@@ -155,6 +184,19 @@ func run() error {
 	})
 
 	log.Printf("nexusOrchestrator started — closing window hides to tray")
+	// Print a human- and AI-readable ready banner.
+	httpBase := "http://" + httpAddr
+	fmt.Printf("\n")
+	fmt.Printf("┌────────────────────────────────────────────────────────┐\n")
+	fmt.Printf("│  nexusOrchestrator — ready (GUI)                       │\n")
+	fmt.Printf("├────────────────────────────────────────────────────────┤\n")
+	fmt.Printf("│  HTTP API  →  %-39s  │\n", httpBase)
+	fmt.Printf("│  Dashboard →  %-39s  │\n", httpBase+"/ui")
+	fmt.Printf("│  How-to    →  %-39s  │\n", httpBase+"/api/howto")
+	fmt.Printf("│  Discovery →  %-39s  │\n", httpBase+"/.well-known/nexus.json")
+	fmt.Printf("│  MCP       →  %-39s  │\n", "http://"+mcpAddr+"/mcp")
+	fmt.Printf("└────────────────────────────────────────────────────────┘\n")
+	fmt.Printf("\n")
 
 	// 5. Launch Wails desktop window
 	if err := wails.Run(&options.App{
@@ -185,66 +227,4 @@ func run() error {
 		return fmt.Errorf("wails: %w", err)
 	}
 	return nil
-}
-
-// buildProviders assembles all configured LLM adapters.
-// Local providers are always included; cloud providers require env-var API keys.
-func buildProviders() []ports.LLMClient {
-	lmStudioURL := os.Getenv("NEXUS_LMSTUDIO_URL")
-	if lmStudioURL == "" {
-		lmStudioURL = "http://127.0.0.1:1234/v1"
-	}
-	ollamaURL := os.Getenv("NEXUS_OLLAMA_URL")
-	if ollamaURL == "" {
-		ollamaURL = llm_ollama.DefaultBaseURL
-	}
-	providers := []ports.LLMClient{
-		llm_lmstudio.NewLMStudioAdapter(lmStudioURL),
-		llm_ollama.NewOllamaAdapter(ollamaURL, "codellama"),
-	}
-	if key := os.Getenv("NEXUS_OPENAI_API_KEY"); key != "" {
-		model := os.Getenv("NEXUS_OPENAI_MODEL")
-		if model == "" {
-			model = "gpt-4o-mini"
-		}
-		providers = append(providers, llm_openaicompat.NewAdapter("OpenAI", "https://api.openai.com/v1", key, model))
-	}
-	if token := os.Getenv("NEXUS_GITHUBCOPILOT_TOKEN"); token != "" {
-		model := os.Getenv("NEXUS_GITHUBCOPILOT_MODEL")
-		if model == "" {
-			model = "gpt-4o"
-		}
-		providers = append(providers, llm_openaicompat.NewAdapter("GitHub Copilot", "https://api.githubcopilot.com", token, model))
-	}
-	if key := os.Getenv("NEXUS_ANTHROPIC_API_KEY"); key != "" {
-		model := os.Getenv("NEXUS_ANTHROPIC_MODEL")
-		if model == "" {
-			model = "claude-3-5-sonnet-20241022"
-		}
-		providers = append(providers, llm_anthropic.NewAdapter(key, model))
-	}
-	return providers
-}
-
-// buildProviderFromConfig constructs a single LLM adapter from a runtime ProviderConfig.
-// Injected into OrchestratorService to keep the services package free of adapter imports.
-func buildProviderFromConfig(cfg domain.ProviderConfig) (ports.LLMClient, error) {
-	switch cfg.Kind {
-	case domain.ProviderKindLMStudio:
-		if cfg.BaseURL == "" {
-			cfg.BaseURL = "http://127.0.0.1:1234/v1"
-		}
-		return llm_lmstudio.NewLMStudioAdapter(cfg.BaseURL), nil
-	case domain.ProviderKindOllama:
-		if cfg.BaseURL == "" {
-			cfg.BaseURL = "http://127.0.0.1:11434"
-		}
-		return llm_ollama.NewOllamaAdapter(cfg.BaseURL, cfg.Model), nil
-	case domain.ProviderKindOpenAICompat:
-		return llm_openaicompat.NewAdapter(cfg.Name, cfg.BaseURL, cfg.APIKey, cfg.Model), nil
-	case domain.ProviderKindAnthropic:
-		return llm_anthropic.NewAdapter(cfg.APIKey, cfg.Model), nil
-	default:
-		return nil, fmt.Errorf("unknown provider kind: %q", cfg.Kind)
-	}
 }

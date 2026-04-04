@@ -64,7 +64,7 @@ Final QA gate for PLAN-025: verify all cross-compilation targets succeed, the ex
 
 7. **MCP live endpoint validation** (if daemon is running):
    ```bash
-   curl -s -X POST http://127.0.0.1:9998/mcp \
+   curl -s -X POST http://127.0.0.1:63988/mcp \
      -H 'Content-Type: application/json' \
      -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | \
      python3 -c "

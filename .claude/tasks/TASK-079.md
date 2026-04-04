@@ -32,7 +32,7 @@ The landing page is the first thing visitors see. It must clearly communicate wh
      - Multi-Backend LLM Routing (LM Studio, Ollama, OpenAI, Anthropic)
      - Per-Project Session Memory (SQLite-backed conversation isolation)
      - MCP Server (JSON-RPC 2.0 for Claude Desktop and compatible clients)
-     - HTTP REST API (Full task management on `:9999`)
+     - HTTP REST API (Full task management on `:63987`)
      - Context-Window Guard (Pre-flight token check prevents overflow)
      - Smart Provider Discovery (Auto-detect providers with failover)
      - Command-Aware Routing (Plan vs Execute task classification)

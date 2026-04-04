@@ -245,3 +245,191 @@ func TestAISessionRepo_DeleteAISession_Idempotent(t *testing.T) {
 		t.Errorf("DeleteAISession on non-existent id: expected nil, got %v", err)
 	}
 }
+
+func TestAISessionRepo_AppendRoutedTaskID_Dedup(t *testing.T) {
+	r := newTestRepo(t)
+	defer r.Close()
+
+	ar := repo_sqlite.NewAISessionRepo(r)
+	ctx := context.Background()
+
+	sess := newAISession("dedup-sess-1")
+	sess.RoutedTaskIDs = []string{}
+	if err := ar.SaveAISession(ctx, sess); err != nil {
+		t.Fatalf("SaveAISession: %v", err)
+	}
+
+	// Append same task ID twice
+	if err := ar.AppendRoutedTaskID(ctx, "dedup-sess-1", "task-x"); err != nil {
+		t.Fatalf("AppendRoutedTaskID first: %v", err)
+	}
+	if err := ar.AppendRoutedTaskID(ctx, "dedup-sess-1", "task-x"); err != nil {
+		t.Fatalf("AppendRoutedTaskID second: %v", err)
+	}
+
+	got, err := ar.GetAISessionByID(ctx, "dedup-sess-1")
+	if err != nil {
+		t.Fatalf("GetAISessionByID: %v", err)
+	}
+	if len(got.RoutedTaskIDs) != 1 {
+		t.Fatalf("expected 1 routed task id after dedup, got %d: %v", len(got.RoutedTaskIDs), got.RoutedTaskIDs)
+	}
+	if got.RoutedTaskIDs[0] != "task-x" {
+		t.Errorf("RoutedTaskIDs[0]: got %q, want %q", got.RoutedTaskIDs[0], "task-x")
+	}
+}
+
+func TestAISessionRepo_AppendRoutedTaskID_NotFound(t *testing.T) {
+	r := newTestRepo(t)
+	defer r.Close()
+
+	ar := repo_sqlite.NewAISessionRepo(r)
+	ctx := context.Background()
+
+	err := ar.AppendRoutedTaskID(ctx, "ghost-session", "task-1")
+	if err == nil {
+		t.Fatal("expected error for missing session, got nil")
+	}
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected domain.ErrNotFound, got %v", err)
+	}
+}
+
+func TestAISessionRepo_PurgeDisconnected_Boundary(t *testing.T) {
+	r := newTestRepo(t)
+	defer r.Close()
+
+	ar := repo_sqlite.NewAISessionRepo(r)
+	ctx := context.Background()
+
+	now := time.Now().UTC().Truncate(time.Second)
+
+	old := domain.AISession{
+		ID:            "disc-old",
+		Source:        domain.SessionSourceMCP,
+		AgentName:     "OldAgent",
+		Status:        domain.SessionStatusDisconnected,
+		LastActivity:  now.Add(-3 * time.Hour),
+		RoutedTaskIDs: []string{},
+		CreatedAt:     now.Add(-3 * time.Hour),
+		UpdatedAt:     now.Add(-3 * time.Hour),
+	}
+	recent := domain.AISession{
+		ID:            "disc-recent",
+		Source:        domain.SessionSourceMCP,
+		AgentName:     "RecentAgent",
+		Status:        domain.SessionStatusDisconnected,
+		LastActivity:  now.Add(-1 * time.Hour),
+		RoutedTaskIDs: []string{},
+		CreatedAt:     now.Add(-1 * time.Hour),
+		UpdatedAt:     now.Add(-1 * time.Hour),
+	}
+
+	if err := ar.SaveAISession(ctx, old); err != nil {
+		t.Fatalf("SaveAISession old: %v", err)
+	}
+	if err := ar.SaveAISession(ctx, recent); err != nil {
+		t.Fatalf("SaveAISession recent: %v", err)
+	}
+
+	deleted, err := ar.PurgeDisconnected(ctx, 2*time.Hour)
+	if err != nil {
+		t.Fatalf("PurgeDisconnected: %v", err)
+	}
+	if deleted != 1 {
+		t.Errorf("PurgeDisconnected: expected 1 deleted, got %d", deleted)
+	}
+
+	_, err = ar.GetAISessionByID(ctx, "disc-old")
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected disc-old to be deleted, got %v", err)
+	}
+
+	_, err = ar.GetAISessionByID(ctx, "disc-recent")
+	if err != nil {
+		t.Errorf("expected disc-recent to survive, got %v", err)
+	}
+}
+
+func TestAISessionRepo_PurgeDisconnected_ZeroRows(t *testing.T) {
+	r := newTestRepo(t)
+	defer r.Close()
+
+	ar := repo_sqlite.NewAISessionRepo(r)
+	ctx := context.Background()
+
+	deleted, err := ar.PurgeDisconnected(ctx, 1*time.Hour)
+	if err != nil {
+		t.Fatalf("PurgeDisconnected on empty DB: %v", err)
+	}
+	if deleted != 0 {
+		t.Errorf("expected 0 deleted, got %d", deleted)
+	}
+}
+
+func TestAISessionRepo_GetAISessionByExternalID_Found(t *testing.T) {
+	r := newTestRepo(t)
+	defer r.Close()
+
+	ar := repo_sqlite.NewAISessionRepo(r)
+	ctx := context.Background()
+
+	now := time.Now().UTC().Truncate(time.Second)
+	sess := domain.AISession{
+		ID:            "ext-sess-1",
+		Source:        domain.SessionSourceVSCode,
+		ExternalID:    "ext-abc-123",
+		AgentName:     "TestAgent",
+		Status:        domain.SessionStatusActive,
+		LastActivity:  now,
+		RoutedTaskIDs: []string{},
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+	if err := ar.SaveAISession(ctx, sess); err != nil {
+		t.Fatalf("SaveAISession: %v", err)
+	}
+
+	got, err := ar.GetAISessionByExternalID(ctx, "ext-abc-123")
+	if err != nil {
+		t.Fatalf("GetAISessionByExternalID: %v", err)
+	}
+	if got.ID != "ext-sess-1" {
+		t.Errorf("ID: got %q, want %q", got.ID, "ext-sess-1")
+	}
+	if got.ExternalID != "ext-abc-123" {
+		t.Errorf("ExternalID: got %q, want %q", got.ExternalID, "ext-abc-123")
+	}
+}
+
+func TestAISessionRepo_GetAISessionByExternalID_NotFound(t *testing.T) {
+	r := newTestRepo(t)
+	defer r.Close()
+
+	ar := repo_sqlite.NewAISessionRepo(r)
+	ctx := context.Background()
+
+	_, err := ar.GetAISessionByExternalID(ctx, "no-such-external-id")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected domain.ErrNotFound, got %v", err)
+	}
+}
+
+func TestAISessionRepo_UpdateAISessionStatus_NotFound(t *testing.T) {
+	r := newTestRepo(t)
+	defer r.Close()
+
+	ar := repo_sqlite.NewAISessionRepo(r)
+	ctx := context.Background()
+
+	err := ar.UpdateAISessionStatus(ctx, "ghost-session-id", domain.SessionStatusDisconnected, time.Now())
+	if err == nil {
+		t.Fatal("expected error for missing session, got nil")
+	}
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("expected domain.ErrNotFound, got %v", err)
+	}
+}

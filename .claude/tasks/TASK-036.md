@@ -48,7 +48,7 @@ Full script:
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-NEXUS_ADDR="${NEXUS_ADDR:-http://127.0.0.1:9999}"
+NEXUS_ADDR="${NEXUS_ADDR:-http://127.0.0.1:63987}"
 DB_PATH="${NEXUS_DB_PATH:-/tmp/nexus-dogfood-$(date +%s).db}"
 DAEMON_BINARY="/tmp/nexus-daemon-dogfood"
 SUBMIT_BINARY="/tmp/nexus-submit-dogfood"

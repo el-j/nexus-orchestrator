@@ -1,0 +1,22 @@
+name: Nexus Orchestrator MCP Servers
+version: 0.0.1
+schema: v1
+mcpServers:
+  # SSE transport — connects to running daemon (recommended for real-time)
+  - name: "Nexus Orchestrator (SSE)"
+    type: sse
+    url: "http://127.0.0.1:63988/sse"
+
+  # Alternative transports (uncomment one if preferred):
+
+  # Streamable HTTP transport — standard HTTP POST to MCP endpoint
+  # - name: "Nexus Orchestrator (HTTP)"
+  #   type: streamable-http
+  #   url: "http://127.0.0.1:63988/mcp"
+
+  # stdio transport — launches proxy subprocess (daemon must be running)
+  # - name: "Nexus Orchestrator (stdio)"
+  #   type: stdio
+  #   command: nexus-mcp-stdio
+  #   env:
+  #     NEXUS_MCP_URL: "http://127.0.0.1:63988/mcp"

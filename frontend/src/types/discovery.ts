@@ -1,22 +1,12 @@
-export type DiscoveryMethod = 'port' | 'cli' | 'process'
-export type DiscoveryStatus = 'reachable' | 'installed' | 'running'
+export type DiscoveryMethod = 'port' | 'cli' | 'process';
+export type DiscoveryStatus = 'reachable' | 'installed' | 'running';
 
-export interface DiscoveredProvider {
-  id: string
-  name: string
-  kind: string // lmstudio, ollama, localai, vllm, textgen, cli, desktopapp
-  method: DiscoveryMethod
-  baseUrl?: string
-  cliPath?: string
-  processName?: string
-  status: DiscoveryStatus
-  models?: string[]
-  lastSeen: string // ISO timestamp
-}
+// Canonical DiscoveredProvider lives in domain.ts — re-export for backward compat
+export type { DiscoveredProvider } from './domain';
 
 export interface LogEntry {
-  timestamp: string // ISO
-  level: 'info' | 'warn' | 'error' | 'debug'
-  source: string // e.g. "httpapi", "orchestrator", "lmstudio"
-  message: string
+  timestamp: string; // ISO
+  level: 'info' | 'warn' | 'error' | 'debug';
+  source: string; // e.g. "httpapi", "orchestrator", "lmstudio"
+  message: string;
 }

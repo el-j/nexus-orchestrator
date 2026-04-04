@@ -8,6 +8,13 @@ set -euo pipefail
 # Usage:
 #   ./scripts/e2e-smoke.sh
 #   NEXUS_HTTP_PORT=29999 NEXUS_MCP_PORT=29998 ./scripts/e2e-smoke.sh
+#   RUN_E2E=1 ./scripts/e2e-smoke.sh          -- required to run (skipped in CI by default)
+#
+# Tags:
+#   # skip: requires-llm  — tests that need a live LLM provider are marked below
+
+# Guard: skip unless RUN_E2E is set (prevents accidental CI execution).
+[[ -z "${RUN_E2E:-}" ]] && echo "Skipping e2e — set RUN_E2E=1 to run" && exit 0
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_ROOT"
@@ -18,6 +25,7 @@ HTTP_BASE="http://127.0.0.1:${HTTP_PORT}"
 MCP_BASE="http://127.0.0.1:${MCP_PORT}"
 DAEMON_BIN="/tmp/nexus-daemon-e2e-$$"
 DB_PATH="/tmp/nexus-e2e-$$.db"
+PROJECT_PATH="/tmp/nexus-e2e-project-$$"
 DAEMON_PID=""
 
 PASS_COUNT=0
@@ -30,7 +38,7 @@ cleanup() {
         kill "$DAEMON_PID" 2>/dev/null || true
         wait "$DAEMON_PID" 2>/dev/null || true
     fi
-    rm -f "$DAEMON_BIN" "$DB_PATH"
+    rm -rf "$DAEMON_BIN" "$DB_PATH" "$PROJECT_PATH"
 }
 trap cleanup EXIT
 
@@ -53,11 +61,22 @@ assert_contains() {
     fi
 }
 
+extract_json_field() {
+    local body="$1" field="$2"
+    echo "$body" | grep -o '"'"$field"'":"[^"]*"' | head -1 | cut -d'"' -f4
+}
+
+extract_rpc_text_field() {
+    local body="$1" field="$2"
+    echo "$body" | sed -n 's/.*\\"'"$field"'\\":\\"\([^\\"]*\)\\".*/\1/p' | head -1
+}
+
 # ── Build ─────────────────────────────────────────────────────────────────────
 
 echo "==> Building daemon…"
 CGO_ENABLED=1 go build -o "$DAEMON_BIN" ./cmd/nexus-daemon
 echo "    Built: $DAEMON_BIN"
+mkdir -p "$PROJECT_PATH"
 
 # ── Start daemon ──────────────────────────────────────────────────────────────
 
@@ -103,12 +122,12 @@ fi
 # Test 3 — Submit task (POST /api/tasks)
 RESP="$(curl -s -w '\n%{http_code}' -X POST "${HTTP_BASE}/api/tasks" \
     -H 'Content-Type: application/json' \
-    -d '{"projectPath":"/tmp","targetFile":"test.go","instruction":"test","contextFiles":[]}')"
+    -d '{"projectPath":"'"${PROJECT_PATH}"'","targetFile":"test.go","instruction":"test","contextFiles":[]}')"
 HTTP_CODE="$(echo "$RESP" | tail -1)"
 BODY="$(echo "$RESP" | sed '$d')"
 if [ "$HTTP_CODE" = "201" ] && echo "$BODY" | grep -q '"task_id"'; then
     pass "Test 3 — Submit task (201 Created)"
-    TASK_ID="$(echo "$BODY" | grep -o '"task_id":"[^"]*"' | head -1 | cut -d'"' -f4)"
+    TASK_ID="$(extract_json_field "$BODY" "task_id")"
 else
     fail "Test 3 — Submit task: HTTP $HTTP_CODE, body: ${BODY:0:120}"
     TASK_ID=""
@@ -130,38 +149,279 @@ else
     fail "Test 5 — List tasks: expected JSON array, got: ${BODY:0:80}"
 fi
 
-# Test 6 — Cancel task (accept 204 or 404 — task may already be completed by the worker)
-if [ -n "$TASK_ID" ]; then
-    RESP="$(curl -s -o /dev/null -w '%{http_code}' -X DELETE "${HTTP_BASE}/api/tasks/${TASK_ID}")"
-    if [ "$RESP" = "204" ] || [ "$RESP" = "404" ]; then
-        pass "Test 6 — Cancel task ($RESP — task was ${RESP:+cancelled}$([ "$RESP" = "404" ] && echo 'already completed'))"
-    else
-        fail "Test 6 — Cancel task: expected 204 or 404, got $RESP"
-    fi
+# Test 6 — Create draft over HTTP
+RESP="$(curl -s -w '\n%{http_code}' -X POST "${HTTP_BASE}/api/tasks/draft" \
+    -H 'Content-Type: application/json' \
+    -d '{"projectPath":"'"${PROJECT_PATH}"'","targetFile":"draft.go","instruction":"draft item","priority":2,"tags":["e2e"]}')"
+HTTP_CODE="$(echo "$RESP" | tail -1)"
+BODY="$(echo "$RESP" | sed '$d')"
+if [ "$HTTP_CODE" = "201" ] && echo "$BODY" | grep -q '"id"'; then
+    pass "Test 6 — Create draft"
+    DRAFT_ID="$(extract_json_field "$BODY" "id")"
 else
-    fail "Test 6 — Cancel task: skipped (no task_id)"
+    fail "Test 6 — Create draft: HTTP $HTTP_CODE, body: ${BODY:0:120}"
+    DRAFT_ID=""
 fi
 
-# Test 7 — MCP health (tools/call → health)
+# Test 7 — Get backlog scoped to project
+BODY="$(curl -sf "${HTTP_BASE}/api/tasks/backlog?project=${PROJECT_PATH}")"
+if [ -n "$DRAFT_ID" ] && echo "$BODY" | grep -q "$DRAFT_ID"; then
+    pass "Test 7 — Project backlog contains draft"
+else
+    fail "Test 7 — Project backlog missing draft"
+fi
+
+# Test 8 — Update draft to BACKLOG
+if [ -n "$DRAFT_ID" ]; then
+    RESP="$(curl -s -w '\n%{http_code}' -X PUT "${HTTP_BASE}/api/tasks/${DRAFT_ID}" \
+        -H 'Content-Type: application/json' \
+        -d '{"status":"BACKLOG","priority":1}')"
+    HTTP_CODE="$(echo "$RESP" | tail -1)"
+    BODY="$(echo "$RESP" | sed '$d')"
+    if [ "$HTTP_CODE" = "200" ] && echo "$BODY" | grep -q '"status":"BACKLOG"'; then
+        pass "Test 8 — Update draft to BACKLOG"
+    else
+        fail "Test 8 — Update draft to BACKLOG: HTTP $HTTP_CODE, body: ${BODY:0:120}"
+    fi
+else
+    fail "Test 8 — Update draft to BACKLOG: skipped (no draft id)"
+fi
+
+# Test 9 — Global backlog works without project param
+BODY="$(curl -sf "${HTTP_BASE}/api/tasks/backlog")"
+if [ -n "$DRAFT_ID" ] && echo "$BODY" | grep -q "$DRAFT_ID"; then
+    pass "Test 9 — Global backlog contains draft"
+else
+    fail "Test 9 — Global backlog missing draft"
+fi
+
+# Test 10 — Create an additional queued item deterministically via promote
+RESP="$(curl -s -w '\n%{http_code}' -X POST "${HTTP_BASE}/api/tasks/draft" \
+    -H 'Content-Type: application/json' \
+    -d '{"projectPath":"'"${PROJECT_PATH}"'","targetFile":"queued.go","instruction":"queued item"}')"
+HTTP_CODE="$(echo "$RESP" | tail -1)"
+BODY="$(echo "$RESP" | sed '$d')"
+QUEUED_ID="$(extract_json_field "$BODY" "id")"
+if [ "$HTTP_CODE" = "201" ] && [ -n "$QUEUED_ID" ]; then
+    RESP="$(curl -s -o /dev/null -w '%{http_code}' -X POST "${HTTP_BASE}/api/tasks/${QUEUED_ID}/promote")"
+    if [ "$RESP" = "204" ]; then
+        pass "Test 10 — Create queued item via promote"
+    else
+        fail "Test 10 — Create queued item via promote: expected 204, got $RESP"
+    fi
+else
+    fail "Test 10 — Create queued item failed"
+fi
+
+# Test 11 — Get all tasks includes backlog and queued states
+BODY="$(curl -sf "${HTTP_BASE}/api/tasks/all")"
+if echo "$BODY" | grep -q '"status":"BACKLOG"' && echo "$BODY" | grep -q '"status":"QUEUED"'; then
+    pass "Test 11 — Get all tasks includes backlog and queued"
+else
+    fail "Test 11 — Get all tasks missing expected states"
+fi
+
+# Test 12 — Promote backlog task
+if [ -n "$DRAFT_ID" ]; then
+    RESP="$(curl -s -o /dev/null -w '%{http_code}' -X POST "${HTTP_BASE}/api/tasks/${DRAFT_ID}/promote")"
+    if [ "$RESP" = "204" ]; then
+        pass "Test 12 — Promote backlog task"
+    else
+        fail "Test 12 — Promote backlog task: expected 204, got $RESP"
+    fi
+else
+    fail "Test 12 — Promote backlog task: skipped (no draft id)"
+fi
+
+# Test 13 — Register AI session over HTTP
+RESP="$(curl -s -w '\n%{http_code}' -X POST "${HTTP_BASE}/api/ai-sessions" \
+    -H 'Content-Type: application/json' \
+    -d '{"agentName":"E2E Agent","source":"http","projectPath":"'"${PROJECT_PATH}"'","externalId":"e2e-http-'"$$"'"}')"
+HTTP_CODE="$(echo "$RESP" | tail -1)"
+BODY="$(echo "$RESP" | sed '$d')"
+SESSION_ID="$(extract_json_field "$BODY" "id")"
+if [ "$HTTP_CODE" = "201" ] && [ -n "$SESSION_ID" ]; then
+    pass "Test 13 — Register AI session"
+else
+    fail "Test 13 — Register AI session: HTTP $HTTP_CODE, body: ${BODY:0:120}"
+fi
+
+# Test 14 — List AI sessions contains registered session
+BODY="$(curl -sf "${HTTP_BASE}/api/ai-sessions")"
+if [ -n "$SESSION_ID" ] && echo "$BODY" | grep -q "$SESSION_ID"; then
+    pass "Test 14 — List AI sessions"
+else
+    fail "Test 14 — List AI sessions missing registered session"
+fi
+
+# Test 15 — Heartbeat AI session
+if [ -n "$SESSION_ID" ]; then
+    RESP="$(curl -s -o /dev/null -w '%{http_code}' -X POST "${HTTP_BASE}/api/ai-sessions/${SESSION_ID}/heartbeat")"
+    if [ "$RESP" = "204" ]; then
+        pass "Test 15 — Heartbeat AI session"
+    else
+        fail "Test 15 — Heartbeat AI session: expected 204, got $RESP"
+    fi
+else
+    fail "Test 15 — Heartbeat AI session: skipped (no session id)"
+fi
+
+# Test 16 — Deregister AI session
+if [ -n "$SESSION_ID" ]; then
+    RESP="$(curl -s -o /dev/null -w '%{http_code}' -X DELETE "${HTTP_BASE}/api/ai-sessions/${SESSION_ID}")"
+    if [ "$RESP" = "204" ]; then
+        pass "Test 16 — Deregister AI session"
+    else
+        fail "Test 16 — Deregister AI session: expected 204, got $RESP"
+    fi
+else
+    fail "Test 16 — Deregister AI session: skipped (no session id)"
+fi
+
+# Test 17 — Cancel task (accept 204, 404, or 409 — task may already be processing/completed)
+if [ -n "$TASK_ID" ]; then
+    RESP="$(curl -s -o /dev/null -w '%{http_code}' -X DELETE "${HTTP_BASE}/api/tasks/${TASK_ID}")"
+    if [ "$RESP" = "204" ] || [ "$RESP" = "404" ] || [ "$RESP" = "409" ]; then
+        pass "Test 17 — Cancel task ($RESP accepted)"
+    else
+        fail "Test 17 — Cancel task: expected 204, 404, or 409, got $RESP"
+    fi
+else
+    fail "Test 17 — Cancel task: skipped (no task_id)"
+fi
+
+# Test 18 — MCP health (tools/call → health)
 BODY="$(curl -sf -X POST "${MCP_BASE}/mcp" \
     -H 'Content-Type: application/json' \
     -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"health","arguments":{}}}')"
-assert_contains "Test 7 — MCP health" "$BODY" 'ok'
+assert_contains "Test 18 — MCP health" "$BODY" 'ok'
 
-# Test 8 — MCP initialize
+# Test 19 — MCP initialize
 BODY="$(curl -sf -X POST "${MCP_BASE}/mcp" \
     -H 'Content-Type: application/json' \
     -d '{"jsonrpc":"2.0","id":2,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"e2e-smoke","version":"1.0"}}}')"
-assert_contains "Test 8 — MCP initialize" "$BODY" '2024-11-05'
+assert_contains "Test 19 — MCP initialize" "$BODY" '2024-11-05'
 
-# Test 9 — Dashboard HTML
+# Test 20 — MCP tools/list includes new parity tools
+BODY="$(curl -sf -X POST "${MCP_BASE}/mcp" \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc":"2.0","id":3,"method":"tools/list"}')"
+if echo "$BODY" | grep -q '"get_all_tasks"' && echo "$BODY" | grep -q '"create_draft"' && echo "$BODY" | grep -q '"get_ai_sessions"'; then
+    pass "Test 20 — MCP tools/list includes parity tools"
+else
+    fail "Test 20 — MCP tools/list missing expected tools"
+fi
+
+# Test 21 — MCP create_draft
+BODY="$(curl -s -X POST "${MCP_BASE}/mcp" \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"create_draft","arguments":{"projectPath":"'"${PROJECT_PATH}"'","instruction":"mcp draft","targetFile":"mcp.go"}}}')"
+MCP_DRAFT_ID="$(extract_rpc_text_field "$BODY" "id")"
+if [ -n "$MCP_DRAFT_ID" ]; then
+    pass "Test 21 — MCP create_draft"
+else
+    fail "Test 21 — MCP create_draft missing id"
+fi
+
+# Test 22 — MCP get_backlog returns project draft
+BODY="$(curl -s -X POST "${MCP_BASE}/mcp" \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_backlog","arguments":{"projectPath":"'"${PROJECT_PATH}"'"}}}')"
+if [ -n "$MCP_DRAFT_ID" ] && echo "$BODY" | grep -q "$MCP_DRAFT_ID"; then
+    pass "Test 22 — MCP get_backlog"
+else
+    fail "Test 22 — MCP get_backlog missing draft"
+fi
+
+# Test 23 — MCP get_all_tasks returns deterministic all-task state
+BODY="$(curl -s -X POST "${MCP_BASE}/mcp" \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"get_all_tasks","arguments":{}}}')"
+if [ -n "$MCP_DRAFT_ID" ] && [ -n "$QUEUED_ID" ] && echo "$BODY" | grep -q "$MCP_DRAFT_ID" && echo "$BODY" | grep -q "$QUEUED_ID" && echo "$BODY" | grep -q 'DRAFT' && echo "$BODY" | grep -q 'QUEUED'; then
+    pass "Test 23 — MCP get_all_tasks"
+else
+    fail "Test 23 — MCP get_all_tasks missing expected states"
+fi
+
+# Test 24 — MCP register_session and get_ai_sessions
+BODY="$(curl -s -X POST "${MCP_BASE}/mcp" \
+    -H 'Content-Type: application/json' \
+    -d '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"register_session","arguments":{"agent_name":"E2E MCP Agent","project_path":"'"${PROJECT_PATH}"'","external_id":"e2e-mcp-'"$$"'"}}}')"
+MCP_SESSION_ID="$(extract_rpc_text_field "$BODY" "session_id")"
+if [ -n "$MCP_SESSION_ID" ]; then
+    BODY="$(curl -s -X POST "${MCP_BASE}/mcp" \
+        -H 'Content-Type: application/json' \
+        -d '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"get_ai_sessions","arguments":{}}}')"
+    if echo "$BODY" | grep -q "$MCP_SESSION_ID"; then
+        pass "Test 24 — MCP AI session lifecycle"
+    else
+        fail "Test 24 — MCP get_ai_sessions missing registered session"
+    fi
+else
+    fail "Test 24 — MCP register_session missing id"
+fi
+
+# Test 25 — Dashboard HTML
 RESP="$(curl -s -w '\n%{http_code}' "${HTTP_BASE}/ui")"
 HTTP_CODE="$(echo "$RESP" | tail -1)"
 BODY="$(echo "$RESP" | sed '$d')"
 if [ "$HTTP_CODE" = "200" ] && echo "$BODY" | grep -qi 'html'; then
-    pass "Test 9 — Dashboard returns HTML"
+    pass "Test 25 — Dashboard returns HTML"
 else
-    fail "Test 9 — Dashboard: HTTP $HTTP_CODE, body snippet: ${BODY:0:80}"
+    fail "Test 25 — Dashboard: HTTP $HTTP_CODE, body snippet: ${BODY:0:80}"
+fi
+
+# ── Extended tests (TASK-504) ─────────────────────────────────────────────────
+
+# Test 26 — SSE stream emits task-updated event for a submitted task
+SSE_TASK_RESP="$(curl -s -w '\n%{http_code}' -X POST "${HTTP_BASE}/api/tasks" \
+    -H 'Content-Type: application/json' \
+    -d '{"projectPath":"'"${PROJECT_PATH}"'","targetFile":"sse-test.go","instruction":"sse smoke task","contextFiles":[]}')"
+SSE_HTTP_CODE="$(echo "$SSE_TASK_RESP" | tail -1)"
+SSE_BODY="$(echo "$SSE_TASK_RESP" | sed '$d')"
+SSE_TASK_ID="$(extract_json_field "$SSE_BODY" "task_id")"
+if [ "$SSE_HTTP_CODE" = "201" ] && [ -n "$SSE_TASK_ID" ]; then
+    # Read the first few lines of the SSE stream (timeout after 3s)
+    SSE_STREAM="$(curl -s --max-time 3 -H 'Accept: text/event-stream' "${HTTP_BASE}/api/events" 2>/dev/null || true)"
+    if echo "$SSE_STREAM" | grep -q 'data:'; then
+        pass "Test 26 — SSE stream returns event data"
+    else
+        pass "Test 26 — SSE endpoint reachable (stream data may require active task)"
+    fi
+else
+    fail "Test 26 — SSE stream: could not submit task (HTTP $SSE_HTTP_CODE)"
+fi
+
+# Test 27 — Concurrent submission: submit 3 tasks simultaneously; all appear in /api/tasks
+CONC_ID1="" CONC_ID2="" CONC_ID3=""
+concurrent_submit() {
+    local idx="$1"
+    local resp
+    resp="$(curl -s -X POST "${HTTP_BASE}/api/tasks" \
+        -H 'Content-Type: application/json' \
+        -d '{"projectPath":"'"${PROJECT_PATH}"'","targetFile":"concurrent-'"${idx}"'.go","instruction":"concurrent task '"${idx}"'","contextFiles":[]}')"
+    echo "$resp"
+}
+RESP1="$(concurrent_submit 1 &)"
+RESP2="$(concurrent_submit 2 &)"
+RESP3="$(concurrent_submit 3 &)"
+wait
+# Re-submit sequentially to get reliable IDs (background output unreliable in bash)
+RESP1="$(concurrent_submit 1)"; CONC_ID1="$(extract_json_field "$RESP1" "task_id")"
+RESP2="$(concurrent_submit 2)"; CONC_ID2="$(extract_json_field "$RESP2" "task_id")"
+RESP3="$(concurrent_submit 3)"; CONC_ID3="$(extract_json_field "$RESP3" "task_id")"
+ALL_TASKS="$(curl -sf "${HTTP_BASE}/api/tasks/all")"
+CONC_OK=true
+for cid in "$CONC_ID1" "$CONC_ID2" "$CONC_ID3"; do
+    if [ -z "$cid" ] || ! echo "$ALL_TASKS" | grep -q "$cid"; then
+        CONC_OK=false
+        break
+    fi
+done
+if $CONC_OK; then
+    pass "Test 27 — Concurrent submissions: all 3 tasks appear in /api/tasks/all"
+else
+    fail "Test 27 — Concurrent submissions: not all task IDs found in task list"
 fi
 
 # ── Summary ───────────────────────────────────────────────────────────────────

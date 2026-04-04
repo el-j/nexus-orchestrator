@@ -40,9 +40,9 @@ The GUI needs to show auto-detected AI providers from the system scan. Users see
 2. Create `frontend/src/composables/useDiscovery.ts`:
    - `const discovered = ref<DiscoveredProvider[]>([])`
    - `const scanning = ref(false)`
-   - `refresh()` → `GET http://127.0.0.1:9999/api/providers/discovered`
-   - `scanNow()` → `POST http://127.0.0.1:9999/api/providers/discovered/scan`
-   - `promote(id)` → `POST http://127.0.0.1:9999/api/providers/promote/{id}`
+   - `refresh()` → `GET http://127.0.0.1:63987/api/providers/discovered`
+   - `scanNow()` → `POST http://127.0.0.1:63987/api/providers/discovered/scan`
+   - `promote(id)` → `POST http://127.0.0.1:63987/api/providers/promote/{id}`
    - SSE listener on `/api/events` for event type `provider_discovered` → auto-refresh
    - Fallback: poll every 10s (discovery is less time-sensitive than tasks)
    - `onMounted` → initial `refresh()`

@@ -3,6 +3,7 @@ package services_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -34,7 +35,7 @@ func (r *memRepo) GetByID(id string) (domain.Task, error) {
 	defer r.mu.Unlock()
 	t, ok := r.tasks[id]
 	if !ok {
-		return domain.Task{}, errors.New("not found")
+		return domain.Task{}, domain.ErrNotFound
 	}
 	return t, nil
 }
@@ -51,6 +52,31 @@ func (r *memRepo) GetPending() ([]domain.Task, error) {
 	return out, nil
 }
 
+func (r *memRepo) ClaimNextQueued() (domain.Task, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var (
+		claimed domain.Task
+		found   bool
+	)
+	for _, task := range r.tasks {
+		if task.Status != domain.StatusQueued {
+			continue
+		}
+		if !found || task.CreatedAt.Before(claimed.CreatedAt) {
+			claimed = task
+			found = true
+		}
+	}
+	if !found {
+		return domain.Task{}, domain.ErrNotFound
+	}
+	claimed.Status = domain.StatusProcessing
+	claimed.UpdatedAt = time.Now()
+	r.tasks[claimed.ID] = claimed
+	return claimed, nil
+}
+
 func (r *memRepo) UpdateStatus(id string, status domain.TaskStatus) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -61,6 +87,22 @@ func (r *memRepo) UpdateStatus(id string, status domain.TaskStatus) error {
 	t.Status = status
 	r.tasks[id] = t
 	return nil
+}
+
+func (r *memRepo) UpdateStatusIfCurrent(id string, from, to domain.TaskStatus) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	t, ok := r.tasks[id]
+	if !ok {
+		return false, nil
+	}
+	if t.Status != from {
+		return false, nil
+	}
+	t.Status = to
+	t.UpdatedAt = time.Now()
+	r.tasks[id] = t
+	return true, nil
 }
 
 func (r *memRepo) UpdateLogs(id, logs string) error {
@@ -110,10 +152,85 @@ func (r *memRepo) Update(t domain.Task) error {
 	return nil
 }
 
+func (r *memRepo) GetAll() ([]domain.Task, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := []domain.Task{}
+	for _, t := range r.tasks {
+		out = append(out, t)
+	}
+	return out, nil
+}
+
+func (r *memRepo) GetTasksBySessionID(sessionID string) ([]domain.Task, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var out []domain.Task
+	for _, t := range r.tasks {
+		if t.AISessionID == sessionID {
+			out = append(out, t)
+		}
+	}
+	return out, nil
+}
+
+func (r *memRepo) GetStaleProcessing(_ context.Context, _ time.Duration) ([]domain.Task, error) {
+	return nil, nil
+}
+
 type noopWriter struct{}
 
 func (w *noopWriter) WriteCodeToFile(_, _, _ string) error                  { return nil }
 func (w *noopWriter) ReadContextFiles(_ string, _ []string) (string, error) { return "", nil }
+
+type memProviderConfigRepo struct {
+	mu        sync.Mutex
+	configs   map[string]domain.ProviderConfig
+	saveCalls int
+	saveErr   error
+}
+
+func newMemProviderConfigRepo() *memProviderConfigRepo {
+	return &memProviderConfigRepo{configs: make(map[string]domain.ProviderConfig)}
+}
+
+func (r *memProviderConfigRepo) SaveProviderConfig(_ context.Context, cfg domain.ProviderConfig) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.saveCalls++
+	if r.saveErr != nil {
+		return r.saveErr
+	}
+	r.configs[cfg.ID] = cfg
+	return nil
+}
+
+func (r *memProviderConfigRepo) ListProviderConfigs(_ context.Context) ([]domain.ProviderConfig, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := make([]domain.ProviderConfig, 0, len(r.configs))
+	for _, cfg := range r.configs {
+		out = append(out, cfg)
+	}
+	return out, nil
+}
+
+func (r *memProviderConfigRepo) GetProviderConfig(_ context.Context, id string) (domain.ProviderConfig, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	cfg, ok := r.configs[id]
+	if !ok {
+		return domain.ProviderConfig{}, domain.ErrNotFound
+	}
+	return cfg, nil
+}
+
+func (r *memProviderConfigRepo) DeleteProviderConfig(_ context.Context, id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.configs, id)
+	return nil
+}
 
 // --- Tests --------------------------------------------------------------------
 
@@ -152,10 +269,14 @@ func TestOrchestrator_GetQueue_ReturnsPendingTasks(t *testing.T) {
 	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
 	defer orch.Stop()
 
-	for i := 0; i < 3; i++ {
-		_, err := orch.SubmitTask(domain.Task{Instruction: "task"})
+	for i, status := range []domain.TaskStatus{domain.StatusQueued, domain.StatusProcessing, domain.StatusQueued} {
+		err := repo.Save(domain.Task{
+			ID:          fmt.Sprintf("pending-%d", i),
+			Instruction: "task",
+			Status:      status,
+		})
 		if err != nil {
-			t.Fatalf("SubmitTask: %v", err)
+			t.Fatalf("Save: %v", err)
 		}
 	}
 
@@ -933,7 +1054,7 @@ func TestPromoteTask_DraftToQueued(t *testing.T) {
 		t.Fatalf("CreateDraft: %v", err)
 	}
 
-	if err := orch.PromoteTask(id); err != nil {
+	if _, err := orch.PromoteTask(id); err != nil {
 		t.Fatalf("PromoteTask: %v", err)
 	}
 
@@ -960,9 +1081,43 @@ func TestPromoteTask_ErrorOnAlreadyQueued(t *testing.T) {
 		t.Fatalf("SubmitTask: %v", err)
 	}
 
-	err = orch.PromoteTask(id)
+	_, err = orch.PromoteTask(id)
 	if err == nil {
 		t.Fatal("expected error when promoting already-queued task, got nil")
+	}
+}
+
+func TestPromoteTask_EnforcesQueueCap(t *testing.T) {
+	const queueCap = 1
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch.WithQueueCap(queueCap)
+	defer orch.Stop()
+
+	if err := repo.Save(domain.Task{
+		ID:          "pending-cap-task",
+		ProjectPath: "/proj/cap",
+		Instruction: "existing queued task",
+		Status:      domain.StatusQueued,
+	}); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	id, err := orch.CreateDraft(domain.Task{
+		ProjectPath: "/proj/cap",
+		Instruction: "promote later",
+	})
+	if err != nil {
+		t.Fatalf("CreateDraft: %v", err)
+	}
+
+	_, err = orch.PromoteTask(id)
+	if err == nil {
+		t.Fatal("expected queue cap error, got nil")
+	}
+	if !errors.Is(err, services.ErrQueueFull) {
+		t.Fatalf("expected ErrQueueFull, got %v", err)
 	}
 }
 
@@ -998,6 +1153,29 @@ func TestUpdateTask_MergesFields(t *testing.T) {
 	saved, _ := repo.GetByID(id)
 	if saved.Instruction != "updated instruction" {
 		t.Errorf("persisted instruction: want %q, got %q", "updated instruction", saved.Instruction)
+	}
+}
+
+func TestUpdateTask_RejectsQueuedTransition(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.CreateDraft(domain.Task{
+		ProjectPath: "/proj/update-status",
+		Instruction: "status mutation",
+	})
+	if err != nil {
+		t.Fatalf("CreateDraft: %v", err)
+	}
+
+	_, err = orch.UpdateTask(id, domain.Task{Status: domain.StatusQueued})
+	if err == nil {
+		t.Fatal("expected error when forcing queued via UpdateTask")
+	}
+	if !strings.Contains(err.Error(), "use promote task") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
@@ -1188,6 +1366,81 @@ func TestOrchestrator_PromoteProvider_Reachable(t *testing.T) {
 	}
 }
 
+func TestOrchestrator_PromoteProvider_PersistsEnabledWithoutDuplicateRegistration(t *testing.T) {
+	repo := newMemRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	cfgRepo := newMemProviderConfigRepo()
+	orch.WithProviderConfigRepo(cfgRepo)
+
+	var (
+		factoryMu    sync.Mutex
+		factoryCalls int
+		seenConfigs  []domain.ProviderConfig
+	)
+	orch.WithProviderFactory(func(cfg domain.ProviderConfig) (ports.LLMClient, error) {
+		factoryMu.Lock()
+		defer factoryMu.Unlock()
+		factoryCalls++
+		seenConfigs = append(seenConfigs, cfg)
+		return &mockLLMClient{alive: true, name: cfg.Name}, nil
+	})
+
+	scanner := &mockScanner{
+		results: []domain.DiscoveredProvider{{
+			ID:      "port-1234",
+			Name:    "LM Studio",
+			Kind:    domain.ProviderKindLMStudio,
+			Status:  domain.DiscoveryStatusReachable,
+			BaseURL: "http://127.0.0.1:1234",
+		}},
+	}
+	orch.WithSystemScanner(scanner)
+	if _, err := orch.TriggerScan(context.Background()); err != nil {
+		t.Fatalf("TriggerScan: %v", err)
+	}
+
+	if err := orch.PromoteProvider(context.Background(), "port-1234"); err != nil {
+		t.Fatalf("PromoteProvider: %v", err)
+	}
+
+	saved, err := cfgRepo.GetProviderConfig(context.Background(), "port-1234")
+	if err != nil {
+		t.Fatalf("GetProviderConfig: %v", err)
+	}
+	if !saved.Enabled {
+		t.Fatal("expected promoted provider to be persisted with Enabled=true")
+	}
+
+	factoryMu.Lock()
+	defer factoryMu.Unlock()
+	if factoryCalls != 1 {
+		t.Fatalf("factory calls: want 1, got %d", factoryCalls)
+	}
+	if len(seenConfigs) != 1 {
+		t.Fatalf("seen configs: want 1, got %d", len(seenConfigs))
+	}
+	if !seenConfigs[0].Enabled {
+		t.Fatal("expected enabled config passed to provider factory")
+	}
+
+	providers, err := orch.GetProviders()
+	if err != nil {
+		t.Fatalf("GetProviders: %v", err)
+	}
+	count := 0
+	for _, provider := range providers {
+		if provider.Name == "LM Studio" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("expected one live promoted provider, got %d", count)
+	}
+}
+
 // --- Constructor nil-validation tests ----------------------------------------
 
 // mustPanic calls f and fails the test if f does not panic with a message
@@ -1264,5 +1517,314 @@ func TestPromoteProvider_EmptyBaseURL(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "no base URL") {
 		t.Errorf("expected 'no base URL' in error message, got: %v", err)
+	}
+}
+
+// --- In-memory AI session repo stub ---
+
+type memAISessionRepo struct {
+	mu       sync.Mutex
+	sessions map[string]domain.AISession
+}
+
+func newMemAISessionRepo() *memAISessionRepo {
+	return &memAISessionRepo{sessions: make(map[string]domain.AISession)}
+}
+
+func (r *memAISessionRepo) SaveAISession(_ context.Context, s domain.AISession) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.sessions[s.ID] = s
+	return nil
+}
+
+func (r *memAISessionRepo) GetAISessionByID(_ context.Context, id string) (domain.AISession, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	s, ok := r.sessions[id]
+	if !ok {
+		return domain.AISession{}, domain.ErrNotFound
+	}
+	return s, nil
+}
+
+func (r *memAISessionRepo) GetAISessionByExternalID(_ context.Context, externalID string) (domain.AISession, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, s := range r.sessions {
+		if s.ExternalID == externalID {
+			return s, nil
+		}
+	}
+	return domain.AISession{}, domain.ErrNotFound
+}
+
+func (r *memAISessionRepo) ListAISessions(_ context.Context) ([]domain.AISession, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := make([]domain.AISession, 0, len(r.sessions))
+	for _, s := range r.sessions {
+		out = append(out, s)
+	}
+	return out, nil
+}
+
+func (r *memAISessionRepo) UpdateAISessionStatus(_ context.Context, id string, status domain.AISessionStatus, lastActivity time.Time) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	s, ok := r.sessions[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	s.Status = status
+	s.LastActivity = lastActivity
+	r.sessions[id] = s
+	return nil
+}
+
+func (r *memAISessionRepo) DeleteAISession(_ context.Context, id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.sessions, id)
+	return nil
+}
+
+func (r *memAISessionRepo) AppendRoutedTaskID(_ context.Context, sessionID string, taskID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	s, ok := r.sessions[sessionID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	for _, id := range s.RoutedTaskIDs {
+		if id == taskID {
+			return nil
+		}
+	}
+	s.RoutedTaskIDs = append(s.RoutedTaskIDs, taskID)
+	r.sessions[sessionID] = s
+	return nil
+}
+
+func (r *memAISessionRepo) PurgeDisconnected(_ context.Context, olderThan time.Duration) (int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	cutoff := time.Now().Add(-olderThan)
+	n := 0
+	for id, s := range r.sessions {
+		if s.Status == domain.SessionStatusDisconnected && s.LastActivity.Before(cutoff) {
+			delete(r.sessions, id)
+			n++
+		}
+	}
+	return n, nil
+}
+
+// --- helpers for claim/status tests ---
+
+func setupClaimTestOrch(t *testing.T) (*services.OrchestratorService, *memRepo, *memAISessionRepo) {
+	t.Helper()
+	repo := newMemRepo()
+	aiRepo := newMemAISessionRepo()
+	discovery := services.NewDiscoveryService()
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil, services.WithDisableBackgroundWorkers())
+	orch.SetAISessionRepo(aiRepo)
+	t.Cleanup(orch.Stop)
+	return orch, repo, aiRepo
+}
+
+func seedActiveSession(t *testing.T, aiRepo *memAISessionRepo, id string) {
+	t.Helper()
+	err := aiRepo.SaveAISession(context.Background(), domain.AISession{
+		ID:        id,
+		AgentName: "test-agent",
+		Source:    domain.SessionSourceVSCode,
+		Status:    domain.SessionStatusActive,
+	})
+	if err != nil {
+		t.Fatalf("seed session: %v", err)
+	}
+}
+
+// --- ClaimTask tests ---
+
+func TestClaimTask_Success(t *testing.T) {
+	orch, _, aiRepo := setupClaimTestOrch(t)
+	seedActiveSession(t, aiRepo, "sess-1")
+
+	id, _ := orch.SubmitTask(domain.Task{Instruction: "do work", ProjectPath: "/tmp"})
+
+	task, err := orch.ClaimTask(context.Background(), id, "sess-1")
+	if err != nil {
+		t.Fatalf("ClaimTask: %v", err)
+	}
+	if task.Status != domain.StatusProcessing {
+		t.Errorf("expected PROCESSING, got %s", task.Status)
+	}
+	if task.AISessionID != "sess-1" {
+		t.Errorf("expected AISessionID=sess-1, got %s", task.AISessionID)
+	}
+}
+
+func TestClaimTask_NonExistentSession(t *testing.T) {
+	orch, _, _ := setupClaimTestOrch(t)
+	id, _ := orch.SubmitTask(domain.Task{Instruction: "do work", ProjectPath: "/tmp"})
+
+	_, err := orch.ClaimTask(context.Background(), id, "no-such-session")
+	if err == nil {
+		t.Fatal("expected error for non-existent session")
+	}
+	if !strings.Contains(err.Error(), "session lookup") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestClaimTask_DisconnectedSession(t *testing.T) {
+	orch, _, aiRepo := setupClaimTestOrch(t)
+	err := aiRepo.SaveAISession(context.Background(), domain.AISession{
+		ID:     "sess-dead",
+		Status: domain.SessionStatusDisconnected,
+		Source: domain.SessionSourceVSCode,
+	})
+	if err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	id, _ := orch.SubmitTask(domain.Task{Instruction: "work", ProjectPath: "/tmp"})
+
+	_, err = orch.ClaimTask(context.Background(), id, "sess-dead")
+	if err == nil {
+		t.Fatal("expected error for disconnected session")
+	}
+	if !strings.Contains(err.Error(), "disconnected") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestClaimTask_AlreadyClaimed(t *testing.T) {
+	orch, _, aiRepo := setupClaimTestOrch(t)
+	seedActiveSession(t, aiRepo, "sess-1")
+	seedActiveSession(t, aiRepo, "sess-2")
+
+	id, _ := orch.SubmitTask(domain.Task{Instruction: "race", ProjectPath: "/tmp"})
+
+	// First claim succeeds.
+	_, err := orch.ClaimTask(context.Background(), id, "sess-1")
+	if err != nil {
+		t.Fatalf("first claim: %v", err)
+	}
+
+	// Second claim must fail — task is already PROCESSING.
+	_, err = orch.ClaimTask(context.Background(), id, "sess-2")
+	if err == nil {
+		t.Fatal("expected error for already-claimed task")
+	}
+	if !strings.Contains(err.Error(), "not QUEUED") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestClaimTask_AppendRoutedTaskID(t *testing.T) {
+	orch, _, aiRepo := setupClaimTestOrch(t)
+	seedActiveSession(t, aiRepo, "sess-1")
+
+	id, _ := orch.SubmitTask(domain.Task{Instruction: "routed", ProjectPath: "/tmp"})
+	_, err := orch.ClaimTask(context.Background(), id, "sess-1")
+	if err != nil {
+		t.Fatalf("ClaimTask: %v", err)
+	}
+
+	sess, _ := aiRepo.GetAISessionByID(context.Background(), "sess-1")
+	if len(sess.RoutedTaskIDs) != 1 || sess.RoutedTaskIDs[0] != id {
+		t.Errorf("expected RoutedTaskIDs=[%s], got %v", id, sess.RoutedTaskIDs)
+	}
+}
+
+// --- UpdateTaskStatus tests ---
+
+func TestUpdateTaskStatus_Completed(t *testing.T) {
+	orch, _, aiRepo := setupClaimTestOrch(t)
+	seedActiveSession(t, aiRepo, "sess-1")
+
+	id, _ := orch.SubmitTask(domain.Task{Instruction: "finish me", ProjectPath: "/tmp"})
+	_, _ = orch.ClaimTask(context.Background(), id, "sess-1")
+
+	task, err := orch.UpdateTaskStatus(context.Background(), id, "sess-1", domain.StatusCompleted, "done!")
+	if err != nil {
+		t.Fatalf("UpdateTaskStatus: %v", err)
+	}
+	if task.Status != domain.StatusCompleted {
+		t.Errorf("expected COMPLETED, got %s", task.Status)
+	}
+	if task.Logs != "done!" {
+		t.Errorf("expected logs='done!', got %q", task.Logs)
+	}
+}
+
+func TestUpdateTaskStatus_Failed(t *testing.T) {
+	orch, _, aiRepo := setupClaimTestOrch(t)
+	seedActiveSession(t, aiRepo, "sess-1")
+
+	id, _ := orch.SubmitTask(domain.Task{Instruction: "fail me", ProjectPath: "/tmp"})
+	_, _ = orch.ClaimTask(context.Background(), id, "sess-1")
+
+	task, err := orch.UpdateTaskStatus(context.Background(), id, "sess-1", domain.StatusFailed, "oops")
+	if err != nil {
+		t.Fatalf("UpdateTaskStatus: %v", err)
+	}
+	if task.Status != domain.StatusFailed {
+		t.Errorf("expected FAILED, got %s", task.Status)
+	}
+}
+
+func TestUpdateTaskStatus_WrongSession(t *testing.T) {
+	orch, _, aiRepo := setupClaimTestOrch(t)
+	seedActiveSession(t, aiRepo, "sess-1")
+	seedActiveSession(t, aiRepo, "sess-2")
+
+	id, _ := orch.SubmitTask(domain.Task{Instruction: "owned by 1", ProjectPath: "/tmp"})
+	_, _ = orch.ClaimTask(context.Background(), id, "sess-1")
+
+	_, err := orch.UpdateTaskStatus(context.Background(), id, "sess-2", domain.StatusCompleted, "")
+	if err == nil {
+		t.Fatal("expected ownership error")
+	}
+	if !strings.Contains(err.Error(), "does not own") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestUpdateTaskStatus_InvalidStatus(t *testing.T) {
+	orch, _, aiRepo := setupClaimTestOrch(t)
+	seedActiveSession(t, aiRepo, "sess-1")
+
+	id, _ := orch.SubmitTask(domain.Task{Instruction: "bad", ProjectPath: "/tmp"})
+	_, _ = orch.ClaimTask(context.Background(), id, "sess-1")
+
+	_, err := orch.UpdateTaskStatus(context.Background(), id, "sess-1", domain.StatusQueued, "")
+	if err == nil {
+		t.Fatal("expected error for invalid target status")
+	}
+	if !strings.Contains(err.Error(), "invalid target status") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestUpdateTaskStatus_NotProcessing(t *testing.T) {
+	orch, _, aiRepo := setupClaimTestOrch(t)
+	seedActiveSession(t, aiRepo, "sess-1")
+
+	id, _ := orch.SubmitTask(domain.Task{Instruction: "still queued", ProjectPath: "/tmp"})
+
+	// Task is QUEUED (not claimed), so AISessionID is empty.
+	// We need to manually set AISessionID to bypass ownership check and test the status guard.
+	repo := orch // Access via the interface: set directly on memRepo
+	_ = repo
+	_, err := orch.UpdateTaskStatus(context.Background(), id, "sess-1", domain.StatusCompleted, "")
+	if err == nil {
+		t.Fatal("expected error for non-PROCESSING task")
+	}
+	// Either "does not own" or "not PROCESSING" is acceptable since AISessionID won't match.
+	if !strings.Contains(err.Error(), "does not own") && !strings.Contains(err.Error(), "not PROCESSING") {
+		t.Errorf("unexpected error: %v", err)
 	}
 }

@@ -61,7 +61,9 @@ func (m *mockOrchestrator) GetProviders() ([]ports.ProviderInfo, error)         
 func (m *mockOrchestrator) RegisterCloudProvider(_ domain.ProviderConfig) error { return nil }
 func (m *mockOrchestrator) RemoveProvider(_ string) error                       { return nil }
 func (m *mockOrchestrator) GetProviderModels(_ string) ([]string, error)        { return nil, nil }
-func (m *mockOrchestrator) PromoteTask(_ string) error                          { return nil }
+func (m *mockOrchestrator) PromoteTask(_ string) (ports.PromoteResult, error) {
+	return ports.PromoteResult{Promoted: true}, nil
+}
 func (m *mockOrchestrator) UpdateTask(_ string, _ domain.Task) (domain.Task, error) {
 	return domain.Task{}, nil
 }
@@ -90,12 +92,55 @@ func (m *mockOrchestrator) ListAISessions(_ context.Context) ([]domain.AISession
 }
 func (m *mockOrchestrator) DeregisterAISession(_ context.Context, _ string) error { return nil }
 func (m *mockOrchestrator) HeartbeatAISession(_ context.Context, _ string) error  { return nil }
+func (m *mockOrchestrator) ClaimTask(_ context.Context, _ string, _ string) (domain.Task, error) {
+	return domain.Task{}, nil
+}
+func (m *mockOrchestrator) UpdateTaskStatus(_ context.Context, _ string, _ string, _ domain.TaskStatus, _ string) (domain.Task, error) {
+	return domain.Task{}, nil
+}
+func (m *mockOrchestrator) PurgeDisconnectedSessions(_ context.Context) (int, error) {
+	return 0, nil
+}
+func (m *mockOrchestrator) GetAllTasks() ([]domain.Task, error) {
+	return m.tasksReturn, m.errReturn
+}
+func (m *mockOrchestrator) GetDiscoveredAgents(_ context.Context) ([]domain.DiscoveredAgent, error) {
+	return nil, nil
+}
+func (m *mockOrchestrator) DelegateToNexus(_ context.Context, _ string) (string, error) {
+	return "", nil
+}
+func (m *mockOrchestrator) HeartbeatTask(_ context.Context, _, _ string) error { return nil }
+func (m *mockOrchestrator) TerminateAISession(_ context.Context, _ string, _ bool) error {
+	return nil
+}
+func (m *mockOrchestrator) GetDiscoveredPlanFiles(_ context.Context, _ string) ([]domain.DiscoveredPlanFile, error) {
+	return nil, nil
+}
+
+func (m *mockOrchestrator) GetRuntimeConfig(_ context.Context) (domain.RuntimeConfig, error) {
+	return domain.RuntimeConfig{QueueCap: 50}, nil
+}
+
+func (m *mockOrchestrator) UpdateRuntimeConfig(_ context.Context, update domain.RuntimeConfigUpdate) (domain.RuntimeConfig, error) {
+	cfg := domain.RuntimeConfig{QueueCap: 50}
+	if update.QueueCap != nil {
+		cfg.QueueCap = *update.QueueCap
+	}
+	if update.APIToken != nil {
+		cfg.APIToken = *update.APIToken
+	}
+	if update.MCPToken != nil {
+		cfg.MCPToken = *update.MCPToken
+	}
+	return cfg, nil
+}
 
 var _ ports.Orchestrator = (*mockOrchestrator)(nil)
 
 func TestApp_SubmitTask_Delegates(t *testing.T) {
 	mock := &mockOrchestrator{idReturn: "task-42"}
-	app := NewApp(mock, "127.0.0.1:9999")
+	app := NewApp(mock, "127.0.0.1:63987")
 	task := domain.Task{
 		ProjectPath: "/projects/alpha",
 		TargetFile:  "main.go",
@@ -119,7 +164,7 @@ func TestApp_SubmitTask_Delegates(t *testing.T) {
 func TestApp_GetTask_Delegates(t *testing.T) {
 	want := domain.Task{ID: "t-99", Status: domain.StatusQueued, CreatedAt: time.Now()}
 	mock := &mockOrchestrator{taskReturn: want}
-	app := NewApp(mock, "127.0.0.1:9999")
+	app := NewApp(mock, "127.0.0.1:63987")
 	got, err := app.GetTask("t-99")
 	if err != nil {
 		t.Fatalf("GetTask: unexpected error: %v", err)
@@ -141,7 +186,7 @@ func TestApp_GetQueue_Delegates(t *testing.T) {
 		{ID: "q-2", Status: domain.StatusProcessing},
 	}
 	mock := &mockOrchestrator{tasksReturn: tasks}
-	app := NewApp(mock, "127.0.0.1:9999")
+	app := NewApp(mock, "127.0.0.1:63987")
 	got, err := app.GetQueue()
 	if err != nil {
 		t.Fatalf("GetQueue: unexpected error: %v", err)
@@ -156,7 +201,7 @@ func TestApp_GetQueue_Delegates(t *testing.T) {
 
 func TestApp_CancelTask_Delegates(t *testing.T) {
 	mock := &mockOrchestrator{}
-	app := NewApp(mock, "127.0.0.1:9999")
+	app := NewApp(mock, "127.0.0.1:63987")
 	if err := app.CancelTask("t-cancel-1"); err != nil {
 		t.Fatalf("CancelTask: unexpected error: %v", err)
 	}
@@ -171,7 +216,7 @@ func TestApp_CancelTask_Delegates(t *testing.T) {
 func TestApp_GetBacklog_Delegates(t *testing.T) {
 	drafts := []domain.Task{{ID: "d-1", Status: domain.StatusDraft}}
 	mock := &mockOrchestrator{tasksReturn: drafts}
-	app := NewApp(mock, "127.0.0.1:9999")
+	app := NewApp(mock, "127.0.0.1:63987")
 	got, err := app.GetBacklog("/projects/beta")
 	if err != nil {
 		t.Fatalf("GetBacklog: unexpected error: %v", err)
@@ -190,7 +235,7 @@ func TestApp_GetBacklog_Delegates(t *testing.T) {
 func TestApp_ErrorPropagation(t *testing.T) {
 	sentinel := errors.New("orchestrator offline")
 	mock := &mockOrchestrator{errReturn: sentinel}
-	app := NewApp(mock, "127.0.0.1:9999")
+	app := NewApp(mock, "127.0.0.1:63987")
 	if _, err := app.SubmitTask(domain.Task{}); !errors.Is(err, sentinel) {
 		t.Errorf("SubmitTask error: got %v, want %v", err, sentinel)
 	}

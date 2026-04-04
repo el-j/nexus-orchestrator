@@ -58,6 +58,24 @@ type mockOrchestrator struct {
 
 	discoveredProvidersResult []domain.DiscoveredProvider
 	promoteProviderErr        error
+
+	terminateAISessionErr error
+
+	heartbeatAISessionErr error
+
+	heartbeatTaskErr error
+
+	claimTaskResult domain.Task
+	claimTaskErr    error
+
+	updateTaskStatusResult domain.Task
+	updateTaskStatusErr    error
+
+	delegateInstruction string
+	delegateErr         error
+
+	purgeCount int
+	purgeErr   error
 }
 
 func (m *mockOrchestrator) SubmitTask(_ domain.Task) (string, error) {
@@ -126,8 +144,8 @@ func (m *mockOrchestrator) CreateDraft(_ domain.Task) (string, error) {
 func (m *mockOrchestrator) GetBacklog(_ string) ([]domain.Task, error) {
 	return m.getBacklogResult, m.getBacklogErr
 }
-func (m *mockOrchestrator) PromoteTask(_ string) error {
-	return m.promoteTaskErr
+func (m *mockOrchestrator) PromoteTask(_ string) (ports.PromoteResult, error) {
+	return ports.PromoteResult{Promoted: m.promoteTaskErr == nil}, m.promoteTaskErr
 }
 func (m *mockOrchestrator) UpdateTask(_ string, _ domain.Task) (domain.Task, error) {
 	return m.updateTaskResult, m.updateTaskErr
@@ -142,7 +160,52 @@ func (m *mockOrchestrator) DeregisterAISession(_ context.Context, _ string) erro
 	return nil
 }
 func (m *mockOrchestrator) HeartbeatAISession(_ context.Context, _ string) error {
-	return nil
+	return m.heartbeatAISessionErr
+}
+func (m *mockOrchestrator) HeartbeatTask(_ context.Context, _, _ string) error {
+	return m.heartbeatTaskErr
+}
+func (m *mockOrchestrator) ClaimTask(_ context.Context, _ string, _ string) (domain.Task, error) {
+	return m.claimTaskResult, m.claimTaskErr
+}
+func (m *mockOrchestrator) UpdateTaskStatus(_ context.Context, _ string, _ string, _ domain.TaskStatus, _ string) (domain.Task, error) {
+	return m.updateTaskStatusResult, m.updateTaskStatusErr
+}
+func (m *mockOrchestrator) PurgeDisconnectedSessions(_ context.Context) (int, error) {
+	return m.purgeCount, m.purgeErr
+}
+func (m *mockOrchestrator) GetAllTasks() ([]domain.Task, error) {
+	return m.getQueueResult, m.getQueueErr
+}
+func (m *mockOrchestrator) GetDiscoveredAgents(_ context.Context) ([]domain.DiscoveredAgent, error) {
+	return nil, nil
+}
+func (m *mockOrchestrator) DelegateToNexus(_ context.Context, _ string) (string, error) {
+	return m.delegateInstruction, m.delegateErr
+}
+func (m *mockOrchestrator) TerminateAISession(_ context.Context, _ string, _ bool) error {
+	return m.terminateAISessionErr
+}
+func (m *mockOrchestrator) GetDiscoveredPlanFiles(_ context.Context, _ string) ([]domain.DiscoveredPlanFile, error) {
+	return nil, nil
+}
+
+func (m *mockOrchestrator) GetRuntimeConfig(_ context.Context) (domain.RuntimeConfig, error) {
+	return domain.RuntimeConfig{QueueCap: 50}, nil
+}
+
+func (m *mockOrchestrator) UpdateRuntimeConfig(_ context.Context, update domain.RuntimeConfigUpdate) (domain.RuntimeConfig, error) {
+	cfg := domain.RuntimeConfig{QueueCap: 50}
+	if update.QueueCap != nil {
+		cfg.QueueCap = *update.QueueCap
+	}
+	if update.APIToken != nil {
+		cfg.APIToken = *update.APIToken
+	}
+	if update.MCPToken != nil {
+		cfg.MCPToken = *update.MCPToken
+	}
+	return cfg, nil
 }
 
 // newTestHandler builds a chi router with the same route/handler logic as StartServer.
@@ -168,6 +231,19 @@ func newTestHandler(orch ports.Orchestrator) http.Handler {
 
 	r.Get("/api/tasks", func(w http.ResponseWriter, r *http.Request) {
 		tasks, err := orch.GetQueue()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if tasks == nil {
+			tasks = []domain.Task{}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(tasks)
+	})
+
+	r.Get("/api/tasks/all", func(w http.ResponseWriter, r *http.Request) {
+		tasks, err := orch.GetAllTasks()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -422,6 +498,37 @@ func TestGetTasks_EmptyQueue(t *testing.T) {
 	}
 }
 
+func TestGetAllTasks_Success(t *testing.T) {
+	tasks := []domain.Task{
+		{ID: "d1", Status: domain.StatusDraft},
+		{ID: "c1", Status: domain.StatusCompleted},
+	}
+	mock := &mockOrchestrator{getQueueResult: tasks}
+	ts := httptest.NewServer(newTestHandler(mock))
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/tasks/all")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+
+	var result []domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("expected 2 tasks, got %d", len(result))
+	}
+	if result[0].ID != "d1" || result[1].ID != "c1" {
+		t.Errorf("unexpected task order/result: %+v", result)
+	}
+}
+
 // TestGetTask_Found verifies GET /api/tasks/{id} returns 200 with the task JSON when found.
 func TestGetTask_Found(t *testing.T) {
 	task := domain.Task{ID: "task-42", Instruction: "build something", Status: domain.StatusCompleted}
@@ -579,6 +686,88 @@ func TestGetHealth(t *testing.T) {
 	}
 	if result["service"] != "nexus-orchestrator" {
 		t.Errorf("expected service %q, got %q", "nexus-orchestrator", result["service"])
+	}
+}
+
+func TestHTTPAPI_TokenAuth_GuardsAPI(t *testing.T) {
+	t.Setenv("NEXUS_API_TOKEN", "test-token")
+
+	mock := &mockOrchestrator{}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	t.Cleanup(ts.Close)
+
+	// Health stays open.
+	resp, err := http.Get(ts.URL + "/api/health")
+	if err != nil {
+		t.Fatalf("GET /api/health: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("health: want 200, got %d", resp.StatusCode)
+	}
+
+	// Other /api endpoints require a bearer token.
+	resp, err = http.Get(ts.URL + "/api/tasks")
+	if err != nil {
+		t.Fatalf("GET /api/tasks: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("unauthenticated: want 401, got %d", resp.StatusCode)
+	}
+
+	req, _ := http.NewRequest(http.MethodGet, ts.URL+"/api/tasks", nil)
+	req.Header.Set("Authorization", "Bearer test-token")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("GET /api/tasks with auth: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("authenticated: want 200, got %d", resp.StatusCode)
+	}
+}
+
+func TestHTTPAPI_ConfigEndpoints(t *testing.T) {
+	mock := &mockOrchestrator{}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	t.Cleanup(ts.Close)
+
+	resp, err := http.Get(ts.URL + "/api/config")
+	if err != nil {
+		t.Fatalf("GET /api/config: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /api/config: want 200, got %d", resp.StatusCode)
+	}
+	var getResp map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&getResp); err != nil {
+		t.Fatalf("decode GET /api/config: %v", err)
+	}
+	if getResp["queueCap"] == nil {
+		t.Fatalf("expected queueCap in response, got %#v", getResp)
+	}
+
+	body := strings.NewReader(`{"queueCap":123}`)
+	req, _ := http.NewRequest(http.MethodPut, ts.URL+"/api/config", body)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PUT /api/config: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("PUT /api/config: want 200, got %d", resp.StatusCode)
+	}
+	var putResp map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&putResp); err != nil {
+		t.Fatalf("decode PUT /api/config: %v", err)
+	}
+	if putResp["queueCap"] != float64(123) {
+		t.Fatalf("expected queueCap=123, got %#v", putResp["queueCap"])
 	}
 }
 
@@ -869,8 +1058,8 @@ func TestHandleGetBacklog_Returns200WithTasks(t *testing.T) {
 	}
 }
 
-func TestHandleGetBacklog_RequiresProjectParam(t *testing.T) {
-	mock := &mockOrchestrator{}
+func TestHandleGetBacklog_WithoutProjectParam_Returns200(t *testing.T) {
+	mock := &mockOrchestrator{getBacklogResult: []domain.Task{{ID: "draft-any", Status: domain.StatusDraft}}}
 	srv := httpapi.NewServer(mock, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
@@ -881,8 +1070,77 @@ func TestHandleGetBacklog_RequiresProjectParam(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("want 400, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("want 200, got %d", resp.StatusCode)
+	}
+	var result []domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 1 || result[0].ID != "draft-any" {
+		t.Errorf("unexpected backlog result: %+v", result)
+	}
+}
+
+func TestHandleGetAllTasks_Returns200WithTasks(t *testing.T) {
+	tasks := []domain.Task{
+		{ID: "draft-1", Status: domain.StatusDraft},
+		{ID: "done-1", Status: domain.StatusCompleted},
+	}
+	mock := &mockOrchestrator{getQueueResult: tasks}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/tasks/all")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("want 200, got %d", resp.StatusCode)
+	}
+	var result []domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("want 2 tasks, got %d", len(result))
+	}
+}
+
+func TestHandleGetAllTasks_ProjectPathFilter_ReturnsMatchingTasks(t *testing.T) {
+	tasks := []domain.Task{
+		{ID: "task-a", ProjectPath: "/repo/a", Status: domain.StatusDraft},
+		{ID: "task-b", ProjectPath: "/repo/b", Status: domain.StatusCompleted},
+		{ID: "task-a2", ProjectPath: "/repo/a", Status: domain.StatusFailed},
+	}
+	mock := &mockOrchestrator{getQueueResult: tasks}
+	srv := httpapi.NewServer(mock, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/tasks/all?projectPath=/repo/a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("want 200, got %d", resp.StatusCode)
+	}
+	var result []domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("want 2 filtered tasks, got %d", len(result))
+	}
+	for _, task := range result {
+		if task.ProjectPath != "/repo/a" {
+			t.Fatalf("unexpected project path in result: %s", task.ProjectPath)
+		}
 	}
 }
 
@@ -902,8 +1160,8 @@ func TestHandlePromoteTask_Returns204(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusNoContent {
-		t.Errorf("want 204, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("want 200, got %d", resp.StatusCode)
 	}
 }
 
@@ -1008,6 +1266,445 @@ func TestHTTP_PromoteProvider_NotFound_Returns404(t *testing.T) {
 
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("expected 404, got %d", resp.StatusCode)
+	}
+}
+
+// --- POST /api/ai-sessions/{id}/terminate tests ------------------------------
+
+func TestHandleTerminateAISession(t *testing.T) {
+	tests := []struct {
+		name          string
+		sessionID     string
+		body          string
+		contentLength int64
+		terminateErr  error
+		wantStatus    int
+	}{
+		{
+			name:          "success no body",
+			sessionID:     "sess-1",
+			body:          "",
+			contentLength: 0,
+			wantStatus:    http.StatusNoContent,
+		},
+		{
+			name:          "success force true",
+			sessionID:     "sess-1",
+			body:          `{"force":true}`,
+			contentLength: -1,
+			wantStatus:    http.StatusNoContent,
+		},
+		{
+			name:          "not found",
+			sessionID:     "missing",
+			body:          `{}`,
+			contentLength: -1,
+			terminateErr:  domain.ErrNotFound,
+			wantStatus:    http.StatusNotFound,
+		},
+		{
+			name:          "bad json body",
+			sessionID:     "sess-1",
+			body:          `{bad}`,
+			contentLength: -1,
+			wantStatus:    http.StatusBadRequest,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := &mockOrchestrator{terminateAISessionErr: tc.terminateErr}
+			srv := httpapi.NewServer(mock, nil)
+			ts := httptest.NewServer(srv.Handler())
+			defer ts.Close()
+
+			var bodyReader io.Reader
+			if tc.body != "" {
+				bodyReader = strings.NewReader(tc.body)
+			} else {
+				bodyReader = http.NoBody
+			}
+			req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/ai-sessions/"+tc.sessionID+"/terminate", bodyReader)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.body != "" {
+				req.Header.Set("Content-Type", "application/json")
+				if tc.contentLength >= 0 {
+					req.ContentLength = tc.contentLength
+				}
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tc.wantStatus {
+				t.Errorf("want %d, got %d", tc.wantStatus, resp.StatusCode)
+			}
+		})
+	}
+}
+
+// --- POST /api/ai-sessions/{id}/heartbeat tests ------------------------------
+
+func TestHandleHeartbeatAISession(t *testing.T) {
+	tests := []struct {
+		name       string
+		sessionID  string
+		hbErr      error
+		wantStatus int
+	}{
+		{"success", "sess-1", nil, http.StatusNoContent},
+		{"not found", "missing", domain.ErrNotFound, http.StatusNotFound},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := &mockOrchestrator{heartbeatAISessionErr: tc.hbErr}
+			srv := httpapi.NewServer(mock, nil)
+			ts := httptest.NewServer(srv.Handler())
+			defer ts.Close()
+
+			req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/ai-sessions/"+tc.sessionID+"/heartbeat", http.NoBody)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tc.wantStatus {
+				t.Errorf("want %d, got %d", tc.wantStatus, resp.StatusCode)
+			}
+		})
+	}
+}
+
+// --- POST /api/tasks/{id}/heartbeat tests ------------------------------------
+
+func TestHandleHeartbeatTask(t *testing.T) {
+	tests := []struct {
+		name       string
+		taskID     string
+		body       string
+		hbErr      error
+		wantStatus int
+	}{
+		{"success", "task-1", `{"session_id":"sess-1"}`, nil, http.StatusNoContent},
+		{"missing session_id", "task-1", `{}`, nil, http.StatusBadRequest},
+		{"not found", "task-1", `{"session_id":"sess-x"}`, domain.ErrNotFound, http.StatusNotFound},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := &mockOrchestrator{heartbeatTaskErr: tc.hbErr}
+			srv := httpapi.NewServer(mock, nil)
+			ts := httptest.NewServer(srv.Handler())
+			defer ts.Close()
+
+			req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/tasks/"+tc.taskID+"/heartbeat", strings.NewReader(tc.body))
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.Header.Set("Content-Type", "application/json")
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tc.wantStatus {
+				t.Errorf("want %d, got %d", tc.wantStatus, resp.StatusCode)
+			}
+		})
+	}
+}
+
+// --- POST /api/tasks/{id}/claim tests ----------------------------------------
+
+func TestHandleClaimTask(t *testing.T) {
+	claimedTask := domain.Task{ID: "task-1", Status: domain.StatusProcessing, AISessionID: "sess-1"}
+
+	tests := []struct {
+		name        string
+		taskID      string
+		body        string
+		claimResult domain.Task
+		claimErr    error
+		wantStatus  int
+	}{
+		{"success", "task-1", `{"sessionId":"sess-1"}`, claimedTask, nil, http.StatusOK},
+		{"missing sessionId", "task-1", `{}`, domain.Task{}, nil, http.StatusBadRequest},
+		{"not found", "task-1", `{"sessionId":"sess-x"}`, domain.Task{}, domain.ErrNotFound, http.StatusNotFound},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := &mockOrchestrator{claimTaskResult: tc.claimResult, claimTaskErr: tc.claimErr}
+			srv := httpapi.NewServer(mock, nil)
+			ts := httptest.NewServer(srv.Handler())
+			defer ts.Close()
+
+			req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/tasks/"+tc.taskID+"/claim", strings.NewReader(tc.body))
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.Header.Set("Content-Type", "application/json")
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tc.wantStatus {
+				t.Errorf("want %d, got %d", tc.wantStatus, resp.StatusCode)
+			}
+			if tc.wantStatus == http.StatusOK {
+				var result domain.Task
+				if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+					t.Fatal(err)
+				}
+				if result.ID != tc.claimResult.ID {
+					t.Errorf("task ID: want %q, got %q", tc.claimResult.ID, result.ID)
+				}
+			}
+		})
+	}
+}
+
+// --- PUT /api/tasks/{id}/status tests ----------------------------------------
+
+func TestHandleUpdateTaskStatus(t *testing.T) {
+	completedTask := domain.Task{ID: "task-1", Status: domain.StatusCompleted}
+
+	tests := []struct {
+		name         string
+		taskID       string
+		body         string
+		updateResult domain.Task
+		updateErr    error
+		wantStatus   int
+	}{
+		{
+			name:         "success completed",
+			taskID:       "task-1",
+			body:         `{"sessionId":"sess-1","status":"COMPLETED"}`,
+			updateResult: completedTask,
+			wantStatus:   http.StatusOK,
+		},
+		{
+			name:       "invalid JSON",
+			taskID:     "task-1",
+			body:       `{bad json`,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "missing status",
+			taskID:     "task-1",
+			body:       `{"sessionId":"sess-1"}`,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "not found",
+			taskID:     "task-1",
+			body:       `{"sessionId":"sess-1","status":"COMPLETED"}`,
+			updateErr:  domain.ErrNotFound,
+			wantStatus: http.StatusNotFound,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := &mockOrchestrator{updateTaskStatusResult: tc.updateResult, updateTaskStatusErr: tc.updateErr}
+			srv := httpapi.NewServer(mock, nil)
+			ts := httptest.NewServer(srv.Handler())
+			defer ts.Close()
+
+			req, err := http.NewRequest(http.MethodPut, ts.URL+"/api/tasks/"+tc.taskID+"/status", strings.NewReader(tc.body))
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.Header.Set("Content-Type", "application/json")
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tc.wantStatus {
+				t.Errorf("want %d, got %d", tc.wantStatus, resp.StatusCode)
+			}
+			if tc.wantStatus == http.StatusOK {
+				var result domain.Task
+				if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+					t.Fatal(err)
+				}
+				if result.ID != tc.updateResult.ID {
+					t.Errorf("task ID: want %q, got %q", tc.updateResult.ID, result.ID)
+				}
+			}
+		})
+	}
+}
+
+// --- POST /api/ai-sessions/{id}/delegate tests -------------------------------
+
+func TestHandleDelegateToNexus(t *testing.T) {
+	tests := []struct {
+		name        string
+		sessionID   string
+		instruction string
+		delegateErr error
+		wantStatus  int
+	}{
+		{"success", "sess-1", "do something useful", nil, http.StatusOK},
+		{"not found", "missing", "", domain.ErrNotFound, http.StatusNotFound},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := &mockOrchestrator{delegateInstruction: tc.instruction, delegateErr: tc.delegateErr}
+			srv := httpapi.NewServer(mock, nil)
+			ts := httptest.NewServer(srv.Handler())
+			defer ts.Close()
+
+			req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/ai-sessions/"+tc.sessionID+"/delegate", http.NoBody)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tc.wantStatus {
+				t.Errorf("want %d, got %d", tc.wantStatus, resp.StatusCode)
+			}
+			if tc.wantStatus == http.StatusOK {
+				var result map[string]string
+				if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+					t.Fatal(err)
+				}
+				if result["instruction"] != tc.instruction {
+					t.Errorf("instruction: want %q, got %q", tc.instruction, result["instruction"])
+				}
+				if result["sessionId"] != tc.sessionID {
+					t.Errorf("sessionId: want %q, got %q", tc.sessionID, result["sessionId"])
+				}
+			}
+		})
+	}
+}
+
+// --- GET /api/ai-sessions/{id}/tasks tests -----------------------------------
+
+func TestHandleGetSessionTasks(t *testing.T) {
+	t.Run("returns tasks for session", func(t *testing.T) {
+		tasks := []domain.Task{
+			{ID: "t1", AISessionID: "sess-1", Status: domain.StatusProcessing},
+			{ID: "t2", AISessionID: "sess-1", Status: domain.StatusCompleted},
+			{ID: "t3", AISessionID: "sess-other", Status: domain.StatusQueued},
+		}
+		mock := &mockOrchestrator{getQueueResult: tasks}
+		srv := httpapi.NewServer(mock, nil)
+		ts := httptest.NewServer(srv.Handler())
+		defer ts.Close()
+
+		resp, err := http.Get(ts.URL + "/api/ai-sessions/sess-1/tasks")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("want 200, got %d", resp.StatusCode)
+		}
+		var result []domain.Task
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatal(err)
+		}
+		if len(result) != 2 {
+			t.Fatalf("want 2 tasks for sess-1, got %d", len(result))
+		}
+		for _, task := range result {
+			if task.AISessionID != "sess-1" {
+				t.Errorf("unexpected task with AISessionID %q", task.AISessionID)
+			}
+		}
+	})
+
+	t.Run("returns empty list when no tasks", func(t *testing.T) {
+		mock := &mockOrchestrator{getQueueResult: nil}
+		srv := httpapi.NewServer(mock, nil)
+		ts := httptest.NewServer(srv.Handler())
+		defer ts.Close()
+
+		resp, err := http.Get(ts.URL + "/api/ai-sessions/sess-empty/tasks")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("want 200, got %d", resp.StatusCode)
+		}
+		var result []domain.Task
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatal(err)
+		}
+		if len(result) != 0 {
+			t.Errorf("want 0 tasks, got %d", len(result))
+		}
+	})
+}
+
+// --- DELETE /api/ai-sessions tests -------------------------------------------
+
+func TestHandlePurgeDisconnectedSessions(t *testing.T) {
+	tests := []struct {
+		name       string
+		purgeCount int
+		purgeErr   error
+		wantStatus int
+		wantCount  int
+	}{
+		{"success with deletions", 3, nil, http.StatusOK, 3},
+		{"success zero deletions", 0, nil, http.StatusOK, 0},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := &mockOrchestrator{purgeCount: tc.purgeCount, purgeErr: tc.purgeErr}
+			srv := httpapi.NewServer(mock, nil)
+			ts := httptest.NewServer(srv.Handler())
+			defer ts.Close()
+
+			req, err := http.NewRequest(http.MethodDelete, ts.URL+"/api/ai-sessions", http.NoBody)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tc.wantStatus {
+				t.Errorf("want %d, got %d", tc.wantStatus, resp.StatusCode)
+			}
+			var result map[string]int
+			if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+				t.Fatal(err)
+			}
+			if result["deleted"] != tc.wantCount {
+				t.Errorf("deleted: want %d, got %d", tc.wantCount, result["deleted"])
+			}
+		})
 	}
 }
 

@@ -24,7 +24,7 @@ Currently users must manually create `.vscode/mcp.json` to register the nexus-or
    ```json
    "nexus.mcpPort": {
      "type": "number",
-     "default": 9998,
+     "default": 63988,
      "description": "Port number of the nexusOrchestrator MCP server (JSON-RPC 2.0). Must match NEXUS_MCP_ADDR on the daemon."
    }
    ```
@@ -49,12 +49,12 @@ Currently users must manually create `.vscode/mcp.json` to register the nexus-or
 
 ## Acceptance Criteria
 - [ ] `vscode-extension/package.json` has `contributes.mcpServers.nexus-orchest` with `type: "http"` and `url: "http://127.0.0.1:${config:nexus.mcpPort}/mcp"`
-- [ ] `contributes.configuration.properties` includes `nexus.mcpPort` with type `number` and default `9998`
+- [ ] `contributes.configuration.properties` includes `nexus.mcpPort` with type `number` and default `63988`
 - [ ] `engines.vscode` is `"^1.99.0"` or higher
 - [ ] No TypeScript compilation errors (`cd vscode-extension && npm run build` exits 0)
 - [ ] `go vet ./...` exits 0 (Go project unaffected)
 
 ## Anti-patterns to Avoid
 - NEVER nest `mcpServers` inside `views` or `commands` — it must be a direct child of `contributes`
-- NEVER hardcode the port `9998` in the URL — use `${config:nexus.mcpPort}` for user configurability
+- NEVER hardcode the port `63988` in the URL — use `${config:nexus.mcpPort}` for user configurability
 - NEVER change the server name from `nexus-orchest` — Copilot prefixes tools with this name (`mcp_nexus-orchest_*`)

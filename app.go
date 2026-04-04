@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
+	"nexus-orchestrator/internal/core/services"
 )
 
 // App is the Wails application struct. Its exported methods are bound to the
@@ -14,6 +16,7 @@ type App struct {
 	ctx          context.Context
 	orchestrator ports.Orchestrator
 	httpAddr     string
+	activitySvc  *services.ActivityService
 }
 
 // NewApp creates a new App instance.
@@ -39,12 +42,36 @@ func (a *App) SubmitTask(task domain.Task) (string, error) {
 
 // GetTask retrieves a specific task by ID.
 func (a *App) GetTask(id string) (domain.Task, error) {
-	return a.orchestrator.GetTask(id)
+	t, err := a.orchestrator.GetTask(id)
+	if err != nil {
+		return t, err
+	}
+	t.ComputeDuration()
+	return t, nil
 }
 
 // GetQueue returns all pending tasks for the dashboard.
 func (a *App) GetQueue() ([]domain.Task, error) {
-	return a.orchestrator.GetQueue()
+	tasks, err := a.orchestrator.GetQueue()
+	if err != nil {
+		return nil, err
+	}
+	for i := range tasks {
+		tasks[i].ComputeDuration()
+	}
+	return tasks, nil
+}
+
+// GetAllTasks returns every task regardless of status.
+func (a *App) GetAllTasks() ([]domain.Task, error) {
+	tasks, err := a.orchestrator.GetAllTasks()
+	if err != nil {
+		return nil, err
+	}
+	for i := range tasks {
+		tasks[i].ComputeDuration()
+	}
+	return tasks, nil
 }
 
 // GetProviders returns the status of all registered LLM backends.
@@ -116,17 +143,29 @@ func (a *App) CreateDraft(task domain.Task) (string, error) {
 
 // GetBacklog returns DRAFT and BACKLOG tasks for the given project path.
 func (a *App) GetBacklog(projectPath string) ([]domain.Task, error) {
-	return a.orchestrator.GetBacklog(projectPath)
+	tasks, err := a.orchestrator.GetBacklog(projectPath)
+	if err != nil {
+		return nil, err
+	}
+	for i := range tasks {
+		tasks[i].ComputeDuration()
+	}
+	return tasks, nil
 }
 
 // PromoteTask transitions a DRAFT or BACKLOG task to QUEUED and enqueues it for execution.
-func (a *App) PromoteTask(id string) error {
+func (a *App) PromoteTask(id string) (ports.PromoteResult, error) {
 	return a.orchestrator.PromoteTask(id)
 }
 
 // UpdateTask updates mutable fields on an existing task.
 func (a *App) UpdateTask(id string, updates domain.Task) (domain.Task, error) {
-	return a.orchestrator.UpdateTask(id, updates)
+	t, err := a.orchestrator.UpdateTask(id, updates)
+	if err != nil {
+		return t, err
+	}
+	t.ComputeDuration()
+	return t, nil
 }
 
 // ListAISessions returns all registered AI sessions.
@@ -161,4 +200,98 @@ func (a *App) HeartbeatAISession(id string) error {
 		return fmt.Errorf("app: heartbeat ai session: %w", err)
 	}
 	return nil
+}
+
+// PurgeDisconnectedSessions deletes all AI sessions that are disconnected and
+// older than 2 hours. Returns the number of sessions purged.
+func (a *App) PurgeDisconnectedSessions() (int, error) {
+	n, err := a.orchestrator.PurgeDisconnectedSessions(context.Background())
+	if err != nil {
+		return 0, fmt.Errorf("app: purge disconnected sessions: %w", err)
+	}
+	return n, nil
+}
+
+// ClaimTask assigns a QUEUED task to the given AI session.
+func (a *App) ClaimTask(taskID string, sessionID string) (domain.Task, error) {
+	t, err := a.orchestrator.ClaimTask(context.Background(), taskID, sessionID)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("app: claim task: %w", err)
+	}
+	t.ComputeDuration()
+	return t, nil
+}
+
+// UpdateTaskStatus allows an external AI session to report task completion or failure.
+func (a *App) UpdateTaskStatus(taskID string, sessionID string, status string, logs string) (domain.Task, error) {
+	t, err := a.orchestrator.UpdateTaskStatus(context.Background(), taskID, sessionID, domain.TaskStatus(status), logs)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("app: update task status: %w", err)
+	}
+	t.ComputeDuration()
+	return t, nil
+}
+
+// WithActivityService injects an ActivityService into the App for observatory bindings.
+func (a *App) WithActivityService(svc *services.ActivityService) *App {
+	a.activitySvc = svc
+	return a
+}
+
+// GetRecentActivities returns recent AI activities for the observatory dashboard.
+func (a *App) GetRecentActivities(agentName, projectPath, activityType, sinceRFC3339 string, limit int) ([]domain.AIActivity, error) {
+	if a.activitySvc == nil {
+		return nil, fmt.Errorf("app: activity service not available")
+	}
+	f := domain.ActivityFilter{
+		AgentName:   agentName,
+		ProjectPath: projectPath,
+	}
+	if activityType != "" {
+		f.Type = domain.ActivityType(activityType)
+	}
+	if sinceRFC3339 != "" {
+		if t, err := time.Parse(time.RFC3339, sinceRFC3339); err == nil {
+			f.Since = t
+		}
+	}
+	if limit > 0 {
+		f.Limit = limit
+	}
+	return a.activitySvc.GetRecentActivities(context.Background(), f)
+}
+
+// GetActivityTimeline returns a cross-agent chronological activity feed.
+func (a *App) GetActivityTimeline(sinceRFC3339 string, limit int) ([]domain.AIActivity, error) {
+	if a.activitySvc == nil {
+		return nil, fmt.Errorf("app: activity service not available")
+	}
+	since := time.Now().Add(-24 * time.Hour)
+	if sinceRFC3339 != "" {
+		if t, err := time.Parse(time.RFC3339, sinceRFC3339); err == nil {
+			since = t
+		}
+	}
+	if limit == 0 {
+		limit = 100
+	}
+	return a.activitySvc.GetTimeline(context.Background(), since, limit)
+}
+
+// GetRuntimeConfig returns the current effective runtime configuration.
+func (a *App) GetRuntimeConfig() (domain.RuntimeConfig, error) {
+	cfg, err := a.orchestrator.GetRuntimeConfig(context.Background())
+	if err != nil {
+		return domain.RuntimeConfig{}, fmt.Errorf("app: get runtime config: %w", err)
+	}
+	return cfg, nil
+}
+
+// UpdateRuntimeConfig applies a partial update to the runtime configuration.
+func (a *App) UpdateRuntimeConfig(update domain.RuntimeConfigUpdate) (domain.RuntimeConfig, error) {
+	cfg, err := a.orchestrator.UpdateRuntimeConfig(context.Background(), update)
+	if err != nil {
+		return domain.RuntimeConfig{}, fmt.Errorf("app: update runtime config: %w", err)
+	}
+	return cfg, nil
 }

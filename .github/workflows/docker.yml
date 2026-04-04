@@ -1,0 +1,132 @@
+name: Docker
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'           # stable:  v0.10.0
+      - 'v[0-9]+.[0-9]+.[0-9]+-rc.*'      # RC:      v0.10.0-rc.1
+      - 'v[0-9]+.[0-9]+.[0-9]+-beta.*'    # beta:    v0.10.0-beta.1
+      - 'v[0-9]+.[0-9]+.[0-9]+-alpha.*'   # alpha:   v0.10.0-alpha.1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  build-push:
+    name: Build & push ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up QEMU (for cross-arch)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags + labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            # stable vX.Y.Z  →  latest, X, X.Y, X.Y.Z
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            # pre-release vX.Y.Z-{alpha,beta,rc}.N  →  X.Y.Z-{track}.N only (no latest)
+            type=semver,pattern={{version}},enable=${{ contains(github.ref, '-') }}
+          flavor: |
+            latest=${{ !contains(github.ref, '-') }}
+
+      - name: Compute build args
+        id: buildargs
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          COMMIT="${{ github.sha }}"
+          COMMIT="${COMMIT:0:7}"
+          BUILDDATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "commit=${COMMIT}"   >> "$GITHUB_OUTPUT"
+          echo "builddate=${BUILDDATE}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.buildargs.outputs.version }}
+            COMMIT=${{ steps.buildargs.outputs.commit }}
+            BUILD_DATE=${{ steps.buildargs.outputs.builddate }}
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to:   type=gha,scope=${{ matrix.platform }},mode=max
+
+  # Merge the per-platform digests into a single multi-arch manifest
+  manifest:
+    name: Merge multi-arch manifest
+    runs-on: ubuntu-latest
+    needs: build-push
+    timeout-minutes: 10
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=semver,pattern={{version}},enable=${{ contains(github.ref, '-') }}
+          flavor: |
+            latest=${{ !contains(github.ref, '-') }}
+
+      - name: Create and push multi-arch manifest
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: |
+            type=gha,scope=linux/amd64
+            type=gha,scope=linux/arm64

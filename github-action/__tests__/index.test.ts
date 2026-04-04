@@ -56,7 +56,7 @@ function setInputs(overrides: Record<string, string> = {}): void {
     INPUT_INSTRUCTION:     'Refactor the handler',
     INPUT_PROJECT_PATH:    '/workspace',
     INPUT_START_DAEMON:    'false',
-    INPUT_DAEMON_URL:      'http://127.0.0.1:9999',
+    INPUT_DAEMON_URL:      'http://127.0.0.1:63987',
     INPUT_TIMEOUT_SECONDS: '10',
     INPUT_NEXUS_VERSION:   'latest',
     INPUT_AGENT_REF:       'main',

@@ -75,7 +75,7 @@ the `.vsix`.
        'Task queue tree view sidebar',
        'Status bar with live daemon health',
        'Provider &amp; model picker command',
-       'Connects to daemon at <code class="text-slate-300">127.0.0.1:9999</code>',
+       'Connects to daemon at <code class="text-slate-300">127.0.0.1:63987</code>',
      ],
    },
    ```

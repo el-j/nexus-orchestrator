@@ -2,7 +2,7 @@
 layout: default
 title: Downloads
 nav_order: 2
-description: "Download nexusOrchestrator desktop app and CLI tools for macOS, Windows, and Linux"
+description: 'Download nexusOrchestrator desktop app and CLI tools for macOS, Windows, and Linux'
 ---
 
 <style>
@@ -357,7 +357,7 @@ Get-FileHash .\nexus-orchestrator-windows-amd64.zip -Algorithm SHA256
   <div class="dl-info-card">
     <h4>🔧 Build from Source</h4>
     <ul>
-      <li>Go 1.24+ with <code>CGO_ENABLED=1</code></li>
+      <li>Go 1.26+ with <code>CGO_ENABLED=1</code></li>
       <li>C compiler (gcc / clang) for sqlite3</li>
       <li><a href="https://wails.io/">Wails v2</a> for Desktop builds</li>
     </ul>
@@ -377,8 +377,8 @@ Get-FileHash .\nexus-orchestrator-windows-amd64.zip -Algorithm SHA256
     <h4>Desktop App</h4>
     <ul>
       <li>Full Wails GUI with task dashboard</li>
-      <li>Embedded HTTP API on port <code>9999</code></li>
-      <li>Embedded MCP server on port <code>9998</code></li>
+      <li>Embedded HTTP API on port <code>63987</code></li>
+      <li>Embedded MCP server on port <code>63988</code></li>
       <li>Provider auto-discovery &amp; health UI</li>
       <li>Per-project session viewer</li>
     </ul>
@@ -388,8 +388,8 @@ Get-FileHash .\nexus-orchestrator-windows-amd64.zip -Algorithm SHA256
     <h4>Daemon (<code>nexus-daemon</code>)</h4>
     <ul>
       <li>Headless background service</li>
-      <li>HTTP API on port <code>9999</code></li>
-      <li>MCP server on port <code>9998</code></li>
+      <li>HTTP API on port <code>63987</code></li>
+      <li>MCP server on port <code>63988</code></li>
       <li>Ideal for servers &amp; CI environments</li>
       <li>Configurable via environment variables</li>
     </ul>
@@ -400,7 +400,7 @@ Get-FileHash .\nexus-orchestrator-windows-amd64.zip -Algorithm SHA256
     <ul>
       <li>Thin HTTP client — no embedded LLM logic</li>
       <li>Submit, list, cancel, and monitor tasks</li>
-      <li>Connects to daemon at <code>127.0.0.1:9999</code></li>
+      <li>Connects to daemon at <code>127.0.0.1:63987</code></li>
       <li>Scriptable for automation &amp; pipelines</li>
     </ul>
   </div>

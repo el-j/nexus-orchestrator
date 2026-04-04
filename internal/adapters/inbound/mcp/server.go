@@ -5,14 +5,16 @@ package mcp
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
-	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
 )
 
@@ -51,6 +53,9 @@ type rpcError struct {
 type serverInfo struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
+	// Instructions is surfaced by MCP clients (e.g. Claude Desktop, Cursor) as a
+	// system-level hint that tells the AI how to start working with this server.
+	Instructions string `json:"instructions,omitempty"`
 }
 
 type capabilities struct {
@@ -98,35 +103,140 @@ type callToolResult struct {
 
 // Server is the MCP inbound adapter.
 type Server struct {
-	orch ports.Orchestrator
-	mux  *http.ServeMux
+	orch           ports.Orchestrator
+	mux            *http.ServeMux
+	sse            *sseManager
+	allowedOrigins map[string]bool
+	// authToken is the env-configured token (NEXUS_MCP_TOKEN). When set it
+	// takes precedence over persisted runtime config.
+	authToken string
 }
 
-// NewServer creates a Server and registers its HTTP handlers.
-func NewServer(orch ports.Orchestrator) *Server {
+// NewMcpServer creates a Server and registers its HTTP handlers.
+func NewMcpServer(orch ports.Orchestrator) *Server {
 	s := &Server{
 		orch: orch,
 		mux:  http.NewServeMux(),
+		sse:  &sseManager{sessions: make(map[string]*sseSession)},
+		allowedOrigins: map[string]bool{
+			"http://localhost":  true,
+			"http://127.0.0.1":  true,
+			"https://localhost": true,
+			"https://127.0.0.1": true,
+		},
+		authToken: strings.TrimSpace(os.Getenv("NEXUS_MCP_TOKEN")),
 	}
 	s.mux.HandleFunc("/mcp", s.handleRPC)
 	s.mux.HandleFunc("/health", s.handleHealth)
+	s.mux.HandleFunc("/sse", s.handleSSE)
+	s.mux.HandleFunc("/messages", s.handleSSEMessage)
 	return s
 }
 
 // ServeHTTP implements http.Handler so *Server can be passed to httptest.NewServer.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// CORS preflight.
+	if r.Method == http.MethodOptions {
+		s.writeCORSHeaders(w, r)
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	// Origin validation per MCP spec security requirements.
+	origin := r.Header.Get("Origin")
+	if origin != "" && !s.isAllowedOrigin(origin) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	if s.requiresAuth(r.Context(), r.URL.Path) && !s.isAuthorized(r.Context(), r.Header.Get("Authorization")) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	s.writeCORSHeaders(w, r)
 	s.mux.ServeHTTP(w, r)
+}
+
+func (s *Server) isAllowedOrigin(origin string) bool {
+	if s.allowedOrigins[origin] {
+		return true
+	}
+	// Allow origins with any port on localhost/127.0.0.1.
+	for allowed := range s.allowedOrigins {
+		if strings.HasPrefix(origin, allowed+":") {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Server) writeCORSHeaders(w http.ResponseWriter, r *http.Request) {
+	origin := r.Header.Get("Origin")
+	if origin != "" && s.isAllowedOrigin(origin) {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+	}
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Mcp-Session-Id, MCP-Protocol-Version")
+	w.Header().Set("Access-Control-Expose-Headers", "Mcp-Session-Id")
+}
+
+func (s *Server) requiresAuth(ctx context.Context, path string) bool {
+	if s.effectiveAuthToken(ctx) == "" {
+		return false
+	}
+	switch path {
+	case "/mcp", "/sse", "/messages":
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *Server) isAuthorized(ctx context.Context, authHeader string) bool {
+	expected := s.effectiveAuthToken(ctx)
+	if expected == "" {
+		return true
+	}
+	if len(authHeader) < len("Bearer ")+1 {
+		return false
+	}
+	if !strings.EqualFold(authHeader[:len("Bearer ")], "Bearer ") {
+		return false
+	}
+	token := strings.TrimSpace(authHeader[len("Bearer "):])
+	if token == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(token), []byte(expected)) == 1
+}
+
+func (s *Server) effectiveAuthToken(ctx context.Context) string {
+	if strings.TrimSpace(s.authToken) != "" {
+		return strings.TrimSpace(s.authToken)
+	}
+	if s.orch == nil {
+		return ""
+	}
+	cfg, err := s.orch.GetRuntimeConfig(ctx)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(cfg.MCPToken)
 }
 
 // StartMCPServer runs an HTTP server serving the MCP JSON-RPC 2.0 endpoint.
 // It blocks until ctx is cancelled, then shuts down gracefully.
 func StartMCPServer(ctx context.Context, orch ports.Orchestrator, addr string) error {
+	handler := NewMcpServer(orch)
 	srv := &http.Server{
-		Addr:         addr,
-		Handler:      NewServer(orch).mux,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 60 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		Addr:    addr,
+		Handler: handler,
+		// ReadTimeout is deliberately 0 so that long-lived SSE connections are not
+		// killed after an idle period. Individual RPC handlers impose their own
+		// context deadlines where needed.
+		ReadTimeout: 0,
+		IdleTimeout: 120 * time.Second,
 	}
 	errCh := make(chan error, 1)
 	go func() {
@@ -158,6 +268,15 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) handleRPC(w http.ResponseWriter, r *http.Request) {
+	// Streamable HTTP: POST for messages, GET returns 405 (no standalone SSE stream).
+	if r.Method == http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req rpcRequest
@@ -169,6 +288,12 @@ func (s *Server) handleRPC(w http.ResponseWriter, r *http.Request) {
 		writeError(w, req.ID, codeInvalidRequest, `invalid request: jsonrpc must be "2.0"`)
 		return
 	}
+	s.processRPC(w, r, req)
+}
+
+// processRPC handles a single JSON-RPC request and writes the response to w.
+// Used by both the direct HTTP transport and the SSE transport.
+func (s *Server) processRPC(w http.ResponseWriter, r *http.Request, req rpcRequest) {
 	switch req.Method {
 	case "initialize":
 		s.handleInitialize(w, req)
@@ -179,6 +304,15 @@ func (s *Server) handleRPC(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(resp)
 	case "tools/call":
 		s.handleToolCall(w, r, req)
+	case "ping":
+		resp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{}}
+		_ = json.NewEncoder(w).Encode(resp)
+	case "resources/list":
+		resp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"resources": []any{}}}
+		_ = json.NewEncoder(w).Encode(resp)
+	case "prompts/list":
+		resp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"prompts": []any{}}}
+		_ = json.NewEncoder(w).Encode(resp)
 	default:
 		writeError(w, req.ID, codeMethodNotFound, fmt.Sprintf("method not found: %s", req.Method))
 	}
@@ -188,332 +322,23 @@ func (s *Server) handleInitialize(w http.ResponseWriter, req rpcRequest) {
 	result := initializeResult{
 		ProtocolVersion: "2024-11-05",
 		Capabilities:    capabilities{Tools: map[string]any{}},
-		ServerInfo:      serverInfo{Name: "nexusOrchestrator", Version: "1.0.0"},
+		ServerInfo: serverInfo{
+			Name:    "nexusOrchestrator",
+			Version: "1.0.0",
+			Instructions: "You are connected to nexusOrchestrator — a multi-LLM AI task " +
+				"orchestration server. Call 'howto_brief' first if you have a small context " +
+				"window (< 64K tokens), or 'howto' for the full guide. " +
+				"Use 'register_session' to identify yourself, " +
+				"'get_queue' to see available tasks, and 'claim_task' to start working.",
+		},
 	}
+	// Streamable HTTP session management (MCP 2025-03-26+).
+	w.Header().Set("Mcp-Session-Id", fmt.Sprintf("nexus-%d", time.Now().UnixNano()))
 	resp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: result}
 	_ = json.NewEncoder(w).Encode(resp)
-}
-
-// ----- Tool dispatch -----
-
-type callToolParams struct {
-	Name      string          `json:"name"`
-	Arguments json.RawMessage `json:"arguments"`
-}
-
-func (s *Server) handleToolCall(w http.ResponseWriter, r *http.Request, req rpcRequest) {
-	var p callToolParams
-	if err := json.Unmarshal(req.Params, &p); err != nil {
-		writeError(w, req.ID, codeInvalidParams, "invalid params")
-		return
-	}
-
-	var (
-		result callToolResult
-		err    error
-	)
-
-	switch p.Name {
-	case "submit_task":
-		result, err = s.toolSubmitTask(p.Arguments)
-	case "get_task":
-		result, err = s.toolGetTask(p.Arguments)
-	case "get_queue":
-		result, err = s.toolGetQueue()
-	case "cancel_task":
-		result, err = s.toolCancelTask(p.Arguments)
-	case "get_providers":
-		result, err = s.toolGetProviders()
-	case "health":
-		result, err = s.toolHealth()
-	case "create_draft":
-		result, err = s.toolCreateDraft(p.Arguments)
-	case "get_backlog":
-		result, err = s.toolGetBacklog(p.Arguments)
-	case "promote_task":
-		result, err = s.toolPromoteTask(p.Arguments)
-	case "update_task":
-		result, err = s.toolUpdateTask(p.Arguments)
-	case "discover_providers":
-		result, err = s.toolDiscoverProviders(r.Context())
-	case "promote_provider":
-		result, err = s.toolPromoteProvider(r.Context(), p.Arguments)
-	case "register_session":
-		result, err = s.toolRegisterSession(r.Context(), p.Arguments)
-	case "get_ai_sessions":
-		result, err = s.toolGetAISessions(r.Context())
-	default:
-		writeError(w, req.ID, codeMethodNotFound, fmt.Sprintf("unknown tool: %s", p.Name))
-		return
-	}
-
-	if err != nil {
-		var me *mcpError
-		if errors.As(err, &me) {
-			writeError(w, req.ID, me.code, me.msg)
-			return
-		}
-		writeError(w, req.ID, codeInternalError, err.Error())
-		return
-	}
-
-	resp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: result}
-	_ = json.NewEncoder(w).Encode(resp)
-}
-
-// ----- Individual tool handlers -----
-
-func (s *Server) toolSubmitTask(args json.RawMessage) (callToolResult, error) {
-	var p struct {
-		ProjectPath  string   `json:"projectPath"`
-		TargetFile   string   `json:"targetFile"`
-		Instruction  string   `json:"instruction"`
-		ContextFiles []string `json:"contextFiles"`
-		Command      string   `json:"command"`
-	}
-	if err := json.Unmarshal(args, &p); err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: submit_task: invalid arguments: %w", err)
-	}
-	t := domain.Task{
-		ProjectPath:  p.ProjectPath,
-		TargetFile:   p.TargetFile,
-		Instruction:  p.Instruction,
-		ContextFiles: p.ContextFiles,
-		Command:      domain.CommandType(p.Command),
-	}
-	id, err := s.orch.SubmitTask(t)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: submit_task: %w", err)
-	}
-	b, _ := json.Marshal(map[string]string{"id": id})
-	return textResult(string(b)), nil
-}
-
-func (s *Server) toolGetTask(args json.RawMessage) (callToolResult, error) {
-	var p struct {
-		ID string `json:"id"`
-	}
-	if err := json.Unmarshal(args, &p); err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: get_task: invalid arguments: %w", err)
-	}
-	task, err := s.orch.GetTask(p.ID)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: get_task: %w", err)
-	}
-	b, err := json.Marshal(task)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: get_task: marshal: %w", err)
-	}
-	return textResult(string(b)), nil
-}
-
-func (s *Server) toolGetQueue() (callToolResult, error) {
-	tasks, err := s.orch.GetQueue()
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: get_queue: %w", err)
-	}
-	b, err := json.Marshal(tasks)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: get_queue: marshal: %w", err)
-	}
-	return textResult(string(b)), nil
-}
-
-func (s *Server) toolCancelTask(args json.RawMessage) (callToolResult, error) {
-	var p struct {
-		ID string `json:"id"`
-	}
-	if err := json.Unmarshal(args, &p); err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: cancel_task: invalid arguments: %w", err)
-	}
-	if err := s.orch.CancelTask(p.ID); err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: cancel_task: %w", err)
-	}
-	b, _ := json.Marshal(map[string]bool{"cancelled": true})
-	return textResult(string(b)), nil
-}
-
-func (s *Server) toolGetProviders() (callToolResult, error) {
-	providers, err := s.orch.GetProviders()
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: get_providers: %w", err)
-	}
-	b, err := json.Marshal(providers)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: get_providers: marshal: %w", err)
-	}
-	return textResult(string(b)), nil
-}
-
-func (s *Server) toolHealth() (callToolResult, error) {
-	b, _ := json.Marshal(map[string]string{"status": "ok"})
-	return textResult(string(b)), nil
-}
-
-func (s *Server) toolCreateDraft(args json.RawMessage) (callToolResult, error) {
-	var p struct {
-		ProjectPath  string   `json:"projectPath"`
-		Instruction  string   `json:"instruction"`
-		TargetFile   string   `json:"targetFile"`
-		ProviderName string   `json:"providerName"`
-		ModelID      string   `json:"modelId"`
-		Priority     int      `json:"priority"`
-		Tags         []string `json:"tags"`
-	}
-	if err := json.Unmarshal(args, &p); err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: create_draft: invalid arguments: %w", err)
-	}
-	t := domain.Task{
-		ProjectPath:  p.ProjectPath,
-		Instruction:  p.Instruction,
-		TargetFile:   p.TargetFile,
-		ProviderName: p.ProviderName,
-		ModelID:      p.ModelID,
-		Priority:     p.Priority,
-		Tags:         p.Tags,
-	}
-	id, err := s.orch.CreateDraft(t)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: create_draft: %w", err)
-	}
-	b, _ := json.Marshal(map[string]string{"id": id, "status": string(domain.StatusDraft)})
-	return textResult(string(b)), nil
-}
-
-func (s *Server) toolGetBacklog(args json.RawMessage) (callToolResult, error) {
-	var p struct {
-		ProjectPath string `json:"projectPath"`
-	}
-	if err := json.Unmarshal(args, &p); err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: get_backlog: invalid arguments: %w", err)
-	}
-	tasks, err := s.orch.GetBacklog(p.ProjectPath)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: get_backlog: %w", err)
-	}
-	b, err := json.Marshal(tasks)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: get_backlog: marshal: %w", err)
-	}
-	return textResult(string(b)), nil
-}
-
-func (s *Server) toolPromoteTask(args json.RawMessage) (callToolResult, error) {
-	var p struct {
-		ID string `json:"id"`
-	}
-	if err := json.Unmarshal(args, &p); err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: promote_task: invalid arguments: %w", err)
-	}
-	if err := s.orch.PromoteTask(p.ID); err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: promote_task: %w", err)
-	}
-	b, _ := json.Marshal(map[string]bool{"promoted": true})
-	return textResult(string(b)), nil
-}
-
-func (s *Server) toolUpdateTask(args json.RawMessage) (callToolResult, error) {
-	var p struct {
-		ID           string   `json:"id"`
-		Instruction  string   `json:"instruction"`
-		Priority     int      `json:"priority"`
-		ProviderName string   `json:"providerName"`
-		ModelID      string   `json:"modelId"`
-		Tags         []string `json:"tags"`
-	}
-	if err := json.Unmarshal(args, &p); err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: update_task: invalid arguments: %w", err)
-	}
-	updates := domain.Task{
-		Instruction:  p.Instruction,
-		Priority:     p.Priority,
-		ProviderName: p.ProviderName,
-		ModelID:      p.ModelID,
-		Tags:         p.Tags,
-	}
-	updated, err := s.orch.UpdateTask(p.ID, updates)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: update_task: %w", err)
-	}
-	b, err := json.Marshal(updated)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: update_task: marshal: %w", err)
-	}
-	return textResult(string(b)), nil
-}
-
-func (s *Server) toolDiscoverProviders(ctx context.Context) (callToolResult, error) {
-	providers, err := s.orch.TriggerScan(ctx)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: discover_providers: %w", err)
-	}
-	b, err := json.Marshal(providers)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: discover_providers: marshal: %w", err)
-	}
-	return textResult(string(b)), nil
-}
-
-func (s *Server) toolPromoteProvider(ctx context.Context, args json.RawMessage) (callToolResult, error) {
-	var p struct {
-		ID string `json:"id"`
-	}
-	if err := json.Unmarshal(args, &p); err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: promote_provider: invalid arguments: %w", err)
-	}
-	if err := s.orch.PromoteProvider(ctx, p.ID); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			return callToolResult{}, &mcpError{code: codeInvalidParams, msg: fmt.Sprintf("provider not found: %s", p.ID)}
-		}
-		return callToolResult{}, fmt.Errorf("mcp: promote_provider: %w", err)
-	}
-	b, _ := json.Marshal(map[string]any{"promoted": true, "id": p.ID})
-	return textResult(string(b)), nil
-}
-
-func (s *Server) toolRegisterSession(ctx context.Context, args json.RawMessage) (callToolResult, error) {
-	var p struct {
-		AgentName   string `json:"agent_name"`
-		ProjectPath string `json:"project_path"`
-		ExternalID  string `json:"external_id"`
-	}
-	if err := json.Unmarshal(args, &p); err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: register_session: invalid arguments: %w", err)
-	}
-	if p.AgentName == "" {
-		return callToolResult{}, &mcpError{code: codeInvalidParams, msg: "agent_name is required"}
-	}
-	session := domain.AISession{
-		AgentName:   p.AgentName,
-		Source:      domain.SessionSourceMCP,
-		ProjectPath: p.ProjectPath,
-		ExternalID:  p.ExternalID,
-	}
-	registered, err := s.orch.RegisterAISession(ctx, session)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: register_session: %w", err)
-	}
-	b, _ := json.Marshal(map[string]any{"session_id": registered.ID, "status": "registered"})
-	return textResult(string(b)), nil
-}
-
-func (s *Server) toolGetAISessions(ctx context.Context) (callToolResult, error) {
-	sessions, err := s.orch.ListAISessions(ctx)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: get_ai_sessions: %w", err)
-	}
-	b, err := json.Marshal(sessions)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: get_ai_sessions: marshal: %w", err)
-	}
-	return textResult(string(b)), nil
 }
 
 // ----- Helpers -----
-
-func textResult(text string) callToolResult {
-	return callToolResult{Content: []contentItem{{Type: "text", Text: text}}}
-}
 
 func writeError(w http.ResponseWriter, id json.RawMessage, code int, msg string) {
 	resp := rpcResponse{
@@ -532,145 +357,3 @@ type mcpError struct {
 }
 
 func (e *mcpError) Error() string { return e.msg }
-
-func toolList() []toolDef {
-	return []toolDef{
-		{
-			Name:        "submit_task",
-			Description: "Submit a new code-generation task to the orchestrator.",
-			InputSchema: inputSchema{
-				Type: "object",
-				Properties: map[string]property{
-					"projectPath":  {Type: "string", Description: "Absolute path to the project root."},
-					"targetFile":   {Type: "string", Description: "Relative path of the file to generate or modify."},
-					"instruction":  {Type: "string", Description: "Natural-language instruction for the LLM."},
-					"contextFiles": {Type: "array", Description: "Optional list of relative file paths to include as context.", Items: &propertyItems{Type: "string"}},
-					"command":      {Type: "string", Description: "Task type: plan, execute, or auto (default: auto)."},
-				},
-				Required: []string{"projectPath", "targetFile", "instruction"},
-			},
-		},
-		{
-			Name:        "get_task",
-			Description: "Get the current status and output of a task by ID.",
-			InputSchema: inputSchema{
-				Type:       "object",
-				Properties: map[string]property{"id": {Type: "string", Description: "Task ID returned by submit_task."}},
-				Required:   []string{"id"},
-			},
-		},
-		{
-			Name:        "get_queue",
-			Description: "List all tasks currently in the queue.",
-			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
-		},
-		{
-			Name:        "cancel_task",
-			Description: "Cancel a pending task by ID.",
-			InputSchema: inputSchema{
-				Type:       "object",
-				Properties: map[string]property{"id": {Type: "string", Description: "Task ID to cancel."}},
-				Required:   []string{"id"},
-			},
-		},
-		{
-			Name:        "get_providers",
-			Description: "List available LLM providers and their models.",
-			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
-		},
-		{
-			Name:        "health",
-			Description: "Check that the nexusOrchestrator daemon is reachable.",
-			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
-		},
-		{
-			Name:        "create_draft",
-			Description: "Create a draft idea for a project without entering the execution queue.",
-			InputSchema: inputSchema{
-				Type: "object",
-				Properties: map[string]property{
-					"projectPath":  {Type: "string", Description: "Absolute path to the project."},
-					"instruction":  {Type: "string", Description: "What the task should do."},
-					"targetFile":   {Type: "string", Description: "File to write output to (optional)."},
-					"providerName": {Type: "string", Description: "Exact provider name for routing (optional)."},
-					"modelId":      {Type: "string", Description: "Model to use (optional)."},
-					"priority":     {Type: "integer", Description: "Priority 1=high, 2=medium, 3=low (default 2)."},
-					"tags":         {Type: "array", Description: "Labels (optional).", Items: &propertyItems{Type: "string"}},
-				},
-				Required: []string{"projectPath", "instruction"},
-			},
-		},
-		{
-			Name:        "get_backlog",
-			Description: "List draft and backlog items for a project, ordered by priority.",
-			InputSchema: inputSchema{
-				Type: "object",
-				Properties: map[string]property{
-					"projectPath": {Type: "string", Description: "Absolute path to the project."},
-				},
-				Required: []string{"projectPath"},
-			},
-		},
-		{
-			Name:        "promote_task",
-			Description: "Promote a draft or backlog task to the execution queue.",
-			InputSchema: inputSchema{
-				Type: "object",
-				Properties: map[string]property{
-					"id": {Type: "string", Description: "Task ID to promote."},
-				},
-				Required: []string{"id"},
-			},
-		},
-		{
-			Name:        "update_task",
-			Description: "Update mutable fields on an existing task (instruction, priority, provider, tags, status).",
-			InputSchema: inputSchema{
-				Type: "object",
-				Properties: map[string]property{
-					"id":           {Type: "string", Description: "Task ID to update."},
-					"instruction":  {Type: "string", Description: "Updated instruction."},
-					"priority":     {Type: "integer", Description: "Updated priority."},
-					"providerName": {Type: "string", Description: "Updated provider name."},
-					"modelId":      {Type: "string", Description: "Updated model ID."},
-					"tags":         {Type: "array", Description: "Updated tags.", Items: &propertyItems{Type: "string"}},
-				},
-				Required: []string{"id"},
-			},
-		},
-		{
-			Name:        "discover_providers",
-			Description: "Scan the local system for installed AI providers/agents and return discovered results",
-			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
-		},
-		{
-			Name:        "promote_provider",
-			Description: "Promote a discovered provider to an active LLM backend",
-			InputSchema: inputSchema{
-				Type: "object",
-				Properties: map[string]property{
-					"id": {Type: "string", Description: "ID of the discovered provider to promote"},
-				},
-				Required: []string{"id"},
-			},
-		},
-		{
-			Name:        "register_session",
-			Description: "Announce this AI agent session to nexusOrchestrator for visualisation and orchestration. Call once when starting, and periodically as a heartbeat to update last_activity.",
-			InputSchema: inputSchema{
-				Type: "object",
-				Properties: map[string]property{
-					"agent_name":   {Type: "string", Description: "Human-readable name of this AI agent (e.g. 'Claude Desktop', 'GitHub Copilot')"},
-					"project_path": {Type: "string", Description: "Absolute path of the project this agent is working on (optional)"},
-					"external_id":  {Type: "string", Description: "Caller-provided correlation token for deduplication (optional)"},
-				},
-				Required: []string{"agent_name"},
-			},
-		},
-		{
-			Name:        "get_ai_sessions",
-			Description: "Return the list of all known external AI agent sessions registered with this nexusOrchestrator instance.",
-			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
-		},
-	}
-}

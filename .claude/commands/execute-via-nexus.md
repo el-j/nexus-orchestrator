@@ -1,19 +1,37 @@
 You are a nexusOrchestrator **remote execution orchestrator**. When invoked, you push an entire plan's tasks to a running nexusOrchestrator daemon in dependency-wave order, poll for completion, and report results — a fully automated self-dogfood cycle.
 
+## MCP-First Rule
+
+- Always try to use the daemon through the **nexus MCP toolchain** first.
+- Preferred transport order:
+  1. `cmd/nexus-mcp-stdio`
+  2. Direct MCP JSON-RPC to `/mcp`
+  3. HTTP API only for capabilities that MCP does not yet expose
+- Required MCP startup sequence when available:
+  1. `initialize`
+  2. `notifications/initialized`
+  3. `howto` or `howto_brief`
+  4. `register_session`
+- MCP already covers orchestration discovery and status operations such as `health`, `get_providers`, `get_queue`, `get_all_tasks`, `get_task`, `claim_task`, `heartbeat_task`, `heartbeat_ai_session`, and `update_task_status`.
+- HTTP submission remains the fallback only where source-linked push metadata is required (`sourceTaskId`, `sourcePlanId`, `sourceProjectPath`) and MCP has not yet reached parity.
+
 ## Input
 
 `$ARGUMENTS` — one of:
+
 - A specific plan ID like `PLAN-008` — execute that plan
 - `active` or empty — use `activePlanId` from orchestrator.json
 
 ## Steps
 
 ### 1. Read local orchestrator state
+
 - Read `.claude/orchestrator.json` to get `activePlanId`, the plans map, and the tasks map.
 - Determine current workspace absolute path (use `$PWD` or the workspace root tool).
-- Resolve the nexusOrchestrator base URL: `${NEXUS_ADDR:-http://127.0.0.1:9999}`.
+- Resolve the nexusOrchestrator base URL: `${NEXUS_ADDR:-http://127.0.0.1:63987}`.
 
 ### 2. Resolve target plan
+
 - If `$ARGUMENTS` is a specific plan ID (e.g. `PLAN-008`): use it. Verify it exists in `plans` — abort if not found.
 - If `$ARGUMENTS` is `active` or empty: use `activePlanId`. Abort if `activePlanId` is null or empty.
 - Collect all task IDs from `plans.<planId>.taskIds`.
@@ -21,30 +39,35 @@ You are a nexusOrchestrator **remote execution orchestrator**. When invoked, you
 ### 3. Verify daemon is running
 
 a. Health check:
-   ```
-   GET <NEXUS_ADDR>/api/health
-   ```
-   If this fails (connection refused, non-200):
-   ```
-   ERROR: nexusOrchestrator daemon not reachable at <NEXUS_ADDR>.
-   Start it with one of:
-     wails dev                              # desktop GUI with hot-reload
-     go run ./cmd/nexus-daemon/...          # headless daemon
-   Then re-run this command.
-   ```
-   Stop execution.
+
+- First preference: MCP `health`
+- Fallback: `GET <NEXUS_ADDR>/api/health`
+  If this fails (connection refused, non-200):
+
+```
+ERROR: nexusOrchestrator daemon not reachable at <NEXUS_ADDR>.
+Start it with one of:
+  wails dev                              # desktop GUI with hot-reload
+  go run ./cmd/nexus-daemon/...          # headless daemon
+Then re-run this command.
+```
+
+Stop execution.
 
 b. Provider check:
-   ```
-   GET <NEXUS_ADDR>/api/providers
-   ```
-   Verify the response contains at least one provider with available models. If no providers:
-   ```
-   ERROR: No LLM providers available. Start LM Studio or Ollama first.
-   ```
-   Stop execution.
+
+- First preference: MCP `get_providers`
+- Fallback: `GET <NEXUS_ADDR>/api/providers`
+  Verify the response contains at least one provider with available models. If no providers:
+
+```
+ERROR: No LLM providers available. Start LM Studio or Ollama first.
+```
+
+Stop execution.
 
 ### 4. Build dependency graph and waves
+
 - From the resolved plan, collect all tasks with `status: "todo"` in `orchestrator.json`.
 - Skip tasks with status `"done"`, `"pushed"`, `"in-progress"`, or `"failed"`.
 - If no `"todo"` tasks remain: print `"No todo tasks in <planId>. Plan may already be complete."` and stop.
@@ -65,7 +88,10 @@ For each task ID in the wave (process sequentially):
 
 1. Read the task file at `.claude/tasks/<TASK-ID>.md` — use the ENTIRE file content as the instruction.
 
-2. Submit via HTTP:
+2. If MCP has parity for the required submission shape in the running daemon, submit through MCP first.
+
+3. Otherwise submit via HTTP because the current MCP submit tools do not yet carry `sourceTaskId` / `sourcePlanId` provenance fields:
+
    ```
    POST <NEXUS_ADDR>/api/tasks
    Content-Type: application/json
@@ -79,24 +105,25 @@ For each task ID in the wave (process sequentially):
    }
    ```
 
-3. On HTTP 201 response: update `.claude/orchestrator.json`:
+4. On successful submission: update `.claude/orchestrator.json`:
    - `tasks.<TASK-ID>.status` → `"pushed"`
    - `tasks.<TASK-ID>.nexusTaskId` → returned `id` field
    - `tasks.<TASK-ID>.pushedAt` → current ISO 8601 timestamp
    - `updatedAt` → current timestamp
 
-4. On push error: mark `tasks.<TASK-ID>.status` → `"failed"`, print error, and **stop the entire plan** (do not proceed to next task or wave).
+5. On push error: mark `tasks.<TASK-ID>.status` → `"failed"`, print error, and **stop the entire plan** (do not proceed to next task or wave).
 
 #### 5b. Poll for wave completion
 
 Poll every 5 seconds until all tasks in the wave are resolved or timeout is reached.
 
 For each pushed task in the wave:
-```
-GET <NEXUS_ADDR>/api/tasks/<nexusTaskId>
-```
+
+- First preference: MCP `get_task`
+- Fallback: `GET <NEXUS_ADDR>/api/tasks/<nexusTaskId>`
 
 Interpret the response `status` field:
+
 - `"completed"` → task is done
 - `"failed"` → task failed
 - `"queued"` or `"processing"` → still running
@@ -104,6 +131,7 @@ Interpret the response `status` field:
 **Timeout**: 5 minutes per wave. Start the timer after all tasks in the wave are pushed.
 
 Print progress every 30 seconds:
+
 ```
   ⏳ Waiting... <completed>/<total> done, <elapsed>s elapsed
 ```
@@ -111,6 +139,7 @@ Print progress every 30 seconds:
 #### 5c. Handle wave results
 
 **All tasks completed:**
+
 - For each task: update `.claude/orchestrator.json`:
   - `tasks.<TASK-ID>.status` → `"done"`
   - `tasks.<TASK-ID>.completedAt` → current ISO 8601 timestamp
@@ -119,6 +148,7 @@ Print progress every 30 seconds:
 - Proceed to next wave.
 
 **Any task failed:**
+
 - Mark failed tasks as `"failed"` in `orchestrator.json` with `failedAt` timestamp.
 - Mark completed tasks as `"done"`.
 - Print:
@@ -131,6 +161,7 @@ Print progress every 30 seconds:
 - **Stop execution** — do not proceed to remaining waves.
 
 **Timeout reached:**
+
 - Mark completed tasks as `"done"`.
 - Leave timed-out tasks as `"pushed"` (they may still complete in the daemon).
 - Print:
@@ -171,13 +202,16 @@ After all waves complete (or execution stops), print:
 ```
 
 If plan is fully complete:
+
 - Set `plans.<planId>.status` → `"completed"` and `completedAt` → current timestamp in `orchestrator.json`.
 - Print: `Plan <planId> marked as completed.`
 
 If partial or failed:
+
 - Print: `Run /sync-from-nexus to check for late results, or fix failed tasks and re-run.`
 
 ## Constraints
+
 - **NEVER** modify Go source files, task `.md` files, or any file outside `.claude/orchestrator.json`.
 - **NEVER** push a task whose dependencies are not all `"done"` — wave ordering enforces this.
 - **ALWAYS** update `orchestrator.json` after each state change (push, completion, failure) before proceeding.

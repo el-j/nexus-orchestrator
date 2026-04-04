@@ -28,7 +28,7 @@ Fix provider discovery so local LM Studio and Docker-hosted Ollama instances app
 ### C — VS Code Extension (TASK-132 → TASK-136)
 - Scaffold the VS Code extension (TypeScript, package.json, activation)
 - Implement commands: submit task, view queue, pick provider/model
-- Connect to daemon HTTP API at `127.0.0.1:9999` (configurable)
+- Connect to daemon HTTP API at `127.0.0.1:63987` (configurable)
 - Add status bar item showing daemon connection + active task count
 - Extension documentation and README
 

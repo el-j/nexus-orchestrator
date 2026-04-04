@@ -4,9 +4,10 @@
 package services
 
 import (
-	"errors"
+	"context"
 	"sync"
 	"testing"
+	"time"
 
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
@@ -32,12 +33,16 @@ func (r *optRepo) GetByID(id string) (domain.Task, error) {
 	defer r.mu.Unlock()
 	t, ok := r.tasks[id]
 	if !ok {
-		return domain.Task{}, errors.New("not found")
+		return domain.Task{}, domain.ErrNotFound
 	}
 	return t, nil
 }
+func (r *optRepo) ClaimNextQueued() (domain.Task, error)            { return domain.Task{}, domain.ErrNotFound }
 func (r *optRepo) GetPending() ([]domain.Task, error)               { return nil, nil }
 func (r *optRepo) UpdateStatus(_ string, _ domain.TaskStatus) error { return nil }
+func (r *optRepo) UpdateStatusIfCurrent(_ string, _ domain.TaskStatus, _ domain.TaskStatus) (bool, error) {
+	return false, nil
+}
 func (r *optRepo) UpdateLogs(_, _ string) error                     { return nil }
 func (r *optRepo) GetByProjectPath(_ string) ([]domain.Task, error) { return nil, nil }
 func (r *optRepo) GetByProjectPathAndStatus(_ string, _ ...domain.TaskStatus) ([]domain.Task, error) {
@@ -48,6 +53,11 @@ func (r *optRepo) Update(t domain.Task) error {
 	defer r.mu.Unlock()
 	r.tasks[t.ID] = t
 	return nil
+}
+func (r *optRepo) GetAll() ([]domain.Task, error)                      { return nil, nil }
+func (r *optRepo) GetTasksBySessionID(_ string) ([]domain.Task, error) { return nil, nil }
+func (r *optRepo) GetStaleProcessing(_ context.Context, _ time.Duration) ([]domain.Task, error) {
+	return nil, nil
 }
 
 type optWriter struct{}

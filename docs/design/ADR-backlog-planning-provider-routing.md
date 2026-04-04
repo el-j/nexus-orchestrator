@@ -2,7 +2,7 @@
 
 **Status:** Proposed  
 **Date:** 2026-03-11  
-**Author:** UXArchitect  
+**Author:** UXArchitect
 
 ---
 
@@ -11,6 +11,7 @@
 **VERDICT: Build inside nexusOrchestrator.**
 
 Reasoning:
+
 - nexusOrchestrator already owns `ProjectPath` isolation, task lifecycle, provider routing, SQLite, and session history — backlog is a natural lifecycle extension (add states, not systems)
 - A separate service would duplicate project scoping, need its own persistence, and require IPC (HTTP/gRPC) to promote backlog items into the queue — unnecessary complexity
 - The user wants a single desktop window; two processes means two lifecycles, two crash domains, and a worse UX
@@ -25,7 +26,7 @@ Reasoning:
 
 ### 2a. New TaskStatus Values
 
-Add two statuses that exist *before* `QUEUED`:
+Add two statuses that exist _before_ `QUEUED`:
 
 ```
 StatusDraft   TaskStatus = "DRAFT"      // idea captured, not yet actionable
@@ -35,6 +36,7 @@ StatusBacklog TaskStatus = "BACKLOG"    // reviewed, actionable, awaiting promot
 These are **not** processed by the worker loop. Only `QUEUED` tasks enter the work queue.
 
 Why two states (not one):
+
 - `DRAFT` = raw capture, may be vague ("explore caching options")
 - `BACKLOG` = refined, has enough detail to promote to queue
 - Allows filtering: "show me ideas" vs "show me ready-to-go items"
@@ -73,13 +75,14 @@ type Task struct {
 
 ### 2d. Provider Routing Fields — Summary
 
-| Field | Role | Match semantics |
-|-------|------|-----------------|
-| `ProviderName` (NEW) | Explicit provider lock | Exact match on `ProviderName()` |
-| `ProviderHint` (existing) | Soft preference | Case-insensitive substring |
-| `ModelID` (existing) | Model constraint | Exact model match via discovery |
+| Field                     | Role                   | Match semantics                 |
+| ------------------------- | ---------------------- | ------------------------------- |
+| `ProviderName` (NEW)      | Explicit provider lock | Exact match on `ProviderName()` |
+| `ProviderHint` (existing) | Soft preference        | Case-insensitive substring      |
+| `ModelID` (existing)      | Model constraint       | Exact model match via discovery |
 
 Precedence in `FindForModel`:
+
 1. If `ProviderName` is set → find that provider directly, verify it has `ModelID` (if set)
 2. Else → existing 2-pass discovery with `ProviderHint`
 
@@ -164,8 +167,9 @@ FindForModel(modelID, providerHint, providerName string) (LLMClient, error)
 ```
 
 Add `providerName` parameter (or accept a struct). When `providerName != ""`:
+
 - Look up that provider by exact `ProviderName()` match
-- Verify it's alive (`Ping()`)  
+- Verify it's alive (`Ping()`)
 - If `modelID` is set, verify it can serve that model
 - Skip all other candidates
 
@@ -201,22 +205,22 @@ Backward-compatible: existing callers pass `""` for `providerName`.
 
 **Valid transitions:**
 
-| From | To | Trigger |
-|------|----|---------|
-| (new) | DRAFT | `CreateDraft()` |
-| (new) | QUEUED | `SubmitTask()` (existing — unchanged) |
-| DRAFT | BACKLOG | `PromoteTask()` |
-| DRAFT | CANCELLED | `CancelTask()` |
-| BACKLOG | QUEUED | `PromoteTask()` |
-| BACKLOG | DRAFT | `DemoteTask()` |
-| BACKLOG | CANCELLED | `CancelTask()` |
-| QUEUED | BACKLOG | `DemoteTask()` |
-| QUEUED | PROCESSING | worker loop |
-| QUEUED | CANCELLED | `CancelTask()` |
-| PROCESSING | COMPLETED | worker success |
-| PROCESSING | FAILED | worker error |
-| PROCESSING | TOO_LARGE | pre-flight check |
-| PROCESSING | NO_PROVIDER | no provider found |
+| From       | To          | Trigger                               |
+| ---------- | ----------- | ------------------------------------- |
+| (new)      | DRAFT       | `CreateDraft()`                       |
+| (new)      | QUEUED      | `SubmitTask()` (existing — unchanged) |
+| DRAFT      | BACKLOG     | `PromoteTask()`                       |
+| DRAFT      | CANCELLED   | `CancelTask()`                        |
+| BACKLOG    | QUEUED      | `PromoteTask()`                       |
+| BACKLOG    | DRAFT       | `DemoteTask()`                        |
+| BACKLOG    | CANCELLED   | `CancelTask()`                        |
+| QUEUED     | BACKLOG     | `DemoteTask()`                        |
+| QUEUED     | PROCESSING  | worker loop                           |
+| QUEUED     | CANCELLED   | `CancelTask()`                        |
+| PROCESSING | COMPLETED   | worker success                        |
+| PROCESSING | FAILED      | worker error                          |
+| PROCESSING | TOO_LARGE   | pre-flight check                      |
+| PROCESSING | NO_PROVIDER | no provider found                     |
 
 Terminal states: `COMPLETED`, `FAILED`, `CANCELLED`, `TOO_LARGE`, `NO_PROVIDER`.
 
@@ -227,6 +231,7 @@ Failed tasks can be re-submitted (creates a new task) — not re-promoted.
 ## 5. Per-Task Provider Routing — Detail
 
 ### Current behavior
+
 ```
 Task.ModelID      → "which model"    (empty = any active model)
 Task.ProviderHint → "prefer who"     (empty = no preference)
@@ -234,6 +239,7 @@ FindForModel(modelID, hint) → 2-pass discovery
 ```
 
 ### New behavior
+
 ```
 Task.ProviderName → "exactly who"    (empty = use discovery)
 Task.ModelID      → "which model"    (unchanged)
@@ -241,12 +247,14 @@ Task.ProviderHint → "prefer who"     (unchanged, lower priority than ProviderN
 ```
 
 Resolution order in `FindForModel`:
+
 1. **ProviderName set** → exact lookup by `ProviderName()`. If not alive → `NO_PROVIDER`. If alive but wrong model → `NO_PROVIDER`.
 2. **ProviderName empty** → existing 2-pass (hint-prioritized discovery). No behavior change.
 
 This is additive. Existing tasks with empty `ProviderName` route exactly as today.
 
 ### Validation
+
 - `CreateDraft` / `SubmitTask`: if `ProviderName` is set, verify it exists in discovered providers (warn, don't block — provider may come online later)
 - `PromoteTask` to QUEUED: no validation on provider (same as SubmitTask today)
 
@@ -270,13 +278,13 @@ No new tables. `DRAFT`/`BACKLOG` are just status values in the existing `tasks` 
 
 ## 7. HTTP API Extensions (Additive)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/tasks/draft` | Create a DRAFT task |
-| `POST` | `/api/tasks/{id}/promote` | DRAFT→BACKLOG or BACKLOG→QUEUED |
-| `POST` | `/api/tasks/{id}/demote` | QUEUED→BACKLOG or BACKLOG→DRAFT |
-| `PATCH` | `/api/tasks/{id}` | Update mutable fields (TaskPatch) |
-| `GET` | `/api/tasks?project={path}&status={s}` | Filter by project + status |
+| Method  | Path                                   | Description                       |
+| ------- | -------------------------------------- | --------------------------------- |
+| `POST`  | `/api/tasks/draft`                     | Create a DRAFT task               |
+| `POST`  | `/api/tasks/{id}/promote`              | DRAFT→BACKLOG or BACKLOG→QUEUED   |
+| `POST`  | `/api/tasks/{id}/demote`               | QUEUED→BACKLOG or BACKLOG→DRAFT   |
+| `PATCH` | `/api/tasks/{id}`                      | Update mutable fields (TaskPatch) |
+| `GET`   | `/api/tasks?project={path}&status={s}` | Filter by project + status        |
 
 Existing endpoints unchanged. `POST /api/tasks` still creates `QUEUED` tasks.
 
@@ -284,10 +292,10 @@ Existing endpoints unchanged. `POST /api/tasks` still creates `QUEUED` tasks.
 
 ## 8. MCP Tool Extensions
 
-| Tool | Description |
-|------|-------------|
-| `nexus_create_draft` | Capture an idea as DRAFT |
-| `nexus_promote_task` | Advance lifecycle state |
+| Tool                 | Description                      |
+| -------------------- | -------------------------------- |
+| `nexus_create_draft` | Capture an idea as DRAFT         |
+| `nexus_promote_task` | Advance lifecycle state          |
 | `nexus_list_backlog` | List DRAFT+BACKLOG for a project |
 
 Existing 6 tools unchanged.
@@ -298,30 +306,30 @@ Existing 6 tools unchanged.
 
 ### Wave 1 — Domain & Ports (no adapter changes)
 
-| # | Title | Description | Role |
-|---|-------|-------------|------|
-| 1 | Add DRAFT/BACKLOG to TaskStatus | Add constants + update `IsTerminal()` helper if exists | UXArchitect |
-| 2 | Add new fields to Task struct | `Priority`, `ProviderName`, `ParentID`, `Tags` | UXArchitect |
-| 3 | Add TaskPatch domain type | Pointer-field patch struct for partial updates | UXArchitect |
-| 4 | Extend port interfaces | `TaskRepository.GetByProjectAndStatus`, `UpdateTask`; `Orchestrator.CreateDraft`, `PromoteTask`, `DemoteTask`, `ListBacklog`, `UpdateTaskFields` | UXArchitect |
+| #   | Title                           | Description                                                                                                                                      | Role        |
+| --- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
+| 1   | Add DRAFT/BACKLOG to TaskStatus | Add constants + update `IsTerminal()` helper if exists                                                                                           | UXArchitect |
+| 2   | Add new fields to Task struct   | `Priority`, `ProviderName`, `ParentID`, `Tags`                                                                                                   | UXArchitect |
+| 3   | Add TaskPatch domain type       | Pointer-field patch struct for partial updates                                                                                                   | UXArchitect |
+| 4   | Extend port interfaces          | `TaskRepository.GetByProjectAndStatus`, `UpdateTask`; `Orchestrator.CreateDraft`, `PromoteTask`, `DemoteTask`, `ListBacklog`, `UpdateTaskFields` | UXArchitect |
 
 ### Wave 2 — Service & Persistence (deps: Wave 1)
 
-| # | Title | Description | Role |
-|---|-------|-------------|------|
-| 5 | SQLite migration for new columns | `priority`, `provider_name`, `parent_id`, `tags` via ALTER TABLE | Backend |
-| 6 | Implement TaskRepository new methods | `GetByProjectAndStatus`, `UpdateTask` in repo_sqlite | Backend |
-| 7 | Implement orchestrator backlog methods | `CreateDraft`, `PromoteTask`, `DemoteTask`, `ListBacklog`, `UpdateTaskFields` in OrchestratorService | Backend |
-| 8 | Enhance FindForModel for ProviderName | Add `providerName` parameter, exact-match short-circuit | Backend |
+| #   | Title                                  | Description                                                                                          | Role    |
+| --- | -------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------- |
+| 5   | SQLite migration for new columns       | `priority`, `provider_name`, `parent_id`, `tags` via ALTER TABLE                                     | Backend |
+| 6   | Implement TaskRepository new methods   | `GetByProjectAndStatus`, `UpdateTask` in repo_sqlite                                                 | Backend |
+| 7   | Implement orchestrator backlog methods | `CreateDraft`, `PromoteTask`, `DemoteTask`, `ListBacklog`, `UpdateTaskFields` in OrchestratorService | Backend |
+| 8   | Enhance FindForModel for ProviderName  | Add `providerName` parameter, exact-match short-circuit                                              | Backend |
 
 ### Wave 3 — Adapters (deps: Wave 2)
 
-| # | Title | Description | Role |
-|---|-------|-------------|------|
-| 9 | HTTP API endpoints for backlog | `POST /draft`, `POST /promote`, `POST /demote`, `PATCH`, query filters | Backend |
-| 10 | MCP tools for backlog | `nexus_create_draft`, `nexus_promote_task`, `nexus_list_backlog` | Backend |
-| 11 | GUI backlog panel | Project-scoped view with DRAFT/BACKLOG columns, drag-to-promote | Frontend |
-| 12 | CLI backlog commands | `nexus-cli draft`, `nexus-cli promote`, `nexus-cli backlog` | Backend |
+| #   | Title                          | Description                                                            | Role     |
+| --- | ------------------------------ | ---------------------------------------------------------------------- | -------- |
+| 9   | HTTP API endpoints for backlog | `POST /draft`, `POST /promote`, `POST /demote`, `PATCH`, query filters | Backend  |
+| 10  | MCP tools for backlog          | `nexus_create_draft`, `nexus_promote_task`, `nexus_list_backlog`       | Backend  |
+| 11  | GUI backlog panel              | Project-scoped view with DRAFT/BACKLOG columns, drag-to-promote        | Frontend |
+| 12  | CLI backlog commands           | `nexus-cli draft`, `nexus-cli promote`, `nexus-cli backlog`            | Backend  |
 
 ---
 
@@ -340,4 +348,4 @@ Existing 6 tools unchanged.
 - [x] Additive: existing `SubmitTask`, `GetQueue`, `CancelTask` unchanged
 - [x] Worker loop: only `QUEUED` tasks dequeued — DRAFT/BACKLOG invisible to worker
 - [x] SQLite: idempotent ALTER TABLE migrations (existing pattern)
-- [x] Go 1.24 compatible, no generics abuse, `fmt.Errorf` wrapping
+- [x] Go 1.26 compatible, no generics abuse, `fmt.Errorf` wrapping

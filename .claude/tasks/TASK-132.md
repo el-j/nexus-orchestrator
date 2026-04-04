@@ -9,7 +9,7 @@ createdAt: 2026-03-11T16:10:00.000Z
 ---
 
 ## Context
-Create the VS Code extension scaffold under `vscode-extension/` with package.json, TypeScript config, activation entry point, and basic extension manifest. This extension will be a thin HTTP client that talks to the nexusOrchestrator daemon on `127.0.0.1:9999`.
+Create the VS Code extension scaffold under `vscode-extension/` with package.json, TypeScript config, activation entry point, and basic extension manifest. This extension will be a thin HTTP client that talks to the nexusOrchestrator daemon on `127.0.0.1:63987`.
 
 ## Files to Read
 - `cmd/nexus-cli/main.go` (reference for how the CLI client talks to the daemon)
@@ -27,7 +27,7 @@ Create the VS Code extension scaffold under `vscode-extension/` with package.jso
    - `nexus.viewQueue` — show current task queue
    - `nexus.selectProvider` — pick provider/model
    - `nexus.showProviders` — show provider status
-3. Register `nexus.daemonUrl` configuration setting (default: `http://127.0.0.1:9999`).
+3. Register `nexus.daemonUrl` configuration setting (default: `http://127.0.0.1:63987`).
 4. Implement `NexusClient` class with methods: `submitTask()`, `getTasks()`, `getTask(id)`, `getProviders()`, `cancelTask(id)`.
 5. Add `esbuild` build script for bundling.
 

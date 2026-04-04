@@ -36,13 +36,13 @@ into the Wails desktop app binary. Then validate that:
 
 3. **Smoke-test the API** (app must be running — check if it is, then query):
    ```bash
-   curl -s http://127.0.0.1:9999/api/providers | python3 -m json.tool
+   curl -s http://127.0.0.1:63987/api/providers | python3 -m json.tool
    ```
    Confirm LM Studio shows `"active": true` with at least 1 model.
 
 4. **Submit a dogfood task** via the HTTP API to verify end-to-end processing:
    ```bash
-   curl -s -X POST http://127.0.0.1:9999/api/tasks \
+   curl -s -X POST http://127.0.0.1:63987/api/tasks \
      -H "Content-Type: application/json" \
      -d '{
        "projectPath": "/Users/rex-fab-alt/Documents/code/playground/nexusOrchestrator",
@@ -53,8 +53,8 @@ into the Wails desktop app binary. Then validate that:
    ```
    Poll until status is COMPLETED or FAILED:
    ```bash
-   TASK_ID=$(curl -s http://127.0.0.1:9999/api/tasks | python3 -c "import sys,json; tasks=json.load(sys.stdin); print(tasks[0]['ID'] if tasks else '')")
-   curl -s http://127.0.0.1:9999/api/tasks/$TASK_ID | python3 -m json.tool
+   TASK_ID=$(curl -s http://127.0.0.1:63987/api/tasks | python3 -c "import sys,json; tasks=json.load(sys.stdin); print(tasks[0]['ID'] if tasks else '')")
+   curl -s http://127.0.0.1:63987/api/tasks/$TASK_ID | python3 -m json.tool
    ```
 
 5. Report:
@@ -71,7 +71,7 @@ into the Wails desktop app binary. Then validate that:
 
 ## Note
 
-If the app is not running (port 9999 not responsive), start it:
+If the app is not running (port 63987 not responsive), start it:
 ```bash
 open build/bin/nexusOrchestrator.app
 sleep 3

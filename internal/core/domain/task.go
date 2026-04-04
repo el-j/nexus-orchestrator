@@ -84,15 +84,25 @@ type Task struct {
 	Tags []string `json:"tags,omitempty"`
 	// Command classifies the task as planning, execution, or auto-routed.
 	// Empty is treated as CommandAuto.
-	Command    CommandType `json:"command,omitempty"`
-	Status     TaskStatus  `json:"status"`
-	CreatedAt  time.Time   `json:"createdAt"`
-	UpdatedAt  time.Time   `json:"updatedAt"`
-	RetryCount int         `json:"retryCount,omitempty"`
-	Logs       string      `json:"logs,omitempty"`
+	Command     CommandType `json:"command,omitempty"`
+	Status      TaskStatus  `json:"status"`
+	CreatedAt   time.Time   `json:"createdAt"`
+	UpdatedAt   time.Time   `json:"updatedAt"`
+	DurationMs  int64       `json:"durationMs,omitempty"`
+	RetryCount  int         `json:"retryCount,omitempty"`
+	Logs        string      `json:"logs,omitempty"`
+	AISessionID string      `json:"aiSessionId,omitempty"`
 }
 
 // IsExecutable returns true if the task can enter the execution queue.
 func (t Task) IsExecutable() bool {
 	return t.Status == StatusQueued
+}
+
+// ComputeDuration sets DurationMs from CreatedAt and UpdatedAt.
+func (t *Task) ComputeDuration() {
+	if t.CreatedAt.IsZero() || t.UpdatedAt.IsZero() || t.UpdatedAt.Before(t.CreatedAt) {
+		return
+	}
+	t.DurationMs = t.UpdatedAt.Sub(t.CreatedAt).Milliseconds()
 }

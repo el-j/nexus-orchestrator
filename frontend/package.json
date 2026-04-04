@@ -5,20 +5,30 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@primevue/themes": "^4.5.4",
-    "primevue": "^4.5.4",
     "primeicons": "^7.0.0",
-    "vue": "^3.5.30"
+    "primevue": "^4.5.4",
+    "vue": "^3.5.30",
+    "vue-router": "^5.0.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.52.0",
     "@tailwindcss/vite": "^4.2.1",
     "@vitejs/plugin-vue": "^6.0.4",
+    "@vitest/coverage-v8": "^4.1.0",
+    "@vue/test-utils": "^2.4.6",
+    "jsdom": "^28.1.0",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.8.3",
     "vite": "^7.3.1",
+    "vitest": "^4.1.0",
     "vue-tsc": "^2.2.10"
   }
 }

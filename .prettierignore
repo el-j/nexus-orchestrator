@@ -1,0 +1,54 @@
+# Build outputs
+build/
+dist/
+*/dist/
+frontend/dist/
+docs/dist/
+github-action/dist/
+vscode-extension/dist/
+
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Go generated / vendored
+vendor/
+*.pb.go
+
+# Wails generated JS bindings (auto-generated from Go)
+frontend/src/wailsjs/
+
+# Compiled extension artefact
+vscode-extension/*.vsix
+
+# Bundler caches
+**/.vite/
+**/.turbo/
+
+# Minified assets (already minified, formatting would break them)
+**/*.min.js
+**/*.min.css
+
+# Lock files — managed by package managers, not hand-edited
+package-lock.json
+*/package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Go module files
+go.sum
+
+# Binary / media
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.woff
+*.woff2
+*.ttf
+*.eot
+*.otf
+
+# Generated action artefacts
+github-action/coverage/

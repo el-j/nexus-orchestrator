@@ -5,19 +5,21 @@ nav_order: 4
 ---
 
 # Getting Started
+
 {: .no_toc }
 
 ## Table of contents
+
 {: .no_toc .text-delta }
 
 1. TOC
-{:toc}
+   {:toc}
 
 ---
 
 ## Prerequisites
 
-- **Go 1.24+** with CGO support (`CGO_ENABLED=1`)
+- **Go 1.26+** with CGO support (`CGO_ENABLED=1`)
 - **C compiler** — `gcc` or `clang` (required by `go-sqlite3`)
 - **At least one LLM provider**:
   - [LM Studio](https://lmstudio.ai/) running on `127.0.0.1:1234`, or
@@ -58,9 +60,9 @@ xattr -dr com.apple.quarantine nexusOrchestrator.app
 ```sh
 # Start with default settings
 ./nexus-daemon
-# HTTP API:  http://127.0.0.1:9999
-# MCP server: http://127.0.0.1:9998/mcp
-# Dashboard:  http://127.0.0.1:9999/ui
+# HTTP API:  http://127.0.0.1:63987
+# MCP server: http://127.0.0.1:63988/mcp
+# Dashboard:  http://127.0.0.1:63987/ui
 ```
 
 ### Custom Configuration
@@ -90,7 +92,7 @@ NEXUS_GITHUBCOPILOT_TOKEN=ghu_... NEXUS_GITHUBCOPILOT_MODEL=gpt-4o ./nexus-daemo
 
 ```sh
 # Submit a code-generation task
-curl -s -X POST http://localhost:9999/api/tasks \
+curl -s -X POST http://localhost:63987/api/tasks \
   -H "Content-Type: application/json" \
   -d '{
     "projectPath": "'$PWD'",
@@ -100,6 +102,7 @@ curl -s -X POST http://localhost:9999/api/tasks \
 ```
 
 Response:
+
 ```json
 {
   "id": "a1b2c3d4-...",
@@ -115,16 +118,16 @@ Response:
 
 ```sh
 # Get task by ID
-curl -s http://localhost:9999/api/tasks/TASK_ID | jq .
+curl -s http://localhost:63987/api/tasks/TASK_ID | jq .
 
 # List all pending tasks
-curl -s http://localhost:9999/api/tasks | jq .
+curl -s http://localhost:63987/api/tasks | jq .
 ```
 
 ## Cancelling a Task
 
 ```sh
-curl -X DELETE http://localhost:9999/api/tasks/TASK_ID
+curl -X DELETE http://localhost:63987/api/tasks/TASK_ID
 # Returns 204 No Content on success
 ```
 
@@ -132,10 +135,10 @@ curl -X DELETE http://localhost:9999/api/tasks/TASK_ID
 
 ```sh
 # List all providers
-curl -s http://localhost:9999/api/providers | jq .
+curl -s http://localhost:63987/api/providers | jq .
 
 # Register a new cloud provider
-curl -s -X POST http://localhost:9999/api/providers \
+curl -s -X POST http://localhost:63987/api/providers \
   -H "Content-Type: application/json" \
   -d '{
     "name": "My OpenAI",
@@ -146,12 +149,13 @@ curl -s -X POST http://localhost:9999/api/providers \
   }' | jq .
 
 # Remove a provider
-curl -X DELETE http://localhost:9999/api/providers/My%20OpenAI
+curl -X DELETE http://localhost:63987/api/providers/My%20OpenAI
 ```
 
 ## Using the Dashboard
 
-Open `http://localhost:9999/ui` in your browser for a live dashboard that:
+Open `http://localhost:63987/ui` in your browser for a live dashboard that:
+
 - Shows all tasks with real-time status updates via SSE
 - Allows submitting new tasks
 - Displays provider status and model information
@@ -176,7 +180,7 @@ go vet ./...
 
 Download the [`.vsix`](https://github.com/el-j/nexus-orchestrator/releases/latest/download/nexus-orchestrator-vscode.vsix)
 and install via `code --install-extension nexus-orchestrator-vscode.vsix`.
-Configure the daemon URL under `Nexus > Daemon URL` in VS Code settings (default: `http://127.0.0.1:9999`).
+Configure the daemon URL under `Nexus > Daemon URL` in VS Code settings (default: `http://127.0.0.1:63987`).
 
 Alternatively, install the companion extension from source (see [`vscode-extension/README.md`](../vscode-extension/README.md)). Once the daemon is running, you can submit tasks directly from your editor without leaving VS Code.
 
