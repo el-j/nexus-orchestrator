@@ -6,11 +6,7 @@ import * as fs from 'fs';
 import { installDaemon } from './installer.js';
 import { startDaemon, printDaemonLog } from './daemon.js';
 import { NexusClient } from './submit.js';
-import {
-  resolveAgents,
-  resolveCategory,
-  buildSwarmPrompt,
-} from './agents.js';
+import { resolveAgents, resolveCategory, buildSwarmPrompt } from './agents.js';
 import type { ActionInputs, TaskRequest } from './types.js';
 
 // ── Input parsing ──────────────────────────────────────────────────────────
@@ -21,12 +17,14 @@ function getInputs(): ActionInputs {
     instruction: core.getInput('instruction').trim(),
     taskFile: core.getInput('task_file').trim(),
     projectPath:
-      core.getInput('project_path').trim() ||
-      (process.env['GITHUB_WORKSPACE'] ?? process.cwd()),
+      core.getInput('project_path').trim() || (process.env['GITHUB_WORKSPACE'] ?? process.cwd()),
     targetFile: core.getInput('target_file').trim(),
     contextFiles:
       contextFilesRaw.length > 0
-        ? contextFilesRaw.split(',').map((f) => f.trim()).filter(Boolean)
+        ? contextFilesRaw
+            .split(',')
+            .map((f) => f.trim())
+            .filter(Boolean)
         : [],
     command: (core.getInput('command').trim() || 'execute') as 'execute' | 'plan',
     model: core.getInput('model').trim(),
@@ -36,8 +34,7 @@ function getInputs(): ActionInputs {
     agentCategory: core.getInput('agent_category').trim(),
     agentRef: core.getInput('agent_ref').trim() || 'main',
     systemPrompt: core.getInput('system_prompt').trim(),
-    daemonUrl:
-      core.getInput('daemon_url').trim() || 'http://127.0.0.1:63987',
+    daemonUrl: core.getInput('daemon_url').trim() || 'http://127.0.0.1:63987',
     startDaemon: core.getInput('start_daemon').trim() !== 'false',
     nexusVersion: core.getInput('nexus_version').trim() || 'latest',
     timeoutSeconds: parseInt(core.getInput('timeout_seconds').trim() || '300', 10),
@@ -70,7 +67,10 @@ async function resolveSystemPrompt(inputs: ActionInputs): Promise<string> {
 
   // Swarm — named agents
   if (inputs.agents.length > 0) {
-    const slugs = inputs.agents.split(',').map((s) => s.trim()).filter(Boolean);
+    const slugs = inputs.agents
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
     core.info(`Loading swarm agents: ${slugs.join(', ')}`);
     const agentList = await resolveAgents(slugs, inputs.agentRef);
     core.info(`Loaded ${agentList.length} agents`);
@@ -99,9 +99,7 @@ function buildInstruction(inputs: ActionInputs, systemPrompt: string): string {
     instruction = fs.readFileSync(inputs.taskFile, 'utf-8').trim();
   }
   if (instruction.length === 0) {
-    throw new Error(
-      'Either the "instruction" or "task_file" input must be provided.'
-    );
+    throw new Error('Either the "instruction" or "task_file" input must be provided.');
   }
   if (systemPrompt.length > 0) {
     return `<system>\n${systemPrompt}\n</system>\n\n${instruction}`;
@@ -161,10 +159,7 @@ async function run(): Promise<void> {
     core.setOutput('task_id', submitted.task_id);
 
     // 5. Wait for completion
-    const finalTask = await nexus.waitForTask(
-      submitted.task_id,
-      inputs.timeoutSeconds * 1_000
-    );
+    const finalTask = await nexus.waitForTask(submitted.task_id, inputs.timeoutSeconds * 1_000);
 
     core.setOutput('status', finalTask.status);
     core.setOutput('logs', finalTask.logs);
@@ -179,7 +174,7 @@ async function run(): Promise<void> {
         break;
       case 'TOO_LARGE':
         core.setFailed(
-          `Task ${submitted.task_id} rejected — instruction exceeds the model context window.`
+          `Task ${submitted.task_id} rejected — instruction exceeds the model context window.`,
         );
         break;
       case 'CANCELLED':
