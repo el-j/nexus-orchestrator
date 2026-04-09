@@ -340,6 +340,30 @@ clean:
 	rm -f coverage.out coverage.html
 	rm -f vscode-extension/*.vsix
 
+
+# ---------------------------------------------------------------------------
+# Upgrade all dependencies (Node + Go)
+# ---------------------------------------------------------------------------
+
+upgrade-latest:
+	@echo "── Upgrading all Node.js packages (ncu) ──"
+	@for pkg in package.json frontend/package.json github-action/package.json vscode-extension/package.json docs/package.json; do \
+	  if [ -f "$$pkg" ]; then \
+	    dir=$$(dirname "$$pkg"); \
+	    echo "→ $$pkg"; \
+	    (cd "$$dir" && npx -y npm-check-updates && npx -y npm-check-updates -u --doctor); \
+	  fi; \
+	done
+	@echo "── Upgrading Go modules to latest 1.26+ ──"
+	@if [ -f go.mod ]; then \
+	  go get -u=patch ./...; \
+	  go get -u ./...; \
+	  go mod tidy; \
+	  go mod verify; \
+	  echo "✓ Go modules upgraded"; \
+	fi
+	@echo "── All dependencies checked for latest versions ──"
+
 # ---------------------------------------------------------------------------
 # Version display and package sync
 # ---------------------------------------------------------------------------
@@ -450,6 +474,7 @@ help:
 	@echo "  (CI: .github/workflows/docker.yml auto-builds on every vX.Y.Z tag)"
 	@echo ""
 	@echo "Other:"
+	@echo "  make upgrade-latest         Upgrade all Node.js and Go dependencies to latest"
 	@echo "  make clean                  Remove build/ output subdirs"
 	@echo "  wails dev                   Wails hot-reload dev mode"
 	@echo "  wails build                 Production Wails binary"
