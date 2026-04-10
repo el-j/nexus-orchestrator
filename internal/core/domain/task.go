@@ -106,8 +106,3 @@ func (t *Task) ComputeDuration() {
 	}
 	t.DurationMs = t.UpdatedAt.Sub(t.CreatedAt).Milliseconds()
 }
-
-// IsExecutable returns true if the task can enter the execution queue.
-func (t Task) IsExecutable() bool {
-	return t.Status == StatusQueued
-}
