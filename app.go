@@ -295,29 +295,3 @@ func (a *App) UpdateRuntimeConfig(update domain.RuntimeConfigUpdate) (domain.Run
 	}
 	return cfg, nil
 }
-
-// ListAISessions returns all registered AI sessions.
-func (a *App) ListAISessions() ([]domain.AISession, error) {
-	sessions, err := a.orchestrator.ListAISessions(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("app: list ai sessions: %w", err)
-	}
-	return sessions, nil
-}
-
-// RegisterAISession registers a new AI session and returns it with a server-assigned ID.
-func (a *App) RegisterAISession(session domain.AISession) (domain.AISession, error) {
-	result, err := a.orchestrator.RegisterAISession(context.Background(), session)
-	if err != nil {
-		return domain.AISession{}, fmt.Errorf("app: register ai session: %w", err)
-	}
-	return result, nil
-}
-
-// DeregisterAISession removes the AI session with the given ID.
-func (a *App) DeregisterAISession(id string) error {
-	if err := a.orchestrator.DeregisterAISession(context.Background(), id); err != nil {
-		return fmt.Errorf("app: deregister ai session: %w", err)
-	}
-	return nil
-}
