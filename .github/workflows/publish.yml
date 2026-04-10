@@ -434,7 +434,24 @@ jobs:
           wails build -platform ${{ matrix.platform }} ${TAGS_FLAG} -ldflags "-s -w -X 'main.version=${VERSION}' -X 'main.commit=${COMMIT}' -X 'main.buildDate=${BUILDDATE}'"
           mkdir -p build/desktop
           cp -r build/bin/* build/desktop/
-
+    
+      - name: Ad-hoc Sign macOS App
+        if: matrix.os == 'darwin'
+        shell: bash
+        run: |
+            # 1. Clear any existing signatures/translocation bits
+            chmod +x build/desktop/nexusOrchestrator.app/Contents/MacOS/*
+            
+            # 2. Perform Ad-hoc signing (-)
+            # We use --deep to sign nested binaries/libraries
+            # We use --force to overwrite any existing invalid signatures
+            # We use --options runtime to enable Hardened Runtime (best practice)
+            echo "Ad-hoc signing the app..."
+            codesign --timestamp --options runtime --deep --force --sign - build/desktop/nexusOrchestrator.app
+            
+            # 3. Verify the signature locally
+            codesign -vvv --deep --strict build/desktop/nexusOrchestrator.app
+            
       - name: Sign macOS app
         if: matrix.os == 'darwin'
         shell: bash
@@ -477,7 +494,11 @@ jobs:
             # Ad-hoc signing: removes the "damaged and can't be opened" Gatekeeper error.
             # Users who download from the internet may still need to clear the quarantine
             # attribute manually: xattr -dr com.apple.quarantine nexusOrchestrator.app
-            codesign --deep --force --sign - build/desktop/nexusOrchestrator.app
+            chmod +x build/desktop/nexusOrchestrator.app/Contents/MacOS/*
+            echo "Ad-hoc signing the app..."
+            codesign --timestamp --options runtime --deep --force --sign - build/desktop/nexusOrchestrator.app
+            # Verify the signature locally
+            codesign -vvv --deep --strict build/desktop/nexusOrchestrator.app
           fi
 
       - name: Package macOS (zip via ditto)

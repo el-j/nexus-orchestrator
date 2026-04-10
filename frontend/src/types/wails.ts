@@ -213,24 +213,15 @@ export async function heartbeatAISession(id: string): Promise<void> {
   if (isWails()) {
     try {
       await window.go!.main!.App!.HeartbeatAISession(id);
-    } catch {
-      // heartbeat failures are expected during daemon downtime
+    } catch (e) {
+      console.warn('heartbeatAISession: failed:', e);
     }
+    //  catch {
+    //       // heartbeat failures are expected during daemon downtime
+    //     }
     return;
   }
   await fetch(`/api/ai-sessions/${id}/heartbeat`, { method: 'POST' });
-}
-
-export async function heartbeatAISession(id: string): Promise<void> {
-  if (isWails()) {
-    try {
-      await window.go!.main!.App!.HeartbeatAISession(id)
-    } catch (e) {
-      console.warn('heartbeatAISession: failed:', e)
-    }
-    return
-  }
-  await fetch(`/api/ai-sessions/${id}/heartbeat`, { method: 'POST' })
 }
 
 export async function deregisterAISession(id: string): Promise<void> {
