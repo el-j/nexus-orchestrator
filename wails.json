@@ -11,7 +11,7 @@
   "info": {
     "companyName": "nexusOrchestrator Contributors",
     "productName": "nexusOrchestrator",
-    "productVersion": "1.0.0",
+    "productVersion": "0.10.0-12",
     "copyright": "Copyright © 2024 nexusOrchestrator Contributors",
     "comments": "A local AI orchestrator that routes code-generation tasks to LM Studio or Ollama."
   }
