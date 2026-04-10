@@ -13,6 +13,8 @@
  * test.
  */
 
+export {};
+
 // ── Module-level stubs (survive jest.resetModules; prefixed "mock" for
 //    Jest's hoisting rules that allow references in factory closures) ──────────
 const mockPostJson = jest.fn();

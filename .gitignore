@@ -33,6 +33,7 @@ vendor/
 .DS_Store
 Thumbs.db
 
+github-action/dist
 # Root dev tooling (husky, lint-staged, prettier — installed at repo root)
 node_modules/
 package-lock.json
