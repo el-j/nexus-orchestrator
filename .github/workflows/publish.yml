@@ -456,7 +456,8 @@ jobs:
             # Users who download from the internet may still need to clear the quarantine
             # attribute manually: xattr -dr com.apple.quarantine nexusOrchestrator.app
             echo "No APPLE_CERTIFICATE secret set — falling back to ad-hoc signing."
-            codesign --timestamp --options runtime --deep --force --sign - build/desktop/nexusOrchestrator.app
+            # Keep fallback signature minimal; runtime/timestamp are for Developer ID signing.
+            codesign --deep --force --sign - build/desktop/nexusOrchestrator.app
             codesign -vvv --deep --strict build/desktop/nexusOrchestrator.app
           fi
 
@@ -464,11 +465,22 @@ jobs:
         if: matrix.os == 'darwin'
         shell: bash
         run: |
+          cat > build/desktop/Open\ Nexus.command <<'EOF'
+          #!/bin/bash
+          set -euo pipefail
+          APP_PATH="$(cd "$(dirname "$0")" && pwd)/nexusOrchestrator.app"
+          xattr -dr com.apple.quarantine "$APP_PATH" || true
+          open "$APP_PATH"
+          EOF
+          chmod +x build/desktop/Open\ Nexus.command
+
           # ditto preserves macOS resource forks, symlinks, and extended attributes
-          # that tar can silently drop. The output is a standard macOS zip archive.
-          ditto -c -k --sequesterRsrc --keepParent \
-            build/desktop/nexusOrchestrator.app \
+          # that tar can silently drop. The archive includes the app and a
+          # launcher script that clears quarantine before opening.
+          cd build/desktop
+          ditto -c -k --sequesterRsrc . \
             "${{ matrix.archive_name }}.zip"
+          mv "${{ matrix.archive_name }}.zip" ../..
 
       - name: Package Linux (tar.gz)
         if: matrix.os == 'linux'
