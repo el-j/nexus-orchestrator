@@ -8,6 +8,7 @@ import (
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
 	"nexus-orchestrator/internal/core/services"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App is the Wails application struct. Its exported methods are bound to the
@@ -33,6 +34,22 @@ func (a *App) GetServerAddr() string {
 // startup is called by Wails when the application starts.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+}
+
+// ShowWindow reveals the desktop window if the Wails runtime is ready.
+func (a *App) ShowWindow() {
+	if a.ctx == nil {
+		return
+	}
+	runtime.WindowShow(a.ctx)
+}
+
+// QuitApp requests a graceful Wails shutdown so deferred cleanup can run.
+func (a *App) QuitApp() {
+	if a.ctx == nil {
+		return
+	}
+	runtime.Quit(a.ctx)
 }
 
 // SubmitTask forwards a task from the frontend to the orchestrator.

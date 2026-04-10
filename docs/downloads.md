@@ -428,8 +428,32 @@ Get-FileHash .\nexus-orchestrator-windows-amd64.zip -Algorithm SHA256
   if (/Mac/i.test(platform)) {
     os = 'mac';
     label = 'macOS';
-    // Heuristic: newer Macs with ARM
-    if (/ARM/i.test(ua) || (navigator.userAgentData && navigator.userAgentData.architecture === 'arm')) {
+    // Apple Silicon detection — navigator.platform is always "MacIntel" on all macOS
+    // browsers regardless of CPU, so check multiple sources.
+    var isARM = false;
+    // 1. Low-entropy userAgentData (Chrome/Edge, synchronous)
+    var uad = navigator.userAgentData;
+    if (uad) {
+      var archLow = uad.architecture || '';
+      if (/arm/i.test(archLow)) isARM = true;
+    }
+    // 2. UA string fallback (rare on macOS but safe)
+    if (!isARM && /ARM64|arm64/i.test(ua)) isARM = true;
+    // 3. WebGL renderer heuristic — Apple Silicon GPUs self-report "Apple M…"
+    if (!isARM) {
+      try {
+        var canvas = document.createElement('canvas');
+        var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        if (gl) {
+          var dbg = gl.getExtension('WEBGL_debug_renderer_info');
+          if (dbg) {
+            var renderer = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || '';
+            if (/apple\s+m\d|apple\s+gpu/i.test(renderer)) isARM = true;
+          }
+        }
+      } catch (e) {}
+    }
+    if (isARM) {
       arch = 'arm64';
       label = 'macOS (Apple Silicon)';
     } else {

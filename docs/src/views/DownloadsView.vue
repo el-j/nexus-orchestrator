@@ -277,12 +277,45 @@ import CodeBlock from '../components/CodeBlock.vue';
 const detectedOS = ref('Detecting...');
 const detectedKey = ref('');
 
-onMounted(() => {
+onMounted(async () => {
   const ua = navigator.userAgent || '';
   const platform = navigator.platform || '';
 
   if (/Mac/i.test(platform)) {
-    if (/ARM/i.test(ua)) {
+    // Apple Silicon detection: navigator.platform returns "MacIntel" on all macOS
+    // regardless of CPU, so we need multiple heuristics.
+    let isARM = false;
+
+    // 1. High-entropy userAgentData (Chrome 90+, Edge 90+)
+    try {
+      const uad = (navigator as any).userAgentData;
+      if (uad?.getHighEntropyValues) {
+        const hints = await uad.getHighEntropyValues(['architecture']);
+        if (/arm/i.test(hints.architecture || '')) isARM = true;
+      } else if (uad?.architecture) {
+        if (/arm/i.test(uad.architecture)) isARM = true;
+      }
+    } catch (_) { /* ignore – permission may be denied */ }
+
+    // 2. UA string fallback (rare but some browsers expose arm64)
+    if (!isARM && /ARM64|arm64/i.test(ua)) isARM = true;
+
+    // 3. WebGL renderer heuristic – Apple Silicon reports "Apple M…" or "Apple GPU"
+    if (!isARM) {
+      try {
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl') as WebGLRenderingContext | null;
+        if (gl) {
+          const ext = gl.getExtension('WEBGL_debug_renderer_info');
+          if (ext) {
+            const renderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) as string || '';
+            if (/apple\s+m\d|apple\s+gpu/i.test(renderer)) isARM = true;
+          }
+        }
+      } catch (_) { /* ignore */ }
+    }
+
+    if (isARM) {
       detectedOS.value = 'macOS (Apple Silicon)';
       detectedKey.value = 'mac-arm';
     } else {

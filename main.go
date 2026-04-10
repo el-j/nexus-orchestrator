@@ -178,12 +178,17 @@ func run() error {
 	app := NewApp(orchestratorSvc, httpAddr).WithActivityService(activitySvc)
 
 	trayAdapter := tray.NewTrayAdapter(orchestratorSvc, func() {
-		runtime.WindowShow(app.ctx)
+		app.ShowWindow()
 	}, func() {
-		os.Exit(0)
+		app.QuitApp()
 	})
+	trayEnabled := trayAdapter.Enabled()
 
-	log.Printf("nexusOrchestrator started — closing window hides to tray")
+	if trayEnabled {
+		log.Printf("nexusOrchestrator started — closing window hides to tray")
+	} else {
+		log.Printf("nexusOrchestrator started — closing window quits the app")
+	}
 	// Print a human- and AI-readable ready banner.
 	httpBase := "http://" + httpAddr
 	fmt.Printf("\n")
@@ -206,8 +211,12 @@ func run() error {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		HideWindowOnClose: true,
+		HideWindowOnClose: trayEnabled,
 		OnBeforeClose: func(ctx context.Context) (prevent bool) {
+			if !trayEnabled {
+				log.Printf("nexusOrchestrator: window close requested — shutting down")
+				return false
+			}
 			log.Printf("nexusOrchestrator: window close intercepted — hiding to tray")
 			runtime.WindowHide(ctx)
 			return true

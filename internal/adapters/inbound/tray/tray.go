@@ -46,6 +46,11 @@ func (t *TrayAdapter) Start() {
 	log.Printf("tray: adapter created (systray integration pending main-thread coordination)")
 }
 
+// Enabled reports whether a real tray integration is active.
+func (t *TrayAdapter) Enabled() bool {
+	return false
+}
+
 // UpdateStatus refreshes the tray tooltip with the current provider and queue counts.
 // TODO(tray): use the formatted string to update systray tooltip once wired.
 func (t *TrayAdapter) UpdateStatus() {
