@@ -68,12 +68,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: "1.26"
-
-      - uses: actions/cache@v5
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-go-
+          cache: true
 
       - name: go vet
         run: go vet ./...
@@ -125,12 +120,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: "1.26"
-
-      - uses: actions/cache@v5
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-go-
+          cache: true
 
       - name: Run tests
         shell: bash
@@ -208,12 +198,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: "1.26"
-
-      - uses: actions/cache@v5
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-go-
+          cache: true
 
       - name: Run daemon E2E smoke
         shell: bash
@@ -294,11 +279,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: "1.26"
-
-      - uses: actions/cache@v5
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          cache: true
 
       - name: Install zig
         if: matrix.runner == 'ubuntu-latest'
@@ -403,11 +384,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version: "1.26"
-
-      - uses: actions/cache@v5
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          cache: true
 
       - name: Install Linux dependencies
         if: matrix.os == 'linux'
@@ -435,34 +412,18 @@ jobs:
           mkdir -p build/desktop
           cp -r build/bin/* build/desktop/
     
-      - name: Ad-hoc Sign macOS App
-        if: matrix.os == 'darwin'
-        shell: bash
-        run: |
-            # 1. Clear any existing signatures/translocation bits
-            chmod +x build/desktop/nexusOrchestrator.app/Contents/MacOS/*
-            
-            # 2. Perform Ad-hoc signing (-)
-            # We use --deep to sign nested binaries/libraries
-            # We use --force to overwrite any existing invalid signatures
-            # We use --options runtime to enable Hardened Runtime (best practice)
-            echo "Ad-hoc signing the app..."
-            codesign --timestamp --options runtime --deep --force --sign - build/desktop/nexusOrchestrator.app
-            
-            # 3. Verify the signature locally
-            codesign -vvv --deep --strict build/desktop/nexusOrchestrator.app
-            
       - name: Sign macOS app
         if: matrix.os == 'darwin'
         shell: bash
         env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }} ?? ''
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }} ?? ''
-          APPLE_DEVELOPER_NAME: ${{ secrets.APPLE_DEVELOPER_NAME }} ?? ''
-          APPLE_ID: ${{ secrets.APPLE_ID }} ?? ''
-          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }} ?? ''
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }} ?? ''
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_DEVELOPER_NAME: ${{ secrets.APPLE_DEVELOPER_NAME }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
+          chmod +x build/desktop/nexusOrchestrator.app/Contents/MacOS/*
           if [ -n "$APPLE_CERTIFICATE" ]; then
             # Full code signing + notarization (requires Apple Developer ID certificate secrets)
             echo "$APPLE_CERTIFICATE" | base64 --decode > /tmp/certificate.p12
@@ -494,10 +455,8 @@ jobs:
             # Ad-hoc signing: removes the "damaged and can't be opened" Gatekeeper error.
             # Users who download from the internet may still need to clear the quarantine
             # attribute manually: xattr -dr com.apple.quarantine nexusOrchestrator.app
-            chmod +x build/desktop/nexusOrchestrator.app/Contents/MacOS/*
-            echo "Ad-hoc signing the app..."
+            echo "No APPLE_CERTIFICATE secret set — falling back to ad-hoc signing."
             codesign --timestamp --options runtime --deep --force --sign - build/desktop/nexusOrchestrator.app
-            # Verify the signature locally
             codesign -vvv --deep --strict build/desktop/nexusOrchestrator.app
           fi
 
