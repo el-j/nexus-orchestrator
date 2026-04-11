@@ -1,0 +1,30 @@
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="hexGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00ADD8" /> <stop offset="100%" stop-color="#8B5CF6" /> </linearGradient>
+    <linearGradient id="lineGradient" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8B5CF6" />
+      <stop offset="100%" stop-color="#00ADD8" />
+    </linearGradient>
+  </defs>
+
+  <polygon 
+    points="60,10 103.3,35 103.3,85 60,110 16.7,85 16.7,35" 
+    fill="none" 
+    stroke="url(#hexGradient)" 
+    stroke-width="10" 
+    stroke-linejoin="round"
+  />
+
+  <path 
+    d="M 38 80 L 38 45 L 82 75 L 82 40" 
+    fill="none" 
+    stroke="url(#lineGradient)" 
+    stroke-width="10" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"
+  />
+
+  <circle cx="38" cy="80" r="8" fill="#10B981" /> <circle cx="38" cy="45" r="7" fill="#00ADD8" />
+  <circle cx="82" cy="75" r="7" fill="#8B5CF6" />
+  <circle cx="82" cy="40" r="8" fill="#F472B6" /> </svg>
