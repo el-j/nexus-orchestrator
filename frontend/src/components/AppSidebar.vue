@@ -3,21 +3,13 @@
     <!-- Logo -->
     <div class="p-4 border-b border-white/5">
       <div class="hidden lg:flex items-center gap-2">
-        <div
-          class="w-7 h-7 rounded-lg bg-violet-600 flex items-center justify-center text-white text-xs font-black"
-        >
-          N
-        </div>
+        <img src="/logo.svg" alt="nexusOrchestrator" class="w-7 h-7 rounded-lg" />
         <span class="font-bold text-sm"
           >nexus<span class="text-violet-400">Orchestrator</span></span
         >
       </div>
       <div class="lg:hidden flex justify-center">
-        <div
-          class="w-7 h-7 rounded-lg bg-violet-600 flex items-center justify-center text-white text-xs font-black"
-        >
-          N
-        </div>
+        <img src="/logo.svg" alt="nexusOrchestrator" class="w-7 h-7 rounded-lg" />
       </div>
     </div>
 

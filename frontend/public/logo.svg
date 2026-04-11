@@ -1,30 +1,103 @@
-<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <linearGradient id="hexGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#00ADD8" /> <stop offset="100%" stop-color="#8B5CF6" /> </linearGradient>
-    <linearGradient id="lineGradient" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#8B5CF6" />
-      <stop offset="100%" stop-color="#00ADD8" />
+    <!-- Background gradient -->
+    <linearGradient id="bgG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#130a2e"/>
+      <stop offset="100%" stop-color="#0d1525"/>
     </linearGradient>
+
+    <!-- Hexagon ring gradient -->
+    <linearGradient id="hexG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#6d28d9"/>
+      <stop offset="50%"  stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+
+    <!-- Node radial gradients -->
+    <radialGradient id="nP" cx="40%" cy="30%" r="65%">
+      <stop offset="0%"   stop-color="#ddd6fe"/>
+      <stop offset="100%" stop-color="#6d28d9"/>
+    </radialGradient>
+    <radialGradient id="nC" cx="40%" cy="30%" r="65%">
+      <stop offset="0%"   stop-color="#a5f3fc"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </radialGradient>
+    <radialGradient id="nE" cx="40%" cy="30%" r="65%">
+      <stop offset="0%"   stop-color="#a7f3d0"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </radialGradient>
+    <radialGradient id="nW" cx="40%" cy="30%" r="65%">
+      <stop offset="0%"   stop-color="#ffffff"/>
+      <stop offset="60%"  stop-color="#ede9fe"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </radialGradient>
+
+    <!-- Glow filters -->
+    <filter id="gBig" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="12" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="gSm"  x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="hexGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
   </defs>
 
-  <polygon 
-    points="60,10 103.3,35 103.3,85 60,110 16.7,85 16.7,35" 
-    fill="none" 
-    stroke="url(#hexGradient)" 
-    stroke-width="10" 
-    stroke-linejoin="round"
-  />
+  <!-- ── Background ── -->
+  <rect width="512" height="512" rx="96" fill="url(#bgG)"/>
 
-  <path 
-    d="M 38 80 L 38 45 L 82 75 L 82 40" 
-    fill="none" 
-    stroke="url(#lineGradient)" 
-    stroke-width="10" 
-    stroke-linecap="round" 
-    stroke-linejoin="round"
-  />
+  <!-- ── Subtle outer glow ring ── -->
+  <polygon points="256.0,81.0 407.6,168.5 407.6,343.5 256.0,431.0 104.4,343.5 104.4,168.5"
+    fill="none" stroke="#7c3aed" stroke-width="36" opacity="0.08"/>
 
-  <circle cx="38" cy="80" r="8" fill="#10B981" /> <circle cx="38" cy="45" r="7" fill="#00ADD8" />
-  <circle cx="82" cy="75" r="7" fill="#8B5CF6" />
-  <circle cx="82" cy="40" r="8" fill="#F472B6" /> </svg>
+  <!-- ── Hexagon border ── -->
+  <polygon points="256.0,81.0 407.6,168.5 407.6,343.5 256.0,431.0 104.4,343.5 104.4,168.5"
+    fill="none" stroke="url(#hexG)" stroke-width="14" stroke-linejoin="round"
+    filter="url(#hexGlow)"/>
+
+  <!-- ── Hexagon vertex dots ── -->
+  <circle cx="256.0" cy="81.0" r="7" fill="#8b5cf6" opacity="0.9"/>
+  <circle cx="407.6" cy="168.5" r="7" fill="#7c3aed" opacity="0.7"/>
+  <circle cx="407.6" cy="343.5" r="7" fill="#0891b2" opacity="0.7"/>
+  <circle cx="256.0" cy="431.0" r="7" fill="#0891b2" opacity="0.9"/>
+  <circle cx="104.4" cy="343.5" r="7" fill="#059669" opacity="0.7"/>
+  <circle cx="104.4" cy="168.5" r="7" fill="#059669" opacity="0.7"/>
+
+  <!-- ── Triangle edges ── -->
+  <line x1="256.0" y1="161.0" x2="338.3" y2="303.5"
+    stroke="#a78bfa" stroke-width="7" stroke-linecap="round" opacity="0.55"/>
+  <line x1="256.0" y1="161.0" x2="173.7" y2="303.5"
+    stroke="#a78bfa" stroke-width="7" stroke-linecap="round" opacity="0.55"/>
+  <line x1="173.7" y1="303.5" x2="338.3" y2="303.5"
+    stroke="#67e8f9" stroke-width="7" stroke-linecap="round" opacity="0.45"/>
+
+  <!-- ── Hub → node spokes ── -->
+  <line x1="256" y1="256" x2="256.0" y2="161.0"
+    stroke="white" stroke-width="4" stroke-linecap="round" opacity="0.28"/>
+  <line x1="256" y1="256" x2="338.3" y2="303.5"
+    stroke="white" stroke-width="4" stroke-linecap="round" opacity="0.28"/>
+  <line x1="256" y1="256" x2="173.7" y2="303.5"
+    stroke="white" stroke-width="4" stroke-linecap="round" opacity="0.28"/>
+
+  <!-- ── Triangle nodes ── -->
+  <!-- Top – violet/purple -->
+  <circle cx="256.0" cy="161.0" r="32" fill="#6d28d9" opacity="0.35" filter="url(#gBig)"/>
+  <circle cx="256.0" cy="161.0" r="22" fill="url(#nP)"/>
+
+  <!-- Bottom-right – cyan -->
+  <circle cx="338.3" cy="303.5" r="32" fill="#0891b2" opacity="0.35" filter="url(#gBig)"/>
+  <circle cx="338.3" cy="303.5" r="22" fill="url(#nC)"/>
+
+  <!-- Bottom-left – emerald -->
+  <circle cx="173.7" cy="303.5" r="32" fill="#059669" opacity="0.35" filter="url(#gBig)"/>
+  <circle cx="173.7" cy="303.5" r="22" fill="url(#nE)"/>
+
+  <!-- ── Central hub (coordinator) ── -->
+  <circle cx="256" cy="256" r="24" fill="#7c3aed" opacity="0.25" filter="url(#gSm)"/>
+  <circle cx="256" cy="256" r="15" fill="url(#nW)"/>
+  <circle cx="256" cy="256" r="6"  fill="#7c3aed" opacity="0.9"/>
+</svg>

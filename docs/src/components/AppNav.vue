@@ -4,6 +4,7 @@
       <div class="flex items-center justify-between h-16">
         <!-- Logo -->
         <RouterLink to="/" class="flex items-center gap-2 text-lg font-bold">
+          <img src="/favicon.svg" alt="nexusOrchestrator" class="w-8 h-8" />
           <span class="text-white">nexus-</span><span class="gradient-text">orchestrator</span>
         </RouterLink>
 
