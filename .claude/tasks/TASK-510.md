@@ -3,7 +3,7 @@ id: TASK-510
 title: Define brain port interfaces
 role: backend
 planId: PLAN-066
-status: todo
+status: done
 dependencies: [TASK-509]
 createdAt: 2026-04-13T00:00:00Z
 ---

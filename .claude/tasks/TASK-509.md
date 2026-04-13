@@ -3,7 +3,7 @@ id: TASK-509
 title: Define brain domain types
 role: backend
 planId: PLAN-066
-status: todo
+status: done
 dependencies: []
 createdAt: 2026-04-13T00:00:00Z
 ---

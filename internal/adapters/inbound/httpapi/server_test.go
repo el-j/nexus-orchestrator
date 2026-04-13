@@ -693,7 +693,7 @@ func TestHTTPAPI_TokenAuth_GuardsAPI(t *testing.T) {
 	t.Setenv("NEXUS_API_TOKEN", "test-token")
 
 	mock := &mockOrchestrator{}
-	srv := httpapi.NewServer(mock, nil)
+	srv := httpapi.NewServer(mock, nil, nil)
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)
 
@@ -731,7 +731,7 @@ func TestHTTPAPI_TokenAuth_GuardsAPI(t *testing.T) {
 
 func TestHTTPAPI_ConfigEndpoints(t *testing.T) {
 	mock := &mockOrchestrator{}
-	srv := httpapi.NewServer(mock, nil)
+	srv := httpapi.NewServer(mock, nil, nil)
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)
 
@@ -935,7 +935,7 @@ func TestDeleteTask_InternalError_Returns500(t *testing.T) {
 
 func TestSecurityHeaders_OnAPIResponse(t *testing.T) {
 	mock := &mockOrchestrator{}
-	srv := httpapi.NewServer(mock, nil)
+	srv := httpapi.NewServer(mock, nil, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
@@ -955,7 +955,7 @@ func TestSecurityHeaders_OnAPIResponse(t *testing.T) {
 
 func TestDashboard_CSPHeader(t *testing.T) {
 	mock := &mockOrchestrator{}
-	srv := httpapi.NewServer(mock, nil)
+	srv := httpapi.NewServer(mock, nil, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
@@ -980,7 +980,7 @@ func TestPostTask_ErrNoPlan_Returns422(t *testing.T) {
 	mock := &mockOrchestrator{
 		submitTaskErr: fmt.Errorf("orchestrator: submit task: %w", domain.ErrNoPlan),
 	}
-	srv := httpapi.NewServer(mock, nil)
+	srv := httpapi.NewServer(mock, nil, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
@@ -1004,7 +1004,7 @@ func TestPostTask_ErrNoPlan_Returns422(t *testing.T) {
 
 func TestHandleCreateDraft_Returns201(t *testing.T) {
 	mock := &mockOrchestrator{createDraftID: "draft-xyz"}
-	srv := httpapi.NewServer(mock, nil)
+	srv := httpapi.NewServer(mock, nil, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
@@ -1036,7 +1036,7 @@ func TestHandleGetBacklog_Returns200WithTasks(t *testing.T) {
 		{ID: "b1", Status: domain.StatusBacklog},
 	}
 	mock := &mockOrchestrator{getBacklogResult: tasks}
-	srv := httpapi.NewServer(mock, nil)
+	srv := httpapi.NewServer(mock, nil, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
@@ -1060,7 +1060,7 @@ func TestHandleGetBacklog_Returns200WithTasks(t *testing.T) {
 
 func TestHandleGetBacklog_WithoutProjectParam_Returns200(t *testing.T) {
 	mock := &mockOrchestrator{getBacklogResult: []domain.Task{{ID: "draft-any", Status: domain.StatusDraft}}}
-	srv := httpapi.NewServer(mock, nil)
+	srv := httpapi.NewServer(mock, nil, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
@@ -1088,7 +1088,7 @@ func TestHandleGetAllTasks_Returns200WithTasks(t *testing.T) {
 		{ID: "done-1", Status: domain.StatusCompleted},
 	}
 	mock := &mockOrchestrator{getQueueResult: tasks}
-	srv := httpapi.NewServer(mock, nil)
+	srv := httpapi.NewServer(mock, nil, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
@@ -1117,7 +1117,7 @@ func TestHandleGetAllTasks_ProjectPathFilter_ReturnsMatchingTasks(t *testing.T) 
 		{ID: "task-a2", ProjectPath: "/repo/a", Status: domain.StatusFailed},
 	}
 	mock := &mockOrchestrator{getQueueResult: tasks}
-	srv := httpapi.NewServer(mock, nil)
+	srv := httpapi.NewServer(mock, nil, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
@@ -1146,7 +1146,7 @@ func TestHandleGetAllTasks_ProjectPathFilter_ReturnsMatchingTasks(t *testing.T) 
 
 func TestHandlePromoteTask_Returns204(t *testing.T) {
 	mock := &mockOrchestrator{}
-	srv := httpapi.NewServer(mock, nil)
+	srv := httpapi.NewServer(mock, nil, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
@@ -1173,7 +1173,7 @@ func TestHandleUpdateTask_Returns200(t *testing.T) {
 		Status:      domain.StatusDraft,
 	}
 	mock := &mockOrchestrator{updateTaskResult: updated}
-	srv := httpapi.NewServer(mock, nil)
+	srv := httpapi.NewServer(mock, nil, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
@@ -1212,7 +1212,7 @@ func TestHTTP_GetDiscoveredProviders_Returns200(t *testing.T) {
 	mock := &mockOrchestrator{
 		discoveredProvidersResult: []domain.DiscoveredProvider{},
 	}
-	srv := httpapi.NewServer(mock, nil)
+	srv := httpapi.NewServer(mock, nil, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
@@ -1234,7 +1234,7 @@ func TestHTTP_GetDiscoveredProviders_Returns200(t *testing.T) {
 // returns 200 when the scan succeeds.
 func TestHTTP_TriggerScan_Returns200(t *testing.T) {
 	mock := &mockOrchestrator{}
-	srv := httpapi.NewServer(mock, nil)
+	srv := httpapi.NewServer(mock, nil, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
@@ -1254,7 +1254,7 @@ func TestHTTP_TriggerScan_Returns200(t *testing.T) {
 // returns domain.ErrNotFound for the given provider ID.
 func TestHTTP_PromoteProvider_NotFound_Returns404(t *testing.T) {
 	mock := &mockOrchestrator{promoteProviderErr: domain.ErrNotFound}
-	srv := httpapi.NewServer(mock, nil)
+	srv := httpapi.NewServer(mock, nil, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
@@ -1314,7 +1314,7 @@ func TestHandleTerminateAISession(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mock := &mockOrchestrator{terminateAISessionErr: tc.terminateErr}
-			srv := httpapi.NewServer(mock, nil)
+			srv := httpapi.NewServer(mock, nil, nil)
 			ts := httptest.NewServer(srv.Handler())
 			defer ts.Close()
 
@@ -1363,7 +1363,7 @@ func TestHandleHeartbeatAISession(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mock := &mockOrchestrator{heartbeatAISessionErr: tc.hbErr}
-			srv := httpapi.NewServer(mock, nil)
+			srv := httpapi.NewServer(mock, nil, nil)
 			ts := httptest.NewServer(srv.Handler())
 			defer ts.Close()
 
@@ -1402,7 +1402,7 @@ func TestHandleHeartbeatTask(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mock := &mockOrchestrator{heartbeatTaskErr: tc.hbErr}
-			srv := httpapi.NewServer(mock, nil)
+			srv := httpapi.NewServer(mock, nil, nil)
 			ts := httptest.NewServer(srv.Handler())
 			defer ts.Close()
 
@@ -1445,7 +1445,7 @@ func TestHandleClaimTask(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mock := &mockOrchestrator{claimTaskResult: tc.claimResult, claimTaskErr: tc.claimErr}
-			srv := httpapi.NewServer(mock, nil)
+			srv := httpapi.NewServer(mock, nil, nil)
 			ts := httptest.NewServer(srv.Handler())
 			defer ts.Close()
 
@@ -1520,7 +1520,7 @@ func TestHandleUpdateTaskStatus(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mock := &mockOrchestrator{updateTaskStatusResult: tc.updateResult, updateTaskStatusErr: tc.updateErr}
-			srv := httpapi.NewServer(mock, nil)
+			srv := httpapi.NewServer(mock, nil, nil)
 			ts := httptest.NewServer(srv.Handler())
 			defer ts.Close()
 
@@ -1568,7 +1568,7 @@ func TestHandleDelegateToNexus(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mock := &mockOrchestrator{delegateInstruction: tc.instruction, delegateErr: tc.delegateErr}
-			srv := httpapi.NewServer(mock, nil)
+			srv := httpapi.NewServer(mock, nil, nil)
 			ts := httptest.NewServer(srv.Handler())
 			defer ts.Close()
 
@@ -1611,7 +1611,7 @@ func TestHandleGetSessionTasks(t *testing.T) {
 			{ID: "t3", AISessionID: "sess-other", Status: domain.StatusQueued},
 		}
 		mock := &mockOrchestrator{getQueueResult: tasks}
-		srv := httpapi.NewServer(mock, nil)
+		srv := httpapi.NewServer(mock, nil, nil)
 		ts := httptest.NewServer(srv.Handler())
 		defer ts.Close()
 
@@ -1640,7 +1640,7 @@ func TestHandleGetSessionTasks(t *testing.T) {
 
 	t.Run("returns empty list when no tasks", func(t *testing.T) {
 		mock := &mockOrchestrator{getQueueResult: nil}
-		srv := httpapi.NewServer(mock, nil)
+		srv := httpapi.NewServer(mock, nil, nil)
 		ts := httptest.NewServer(srv.Handler())
 		defer ts.Close()
 
@@ -1680,7 +1680,7 @@ func TestHandlePurgeDisconnectedSessions(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mock := &mockOrchestrator{purgeCount: tc.purgeCount, purgeErr: tc.purgeErr}
-			srv := httpapi.NewServer(mock, nil)
+			srv := httpapi.NewServer(mock, nil, nil)
 			ts := httptest.NewServer(srv.Handler())
 			defer ts.Close()
 
@@ -1713,7 +1713,7 @@ func TestHandlePurgeDisconnectedSessions(t *testing.T) {
 // {"error":"..."} JSON body rather than plain text.
 func TestErrorResponse_HasJSONContentType(t *testing.T) {
 	mock := &mockOrchestrator{}
-	srv := httpapi.NewServer(mock, nil)
+	srv := httpapi.NewServer(mock, nil, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 

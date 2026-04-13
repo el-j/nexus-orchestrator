@@ -3,7 +3,7 @@ id: TASK-511
 title: Implement project knowledge SQLite repository
 role: backend
 planId: PLAN-066
-status: todo
+status: done
 dependencies: [TASK-510]
 createdAt: 2026-04-13T00:00:00Z
 ---

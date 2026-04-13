@@ -256,6 +256,7 @@ func (s *Server) handleWellKnownNexus(w http.ResponseWriter, r *http.Request) {
 			"mcp-tools",
 			"session-isolation",
 			"backlog-drafts",
+			"project-brain",
 		},
 	}
 	w.Header().Set("Cache-Control", "public, max-age=300")

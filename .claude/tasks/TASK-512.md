@@ -3,7 +3,7 @@ id: TASK-512
 title: Write knowledge repository tests
 role: qa
 planId: PLAN-066
-status: todo
+status: done
 dependencies: [TASK-511]
 createdAt: 2026-04-13T00:00:00Z
 ---

@@ -178,7 +178,7 @@ func postRPCRaw(t *testing.T, srv *httptest.Server, body any, authHeader string)
 
 func newServer(t *testing.T, orch *mockOrch) *httptest.Server {
 	t.Helper()
-	srv := httptest.NewServer(mcp.NewMcpServer(orch))
+	srv := httptest.NewServer(mcp.NewMcpServer(orch, nil))
 	t.Cleanup(srv.Close)
 	return srv
 }
@@ -289,7 +289,7 @@ func TestMCP_Initialize(t *testing.T) {
 	}
 }
 
-func TestMCP_ToolsList_Returns31Tools(t *testing.T) {
+func TestMCP_ToolsList_Returns36Tools(t *testing.T) {
 	srv := newServer(t, &mockOrch{})
 	r := postRPC(t, srv, map[string]any{
 		"jsonrpc": "2.0",
@@ -307,8 +307,8 @@ func TestMCP_ToolsList_Returns31Tools(t *testing.T) {
 	if err := json.Unmarshal(r.Result, &result); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
-	if len(result.Tools) != 31 {
-		t.Errorf("expected 31 tools, got %d", len(result.Tools))
+	if len(result.Tools) != 36 {
+		t.Errorf("expected 36 tools, got %d", len(result.Tools))
 	}
 }
 

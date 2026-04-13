@@ -3,7 +3,7 @@ id: TASK-513
 title: Implement BrainService
 role: backend
 planId: PLAN-066
-status: todo
+status: done
 dependencies: [TASK-511]
 createdAt: 2026-04-13T00:00:00Z
 ---

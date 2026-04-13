@@ -457,8 +457,10 @@ Get-FileHash .\nexus-orchestrator-windows-amd64.zip -Algorithm SHA256
       arch = 'arm64';
       label = 'macOS (Apple Silicon)';
     } else {
-      arch = 'amd64';
-      label = 'macOS (Intel)';
+      // No ARM signal confirmed — could be Intel or Apple Silicon on Safari/Firefox.
+      // Avoid recommending Intel when we cannot confirm; let the user choose manually.
+      detect.innerHTML = 'Detected <strong>macOS</strong> — architecture uncertain, choose below.';
+      return;
     }
   } else if (/Win/i.test(platform)) {
     os = 'win';

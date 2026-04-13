@@ -855,7 +855,7 @@
       "goal": "Fix desktop close/quit lifecycle so app fully exits, replace default Wails branding assets with project icons, and improve GitHub Pages download architecture detection/recommendations.",
       "status": "completed",
       "createdAt": "2026-04-10T13:19:39Z",
-      "completedAt": "2026-04-13T14:00:00Z",
+      "completedAt": "2026-04-13T00:00:00Z",
       "tasks": ["TASK-505", "TASK-506", "TASK-507", "TASK-508"]
     },
     "PLAN-066": {
@@ -4734,158 +4734,174 @@
     "TASK-505": {
       "id": "TASK-505",
       "planId": "PLAN-065",
-      "status": "todo",
+      "status": "done",
       "title": "Make Wails close semantics fully graceful",
       "role": "backend",
       "wave": 1,
-      "createdAt": "2026-04-10T13:19:39Z"
+      "createdAt": "2026-04-10T13:19:39Z",
+      "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-506": {
       "id": "TASK-506",
       "planId": "PLAN-065",
-      "status": "todo",
+      "status": "done",
       "title": "Replace default Wails logo with branded icon assets",
       "role": "frontend",
       "wave": 2,
-      "createdAt": "2026-04-10T13:19:39Z"
+      "createdAt": "2026-04-10T13:19:39Z",
+      "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-507": {
       "id": "TASK-507",
       "planId": "PLAN-065",
-      "status": "todo",
+      "status": "done",
       "title": "Fix GitHub Pages download architecture recommendation",
       "role": "frontend",
       "wave": 3,
-      "createdAt": "2026-04-10T13:19:39Z"
+      "createdAt": "2026-04-10T13:19:39Z",
+      "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-508": {
       "id": "TASK-508",
       "planId": "PLAN-065",
-      "status": "todo",
+      "status": "done",
       "title": "Validate and close PLAN-065 changes",
       "role": "testing",
       "wave": 4,
-      "createdAt": "2026-04-10T13:19:39Z"
+      "createdAt": "2026-04-10T13:19:39Z",
+      "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-509": {
       "id": "TASK-509",
       "planId": "PLAN-066",
-      "status": "todo",
+      "status": "done",
       "title": "Define brain domain types",
       "role": "backend",
       "wave": 1,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": []
+      "dependencies": [],
+      "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-510": {
       "id": "TASK-510",
       "planId": "PLAN-066",
-      "status": "todo",
+      "status": "done",
       "title": "Define brain port interfaces",
       "role": "backend",
       "wave": 1,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": ["TASK-509"]
+      "dependencies": ["TASK-509"],
+      "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-511": {
       "id": "TASK-511",
       "planId": "PLAN-066",
-      "status": "todo",
+      "status": "done",
       "title": "Implement knowledge SQLite repository",
       "role": "backend",
       "wave": 2,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": ["TASK-510"]
+      "dependencies": ["TASK-510"],
+      "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-512": {
       "id": "TASK-512",
       "planId": "PLAN-066",
-      "status": "todo",
+      "status": "done",
       "title": "Write knowledge repository tests",
       "role": "qa",
       "wave": 2,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": ["TASK-511"]
+      "dependencies": ["TASK-511"],
+      "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-513": {
       "id": "TASK-513",
       "planId": "PLAN-066",
-      "status": "todo",
+      "status": "done",
       "title": "Implement BrainService",
       "role": "backend",
       "wave": 3,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": ["TASK-511"]
+      "dependencies": ["TASK-511"],
+      "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-514": {
       "id": "TASK-514",
       "planId": "PLAN-066",
-      "status": "todo",
+      "status": "done",
       "title": "Write BrainService unit tests",
       "role": "qa",
       "wave": 3,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": ["TASK-513"]
+      "dependencies": ["TASK-513"],
+      "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-515": {
       "id": "TASK-515",
       "planId": "PLAN-066",
-      "status": "todo",
+      "status": "done",
       "title": "Add brain MCP tools",
       "role": "mcp",
       "wave": 4,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": ["TASK-513"]
+      "dependencies": ["TASK-513"],
+      "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-516": {
       "id": "TASK-516",
       "planId": "PLAN-066",
-      "status": "todo",
+      "status": "done",
       "title": "Add brain HTTP handlers",
       "role": "api",
       "wave": 4,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": ["TASK-513"]
+      "dependencies": ["TASK-513"],
+      "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-517": {
       "id": "TASK-517",
       "planId": "PLAN-066",
-      "status": "todo",
+      "status": "done",
       "title": "Add brain CLI commands",
       "role": "cli",
       "wave": 4,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": ["TASK-513"]
+      "dependencies": ["TASK-513"],
+      "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-518": {
       "id": "TASK-518",
       "planId": "PLAN-066",
-      "status": "todo",
+      "status": "done",
       "title": "Wire BrainService into daemon and CLI startup",
       "role": "backend",
       "wave": 5,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": ["TASK-515", "TASK-516", "TASK-517"]
+      "dependencies": ["TASK-515", "TASK-516", "TASK-517"],
+      "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-519": {
       "id": "TASK-519",
       "planId": "PLAN-066",
-      "status": "todo",
+      "status": "done",
       "title": "Integration and E2E tests for brain feature",
       "role": "qa",
       "wave": 6,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": ["TASK-518"]
+      "dependencies": ["TASK-518"],
+      "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-520": {
       "id": "TASK-520",
       "planId": "PLAN-066",
-      "status": "todo",
+      "status": "done",
       "title": "Update howto, well-known, and agent workflow docs",
       "role": "backend",
       "wave": 6,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": ["TASK-518"]
+      "dependencies": ["TASK-518"],
+      "completedAt": "2026-04-13T00:00:00Z"
     }
   },
   "sessionNotes": [
@@ -4896,7 +4912,7 @@
     {
       "date": "2026-04-13T14:01:00Z",
       "author": "antigravity",
-      "note": "PLAN-065 completed (Desktop Launch UX, Branding, Download Detection): TASK-505 Wails close semantics verified graceful (trayEnabled=false → window close quits, OnShutdown cancels HTTP/MCP via context); TASK-506 branded icon assets verified (tray/icon.png 28KB go:embed, build/appicon.png 1.1MB); TASK-507 DownloadsView.vue macOS arch detection fixed (uncertain detection no longer falls back to mac-intel, sets detectedKey='' so no false Intel recommendation on Safari/Firefox Apple Silicon); TASK-508 validation passed (go build clean, all binaries built). PLAN-068 completed (VS Code Brain Extensions): TASK-525+526 verified already implemented from PLAN-067 (BrainStatus/ContextResponse types and ProjectBrainNode already in nexusClient.ts + workspaceOrchView.ts); TASK-527 nexus.brain.ingest command declared in package.json contributes.commands with $(cloud-upload) icon + inline menu for nexusProjectBrain items; TASK-528 nexus.brain.ingest handler registered in extension.ts activate() with showOpenDialog file picker + ingestKnowledge HTTP call + tree refresh. Extension build: esbuild clean (583.8KB bundle)."
+      "note": "PLAN-065 completed (Desktop Launch UX, Branding, Download Detection): TASK-505 Wails close semantics verified graceful (trayEnabled=false \u2192 window close quits, OnShutdown cancels HTTP/MCP via context); TASK-506 branded icon assets verified (tray/icon.png 28KB go:embed, build/appicon.png 1.1MB); TASK-507 DownloadsView.vue macOS arch detection fixed (uncertain detection no longer falls back to mac-intel, sets detectedKey='' so no false Intel recommendation on Safari/Firefox Apple Silicon); TASK-508 validation passed (go build clean, all binaries built). PLAN-068 completed (VS Code Brain Extensions): TASK-525+526 verified already implemented from PLAN-067 (BrainStatus/ContextResponse types and ProjectBrainNode already in nexusClient.ts + workspaceOrchView.ts); TASK-527 nexus.brain.ingest command declared in package.json contributes.commands with $(cloud-upload) icon + inline menu for nexusProjectBrain items; TASK-528 nexus.brain.ingest handler registered in extension.ts activate() with showOpenDialog file picker + ingestKnowledge HTTP call + tree refresh. Extension build: esbuild clean (583.8KB bundle)."
     }
   ],
   "PLAN-067": {
