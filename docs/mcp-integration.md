@@ -69,14 +69,19 @@ Reload the VS Code window after saving the configuration.
 
 ## Available Tools
 
-| Tool            | Description                                                                   |
-| --------------- | ----------------------------------------------------------------------------- |
-| `submit_task`   | Submit a code-generation task with project path, target file, and instruction |
-| `get_task`      | Retrieve the status and output of a task by its ID                            |
-| `get_queue`     | List all pending (QUEUED/PROCESSING) tasks                                    |
-| `cancel_task`   | Cancel a queued task before it is processed                                   |
-| `get_providers` | List all registered LLM providers and their liveness status                   |
-| `health`        | Check if the orchestrator daemon is running and responsive                    |
+| Tool                  | Description                                                                   |
+| --------------------- | ----------------------------------------------------------------------------- |
+| `submit_task`         | Submit a code-generation task with project path, target file, and instruction |
+| `get_task`            | Retrieve the status and output of a task by its ID                            |
+| `get_queue`           | List all pending (QUEUED/PROCESSING) tasks                                    |
+| `cancel_task`         | Cancel a queued task before it is processed                                   |
+| `get_providers`       | List all registered LLM providers and their liveness status                   |
+| `health`              | Check if the orchestrator daemon is running and responsive                    |
+| `get_brain_status`    | Retrieve indexing status and token size of project knowledge brain            |
+| `ingest_knowledge`    | Parse and inject knowledge from files into project brain storage              |
+| `get_project_context` | Obtain base macro context representation of the project                       |
+| `get_focused_context` | Query bounded context sections specific to a reasoning question               |
+| `search_knowledge`    | Search project intelligence via BM25 matching                                 |
 
 ## Usage Examples
 

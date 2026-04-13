@@ -95,6 +95,16 @@ func (s *Server) handleToolCall(w http.ResponseWriter, r *http.Request, req rpcR
 		result, err = s.toolHowto()
 	case "howto_brief":
 		result, err = s.toolHowtoBrief()
+	case "get_project_context":
+		result, err = s.toolGetProjectContext(r.Context(), p.Arguments)
+	case "get_focused_context":
+		result, err = s.toolGetFocusedContext(r.Context(), p.Arguments)
+	case "search_knowledge":
+		result, err = s.toolSearchKnowledge(r.Context(), p.Arguments)
+	case "get_brain_status":
+		result, err = s.toolGetBrainStatus(r.Context(), p.Arguments)
+	case "ingest_knowledge":
+		result, err = s.toolIngestKnowledge(r.Context(), p.Arguments)
 	default:
 		writeError(w, req.ID, codeMethodNotFound, fmt.Sprintf("unknown tool: %s", p.Name))
 		return
@@ -1091,6 +1101,67 @@ func toolList() []toolDef {
 				Properties: map[string]property{
 					"projectPath": {Type: "string", Description: "Absolute path to the project root to scan"},
 				},
+			},
+		},
+		{
+			Name:        "get_project_context",
+			Description: "Get the macro context for a project (Architectures, Conventions, File Maps) bounded by a token budget.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+					"maxTokens":   {Type: "number", Description: "Maximum tokens to return (default: 400)"},
+				},
+				Required: []string{"projectPath"},
+			},
+		},
+		{
+			Name:        "get_focused_context",
+			Description: "Get task-specific micro context (Learning, Definitions, Gotchas) bounded by a token budget.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+					"question":    {Type: "string", Description: "Semantic search query to match against knowledge"},
+					"maxTokens":   {Type: "number", Description: "Maximum tokens to return (default: 400)"},
+				},
+				Required: []string{"projectPath", "question"},
+			},
+		},
+		{
+			Name:        "search_knowledge",
+			Description: "Perform full-text search across the project's knowledge base.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+					"query":       {Type: "string", Description: "The FTS query"},
+					"limit":       {Type: "number", Description: "Max results to return"},
+				},
+				Required: []string{"projectPath", "query"},
+			},
+		},
+		{
+			Name:        "get_brain_status",
+			Description: "Check the knowledge repository status for a project.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+				},
+				Required: []string{"projectPath"},
+			},
+		},
+		{
+			Name:        "ingest_knowledge",
+			Description: "Parse and ingest a markdown file (often CLAUDE.md) into the project knowledge repository.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+					"filePath":    {Type: "string", Description: "Path to the markdown file to ingest"},
+				},
+				Required: []string{"projectPath", "filePath"},
 			},
 		},
 	}

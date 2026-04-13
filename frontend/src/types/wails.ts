@@ -7,6 +7,9 @@ import type {
   TaskStatus,
   RuntimeConfig,
   RuntimeConfigUpdate,
+  BrainStatus,
+  ContextResponse,
+  ContextSection,
 } from './domain';
 import type { DiscoveredProvider } from './domain';
 
@@ -47,6 +50,19 @@ declare global {
           ): Promise<Task>;
           GetRuntimeConfig(): Promise<RuntimeConfig>;
           UpdateRuntimeConfig(update: RuntimeConfigUpdate): Promise<RuntimeConfig>;
+          IngestKnowledge(projectPath: string, filePath: string): Promise<number>;
+          GetBrainStatus(projectPath: string): Promise<BrainStatus>;
+          GetProjectContext(projectPath: string, maxTokens: number): Promise<ContextResponse>;
+          GetFocusedContext(
+            projectPath: string,
+            question: string,
+            maxTokens: number,
+          ): Promise<ContextResponse>;
+          SearchKnowledge(
+            projectPath: string,
+            query: string,
+            limit: number,
+          ): Promise<ContextSection[]>;
         };
       };
     };
@@ -281,4 +297,65 @@ export async function updateRuntimeConfig(update: RuntimeConfigUpdate): Promise<
   });
   if (!r.ok) throw new Error(`updateConfig: ${r.status}`);
   return r.json() as Promise<RuntimeConfig>;
+}
+
+export async function ingestKnowledge(projectPath: string, filePath: string): Promise<number> {
+  if (isWails()) return window.go!.main!.App!.IngestKnowledge(projectPath, filePath);
+  const r = await fetch('/api/brain/ingest', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectPath, filePath }),
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const data = (await r.json()) as { ingestedSections: number };
+  return data.ingestedSections;
+}
+
+export async function getBrainStatus(projectPath: string): Promise<BrainStatus> {
+  if (isWails()) return window.go!.main!.App!.GetBrainStatus(projectPath);
+  const r = await fetch(`/api/brain/status?projectPath=${encodeURIComponent(projectPath)}`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json() as Promise<BrainStatus>;
+}
+
+export async function getProjectContext(
+  projectPath: string,
+  maxTokens: number,
+): Promise<ContextResponse> {
+  if (isWails()) return window.go!.main!.App!.GetProjectContext(projectPath, maxTokens);
+  const r = await fetch('/api/brain/context', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectPath, maxTokens }),
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json() as Promise<ContextResponse>;
+}
+
+export async function getFocusedContext(
+  projectPath: string,
+  question: string,
+  maxTokens: number,
+): Promise<ContextResponse> {
+  if (isWails()) return window.go!.main!.App!.GetFocusedContext(projectPath, question, maxTokens);
+  const r = await fetch('/api/brain/focused-context', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectPath, question, maxTokens }),
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json() as Promise<ContextResponse>;
+}
+
+export async function searchKnowledge(
+  projectPath: string,
+  query: string,
+  limit: number,
+): Promise<ContextSection[]> {
+  if (isWails()) return window.go!.main!.App!.SearchKnowledge(projectPath, query, limit);
+  const r = await fetch(
+    `/api/brain/search?projectPath=${encodeURIComponent(projectPath)}&q=${encodeURIComponent(query)}&limit=${limit}`,
+  );
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json() as Promise<ContextSection[]>;
 }

@@ -3,7 +3,7 @@ id: TASK-518
 title: Wire BrainService into daemon and CLI startup
 role: backend
 planId: PLAN-066
-status: todo
+status: done
 dependencies: [TASK-515, TASK-516, TASK-517]
 createdAt: 2026-04-13T00:00:00Z
 ---

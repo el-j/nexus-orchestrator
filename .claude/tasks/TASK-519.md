@@ -3,7 +3,7 @@ id: TASK-519
 title: Integration and E2E tests for brain feature
 role: qa
 planId: PLAN-066
-status: todo
+status: done
 dependencies: [TASK-518]
 createdAt: 2026-04-13T00:00:00Z
 ---

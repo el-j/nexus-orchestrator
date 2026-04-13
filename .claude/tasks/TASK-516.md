@@ -3,7 +3,7 @@ id: TASK-516
 title: Add brain HTTP handlers
 role: api
 planId: PLAN-066
-status: todo
+status: done
 dependencies: [TASK-513]
 createdAt: 2026-04-13T00:00:00Z
 ---

@@ -186,6 +186,6 @@ Alternatively, install the companion extension from source (see [`vscode-extensi
 
 ## Next Steps
 
-- [API Reference](/nexusOrchestrator/api-reference) — Full HTTP and MCP endpoint docs
+- [API Reference](/nexusOrchestrator/api-reference) — Full HTTP, Context Brain, and MCP endpoint docs
 - [MCP Integration](/nexusOrchestrator/mcp-integration) — Connect with Claude Desktop
 - [Architecture](/nexusOrchestrator/architecture) — Understand the hexagonal design

@@ -104,6 +104,7 @@ type callToolResult struct {
 // Server is the MCP inbound adapter.
 type Server struct {
 	orch           ports.Orchestrator
+	brain          ports.BrainService
 	mux            *http.ServeMux
 	sse            *sseManager
 	allowedOrigins map[string]bool
@@ -113,11 +114,12 @@ type Server struct {
 }
 
 // NewMcpServer creates a Server and registers its HTTP handlers.
-func NewMcpServer(orch ports.Orchestrator) *Server {
+func NewMcpServer(orch ports.Orchestrator, brain ports.BrainService) *Server {
 	s := &Server{
-		orch: orch,
-		mux:  http.NewServeMux(),
-		sse:  &sseManager{sessions: make(map[string]*sseSession)},
+		orch:  orch,
+		brain: brain,
+		mux:   http.NewServeMux(),
+		sse:   &sseManager{sessions: make(map[string]*sseSession)},
 		allowedOrigins: map[string]bool{
 			"http://localhost":  true,
 			"http://127.0.0.1":  true,
@@ -227,8 +229,8 @@ func (s *Server) effectiveAuthToken(ctx context.Context) string {
 
 // StartMCPServer runs an HTTP server serving the MCP JSON-RPC 2.0 endpoint.
 // It blocks until ctx is cancelled, then shuts down gracefully.
-func StartMCPServer(ctx context.Context, orch ports.Orchestrator, addr string) error {
-	handler := NewMcpServer(orch)
+func StartMCPServer(ctx context.Context, orch ports.Orchestrator, brain ports.BrainService, addr string) error {
+	handler := NewMcpServer(orch, brain)
 	srv := &http.Server{
 		Addr:    addr,
 		Handler: handler,

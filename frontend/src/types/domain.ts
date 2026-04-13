@@ -177,3 +177,46 @@ export interface RuntimeConfigUpdate {
   rotateApiToken?: boolean;
   rotateMcpToken?: boolean;
 }
+
+export interface BrainStatus {
+  projectPath: string;
+  initialized: boolean;
+  entryCount: number;
+  kindCounts: Record<string, number>;
+  totalTokens: number;
+  lastUpdated?: string;
+}
+
+export interface ContextQuery {
+  projectPath: string;
+  question?: string;
+  maxTokens?: number;
+}
+
+export interface ContextSection {
+  title: string;
+  kind: string;
+  content: string;
+  tokens: number;
+  source: string;
+}
+
+export interface ContextResponse {
+  projectPath: string;
+  sections: ContextSection[];
+  totalTokens: number;
+  truncated: boolean;
+}
+
+export interface KnowledgeResult {
+  id: string;
+  projectPath: string;
+  kind: string;
+  topic: string;
+  content: string;
+  source: string;
+  tokens: number;
+  relevance: number;
+  createdAt: string;
+  updatedAt: string;
+}

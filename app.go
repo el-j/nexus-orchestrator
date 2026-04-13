@@ -17,6 +17,7 @@ import (
 type App struct {
 	ctx          context.Context
 	orchestrator ports.Orchestrator
+	brainSvc     ports.BrainService
 	httpAddr     string
 	activitySvc  *services.ActivityService
 }
@@ -254,6 +255,59 @@ func (a *App) UpdateTaskStatus(taskID string, sessionID string, status string, l
 func (a *App) WithActivityService(svc *services.ActivityService) *App {
 	a.activitySvc = svc
 	return a
+}
+
+// WithBrainService injects a BrainService into the App for project knowledge intelligence.
+func (a *App) WithBrainService(svc ports.BrainService) *App {
+	a.brainSvc = svc
+	return a
+}
+
+// IngestKnowledge processes a markdown file to be added to the project's brain.
+func (a *App) IngestKnowledge(projectPath, filePath string) (int, error) {
+	if a.brainSvc == nil {
+		return 0, fmt.Errorf("brain service not available")
+	}
+	return a.brainSvc.IngestFromFile(context.Background(), projectPath, filePath)
+}
+
+// GetBrainStatus retrieves the state of the project knowledge store.
+func (a *App) GetBrainStatus(projectPath string) (domain.BrainStatus, error) {
+	if a.brainSvc == nil {
+		return domain.BrainStatus{}, fmt.Errorf("brain service not available")
+	}
+	return a.brainSvc.GetStatus(context.Background(), projectPath)
+}
+
+// GetProjectContext fetches top-level context for the project footprint.
+func (a *App) GetProjectContext(projectPath string, maxTokens int) (domain.ContextResponse, error) {
+	if a.brainSvc == nil {
+		return domain.ContextResponse{}, fmt.Errorf("brain service not available")
+	}
+	return a.brainSvc.GetContext(context.Background(), domain.ContextQuery{
+		ProjectPath: projectPath,
+		MaxTokens:   maxTokens,
+	})
+}
+
+// GetFocusedContext searches the brain context relative to a specific reasoning query.
+func (a *App) GetFocusedContext(projectPath, question string, maxTokens int) (domain.ContextResponse, error) {
+	if a.brainSvc == nil {
+		return domain.ContextResponse{}, fmt.Errorf("brain service not available")
+	}
+	return a.brainSvc.GetContext(context.Background(), domain.ContextQuery{
+		ProjectPath: projectPath,
+		Question:    question,
+		MaxTokens:   maxTokens,
+	})
+}
+
+// SearchKnowledge allows full text search on the sqlite index store.
+func (a *App) SearchKnowledge(projectPath, query string, limit int) ([]domain.ContextSection, error) {
+	if a.brainSvc == nil {
+		return nil, fmt.Errorf("brain service not available")
+	}
+	return a.brainSvc.SearchKnowledge(context.Background(), projectPath, query, limit)
 }
 
 // GetRecentActivities returns recent AI activities for the observatory dashboard.
