@@ -211,6 +211,10 @@ func (s *Server) Handler() http.Handler {
 	r.Post("/api/brain/context", s.handleGetProjectContext)
 	r.Post("/api/brain/focused-context", s.handleGetFocusedContext)
 	r.Get("/api/brain/search", s.handleSearchKnowledge)
+	r.Post("/api/brain/init", s.handleInitProject)
+	r.Get("/api/brain/knowledge", s.handleListKnowledge)
+	r.Delete("/api/brain/knowledge/{id}", s.handleDeleteKnowledge)
+	r.Get("/api/brain/file-map", s.handleGetFileMap)
 
 	return r
 }

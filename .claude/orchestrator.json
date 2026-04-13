@@ -1,9 +1,9 @@
 {
   "version": "2",
-  "updatedAt": "2026-04-13T14:01:00Z",
+  "updatedAt": "2026-04-14T01:00:00Z",
   "counters": {
-    "nextTaskId": 529,
-    "nextPlanId": 69
+    "nextTaskId": 540,
+    "nextPlanId": 70
   },
   "activePlanId": null,
   "notes": [
@@ -4931,5 +4931,136 @@
     "createdAt": "2026-04-13T13:14:26Z",
     "completedAt": "2026-04-13T14:00:00Z",
     "tasks": ["TASK-525", "TASK-526", "TASK-527", "TASK-528"]
+  },
+  "PLAN-069": {
+    "id": "PLAN-069",
+    "title": "Brain Layer Gap-Fill \u2014 API, Client, CLI, Wails, Tests, Docs",
+    "goal": "Close all confirmed gaps in the Nexus Brain implementation: missing HTTP routes, stub client methods, Wails binding bug, howto_brief phantom params, missing CLI subcommands, and absent test coverage across all layers.",
+    "status": "completed",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "tasks": [
+      "TASK-529",
+      "TASK-530",
+      "TASK-531",
+      "TASK-532",
+      "TASK-533",
+      "TASK-534",
+      "TASK-535",
+      "TASK-536",
+      "TASK-537",
+      "TASK-538",
+      "TASK-539"
+    ],
+    "completedAt": "2026-04-14T01:00:00Z"
+  },
+  "TASK-529": {
+    "id": "TASK-529",
+    "planId": "PLAN-069",
+    "title": "Add 4 missing brain HTTP routes and handlers",
+    "role": "backend",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:10:00Z",
+    "completedAt": "2026-04-14T00:30:00Z"
+  },
+  "TASK-530": {
+    "id": "TASK-530",
+    "planId": "PLAN-069",
+    "title": "Implement 4 stub methods in brain_client.go",
+    "role": "backend",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:10:00Z",
+    "completedAt": "2026-04-14T00:30:00Z"
+  },
+  "TASK-531": {
+    "id": "TASK-531",
+    "planId": "PLAN-069",
+    "title": "Fix app.go GetFocusedContext bug and unexport With*Service setters",
+    "role": "backend",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:10:00Z",
+    "completedAt": "2026-04-14T00:30:00Z"
+  },
+  "TASK-532": {
+    "id": "TASK-532",
+    "planId": "PLAN-069",
+    "title": "Fix howto_brief phantom parameter names",
+    "role": "mcp",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:10:00Z",
+    "completedAt": "2026-04-14T00:30:00Z"
+  },
+  "TASK-533": {
+    "id": "TASK-533",
+    "planId": "PLAN-069",
+    "title": "Add missing brain CLI subcommands (init, list, delete, context, file-map)",
+    "role": "cli",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:30:00Z",
+    "completedAt": "2026-04-14T00:45:00Z"
+  },
+  "TASK-534": {
+    "id": "TASK-534",
+    "planId": "PLAN-069",
+    "title": "Add 4 missing brain routes to buildHowToDoc",
+    "role": "docs",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:30:00Z",
+    "completedAt": "2026-04-14T00:45:00Z"
+  },
+  "TASK-535": {
+    "id": "TASK-535",
+    "planId": "PLAN-069",
+    "title": "Write brain HTTP handler tests",
+    "role": "qa",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:45:00Z",
+    "completedAt": "2026-04-14T01:00:00Z"
+  },
+  "TASK-536": {
+    "id": "TASK-536",
+    "planId": "PLAN-069",
+    "title": "Write SQLite knowledge repository tests",
+    "role": "qa",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:45:00Z",
+    "completedAt": "2026-04-14T01:00:00Z"
+  },
+  "TASK-537": {
+    "id": "TASK-537",
+    "planId": "PLAN-069",
+    "title": "Expand brain_service_test.go (SearchKnowledge, InitProject, GetStatus)",
+    "role": "qa",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:45:00Z",
+    "completedAt": "2026-04-14T01:00:00Z"
+  },
+  "TASK-538": {
+    "id": "TASK-538",
+    "planId": "PLAN-069",
+    "title": "Add search_knowledge MCP + re-ingest dedup E2E cases",
+    "role": "qa",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:45:00Z",
+    "completedAt": "2026-04-14T01:00:00Z"
+  },
+  "TASK-539": {
+    "id": "TASK-539",
+    "planId": "PLAN-069",
+    "title": "SQLite quality: explicit BM25 ORDER BY + UpdateKnowledge token_count recompute",
+    "role": "quality",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:45:00Z",
+    "completedAt": "2026-04-14T01:00:00Z"
   }
 }

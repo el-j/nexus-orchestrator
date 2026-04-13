@@ -251,14 +251,14 @@ func (a *App) UpdateTaskStatus(taskID string, sessionID string, status string, l
 	return t, nil
 }
 
-// WithActivityService injects an ActivityService into the App for observatory bindings.
-func (a *App) WithActivityService(svc *services.ActivityService) *App {
+// withActivityService injects an ActivityService into the App for observatory bindings.
+func (a *App) withActivityService(svc *services.ActivityService) *App {
 	a.activitySvc = svc
 	return a
 }
 
-// WithBrainService injects a BrainService into the App for project knowledge intelligence.
-func (a *App) WithBrainService(svc ports.BrainService) *App {
+// withBrainService injects a BrainService into the App for project knowledge intelligence.
+func (a *App) withBrainService(svc ports.BrainService) *App {
 	a.brainSvc = svc
 	return a
 }
@@ -295,7 +295,7 @@ func (a *App) GetFocusedContext(projectPath, question string, maxTokens int) (do
 	if a.brainSvc == nil {
 		return domain.ContextResponse{}, fmt.Errorf("brain service not available")
 	}
-	return a.brainSvc.GetContext(context.Background(), domain.ContextQuery{
+	return a.brainSvc.GetFocusedContext(context.Background(), domain.ContextQuery{
 		ProjectPath: projectPath,
 		Question:    question,
 		MaxTokens:   maxTokens,

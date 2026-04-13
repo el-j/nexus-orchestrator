@@ -143,6 +143,9 @@ func (r *KnowledgeRepo) GetByID(ctx context.Context, id string) (domain.ProjectK
 
 // UpdateKnowledge replaces the mutable fields of an existing entry.
 func (r *KnowledgeRepo) UpdateKnowledge(ctx context.Context, k domain.ProjectKnowledge) error {
+	if len(k.Content) > 0 {
+		k.TokenCount = len(k.Content) / 4
+	}
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE project_knowledge
 		SET kind = ?, topic = ?, content = ?, source = ?, token_count = ?, relevance_score = ?, updated_at = ?
@@ -208,7 +211,7 @@ func (r *KnowledgeRepo) SearchFTS(ctx context.Context, projectPath, query string
 		JOIN project_knowledge_fts fts ON pk.rowid = fts.rowid
 		WHERE project_knowledge_fts MATCH ?
 		  AND pk.project_path = ?
-		ORDER BY bm25(project_knowledge_fts)
+		ORDER BY bm25(project_knowledge_fts) ASC
 		LIMIT ?`,
 		query, filepath.Clean(projectPath), maxResults,
 	)

@@ -137,4 +137,60 @@ func TestBlackboxBrainE2E(t *testing.T) {
 	if len(mcpCtxRes.Sections) != 2 {
 		t.Fatalf("expected 2 sections via mcp context, got %d", len(mcpCtxRes.Sections))
 	}
+
+	// 7. Re-ingest dedup: ingesting the same file again must not create duplicate entries.
+	resp, body = httpJSON(t, client, http.MethodPost, stack.httpSrv.URL+"/api/brain/ingest", ingestReq)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 from re-ingest, got %d: %s", resp.StatusCode, string(body))
+	}
+	resp, body = httpJSON(t, client, http.MethodGet, stack.httpSrv.URL+"/api/brain/status?projectPath="+projectPath, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 from status after re-ingest, got %d: %s", resp.StatusCode, string(body))
+	}
+	var statusAfterReIngest domain.BrainStatus
+	if err := json.Unmarshal(body, &statusAfterReIngest); err != nil {
+		t.Fatalf("decode status response after re-ingest: %v", err)
+	}
+	if statusAfterReIngest.EntryCount != 2 {
+		t.Fatalf("re-ingest dedup: expected 2 entries, got %d", statusAfterReIngest.EntryCount)
+	}
+
+	// 8. Search via HTTP.
+	resp, body = httpJSON(t, client, http.MethodGet,
+		stack.httpSrv.URL+"/api/brain/search?projectPath="+projectPath+"&q=architecture&limit=5", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 from search, got %d: %s", resp.StatusCode, string(body))
+	}
+	var searchRes struct {
+		Results []domain.ProjectKnowledge `json:"results"`
+	}
+	if err := json.Unmarshal(body, &searchRes); err != nil {
+		t.Fatalf("decode search response: %v", err)
+	}
+	if len(searchRes.Results) < 1 {
+		t.Fatalf("expected at least 1 search result for 'architecture', got %d", len(searchRes.Results))
+	}
+
+	// 9. Search via MCP.
+	mcpSearch := postRPC(t, stack.mcpSrv.URL, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      3,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "search_knowledge",
+			"arguments": map[string]any{
+				"projectPath": projectPath,
+				"query":       "architecture",
+				"limit":       3,
+			},
+		},
+	})
+	if mcpSearch.Error != nil {
+		t.Fatalf("unexpected search_knowledge error: %+v", mcpSearch.Error)
+	}
+	var mcpSearchResults []domain.ProjectKnowledge
+	decodeToolPayload(t, mcpSearch.Result, &mcpSearchResults)
+	if len(mcpSearchResults) < 1 {
+		t.Fatalf("expected at least 1 search result via mcp search_knowledge, got %d", len(mcpSearchResults))
+	}
 }

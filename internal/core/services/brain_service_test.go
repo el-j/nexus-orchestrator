@@ -185,3 +185,90 @@ func TestBrainService_GetFocusedContext(t *testing.T) {
 		t.Errorf("Expected 1 section, got %d", len(resp.Sections))
 	}
 }
+
+func TestBrainService_SearchKnowledge(t *testing.T) {
+	repo := &mockKnowledgeRepo{}
+	b := services.NewBrainService(repo, nil)
+	ctx := context.Background()
+
+	// Seed 3 entries, each with TokenCount=10; a maxTokens budget of 25 fits exactly 2.
+	repo.entries = []domain.ProjectKnowledge{
+		{ProjectPath: "/proj", Kind: domain.KnowledgeArchitecture, Topic: "Topic A", Content: "Content A", TokenCount: 10},
+		{ProjectPath: "/proj", Kind: domain.KnowledgeConvention, Topic: "Topic B", Content: "Content B", TokenCount: 10},
+		{ProjectPath: "/proj", Kind: domain.KnowledgeLearning, Topic: "Topic C", Content: "Content C", TokenCount: 10},
+	}
+
+	results, err := b.SearchKnowledge(ctx, "/proj", "some-query", 25)
+	if err != nil {
+		t.Fatalf("SearchKnowledge: %v", err)
+	}
+	if len(results) > 2 {
+		t.Errorf("Expected <= 2 results within token budget, got %d", len(results))
+	}
+}
+
+func TestBrainService_InitProject_AutoDetect(t *testing.T) {
+	repo := &mockKnowledgeRepo{}
+	b := services.NewBrainService(repo, nil)
+	ctx := context.Background()
+
+	tempDir := t.TempDir()
+	filePath := filepath.Join(tempDir, "CLAUDE.md")
+	content := `# Project Overview
+This is the project overview section with enough text to pass the length check.
+
+## Architecture
+We use hexagonal architecture with strict domain isolation.
+All business logic lives in the domain package and is framework-free.
+
+## Conventions
+Follow standard Go naming conventions.
+All errors must be wrapped with fmt.Errorf and a contextual prefix.
+`
+	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	// Empty claudeMDPath triggers auto-detection of CLAUDE.md in tempDir.
+	status, err := b.InitProject(ctx, tempDir, "")
+	if err != nil {
+		t.Fatalf("InitProject: %v", err)
+	}
+	// The mock GetStatus returns repo.status which defaults to zero values;
+	// but IngestFromFile will have populated repo.entries, so verify indirectly
+	// that at least one entry was ingested.
+	_ = status
+	if len(repo.entries) == 0 {
+		t.Errorf("Expected entries to be ingested after InitProject, got 0")
+	}
+}
+
+func TestBrainService_GetStatus(t *testing.T) {
+	repo := &mockKnowledgeRepo{
+		status: domain.BrainStatus{EntryCount: 5, TotalTokens: 1000},
+	}
+	b := services.NewBrainService(repo, nil)
+	ctx := context.Background()
+
+	status, err := b.GetStatus(ctx, "/proj")
+	if err != nil {
+		t.Fatalf("GetStatus: %v", err)
+	}
+	if status.EntryCount != 5 {
+		t.Errorf("Expected EntryCount=5, got %d", status.EntryCount)
+	}
+	if status.TotalTokens != 1000 {
+		t.Errorf("Expected TotalTokens=1000, got %d", status.TotalTokens)
+	}
+}
+
+func TestBrainService_IngestFromFile_FileNotFound(t *testing.T) {
+	repo := &mockKnowledgeRepo{}
+	b := services.NewBrainService(repo, nil)
+	ctx := context.Background()
+
+	_, err := b.IngestFromFile(ctx, "/proj", "/nonexistent/path/file.md")
+	if err == nil {
+		t.Error("Expected error for non-existent file, got nil")
+	}
+}

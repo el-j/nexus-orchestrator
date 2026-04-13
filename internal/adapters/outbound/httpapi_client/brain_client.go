@@ -95,7 +95,7 @@ func (r *BrainClient) GetFocusedContext(ctx context.Context, q domain.ContextQue
 }
 
 func (r *BrainClient) IngestKnowledge(ctx context.Context, k domain.ProjectKnowledge) (domain.ProjectKnowledge, error) {
-	return domain.ProjectKnowledge{}, fmt.Errorf("IngestKnowledge not implemented in client")
+	return domain.ProjectKnowledge{}, fmt.Errorf("brain_client: IngestKnowledge: direct knowledge upsert not supported via HTTP client; use IngestFromFile")
 }
 
 func (r *BrainClient) IngestFromFile(ctx context.Context, projectPath, filePath string) (int, error) {
@@ -144,11 +144,48 @@ func (r *BrainClient) SearchKnowledge(ctx context.Context, projectPath, query st
 }
 
 func (r *BrainClient) GetFileMap(ctx context.Context, projectPath, focusArea string) ([]string, error) {
-	return nil, fmt.Errorf("GetFileMap not implemented in client")
+	u := fmt.Sprintf("/api/brain/file-map?projectPath=%s&focusArea=%s", url.QueryEscape(projectPath), url.QueryEscape(focusArea))
+	req, err := r.newRequest(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, fmt.Errorf("brain_client: GetFileMap: %w", err)
+	}
+	resp, err := r.do(req)
+	if err != nil {
+		return nil, fmt.Errorf("brain_client: GetFileMap: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("brain_client: GetFileMap: remote status %d", resp.StatusCode)
+	}
+	var out struct {
+		FilePaths []string `json:"filePaths"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, fmt.Errorf("brain_client: GetFileMap: %w", err)
+	}
+	return out.FilePaths, nil
 }
 
 func (r *BrainClient) InitProject(ctx context.Context, projectPath, claudeMDPath string) (domain.BrainStatus, error) {
-	return domain.BrainStatus{}, fmt.Errorf("InitProject not implemented in client")
+	body, _ := json.Marshal(map[string]string{"projectPath": projectPath, "claudeMDPath": claudeMDPath})
+	req, err := r.newRequest(ctx, http.MethodPost, "/api/brain/init", body)
+	if err != nil {
+		return domain.BrainStatus{}, fmt.Errorf("brain_client: InitProject: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := r.do(req)
+	if err != nil {
+		return domain.BrainStatus{}, fmt.Errorf("brain_client: InitProject: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return domain.BrainStatus{}, fmt.Errorf("brain_client: InitProject: remote status %d", resp.StatusCode)
+	}
+	var out domain.BrainStatus
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return domain.BrainStatus{}, fmt.Errorf("brain_client: InitProject: %w", err)
+	}
+	return out, nil
 }
 
 func (r *BrainClient) GetStatus(ctx context.Context, projectPath string) (domain.BrainStatus, error) {
@@ -173,9 +210,41 @@ func (r *BrainClient) GetStatus(ctx context.Context, projectPath string) (domain
 }
 
 func (r *BrainClient) ListKnowledge(ctx context.Context, projectPath, kind string) ([]domain.ProjectKnowledge, error) {
-	return nil, fmt.Errorf("ListKnowledge not implemented in client")
+	u := fmt.Sprintf("/api/brain/knowledge?projectPath=%s&kind=%s", url.QueryEscape(projectPath), url.QueryEscape(kind))
+	req, err := r.newRequest(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, fmt.Errorf("brain_client: ListKnowledge: %w", err)
+	}
+	resp, err := r.do(req)
+	if err != nil {
+		return nil, fmt.Errorf("brain_client: ListKnowledge: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("brain_client: ListKnowledge: remote status %d", resp.StatusCode)
+	}
+	var out []domain.ProjectKnowledge
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, fmt.Errorf("brain_client: ListKnowledge: %w", err)
+	}
+	if out == nil {
+		out = []domain.ProjectKnowledge{}
+	}
+	return out, nil
 }
 
 func (r *BrainClient) DeleteKnowledge(ctx context.Context, id string) error {
-	return fmt.Errorf("DeleteKnowledge not implemented in client")
+	req, err := r.newRequest(ctx, http.MethodDelete, "/api/brain/knowledge/"+url.PathEscape(id), nil)
+	if err != nil {
+		return fmt.Errorf("brain_client: DeleteKnowledge: %w", err)
+	}
+	resp, err := r.do(req)
+	if err != nil {
+		return fmt.Errorf("brain_client: DeleteKnowledge: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("brain_client: DeleteKnowledge: remote status %d", resp.StatusCode)
+	}
+	return nil
 }

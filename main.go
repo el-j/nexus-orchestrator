@@ -180,8 +180,8 @@ func run() error {
 
 	// 4. Initialise Wails app binding
 	app := NewApp(orchestratorSvc, httpAddr).
-		WithActivityService(activitySvc).
-		WithBrainService(brainSvc)
+		withActivityService(activitySvc).
+		withBrainService(brainSvc)
 
 	trayAdapter := tray.NewTrayAdapter(orchestratorSvc, func() {
 		app.ShowWindow()

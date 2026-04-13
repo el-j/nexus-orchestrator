@@ -758,9 +758,9 @@ func (s *Server) toolHowtoBrief() (callToolResult, error) {
 You are connected to nexusOrchestrator, an AI task orchestration server.
 
 FIRST STEPS (run in order):
-  1. get_project_context {"project_path": "/path/to/project"}
+  1. get_project_context {"projectPath": "/path/to/project"}
      → Returns active plan, task counts, guidance.
-  2. get_focused_context {"task_id": "TASK-NNN"}
+  2. get_focused_context {"projectPath": "/path/to/project", "question": "TASK-NNN implementation"}
      → Returns implementation steps + files to read for one task.
   3. claim_task {"task_id": "TASK-NNN", "session_id": "your-session-id"}
      → Marks the task as yours (PROCESSING).
@@ -775,6 +775,9 @@ KEY TOOLS:
   get_queue          — list queued tasks (compact, prefer over get_all_tasks)
   submit_task        — queue a new task for an LLM
   health             — ping daemon
+  get_brain_status    — get project knowledge base status
+  ingest_knowledge    — ingest a markdown file into project brain
+  search_knowledge    — full-text search the project knowledge base
   register_model_capabilities — store your context window size
   get_model_capabilities      — look up known model profiles
 
