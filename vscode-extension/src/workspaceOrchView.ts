@@ -10,7 +10,7 @@ import type {
   OrchestratorTask,
 } from './workspaceScanner';
 import { WorkspaceScanner } from './workspaceScanner';
-import type { NexusClient, Task, AIActivity } from './nexusClient';
+import type { NexusClient, Task, AIActivity, BrainStatus } from './nexusClient';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -34,6 +34,7 @@ type OrchNode =
   | EmptyNode
   | LiveTasksGroupNode
   | LiveTaskItem
+  | ProjectBrainNode
   | LiveActivityGroupNode
   | ActivityItemNode;
 
@@ -88,6 +89,31 @@ class ActivePlanNode extends vscode.TreeItem {
     this.description = plan.id;
     this.iconPath = planIcon(plan.status);
     this.contextValue = 'nexusActivePlan';
+  }
+}
+
+class ProjectBrainNode extends vscode.TreeItem {
+  readonly kind = 'projectBrain' as const;
+  constructor(
+    public readonly status: BrainStatus,
+    public readonly projectPath: string,
+  ) {
+    super('Project Brain', vscode.TreeItemCollapsibleState.None);
+    if (!status.initialized) {
+      this.description = 'Uninitialized';
+      this.tooltip = 'Click to Sync/Ingest Knowledge';
+    } else {
+      this.description = `${status.entryCount} entries · ${status.totalTokens} tokens`;
+      const date = status.lastUpdated ? new Date(status.lastUpdated).toLocaleString() : 'N/A';
+      this.tooltip = `Last Synchronized: ${date}`;
+    }
+    this.iconPath = new vscode.ThemeIcon('library');
+    this.contextValue = 'nexusProjectBrain';
+    this.command = {
+      title: 'Sync Nexus Brain',
+      command: 'nexus.brain.ingest',
+      arguments: [projectPath],
+    };
   }
 }
 
@@ -208,6 +234,7 @@ export class WorkspaceOrchViewProvider implements vscode.TreeDataProvider<OrchNo
   private readonly _onDidChangeTreeData = new vscode.EventEmitter<OrchNode | undefined>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
   private liveActivities = new Map<string, AIActivity[]>();
+  private brainStatuses = new Map<string, BrainStatus>();
 
   constructor(
     private readonly scanner: WorkspaceScanner,
@@ -225,6 +252,13 @@ export class WorkspaceOrchViewProvider implements vscode.TreeDataProvider<OrchNo
           .getActivities({ projectPath: orch.folderPath, limit: 10 })
           .then((acts) => {
             this.liveActivities.set(orch.folderPath, acts);
+          })
+          .catch(() => {});
+
+        this.client
+          .getBrainStatus(orch.folderPath)
+          .then((status) => {
+            this.brainStatuses.set(orch.folderPath, status);
           })
           .catch(() => {});
       }
@@ -299,6 +333,17 @@ export class WorkspaceOrchViewProvider implements vscode.TreeDataProvider<OrchNo
       if (activePlan) {
         children.push(new ActivePlanNode(activePlan));
       }
+
+      if (this.client) {
+        try {
+          const bstat = await this.client.getBrainStatus(element.orch.folderPath);
+          this.brainStatuses.set(element.orch.folderPath, bstat);
+          children.push(new ProjectBrainNode(bstat, element.orch.folderPath));
+        } catch {
+          // Daemon offline
+        }
+      }
+
       const historical = allPlans.filter((p) => p.id !== activePlan?.id);
       if (historical.length > 0) {
         children.push(new HistoryNode(historical));
@@ -334,6 +379,10 @@ export class WorkspaceOrchViewProvider implements vscode.TreeDataProvider<OrchNo
     }
 
     if (element.kind === 'activityItem') {
+      return [];
+    }
+
+    if (element.kind === 'projectBrain') {
       return [];
     }
 

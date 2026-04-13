@@ -1,7 +1,7 @@
 ---
 id: TASK-508
 plan: PLAN-065
-status: todo
+status: done
 wave: 4
 priority: 1
 ---

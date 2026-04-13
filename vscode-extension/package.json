@@ -111,6 +111,11 @@
         "command": "nexus.reconnect",
         "title": "Nexus: Reconnect to Daemon",
         "category": "Nexus"
+      },
+      {
+        "command": "nexus.brain.ingest",
+        "title": "Nexus: Ingest Knowledge into Brain",
+        "icon": "$(cloud-upload)"
       }
     ],
     "menus": {
@@ -164,6 +169,11 @@
         {
           "command": "nexus.delegateToNexus",
           "when": "view == nexus.aiSessions && viewItem == aiSession",
+          "group": "inline"
+        },
+        {
+          "command": "nexus.brain.ingest",
+          "when": "viewItem == nexusProjectBrain",
           "group": "inline"
         }
       ]

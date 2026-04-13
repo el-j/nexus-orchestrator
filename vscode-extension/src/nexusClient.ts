@@ -119,6 +119,51 @@ export interface RegisterSessionRequest {
   modelId?: string;
 }
 
+// ---- Brain Context types ----
+
+export interface BrainStatus {
+  projectPath: string;
+  initialized: boolean;
+  entryCount: number;
+  kindCounts: Record<string, number>;
+  totalTokens: number;
+  lastUpdated?: string;
+}
+
+export interface ContextQuery {
+  projectPath: string;
+  question?: string;
+  maxTokens?: number;
+}
+
+export interface ContextSection {
+  title: string;
+  kind: string;
+  content: string;
+  tokens: number;
+  source: string;
+}
+
+export interface ContextResponse {
+  projectPath: string;
+  sections: ContextSection[];
+  totalTokens: number;
+  truncated: boolean;
+}
+
+export interface KnowledgeResult {
+  id: string;
+  projectPath: string;
+  kind: string;
+  topic: string;
+  content: string;
+  source: string;
+  tokens: number;
+  relevance: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ---- Internal response shape from POST /api/tasks ----
 
 interface CreateTaskResponse {
@@ -427,6 +472,64 @@ export class NexusClient {
     } catch {
       return false;
     }
+  }
+
+  // ---- Brain APIs ----
+
+  /**
+   * Ingest a markdown file into the project's brain context.
+   */
+  async ingestKnowledge(projectPath: string, filePath: string): Promise<number> {
+    const data = await this.post<{ ingestedSections: number }>('/api/brain/ingest', {
+      projectPath,
+      filePath,
+    });
+    return data.ingestedSections;
+  }
+
+  /**
+   * Get the indexing status and token size of the project knowledge brain.
+   */
+  async getBrainStatus(projectPath: string): Promise<BrainStatus> {
+    return this.get<BrainStatus>(
+      `/api/brain/status?projectPath=${encodeURIComponent(projectPath)}`,
+    );
+  }
+
+  /**
+   * Aggregate the top-level macro context for LLM system prompts.
+   */
+  async getProjectContext(projectPath: string, maxTokens?: number): Promise<ContextResponse> {
+    return this.post<ContextResponse>('/api/brain/context', { projectPath, maxTokens });
+  }
+
+  /**
+   * Query bounded context sections specific to a reasoning question.
+   */
+  async getFocusedContext(
+    projectPath: string,
+    question: string,
+    maxTokens?: number,
+  ): Promise<ContextResponse> {
+    return this.post<ContextResponse>('/api/brain/focused-context', {
+      projectPath,
+      question,
+      maxTokens,
+    });
+  }
+
+  /**
+   * Search project intelligence via BM25 matching.
+   */
+  async searchKnowledge(
+    projectPath: string,
+    query: string,
+    limit?: number,
+  ): Promise<ContextSection[]> {
+    const lim = limit ? `&limit=${limit}` : '';
+    return this.get<ContextSection[]>(
+      `/api/brain/search?projectPath=${encodeURIComponent(projectPath)}&q=${encodeURIComponent(query)}${lim}`,
+    );
   }
 
   // ---- Private helpers ----

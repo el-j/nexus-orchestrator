@@ -310,6 +310,37 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }),
   );
+
+  // ── nexus.brain.ingest ───────────────────────────────────────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand('nexus.brain.ingest', async (projectPath?: string) => {
+      const path = projectPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (!path) {
+        vscode.window.showErrorMessage('Nexus Brain: No workspace folder found.');
+        return;
+      }
+      const fileUris = await vscode.window.showOpenDialog({
+        canSelectMany: false,
+        canSelectFiles: true,
+        canSelectFolders: false,
+        filters: { Markdown: ['md'], 'All Files': ['*'] },
+        openLabel: 'Ingest into Nexus Brain',
+        defaultUri: vscode.Uri.file(path),
+      });
+      if (!fileUris || fileUris.length === 0) return;
+      const filePath = fileUris[0].fsPath;
+      try {
+        const count = await getClient().ingestKnowledge(path, filePath);
+        vscode.window.showInformationMessage(
+          `Nexus Brain: Ingested ${count} sections from ${filePath}`,
+        );
+        workspaceOrchProvider.refresh();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        vscode.window.showErrorMessage(`Nexus Brain: Ingest failed — ${msg}`);
+      }
+    }),
+  );
 }
 
 export function deactivate(): Promise<void> | void {
