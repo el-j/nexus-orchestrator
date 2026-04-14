@@ -71,6 +71,14 @@ const routes: AppRoute[] = [
     component: () => import('../views/BacklogView.vue'),
   },
   {
+    icon: 'pi-database',
+    name: 'brain',
+    path: '/brain',
+    label: 'Brain',
+    nav: true,
+    component: () => import('../views/BrainView.vue'),
+  },
+  {
     icon: 'pi-cog',
     name: 'settings',
     path: '/settings',

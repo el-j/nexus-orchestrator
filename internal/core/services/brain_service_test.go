@@ -272,3 +272,82 @@ func TestBrainService_IngestFromFile_FileNotFound(t *testing.T) {
 		t.Error("Expected error for non-existent file, got nil")
 	}
 }
+
+func TestBrainService_ListKnowledge(t *testing.T) {
+	repo := &mockKnowledgeRepo{}
+	b := services.NewBrainService(repo, nil)
+	ctx := context.Background()
+
+	// Seed entries of different kinds
+	repo.entries = []domain.ProjectKnowledge{
+		{ID: "1", ProjectPath: "/proj", Kind: domain.KnowledgeConvention, Topic: "Conv1", Content: "Convention content one"},
+		{ID: "2", ProjectPath: "/proj", Kind: domain.KnowledgeArchitecture, Topic: "Arch1", Content: "Architecture content"},
+		{ID: "3", ProjectPath: "/proj", Kind: domain.KnowledgeConvention, Topic: "Conv2", Content: "Convention content two"},
+		{ID: "4", ProjectPath: "/proj", Kind: domain.KnowledgeLearning, Topic: "Learn1", Content: "Learning content"},
+	}
+
+	results, err := b.ListKnowledge(ctx, "/proj", "convention")
+	if err != nil {
+		t.Fatalf("ListKnowledge: %v", err)
+	}
+
+	if len(results) != 2 {
+		t.Errorf("Expected 2 convention entries, got %d", len(results))
+	}
+	for _, r := range results {
+		if r.Kind != domain.KnowledgeConvention {
+			t.Errorf("Expected kind=convention, got %q", r.Kind)
+		}
+	}
+}
+
+func TestBrainService_DeleteKnowledge(t *testing.T) {
+	repo := &mockKnowledgeRepo{}
+	b := services.NewBrainService(repo, nil)
+	ctx := context.Background()
+
+	// Seed one entry
+	repo.entries = []domain.ProjectKnowledge{
+		{ID: "del-1", ProjectPath: "/proj", Kind: domain.KnowledgeConvention, Topic: "ToDelete", Content: "Delete me"},
+	}
+
+	err := b.DeleteKnowledge(ctx, "del-1")
+	if err != nil {
+		t.Fatalf("DeleteKnowledge: %v", err)
+	}
+
+	// Verify the repo no longer has that entry
+	_, err = repo.GetByID(ctx, "del-1")
+	if err == nil {
+		t.Error("Expected ErrNotFound after deletion, got nil")
+	}
+	if err != domain.ErrNotFound {
+		t.Errorf("Expected domain.ErrNotFound, got: %v", err)
+	}
+}
+
+func TestBrainService_GetFileMap(t *testing.T) {
+	repo := &mockKnowledgeRepo{}
+	b := services.NewBrainService(repo, nil)
+	ctx := context.Background()
+
+	// Seed entries with Kind=KnowledgeFileMap and Content containing file paths
+	repo.entries = []domain.ProjectKnowledge{
+		{ID: "fm-1", ProjectPath: "/proj", Kind: domain.KnowledgeFileMap, Topic: "File Map", Content: "cmd/main.go\ninternal/core/domain/"},
+		{ID: "fm-2", ProjectPath: "/proj", Kind: domain.KnowledgeFileMap, Topic: "Another Map", Content: "internal/adapters/"},
+		{ID: "other-1", ProjectPath: "/proj", Kind: domain.KnowledgeConvention, Topic: "Conv", Content: "Not a file path"},
+	}
+
+	paths, err := b.GetFileMap(ctx, "/proj", "")
+	if err != nil {
+		t.Fatalf("GetFileMap: %v", err)
+	}
+
+	if len(paths) == 0 {
+		t.Error("Expected non-empty paths slice, got empty")
+	}
+	// Verify only file_map content is returned (2 entries)
+	if len(paths) != 2 {
+		t.Errorf("Expected 2 file map paths, got %d", len(paths))
+	}
+}

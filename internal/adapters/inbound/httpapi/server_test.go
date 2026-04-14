@@ -76,6 +76,16 @@ type mockOrchestrator struct {
 
 	purgeCount int
 	purgeErr   error
+
+	addProviderConfigResult domain.ProviderConfig
+	addProviderConfigErr    error
+
+	updateProviderConfigErr error
+
+	removeProviderConfigErr error
+
+	listProviderConfigsResult []domain.ProviderConfig
+	listProviderConfigsErr    error
 }
 
 func (m *mockOrchestrator) SubmitTask(_ domain.Task) (string, error) {
@@ -111,19 +121,25 @@ func (m *mockOrchestrator) GetProviderModels(_ string) ([]string, error) {
 }
 
 func (m *mockOrchestrator) AddProviderConfig(_ context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
+	if m.addProviderConfigErr != nil {
+		return domain.ProviderConfig{}, m.addProviderConfigErr
+	}
+	if m.addProviderConfigResult.Name != "" {
+		return m.addProviderConfigResult, nil
+	}
 	return cfg, nil
 }
 
 func (m *mockOrchestrator) UpdateProviderConfig(_ context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
-	return cfg, nil
+	return cfg, m.updateProviderConfigErr
 }
 
 func (m *mockOrchestrator) RemoveProviderConfig(_ context.Context, _ string) error {
-	return nil
+	return m.removeProviderConfigErr
 }
 
 func (m *mockOrchestrator) ListProviderConfigs(_ context.Context) ([]domain.ProviderConfig, error) {
-	return nil, nil
+	return m.listProviderConfigsResult, m.listProviderConfigsErr
 }
 func (m *mockOrchestrator) GetDiscoveredProviders() ([]domain.DiscoveredProvider, error) {
 	return m.discoveredProvidersResult, nil

@@ -10,6 +10,7 @@ import type {
   BrainStatus,
   ContextResponse,
   ContextSection,
+  ProjectKnowledge,
 } from './domain';
 import type { DiscoveredProvider } from './domain';
 
@@ -63,6 +64,10 @@ declare global {
             query: string,
             limit: number,
           ): Promise<ContextSection[]>;
+          InitProject(projectPath: string, claudeMDPath: string): Promise<BrainStatus>;
+          ListKnowledge(projectPath: string, kind: string): Promise<ProjectKnowledge[]>;
+          DeleteKnowledge(id: string): Promise<void>;
+          GetFileMap(projectPath: string, focusArea: string): Promise<string[]>;
         };
       };
     };
@@ -358,4 +363,38 @@ export async function searchKnowledge(
   );
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json() as Promise<ContextSection[]>;
+}
+
+export async function initProject(projectPath: string, claudeMDPath = ''): Promise<BrainStatus> {
+  if (isWails()) return window.go!.main!.App!.InitProject(projectPath, claudeMDPath);
+  const r = await fetch('/api/brain/init', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectPath, claudeMDPath }),
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json() as Promise<BrainStatus>;
+}
+
+export async function listKnowledge(projectPath: string, kind = ''): Promise<ProjectKnowledge[]> {
+  if (isWails()) return window.go!.main!.App!.ListKnowledge(projectPath, kind);
+  const query = `projectPath=${encodeURIComponent(projectPath)}${kind ? `&kind=${encodeURIComponent(kind)}` : ''}`;
+  const r = await fetch(`/api/brain/knowledge?${query}`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return ((await r.json()) as ProjectKnowledge[]) ?? [];
+}
+
+export async function deleteKnowledge(id: string): Promise<void> {
+  if (isWails()) return window.go!.main!.App!.DeleteKnowledge(id);
+  const r = await fetch(`/api/brain/knowledge/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+}
+
+export async function getFileMap(projectPath: string, focusArea = ''): Promise<string[]> {
+  if (isWails()) return window.go!.main!.App!.GetFileMap(projectPath, focusArea);
+  const query = `projectPath=${encodeURIComponent(projectPath)}${focusArea ? `&focusArea=${encodeURIComponent(focusArea)}` : ''}`;
+  const r = await fetch(`/api/brain/file-map?${query}`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const data = (await r.json()) as { filePaths: string[] };
+  return data.filePaths ?? [];
 }

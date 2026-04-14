@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -204,6 +205,9 @@ func (r *KnowledgeRepo) GetByProjectAndKind(ctx context.Context, projectPath str
 
 // SearchFTS performs BM25 full-text search within a project up to maxResults.
 func (r *KnowledgeRepo) SearchFTS(ctx context.Context, projectPath, query string, maxResults int) ([]domain.ProjectKnowledge, error) {
+	// Sanitize query: wrap in double-quotes for phrase matching and escape internal quotes.
+	// This prevents FTS5 syntax errors from malformed user input.
+	safeQuery := `"` + strings.ReplaceAll(query, `"`, `""`) + `"`
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT pk.id, pk.project_path, pk.kind, pk.topic, pk.content, pk.source,
 		       pk.token_count, pk.relevance_score, pk.created_at, pk.updated_at
@@ -213,7 +217,7 @@ func (r *KnowledgeRepo) SearchFTS(ctx context.Context, projectPath, query string
 		  AND pk.project_path = ?
 		ORDER BY bm25(project_knowledge_fts) ASC
 		LIMIT ?`,
-		query, filepath.Clean(projectPath), maxResults,
+		safeQuery, filepath.Clean(projectPath), maxResults,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("knowledge_repo: search fts: %w", err)

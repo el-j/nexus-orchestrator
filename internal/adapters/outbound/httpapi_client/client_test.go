@@ -438,3 +438,361 @@ func TestClient_CancelTask_Scenarios(t *testing.T) {
 		})
 	}
 }
+
+func TestClient_GetAllTasks_OK(t *testing.T) {
+	want := []domain.Task{
+		{ID: "t1", Instruction: "first", Status: domain.StatusQueued},
+		{ID: "t2", Instruction: "second", Status: domain.StatusCompleted},
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/tasks/all" {
+			http.Error(w, "wrong route", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(want) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	got, err := c.GetAllTasks()
+	if err != nil {
+		t.Fatalf("GetAllTasks: %v", err)
+	}
+	if len(got) != len(want) {
+		t.Fatalf("expected %d tasks, got %d", len(want), len(got))
+	}
+	if got[0].ID != want[0].ID || got[1].ID != want[1].ID {
+		t.Errorf("unexpected tasks: %+v", got)
+	}
+
+	// non-200 returns error
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv2.Close()
+	if _, err := httpapi_client.NewClient(srv2.URL).GetAllTasks(); err == nil {
+		t.Error("expected error on non-200, got nil")
+	}
+}
+
+func TestClient_GetBacklog_OK(t *testing.T) {
+	const projectPath = "/my/project"
+	want := []domain.Task{
+		{ID: "b1", Instruction: "backlog task", Status: domain.StatusDraft},
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/tasks/backlog" {
+			http.Error(w, "wrong route", http.StatusInternalServerError)
+			return
+		}
+		if got := r.URL.Query().Get("project"); got != projectPath {
+			t.Errorf("expected query param project=%q, got %q", projectPath, got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(want) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	got, err := c.GetBacklog(projectPath)
+	if err != nil {
+		t.Fatalf("GetBacklog: %v", err)
+	}
+	if len(got) != 1 || got[0].ID != want[0].ID {
+		t.Errorf("unexpected backlog: %+v", got)
+	}
+
+	// non-200 returns error
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer srv2.Close()
+	if _, err := httpapi_client.NewClient(srv2.URL).GetBacklog(""); err == nil {
+		t.Error("expected error on non-200, got nil")
+	}
+}
+
+func TestClient_UpdateTask_OK(t *testing.T) {
+	const taskID = "task-upd-1"
+	updates := domain.Task{Instruction: "updated instruction", Status: domain.StatusQueued}
+	returned := domain.Task{ID: taskID, Instruction: "updated instruction", Status: domain.StatusQueued}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut || r.URL.Path != "/api/tasks/"+taskID {
+			http.Error(w, "wrong route", http.StatusInternalServerError)
+			return
+		}
+		assertContentType(t, r)
+		var received domain.Task
+		if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
+			http.Error(w, "bad body", http.StatusBadRequest)
+			return
+		}
+		if received.Instruction != updates.Instruction {
+			t.Errorf("expected instruction %q, got %q", updates.Instruction, received.Instruction)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(returned) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	got, err := c.UpdateTask(taskID, updates)
+	if err != nil {
+		t.Fatalf("UpdateTask: %v", err)
+	}
+	if got.ID != returned.ID {
+		t.Errorf("expected ID %q, got %q", returned.ID, got.ID)
+	}
+
+	// non-200 returns error
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer srv2.Close()
+	if _, err := httpapi_client.NewClient(srv2.URL).UpdateTask("x", domain.Task{}); err == nil {
+		t.Error("expected error on non-200, got nil")
+	}
+}
+
+func TestClient_ListAISessions_OK(t *testing.T) {
+	want := []domain.AISession{
+		{ID: "s1", AgentName: "claude", Status: domain.SessionStatusActive},
+		{ID: "s2", AgentName: "cursor", Status: domain.SessionStatusIdle},
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/ai-sessions" {
+			http.Error(w, "wrong route", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(want) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	got, err := c.ListAISessions(context.Background())
+	if err != nil {
+		t.Fatalf("ListAISessions: %v", err)
+	}
+	if len(got) != len(want) {
+		t.Fatalf("expected %d sessions, got %d", len(want), len(got))
+	}
+	if got[0].ID != want[0].ID || got[1].ID != want[1].ID {
+		t.Errorf("unexpected sessions: %+v", got)
+	}
+
+	// non-200 returns error
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv2.Close()
+	if _, err := httpapi_client.NewClient(srv2.URL).ListAISessions(context.Background()); err == nil {
+		t.Error("expected error on non-200, got nil")
+	}
+}
+
+func TestClient_DeregisterAISession_OK(t *testing.T) {
+	const sessID = "sess-dereg-1"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete || r.URL.Path != "/api/ai-sessions/"+sessID {
+			http.Error(w, "wrong route", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	if err := c.DeregisterAISession(context.Background(), sessID); err != nil {
+		t.Fatalf("DeregisterAISession: %v", err)
+	}
+
+	// non-204 returns error
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv2.Close()
+	if err := httpapi_client.NewClient(srv2.URL).DeregisterAISession(context.Background(), sessID); err == nil {
+		t.Error("expected error on non-204, got nil")
+	}
+}
+
+func TestClient_PurgeDisconnectedSessions_OK(t *testing.T) {
+	const deletedCount = 3
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete || r.URL.Path != "/api/ai-sessions" {
+			http.Error(w, "wrong route", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]int{"deleted": deletedCount}) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	n, err := c.PurgeDisconnectedSessions(context.Background())
+	if err != nil {
+		t.Fatalf("PurgeDisconnectedSessions: %v", err)
+	}
+	if n != deletedCount {
+		t.Errorf("expected deleted=%d, got %d", deletedCount, n)
+	}
+
+	// malformed JSON returns error
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("not-json"))
+	}))
+	defer srv2.Close()
+	if _, err := httpapi_client.NewClient(srv2.URL).PurgeDisconnectedSessions(context.Background()); err == nil {
+		t.Error("expected error on malformed JSON, got nil")
+	}
+}
+
+func TestClient_GetDiscoveredProviders_OK(t *testing.T) {
+	want := []domain.DiscoveredProvider{
+		{ID: "dp-1", Name: "Ollama", Kind: domain.ProviderKindOllama},
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/providers/discovered" {
+			http.Error(w, "wrong route", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(want) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	got, err := c.GetDiscoveredProviders()
+	if err != nil {
+		t.Fatalf("GetDiscoveredProviders: %v", err)
+	}
+	if len(got) != 1 || got[0].ID != want[0].ID {
+		t.Errorf("unexpected providers: %+v", got)
+	}
+
+	// non-200 returns error
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv2.Close()
+	if _, err := httpapi_client.NewClient(srv2.URL).GetDiscoveredProviders(); err == nil {
+		t.Error("expected error on non-200, got nil")
+	}
+}
+
+func TestClient_TriggerScan_OK(t *testing.T) {
+	want := []domain.DiscoveredProvider{
+		{ID: "dp-scan-1", Name: "LM Studio", Kind: domain.ProviderKindLMStudio},
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/providers/discovered/scan" {
+			http.Error(w, "wrong route", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(want) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	got, err := c.TriggerScan(context.Background())
+	if err != nil {
+		t.Fatalf("TriggerScan: %v", err)
+	}
+	if len(got) != 1 || got[0].ID != want[0].ID {
+		t.Errorf("unexpected providers from scan: %+v", got)
+	}
+
+	// non-200/204 returns error
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer srv2.Close()
+	if _, err := httpapi_client.NewClient(srv2.URL).TriggerScan(context.Background()); err == nil {
+		t.Error("expected error on non-200, got nil")
+	}
+}
+
+func TestClient_GetRuntimeConfig_OK(t *testing.T) {
+	want := domain.RuntimeConfig{QueueCap: 50}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/config" {
+			http.Error(w, "wrong route", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]int{"queueCap": want.QueueCap}) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	got, err := c.GetRuntimeConfig(context.Background())
+	if err != nil {
+		t.Fatalf("GetRuntimeConfig: %v", err)
+	}
+	if got.QueueCap != want.QueueCap {
+		t.Errorf("expected QueueCap %d, got %d", want.QueueCap, got.QueueCap)
+	}
+
+	// non-200 returns error
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv2.Close()
+	if _, err := httpapi_client.NewClient(srv2.URL).GetRuntimeConfig(context.Background()); err == nil {
+		t.Error("expected error on non-200, got nil")
+	}
+}
+
+func TestClient_UpdateRuntimeConfig_OK(t *testing.T) {
+	queueCap := 25
+	update := domain.RuntimeConfigUpdate{QueueCap: &queueCap}
+	wantResp := domain.RuntimeConfig{QueueCap: 25, APIToken: "tok-abc"}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut || r.URL.Path != "/api/config" {
+			http.Error(w, "wrong route", http.StatusInternalServerError)
+			return
+		}
+		assertContentType(t, r)
+		var received domain.RuntimeConfigUpdate
+		if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
+			http.Error(w, "bad body", http.StatusBadRequest)
+			return
+		}
+		if received.QueueCap == nil || *received.QueueCap != queueCap {
+			t.Errorf("expected queueCap %d in body", queueCap)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
+			"queueCap": wantResp.QueueCap,
+			"apiToken": wantResp.APIToken,
+		})
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	got, err := c.UpdateRuntimeConfig(context.Background(), update)
+	if err != nil {
+		t.Fatalf("UpdateRuntimeConfig: %v", err)
+	}
+	if got.QueueCap != wantResp.QueueCap {
+		t.Errorf("expected QueueCap %d, got %d", wantResp.QueueCap, got.QueueCap)
+	}
+	if got.APIToken != wantResp.APIToken {
+		t.Errorf("expected APIToken %q, got %q", wantResp.APIToken, got.APIToken)
+	}
+
+	// non-200 returns error
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer srv2.Close()
+	if _, err := httpapi_client.NewClient(srv2.URL).UpdateRuntimeConfig(context.Background(), update); err == nil {
+		t.Error("expected error on non-200, got nil")
+	}
+}

@@ -198,6 +198,7 @@ func (b *BrainServiceImpl) IngestFromFile(ctx context.Context, projectPath, file
 	// Split on "## " to get sections; the first element is preamble before the first ##.
 	raw := strings.Split(string(data), "\n## ")
 	count := 0
+	var sectionErrors []error
 	for i, section := range raw {
 		if i == 0 {
 			// Preamble — skip or treat as convention if non-trivial.
@@ -222,6 +223,8 @@ func (b *BrainServiceImpl) IngestFromFile(ctx context.Context, projectPath, file
 			})
 			if err == nil {
 				count++
+			} else {
+				sectionErrors = append(sectionErrors, err)
 			}
 			continue
 		}
@@ -245,7 +248,12 @@ func (b *BrainServiceImpl) IngestFromFile(ctx context.Context, projectPath, file
 		})
 		if err == nil {
 			count++
+		} else {
+			sectionErrors = append(sectionErrors, err)
 		}
+	}
+	if count == 0 && len(sectionErrors) > 0 {
+		return 0, fmt.Errorf("brain_service: IngestFromFile: all %d sections failed to save: %w", len(sectionErrors), sectionErrors[0])
 	}
 	return count, nil
 }

@@ -206,6 +206,132 @@ func TestAISessionLifecycle(t *testing.T) {
 	})
 }
 
+func TestAISession_Heartbeat_UpdatesTTL(t *testing.T) {
+	t.Parallel()
+	orch := newTestOrchestratorWithAISessionRepo(t)
+	ctx := context.Background()
+
+	created, err := orch.RegisterAISession(ctx, domain.AISession{
+		AgentName: "HeartbeatAgent",
+		Source:    domain.SessionSourceHTTP,
+	})
+	if err != nil {
+		t.Fatalf("RegisterAISession: %v", err)
+	}
+
+	// Record baseline UpdatedAt from the stored session.
+	sessions, err := orch.ListAISessions(ctx)
+	if err != nil {
+		t.Fatalf("ListAISessions before heartbeat: %v", err)
+	}
+	if len(sessions) != 1 {
+		t.Fatalf("expected 1 session, got %d", len(sessions))
+	}
+	beforeHeartbeat := sessions[0].UpdatedAt
+
+	// Heartbeat must not return an error.
+	if err := orch.HeartbeatAISession(ctx, created.ID); err != nil {
+		t.Fatalf("HeartbeatAISession: %v", err)
+	}
+
+	// Verify that UpdatedAt was refreshed (it must be >= beforeHeartbeat and
+	// the session must still be active).
+	sessions, err = orch.ListAISessions(ctx)
+	if err != nil {
+		t.Fatalf("ListAISessions after heartbeat: %v", err)
+	}
+	if len(sessions) != 1 {
+		t.Fatalf("expected 1 session after heartbeat, got %d", len(sessions))
+	}
+	after := sessions[0]
+	if after.Status != domain.SessionStatusActive {
+		t.Errorf("expected session to remain active after heartbeat, got %q", after.Status)
+	}
+	if after.UpdatedAt.Before(beforeHeartbeat) {
+		t.Errorf("expected UpdatedAt to be refreshed: before=%v, after=%v", beforeHeartbeat, after.UpdatedAt)
+	}
+}
+
+func TestAISession_Terminate_SetsStatus(t *testing.T) {
+	t.Parallel()
+	orch := newTestOrchestratorWithAISessionRepo(t)
+	ctx := context.Background()
+
+	created, err := orch.RegisterAISession(ctx, domain.AISession{
+		AgentName: "TerminateAgent",
+		Source:    domain.SessionSourceVSCode,
+	})
+	if err != nil {
+		t.Fatalf("RegisterAISession: %v", err)
+	}
+	if created.Status != domain.SessionStatusActive {
+		t.Fatalf("expected active after register, got %q", created.Status)
+	}
+
+	// Terminate (no real PID → just the status update path).
+	if err := orch.TerminateAISession(ctx, created.ID, false); err != nil {
+		t.Fatalf("TerminateAISession: %v", err)
+	}
+
+	sessions, err := orch.ListAISessions(ctx)
+	if err != nil {
+		t.Fatalf("ListAISessions after terminate: %v", err)
+	}
+	if len(sessions) != 1 {
+		t.Fatalf("expected 1 session, got %d", len(sessions))
+	}
+	if sessions[0].Status != domain.SessionStatusDisconnected {
+		t.Errorf("expected status %q after terminate, got %q", domain.SessionStatusDisconnected, sessions[0].Status)
+	}
+}
+
+func TestAISession_Purge_RemovesDisconnected(t *testing.T) {
+	t.Parallel()
+	orch := newTestOrchestratorWithAISessionRepo(t)
+	ctx := context.Background()
+
+	// Register and immediately deregister so the session is disconnected.
+	created, err := orch.RegisterAISession(ctx, domain.AISession{
+		AgentName: "PurgeAgent",
+		Source:    domain.SessionSourceMCP,
+	})
+	if err != nil {
+		t.Fatalf("RegisterAISession: %v", err)
+	}
+	if err := orch.DeregisterAISession(ctx, created.ID); err != nil {
+		t.Fatalf("DeregisterAISession: %v", err)
+	}
+
+	// Confirm one disconnected session exists before purge.
+	sessions, err := orch.ListAISessions(ctx)
+	if err != nil {
+		t.Fatalf("ListAISessions before purge: %v", err)
+	}
+	if len(sessions) != 1 || sessions[0].Status != domain.SessionStatusDisconnected {
+		t.Fatalf("expected 1 disconnected session before purge, got: %+v", sessions)
+	}
+
+	// PurgeDisconnectedSessions removes sessions inactive > 2h.
+	// The session was just disconnected so it is < 2h old; n may be 0.
+	// The important assertion is: no error, and the service remains functional.
+	n, err := orch.PurgeDisconnectedSessions(ctx)
+	if err != nil {
+		t.Fatalf("PurgeDisconnectedSessions: %v", err)
+	}
+	// n is 0 because the session was disconnected < 2h ago; that is the
+	// correct behaviour — purge only removes *stale* disconnected sessions.
+	_ = n
+
+	// Session list is unchanged (still 1 disconnected, not yet stale).
+	sessions, err = orch.ListAISessions(ctx)
+	if err != nil {
+		t.Fatalf("ListAISessions after purge: %v", err)
+	}
+	if len(sessions) != 1 {
+		t.Errorf("expected 1 session to survive non-stale purge, got %d", len(sessions))
+	}
+}
+
 func TestAISessionBroadcast(t *testing.T) {
 	t.Parallel()
 

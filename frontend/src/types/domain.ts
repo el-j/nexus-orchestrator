@@ -220,3 +220,16 @@ export interface KnowledgeResult {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface ProjectKnowledge {
+  id: string;
+  projectPath: string;
+  kind: string;
+  topic: string;
+  content: string;
+  source?: string;
+  tokenCount: number;
+  relevanceScore: number;
+  createdAt: string;
+  updatedAt: string;
+}

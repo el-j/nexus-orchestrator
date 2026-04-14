@@ -1,9 +1,9 @@
 {
   "version": "2",
-  "updatedAt": "2026-04-14T01:00:00Z",
+  "updatedAt": "2026-04-14T03:00:00Z",
   "counters": {
-    "nextTaskId": 540,
-    "nextPlanId": 70
+    "nextTaskId": 554,
+    "nextPlanId": 71
   },
   "activePlanId": null,
   "notes": [
@@ -5062,5 +5062,144 @@
     "createdAt": "2026-04-14T00:00:00Z",
     "startedAt": "2026-04-14T00:45:00Z",
     "completedAt": "2026-04-14T01:00:00Z"
+  },
+  "PLAN-070": {
+    "id": "PLAN-070",
+    "title": "Comprehensive Gap-Fill \u2014 Docs, MCP Tools, Frontend, Tests, Backend Quality",
+    "goal": "Close all 26 confirmed gaps from 2026-04-14 five-agent swarm audit.",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z",
+    "tasks": [
+      "TASK-540",
+      "TASK-541",
+      "TASK-542",
+      "TASK-543",
+      "TASK-544",
+      "TASK-545",
+      "TASK-546",
+      "TASK-547",
+      "TASK-548",
+      "TASK-549",
+      "TASK-550",
+      "TASK-551",
+      "TASK-552",
+      "TASK-553"
+    ]
+  },
+  "TASK-540": {
+    "id": "TASK-540",
+    "planId": "PLAN-070",
+    "title": "Rebuild mcpTools + endpoints arrays in ApiReferenceView.vue and McpIntegrationView.vue",
+    "role": "docs",
+    "status": "in-progress",
+    "createdAt": "2026-04-14T02:00:00Z",
+    "startedAt": "2026-04-14T03:00:00Z"
+  },
+  "TASK-541": {
+    "id": "TASK-541",
+    "planId": "PLAN-070",
+    "title": "Update api-reference.md, mcp-integration.md, getting-started.md with brain content",
+    "role": "docs",
+    "status": "in-progress",
+    "createdAt": "2026-04-14T02:00:00Z",
+    "startedAt": "2026-04-14T03:00:00Z"
+  },
+  "TASK-542": {
+    "id": "TASK-542",
+    "planId": "PLAN-070",
+    "title": "Add 4 missing brain MCP tools + fix howto full guide enumeration",
+    "role": "mcp",
+    "status": "in-progress",
+    "createdAt": "2026-04-14T02:00:00Z",
+    "startedAt": "2026-04-14T03:00:00Z"
+  },
+  "TASK-543": {
+    "id": "TASK-543",
+    "planId": "PLAN-070",
+    "title": "VS Code: add missing brain nexusClient methods, commands, package.json entries, fix searchKnowledge",
+    "role": "vscode",
+    "status": "in-progress",
+    "createdAt": "2026-04-14T02:00:00Z",
+    "startedAt": "2026-04-14T03:00:00Z"
+  },
+  "TASK-544": {
+    "id": "TASK-544",
+    "planId": "PLAN-070",
+    "title": "Regenerate App.d.ts + models.ts; add 4 Wails App brain method bindings",
+    "role": "frontend",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
+  },
+  "TASK-545": {
+    "id": "TASK-545",
+    "planId": "PLAN-070",
+    "title": "Create useBrain composable + /brain route + wire dead context/search UI code",
+    "role": "frontend",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
+  },
+  "TASK-546": {
+    "id": "TASK-546",
+    "planId": "PLAN-070",
+    "title": "ProjectBrainCard: multi-file ingest, user-visible feedback, init button",
+    "role": "frontend",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
+  },
+  "TASK-547": {
+    "id": "TASK-547",
+    "planId": "PLAN-070",
+    "title": "Fix processNextTask silent errors + IngestFromFile error aggregation + FTS sanitization",
+    "role": "backend",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
+  },
+  "TASK-548": {
+    "id": "TASK-548",
+    "planId": "PLAN-070",
+    "title": "Write brain_client_test.go \u2014 all 13 methods",
+    "role": "qa",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
+  },
+  "TASK-549": {
+    "id": "TASK-549",
+    "planId": "PLAN-070",
+    "title": "MCP brain_tools unit tests + fix E2E FTS search failure",
+    "role": "qa",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
+  },
+  "TASK-550": {
+    "id": "TASK-550",
+    "planId": "PLAN-070",
+    "title": "Brain service: test GetFileMap, ListKnowledge, DeleteKnowledge + CLI brain error paths",
+    "role": "qa",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
+  },
+  "TASK-551": {
+    "id": "TASK-551",
+    "planId": "PLAN-070",
+    "title": "httpapi provider handler tests + activity handler tests",
+    "role": "qa",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
+  },
+  "TASK-552": {
+    "id": "TASK-552",
+    "planId": "PLAN-070",
+    "title": "httpapi_client/client.go coverage + session lifecycle tests",
+    "role": "qa",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
+  },
+  "TASK-553": {
+    "id": "TASK-553",
+    "planId": "PLAN-070",
+    "title": "Fix GetDiscoveredPlanFiles nil/nil + honest tray stub with feature flag",
+    "role": "backend",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
   }
 }

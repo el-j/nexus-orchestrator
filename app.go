@@ -310,6 +310,38 @@ func (a *App) SearchKnowledge(projectPath, query string, limit int) ([]domain.Co
 	return a.brainSvc.SearchKnowledge(context.Background(), projectPath, query, limit)
 }
 
+// InitProject initialises the project brain, optionally seeding from a CLAUDE.md file.
+func (a *App) InitProject(projectPath, claudeMDPath string) (domain.BrainStatus, error) {
+	if a.brainSvc == nil {
+		return domain.BrainStatus{}, fmt.Errorf("brain service not available")
+	}
+	return a.brainSvc.InitProject(context.Background(), projectPath, claudeMDPath)
+}
+
+// ListKnowledge returns all knowledge entries for a project, optionally filtered by kind.
+func (a *App) ListKnowledge(projectPath, kind string) ([]domain.ProjectKnowledge, error) {
+	if a.brainSvc == nil {
+		return nil, fmt.Errorf("brain service not available")
+	}
+	return a.brainSvc.ListKnowledge(context.Background(), projectPath, kind)
+}
+
+// DeleteKnowledge removes a knowledge entry by ID.
+func (a *App) DeleteKnowledge(id string) error {
+	if a.brainSvc == nil {
+		return fmt.Errorf("brain service not available")
+	}
+	return a.brainSvc.DeleteKnowledge(context.Background(), id)
+}
+
+// GetFileMap returns the ordered list of file paths from file_map knowledge entries.
+func (a *App) GetFileMap(projectPath, focusArea string) ([]string, error) {
+	if a.brainSvc == nil {
+		return nil, fmt.Errorf("brain service not available")
+	}
+	return a.brainSvc.GetFileMap(context.Background(), projectPath, focusArea)
+}
+
 // GetRecentActivities returns recent AI activities for the observatory dashboard.
 func (a *App) GetRecentActivities(agentName, projectPath, activityType, sinceRFC3339 string, limit int) ([]domain.AIActivity, error) {
 	if a.activitySvc == nil {

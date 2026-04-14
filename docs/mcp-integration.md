@@ -186,6 +186,71 @@ Reload the VS Code window after saving the configuration.
 }
 ```
 
+## Brain / Project Knowledge Tools
+
+nexusOrchestrator's brain layer indexes your project's documentation into a SQLite FTS5 store. AI agents can query it for token-budgeted, semantically-ranked context before working on tasks.
+
+### Get Brain Status
+
+Check the indexing state and token count for a project's knowledge base.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": { "name": "get_brain_status", "arguments": { "projectPath": "/your/project" } }
+}
+```
+
+### Ingest Knowledge
+
+Parse and ingest a markdown file (e.g. CLAUDE.md) into the project knowledge store.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "ingest_knowledge",
+    "arguments": { "projectPath": "/your/project", "filePath": "/your/project/CLAUDE.md" }
+  }
+}
+```
+
+### Get Project Context
+
+Retrieve the macro context for a project, bounded by a token budget, for use in LLM system prompts.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "get_project_context",
+    "arguments": { "projectPath": "/your/project", "maxTokens": 800 }
+  }
+}
+```
+
+### Search Knowledge
+
+Full-text BM25 search across all ingested knowledge entries for a project.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "search_knowledge",
+    "arguments": { "projectPath": "/your/project", "query": "architecture", "limit": 5 }
+  }
+}
+```
+
 ## Protocol Details
 
 - **Protocol**: JSON-RPC 2.0

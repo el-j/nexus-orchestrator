@@ -355,6 +355,144 @@ Performs BM25 search against the SQLite FTS5 index.
 
 ---
 
+### Get Focused Context
+
+```
+POST /api/brain/focused-context
+```
+
+Get focused context for a project based on a specific question. Returns context sections most relevant to the question, bounded by a token budget.
+
+**Request Body:**
+
+```json
+{
+  "projectPath": "/path/to/project",
+  "question": "How does authentication work?",
+  "maxTokens": 400
+}
+```
+
+| Field         | Required | Description                                     |
+| ------------- | -------- | ----------------------------------------------- |
+| `projectPath` | Yes      | Absolute path to the project directory          |
+| `question`    | Yes      | Question to focus the context retrieval around  |
+| `maxTokens`   | No       | Token budget for returned context (default 400) |
+
+**Response:** `200 OK`
+
+```json
+{
+  "projectPath": "/path/to/project",
+  "sections": [...],
+  "totalTokens": 390,
+  "truncated": false
+}
+```
+
+---
+
+### Initialize Knowledge Base
+
+```
+POST /api/brain/init
+```
+
+Auto-ingest CLAUDE.md and initialize a project's knowledge base. Discovers and ingests the project's CLAUDE.md automatically.
+
+**Request Body:**
+
+```json
+{
+  "projectPath": "/path/to/project",
+  "claudeMDPath": "/path/to/project/CLAUDE.md"
+}
+```
+
+| Field          | Required | Description                                             |
+| -------------- | -------- | ------------------------------------------------------- |
+| `projectPath`  | Yes      | Absolute path to the project directory                  |
+| `claudeMDPath` | No       | Explicit path to CLAUDE.md (auto-discovered if omitted) |
+
+**Response:** `200 OK`
+
+```json
+{
+  "ingestedSections": 8
+}
+```
+
+---
+
+### List Knowledge Entries
+
+```
+GET /api/brain/knowledge?projectPath=/path/to/project&kind=architecture
+```
+
+List all knowledge entries for a project, with optional filtering by kind.
+
+**Query Parameters:**
+
+| Parameter     | Required | Description                                               |
+| ------------- | -------- | --------------------------------------------------------- |
+| `projectPath` | Yes      | Absolute path to the project directory                    |
+| `kind`        | No       | Filter by knowledge kind (e.g. `feature`, `architecture`) |
+
+**Response:** `200 OK`
+
+```json
+[
+  {
+    "id": "1",
+    "title": "Hexagonal Architecture",
+    "kind": "architecture",
+    "source": "CLAUDE.md",
+    "tokens": 120
+  }
+]
+```
+
+---
+
+### Delete Knowledge Entry
+
+```
+DELETE /api/brain/knowledge/{id}
+```
+
+Delete a single knowledge entry by its ID.
+
+**Response:** `204 No Content` on success, `404 Not Found` if the entry does not exist.
+
+---
+
+### Get File Map
+
+```
+GET /api/brain/file-map?projectPath=/path/to/project&focusArea=authentication
+```
+
+Get file path map for a project, optionally filtered to a focus area.
+
+**Query Parameters:**
+
+| Parameter     | Required | Description                                      |
+| ------------- | -------- | ------------------------------------------------ |
+| `projectPath` | Yes      | Absolute path to the project directory           |
+| `focusArea`   | No       | Narrow the map to files relevant to a focus area |
+
+**Response:** `200 OK`
+
+```json
+{
+  "projectPath": "/path/to/project",
+  "files": ["internal/auth/handler.go", "internal/auth/service.go"]
+}
+```
+
+---
+
 ### Dashboard
 
 ```
@@ -382,9 +520,9 @@ Base URL: `http://localhost:63988`
 | Tool                  | Description                                                        | Parameters                                                            |
 | --------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------- |
 | `submit_task`         | Submit a code-generation task                                      | `projectPath`, `targetFile`, `instruction`, `contextFiles`, `command` |
-| `get_task`            | Get task by ID                                                     | `taskId`                                                              |
+| `get_task`            | Get task by ID                                                     | `id`                                                                  |
 | `get_queue`           | List all pending tasks                                             | —                                                                     |
-| `cancel_task`         | Cancel a queued task                                               | `taskId`                                                              |
+| `cancel_task`         | Cancel a queued task                                               | `id`                                                                  |
 | `get_providers`       | List LLM providers                                                 | —                                                                     |
 | `health`              | Check daemon status                                                | —                                                                     |
 | `get_brain_status`    | Retrieve indexing status and token size of project knowledge brain | `projectPath`                                                         |

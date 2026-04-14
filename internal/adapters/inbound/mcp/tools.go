@@ -105,6 +105,14 @@ func (s *Server) handleToolCall(w http.ResponseWriter, r *http.Request, req rpcR
 		result, err = s.toolGetBrainStatus(r.Context(), p.Arguments)
 	case "ingest_knowledge":
 		result, err = s.toolIngestKnowledge(r.Context(), p.Arguments)
+	case "init_project":
+		result, err = s.toolInitProject(r.Context(), p.Arguments)
+	case "list_knowledge":
+		result, err = s.toolListKnowledge(r.Context(), p.Arguments)
+	case "delete_knowledge":
+		result, err = s.toolDeleteKnowledge(r.Context(), p.Arguments)
+	case "get_file_map":
+		result, err = s.toolGetFileMap(r.Context(), p.Arguments)
 	default:
 		writeError(w, req.ID, codeMethodNotFound, fmt.Sprintf("unknown tool: %s", p.Name))
 		return
@@ -724,6 +732,15 @@ ALL AVAILABLE TOOLS
 - get_discovered_agents        list discovered AI agents on this machine
 - delegate_to_nexus            get delegation instruction for an AI session
 - get_discovered_plans         scan for plan/task/orchestration files in a project directory
+- get_project_context          get macro context for a project bounded by a token budget
+- get_focused_context          get task-specific micro context using semantic search
+- search_knowledge             full-text search across the project's knowledge base
+- get_brain_status             check the knowledge repository status for a project
+- ingest_knowledge             parse and ingest a markdown file into the knowledge repository
+- init_project                 auto-ingest CLAUDE.md and init project knowledge base
+- list_knowledge               list all knowledge entries for a project
+- delete_knowledge             delete a knowledge entry by ID
+- get_file_map                 get the project file path map
 
 CLIENT SETUP
 VS Code (GitHub Copilot / Copilot Chat):
@@ -1165,6 +1182,53 @@ func toolList() []toolDef {
 					"filePath":    {Type: "string", Description: "Path to the markdown file to ingest"},
 				},
 				Required: []string{"projectPath", "filePath"},
+			},
+		},
+		{
+			Name:        "init_project",
+			Description: "Auto-ingest CLAUDE.md and initialize a project's knowledge base",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath":  {Type: "string", Description: "Absolute path to the project"},
+					"claudeMDPath": {Type: "string", Description: "Path to CLAUDE.md (optional, auto-detected if empty)"},
+				},
+				Required: []string{"projectPath"},
+			},
+		},
+		{
+			Name:        "list_knowledge",
+			Description: "List all knowledge entries for a project, optionally filtered by kind",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project"},
+					"kind":        {Type: "string", Description: "Knowledge kind filter (optional)"},
+				},
+				Required: []string{"projectPath"},
+			},
+		},
+		{
+			Name:        "delete_knowledge",
+			Description: "Delete a knowledge entry by ID",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"id": {Type: "string", Description: "Knowledge entry ID"},
+				},
+				Required: []string{"id"},
+			},
+		},
+		{
+			Name:        "get_file_map",
+			Description: "Get the file path map for a project from the knowledge base",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project"},
+					"focusArea":   {Type: "string", Description: "Optional focus area filter"},
+				},
+				Required: []string{"projectPath"},
 			},
 		},
 	}
