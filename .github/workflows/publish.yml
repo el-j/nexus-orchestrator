@@ -308,6 +308,7 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
+          CGO_CFLAGS: "-DSQLITE_ENABLE_FTS5"
         run: |
           VERSION="${{ needs.version.outputs.tag }}"
           COMMIT=$(git rev-parse --short HEAD)
@@ -361,6 +362,7 @@ jobs:
             archive_ext: zip
             archive_name: nexus-orchestrator-desktop-darwin-arm64
             wails_tags: ""
+            cgo_ldflags: ""
 
           - os: darwin
             arch: amd64
@@ -369,6 +371,7 @@ jobs:
             archive_ext: zip
             archive_name: nexus-orchestrator-desktop-darwin-amd64
             wails_tags: ""
+            cgo_ldflags: ""
 
           - os: windows
             arch: amd64
@@ -377,6 +380,7 @@ jobs:
             archive_ext: zip
             archive_name: nexus-orchestrator-desktop-windows-amd64
             wails_tags: ""
+            cgo_ldflags: ""
 
           - os: linux
             arch: amd64
@@ -385,6 +389,7 @@ jobs:
             archive_ext: tar.gz
             archive_name: nexus-orchestrator-desktop-linux-amd64
             wails_tags: "webkit2_41"
+            cgo_ldflags: "-lm"
 
     steps:
       - uses: actions/checkout@v6
@@ -410,6 +415,8 @@ jobs:
         shell: bash
         env:
           CGO_ENABLED: "1"
+          CGO_CFLAGS: "-DSQLITE_ENABLE_FTS5"
+          CGO_LDFLAGS: ${{ matrix.cgo_ldflags }}
         run: |
           VERSION="${{ needs.version.outputs.tag }}"
           COMMIT=$(git rev-parse --short HEAD)
