@@ -527,7 +527,7 @@
       "id": "PLAN-047",
       "title": "Comprehensive Codebase Hardening \u2014 Bugs, Stubs, Duplication, MCP Gaps & Test Coverage",
       "goal": "Fix all bugs, stubs, missing implementations, code duplication, MCP gaps, and test coverage issues found in the 2026-03-25 5-agent audit swarm.",
-      "status": "active",
+      "status": "completed",
       "createdAt": "2026-03-25T00:00:00.000Z",
       "taskIds": [
         "TASK-301",
@@ -559,7 +559,7 @@
       "id": "PLAN-048",
       "title": "Middlepoint Sniffer \u2014 Universal Agent & Plan Discovery",
       "goal": "Expand nexusOrchestrator into a true 'middlepoint-sniffer': detect ALL plan/task files (orchestrator.json + markdown + cursor + MCP configs + crew), enrich discovered agents with sub-agent trees, model IDs, and identities, and surface everything in the UI.",
-      "status": "active",
+      "status": "completed",
       "createdAt": "2026-03-25T19:39:28Z",
       "tasks": [
         "TASK-315",
@@ -604,7 +604,7 @@
       "id": "PLAN-051",
       "title": "Local Model Intelligence Layer",
       "goal": "Make nexusOrchestrator a smart context broker for small-context local models (e.g. qwen3.5-35b-a3b via .continue). Add model capability profiles, get_project_context, get_focused_context, howto_brief, register/get_model_capabilities MCP tools, context-budget headers, enhanced .continue model extraction, and updated delegate_to_nexus workflow.",
-      "status": "active",
+      "status": "completed",
       "createdAt": "2026-03-28T00:00:00Z",
       "tasks": [
         "TASK-346",
