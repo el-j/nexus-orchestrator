@@ -61,6 +61,9 @@ func main() {
 	providerConfigRepo := repo_sqlite.NewProviderConfigRepo(repo)
 	orchestratorSvc.WithProviderConfigRepo(providerConfigRepo)
 
+	knowledgeRepo := repo_sqlite.NewKnowledgeRepo(repo)
+	brainSvc := services.NewBrainService(knowledgeRepo, repo)
+
 	runtimeCfgRepo := repo_sqlite.NewRuntimeConfigRepo(repo)
 	orchestratorSvc.WithRuntimeConfigRepo(runtimeCfgRepo)
 	if cfg, err := orchestratorSvc.GetRuntimeConfig(context.Background()); err != nil {
@@ -171,13 +174,13 @@ func main() {
 		}
 	}()
 	go func() {
-		if err := mcp.StartMCPServer(ctx, orchestratorSvc, mcpAddr); err != nil {
+		if err := mcp.StartMCPServer(ctx, orchestratorSvc, brainSvc, mcpAddr); err != nil {
 			log.Printf("daemon: mcp: %v", err)
 		}
 	}()
 
 	// StartServerFull blocks until ctx is cancelled, then gracefully shuts down
-	if err := httpapi.StartServerFull(ctx, orchestratorSvc, addr, activitySvc, logHub); err != nil {
+	if err := httpapi.StartServerFull(ctx, orchestratorSvc, brainSvc, addr, activitySvc, logHub); err != nil {
 		log.Printf("daemon: httpapi: %v", err)
 	}
 

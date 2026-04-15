@@ -19,8 +19,9 @@ var (
 func main() {
 	// Use a lightweight HTTP-backed orchestrator stub that talks to the daemon.
 	orch := httpapi_client.NewClient("http://127.0.0.1:63987")
+	brain := httpapi_client.NewBrainClient("http://127.0.0.1:63987")
 
-	root := cli.NewRootCmd(orch)
+	root := cli.NewRootCmd(orch, brain)
 	root.Version = version + " (" + commit + " " + buildDate + ")"
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

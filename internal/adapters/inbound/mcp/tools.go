@@ -95,6 +95,24 @@ func (s *Server) handleToolCall(w http.ResponseWriter, r *http.Request, req rpcR
 		result, err = s.toolHowto()
 	case "howto_brief":
 		result, err = s.toolHowtoBrief()
+	case "get_project_context":
+		result, err = s.toolGetProjectContext(r.Context(), p.Arguments)
+	case "get_focused_context":
+		result, err = s.toolGetFocusedContext(r.Context(), p.Arguments)
+	case "search_knowledge":
+		result, err = s.toolSearchKnowledge(r.Context(), p.Arguments)
+	case "get_brain_status":
+		result, err = s.toolGetBrainStatus(r.Context(), p.Arguments)
+	case "ingest_knowledge":
+		result, err = s.toolIngestKnowledge(r.Context(), p.Arguments)
+	case "init_project":
+		result, err = s.toolInitProject(r.Context(), p.Arguments)
+	case "list_knowledge":
+		result, err = s.toolListKnowledge(r.Context(), p.Arguments)
+	case "delete_knowledge":
+		result, err = s.toolDeleteKnowledge(r.Context(), p.Arguments)
+	case "get_file_map":
+		result, err = s.toolGetFileMap(r.Context(), p.Arguments)
 	default:
 		writeError(w, req.ID, codeMethodNotFound, fmt.Sprintf("unknown tool: %s", p.Name))
 		return
@@ -714,6 +732,15 @@ ALL AVAILABLE TOOLS
 - get_discovered_agents        list discovered AI agents on this machine
 - delegate_to_nexus            get delegation instruction for an AI session
 - get_discovered_plans         scan for plan/task/orchestration files in a project directory
+- get_project_context          get macro context for a project bounded by a token budget
+- get_focused_context          get task-specific micro context using semantic search
+- search_knowledge             full-text search across the project's knowledge base
+- get_brain_status             check the knowledge repository status for a project
+- ingest_knowledge             parse and ingest a markdown file into the knowledge repository
+- init_project                 auto-ingest CLAUDE.md and init project knowledge base
+- list_knowledge               list all knowledge entries for a project
+- delete_knowledge             delete a knowledge entry by ID
+- get_file_map                 get the project file path map
 
 CLIENT SETUP
 VS Code (GitHub Copilot / Copilot Chat):
@@ -748,9 +775,9 @@ func (s *Server) toolHowtoBrief() (callToolResult, error) {
 You are connected to nexusOrchestrator, an AI task orchestration server.
 
 FIRST STEPS (run in order):
-  1. get_project_context {"project_path": "/path/to/project"}
+  1. get_project_context {"projectPath": "/path/to/project"}
      → Returns active plan, task counts, guidance.
-  2. get_focused_context {"task_id": "TASK-NNN"}
+  2. get_focused_context {"projectPath": "/path/to/project", "question": "TASK-NNN implementation"}
      → Returns implementation steps + files to read for one task.
   3. claim_task {"task_id": "TASK-NNN", "session_id": "your-session-id"}
      → Marks the task as yours (PROCESSING).
@@ -765,6 +792,9 @@ KEY TOOLS:
   get_queue          — list queued tasks (compact, prefer over get_all_tasks)
   submit_task        — queue a new task for an LLM
   health             — ping daemon
+  get_brain_status    — get project knowledge base status
+  ingest_knowledge    — ingest a markdown file into project brain
+  search_knowledge    — full-text search the project knowledge base
   register_model_capabilities — store your context window size
   get_model_capabilities      — look up known model profiles
 
@@ -1091,6 +1121,114 @@ func toolList() []toolDef {
 				Properties: map[string]property{
 					"projectPath": {Type: "string", Description: "Absolute path to the project root to scan"},
 				},
+			},
+		},
+		{
+			Name:        "get_project_context",
+			Description: "Get the macro context for a project (Architectures, Conventions, File Maps) bounded by a token budget.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+					"maxTokens":   {Type: "number", Description: "Maximum tokens to return (default: 400)"},
+				},
+				Required: []string{"projectPath"},
+			},
+		},
+		{
+			Name:        "get_focused_context",
+			Description: "Get task-specific micro context (Learning, Definitions, Gotchas) bounded by a token budget.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+					"question":    {Type: "string", Description: "Semantic search query to match against knowledge"},
+					"maxTokens":   {Type: "number", Description: "Maximum tokens to return (default: 400)"},
+				},
+				Required: []string{"projectPath", "question"},
+			},
+		},
+		{
+			Name:        "search_knowledge",
+			Description: "Perform full-text search across the project's knowledge base.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+					"query":       {Type: "string", Description: "The FTS query"},
+					"limit":       {Type: "number", Description: "Max results to return"},
+				},
+				Required: []string{"projectPath", "query"},
+			},
+		},
+		{
+			Name:        "get_brain_status",
+			Description: "Check the knowledge repository status for a project.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+				},
+				Required: []string{"projectPath"},
+			},
+		},
+		{
+			Name:        "ingest_knowledge",
+			Description: "Parse and ingest a markdown file (often CLAUDE.md) into the project knowledge repository.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+					"filePath":    {Type: "string", Description: "Path to the markdown file to ingest"},
+				},
+				Required: []string{"projectPath", "filePath"},
+			},
+		},
+		{
+			Name:        "init_project",
+			Description: "Auto-ingest CLAUDE.md and initialize a project's knowledge base",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath":  {Type: "string", Description: "Absolute path to the project"},
+					"claudeMDPath": {Type: "string", Description: "Path to CLAUDE.md (optional, auto-detected if empty)"},
+				},
+				Required: []string{"projectPath"},
+			},
+		},
+		{
+			Name:        "list_knowledge",
+			Description: "List all knowledge entries for a project, optionally filtered by kind",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project"},
+					"kind":        {Type: "string", Description: "Knowledge kind filter (optional)"},
+				},
+				Required: []string{"projectPath"},
+			},
+		},
+		{
+			Name:        "delete_knowledge",
+			Description: "Delete a knowledge entry by ID",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"id": {Type: "string", Description: "Knowledge entry ID"},
+				},
+				Required: []string{"id"},
+			},
+		},
+		{
+			Name:        "get_file_map",
+			Description: "Get the file path map for a project from the knowledge base",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project"},
+					"focusArea":   {Type: "string", Description: "Optional focus area filter"},
+				},
+				Required: []string{"projectPath"},
 			},
 		},
 	}

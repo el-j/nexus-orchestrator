@@ -69,14 +69,19 @@ Reload the VS Code window after saving the configuration.
 
 ## Available Tools
 
-| Tool            | Description                                                                   |
-| --------------- | ----------------------------------------------------------------------------- |
-| `submit_task`   | Submit a code-generation task with project path, target file, and instruction |
-| `get_task`      | Retrieve the status and output of a task by its ID                            |
-| `get_queue`     | List all pending (QUEUED/PROCESSING) tasks                                    |
-| `cancel_task`   | Cancel a queued task before it is processed                                   |
-| `get_providers` | List all registered LLM providers and their liveness status                   |
-| `health`        | Check if the orchestrator daemon is running and responsive                    |
+| Tool                  | Description                                                                   |
+| --------------------- | ----------------------------------------------------------------------------- |
+| `submit_task`         | Submit a code-generation task with project path, target file, and instruction |
+| `get_task`            | Retrieve the status and output of a task by its ID                            |
+| `get_queue`           | List all pending (QUEUED/PROCESSING) tasks                                    |
+| `cancel_task`         | Cancel a queued task before it is processed                                   |
+| `get_providers`       | List all registered LLM providers and their liveness status                   |
+| `health`              | Check if the orchestrator daemon is running and responsive                    |
+| `get_brain_status`    | Retrieve indexing status and token size of project knowledge brain            |
+| `ingest_knowledge`    | Parse and inject knowledge from files into project brain storage              |
+| `get_project_context` | Obtain base macro context representation of the project                       |
+| `get_focused_context` | Query bounded context sections specific to a reasoning question               |
+| `search_knowledge`    | Search project intelligence via BM25 matching                                 |
 
 ## Usage Examples
 
@@ -177,6 +182,71 @@ Reload the VS Code window after saving the configuration.
   "method": "tools/call",
   "params": {
     "name": "health"
+  }
+}
+```
+
+## Brain / Project Knowledge Tools
+
+nexusOrchestrator's brain layer indexes your project's documentation into a SQLite FTS5 store. AI agents can query it for token-budgeted, semantically-ranked context before working on tasks.
+
+### Get Brain Status
+
+Check the indexing state and token count for a project's knowledge base.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": { "name": "get_brain_status", "arguments": { "projectPath": "/your/project" } }
+}
+```
+
+### Ingest Knowledge
+
+Parse and ingest a markdown file (e.g. CLAUDE.md) into the project knowledge store.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "ingest_knowledge",
+    "arguments": { "projectPath": "/your/project", "filePath": "/your/project/CLAUDE.md" }
+  }
+}
+```
+
+### Get Project Context
+
+Retrieve the macro context for a project, bounded by a token budget, for use in LLM system prompts.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "get_project_context",
+    "arguments": { "projectPath": "/your/project", "maxTokens": 800 }
+  }
+}
+```
+
+### Search Knowledge
+
+Full-text BM25 search across all ingested knowledge entries for a project.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "search_knowledge",
+    "arguments": { "projectPath": "/your/project", "query": "architecture", "limit": 5 }
   }
 }
 ```

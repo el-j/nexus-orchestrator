@@ -13,6 +13,11 @@ var ErrNotFound = errors.New("task not found")
 // ErrNoPlan is returned when an execute task is submitted but no prior plan exists for the project.
 var ErrNoPlan = errors.New("no plan exists; planning required before execution")
 
+// ErrSubsystemNotConfigured is returned when a method is called on a subsystem
+// (e.g. plan scanning) that has not been wired into the service. Callers can
+// distinguish this from a normal "no results" empty slice.
+var ErrSubsystemNotConfigured = errors.New("plan scanning subsystem not configured")
+
 // TaskStatus represents the lifecycle state of a Task.
 type TaskStatus string
 

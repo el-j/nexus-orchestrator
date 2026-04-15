@@ -160,7 +160,7 @@ func captureStdout(t *testing.T, fn func()) string {
 
 func TestQueueList_Empty(t *testing.T) {
 	mock := &mockOrchestrator{}
-	root := cli.NewRootCmd(mock)
+	root := cli.NewRootCmd(mock, nil)
 	root.SetArgs([]string{"queue", "list"})
 	root.SilenceErrors = true
 	root.SilenceUsage = true
@@ -200,7 +200,7 @@ func TestQueueList_WithTasks(t *testing.T) {
 			},
 		},
 	}
-	root := cli.NewRootCmd(mock)
+	root := cli.NewRootCmd(mock, nil)
 	root.SetArgs([]string{"queue", "list"})
 	root.SilenceErrors = true
 	root.SilenceUsage = true
@@ -224,7 +224,7 @@ func TestQueueList_WithTasks(t *testing.T) {
 
 func TestQueueList_Error(t *testing.T) {
 	mock := &mockOrchestrator{queueErr: errors.New("storage unavailable")}
-	root := cli.NewRootCmd(mock)
+	root := cli.NewRootCmd(mock, nil)
 	root.SetArgs([]string{"queue", "list"})
 	root.SilenceErrors = true
 	root.SilenceUsage = true
@@ -251,7 +251,7 @@ func TestQueueGet_Found(t *testing.T) {
 			UpdatedAt:   now,
 		},
 	}
-	root := cli.NewRootCmd(mock)
+	root := cli.NewRootCmd(mock, nil)
 	root.SetArgs([]string{"queue", "get", "abc123"})
 	root.SilenceErrors = true
 	root.SilenceUsage = true
@@ -275,7 +275,7 @@ func TestQueueGet_NotFound(t *testing.T) {
 	mock := &mockOrchestrator{
 		getTaskErr: fmt.Errorf("repo: %w", domain.ErrNotFound),
 	}
-	root := cli.NewRootCmd(mock)
+	root := cli.NewRootCmd(mock, nil)
 	root.SetArgs([]string{"queue", "get", "missing-id"})
 	root.SilenceErrors = true
 	root.SilenceUsage = true
@@ -294,7 +294,7 @@ func TestQueueGet_NotFound(t *testing.T) {
 
 func TestQueueGet_MissingArg(t *testing.T) {
 	mock := &mockOrchestrator{}
-	root := cli.NewRootCmd(mock)
+	root := cli.NewRootCmd(mock, nil)
 	root.SetArgs([]string{"queue", "get"})
 	root.SilenceErrors = true
 	root.SilenceUsage = true
@@ -311,7 +311,7 @@ func TestQueueGet_MissingArg(t *testing.T) {
 
 func TestQueueCancel_Success(t *testing.T) {
 	mock := &mockOrchestrator{}
-	root := cli.NewRootCmd(mock)
+	root := cli.NewRootCmd(mock, nil)
 	root.SetArgs([]string{"queue", "cancel", "abc123"})
 	root.SilenceErrors = true
 	root.SilenceUsage = true
@@ -329,7 +329,7 @@ func TestQueueCancel_Success(t *testing.T) {
 
 func TestQueueCancel_Error(t *testing.T) {
 	mock := &mockOrchestrator{cancelErr: errors.New("task already completed")}
-	root := cli.NewRootCmd(mock)
+	root := cli.NewRootCmd(mock, nil)
 	root.SetArgs([]string{"queue", "cancel", "abc123"})
 	root.SilenceErrors = true
 	root.SilenceUsage = true
@@ -351,7 +351,7 @@ func TestProviders_Success(t *testing.T) {
 			{Name: "ollama", Active: false},
 		},
 	}
-	root := cli.NewRootCmd(mock)
+	root := cli.NewRootCmd(mock, nil)
 	root.SetArgs([]string{"providers"})
 	root.SilenceErrors = true
 	root.SilenceUsage = true
@@ -383,7 +383,7 @@ func TestProviders_Success(t *testing.T) {
 
 func TestProviders_Empty(t *testing.T) {
 	mock := &mockOrchestrator{}
-	root := cli.NewRootCmd(mock)
+	root := cli.NewRootCmd(mock, nil)
 	root.SetArgs([]string{"providers"})
 	root.SilenceErrors = true
 	root.SilenceUsage = true
@@ -401,7 +401,7 @@ func TestProviders_Empty(t *testing.T) {
 
 func TestProviders_Error(t *testing.T) {
 	mock := &mockOrchestrator{providersErr: errors.New("LLM backend unreachable")}
-	root := cli.NewRootCmd(mock)
+	root := cli.NewRootCmd(mock, nil)
 	root.SetArgs([]string{"providers"})
 	root.SilenceErrors = true
 	root.SilenceUsage = true

@@ -4,7 +4,9 @@
       <!-- Sidebar TOC -->
       <aside class="lg:col-span-1">
         <div class="sticky top-24 space-y-1">
-          <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-4">On this page</h4>
+          <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-4">
+            On this page
+          </h4>
           <nav class="space-y-1">
             <a
               v-for="item in toc"
@@ -12,7 +14,8 @@
               :href="`#${item.id}`"
               @click.prevent="scrollToId(item.id)"
               class="block text-sm text-slate-500 hover:text-violet-400 transition-colors py-0.5 cursor-pointer"
-            >{{ item.label }}</a>
+              >{{ item.label }}</a
+            >
           </nav>
         </div>
       </aside>
@@ -21,15 +24,25 @@
       <main class="lg:col-span-3 space-y-16">
         <!-- Hero -->
         <div class="reveal">
-          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-sm text-violet-300 mb-4">
+          <div
+            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-sm text-violet-300 mb-4"
+          >
             <i class="pi pi-server text-xs"></i>
             HTTP REST + MCP
           </div>
           <h1 class="text-4xl font-black mb-4"><span class="gradient-text">API Reference</span></h1>
-          <p class="text-lg text-slate-400">Complete reference for all HTTP REST API endpoints and MCP tools.</p>
+          <p class="text-lg text-slate-400">
+            Complete reference for all HTTP REST API endpoints and MCP tools.
+          </p>
           <div class="mt-4 flex flex-wrap gap-3">
-            <span class="px-3 py-1 rounded-lg bg-[#0d0d14] border border-white/8 text-xs text-slate-400 font-mono">Base URL: http://localhost:63987</span>
-            <span class="px-3 py-1 rounded-lg bg-[#0d0d14] border border-white/8 text-xs text-slate-400 font-mono">MCP: http://localhost:63988</span>
+            <span
+              class="px-3 py-1 rounded-lg bg-[#0d0d14] border border-white/8 text-xs text-slate-400 font-mono"
+              >Base URL: http://localhost:63987</span
+            >
+            <span
+              class="px-3 py-1 rounded-lg bg-[#0d0d14] border border-white/8 text-xs text-slate-400 font-mono"
+              >MCP: http://localhost:63988</span
+            >
           </div>
         </div>
 
@@ -41,10 +54,19 @@
 
           <!-- Each endpoint -->
           <div class="space-y-8">
-            <div v-for="endpoint in endpoints" :key="endpoint.id" :id="endpoint.id" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden">
+            <div
+              v-for="endpoint in endpoints"
+              :key="endpoint.id"
+              :id="endpoint.id"
+              class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"
+            >
               <!-- Endpoint header -->
-              <div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap">
-                <span :class="`px-2 py-0.5 rounded text-xs font-bold font-mono ${methodColor(endpoint.method)}`">
+              <div
+                class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"
+              >
+                <span
+                  :class="`px-2 py-0.5 rounded text-xs font-bold font-mono ${methodColor(endpoint.method)}`"
+                >
                   {{ endpoint.method }}
                 </span>
                 <code class="text-sm text-slate-200 font-mono">{{ endpoint.path }}</code>
@@ -54,12 +76,16 @@
                 <p class="text-sm text-slate-400">{{ endpoint.desc }}</p>
 
                 <div v-if="endpoint.requestBody">
-                  <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Request Body</p>
+                  <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                    Request Body
+                  </p>
                   <CodeBlock language="json" :code="endpoint.requestBody" />
                 </div>
 
                 <div v-if="endpoint.fields && endpoint.fields.length">
-                  <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Fields</p>
+                  <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                    Fields
+                  </p>
                   <div class="overflow-x-auto rounded-lg border border-white/5">
                     <table class="w-full text-xs">
                       <thead>
@@ -70,7 +96,11 @@
                         </tr>
                       </thead>
                       <tbody>
-                        <tr v-for="(f, fi) in endpoint.fields" :key="f.field" :class="fi % 2 === 0 ? 'bg-[#0a0a10]' : 'bg-[#0d0d14]'">
+                        <tr
+                          v-for="(f, fi) in endpoint.fields"
+                          :key="f.field"
+                          :class="fi % 2 === 0 ? 'bg-[#0a0a10]' : 'bg-[#0d0d14]'"
+                        >
                           <td class="px-3 py-2 font-mono text-violet-300">{{ f.field }}</td>
                           <td class="px-3 py-2">
                             <span v-if="f.required" class="text-emerald-400">Yes</span>
@@ -85,7 +115,10 @@
 
                 <div v-if="endpoint.response">
                   <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                    Response <span class="text-emerald-400 normal-case font-normal">{{ endpoint.responseStatus }}</span>
+                    Response
+                    <span class="text-emerald-400 normal-case font-normal">{{
+                      endpoint.responseStatus
+                    }}</span>
                   </p>
                   <CodeBlock language="json" :code="endpoint.response" />
                 </div>
@@ -101,11 +134,16 @@
           </h2>
           <div class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden mb-4">
             <div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3">
-              <span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-blue-500/20 text-blue-300">GET</span>
+              <span
+                class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-blue-500/20 text-blue-300"
+                >GET</span
+              >
               <code class="text-sm text-slate-200 font-mono">/api/events</code>
             </div>
             <div class="p-5">
-              <p class="text-sm text-slate-400 mb-4">Server-Sent Events stream for real-time task lifecycle updates.</p>
+              <p class="text-sm text-slate-400 mb-4">
+                Server-Sent Events stream for real-time task lifecycle updates.
+              </p>
               <div class="overflow-x-auto rounded-lg border border-white/5 mb-4">
                 <table class="w-full text-xs">
                   <thead>
@@ -115,7 +153,11 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="(ev, i) in sseEvents" :key="ev.event" :class="i % 2 === 0 ? 'bg-[#0a0a10]' : 'bg-[#0d0d14]'">
+                    <tr
+                      v-for="(ev, i) in sseEvents"
+                      :key="ev.event"
+                      :class="i % 2 === 0 ? 'bg-[#0a0a10]' : 'bg-[#0d0d14]'"
+                    >
                       <td class="px-3 py-2 font-mono text-cyan-400">{{ ev.event }}</td>
                       <td class="px-3 py-2 text-slate-400">{{ ev.desc }}</td>
                     </tr>
@@ -134,7 +176,11 @@
             <span class="text-violet-400">#</span> MCP Server
           </h2>
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            <div v-for="info in mcpInfo" :key="info.label" class="rounded-lg border border-white/8 bg-[#0d0d14] p-3 text-center">
+            <div
+              v-for="info in mcpInfo"
+              :key="info.label"
+              class="rounded-lg border border-white/8 bg-[#0d0d14] p-3 text-center"
+            >
               <div class="text-xs text-slate-500 mb-1">{{ info.label }}</div>
               <div class="font-mono text-xs text-violet-300 font-bold">{{ info.value }}</div>
             </div>
@@ -151,7 +197,11 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(tool, i) in mcpTools" :key="tool.name" :class="i % 2 === 0 ? 'bg-[#0a0a10]' : 'bg-[#0d0d14]'">
+                <tr
+                  v-for="(tool, i) in mcpTools"
+                  :key="tool.name"
+                  :class="i % 2 === 0 ? 'bg-[#0a0a10]' : 'bg-[#0d0d14]'"
+                >
                   <td class="px-4 py-2.5 font-mono text-violet-300 text-xs">{{ tool.name }}</td>
                   <td class="px-4 py-2.5 text-slate-400 text-xs">{{ tool.desc }}</td>
                   <td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">{{ tool.params }}</td>
@@ -179,9 +229,15 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(row, i) in envVars" :key="row.var" :class="i % 2 === 0 ? 'bg-[#0a0a10]' : 'bg-[#0d0d14]'">
+                <tr
+                  v-for="(row, i) in envVars"
+                  :key="row.var"
+                  :class="i % 2 === 0 ? 'bg-[#0a0a10]' : 'bg-[#0d0d14]'"
+                >
                   <td class="px-4 py-2.5 font-mono text-violet-300 text-xs">{{ row.var }}</td>
-                  <td class="px-4 py-2.5 font-mono text-slate-500 text-xs">{{ row.default || '—' }}</td>
+                  <td class="px-4 py-2.5 font-mono text-slate-500 text-xs">
+                    {{ row.default || '—' }}
+                  </td>
                   <td class="px-4 py-2.5 text-slate-400 text-xs">{{ row.desc }}</td>
                 </tr>
               </tbody>
@@ -194,24 +250,26 @@
 </template>
 
 <script setup lang="ts">
-import CodeBlock from '../components/CodeBlock.vue'
-import { scrollToId } from '../utils/scroll'
+import CodeBlock from '../components/CodeBlock.vue';
+import { scrollToId } from '../utils/scroll';
 
 const toc = [
   { id: 'http-api', label: 'HTTP REST API' },
   { id: 'sse-events', label: 'SSE Event Stream' },
   { id: 'mcp-server', label: 'MCP Server' },
+  { id: 'brain-ingest', label: 'Brain / Knowledge' },
   { id: 'env-vars', label: 'Environment Variables' },
-]
+];
 
 function methodColor(method: string) {
-  if (method === 'POST') return 'bg-emerald-500/20 text-emerald-300'
-  if (method === 'GET') return 'bg-blue-500/20 text-blue-300'
-  if (method === 'DELETE') return 'bg-red-500/20 text-red-300'
-  return 'bg-slate-500/20 text-slate-300'
+  if (method === 'POST') return 'bg-emerald-500/20 text-emerald-300';
+  if (method === 'GET') return 'bg-blue-500/20 text-blue-300';
+  if (method === 'DELETE') return 'bg-red-500/20 text-red-300';
+  return 'bg-slate-500/20 text-slate-300';
 }
 
 const endpoints = [
+  // Tasks
   {
     id: 'submit-task',
     method: 'POST',
@@ -234,7 +292,11 @@ const endpoints = [
       { field: 'contextFiles', required: false, desc: 'List of files to include as context' },
       { field: 'modelId', required: false, desc: 'Constrain to a specific model' },
       { field: 'providerHint', required: false, desc: 'Prefer a specific provider by name' },
-      { field: 'command', required: false, desc: 'Task type: plan, execute, or auto (default: auto)' },
+      {
+        field: 'command',
+        required: false,
+        desc: 'Task type: plan, execute, or auto (default: auto)',
+      },
     ],
     responseStatus: '201 Created',
     response: `{
@@ -264,6 +326,15 @@ const endpoints = [
 ]`,
   },
   {
+    id: 'list-all-tasks',
+    method: 'GET',
+    path: '/api/tasks/all',
+    title: 'List All Tasks',
+    desc: 'List every task including drafts and cancelled (QUEUED, PROCESSING, DRAFT, BACKLOG, COMPLETED, FAILED, CANCELLED).',
+    responseStatus: '200 OK',
+    response: '',
+  },
+  {
     id: 'get-task',
     method: 'GET',
     path: '/api/tasks/{id}',
@@ -281,10 +352,222 @@ const endpoints = [
     method: 'DELETE',
     path: '/api/tasks/{id}',
     title: 'Cancel Task',
-    desc: 'Cancel a queued task before it is processed. Returns 204 No Content on success, 404 Not Found if task doesn\'t exist or already processed.',
+    desc: "Cancel a queued task before it is processed. Returns 204 No Content on success, 404 Not Found if task doesn't exist or already processed.",
     responseStatus: '204 No Content',
     response: '',
   },
+  {
+    id: 'update-task',
+    method: 'PUT',
+    path: '/api/tasks/{id}',
+    title: 'Update Task',
+    desc: 'Update task title, description, or priority.',
+    requestBody: `{
+  "instruction": "Updated instruction text",
+  "priority": 1
+}`,
+    fields: [
+      { field: 'instruction', required: false, desc: 'Updated instruction' },
+      { field: 'priority', required: false, desc: 'Priority: 1=high, 2=medium, 3=low' },
+      { field: 'providerName', required: false, desc: 'Updated provider name' },
+      { field: 'modelId', required: false, desc: 'Updated model ID' },
+      { field: 'tags', required: false, desc: 'Updated tags array' },
+    ],
+    responseStatus: '200 OK',
+    response: '',
+  },
+  {
+    id: 'promote-task',
+    method: 'POST',
+    path: '/api/tasks/{id}/promote',
+    title: 'Promote Task',
+    desc: 'Promote a backlog draft task into the active execution queue.',
+    responseStatus: '200 OK',
+    response: '',
+  },
+  {
+    id: 'claim-task',
+    method: 'POST',
+    path: '/api/tasks/{id}/claim',
+    title: 'Claim Task',
+    desc: 'Claim a QUEUED task for execution by an AI session, transitioning it to PROCESSING.',
+    requestBody: `{
+  "sessionId": "session-uuid"
+}`,
+    fields: [
+      { field: 'sessionId', required: true, desc: 'ID of the AI session claiming the task' },
+    ],
+    responseStatus: '200 OK',
+    response: '',
+  },
+  {
+    id: 'update-task-status',
+    method: 'PUT',
+    path: '/api/tasks/{id}/status',
+    title: 'Update Task Status',
+    desc: 'Report task completion or failure from the executing AI session. Only the session that claimed the task may update it.',
+    requestBody: `{
+  "status": "completed",
+  "result": "Task output...",
+  "sessionId": "session-uuid"
+}`,
+    fields: [
+      { field: 'status', required: true, desc: 'New status: in_progress | completed | failed' },
+      { field: 'result', required: false, desc: 'Output or log message' },
+      { field: 'sessionId', required: true, desc: 'ID of the AI session that claimed the task' },
+    ],
+    responseStatus: '200 OK',
+    response: '',
+  },
+  {
+    id: 'create-draft',
+    method: 'POST',
+    path: '/api/tasks/draft',
+    title: 'Create Draft',
+    desc: 'Create a backlog draft idea for a project without entering the execution queue.',
+    requestBody: `{
+  "projectPath": "/path/to/project",
+  "instruction": "What the task should do",
+  "priority": 2
+}`,
+    fields: [
+      { field: 'projectPath', required: true, desc: 'Absolute path to the project' },
+      { field: 'instruction', required: true, desc: 'What the task should do' },
+      { field: 'targetFile', required: false, desc: 'File to write output to' },
+      { field: 'providerName', required: false, desc: 'Preferred provider name' },
+      { field: 'modelId', required: false, desc: 'Preferred model ID' },
+      { field: 'priority', required: false, desc: 'Priority 1=high, 2=medium, 3=low (default 2)' },
+      { field: 'tags', required: false, desc: 'Labels array' },
+    ],
+    responseStatus: '201 Created',
+    response: '',
+  },
+  {
+    id: 'list-backlog',
+    method: 'GET',
+    path: '/api/tasks/backlog',
+    title: 'List Backlog',
+    desc: 'List all backlog drafts for a project, ordered by priority.',
+    responseStatus: '200 OK',
+    response: '',
+  },
+  // Brain / Project Knowledge
+  {
+    id: 'brain-ingest',
+    method: 'POST',
+    path: '/api/brain/ingest',
+    title: 'Ingest Knowledge',
+    desc: 'Parse and ingest a markdown file (e.g. CLAUDE.md) into the project knowledge repository.',
+    requestBody: `{
+  "projectPath": "/your/project",
+  "filePath": "/your/project/CLAUDE.md"
+}`,
+    fields: [
+      { field: 'projectPath', required: true, desc: 'Absolute path to the project root' },
+      { field: 'filePath', required: true, desc: 'Path to the markdown file to ingest' },
+    ],
+    responseStatus: '200 OK',
+    response: `{"ingested": 12, "projectPath": "/your/project"}`,
+  },
+  {
+    id: 'brain-status',
+    method: 'GET',
+    path: '/api/brain/status',
+    title: 'Brain Status',
+    desc: 'Get the knowledge repository status for a project (entry count, last ingested, etc.).',
+    responseStatus: '200 OK',
+    response: `{"projectPath": "/your/project", "entryCount": 42, "lastIngested": "2025-01-01T00:00:00Z"}`,
+  },
+  {
+    id: 'brain-context',
+    method: 'POST',
+    path: '/api/brain/context',
+    title: 'Get Project Context',
+    desc: 'Get macro context for a project (Architectures, Conventions, File Maps) bounded by a token budget.',
+    requestBody: `{
+  "projectPath": "/your/project",
+  "maxTokens": 800
+}`,
+    fields: [
+      { field: 'projectPath', required: true, desc: 'Absolute path to the project root' },
+      { field: 'maxTokens', required: false, desc: 'Maximum tokens to return (default: 400)' },
+    ],
+    responseStatus: '200 OK',
+    response: '',
+  },
+  {
+    id: 'brain-focused-context',
+    method: 'POST',
+    path: '/api/brain/focused-context',
+    title: 'Get Focused Context',
+    desc: 'Get task-specific micro context (Learning, Definitions, Gotchas) based on a semantic query.',
+    requestBody: `{
+  "projectPath": "/your/project",
+  "question": "How does authentication work?",
+  "maxTokens": 400
+}`,
+    fields: [
+      { field: 'projectPath', required: true, desc: 'Absolute path to the project root' },
+      {
+        field: 'question',
+        required: true,
+        desc: 'Semantic search query to match against knowledge',
+      },
+      { field: 'maxTokens', required: false, desc: 'Maximum tokens to return (default: 400)' },
+    ],
+    responseStatus: '200 OK',
+    response: '',
+  },
+  {
+    id: 'brain-search',
+    method: 'GET',
+    path: '/api/brain/search',
+    title: 'Search Knowledge',
+    desc: "Full-text search across the project's knowledge base.",
+    responseStatus: '200 OK',
+    response: '',
+  },
+  {
+    id: 'brain-init',
+    method: 'POST',
+    path: '/api/brain/init',
+    title: 'Brain Init',
+    desc: "Auto-ingest CLAUDE.md and initialize a project's knowledge base in one step.",
+    requestBody: `{
+  "projectPath": "/your/project"
+}`,
+    fields: [{ field: 'projectPath', required: true, desc: 'Absolute path to the project root' }],
+    responseStatus: '200 OK',
+    response: '',
+  },
+  {
+    id: 'brain-knowledge-list',
+    method: 'GET',
+    path: '/api/brain/knowledge',
+    title: 'List Knowledge',
+    desc: 'List all knowledge entries for a project, optionally filtered by kind.',
+    responseStatus: '200 OK',
+    response: '',
+  },
+  {
+    id: 'brain-knowledge-delete',
+    method: 'DELETE',
+    path: '/api/brain/knowledge/{id}',
+    title: 'Delete Knowledge Entry',
+    desc: 'Delete a knowledge entry by ID.',
+    responseStatus: '204 No Content',
+    response: '',
+  },
+  {
+    id: 'brain-file-map',
+    method: 'GET',
+    path: '/api/brain/file-map',
+    title: 'Get File Map',
+    desc: 'Get file path map for a project.',
+    responseStatus: '200 OK',
+    response: '',
+  },
+  // Providers
   {
     id: 'list-providers',
     method: 'GET',
@@ -320,7 +603,11 @@ const endpoints = [
 }`,
     fields: [
       { field: 'name', required: true, desc: 'Display name for the provider' },
-      { field: 'kind', required: true, desc: 'Provider type: lmstudio, ollama, openai-compat, anthropic' },
+      {
+        field: 'kind',
+        required: true,
+        desc: 'Provider type: lmstudio, ollama, openai-compat, anthropic',
+      },
       { field: 'baseURL', required: true, desc: 'API endpoint URL' },
       { field: 'apiKey', required: false, desc: 'Required for cloud providers' },
       { field: 'model', required: false, desc: 'Default model to use' },
@@ -338,6 +625,65 @@ const endpoints = [
     response: '',
   },
   {
+    id: 'list-provider-configs',
+    method: 'GET',
+    path: '/api/providers/config',
+    title: 'List Provider Configs',
+    desc: 'List all persisted LLM provider configuration records.',
+    responseStatus: '200 OK',
+    response: '',
+  },
+  {
+    id: 'add-provider-config',
+    method: 'POST',
+    path: '/api/providers/config',
+    title: 'Add Provider Config',
+    desc: 'Persist a provider configuration with API-key masking.',
+    requestBody: `{
+  "kind": "anthropic",
+  "name": "My Claude",
+  "base_url": "https://api.anthropic.com/v1",
+  "api_key": "sk-ant-...",
+  "enabled": true
+}`,
+    fields: [
+      { field: 'kind', required: true, desc: 'Provider kind: lmstudio, ollama, openai, anthropic' },
+      { field: 'name', required: true, desc: 'Display name for the provider' },
+      { field: 'base_url', required: false, desc: 'API base URL' },
+      { field: 'api_key', required: false, desc: 'API key if required' },
+      { field: 'enabled', required: false, desc: 'Whether to activate the provider immediately' },
+    ],
+    responseStatus: '201 Created',
+    response: '',
+  },
+  {
+    id: 'update-provider-config',
+    method: 'PUT',
+    path: '/api/providers/config/{id}',
+    title: 'Update Provider Config',
+    desc: 'Update an existing persisted provider configuration by ID.',
+    fields: [
+      { field: 'id', required: true, desc: 'Provider config ID to update' },
+      { field: 'kind', required: true, desc: 'Provider kind' },
+      { field: 'name', required: true, desc: 'Display name' },
+      { field: 'base_url', required: false, desc: 'API base URL' },
+      { field: 'api_key', required: false, desc: 'API key' },
+      { field: 'enabled', required: false, desc: 'Whether the provider is active' },
+    ],
+    responseStatus: '200 OK',
+    response: '',
+  },
+  {
+    id: 'remove-provider-config',
+    method: 'DELETE',
+    path: '/api/providers/config/{id}',
+    title: 'Remove Provider Config',
+    desc: 'Delete a persisted provider configuration and deregister its adapter.',
+    responseStatus: '204 No Content',
+    response: '',
+  },
+  // System
+  {
     id: 'health',
     method: 'GET',
     path: '/api/health',
@@ -346,7 +692,7 @@ const endpoints = [
     responseStatus: '200 OK',
     response: `{"status": "ok"}`,
   },
-]
+];
 
 const sseEvents = [
   { event: 'task.queued', desc: 'Task was added to the queue' },
@@ -356,26 +702,236 @@ const sseEvents = [
   { event: 'task.cancelled', desc: 'Task was cancelled' },
   { event: 'task.too_large', desc: 'Task exceeded context window' },
   { event: 'task.no_provider', desc: 'No provider available for the task' },
-]
+];
 
 const sseFormat = `event: task.completed
-data: {"type":"task.completed","taskId":"abc-123","status":"COMPLETED"}`
+data: {"type":"task.completed","taskId":"abc-123","status":"COMPLETED"}`;
 
 const mcpInfo = [
   { label: 'Standard', value: 'JSON-RPC 2.0' },
   { label: 'Version', value: '2024-11-05' },
   { label: 'Endpoint', value: 'POST /mcp' },
   { label: 'Default Port', value: '63988' },
-]
+];
 
 const mcpTools = [
-  { name: 'submit_task', desc: 'Submit a code-generation task', params: 'projectPath, targetFile, instruction, contextFiles, command' },
-  { name: 'get_task', desc: 'Get task by ID', params: 'taskId' },
-  { name: 'get_queue', desc: 'List all pending tasks', params: '—' },
-  { name: 'cancel_task', desc: 'Cancel a queued task', params: 'taskId' },
-  { name: 'get_providers', desc: 'List LLM providers', params: '—' },
-  { name: 'health', desc: 'Check daemon status', params: '—' },
-]
+  // Tasks
+  {
+    category: 'Tasks',
+    name: 'submit_task',
+    desc: 'Submit a new code-generation task to the orchestrator',
+    params: 'projectPath, targetFile, instruction, contextFiles?, command?',
+  },
+  {
+    category: 'Tasks',
+    name: 'get_task',
+    desc: 'Get the current status and output of a task by ID',
+    params: 'id',
+  },
+  {
+    category: 'Tasks',
+    name: 'get_queue',
+    desc: 'List all tasks currently in the queue',
+    params: '—',
+  },
+  {
+    category: 'Tasks',
+    name: 'get_all_tasks',
+    desc: 'Return every task regardless of status',
+    params: '—',
+  },
+  { category: 'Tasks', name: 'cancel_task', desc: 'Cancel a pending task by ID', params: 'id' },
+  {
+    category: 'Tasks',
+    name: 'update_task',
+    desc: 'Update mutable fields on an existing task',
+    params: 'id, instruction?, priority?, providerName?, modelId?, tags?',
+  },
+  {
+    category: 'Tasks',
+    name: 'create_draft',
+    desc: 'Create a draft idea without entering the execution queue',
+    params: 'projectPath, instruction, targetFile?, providerName?, modelId?, priority?, tags?',
+  },
+  {
+    category: 'Tasks',
+    name: 'get_backlog',
+    desc: 'List draft and backlog items for a project, ordered by priority',
+    params: 'projectPath',
+  },
+  {
+    category: 'Tasks',
+    name: 'promote_task',
+    desc: 'Promote a draft or backlog task to the execution queue',
+    params: 'id',
+  },
+  {
+    category: 'Tasks',
+    name: 'claim_task',
+    desc: 'Claim a QUEUED task for execution by the specified AI session',
+    params: 'task_id, session_id',
+  },
+  {
+    category: 'Tasks',
+    name: 'update_task_status',
+    desc: 'Report task completion or failure from the executing AI session',
+    params: 'task_id, session_id, status, logs?',
+  },
+  {
+    category: 'Tasks',
+    name: 'heartbeat_task',
+    desc: 'Keep a PROCESSING task alive — prevents watchdog from marking it failed',
+    params: 'task_id, session_id',
+  },
+  {
+    category: 'Tasks',
+    name: 'terminate_ai_session',
+    desc: 'Terminate an external AI agent session (SIGTERM or SIGKILL)',
+    params: 'session_id, force?',
+  },
+  // AI Sessions
+  {
+    category: 'AI Sessions',
+    name: 'register_session',
+    desc: 'Announce this AI agent session for visualisation and orchestration',
+    params: 'agent_name, project_path?, external_id?',
+  },
+  {
+    category: 'AI Sessions',
+    name: 'get_ai_sessions',
+    desc: 'Return all known external AI agent sessions registered with this instance',
+    params: '—',
+  },
+  {
+    category: 'AI Sessions',
+    name: 'deregister_ai_session',
+    desc: 'Soft-disconnect an AI agent session without killing the process',
+    params: 'session_id',
+  },
+  {
+    category: 'AI Sessions',
+    name: 'heartbeat_ai_session',
+    desc: 'Refresh the last-activity timestamp of an AI session to keep it alive',
+    params: 'session_id',
+  },
+  {
+    category: 'AI Sessions',
+    name: 'purge_disconnected_sessions',
+    desc: 'Delete all disconnected AI sessions inactive for more than 2 hours',
+    params: '—',
+  },
+  // Providers
+  {
+    category: 'Providers',
+    name: 'get_providers',
+    desc: 'List available LLM providers and their models',
+    params: '—',
+  },
+  {
+    category: 'Providers',
+    name: 'discover_providers',
+    desc: 'Scan the local system for installed AI providers/agents',
+    params: '—',
+  },
+  {
+    category: 'Providers',
+    name: 'promote_provider',
+    desc: 'Promote a discovered provider to an active LLM backend',
+    params: 'id',
+  },
+  {
+    category: 'Providers',
+    name: 'list_provider_configs',
+    desc: 'List all persisted LLM provider configuration records',
+    params: '—',
+  },
+  {
+    category: 'Providers',
+    name: 'add_provider_config',
+    desc: 'Add a new LLM provider configuration and register it when enabled=true',
+    params: 'kind, name, base_url?, api_key?, enabled?',
+  },
+  {
+    category: 'Providers',
+    name: 'update_provider_config',
+    desc: 'Update an existing LLM provider configuration by ID',
+    params: 'id, kind, name, base_url?, api_key?, enabled?',
+  },
+  {
+    category: 'Providers',
+    name: 'remove_provider_config',
+    desc: 'Delete a persisted provider configuration and deregister its adapter',
+    params: 'id',
+  },
+  // Brain / Knowledge
+  {
+    category: 'Brain / Knowledge',
+    name: 'get_brain_status',
+    desc: 'Check the knowledge repository status for a project',
+    params: 'projectPath',
+  },
+  {
+    category: 'Brain / Knowledge',
+    name: 'ingest_knowledge',
+    desc: 'Parse and ingest a markdown file (e.g. CLAUDE.md) into the project knowledge repository',
+    params: 'projectPath, filePath',
+  },
+  {
+    category: 'Brain / Knowledge',
+    name: 'get_project_context',
+    desc: 'Get macro context (Architectures, Conventions, File Maps) bounded by a token budget',
+    params: 'projectPath, maxTokens?',
+  },
+  {
+    category: 'Brain / Knowledge',
+    name: 'get_focused_context',
+    desc: 'Get task-specific micro context (Learning, Definitions, Gotchas) bounded by a token budget',
+    params: 'projectPath, question, maxTokens?',
+  },
+  {
+    category: 'Brain / Knowledge',
+    name: 'search_knowledge',
+    desc: "Perform full-text search across the project's knowledge base",
+    params: 'projectPath, query, limit?',
+  },
+  // Discovery & System
+  {
+    category: 'Discovery & System',
+    name: 'get_discovered_agents',
+    desc: 'Return AI agent tools detected on the local system (Claude CLI, VS Code Copilot, etc.)',
+    params: '—',
+  },
+  {
+    category: 'Discovery & System',
+    name: 'delegate_to_nexus',
+    desc: 'Delegate an AI agent session to the nexus task queue',
+    params: 'session_id',
+  },
+  {
+    category: 'Discovery & System',
+    name: 'get_discovered_plans',
+    desc: 'Scan for plan/task/orchestration files in a project directory',
+    params: 'projectPath?',
+  },
+  {
+    category: 'Discovery & System',
+    name: 'howto',
+    desc: 'Return a complete integration guide — tools, workflow patterns, and HTTP endpoint reference',
+    params: '—',
+  },
+  {
+    category: 'Discovery & System',
+    name: 'howto_brief',
+    desc: 'Get the ultra-compact integration guide (~200 tokens), recommended for small-context models',
+    params: '—',
+  },
+  {
+    category: 'Discovery & System',
+    name: 'health',
+    desc: 'Check that the nexusOrchestrator daemon is reachable',
+    params: '—',
+  },
+];
 
 const mcpSubmit = `// Request
 {
@@ -405,7 +961,7 @@ const mcpSubmit = `// Request
       }
     ]
   }
-}`
+}`;
 
 const envVars = [
   { var: 'NEXUS_DB_PATH', default: 'nexus.db', desc: 'SQLite database file path' },
@@ -413,9 +969,17 @@ const envVars = [
   { var: 'NEXUS_MCP_ADDR', default: '127.0.0.1:63988', desc: 'MCP server listen address' },
   { var: 'NEXUS_OPENAI_API_KEY', default: '', desc: 'OpenAI API key (enables OpenAI provider)' },
   { var: 'NEXUS_OPENAI_MODEL', default: 'gpt-4o-mini', desc: 'Default OpenAI model' },
-  { var: 'NEXUS_ANTHROPIC_API_KEY', default: '', desc: 'Anthropic API key (enables Anthropic provider)' },
-  { var: 'NEXUS_ANTHROPIC_MODEL', default: 'claude-3-5-sonnet-20241022', desc: 'Default Anthropic model' },
+  {
+    var: 'NEXUS_ANTHROPIC_API_KEY',
+    default: '',
+    desc: 'Anthropic API key (enables Anthropic provider)',
+  },
+  {
+    var: 'NEXUS_ANTHROPIC_MODEL',
+    default: 'claude-3-5-sonnet-20241022',
+    desc: 'Default Anthropic model',
+  },
   { var: 'NEXUS_GITHUBCOPILOT_TOKEN', default: '', desc: 'GitHub Copilot token' },
   { var: 'NEXUS_GITHUBCOPILOT_MODEL', default: 'gpt-4o', desc: 'Default GitHub Copilot model' },
-]
+];
 </script>

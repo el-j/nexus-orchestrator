@@ -63,11 +63,14 @@ func (o *OrchestratorService) processNext() bool {
 
 	prompt, sessionHistory, err := o.buildChatContext(task, llm)
 	if err != nil {
+		// buildChatContext sets the task status internally before returning an error.
+		// No second UpdateStatus call here — that would overwrite TooLarge/Failed correctly set within.
 		return true
 	}
 
 	code, err := o.executeGeneration(task, llm, prompt, sessionHistory)
 	if err != nil {
+		// executeGeneration sets the task status internally before returning an error.
 		return true
 	}
 

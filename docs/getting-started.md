@@ -184,8 +184,45 @@ Configure the daemon URL under `Nexus > Daemon URL` in VS Code settings (default
 
 Alternatively, install the companion extension from source (see [`vscode-extension/README.md`](../vscode-extension/README.md)). Once the daemon is running, you can submit tasks directly from your editor without leaving VS Code.
 
+## Project Brain / Knowledge Intelligence
+
+nexusOrchestrator includes a **project knowledge layer** that ingests your project's documentation
+(CLAUDE.md, architecture docs, etc.) into a SQLite FTS5 index. AI agents can then retrieve
+context-budgeted, semantically-ranked knowledge before tackling tasks.
+
+### Quick Start
+
+**Initialize a project's knowledge base:**
+
+```bash
+curl -X POST http://localhost:63987/api/brain/init \
+  -H 'Content-Type: application/json' \
+  -d '{"projectPath":"/path/to/your/project"}'
+```
+
+**Ingest a specific file:**
+
+```bash
+curl -X POST http://localhost:63987/api/brain/ingest \
+  -H 'Content-Type: application/json' \
+  -d '{"projectPath":"/path/to/project","filePath":"/path/to/project/CLAUDE.md"}'
+```
+
+**Query for AI context:**
+
+```bash
+curl -X POST http://localhost:63987/api/brain/context \
+  -H 'Content-Type: application/json' \
+  -d '{"projectPath":"/path/to/project","maxTokens":800}'
+```
+
+### AI Agent Workflow
+
+AI agents should call `get_project_context` (MCP) or `POST /api/brain/context` (HTTP) **before
+claiming tasks** to load relevant project knowledge into their context window.
+
 ## Next Steps
 
-- [API Reference](/nexusOrchestrator/api-reference) — Full HTTP and MCP endpoint docs
+- [API Reference](/nexusOrchestrator/api-reference) — Full HTTP, Context Brain, and MCP endpoint docs
 - [MCP Integration](/nexusOrchestrator/mcp-integration) — Connect with Claude Desktop
 - [Architecture](/nexusOrchestrator/architecture) — Understand the hexagonal design

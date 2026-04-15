@@ -77,11 +77,11 @@ No Makefile — use plain `go` toolchain commands.
   - **Legacy SSE** (`GET /sse` + `POST /messages?sessionId=...`): 2024-11-05 HTTP+SSE transport for Continue IDE, Cursor, etc.
   - **stdio proxy** (`cmd/nexus-mcp-stdio`): Subprocess bridge for Claude Desktop and other stdio-only clients
 - Standard methods: `initialize`, `ping`, `tools/list`, `tools/call`, `resources/list`, `prompts/list`
-- 31 tools: `howto` / `howto_brief` (call first!), task CRUD, provider management, AI session lifecycle, backlog planning, agent discovery
+- 36 tools: `howto` / `howto_brief` (call first!), task CRUD, provider management, AI session lifecycle, backlog planning, agent discovery, brain knowledge management (`ingest_knowledge`, `search_knowledge`, `get_project_context`, `get_focused_context`, `get_brain_status`)
 - Security: Origin validation (localhost/127.0.0.1 allowed, foreign origins blocked), CORS preflight support
 - `initialize` response includes `Mcp-Session-Id` header and `serverInfo.Instructions`
-- `NewServer(orch) *Server` — registers `/mcp`, `/health`, `/sse`, `/messages` handlers; `*Server` implements `http.Handler`
-- `StartMCPServer(ctx, orch, addr)` — runs server with graceful shutdown on context cancellation (no WriteTimeout for SSE)
+- `NewMcpServer(orch, brain) *Server` — registers `/mcp`, `/health`, `/sse`, `/messages` handlers; `*Server` implements `http.Handler`
+- `StartMCPServer(ctx, orch, brain, addr)` — runs server with graceful shutdown on context cancellation (no WriteTimeout for SSE)
 
 ### Session Isolation
 

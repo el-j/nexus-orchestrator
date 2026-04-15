@@ -133,13 +133,17 @@ func run() error {
 	if mcpAddr == "" {
 		mcpAddr = "127.0.0.1:63988"
 	}
+
+	knowledgeRepo := repo_sqlite.NewKnowledgeRepo(repo)
+	brainSvc := services.NewBrainService(knowledgeRepo, repo)
+
 	go func() {
-		if err := httpapi.StartServerFull(httpCtx, orchestratorSvc, httpAddr, activitySvc, logHub); err != nil {
+		if err := httpapi.StartServerFull(httpCtx, orchestratorSvc, brainSvc, httpAddr, activitySvc, logHub); err != nil {
 			log.Printf("httpapi: %v", err)
 		}
 	}()
 	go func() {
-		if err := mcp.StartMCPServer(httpCtx, orchestratorSvc, mcpAddr); err != nil {
+		if err := mcp.StartMCPServer(httpCtx, orchestratorSvc, brainSvc, mcpAddr); err != nil {
 			log.Printf("mcp: %v", err)
 		}
 	}()
@@ -175,7 +179,9 @@ func run() error {
 	}()
 
 	// 4. Initialise Wails app binding
-	app := NewApp(orchestratorSvc, httpAddr).WithActivityService(activitySvc)
+	app := NewApp(orchestratorSvc, httpAddr).
+		withActivityService(activitySvc).
+		withBrainService(brainSvc)
 
 	trayAdapter := tray.NewTrayAdapter(orchestratorSvc, func() {
 		app.ShowWindow()

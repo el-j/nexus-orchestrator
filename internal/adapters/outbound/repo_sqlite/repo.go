@@ -202,6 +202,9 @@ func migrate(db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("sqlite: migrate runtime_config: %w", err)
 	}
+	if err := migrateKnowledge(db); err != nil {
+		return err
+	}
 	return nil
 }
 

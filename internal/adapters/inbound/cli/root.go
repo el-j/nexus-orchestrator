@@ -15,7 +15,7 @@ import (
 )
 
 // NewRootCmd builds and returns the root Cobra command tree.
-func NewRootCmd(orch ports.Orchestrator) *cobra.Command {
+func NewRootCmd(orch ports.Orchestrator, brain ports.BrainService) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "nexus",
 		Short: "nexusOrchestrator — Local-first AI orchestrator CLI",
@@ -28,6 +28,7 @@ func NewRootCmd(orch ports.Orchestrator) *cobra.Command {
 	root.AddCommand(newBacklogCmd(orch))
 	root.AddCommand(newPromoteCmd(orch))
 	root.AddCommand(newUpdateCmd(orch))
+	root.AddCommand(newBrainCmd(brain))
 
 	return root
 }

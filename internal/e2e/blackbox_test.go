@@ -49,8 +49,11 @@ func newBlackboxStack(t *testing.T) *blackboxStack {
 	hub := httpapi.NewHub()
 	orch.SetBroadcaster(hub)
 
-	httpSrv := httptest.NewServer(httpapi.NewServer(orch, hub).Handler())
-	mcpSrv := httptest.NewServer(mcp.NewServer(orch))
+	knowledgeRepo := repo_sqlite.NewKnowledgeRepo(repo)
+	brainSvc := services.NewBrainService(knowledgeRepo, repo)
+
+	httpSrv := httptest.NewServer(httpapi.NewServer(orch, brainSvc, hub).Handler())
+	mcpSrv := httptest.NewServer(mcp.NewMcpServer(orch, brainSvc))
 
 	t.Cleanup(func() {
 		httpSrv.Close()

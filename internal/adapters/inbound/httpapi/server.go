@@ -27,11 +27,12 @@ type Server struct {
 	hub         *Hub
 	logHub      *LogHub
 	activitySvc activityQuerier
+	brain       ports.BrainService
 }
 
 // NewServer constructs a Server. hub may be nil to disable SSE.
-func NewServer(orch ports.Orchestrator, hub *Hub) *Server {
-	return &Server{orch: orch, hub: hub}
+func NewServer(orch ports.Orchestrator, brain ports.BrainService, hub *Hub) *Server {
+	return &Server{orch: orch, brain: brain, hub: hub}
 }
 
 // WithLogHub configures the Server to capture and stream log entries via SSE.
@@ -204,18 +205,29 @@ func (s *Server) Handler() http.Handler {
 	r.Get("/api/howto", s.handleHowto)
 	r.Get("/.well-known/nexus.json", s.handleWellKnownNexus)
 
+	// Brain
+	r.Post("/api/brain/ingest", s.handleIngestKnowledge)
+	r.Get("/api/brain/status", s.handleGetBrainStatus)
+	r.Post("/api/brain/context", s.handleGetProjectContext)
+	r.Post("/api/brain/focused-context", s.handleGetFocusedContext)
+	r.Get("/api/brain/search", s.handleSearchKnowledge)
+	r.Post("/api/brain/init", s.handleInitProject)
+	r.Get("/api/brain/knowledge", s.handleListKnowledge)
+	r.Delete("/api/brain/knowledge/{id}", s.handleDeleteKnowledge)
+	r.Get("/api/brain/file-map", s.handleGetFileMap)
+
 	return r
 }
 
 // StartServer starts the HTTP API on addr and blocks until ctx is cancelled.
 // An optional *LogHub may be passed as the final argument to capture log output via SSE.
-func StartServer(ctx context.Context, orch ports.Orchestrator, addr string, logHub ...*LogHub) error {
+func StartServer(ctx context.Context, orch ports.Orchestrator, brain ports.BrainService, addr string, logHub ...*LogHub) error {
 	hub := NewHub()
 	// Wire broadcaster if orch exposes SetBroadcaster (avoids importing services).
 	if bs, ok := orch.(broadcasterSetter); ok {
 		bs.SetBroadcaster(hub)
 	}
-	s := NewServer(orch, hub)
+	s := NewServer(orch, brain, hub)
 	if len(logHub) > 0 && logHub[0] != nil {
 		s.WithLogHub(logHub[0])
 	}
@@ -251,7 +263,7 @@ type activityBroadcasterSetter interface {
 
 // StartServerFull is like StartServer but also wires an activity service for
 // the activity observatory endpoints and SSE broadcasting of activity events.
-func StartServerFull(ctx context.Context, orch ports.Orchestrator, addr string, actSvc activityQuerier, logHub ...*LogHub) error {
+func StartServerFull(ctx context.Context, orch ports.Orchestrator, brain ports.BrainService, addr string, actSvc activityQuerier, logHub ...*LogHub) error {
 	hub := NewHub()
 	if bs, ok := orch.(broadcasterSetter); ok {
 		bs.SetBroadcaster(hub)
@@ -261,7 +273,7 @@ func StartServerFull(ctx context.Context, orch ports.Orchestrator, addr string, 
 			abs.SetBroadcaster(hub)
 		}
 	}
-	s := NewServer(orch, hub)
+	s := NewServer(orch, brain, hub)
 	if len(logHub) > 0 && logHub[0] != nil {
 		s.WithLogHub(logHub[0])
 	}

@@ -111,6 +111,26 @@
         "command": "nexus.reconnect",
         "title": "Nexus: Reconnect to Daemon",
         "category": "Nexus"
+      },
+      {
+        "command": "nexus.brain.ingest",
+        "title": "Nexus: Ingest Knowledge into Brain",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "nexus.brain.status",
+        "title": "Nexus: Get Brain Status",
+        "icon": "$(database)"
+      },
+      {
+        "command": "nexus.brain.init",
+        "title": "Nexus: Initialize Project Brain",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "nexus.brain.search",
+        "title": "Nexus: Search Project Brain",
+        "icon": "$(search)"
       }
     ],
     "menus": {
@@ -164,6 +184,11 @@
         {
           "command": "nexus.delegateToNexus",
           "when": "view == nexus.aiSessions && viewItem == aiSession",
+          "group": "inline"
+        },
+        {
+          "command": "nexus.brain.ingest",
+          "when": "viewItem == nexusProjectBrain",
           "group": "inline"
         }
       ]

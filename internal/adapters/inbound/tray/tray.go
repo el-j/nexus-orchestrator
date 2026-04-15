@@ -12,6 +12,10 @@ import (
 	"nexus-orchestrator/internal/core/ports"
 )
 
+// trayDisabledOnce ensures the "tray disabled" log line is emitted at most once
+// per process, regardless of how many times Start() or Enabled() is called.
+var trayDisabledOnce sync.Once
+
 // TrayAdapter manages the system tray icon.
 // On platforms where systray cannot acquire the main thread alongside Wails,
 // Start() is a documented no-op — the tray can be enabled by a future
@@ -42,8 +46,13 @@ func NewTrayAdapter(orch ports.Orchestrator, onShow func(), onQuit func()) *Tray
 // wails.Run() to yield or a platform-specific native bridge. For now, Start() is
 // intentionally a no-op — the app functions without a tray icon and the interface
 // is ready for future integration.
+//
+// TODO(#XXX): implement system tray — requires main-thread dispatch on macOS/Windows
+// (e.g. systray library); currently blocked by Wails owning the OS main thread.
 func (t *TrayAdapter) Start() {
-	log.Printf("tray: adapter created (systray integration pending main-thread coordination)")
+	trayDisabledOnce.Do(func() {
+		log.Println("tray icon disabled (NEXUS_TRAY_ENABLED not set); system tray is not functional")
+	})
 }
 
 // Enabled reports whether a real tray integration is active.
