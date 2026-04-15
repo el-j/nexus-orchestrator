@@ -240,6 +240,7 @@ jobs:
             ext: tar.gz
             bin_ext: ""
             static_flags: -extldflags=-static
+            cgo_ldflags: "-lm"
 
           - os: linux
             arch: arm64
@@ -250,6 +251,7 @@ jobs:
             ext: tar.gz
             bin_ext: ""
             static_flags: -extldflags=-static
+            cgo_ldflags: "-lm"
 
           - os: darwin
             arch: amd64
@@ -260,6 +262,7 @@ jobs:
             ext: tar.gz
             bin_ext: ""
             static_flags: ""
+            cgo_ldflags: ""
 
           - os: darwin
             arch: arm64
@@ -270,6 +273,7 @@ jobs:
             ext: tar.gz
             bin_ext: ""
             static_flags: ""
+            cgo_ldflags: ""
 
           - os: windows
             arch: amd64
@@ -280,6 +284,7 @@ jobs:
             ext: zip
             bin_ext: ".exe"
             static_flags: ""
+            cgo_ldflags: ""
 
     steps:
       - uses: actions/checkout@v6
@@ -309,6 +314,7 @@ jobs:
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
           CGO_CFLAGS: "-DSQLITE_ENABLE_FTS5"
+          CGO_LDFLAGS: ${{ matrix.cgo_ldflags }}
         run: |
           VERSION="${{ needs.version.outputs.tag }}"
           COMMIT=$(git rev-parse --short HEAD)

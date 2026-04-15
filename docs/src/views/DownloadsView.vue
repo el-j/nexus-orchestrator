@@ -13,6 +13,31 @@
       </h1>
       <p class="text-xl text-slate-400 mb-6">Get the desktop app or CLI tools for your platform</p>
 
+      <!-- Beta/stable version badge -->
+      <div v-if="channel === 'beta'" class="flex items-center justify-center gap-3 mb-4">
+        <span
+          v-if="tagLoading"
+          class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/5 text-sm text-amber-400"
+        >
+          <i class="pi pi-spin pi-spinner text-xs"></i>
+          Resolving latest beta release…
+        </span>
+        <span
+          v-else-if="latestTag"
+          class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 text-sm font-mono text-amber-300"
+        >
+          <i class="pi pi-tag text-xs"></i>
+          {{ latestTag }}
+        </span>
+        <span
+          v-else
+          class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-700 bg-slate-800/50 text-sm text-slate-400"
+        >
+          <i class="pi pi-exclamation-circle text-xs"></i>
+          No beta release yet — links point to latest stable
+        </span>
+      </div>
+
       <!-- OS Detection badge -->
       <div
         class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0d0d14] border border-white/10 text-sm"
@@ -270,23 +295,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
 import CodeBlock from '../components/CodeBlock.vue';
+
+const REPO = 'el-j/nexus-orchestrator';
+// Baked in at SSG build time — 'beta' on develop, 'stable' on main.
+const channel = import.meta.env.VITE_DOCS_CHANNEL === 'beta' ? 'beta' : 'stable';
 
 const detectedOS = ref('Detecting...');
 const detectedKey = ref('');
 
+// For beta: the latest prerelease tag fetched from the GitHub API at runtime.
+const latestTag = ref<string | null>(null);
+const tagLoading = ref(channel === 'beta');
+const tagError = ref(false);
+
 onMounted(async () => {
+  // ── OS detection ────────────────────────────────────────────────────
   const ua = navigator.userAgent || '';
   const platform = navigator.platform || '';
 
   if (/Mac/i.test(platform)) {
-    // Apple Silicon detection: navigator.platform returns "MacIntel" on all macOS
-    // regardless of CPU, so we need multiple heuristics.
     let isARM = false;
-
-    // 1. High-entropy userAgentData (Chrome 90+, Edge 90+)
     try {
       const uad = (navigator as any).userAgentData;
       if (uad?.getHighEntropyValues) {
@@ -296,13 +327,9 @@ onMounted(async () => {
         if (/arm/i.test(uad.architecture)) isARM = true;
       }
     } catch (_) {
-      /* ignore – permission may be denied */
+      /* ignore */
     }
-
-    // 2. UA string fallback (rare but some browsers expose arm64)
     if (!isARM && /ARM64|arm64/i.test(ua)) isARM = true;
-
-    // 3. WebGL renderer heuristic – Apple Silicon reports "Apple M…" or "Apple GPU"
     if (!isARM) {
       try {
         const canvas = document.createElement('canvas');
@@ -320,29 +347,34 @@ onMounted(async () => {
         /* ignore */
       }
     }
-
-    if (isARM) {
-      detectedOS.value = 'macOS (Apple Silicon)';
-      detectedKey.value = 'mac-arm';
-    } else {
-      // No ARM signal found — could be Intel or Apple Silicon on Safari/Firefox.
-      // Avoid recommending Intel when we cannot confirm; let the user choose manually.
-      detectedOS.value = 'macOS (architecture unknown — choose below)';
-      detectedKey.value = '';
-    }
+    detectedOS.value = isARM
+      ? 'macOS (Apple Silicon)'
+      : 'macOS (architecture unknown — choose below)';
+    detectedKey.value = isARM ? 'mac-arm' : '';
   } else if (/Win/i.test(platform)) {
     detectedOS.value = 'Windows 64-bit';
     detectedKey.value = 'win';
   } else if (/Linux/i.test(platform)) {
-    if (/aarch64|arm64/i.test(ua)) {
-      detectedOS.value = 'Linux ARM64';
-      detectedKey.value = 'linux-arm';
-    } else {
-      detectedOS.value = 'Linux 64-bit';
-      detectedKey.value = 'linux';
-    }
+    detectedOS.value = /aarch64|arm64/i.test(ua) ? 'Linux ARM64' : 'Linux 64-bit';
+    detectedKey.value = /aarch64|arm64/i.test(ua) ? 'linux-arm' : 'linux';
   } else {
     detectedOS.value = 'Unknown — choose below';
+  }
+
+  // ── Beta: resolve latest prerelease tag via GitHub API ──────────────
+  if (channel === 'beta') {
+    try {
+      const resp = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=20`);
+      if (resp.ok) {
+        const releases: Array<{ prerelease: boolean; tag_name: string }> = await resp.json();
+        const pre = releases.find((r) => r.prerelease);
+        latestTag.value = pre?.tag_name ?? null;
+      }
+    } catch (_) {
+      tagError.value = true;
+    } finally {
+      tagLoading.value = false;
+    }
   }
 });
 
@@ -350,17 +382,25 @@ function isRecommended(osKey: string) {
   return detectedKey.value && detectedKey.value === osKey;
 }
 
-const baseURL = 'https://github.com/el-j/nexus-orchestrator/releases/latest/download';
-const vsixURL = `${baseURL}/nexus-orchestrator-vscode.vsix`;
+// Stable always uses /releases/latest/download.
+// Beta uses the resolved prerelease tag; falls back to /latest if the API call failed.
+const baseURL = computed(() => {
+  if (channel === 'beta' && latestTag.value) {
+    return `https://github.com/${REPO}/releases/download/${latestTag.value}`;
+  }
+  return `https://github.com/${REPO}/releases/latest/download`;
+});
 
-const desktopCards = [
+const vsixURL = computed(() => `${baseURL.value}/nexus-orchestrator-vscode.vsix`);
+
+const DESKTOP_ASSETS = [
   {
     icon: '🍎',
     platform: 'macOS',
     arch: 'Apple Silicon (M1/M2/M3/M4)',
     ext: '.zip',
     osKey: 'mac-arm',
-    url: `${baseURL}/nexus-orchestrator-desktop-darwin-arm64.zip`,
+    file: 'nexus-orchestrator-desktop-darwin-arm64.zip',
   },
   {
     icon: '🍎',
@@ -368,7 +408,7 @@ const desktopCards = [
     arch: 'Intel (x86_64)',
     ext: '.zip',
     osKey: 'mac-intel',
-    url: `${baseURL}/nexus-orchestrator-desktop-darwin-amd64.zip`,
+    file: 'nexus-orchestrator-desktop-darwin-amd64.zip',
   },
   {
     icon: '🪟',
@@ -376,7 +416,7 @@ const desktopCards = [
     arch: '64-bit (x86_64)',
     ext: '.zip',
     osKey: 'win',
-    url: `${baseURL}/nexus-orchestrator-desktop-windows-amd64.zip`,
+    file: 'nexus-orchestrator-desktop-windows-amd64.zip',
   },
   {
     icon: '🐧',
@@ -384,18 +424,18 @@ const desktopCards = [
     arch: '64-bit (x86_64)',
     ext: '.tar.gz',
     osKey: 'linux',
-    url: `${baseURL}/nexus-orchestrator-desktop-linux-amd64.tar.gz`,
+    file: 'nexus-orchestrator-desktop-linux-amd64.tar.gz',
   },
 ];
 
-const cliCards = [
+const CLI_ASSETS = [
   {
     icon: '🍎',
     platform: 'macOS',
     arch: 'Apple Silicon (arm64)',
     ext: '.tar.gz',
     osKey: 'mac-arm',
-    url: `${baseURL}/nexus-orchestrator-darwin-arm64.tar.gz`,
+    file: 'nexus-orchestrator-darwin-arm64.tar.gz',
   },
   {
     icon: '🍎',
@@ -403,7 +443,7 @@ const cliCards = [
     arch: 'Intel (amd64)',
     ext: '.tar.gz',
     osKey: 'mac-intel',
-    url: `${baseURL}/nexus-orchestrator-darwin-amd64.tar.gz`,
+    file: 'nexus-orchestrator-darwin-amd64.tar.gz',
   },
   {
     icon: '🪟',
@@ -411,7 +451,7 @@ const cliCards = [
     arch: '64-bit (amd64)',
     ext: '.zip',
     osKey: 'win',
-    url: `${baseURL}/nexus-orchestrator-windows-amd64.zip`,
+    file: 'nexus-orchestrator-windows-amd64.zip',
   },
   {
     icon: '🐧',
@@ -419,7 +459,7 @@ const cliCards = [
     arch: '64-bit (amd64)',
     ext: '.tar.gz',
     osKey: 'linux',
-    url: `${baseURL}/nexus-orchestrator-linux-amd64.tar.gz`,
+    file: 'nexus-orchestrator-linux-amd64.tar.gz',
   },
   {
     icon: '🐧',
@@ -427,23 +467,40 @@ const cliCards = [
     arch: 'ARM64',
     ext: '.tar.gz',
     osKey: 'linux-arm',
-    url: `${baseURL}/nexus-orchestrator-linux-arm64.tar.gz`,
+    file: 'nexus-orchestrator-linux-arm64.tar.gz',
   },
 ];
 
-const installScript = `curl -sSfL https://raw.githubusercontent.com/el-j/nexus-orchestrator/main/scripts/install.sh | sh`;
+const desktopCards = computed(() =>
+  DESKTOP_ASSETS.map((a) => ({ ...a, url: `${baseURL.value}/${a.file}` })),
+);
+const cliCards = computed(() =>
+  CLI_ASSETS.map((a) => ({ ...a, url: `${baseURL.value}/${a.file}` })),
+);
 
-const verifyMac = `# Download checksums
-curl -sSfLO https://github.com/el-j/nexus-orchestrator/releases/latest/download/SHA256SUMS.txt
+const checksumURL = computed(() => `${baseURL.value}/SHA256SUMS.txt`);
+
+const installScript = computed(() =>
+  channel === 'beta' && latestTag.value
+    ? `curl -sSfL https://raw.githubusercontent.com/${REPO}/${latestTag.value}/scripts/install.sh | sh`
+    : `curl -sSfL https://raw.githubusercontent.com/${REPO}/main/scripts/install.sh | sh`,
+);
+
+const verifyMac = computed(
+  () => `# Download checksums
+curl -sSfLO ${checksumURL.value}
 
 # Verify (macOS)
-shasum -a 256 -c SHA256SUMS.txt --ignore-missing`;
+shasum -a 256 -c SHA256SUMS.txt --ignore-missing`,
+);
 
-const verifyLinux = `# Download checksums
-curl -sSfLO https://github.com/el-j/nexus-orchestrator/releases/latest/download/SHA256SUMS.txt
+const verifyLinux = computed(
+  () => `# Download checksums
+curl -sSfLO ${checksumURL.value}
 
 # Verify (Linux)
-sha256sum -c SHA256SUMS.txt --ignore-missing`;
+sha256sum -c SHA256SUMS.txt --ignore-missing`,
+);
 
 const verifyWin = `# PowerShell
 Get-FileHash .\\nexus-orchestrator-windows-amd64.zip -Algorithm SHA256
