@@ -23,11 +23,13 @@ func (m *planScanMockOrch) TriggerScan(context.Context) ([]domain.DiscoveredProv
 
 // Minimal stubs for other Orchestrator methods used by compilation. They are
 // never called by the worker tests.
-func (m *planScanMockOrch) SubmitTask(domain.Task) (string, error)      { return "", nil }
-func (m *planScanMockOrch) GetTask(string) (domain.Task, error)         { return domain.Task{}, nil }
-func (m *planScanMockOrch) GetQueue() ([]domain.Task, error)            { return nil, nil }
-func (m *planScanMockOrch) GetAllTasks() ([]domain.Task, error)         { return nil, nil }
-func (m *planScanMockOrch) GetProviders() ([]ports.ProviderInfo, error) { return nil, nil }
+func (m *planScanMockOrch) SubmitTask(domain.Task) (string, error)             { return "", nil }
+func (m *planScanMockOrch) GetTask(string) (domain.Task, error)                { return domain.Task{}, nil }
+func (m *planScanMockOrch) GetQueue() ([]domain.Task, error)                   { return nil, nil }
+func (m *planScanMockOrch) GetQueueForProject(_ string) ([]domain.Task, error) { return nil, nil }
+func (m *planScanMockOrch) GetAllTasks() ([]domain.Task, error)                { return nil, nil }
+func (m *planScanMockOrch) GetTasksForProject(_ string) ([]domain.Task, error) { return nil, nil }
+func (m *planScanMockOrch) GetProviders() ([]ports.ProviderInfo, error)        { return nil, nil }
 func (m *planScanMockOrch) GetRuntimeConfig(context.Context) (domain.RuntimeConfig, error) {
 	return domain.RuntimeConfig{}, nil
 }

@@ -114,8 +114,13 @@ type Orchestrator interface {
 	// GetTask returns the task with the given ID, or domain.ErrNotFound.
 	GetTask(id string) (domain.Task, error)
 	GetQueue() ([]domain.Task, error)
+	// GetQueueForProject returns QUEUED and PROCESSING tasks scoped to a single project.
+	// Use this instead of GetQueue when a project-isolated view is required (e.g. external MCP agents).
+	GetQueueForProject(projectPath string) ([]domain.Task, error)
 	// GetAllTasks returns every task regardless of status.
 	GetAllTasks() ([]domain.Task, error)
+	// GetTasksForProject returns all tasks (any status) scoped to the given project path.
+	GetTasksForProject(projectPath string) ([]domain.Task, error)
 	// GetProviders returns a snapshot of all registered LLM backends and their liveness.
 	GetProviders() ([]ProviderInfo, error)
 	// GetRuntimeConfig returns the current effective runtime config. Tokens are

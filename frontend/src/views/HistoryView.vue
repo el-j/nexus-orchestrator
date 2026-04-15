@@ -59,6 +59,23 @@
       </div>
     </header>
 
+    <!-- Fetch error banner -->
+    <div
+      v-if="fetchError"
+      class="mx-4 mt-3 px-3 py-2 rounded bg-red-500/10 border border-red-500/30 text-xs text-red-300 flex items-center justify-between shrink-0"
+    >
+      <span>Failed to load task history: {{ fetchError }}</span>
+      <button
+        @click="
+          fetchError = null;
+          void refresh();
+        "
+        class="ml-4 px-2 py-0.5 rounded bg-red-500/20 hover:bg-red-500/40 text-red-300 border border-red-500/30"
+      >
+        Retry
+      </button>
+    </div>
+
     <!-- Loading skeleton -->
     <div v-if="loading" class="flex-1 overflow-auto p-4 space-y-2">
       <div v-for="i in 5" :key="i" class="h-14 rounded-xl bg-white/3 animate-pulse" />
@@ -149,6 +166,7 @@ import { formatDate } from '../utils/time';
 
 const tasks = ref<Task[]>([]);
 const loading = ref(false);
+const fetchError = ref<string | null>(null);
 const lastRefreshed = ref<Date | null>(null);
 let interval: ReturnType<typeof setInterval> | null = null;
 const { on, off, connected } = useGlobalSSE();
@@ -244,18 +262,23 @@ const detailOpen = ref(false);
 const selectedTask = ref<Task | null>(null);
 
 async function refresh() {
-  const baseUrl = await resolveServerUrl();
-  const params = new URLSearchParams();
-  if (currentProject.value) {
-    params.set('projectPath', currentProject.value);
+  try {
+    const baseUrl = await resolveServerUrl();
+    const params = new URLSearchParams();
+    if (currentProject.value) {
+      params.set('projectPath', currentProject.value);
+    }
+    const query = params.toString();
+    const res = await fetch(`${baseUrl}/api/tasks/all${query ? `?${query}` : ''}`);
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    tasks.value = ((await res.json()) as Task[]) ?? [];
+    lastRefreshed.value = new Date();
+    fetchError.value = null;
+  } catch (e) {
+    fetchError.value = e instanceof Error ? e.message : String(e);
   }
-  const query = params.toString();
-  const res = await fetch(`${baseUrl}/api/tasks/all${query ? `?${query}` : ''}`);
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status}`);
-  }
-  tasks.value = ((await res.json()) as Task[]) ?? [];
-  lastRefreshed.value = new Date();
 }
 
 watch(currentProject, () => {
@@ -271,13 +294,10 @@ watch(connected, (isConnected) => {
 
 onMounted(async () => {
   loading.value = true;
-  try {
-    await refresh();
-  } finally {
-    on('*', sseHandler);
-    syncPolling(connected.value);
-    loading.value = false;
-  }
+  await refresh();
+  on('*', sseHandler);
+  syncPolling(connected.value);
+  loading.value = false;
 });
 
 onUnmounted(() => {

@@ -234,8 +234,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useBrain } from '../composables/useBrain';
+import { currentProject } from '../composables/useProjectState';
 
 const projectPath = ref('');
 const activeTab = ref<'search' | 'entries' | 'ingest' | 'filemap'>('search');
@@ -253,17 +254,26 @@ const tabs = [
   { key: 'filemap' as const, label: 'File Map' },
 ];
 
-// Initialise with empty path; user sets it via input
+// brain ref is swapped when projectPath changes; computed proxies ensure the
+// template always reads from the current instance's reactive state.
 const brain = ref(useBrain(''));
+
+// Computed proxies — necessary because destructuring brain.value captures refs
+// from the initial instance and won't update when brain.value is reassigned.
+const status = computed(() => brain.value.status.value);
+const entries = computed(() => brain.value.entries.value);
+const fileMap = computed(() => brain.value.fileMap.value);
+const searchResults = computed(() => brain.value.searchResults.value);
+const loading = computed(() => brain.value.loading.value);
+const error = computed(() => brain.value.error.value);
 
 function onPathChange() {
   if (projectPath.value) {
+    localStorage.setItem('nexus:projectPath', projectPath.value);
     brain.value = useBrain(projectPath.value);
-    brain.value.fetchStatus();
+    void brain.value.fetchStatus();
   }
 }
-
-const { status, entries, fileMap, searchResults, loading, error } = brain.value;
 
 async function refresh() {
   if (!projectPath.value) return;
@@ -311,8 +321,9 @@ async function onFilesSelected(e: Event) {
 }
 
 onMounted(() => {
-  // Try to detect project path from URL or localStorage
-  const saved = localStorage.getItem('nexus:projectPath');
+  // Seed project path from localStorage, then fall back to the global
+  // currentProject selection (set via the sidebar project picker).
+  const saved = localStorage.getItem('nexus:projectPath') ?? currentProject.value;
   if (saved) {
     projectPath.value = saved;
     onPathChange();

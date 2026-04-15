@@ -42,7 +42,15 @@ func (m *mockOrchestrator) GetQueue() ([]domain.Task, error) {
 	return m.queueResult, m.queueErr
 }
 
+func (m *mockOrchestrator) GetQueueForProject(_ string) ([]domain.Task, error) {
+	return m.queueResult, m.queueErr
+}
+
 func (m *mockOrchestrator) GetAllTasks() ([]domain.Task, error) {
+	return m.queueResult, m.queueErr
+}
+
+func (m *mockOrchestrator) GetTasksForProject(_ string) ([]domain.Task, error) {
 	return m.queueResult, m.queueErr
 }
 

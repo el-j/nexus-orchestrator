@@ -38,9 +38,9 @@ func (s *Server) handleToolCall(w http.ResponseWriter, r *http.Request, req rpcR
 	case "get_task":
 		result, err = s.toolGetTask(p.Arguments)
 	case "get_queue":
-		result, err = s.toolGetQueue()
+		result, err = s.toolGetQueue(p.Arguments)
 	case "get_all_tasks":
-		result, err = s.toolGetAllTasks()
+		result, err = s.toolGetAllTasks(p.Arguments)
 	case "cancel_task":
 		result, err = s.toolCancelTask(p.Arguments)
 	case "get_providers":
@@ -178,8 +178,24 @@ func (s *Server) toolGetTask(args json.RawMessage) (callToolResult, error) {
 	return textResult(string(b)), nil
 }
 
-func (s *Server) toolGetQueue() (callToolResult, error) {
-	tasks, err := s.orch.GetQueue()
+func (s *Server) toolGetQueue(args json.RawMessage) (callToolResult, error) {
+	var p struct {
+		ProjectPath string `json:"projectPath"`
+	}
+	// args may be null/empty for backwards-compat — that is fine.
+	if len(args) > 0 {
+		_ = json.Unmarshal(args, &p)
+	}
+
+	var (
+		tasks []domain.Task
+		err   error
+	)
+	if p.ProjectPath != "" {
+		tasks, err = s.orch.GetQueueForProject(p.ProjectPath)
+	} else {
+		tasks, err = s.orch.GetQueue()
+	}
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_queue: %w", err)
 	}
@@ -190,8 +206,23 @@ func (s *Server) toolGetQueue() (callToolResult, error) {
 	return textResult(string(b)), nil
 }
 
-func (s *Server) toolGetAllTasks() (callToolResult, error) {
-	tasks, err := s.orch.GetAllTasks()
+func (s *Server) toolGetAllTasks(args json.RawMessage) (callToolResult, error) {
+	var p struct {
+		ProjectPath string `json:"projectPath"`
+	}
+	if len(args) > 0 {
+		_ = json.Unmarshal(args, &p)
+	}
+
+	var (
+		tasks []domain.Task
+		err   error
+	)
+	if p.ProjectPath != "" {
+		tasks, err = s.orch.GetTasksForProject(p.ProjectPath)
+	} else {
+		tasks, err = s.orch.GetAllTasks()
+	}
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_all_tasks: %w", err)
 	}
@@ -847,13 +878,23 @@ func toolList() []toolDef {
 		},
 		{
 			Name:        "get_queue",
-			Description: "List all tasks currently in the queue.",
-			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
+			Description: "List tasks currently in the queue (QUEUED or PROCESSING). Pass projectPath to see only that project's tasks — always pass it when your agent is scoped to a specific project.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project root. Omit to see all projects (admin use only)."},
+				},
+			},
 		},
 		{
 			Name:        "get_all_tasks",
-			Description: "Return every task regardless of status (QUEUED, PROCESSING, DRAFT, BACKLOG, COMPLETED, FAILED, CANCELLED).",
-			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
+			Description: "Return tasks regardless of status. Pass projectPath to scope to a single project — always pass it when your agent is scoped to a specific project.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project root. Omit to see all projects (admin use only)."},
+				},
+			},
 		},
 		{
 			Name:        "cancel_task",

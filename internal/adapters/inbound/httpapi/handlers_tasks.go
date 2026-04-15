@@ -42,7 +42,17 @@ func computeTaskDurations(tasks []domain.Task) {
 }
 
 func (s *Server) handleListTasks(w http.ResponseWriter, r *http.Request) {
-	tasks, err := s.orch.GetQueue()
+	var (
+		tasks []domain.Task
+		err   error
+	)
+	// When a caller supplies projectPath we return only that project's queue,
+	// preventing agents on different projects from seeing each other's work.
+	if projectPath := r.URL.Query().Get("projectPath"); projectPath != "" {
+		tasks, err = s.orch.GetQueueForProject(projectPath)
+	} else {
+		tasks, err = s.orch.GetQueue()
+	}
 	if err != nil {
 		log.Printf("httpapi: list tasks: %v", err)
 		writeJSONError(w, "internal server error", http.StatusInternalServerError)
@@ -56,21 +66,20 @@ func (s *Server) handleListTasks(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGetAllTasks(w http.ResponseWriter, r *http.Request) {
-	tasks, err := s.orch.GetAllTasks()
+	var (
+		tasks []domain.Task
+		err   error
+	)
+	// Filter at the database level when projectPath is provided.
+	if projectPath := r.URL.Query().Get("projectPath"); projectPath != "" {
+		tasks, err = s.orch.GetTasksForProject(projectPath)
+	} else {
+		tasks, err = s.orch.GetAllTasks()
+	}
 	if err != nil {
 		log.Printf("httpapi: get all tasks: %v", err)
 		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
-	}
-	projectPath := r.URL.Query().Get("projectPath")
-	if projectPath != "" {
-		filtered := make([]domain.Task, 0, len(tasks))
-		for _, t := range tasks {
-			if t.ProjectPath == projectPath {
-				filtered = append(filtered, t)
-			}
-		}
-		tasks = filtered
 	}
 	if tasks == nil {
 		tasks = []domain.Task{}
@@ -189,6 +198,10 @@ func (s *Server) handleClaimTask(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			writeJSONError(w, "task or session not found", http.StatusNotFound)
+			return
+		}
+		if strings.Contains(err.Error(), "does not match task project") {
+			writeJSONError(w, err.Error(), http.StatusForbidden)
 			return
 		}
 		if strings.Contains(err.Error(), "not QUEUED") || strings.Contains(err.Error(), "is disconnected") {

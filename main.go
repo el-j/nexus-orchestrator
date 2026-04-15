@@ -217,15 +217,19 @@ func run() error {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		HideWindowOnClose: trayEnabled,
+		// Always hide the window on close so the app remains alive in the dock.
+		// When tray is enabled the tray icon provides reopen; when it is not, the
+		// dock icon on macOS / taskbar on Windows serves the same purpose.
+		// Users can quit via Cmd+Q or the OS-provided mechanism.
+		HideWindowOnClose: true,
 		OnBeforeClose: func(ctx context.Context) (prevent bool) {
-			if !trayEnabled {
-				log.Printf("nexusOrchestrator: window close requested — shutting down")
-				return false
+			if trayEnabled {
+				log.Printf("nexusOrchestrator: window close intercepted — hiding to tray")
+				runtime.WindowHide(ctx)
+				return true
 			}
-			log.Printf("nexusOrchestrator: window close intercepted — hiding to tray")
-			runtime.WindowHide(ctx)
-			return true
+			log.Printf("nexusOrchestrator: window close intercepted — hiding to dock/taskbar")
+			return false
 		},
 		OnStartup: func(ctx context.Context) {
 			app.startup(ctx)

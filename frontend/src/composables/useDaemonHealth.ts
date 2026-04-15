@@ -17,7 +17,7 @@ export function useDaemonHealth() {
     const id = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
       const baseUrl = await resolveServerUrl();
-      const res = await fetch(`${baseUrl}/health`, { signal: controller.signal });
+      const res = await fetch(`${baseUrl}/api/health`, { signal: controller.signal });
       if (res.ok) {
         consecutiveFailures = 0;
         connected.value = true;

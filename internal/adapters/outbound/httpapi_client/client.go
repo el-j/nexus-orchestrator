@@ -174,6 +174,52 @@ func (r *Client) GetAllTasks() ([]domain.Task, error) {
 	return tasks, nil
 }
 
+func (r *Client) GetQueueForProject(projectPath string) ([]domain.Task, error) {
+	u := "/api/tasks?projectPath=" + projectPath
+	req, err := r.newRequest(context.Background(), http.MethodGet, u, nil)
+	if err != nil {
+		return nil, fmt.Errorf("remote: build get queue for project request: %w", err)
+	}
+	resp, err := r.do(req)
+	if err != nil {
+		return nil, fmt.Errorf("remote: get queue for project: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("remote: get queue for project: unexpected status %d", resp.StatusCode)
+	}
+
+	var tasks []domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&tasks); err != nil {
+		return nil, fmt.Errorf("remote: decode queue for project: %w", err)
+	}
+	return tasks, nil
+}
+
+func (r *Client) GetTasksForProject(projectPath string) ([]domain.Task, error) {
+	u := "/api/tasks/all?projectPath=" + projectPath
+	req, err := r.newRequest(context.Background(), http.MethodGet, u, nil)
+	if err != nil {
+		return nil, fmt.Errorf("remote: build get tasks for project request: %w", err)
+	}
+	resp, err := r.do(req)
+	if err != nil {
+		return nil, fmt.Errorf("remote: get tasks for project: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("remote: get tasks for project: unexpected status %d", resp.StatusCode)
+	}
+
+	var tasks []domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&tasks); err != nil {
+		return nil, fmt.Errorf("remote: decode tasks for project: %w", err)
+	}
+	return tasks, nil
+}
+
 func (r *Client) GetProviders() ([]ports.ProviderInfo, error) {
 	req, err := r.newRequest(context.Background(), http.MethodGet, "/api/providers", nil)
 	if err != nil {

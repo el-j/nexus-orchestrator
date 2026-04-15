@@ -57,14 +57,30 @@ func (o *OrchestratorService) GetTask(id string) (domain.Task, error) {
 	return t, nil
 }
 
-// GetQueue returns all pending (QUEUED or PROCESSING) tasks.
+// GetQueue returns all pending (QUEUED or PROCESSING) tasks across every project.
+// Use GetQueueForProject for external-agent or per-project views.
 func (o *OrchestratorService) GetQueue() ([]domain.Task, error) {
 	return o.repo.GetPending()
+}
+
+// GetQueueForProject returns QUEUED and PROCESSING tasks for a single project.
+// projectPath is normalised with filepath.Clean before the query.
+func (o *OrchestratorService) GetQueueForProject(projectPath string) ([]domain.Task, error) {
+	return o.repo.GetByProjectPathAndStatus(
+		filepath.Clean(projectPath),
+		domain.StatusQueued, domain.StatusProcessing,
+	)
 }
 
 // GetAllTasks returns every task regardless of status.
 func (o *OrchestratorService) GetAllTasks() ([]domain.Task, error) {
 	return o.repo.GetAll()
+}
+
+// GetTasksForProject returns all tasks (any status) for a single project.
+// projectPath is normalised with filepath.Clean before the query.
+func (o *OrchestratorService) GetTasksForProject(projectPath string) ([]domain.Task, error) {
+	return o.repo.GetByProjectPath(filepath.Clean(projectPath))
 }
 
 // CancelTask removes a QUEUED or NO_PROVIDER task before it is processed.
@@ -266,6 +282,20 @@ func (o *OrchestratorService) ClaimTask(ctx context.Context, taskID string, sess
 		return domain.Task{}, fmt.Errorf("orchestrator: claim task: session %s is %s", sessionID, sess.Status)
 	}
 
+	// Fetch the task first so we can verify project ownership before mutating state.
+	task, err := repo.GetByID(taskID)
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("orchestrator: claim task: get task: %w", err)
+	}
+
+	// Enforce project isolation: a session registered for project A must not claim
+	// tasks that belong to project B.  Both sides are filepath.Clean'd on entry so
+	// the comparison is stable.
+	if sess.ProjectPath != "" && filepath.Clean(task.ProjectPath) != filepath.Clean(sess.ProjectPath) {
+		return domain.Task{}, fmt.Errorf("orchestrator: claim task: session project %q does not match task project %q",
+			sess.ProjectPath, task.ProjectPath)
+	}
+
 	// Atomically transition QUEUED → PROCESSING.
 	ok, err := repo.UpdateStatusIfCurrent(taskID, domain.StatusQueued, domain.StatusProcessing)
 	if err != nil {
@@ -275,8 +305,8 @@ func (o *OrchestratorService) ClaimTask(ctx context.Context, taskID string, sess
 		return domain.Task{}, fmt.Errorf("orchestrator: claim task: task %s is not QUEUED", taskID)
 	}
 
-	// Bind the session to the task.
-	task, err := repo.GetByID(taskID)
+	// Re-fetch the task now that status has been updated (don't bind stale state).
+	task, err = repo.GetByID(taskID)
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("orchestrator: claim task: get task: %w", err)
 	}
