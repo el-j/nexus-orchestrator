@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - develop
     paths-ignore:
       - 'docs/**'
       - '*.md'
@@ -27,6 +28,7 @@ jobs:
       semVer: ${{ steps.gitversion.outputs.semVer }}
       tag: ${{ steps.check_tag.outputs.tag }}
       exists: ${{ steps.check_tag.outputs.exists }}
+      prerelease: ${{ steps.check_tag.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -50,6 +52,12 @@ jobs:
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+          # Mark as prerelease when the version contains a label (e.g. -beta.1, -alpha.3)
+          if echo "${TAG}" | grep -qE '\-[a-zA-Z]'; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
           fi
 
   vet:
@@ -124,7 +132,7 @@ jobs:
 
       - name: Run tests
         shell: bash
-        run: CGO_ENABLED=1 go test -race -count=1 ./...
+        run: CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" CGO_LDFLAGS="-lm" go test -race -count=1 ./...
 
   frontend-test:
     needs: version
@@ -300,6 +308,7 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
+          CGO_CFLAGS: "-DSQLITE_ENABLE_FTS5"
         run: |
           VERSION="${{ needs.version.outputs.tag }}"
           COMMIT=$(git rev-parse --short HEAD)
@@ -353,6 +362,7 @@ jobs:
             archive_ext: zip
             archive_name: nexus-orchestrator-desktop-darwin-arm64
             wails_tags: ""
+            cgo_ldflags: ""
 
           - os: darwin
             arch: amd64
@@ -361,6 +371,7 @@ jobs:
             archive_ext: zip
             archive_name: nexus-orchestrator-desktop-darwin-amd64
             wails_tags: ""
+            cgo_ldflags: ""
 
           - os: windows
             arch: amd64
@@ -369,6 +380,7 @@ jobs:
             archive_ext: zip
             archive_name: nexus-orchestrator-desktop-windows-amd64
             wails_tags: ""
+            cgo_ldflags: ""
 
           - os: linux
             arch: amd64
@@ -377,6 +389,7 @@ jobs:
             archive_ext: tar.gz
             archive_name: nexus-orchestrator-desktop-linux-amd64
             wails_tags: "webkit2_41"
+            cgo_ldflags: "-lm"
 
     steps:
       - uses: actions/checkout@v6
@@ -402,6 +415,8 @@ jobs:
         shell: bash
         env:
           CGO_ENABLED: "1"
+          CGO_CFLAGS: "-DSQLITE_ENABLE_FTS5"
+          CGO_LDFLAGS: ${{ matrix.cgo_ldflags }}
         run: |
           VERSION="${{ needs.version.outputs.tag }}"
           COMMIT=$(git rev-parse --short HEAD)
@@ -611,6 +626,7 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.version.outputs.tag }}
+          prerelease: ${{ needs.version.outputs.prerelease == 'true' }}
           generate_release_notes: true
           files: |
             nexus-orchestrator-*.tar.gz

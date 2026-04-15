@@ -2,18 +2,20 @@ name: Deploy GitHub Pages
 
 on:
   push:
-    branches: ["main"]
-    paths: ["docs/**"]
+    branches:
+      - main
+      - develop
+    paths:
+      - 'docs/**'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: pages-${{ github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -33,28 +35,40 @@ jobs:
         working-directory: docs
         run: npm ci
 
-      - name: Build Vite site
+      - name: Build Vite site (stable)
+        if: github.ref_name == 'main'
         working-directory: docs
+        env:
+          VITE_BASE_PATH: /nexus-orchestrator/
+          VITE_DOCS_CHANNEL: stable
+          VITE_BETA_URL: /nexus-orchestrator/beta/
         run: npm run build
 
-      - name: Add .nojekyll to dist
-        run: touch build/docs/.nojekyll
+      - name: Build Vite site (beta)
+        if: github.ref_name == 'develop'
+        working-directory: docs
+        env:
+          VITE_BASE_PATH: /nexus-orchestrator/beta/
+          VITE_DOCS_CHANNEL: beta
+          VITE_STABLE_URL: /nexus-orchestrator/
+        run: npm run build
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4
+      - name: Deploy stable to gh-pages root
+        if: github.ref_name == 'main'
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          path: build/docs
+          branch: gh-pages
+          folder: build/docs
+          target-folder: .
+          clean: true
+          clean-exclude: |
+            beta
 
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Deploy beta to gh-pages /beta subfolder
+        if: github.ref_name == 'develop'
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: build/docs
+          target-folder: beta
+          clean: true

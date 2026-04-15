@@ -1,15 +1,12 @@
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import tailwindcss from '@tailwindcss/vite'
-import { resolve } from 'path'
-import type {} from 'vite-ssg' // augments vite.UserConfig with ssgOptions
+import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+import tailwindcss from '@tailwindcss/vite';
+import { resolve } from 'path';
+import type {} from 'vite-ssg'; // augments vite.UserConfig with ssgOptions
 
 export default defineConfig({
-  base: '/nexus-orchestrator/',
-  plugins: [
-    vue(),
-    tailwindcss(),
-  ],
+  base: process.env.VITE_BASE_PATH ?? '/nexus-orchestrator/',
+  plugins: [vue(), tailwindcss()],
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
@@ -25,4 +22,4 @@ export default defineConfig({
     outDir: '../build/docs',
     emptyOutDir: true,
   },
-})
+});
