@@ -8,12 +8,22 @@ branches:
     label: ''
     increment: Patch
     source-branches:
+      - develop
       - feature
       - hotfix
       - release
       - copilot
       - alpha
       - beta
+
+  develop:
+    regex: ^develop$
+    label: beta
+    increment: None
+    source-branches:
+      - main
+      - feature
+      - hotfix
 
   alpha:
     regex: ^alpha[/-]
