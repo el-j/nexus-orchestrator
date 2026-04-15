@@ -1,11 +1,11 @@
 {
   "version": "2",
-  "updatedAt": "2026-04-10T13:19:39Z",
+  "updatedAt": "2026-04-14T03:00:00Z",
   "counters": {
-    "nextTaskId": 509,
-    "nextPlanId": 66
+    "nextTaskId": 554,
+    "nextPlanId": 71
   },
-  "activePlanId": "PLAN-065",
+  "activePlanId": null,
   "notes": [
     "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix). PLAN-013 completed (update CI to latest action versions). PLAN-014 completed (unified publish.yml pipeline, fixed GITHUB_TOKEN cross-trigger bug, fixed CLI/desktop artifact naming collision, updated downloads.md). PLAN-015 completed (production-grade Node20 GitHub Action with TypeScript, built-in agent identity loading from el-j/agency-agents, 24 unit tests, action-ci.yml CI workflow). PLAN-016 completed (release pipeline finalization: deleted conflicting version.yml+release.yml, created CHANGELOG.md, fixed downloads.md desktop links). PLAN-017 completed (fix all broken download links: nexusOrchestrator\u2192nexus-orchestrator prefix, macOS .tar.gz\u2192.zip, add Gatekeeper workaround instructions). PLAN-018 completed (provider visibility: configurable Ollama/LM Studio URLs, BaseURL+Error in ProviderInfo, SQLite-persisted provider CRUD, GUI provider management panel, VS Code extension with submit/queue/status-bar). PLAN-019 completed (VS Code extension VSIX in release pipeline: vsce packaging with publisher+@vscode/vsce, build-vscode job in publish.yml+ci.yml, DownloadsView.vue/HomeView.vue/docs updated to mention extension). PLAN-020 completed (fix ProviderInfo TypeScript PascalCase\u2192camelCase type mismatch, wire AppSidebar routing, create ProvidersView.vue, dogfood confirmed COMPLETED via LM Studio qwen3-coder-next in 9s). PLAN-021 completed (SSE real-time updates via EventSource+fallback, ProviderConfig kind fix, CHANGELOG v0.8.0 \u2014 all 4 tasks dogfooded via daemon, LM Studio qwen3-coder-next). PLAN-022 completed (Universal AI Session Orchestration \u2014 AISession domain type, AISessionRepository+AISessionMonitor ports, SQLite AISessionRepo, HTTP /api/ai-sessions CRUD, MCP register_session+get_ai_sessions (14 tools total), GUI AISessionsView+useAISessions composable, VS Code SessionMonitor+Copilot detection, entry point wiring, 13 QA tests \u2014 all 9 tasks, 7 waves, all green). PLAN-023 active (System-Wide Provider Discovery + Background Service Mode \u2014 detect Claude CLI/Copilot/Antigravity/local AI tools, hide-to-tray, in-app log console, no console window \u2014 13 tasks across 8 waves). PLAN-024 completed (Multi-Project Planning & Idea Staging \u2014 DRAFT/BACKLOG statuses, ProviderName per-task routing, Priority+Tags, SQLite migrations, backlog CRUD on HTTP/MCP/CLI/Wails, BacklogView+BacklogList+ProjectSelector GUI, TaskSubmitForm split-button, 20 new QA tests \u2014 all 12 tasks, 7 waves, all green). PLAN-029 completed (Task Queue UI fix: DashboardView flex wrapper; AI Session dedup by externalId: idempotent RegisterAISession + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code extension heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-030 completed (Comprehensive Hardening: HeartbeatAISession+PromoteProvider bindings, error handling consistency, constructor nil-validation, HTTP API error format, frontend circular dep fix, VSCode memory leak+URLs, VSCode session monitor race fix, processNext decomposition into 4 helpers, silent catch blocks fixed, security hardening CSP nonce+file permissions+XSS, Vue error boundary+rejection handler, GitHub Action 53 tests, golangci-lint+eslint in CI, discovery error logging+configurable builder options, frontend accessibility ARIA labels). PLAN-031 completed (fix duplicate package decl in llm_openaicompat test, go fmt all files, add gofmt CI check + vet gate for test job \u2014 all 4 tasks green). EXPERIMENT 2026-03-12: go build passes even when _test.go files have syntax errors (build only compiles cmd/ entry points, never test files) \u2014 CI pattern Build\u2713 Vet\u2717 Test\u2717 gives false confidence; fixed by adding needs:[vet] gate to test job. EXPERIMENT 2026-03-12: duplicate package declarations caused by appending generated/scaffolded code to an existing file that already had a package line \u2014 always check for duplicate package decls after code generation. EXPERIMENT 2026-03-12: gofmt violations (multi-statement single lines with ;) not caught by go vet or go build \u2014 must add explicit gofmt -l check in lint CI job; find command: find . -name '*.go' | xargs gofmt -l. SESSION 2026-03-12: Completed PLAN-031 (CI hard-failure fix). Files changed: adapter_test.go (dup pkg decl), orchestrator_options_test.go (gofmt), .github/workflows/ci.yml (gofmt check + vet gate). Tests: all green. SESSION 2026-03-13: Completed PLAN-036 (formalized the release-readiness audit into .claude plan/task records and cleared the stale active-plan pointer). SESSION 2026-03-13: Started PLAN-037 (Wave 1 release-readiness hardening for queue authority, publish-gate parity, and provider promotion durability). SESSION 2026-03-13: Completed PLAN-037 (queued-task authority moved to persisted pending rows, publish gained full release-gate parity, provider promotion now persists enabled config, and Go race tests + daemon E2E + frontend/extension coverage all passed). SESSION 2026-03-13 (PLAN-039): Fixed CI failures from build-path unification \u2014 TASK-259: created build/frontend/.gitkeep + .gitignore glob fix so go embed works on fresh clone; TASK-260: bumped esbuild ^0.20.0\u2192^0.27.0 in vscode-extension/package.json + regenerated package-lock.json to fix npm ci sync error. SESSION 2026-03-13 (PLAN-040): Added Google Antigravity LLM provider \u2014 TASK-261: Antigravity now always registered in buildProviders() via NEXUS_ANTIGRAVITY_URL (default http://127.0.0.1:4315/v1); TASK-262: buildProviderFromConfig now handles ProviderKindDesktopApp/LocalAI/VLLM/TextGenUI via llm_openaicompat with /v1 normalization; TASK-263: copilot-instructions.md configuration section updated.",
     "PLAN-041 complete (2026-03-13): session purge (PurgeDisconnected on AISessionRepository + auto-purge in runSessionCleanup + DELETE /api/ai-sessions endpoint + Wails binding + Clear Disconnected button), Ollama /api/ps active-model detection, LiveActivityView, Live AI nav item. All 8 tasks TASK-264..TASK-271 done. Build + tests all green.",
@@ -527,7 +527,7 @@
       "id": "PLAN-047",
       "title": "Comprehensive Codebase Hardening \u2014 Bugs, Stubs, Duplication, MCP Gaps & Test Coverage",
       "goal": "Fix all bugs, stubs, missing implementations, code duplication, MCP gaps, and test coverage issues found in the 2026-03-25 5-agent audit swarm.",
-      "status": "active",
+      "status": "completed",
       "createdAt": "2026-03-25T00:00:00.000Z",
       "taskIds": [
         "TASK-301",
@@ -559,7 +559,7 @@
       "id": "PLAN-048",
       "title": "Middlepoint Sniffer \u2014 Universal Agent & Plan Discovery",
       "goal": "Expand nexusOrchestrator into a true 'middlepoint-sniffer': detect ALL plan/task files (orchestrator.json + markdown + cursor + MCP configs + crew), enrich discovered agents with sub-agent trees, model IDs, and identities, and surface everything in the UI.",
-      "status": "active",
+      "status": "completed",
       "createdAt": "2026-03-25T19:39:28Z",
       "tasks": [
         "TASK-315",
@@ -604,7 +604,7 @@
       "id": "PLAN-051",
       "title": "Local Model Intelligence Layer",
       "goal": "Make nexusOrchestrator a smart context broker for small-context local models (e.g. qwen3.5-35b-a3b via .continue). Add model capability profiles, get_project_context, get_focused_context, howto_brief, register/get_model_capabilities MCP tools, context-budget headers, enhanced .continue model extraction, and updated delegate_to_nexus workflow.",
-      "status": "active",
+      "status": "completed",
       "createdAt": "2026-03-28T00:00:00Z",
       "tasks": [
         "TASK-346",
@@ -853,13 +853,31 @@
       "id": "PLAN-065",
       "title": "Desktop Launch UX, Branding, and Download Detection",
       "goal": "Fix desktop close/quit lifecycle so app fully exits, replace default Wails branding assets with project icons, and improve GitHub Pages download architecture detection/recommendations.",
-      "status": "active",
+      "status": "completed",
       "createdAt": "2026-04-10T13:19:39Z",
+      "completedAt": "2026-04-13T00:00:00Z",
+      "tasks": ["TASK-505", "TASK-506", "TASK-507", "TASK-508"]
+    },
+    "PLAN-066": {
+      "id": "PLAN-066",
+      "title": "Nexus Brain \u2014 Project Context Intelligence Layer",
+      "goal": "Enable any AI agent to query nexus for \u2264400 tokens of targeted project context instead of loading full CLAUDE.md (3000+ tokens). SQLite FTS5 knowledge store, BrainService, 6 MCP tools, 9 HTTP endpoints, brain CLI subcommands, and self-documenting discovery.",
+      "status": "completed",
+      "createdAt": "2026-04-13T00:00:00Z",
+      "completedAt": "2026-04-13T13:00:00Z",
       "tasks": [
-        "TASK-505",
-        "TASK-506",
-        "TASK-507",
-        "TASK-508"
+        "TASK-509",
+        "TASK-510",
+        "TASK-511",
+        "TASK-512",
+        "TASK-513",
+        "TASK-514",
+        "TASK-515",
+        "TASK-516",
+        "TASK-517",
+        "TASK-518",
+        "TASK-519",
+        "TASK-520"
       ]
     }
   },
@@ -4716,44 +4734,472 @@
     "TASK-505": {
       "id": "TASK-505",
       "planId": "PLAN-065",
-      "status": "todo",
+      "status": "done",
       "title": "Make Wails close semantics fully graceful",
       "role": "backend",
       "wave": 1,
-      "createdAt": "2026-04-10T13:19:39Z"
+      "createdAt": "2026-04-10T13:19:39Z",
+      "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-506": {
       "id": "TASK-506",
       "planId": "PLAN-065",
-      "status": "todo",
+      "status": "done",
       "title": "Replace default Wails logo with branded icon assets",
       "role": "frontend",
       "wave": 2,
-      "createdAt": "2026-04-10T13:19:39Z"
+      "createdAt": "2026-04-10T13:19:39Z",
+      "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-507": {
       "id": "TASK-507",
       "planId": "PLAN-065",
-      "status": "todo",
+      "status": "done",
       "title": "Fix GitHub Pages download architecture recommendation",
       "role": "frontend",
       "wave": 3,
-      "createdAt": "2026-04-10T13:19:39Z"
+      "createdAt": "2026-04-10T13:19:39Z",
+      "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-508": {
       "id": "TASK-508",
       "planId": "PLAN-065",
-      "status": "todo",
+      "status": "done",
       "title": "Validate and close PLAN-065 changes",
       "role": "testing",
       "wave": 4,
-      "createdAt": "2026-04-10T13:19:39Z"
+      "createdAt": "2026-04-10T13:19:39Z",
+      "completedAt": "2026-04-13T00:00:00Z"
+    },
+    "TASK-509": {
+      "id": "TASK-509",
+      "planId": "PLAN-066",
+      "status": "done",
+      "title": "Define brain domain types",
+      "role": "backend",
+      "wave": 1,
+      "createdAt": "2026-04-13T00:00:00Z",
+      "dependencies": [],
+      "completedAt": "2026-04-13T00:00:00Z"
+    },
+    "TASK-510": {
+      "id": "TASK-510",
+      "planId": "PLAN-066",
+      "status": "done",
+      "title": "Define brain port interfaces",
+      "role": "backend",
+      "wave": 1,
+      "createdAt": "2026-04-13T00:00:00Z",
+      "dependencies": ["TASK-509"],
+      "completedAt": "2026-04-13T00:00:00Z"
+    },
+    "TASK-511": {
+      "id": "TASK-511",
+      "planId": "PLAN-066",
+      "status": "done",
+      "title": "Implement knowledge SQLite repository",
+      "role": "backend",
+      "wave": 2,
+      "createdAt": "2026-04-13T00:00:00Z",
+      "dependencies": ["TASK-510"],
+      "completedAt": "2026-04-13T00:00:00Z"
+    },
+    "TASK-512": {
+      "id": "TASK-512",
+      "planId": "PLAN-066",
+      "status": "done",
+      "title": "Write knowledge repository tests",
+      "role": "qa",
+      "wave": 2,
+      "createdAt": "2026-04-13T00:00:00Z",
+      "dependencies": ["TASK-511"],
+      "completedAt": "2026-04-13T00:00:00Z"
+    },
+    "TASK-513": {
+      "id": "TASK-513",
+      "planId": "PLAN-066",
+      "status": "done",
+      "title": "Implement BrainService",
+      "role": "backend",
+      "wave": 3,
+      "createdAt": "2026-04-13T00:00:00Z",
+      "dependencies": ["TASK-511"],
+      "completedAt": "2026-04-13T00:00:00Z"
+    },
+    "TASK-514": {
+      "id": "TASK-514",
+      "planId": "PLAN-066",
+      "status": "done",
+      "title": "Write BrainService unit tests",
+      "role": "qa",
+      "wave": 3,
+      "createdAt": "2026-04-13T00:00:00Z",
+      "dependencies": ["TASK-513"],
+      "completedAt": "2026-04-13T00:00:00Z"
+    },
+    "TASK-515": {
+      "id": "TASK-515",
+      "planId": "PLAN-066",
+      "status": "done",
+      "title": "Add brain MCP tools",
+      "role": "mcp",
+      "wave": 4,
+      "createdAt": "2026-04-13T00:00:00Z",
+      "dependencies": ["TASK-513"],
+      "completedAt": "2026-04-13T00:00:00Z"
+    },
+    "TASK-516": {
+      "id": "TASK-516",
+      "planId": "PLAN-066",
+      "status": "done",
+      "title": "Add brain HTTP handlers",
+      "role": "api",
+      "wave": 4,
+      "createdAt": "2026-04-13T00:00:00Z",
+      "dependencies": ["TASK-513"],
+      "completedAt": "2026-04-13T00:00:00Z"
+    },
+    "TASK-517": {
+      "id": "TASK-517",
+      "planId": "PLAN-066",
+      "status": "done",
+      "title": "Add brain CLI commands",
+      "role": "cli",
+      "wave": 4,
+      "createdAt": "2026-04-13T00:00:00Z",
+      "dependencies": ["TASK-513"],
+      "completedAt": "2026-04-13T00:00:00Z"
+    },
+    "TASK-518": {
+      "id": "TASK-518",
+      "planId": "PLAN-066",
+      "status": "done",
+      "title": "Wire BrainService into daemon and CLI startup",
+      "role": "backend",
+      "wave": 5,
+      "createdAt": "2026-04-13T00:00:00Z",
+      "dependencies": ["TASK-515", "TASK-516", "TASK-517"],
+      "completedAt": "2026-04-13T00:00:00Z"
+    },
+    "TASK-519": {
+      "id": "TASK-519",
+      "planId": "PLAN-066",
+      "status": "done",
+      "title": "Integration and E2E tests for brain feature",
+      "role": "qa",
+      "wave": 6,
+      "createdAt": "2026-04-13T00:00:00Z",
+      "dependencies": ["TASK-518"],
+      "completedAt": "2026-04-13T00:00:00Z"
+    },
+    "TASK-520": {
+      "id": "TASK-520",
+      "planId": "PLAN-066",
+      "status": "done",
+      "title": "Update howto, well-known, and agent workflow docs",
+      "role": "backend",
+      "wave": 6,
+      "createdAt": "2026-04-13T00:00:00Z",
+      "dependencies": ["TASK-518"],
+      "completedAt": "2026-04-13T00:00:00Z"
     }
   },
   "sessionNotes": [
     {
       "date": "2026-04-04T14:44:57Z",
       "summary": "Wave 2-5 implementation complete across all 4 plans. 29 tasks implemented via 6 parallel subagent swarms. All tests pass: go test -race (0), vue-tsc (0), vitest (60 tests), vscode-extension npm test (26 tests), github-action npm test (57 tests)."
+    },
+    {
+      "date": "2026-04-13T14:01:00Z",
+      "author": "antigravity",
+      "note": "PLAN-065 completed (Desktop Launch UX, Branding, Download Detection): TASK-505 Wails close semantics verified graceful (trayEnabled=false \u2192 window close quits, OnShutdown cancels HTTP/MCP via context); TASK-506 branded icon assets verified (tray/icon.png 28KB go:embed, build/appicon.png 1.1MB); TASK-507 DownloadsView.vue macOS arch detection fixed (uncertain detection no longer falls back to mac-intel, sets detectedKey='' so no false Intel recommendation on Safari/Firefox Apple Silicon); TASK-508 validation passed (go build clean, all binaries built). PLAN-068 completed (VS Code Brain Extensions): TASK-525+526 verified already implemented from PLAN-067 (BrainStatus/ContextResponse types and ProjectBrainNode already in nexusClient.ts + workspaceOrchView.ts); TASK-527 nexus.brain.ingest command declared in package.json contributes.commands with $(cloud-upload) icon + inline menu for nexusProjectBrain items; TASK-528 nexus.brain.ingest handler registered in extension.ts activate() with showOpenDialog file picker + ingestKnowledge HTTP call + tree refresh. Extension build: esbuild clean (583.8KB bundle)."
     }
-  ]
+  ],
+  "PLAN-067": {
+    "id": "PLAN-067",
+    "title": "Deep Context Integration (Frontend & Docs)",
+    "goal": "Complete downstream wiring of the Nexus Brain API into the Wails GUI App, frontend Vue Types, and Documentation.",
+    "status": "completed",
+    "createdAt": "2026-04-13T13:08:19Z",
+    "tasks": ["TASK-521", "TASK-522", "TASK-523", "TASK-524"]
+  },
+  "PLAN-068": {
+    "id": "PLAN-068",
+    "title": "VS Code Brain Extensions",
+    "goal": "Connect Nexus Brain to VS Code UI components.",
+    "status": "completed",
+    "createdAt": "2026-04-13T13:14:26Z",
+    "completedAt": "2026-04-13T14:00:00Z",
+    "tasks": ["TASK-525", "TASK-526", "TASK-527", "TASK-528"]
+  },
+  "PLAN-069": {
+    "id": "PLAN-069",
+    "title": "Brain Layer Gap-Fill \u2014 API, Client, CLI, Wails, Tests, Docs",
+    "goal": "Close all confirmed gaps in the Nexus Brain implementation: missing HTTP routes, stub client methods, Wails binding bug, howto_brief phantom params, missing CLI subcommands, and absent test coverage across all layers.",
+    "status": "completed",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "tasks": [
+      "TASK-529",
+      "TASK-530",
+      "TASK-531",
+      "TASK-532",
+      "TASK-533",
+      "TASK-534",
+      "TASK-535",
+      "TASK-536",
+      "TASK-537",
+      "TASK-538",
+      "TASK-539"
+    ],
+    "completedAt": "2026-04-14T01:00:00Z"
+  },
+  "TASK-529": {
+    "id": "TASK-529",
+    "planId": "PLAN-069",
+    "title": "Add 4 missing brain HTTP routes and handlers",
+    "role": "backend",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:10:00Z",
+    "completedAt": "2026-04-14T00:30:00Z"
+  },
+  "TASK-530": {
+    "id": "TASK-530",
+    "planId": "PLAN-069",
+    "title": "Implement 4 stub methods in brain_client.go",
+    "role": "backend",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:10:00Z",
+    "completedAt": "2026-04-14T00:30:00Z"
+  },
+  "TASK-531": {
+    "id": "TASK-531",
+    "planId": "PLAN-069",
+    "title": "Fix app.go GetFocusedContext bug and unexport With*Service setters",
+    "role": "backend",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:10:00Z",
+    "completedAt": "2026-04-14T00:30:00Z"
+  },
+  "TASK-532": {
+    "id": "TASK-532",
+    "planId": "PLAN-069",
+    "title": "Fix howto_brief phantom parameter names",
+    "role": "mcp",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:10:00Z",
+    "completedAt": "2026-04-14T00:30:00Z"
+  },
+  "TASK-533": {
+    "id": "TASK-533",
+    "planId": "PLAN-069",
+    "title": "Add missing brain CLI subcommands (init, list, delete, context, file-map)",
+    "role": "cli",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:30:00Z",
+    "completedAt": "2026-04-14T00:45:00Z"
+  },
+  "TASK-534": {
+    "id": "TASK-534",
+    "planId": "PLAN-069",
+    "title": "Add 4 missing brain routes to buildHowToDoc",
+    "role": "docs",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:30:00Z",
+    "completedAt": "2026-04-14T00:45:00Z"
+  },
+  "TASK-535": {
+    "id": "TASK-535",
+    "planId": "PLAN-069",
+    "title": "Write brain HTTP handler tests",
+    "role": "qa",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:45:00Z",
+    "completedAt": "2026-04-14T01:00:00Z"
+  },
+  "TASK-536": {
+    "id": "TASK-536",
+    "planId": "PLAN-069",
+    "title": "Write SQLite knowledge repository tests",
+    "role": "qa",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:45:00Z",
+    "completedAt": "2026-04-14T01:00:00Z"
+  },
+  "TASK-537": {
+    "id": "TASK-537",
+    "planId": "PLAN-069",
+    "title": "Expand brain_service_test.go (SearchKnowledge, InitProject, GetStatus)",
+    "role": "qa",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:45:00Z",
+    "completedAt": "2026-04-14T01:00:00Z"
+  },
+  "TASK-538": {
+    "id": "TASK-538",
+    "planId": "PLAN-069",
+    "title": "Add search_knowledge MCP + re-ingest dedup E2E cases",
+    "role": "qa",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:45:00Z",
+    "completedAt": "2026-04-14T01:00:00Z"
+  },
+  "TASK-539": {
+    "id": "TASK-539",
+    "planId": "PLAN-069",
+    "title": "SQLite quality: explicit BM25 ORDER BY + UpdateKnowledge token_count recompute",
+    "role": "quality",
+    "status": "done",
+    "createdAt": "2026-04-14T00:00:00Z",
+    "startedAt": "2026-04-14T00:45:00Z",
+    "completedAt": "2026-04-14T01:00:00Z"
+  },
+  "PLAN-070": {
+    "id": "PLAN-070",
+    "title": "Comprehensive Gap-Fill \u2014 Docs, MCP Tools, Frontend, Tests, Backend Quality",
+    "goal": "Close all 26 confirmed gaps from 2026-04-14 five-agent swarm audit.",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z",
+    "tasks": [
+      "TASK-540",
+      "TASK-541",
+      "TASK-542",
+      "TASK-543",
+      "TASK-544",
+      "TASK-545",
+      "TASK-546",
+      "TASK-547",
+      "TASK-548",
+      "TASK-549",
+      "TASK-550",
+      "TASK-551",
+      "TASK-552",
+      "TASK-553"
+    ]
+  },
+  "TASK-540": {
+    "id": "TASK-540",
+    "planId": "PLAN-070",
+    "title": "Rebuild mcpTools + endpoints arrays in ApiReferenceView.vue and McpIntegrationView.vue",
+    "role": "docs",
+    "status": "in-progress",
+    "createdAt": "2026-04-14T02:00:00Z",
+    "startedAt": "2026-04-14T03:00:00Z"
+  },
+  "TASK-541": {
+    "id": "TASK-541",
+    "planId": "PLAN-070",
+    "title": "Update api-reference.md, mcp-integration.md, getting-started.md with brain content",
+    "role": "docs",
+    "status": "in-progress",
+    "createdAt": "2026-04-14T02:00:00Z",
+    "startedAt": "2026-04-14T03:00:00Z"
+  },
+  "TASK-542": {
+    "id": "TASK-542",
+    "planId": "PLAN-070",
+    "title": "Add 4 missing brain MCP tools + fix howto full guide enumeration",
+    "role": "mcp",
+    "status": "in-progress",
+    "createdAt": "2026-04-14T02:00:00Z",
+    "startedAt": "2026-04-14T03:00:00Z"
+  },
+  "TASK-543": {
+    "id": "TASK-543",
+    "planId": "PLAN-070",
+    "title": "VS Code: add missing brain nexusClient methods, commands, package.json entries, fix searchKnowledge",
+    "role": "vscode",
+    "status": "in-progress",
+    "createdAt": "2026-04-14T02:00:00Z",
+    "startedAt": "2026-04-14T03:00:00Z"
+  },
+  "TASK-544": {
+    "id": "TASK-544",
+    "planId": "PLAN-070",
+    "title": "Regenerate App.d.ts + models.ts; add 4 Wails App brain method bindings",
+    "role": "frontend",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
+  },
+  "TASK-545": {
+    "id": "TASK-545",
+    "planId": "PLAN-070",
+    "title": "Create useBrain composable + /brain route + wire dead context/search UI code",
+    "role": "frontend",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
+  },
+  "TASK-546": {
+    "id": "TASK-546",
+    "planId": "PLAN-070",
+    "title": "ProjectBrainCard: multi-file ingest, user-visible feedback, init button",
+    "role": "frontend",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
+  },
+  "TASK-547": {
+    "id": "TASK-547",
+    "planId": "PLAN-070",
+    "title": "Fix processNextTask silent errors + IngestFromFile error aggregation + FTS sanitization",
+    "role": "backend",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
+  },
+  "TASK-548": {
+    "id": "TASK-548",
+    "planId": "PLAN-070",
+    "title": "Write brain_client_test.go \u2014 all 13 methods",
+    "role": "qa",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
+  },
+  "TASK-549": {
+    "id": "TASK-549",
+    "planId": "PLAN-070",
+    "title": "MCP brain_tools unit tests + fix E2E FTS search failure",
+    "role": "qa",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
+  },
+  "TASK-550": {
+    "id": "TASK-550",
+    "planId": "PLAN-070",
+    "title": "Brain service: test GetFileMap, ListKnowledge, DeleteKnowledge + CLI brain error paths",
+    "role": "qa",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
+  },
+  "TASK-551": {
+    "id": "TASK-551",
+    "planId": "PLAN-070",
+    "title": "httpapi provider handler tests + activity handler tests",
+    "role": "qa",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
+  },
+  "TASK-552": {
+    "id": "TASK-552",
+    "planId": "PLAN-070",
+    "title": "httpapi_client/client.go coverage + session lifecycle tests",
+    "role": "qa",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
+  },
+  "TASK-553": {
+    "id": "TASK-553",
+    "planId": "PLAN-070",
+    "title": "Fix GetDiscoveredPlanFiles nil/nil + honest tray stub with feature flag",
+    "role": "backend",
+    "status": "todo",
+    "createdAt": "2026-04-14T02:00:00Z"
+  }
 }

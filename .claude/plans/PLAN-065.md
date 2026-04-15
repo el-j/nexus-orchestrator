@@ -1,7 +1,8 @@
 # PLAN-065 — Desktop Launch UX, Branding, and Download Detection
 
-**Status:** active
+**Status:** completed
 **Created:** 2026-04-10
+**Completed:** 2026-04-13T00:00:00Z
 **Author:** copilot
 
 ## Summary
@@ -10,12 +11,12 @@ This plan hardens desktop release UX for end users by fixing Wails shutdown sema
 
 ## Task Map
 
-| Task     | Layer          | Priority | Description |
-| -------- | -------------- | -------- | ----------- |
-| TASK-505 | Desktop / Wails | Critical | Ensure close-to-quit lifecycle and graceful shutdown (no hidden process, no os.Exit quit path) |
-| TASK-506 | Branding / Assets | High | Replace default app logo and tray icon placeholders with branded assets wired into builds |
-| TASK-507 | Docs / Web      | High | Fix download page architecture detection and recommendation highlighting behavior |
-| TASK-508 | Validation       | Critical | Verify desktop build + docs build + targeted tests, then document outcomes |
+| Task     | Layer             | Priority | Description                                                                                    |
+| -------- | ----------------- | -------- | ---------------------------------------------------------------------------------------------- |
+| TASK-505 | Desktop / Wails   | Critical | Ensure close-to-quit lifecycle and graceful shutdown (no hidden process, no os.Exit quit path) |
+| TASK-506 | Branding / Assets | High     | Replace default app logo and tray icon placeholders with branded assets wired into builds      |
+| TASK-507 | Docs / Web        | High     | Fix download page architecture detection and recommendation highlighting behavior              |
+| TASK-508 | Validation        | Critical | Verify desktop build + docs build + targeted tests, then document outcomes                     |
 
 ## Waves
 

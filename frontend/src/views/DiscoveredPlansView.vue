@@ -122,37 +122,11 @@
           <!-- Collapsible content -->
           <div v-show="!collapsedProjects.has(String(projPath))">
             <!-- Project Brain card (nexus) -->
-            <div
-              v-if="data.nexus"
-              class="mb-5 rounded-xl border border-violet-500/30 bg-violet-500/[0.04] p-3"
-            >
-              <div class="flex items-start gap-3">
-                <span class="text-lg mt-0.5">🧠</span>
-                <div class="flex-1">
-                  <div class="flex items-center gap-2 mb-1">
-                    <span class="font-bold text-sm text-violet-300">Project Brain</span>
-                    <span
-                      class="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 font-semibold"
-                      >nexus</span
-                    >
-                    <span
-                      v-if="data.nexus.isActive"
-                      class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300"
-                      >active</span
-                    >
-                  </div>
-                  <p class="text-[11px] text-slate-300 font-mono mb-1">
-                    {{ basename(data.nexus.path) }}
-                  </p>
-                  <p v-if="data.nexus.summary" class="text-xs text-slate-400">
-                    {{ data.nexus.summary }}
-                  </p>
-                </div>
-                <span class="text-[10px] text-slate-600">{{
-                  formatDate(data.nexus.lastModified)
-                }}</span>
-              </div>
-            </div>
+            <ProjectBrainCard
+              v-if="data.nexus || data.others.length || data.planGroups.length"
+              :projectPath="String(projPath)"
+              :nexusFile="data.nexus"
+            />
 
             <!-- Plan groups with task files -->
             <div v-if="data.planGroups.length > 0" class="mb-5">
@@ -267,6 +241,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import ProjectBrainCard from '../components/ProjectBrainCard.vue';
 import { useDiscoveredPlans } from '../composables/useDiscoveredPlans';
 import { currentProject } from '../composables/useProjectState';
 import { createDraft } from '../types/wails';

@@ -92,7 +92,7 @@ func newTestStack(t *testing.T) *testStack {
 
 	hub := httpapi.NewHub()
 	orch.SetBroadcaster(hub)
-	server := httpapi.NewServer(orch, hub)
+	server := httpapi.NewServer(orch, nil, hub)
 
 	return &testStack{
 		orch:   orch,
@@ -132,7 +132,7 @@ func newTestStackWithLLM(t *testing.T, llm ports.LLMClient) *testStack {
 
 	hub := httpapi.NewHub()
 	orch.SetBroadcaster(hub)
-	server := httpapi.NewServer(orch, hub)
+	server := httpapi.NewServer(orch, nil, hub)
 
 	return &testStack{
 		orch:   orch,

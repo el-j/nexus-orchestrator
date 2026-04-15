@@ -231,7 +231,7 @@ func (o *OrchestratorService) GetDiscoveredAgents(ctx context.Context) ([]domain
 // If projectPath is empty, returns all stored plan files without scanning.
 func (o *OrchestratorService) GetDiscoveredPlanFiles(ctx context.Context, projectPath string) ([]domain.DiscoveredPlanFile, error) {
 	if o.agentScanner == nil && o.planFileRepo == nil {
-		return nil, nil
+		return nil, domain.ErrSubsystemNotConfigured
 	}
 	// When no project specified, return all persisted plan files.
 	if projectPath == "" {

@@ -310,6 +310,104 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }),
   );
+
+  // ── nexus.brain.ingest ───────────────────────────────────────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand('nexus.brain.ingest', async (projectPath?: string) => {
+      const path = projectPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (!path) {
+        vscode.window.showErrorMessage('Nexus Brain: No workspace folder found.');
+        return;
+      }
+      const fileUris = await vscode.window.showOpenDialog({
+        canSelectMany: false,
+        canSelectFiles: true,
+        canSelectFolders: false,
+        filters: { Markdown: ['md'], 'All Files': ['*'] },
+        openLabel: 'Ingest into Nexus Brain',
+        defaultUri: vscode.Uri.file(path),
+      });
+      if (!fileUris || fileUris.length === 0) return;
+      const filePath = fileUris[0].fsPath;
+      try {
+        const count = await getClient().ingestKnowledge(path, filePath);
+        vscode.window.showInformationMessage(
+          `Nexus Brain: Ingested ${count} sections from ${filePath}`,
+        );
+        workspaceOrchProvider.refresh();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        vscode.window.showErrorMessage(`Nexus Brain: Ingest failed — ${msg}`);
+      }
+    }),
+  );
+
+  // ── nexus.brain.status ───────────────────────────────────────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand('nexus.brain.status', async (projectPath?: string) => {
+      const path =
+        projectPath ??
+        (await vscode.window.showInputBox({
+          prompt: 'Project path',
+          value: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '',
+        }));
+      if (!path) return;
+      try {
+        const status = await getClient().getBrainStatus(path);
+        vscode.window.showInformationMessage(
+          `Brain: ${status.entryCount} entries, ${status.totalTokens} tokens`,
+        );
+      } catch (e: any) {
+        vscode.window.showErrorMessage(`Brain status failed: ${e.message}`);
+      }
+    }),
+  );
+
+  // ── nexus.brain.init ─────────────────────────────────────────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand('nexus.brain.init', async (projectPath?: string) => {
+      const path =
+        projectPath ?? (await vscode.window.showInputBox({ prompt: 'Project path to initialize' }));
+      if (!path) return;
+      try {
+        const status = await getClient().initProject(path);
+        vscode.window.showInformationMessage(
+          `Brain initialized: ${status.entryCount} entries ingested`,
+        );
+      } catch (e: any) {
+        vscode.window.showErrorMessage(`Brain init failed: ${e.message}`);
+      }
+    }),
+  );
+
+  // ── nexus.brain.search ───────────────────────────────────────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand('nexus.brain.search', async () => {
+      const projectPath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (!projectPath) {
+        vscode.window.showErrorMessage('No workspace folder open');
+        return;
+      }
+      const query = await vscode.window.showInputBox({ prompt: 'Search query' });
+      if (!query) return;
+      try {
+        const results = await getClient().searchKnowledge(projectPath, query, 10);
+        if (results.length === 0) {
+          vscode.window.showInformationMessage('No results found');
+          return;
+        }
+        const items = results.map((r) => ({
+          label: r.topic,
+          description: r.content.substring(0, 80),
+        }));
+        await vscode.window.showQuickPick(items, {
+          placeHolder: `${results.length} results for "${query}"`,
+        });
+      } catch (e: any) {
+        vscode.window.showErrorMessage(`Brain search failed: ${e.message}`);
+      }
+    }),
+  );
 }
 
 export function deactivate(): Promise<void> | void {

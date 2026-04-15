@@ -50,7 +50,7 @@ func newAISessionStack(t *testing.T) (*httptest.Server, func()) {
 	hub := httpapi.NewHub()
 	orch.SetBroadcaster(hub)
 
-	srv := httptest.NewServer(httpapi.NewServer(orch, hub).Handler())
+	srv := httptest.NewServer(httpapi.NewServer(orch, nil, hub).Handler())
 	return srv, func() {
 		srv.Close()
 		orch.Stop()

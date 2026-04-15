@@ -66,7 +66,7 @@ func newMCPTestStack(t *testing.T) *mcpTestStack {
 	orch := services.NewOrchestrator(discovery, repo, writer, sessionRepo)
 	orch.SetAISessionRepo(aiSessionRepo)
 
-	mcpSrv := mcp.NewMcpServer(orch)
+	mcpSrv := mcp.NewMcpServer(orch, nil)
 	srv := httptest.NewServer(mcpSrv)
 
 	t.Cleanup(func() {

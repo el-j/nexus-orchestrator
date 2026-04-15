@@ -13,7 +13,7 @@ import (
 // newHowtoServer creates a real httpapi.Server wired to the full Handler() router.
 func newHowtoServer() *httptest.Server {
 	hub := httpapi.NewHub()
-	srv := httpapi.NewServer(&mockOrchestrator{}, hub)
+	srv := httpapi.NewServer(&mockOrchestrator{}, nil, hub)
 	return httptest.NewServer(srv.Handler())
 }
 

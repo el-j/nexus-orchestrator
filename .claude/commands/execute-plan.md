@@ -51,8 +51,8 @@ When all tasks in the plan are `done`:
 | ---------------------------------------- | ------------------------------------------------------ |
 | `backend`, `api`, `cli`, `mcp`, `devops` | `.github/agents/engineering-senior-developer.agent.md` |
 | `architecture`                           | `.github/agents/design-ux-architect.agent.md`          |
-| `qa`                                     | `.github/agents/testing-evidence-collector.agent.md`   |
-| `verify`                                 | `.github/agents/testing-reality-checker.agent.md`      |
+| `qa`                                     | `.github/agents/testing-qa-engineer.agent.md`          |
+| `verify`                                 | `.github/agents/engineering-code-reviewer.agent.md`    |
 | `planning`                               | `.github/agents/project-manager-senior.agent.md`       |
 
 ## Key Project Rules (pass to every sub-agent)

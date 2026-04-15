@@ -295,7 +295,9 @@ onMounted(async () => {
       } else if (uad?.architecture) {
         if (/arm/i.test(uad.architecture)) isARM = true;
       }
-    } catch (_) { /* ignore – permission may be denied */ }
+    } catch (_) {
+      /* ignore – permission may be denied */
+    }
 
     // 2. UA string fallback (rare but some browsers expose arm64)
     if (!isARM && /ARM64|arm64/i.test(ua)) isARM = true;
@@ -304,23 +306,29 @@ onMounted(async () => {
     if (!isARM) {
       try {
         const canvas = document.createElement('canvas');
-        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl') as WebGLRenderingContext | null;
+        const gl =
+          canvas.getContext('webgl') ||
+          (canvas.getContext('experimental-webgl') as WebGLRenderingContext | null);
         if (gl) {
           const ext = gl.getExtension('WEBGL_debug_renderer_info');
           if (ext) {
-            const renderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) as string || '';
+            const renderer = (gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) as string) || '';
             if (/apple\s+m\d|apple\s+gpu/i.test(renderer)) isARM = true;
           }
         }
-      } catch (_) { /* ignore */ }
+      } catch (_) {
+        /* ignore */
+      }
     }
 
     if (isARM) {
       detectedOS.value = 'macOS (Apple Silicon)';
       detectedKey.value = 'mac-arm';
     } else {
-      detectedOS.value = 'macOS (Intel)';
-      detectedKey.value = 'mac-intel';
+      // No ARM signal found — could be Intel or Apple Silicon on Safari/Firefox.
+      // Avoid recommending Intel when we cannot confirm; let the user choose manually.
+      detectedOS.value = 'macOS (architecture unknown — choose below)';
+      detectedKey.value = '';
     }
   } else if (/Win/i.test(platform)) {
     detectedOS.value = 'Windows 64-bit';

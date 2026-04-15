@@ -119,6 +119,64 @@ export interface RegisterSessionRequest {
   modelId?: string;
 }
 
+// ---- Brain Context types ----
+
+export interface BrainStatus {
+  projectPath: string;
+  initialized: boolean;
+  entryCount: number;
+  kindCounts: Record<string, number>;
+  totalTokens: number;
+  lastUpdated?: string;
+}
+
+export interface ContextQuery {
+  projectPath: string;
+  question?: string;
+  maxTokens?: number;
+}
+
+export interface ContextSection {
+  title?: string;
+  topic: string;
+  kind: string;
+  content: string;
+  tokens: number;
+  source: string;
+}
+
+export interface ProjectKnowledge {
+  id: string;
+  projectPath: string;
+  kind: string;
+  topic: string;
+  content: string;
+  tokenCount: number;
+  relevanceScore: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ContextResponse {
+  projectPath: string;
+  sections: ContextSection[];
+  totalTokens: number;
+  truncated: boolean;
+}
+
+export interface KnowledgeResult {
+  id: string;
+  projectPath: string;
+  kind: string;
+  topic: string;
+  content: string;
+  source: string;
+  tokens: number;
+  relevance: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ---- Internal response shape from POST /api/tasks ----
 
 interface CreateTaskResponse {
@@ -429,6 +487,93 @@ export class NexusClient {
     }
   }
 
+  // ---- Brain APIs ----
+
+  /**
+   * Ingest a markdown file into the project's brain context.
+   */
+  async ingestKnowledge(projectPath: string, filePath: string): Promise<number> {
+    const data = await this.post<{ ingestedSections: number }>('/api/brain/ingest', {
+      projectPath,
+      filePath,
+    });
+    return data.ingestedSections;
+  }
+
+  /**
+   * Get the indexing status and token size of the project knowledge brain.
+   */
+  async getBrainStatus(projectPath: string): Promise<BrainStatus> {
+    return this.get<BrainStatus>(
+      `/api/brain/status?projectPath=${encodeURIComponent(projectPath)}`,
+    );
+  }
+
+  /**
+   * Aggregate the top-level macro context for LLM system prompts.
+   */
+  async getProjectContext(projectPath: string, maxTokens?: number): Promise<ContextResponse> {
+    return this.post<ContextResponse>('/api/brain/context', { projectPath, maxTokens });
+  }
+
+  /**
+   * Query bounded context sections specific to a reasoning question.
+   */
+  async getFocusedContext(
+    projectPath: string,
+    question: string,
+    maxTokens?: number,
+  ): Promise<ContextResponse> {
+    return this.post<ContextResponse>('/api/brain/focused-context', {
+      projectPath,
+      question,
+      maxTokens,
+    });
+  }
+
+  /**
+   * Search project intelligence via BM25 matching.
+   */
+  async searchKnowledge(projectPath: string, query: string, limit = 5): Promise<ContextSection[]> {
+    const params = new URLSearchParams({ projectPath, query, limit: String(limit) });
+    const data = await this.get<{ results: ContextSection[] }>(`/api/brain/search?${params}`);
+    return data.results ?? [];
+  }
+
+  /**
+   * Initialize the project brain, optionally seeding from a CLAUDE.md file.
+   */
+  async initProject(projectPath: string, claudeMDPath?: string): Promise<BrainStatus> {
+    return this.post('/api/brain/init', { projectPath, claudeMDPath: claudeMDPath ?? '' });
+  }
+
+  /**
+   * List all knowledge entries for a project, optionally filtered by kind.
+   */
+  async listKnowledge(projectPath: string, kind?: string): Promise<ProjectKnowledge[]> {
+    const params = new URLSearchParams({ projectPath });
+    if (kind) params.set('kind', kind);
+    const data = await this.get<ProjectKnowledge[] | null>(`/api/brain/knowledge?${params}`);
+    return data ?? [];
+  }
+
+  /**
+   * Delete a knowledge entry by ID.
+   */
+  async deleteKnowledge(id: string): Promise<void> {
+    await this.delete(`/api/brain/knowledge/${encodeURIComponent(id)}`);
+  }
+
+  /**
+   * Get the ordered list of file paths from the project file-map knowledge.
+   */
+  async getFileMap(projectPath: string, focusArea?: string): Promise<string[]> {
+    const params = new URLSearchParams({ projectPath });
+    if (focusArea) params.set('focusArea', focusArea);
+    const data = await this.get<{ filePaths: string[] }>(`/api/brain/file-map?${params}`);
+    return data.filePaths ?? [];
+  }
+
   // ---- Private helpers ----
 
   private parseResponse<T>(schema: z.ZodSchema<T>, data: unknown): T {
@@ -464,6 +609,16 @@ export class NexusClient {
     }
     const data: unknown = await resp.json();
     return schema ? this.parseResponse(schema, data) : (data as T);
+  }
+
+  private async delete(path: string): Promise<void> {
+    const resp = await fetch(`${this.baseUrl}${path}`, { method: 'DELETE' });
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => '');
+      throw new Error(
+        `nexus: DELETE ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`,
+      );
+    }
   }
 
   private async put<T>(path: string, payload: unknown, schema?: z.ZodSchema<T>): Promise<T> {
