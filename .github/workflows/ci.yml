@@ -127,7 +127,7 @@ jobs:
           restore-keys: ${{ runner.os }}-go-
 
       - name: Run tests
-        run: CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" go test -race -count=1 ./...
+        run: CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" CGO_LDFLAGS="-lm" go test -race -count=1 ./...
 
   build:
     name: Build
