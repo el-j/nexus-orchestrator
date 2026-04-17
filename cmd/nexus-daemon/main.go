@@ -48,7 +48,6 @@ func main() {
 		fmt.Fprintln(os.Stderr, "daemon: open database:", err)
 		os.Exit(1)
 	}
-	defer repo.Close()
 
 	writer := fs_writer.New()
 
@@ -57,8 +56,11 @@ func main() {
 	sessionRepo := repo_sqlite.NewSessionRepo(repo)
 	orchestratorSvc, err := services.NewOrchestrator(discoverySvc, repo, writer, sessionRepo)
 	if err != nil {
-		log.Fatalf("daemon: init orchestrator: %v", err)
+		repo.Close()
+		fmt.Fprintln(os.Stderr, "daemon: init orchestrator:", err)
+		os.Exit(1)
 	}
+	defer repo.Close()
 	orchestratorSvc.WithProviderFactory(bootstrap.BuildProviderFromConfig)
 
 	providerConfigRepo := repo_sqlite.NewProviderConfigRepo(repo)
