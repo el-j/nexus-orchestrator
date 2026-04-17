@@ -10,7 +10,7 @@ tmp_dir = "tmp"
 
 [build]
   # Build the headless daemon (not the Wails desktop GUI)
-  cmd        = "CGO_ENABLED=1 go build -o ./tmp/nexus-daemon ./cmd/nexus-daemon"
+  cmd        = "CGO_ENABLED=1 CGO_CFLAGS=\"-DSQLITE_ENABLE_FTS5\" go build -o ./tmp/nexus-daemon ./cmd/nexus-daemon"
   bin        = "./tmp/nexus-daemon"
   full_bin   = "./tmp/nexus-daemon"
   include_ext = ["go"]

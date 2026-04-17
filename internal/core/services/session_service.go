@@ -134,11 +134,15 @@ func (o *OrchestratorService) TerminateAISession(ctx context.Context, id string,
 		proc, err := os.FindProcess(sess.PID)
 		if err == nil {
 			if force {
-				_ = proc.Kill()
+				if err := proc.Kill(); err != nil {
+					log.Printf("session_service: kill process %d: %v", proc.Pid, err)
+				}
 			} else {
 				// On Unix systems, you'd send SIGTERM.
 				// Since os.Interrupt works cross-platform mostly:
-				_ = proc.Signal(os.Interrupt)
+				if err := proc.Signal(os.Interrupt); err != nil {
+					log.Printf("session_service: signal process %d: %v", proc.Pid, err)
+				}
 			}
 		}
 	}
@@ -186,7 +190,7 @@ func (o *OrchestratorService) PurgeDisconnectedSessions(ctx context.Context) (in
 	if repo == nil {
 		return 0, fmt.Errorf("orchestrator: purge disconnected sessions: no session repo configured")
 	}
-	n, err := repo.PurgeDisconnected(ctx, 2*time.Hour)
+	n, err := repo.PurgeDisconnected(ctx, DefaultPurgeDisconnectAge)
 	if err != nil {
 		return 0, fmt.Errorf("orchestrator: purge disconnected sessions: %w", err)
 	}
@@ -247,7 +251,9 @@ func (o *OrchestratorService) GetDiscoveredPlanFiles(ctx context.Context, projec
 		}
 		if o.planFileRepo != nil {
 			for _, f := range files {
-				_ = o.planFileRepo.UpsertPlanFile(ctx, f)
+				if err := o.planFileRepo.UpsertPlanFile(ctx, f); err != nil {
+					log.Printf("session_service: upsert plan file %s: %v", f.Path, err)
+				}
 			}
 		}
 	}

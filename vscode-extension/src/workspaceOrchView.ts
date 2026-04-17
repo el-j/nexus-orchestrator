@@ -11,6 +11,7 @@ import type {
 } from './workspaceScanner';
 import { WorkspaceScanner } from './workspaceScanner';
 import type { NexusClient, Task, AIActivity, BrainStatus } from './nexusClient';
+import { getNexusActivityChannel } from './activityLog';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -247,20 +248,32 @@ export class WorkspaceOrchViewProvider implements vscode.TreeDataProvider<OrchNo
     this.scanner.scan();
     if (this.client) {
       const orchs = this.scanner.getOrchestrations();
+      const outputChannel = getNexusActivityChannel();
       for (const orch of orchs) {
-        this.client
-          .getActivities({ projectPath: orch.folderPath, limit: 10 })
-          .then((acts) => {
+        void (async () => {
+          try {
+            const acts = await this.client!.getActivities({
+              projectPath: orch.folderPath,
+              limit: 10,
+            });
             this.liveActivities.set(orch.folderPath, acts);
-          })
-          .catch(() => {});
+          } catch (err) {
+            outputChannel.appendLine(
+              `[workspaceOrchView] getActivities failed for ${orch.folderPath}: ${err instanceof Error ? err.message : String(err)}`,
+            );
+          }
+        })();
 
-        this.client
-          .getBrainStatus(orch.folderPath)
-          .then((status) => {
+        void (async () => {
+          try {
+            const status = await this.client!.getBrainStatus(orch.folderPath);
             this.brainStatuses.set(orch.folderPath, status);
-          })
-          .catch(() => {});
+          } catch (err) {
+            outputChannel.appendLine(
+              `[workspaceOrchView] getBrainStatus failed for ${orch.folderPath}: ${err instanceof Error ? err.message : String(err)}`,
+            );
+          }
+        })();
       }
     }
     this._onDidChangeTreeData.fire(undefined);

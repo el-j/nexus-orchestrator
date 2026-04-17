@@ -72,7 +72,10 @@ var _ ports.FileWriter = (*optWriter)(nil)
 // --- option tests -------------------------------------------------------------
 
 func TestOrchestratorOptions_WithMaxRetries(t *testing.T) {
-	svc := NewOrchestrator(NewDiscoveryService(), newOptRepo(), &optWriter{}, nil, WithMaxRetries(5))
+	svc, err := NewOrchestrator(NewDiscoveryService(), newOptRepo(), &optWriter{}, nil, WithMaxRetries(5))
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer svc.Stop()
 	if svc.maxRetries != 5 {
 		t.Fatalf("expected maxRetries=5, got %d", svc.maxRetries)
@@ -80,7 +83,10 @@ func TestOrchestratorOptions_WithMaxRetries(t *testing.T) {
 }
 
 func TestOrchestratorOptions_WithMaxResponseTokens(t *testing.T) {
-	svc := NewOrchestrator(NewDiscoveryService(), newOptRepo(), &optWriter{}, nil, WithMaxResponseTokens(1024))
+	svc, err := NewOrchestrator(NewDiscoveryService(), newOptRepo(), &optWriter{}, nil, WithMaxResponseTokens(1024))
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer svc.Stop()
 	if svc.maxResponseTokens != 1024 {
 		t.Fatalf("expected maxResponseTokens=1024, got %d", svc.maxResponseTokens)
@@ -88,7 +94,10 @@ func TestOrchestratorOptions_WithMaxResponseTokens(t *testing.T) {
 }
 
 func TestOrchestratorOptions_Defaults(t *testing.T) {
-	svc := NewOrchestrator(NewDiscoveryService(), newOptRepo(), &optWriter{}, nil)
+	svc, err := NewOrchestrator(NewDiscoveryService(), newOptRepo(), &optWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer svc.Stop()
 	if svc.maxRetries != 3 {
 		t.Errorf("default maxRetries: want 3, got %d", svc.maxRetries)

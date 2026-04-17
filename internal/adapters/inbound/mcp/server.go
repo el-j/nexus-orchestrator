@@ -18,6 +18,9 @@ import (
 	"nexus-orchestrator/internal/core/ports"
 )
 
+// Version is the MCP server version, set at build time via ldflags.
+var Version = "dev"
+
 // JSON-RPC 2.0 error codes.
 const (
 	codeParseError     = -32700
@@ -266,7 +269,9 @@ func StartMCPServer(ctx context.Context, orch ports.Orchestrator, brain ports.Br
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+		log.Printf("mcp: encode response: %v", err)
+	}
 }
 
 func (s *Server) handleRPC(w http.ResponseWriter, r *http.Request) {
@@ -303,18 +308,26 @@ func (s *Server) processRPC(w http.ResponseWriter, r *http.Request, req rpcReque
 		w.WriteHeader(http.StatusNoContent)
 	case "tools/list":
 		resp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"tools": toolList()}}
-		_ = json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			log.Printf("mcp: encode response: %v", err)
+		}
 	case "tools/call":
 		s.handleToolCall(w, r, req)
 	case "ping":
 		resp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{}}
-		_ = json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			log.Printf("mcp: encode response: %v", err)
+		}
 	case "resources/list":
 		resp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"resources": []any{}}}
-		_ = json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			log.Printf("mcp: encode response: %v", err)
+		}
 	case "prompts/list":
 		resp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"prompts": []any{}}}
-		_ = json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			log.Printf("mcp: encode response: %v", err)
+		}
 	default:
 		writeError(w, req.ID, codeMethodNotFound, fmt.Sprintf("method not found: %s", req.Method))
 	}
@@ -326,7 +339,7 @@ func (s *Server) handleInitialize(w http.ResponseWriter, req rpcRequest) {
 		Capabilities:    capabilities{Tools: map[string]any{}},
 		ServerInfo: serverInfo{
 			Name:    "nexusOrchestrator",
-			Version: "1.0.0",
+			Version: Version,
 			Instructions: "You are connected to nexusOrchestrator — a multi-LLM AI task " +
 				"orchestration server. Call 'howto_brief' first if you have a small context " +
 				"window (< 64K tokens), or 'howto' for the full guide. " +
@@ -337,7 +350,9 @@ func (s *Server) handleInitialize(w http.ResponseWriter, req rpcRequest) {
 	// Streamable HTTP session management (MCP 2025-03-26+).
 	w.Header().Set("Mcp-Session-Id", fmt.Sprintf("nexus-%d", time.Now().UnixNano()))
 	resp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: result}
-	_ = json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Printf("mcp: encode response: %v", err)
+	}
 }
 
 // ----- Helpers -----
@@ -348,7 +363,9 @@ func writeError(w http.ResponseWriter, id json.RawMessage, code int, msg string)
 		ID:      id,
 		Error:   &rpcError{Code: code, Message: msg},
 	}
-	_ = json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Printf("mcp: encode response: %v", err)
+	}
 }
 
 // mcpError is a sentinel error that carries an MCP error code so that

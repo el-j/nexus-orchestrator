@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -129,7 +130,9 @@ func (s *Server) handleToolCall(w http.ResponseWriter, r *http.Request, req rpcR
 	}
 
 	resp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: result}
-	_ = json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Printf("mcp: encode response: %v", err)
+	}
 }
 
 // ----- Individual tool handlers -----
@@ -184,7 +187,9 @@ func (s *Server) toolGetQueue(args json.RawMessage) (callToolResult, error) {
 	}
 	// args may be null/empty for backwards-compat — that is fine.
 	if len(args) > 0 {
-		_ = json.Unmarshal(args, &p)
+		if err := json.Unmarshal(args, &p); err != nil {
+			return callToolResult{}, &mcpError{code: codeInvalidParams, msg: "malformed arguments"}
+		}
 	}
 
 	var (
@@ -211,7 +216,9 @@ func (s *Server) toolGetAllTasks(args json.RawMessage) (callToolResult, error) {
 		ProjectPath string `json:"projectPath"`
 	}
 	if len(args) > 0 {
-		_ = json.Unmarshal(args, &p)
+		if err := json.Unmarshal(args, &p); err != nil {
+			return callToolResult{}, &mcpError{code: codeInvalidParams, msg: "malformed arguments"}
+		}
 	}
 
 	var (

@@ -51,6 +51,10 @@ declare global {
           ): Promise<Task>;
           GetRuntimeConfig(): Promise<RuntimeConfig>;
           UpdateRuntimeConfig(update: RuntimeConfigUpdate): Promise<RuntimeConfig>;
+          OpenFileDialog(
+            title: string,
+            filters: Array<{ displayName: string; pattern: string }>,
+          ): Promise<string>;
           IngestKnowledge(projectPath: string, filePath: string): Promise<number>;
           GetBrainStatus(projectPath: string): Promise<BrainStatus>;
           GetProjectContext(projectPath: string, maxTokens: number): Promise<ContextResponse>;
@@ -92,12 +96,14 @@ export async function submitTask(task: TaskInput): Promise<string> {
 export async function getTask(id: string): Promise<Task> {
   if (isWails()) return window.go!.main!.App!.GetTask(id);
   const r = await fetch(`/api/tasks/${id}`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json() as Promise<Task>;
 }
 
 export async function getQueue(): Promise<Task[]> {
   if (isWails()) return window.go!.main!.App!.GetQueue();
   const r = await fetch('/api/tasks');
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json() as Promise<Task[]>;
 }
 
@@ -110,6 +116,7 @@ export async function getAllTasks(): Promise<Task[]> {
 export async function getProviders(): Promise<ProviderInfo[]> {
   if (isWails()) return window.go!.main!.App!.GetProviders();
   const r = await fetch('/api/providers');
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json() as Promise<ProviderInfo[]>;
 }
 
@@ -190,6 +197,7 @@ export async function updateTask(id: string, updates: Partial<Task>): Promise<Ta
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
   });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json() as Promise<Task>;
 }
 

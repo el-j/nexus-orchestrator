@@ -27,7 +27,10 @@ func newTestOrchestratorWithAISessionRepo(t *testing.T) *services.OrchestratorSe
 	aiSessionRepo := repo_sqlite.NewAISessionRepo(repo)
 	writer := fs_writer.New()
 	discovery := services.NewDiscoveryService(&mockLLM{})
-	orch := services.NewOrchestrator(discovery, repo, writer, sessionRepo)
+	orch, err := services.NewOrchestrator(discovery, repo, writer, sessionRepo)
+	if err != nil {
+		t.Fatal(err)
+	}
 	orch.SetAISessionRepo(aiSessionRepo)
 	t.Cleanup(func() { orch.Stop() })
 

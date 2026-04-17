@@ -468,6 +468,7 @@ async function handlePromote(plan: DiscoveredPlanFile) {
       instruction: plan.summary ?? `Execute task from ${plan.path}`,
       targetFile: plan.path,
     });
+    await scan();
   } finally {
     promoting.value = null;
   }

@@ -55,7 +55,10 @@ func main() {
 	// 2. Core services
 	discoverySvc := services.NewDiscoveryService(bootstrap.BuildProviders()...)
 	sessionRepo := repo_sqlite.NewSessionRepo(repo)
-	orchestratorSvc := services.NewOrchestrator(discoverySvc, repo, writer, sessionRepo)
+	orchestratorSvc, err := services.NewOrchestrator(discoverySvc, repo, writer, sessionRepo)
+	if err != nil {
+		log.Fatalf("daemon: init orchestrator: %v", err)
+	}
 	orchestratorSvc.WithProviderFactory(bootstrap.BuildProviderFromConfig)
 
 	providerConfigRepo := repo_sqlite.NewProviderConfigRepo(repo)

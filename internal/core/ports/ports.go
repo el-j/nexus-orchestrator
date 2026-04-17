@@ -199,6 +199,9 @@ type Orchestrator interface {
 	DelegateToNexus(ctx context.Context, sessionID string) (string, error)
 	// GetDiscoveredPlanFiles returns plan/task/orchestration files found near projectPath.
 	GetDiscoveredPlanFiles(ctx context.Context, projectPath string) ([]domain.DiscoveredPlanFile, error)
+	// GetTasksBySessionID returns all tasks claimed by the given AI session.
+	// Returns an empty slice (not an error) when sessionID is not found.
+	GetTasksBySessionID(sessionID string) ([]domain.Task, error)
 }
 
 // EventType identifies a task lifecycle event.
@@ -312,4 +315,13 @@ type ModelCapabilityRepository interface {
 	GetByModelID(modelID string) (domain.ModelCapabilityProfile, error)
 	Delete(modelID string) error
 	GetAll() ([]domain.ModelCapabilityProfile, error)
+}
+
+// ActivityServicePort is the inbound port for querying observed AI activity.
+// It is implemented by services.ActivityService and consumed by the Wails App binding.
+type ActivityServicePort interface {
+	// GetRecentActivities returns activities matching the given filter.
+	GetRecentActivities(ctx context.Context, f domain.ActivityFilter) ([]domain.AIActivity, error)
+	// GetTimeline returns a cross-agent chronological activity feed.
+	GetTimeline(ctx context.Context, since time.Time, limit int) ([]domain.AIActivity, error)
 }

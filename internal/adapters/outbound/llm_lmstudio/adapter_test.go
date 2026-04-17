@@ -21,8 +21,8 @@ func newFullTestServer(t *testing.T) *httptest.Server {
 
 	mux.HandleFunc("/v1/models", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"data": []map[string]interface{}{
+		json.NewEncoder(w).Encode(map[string]any{
+			"data": []map[string]any{
 				{"id": "test-model-1"},
 				{"id": "test-model-2"},
 			},
@@ -32,7 +32,7 @@ func newFullTestServer(t *testing.T) *httptest.Server {
 	// LM Studio native endpoint — used by ActiveModel() and ContextLimit().
 	mux.HandleFunc("/api/v0/model", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		json.NewEncoder(w).Encode(map[string]any{
 			"identifier":    "test-model-1",
 			"contextLength": 4096,
 		})
@@ -40,10 +40,10 @@ func newFullTestServer(t *testing.T) *httptest.Server {
 
 	mux.HandleFunc("/v1/chat/completions", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"choices": []map[string]interface{}{
+		json.NewEncoder(w).Encode(map[string]any{
+			"choices": []map[string]any{
 				{
-					"message": map[string]interface{}{
+					"message": map[string]any{
 						"content": "generated output",
 					},
 				},
@@ -135,7 +135,7 @@ func TestLMStudio_GenerateCode_ServerError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/v0/model" {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{"identifier": "test-model"})
+			json.NewEncoder(w).Encode(map[string]any{"identifier": "test-model"})
 			return
 		}
 		http.Error(w, "server error", http.StatusInternalServerError)
@@ -178,13 +178,13 @@ func TestLMStudio_Chat_ForwardsMessages(t *testing.T) {
 		switch r.URL.Path {
 		case "/api/v0/model":
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{"identifier": "test-model"})
+			json.NewEncoder(w).Encode(map[string]any{"identifier": "test-model"})
 		case "/v1/chat/completions":
 			json.NewDecoder(r.Body).Decode(&captured)
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"choices": []map[string]interface{}{
-					{"message": map[string]interface{}{"content": "ok"}},
+			json.NewEncoder(w).Encode(map[string]any{
+				"choices": []map[string]any{
+					{"message": map[string]any{"content": "ok"}},
 				},
 			})
 		}

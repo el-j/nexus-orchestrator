@@ -183,7 +183,9 @@ func (s *Server) handleSSEMessage(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		errResp := rpcResponse{JSONRPC: "2.0", Error: &rpcError{Code: codeParseError, Message: "parse error"}}
 		data, _ := json.Marshal(errResp)
-		_ = session.sendEvent("message", string(data))
+		if err := session.sendEvent("message", string(data)); err != nil {
+			log.Printf("mcp: sse send: %v", err)
+		}
 		w.WriteHeader(http.StatusAccepted)
 		return
 	}
@@ -191,7 +193,9 @@ func (s *Server) handleSSEMessage(w http.ResponseWriter, r *http.Request) {
 	if req.JSONRPC != "2.0" {
 		errResp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Error: &rpcError{Code: codeInvalidRequest, Message: `invalid request: jsonrpc must be "2.0"`}}
 		data, _ := json.Marshal(errResp)
-		_ = session.sendEvent("message", string(data))
+		if err := session.sendEvent("message", string(data)); err != nil {
+			log.Printf("mcp: sse send: %v", err)
+		}
 		w.WriteHeader(http.StatusAccepted)
 		return
 	}
@@ -201,7 +205,9 @@ func (s *Server) handleSSEMessage(w http.ResponseWriter, r *http.Request) {
 	s.processRPC(capture, r, req)
 
 	// Send the captured response via SSE.
-	_ = session.sendEvent("message", string(capture.body))
+	if err := session.sendEvent("message", string(capture.body)); err != nil {
+		log.Printf("mcp: sse send: %v", err)
+	}
 
 	// Return 202 Accepted per spec.
 	w.WriteHeader(http.StatusAccepted)

@@ -14,11 +14,9 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"nexus-orchestrator/internal/adapters/inbound/httpapi"
 	"nexus-orchestrator/internal/adapters/inbound/mcp"
-	"nexus-orchestrator/internal/adapters/inbound/tray"
 	"nexus-orchestrator/internal/adapters/outbound/activity_claude"
 	"nexus-orchestrator/internal/adapters/outbound/activity_continue"
 	"nexus-orchestrator/internal/adapters/outbound/activity_network"
@@ -66,7 +64,10 @@ func run() error {
 	// 2. Core services (Hexagonal wiring)
 	discoverySvc := services.NewDiscoveryService(bootstrap.BuildProviders()...)
 	sessionRepo := repo_sqlite.NewSessionRepo(repo)
-	orchestratorSvc := services.NewOrchestrator(discoverySvc, repo, writer, sessionRepo)
+	orchestratorSvc, err := services.NewOrchestrator(discoverySvc, repo, writer, sessionRepo)
+	if err != nil {
+		return fmt.Errorf("fatal: init orchestrator: %w", err)
+	}
 	orchestratorSvc.WithProviderFactory(bootstrap.BuildProviderFromConfig)
 
 	providerConfigRepo := repo_sqlite.NewProviderConfigRepo(repo)
@@ -183,18 +184,7 @@ func run() error {
 		withActivityService(activitySvc).
 		withBrainService(brainSvc)
 
-	trayAdapter := tray.NewTrayAdapter(orchestratorSvc, func() {
-		app.ShowWindow()
-	}, func() {
-		app.QuitApp()
-	})
-	trayEnabled := trayAdapter.Enabled()
-
-	if trayEnabled {
-		log.Printf("nexusOrchestrator started — closing window hides to tray")
-	} else {
-		log.Printf("nexusOrchestrator started — closing window quits the app")
-	}
+	log.Printf("nexusOrchestrator started — closing window hides to dock/taskbar")
 	// Print a human- and AI-readable ready banner.
 	httpBase := "http://" + httpAddr
 	fmt.Printf("\n")
@@ -217,26 +207,17 @@ func run() error {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		// Always hide the window on close so the app remains alive in the dock.
-		// When tray is enabled the tray icon provides reopen; when it is not, the
-		// dock icon on macOS / taskbar on Windows serves the same purpose.
+		// Always hide the window on close so the app remains alive in the dock/taskbar.
 		// Users can quit via Cmd+Q or the OS-provided mechanism.
 		HideWindowOnClose: true,
 		OnBeforeClose: func(ctx context.Context) (prevent bool) {
-			if trayEnabled {
-				log.Printf("nexusOrchestrator: window close intercepted — hiding to tray")
-				runtime.WindowHide(ctx)
-				return true
-			}
 			log.Printf("nexusOrchestrator: window close intercepted — hiding to dock/taskbar")
 			return false
 		},
 		OnStartup: func(ctx context.Context) {
 			app.startup(ctx)
-			trayAdapter.Start()
 		},
 		OnShutdown: func(_ context.Context) {
-			trayAdapter.Stop()
 			cancelHTTP()
 		},
 		Bind: []interface{}{

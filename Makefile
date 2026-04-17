@@ -38,7 +38,8 @@ VSIX_VERSION := $(shell echo "$(GIT_TAG)" | sed 's/^v//')
 
 VERSION_FLAGS := -X 'main.version=$(VERSION)' \
                  -X 'main.commit=$(GIT_COMMIT)' \
-                 -X 'main.buildDate=$(BUILD_DATE)'
+                 -X 'main.buildDate=$(BUILD_DATE)' \
+                 -X 'nexus-orchestrator/internal/adapters/inbound/mcp.Version=$(VERSION)'
 
 # Build tags that enable the mattn/go-sqlite3 driver
 BUILD_FLAGS := -trimpath
@@ -194,7 +195,7 @@ build-gui: build-frontend
 # Windows GUI build — uses -H windowsgui to suppress the console window.
 # Requires wails CLI and a Windows-capable cross-compilation environment.
 build-gui-windows-amd64:
-	CGO_ENABLED=1 CGO_CFLAGS="$(CGO_FTS5_CFLAGS)" \
+	CGO_ENABLED=1 CGO_CFLAGS="$(CGO_FTS5_CFLAGS) -fno-sanitize=all" \
 	GOOS=windows GOARCH=amd64 \
 		wails build -platform windows/amd64 \
 		-ldflags "-s -w -H windowsgui -X 'main.version=$(VERSION)' -X 'main.commit=$(GIT_COMMIT)' -X 'main.buildDate=$(BUILD_DATE)'"
@@ -271,14 +272,19 @@ build-darwin-arm64:
 build-windows-amd64:
 	@mkdir -p $(DIST)/windows_amd64
 	# NOTE: for the GUI binary (main.go), use LDFLAGS_WIN_GUI (-H windowsgui) to suppress the console window.
+	#
+	# -fno-sanitize=all: zig's clang injects UBSan instrumentation (__ubsan_handle_*)
+	# when targeting x86_64-windows-gnu, but the UBSan runtime is absent from zig's
+	# Windows toolchain → lld-link fails with "undefined symbol: __ubsan_handle_*".
+	# Disabling all sanitizers at compile time prevents these references from being emitted.
 	CGO_ENABLED=1 GOOS=windows GOARCH=amd64 \
-		CGO_CFLAGS="$(CGO_FTS5_CFLAGS)" \
+		CGO_CFLAGS="$(CGO_FTS5_CFLAGS) -fno-sanitize=all" \
 		CC="zig cc -target x86_64-windows-gnu" \
 		CXX="zig c++ -target x86_64-windows-gnu" \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/windows_amd64/$(BINARY_CLI).exe ./cmd/nexus-cli/...
 	CGO_ENABLED=1 GOOS=windows GOARCH=amd64 \
-		CGO_CFLAGS="$(CGO_FTS5_CFLAGS)" \
+		CGO_CFLAGS="$(CGO_FTS5_CFLAGS) -fno-sanitize=all" \
 		CC="zig cc -target x86_64-windows-gnu" \
 		CXX="zig c++ -target x86_64-windows-gnu" \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
@@ -294,10 +300,17 @@ test:
 test-unit:
 	CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" go test -race -count=1 ./internal/core/...
 
-test-cover:
+test-cover: ## Run tests with coverage report
 	CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" go test -race -count=1 -coverprofile=coverage.out ./...
-	go tool cover -html=coverage.out -o coverage.html
-	@echo "Coverage report → coverage.html"
+	go tool cover -func=coverage.out | tail -1
+
+test-e2e: ## Run Playwright E2E tests
+	cd frontend && npx playwright test
+
+build-action: ## Build the GitHub Action dist
+	cd github-action && npm ci && npm run build
+
+lint-fix: nice-go ## Alias: run Go linter with auto-fix
 
 vet:
 	go vet ./...

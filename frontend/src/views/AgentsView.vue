@@ -69,17 +69,27 @@
       />
       <template v-if="activeTab === 'sessions'">
         <button
-          v-for="opt in [
-            { v: '', l: 'All' },
-            { v: 'active', l: 'Active' },
-            { v: 'idle', l: 'Idle' },
-            { v: 'disconnected', l: 'Off' },
-          ]"
+          v-for="opt in sessionFilterOptions"
           :key="'ss-' + opt.v"
-          @click="sessionStatusFilter = opt.v as any"
+          @click="sessionStatusFilter = opt.v"
           :class="[
             'text-[10px] px-2 py-1 rounded-full border transition-colors font-medium',
             sessionStatusFilter === opt.v
+              ? 'bg-violet-600/20 text-violet-300 border-violet-500/30'
+              : 'border-white/10 text-slate-500 hover:text-slate-300 hover:border-white/20',
+          ]"
+        >
+          {{ opt.l }}
+        </button>
+      </template>
+      <template v-else-if="activeTab === 'agents'">
+        <button
+          v-for="opt in agentFilterOptions"
+          :key="'af-' + opt.v"
+          @click="agentStatusFilter = opt.v"
+          :class="[
+            'text-[10px] px-2 py-1 rounded-full border transition-colors font-medium',
+            agentStatusFilter === opt.v
               ? 'bg-violet-600/20 text-violet-300 border-violet-500/30'
               : 'border-white/10 text-slate-500 hover:text-slate-300 hover:border-white/20',
           ]"
@@ -408,7 +418,18 @@ const sortOptions = [
 // --- Filter ---
 const searchQuery = ref('');
 const sessionStatusFilter = ref<'' | 'active' | 'idle' | 'disconnected'>('');
+const sessionFilterOptions: { v: '' | 'active' | 'idle' | 'disconnected'; l: string }[] = [
+  { v: '', l: 'All' },
+  { v: 'active', l: 'Active' },
+  { v: 'idle', l: 'Idle' },
+  { v: 'disconnected', l: 'Off' },
+];
 const agentStatusFilter = ref<'' | 'running' | 'stopped'>('');
+const agentFilterOptions: { v: '' | 'running' | 'stopped'; l: string }[] = [
+  { v: '', l: 'All' },
+  { v: 'running', l: 'Running' },
+  { v: 'stopped', l: 'Stopped' },
+];
 
 // --- Tabs ---
 const tabs = [

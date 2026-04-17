@@ -46,7 +46,6 @@ jobs:
           # Frontend dev server must be started externally for real runs.
           # In CI we skip tests requiring a live server; this step validates config only.
         run: npm run test:e2e -- --reporter=html,github
-        continue-on-error: true
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4

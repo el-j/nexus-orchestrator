@@ -25,6 +25,25 @@ type toolHarnessOrch struct {
 	discoveredPlansPath string
 	delegateInstruction string
 	delegateErr         error
+
+	// provider config stubs
+	providerConfigs   []domain.ProviderConfig
+	addProviderResult domain.ProviderConfig
+	addProviderErr    error
+	updProviderResult domain.ProviderConfig
+	updProviderErr    error
+	rmProviderErr     error
+	listProviderErr   error
+
+	// session lifecycle stubs
+	heartbeatSessionErr  error
+	deregisterSessionErr error
+	purgedCount          int
+	purgeErr             error
+
+	// discovery stubs
+	discoveredAgents []domain.DiscoveredAgent
+	agentsErr        error
 }
 
 func (m *toolHarnessOrch) PromoteTask(_ string) (ports.PromoteResult, error) {
@@ -60,6 +79,42 @@ func (m *toolHarnessOrch) GetDiscoveredPlanFiles(_ context.Context, projectPath 
 
 func (m *toolHarnessOrch) DelegateToNexus(_ context.Context, _ string) (string, error) {
 	return m.delegateInstruction, m.delegateErr
+}
+
+func (m *toolHarnessOrch) GetTasksBySessionID(_ string) ([]domain.Task, error) {
+	return nil, nil
+}
+
+func (m *toolHarnessOrch) AddProviderConfig(_ context.Context, _ domain.ProviderConfig) (domain.ProviderConfig, error) {
+	return m.addProviderResult, m.addProviderErr
+}
+
+func (m *toolHarnessOrch) UpdateProviderConfig(_ context.Context, _ domain.ProviderConfig) (domain.ProviderConfig, error) {
+	return m.updProviderResult, m.updProviderErr
+}
+
+func (m *toolHarnessOrch) RemoveProviderConfig(_ context.Context, _ string) error {
+	return m.rmProviderErr
+}
+
+func (m *toolHarnessOrch) ListProviderConfigs(_ context.Context) ([]domain.ProviderConfig, error) {
+	return m.providerConfigs, m.listProviderErr
+}
+
+func (m *toolHarnessOrch) HeartbeatAISession(_ context.Context, _ string) error {
+	return m.heartbeatSessionErr
+}
+
+func (m *toolHarnessOrch) DeregisterAISession(_ context.Context, _ string) error {
+	return m.deregisterSessionErr
+}
+
+func (m *toolHarnessOrch) PurgeDisconnectedSessions(_ context.Context) (int, error) {
+	return m.purgedCount, m.purgeErr
+}
+
+func (m *toolHarnessOrch) GetDiscoveredAgents(_ context.Context) ([]domain.DiscoveredAgent, error) {
+	return m.discoveredAgents, m.agentsErr
 }
 
 func decodeToolText(t *testing.T, raw json.RawMessage, dest any) {
@@ -388,6 +443,217 @@ func TestToolGetAllTasks_WithProjectPath(t *testing.T) {
 	}
 	if tasks[0].ID != "tb1" {
 		t.Errorf("expected task tb1, got %s", tasks[0].ID)
+	}
+}
+
+func TestToolListProviderConfigs_ReturnsAll(t *testing.T) {
+	orch := &toolHarnessOrch{
+		providerConfigs: []domain.ProviderConfig{
+			{ID: "cfg-1", Name: "lmstudio", Kind: domain.ProviderKindLMStudio},
+			{ID: "cfg-2", Name: "ollama", Kind: domain.ProviderKindOllama},
+		},
+	}
+	srv := newToolServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 10, "method": "tools/call",
+		"params": map[string]any{"name": "list_provider_configs", "arguments": map[string]any{}},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var cfgs []domain.ProviderConfig
+	decodeToolText(t, r.Result, &cfgs)
+	if len(cfgs) != 2 {
+		t.Errorf("expected 2 configs, got %d", len(cfgs))
+	}
+}
+
+func TestToolAddProviderConfig_RequiresKindAndName(t *testing.T) {
+	orch := &toolHarnessOrch{}
+	srv := newToolServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 11, "method": "tools/call",
+		"params": map[string]any{
+			"name":      "add_provider_config",
+			"arguments": map[string]any{"base_url": "http://localhost:1234"},
+		},
+	})
+	if r.Error == nil {
+		t.Fatal("expected -32602 error for missing kind/name")
+	}
+	if r.Error.Code != -32602 {
+		t.Errorf("expected code -32602, got %d", r.Error.Code)
+	}
+}
+
+func TestToolUpdateProviderConfig_RequiresID(t *testing.T) {
+	orch := &toolHarnessOrch{}
+	srv := newToolServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 12, "method": "tools/call",
+		"params": map[string]any{
+			"name":      "update_provider_config",
+			"arguments": map[string]any{"name": "new-name"},
+		},
+	})
+	if r.Error == nil {
+		t.Fatal("expected -32602 error for missing id")
+	}
+	if r.Error.Code != -32602 {
+		t.Errorf("expected code -32602, got %d", r.Error.Code)
+	}
+}
+
+func TestToolRemoveProviderConfig_ForwardsID(t *testing.T) {
+	orch := &toolHarnessOrch{}
+	srv := newToolServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 13, "method": "tools/call",
+		"params": map[string]any{
+			"name":      "remove_provider_config",
+			"arguments": map[string]any{"id": "cfg-1"},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+}
+
+func TestToolHeartbeatAISession_RequiresSessionID(t *testing.T) {
+	orch := &toolHarnessOrch{}
+	srv := newToolServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 14, "method": "tools/call",
+		"params": map[string]any{
+			"name":      "heartbeat_ai_session",
+			"arguments": map[string]any{},
+		},
+	})
+	if r.Error == nil {
+		t.Fatal("expected -32602 error for missing session_id")
+	}
+	if r.Error.Code != -32602 {
+		t.Errorf("expected code -32602, got %d", r.Error.Code)
+	}
+}
+
+func TestToolDeregisterAISession_RequiresSessionID(t *testing.T) {
+	orch := &toolHarnessOrch{}
+	srv := newToolServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 15, "method": "tools/call",
+		"params": map[string]any{
+			"name":      "deregister_ai_session",
+			"arguments": map[string]any{},
+		},
+	})
+	if r.Error == nil {
+		t.Fatal("expected -32602 error for missing session_id")
+	}
+	if r.Error.Code != -32602 {
+		t.Errorf("expected code -32602, got %d", r.Error.Code)
+	}
+}
+
+func TestToolPurgeDisconnectedSessions_ReturnsCount(t *testing.T) {
+	orch := &toolHarnessOrch{purgedCount: 3}
+	srv := newToolServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 16, "method": "tools/call",
+		"params": map[string]any{"name": "purge_disconnected_sessions", "arguments": map[string]any{}},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var payload map[string]any
+	decodeToolText(t, r.Result, &payload)
+	if int(payload["purged"].(float64)) != 3 {
+		t.Errorf("expected purged=3, got %v", payload["purged"])
+	}
+}
+
+func TestToolGetDiscoveredAgents_ReturnsAgents(t *testing.T) {
+	orch := &toolHarnessOrch{
+		discoveredAgents: []domain.DiscoveredAgent{
+			{ID: "agent-1", Name: "Claude CLI", Kind: "claude-cli"},
+		},
+	}
+	srv := newToolServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 17, "method": "tools/call",
+		"params": map[string]any{"name": "get_discovered_agents", "arguments": map[string]any{}},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var agents []domain.DiscoveredAgent
+	decodeToolText(t, r.Result, &agents)
+	if len(agents) != 1 {
+		t.Errorf("expected 1 agent, got %d", len(agents))
+	}
+}
+
+func TestToolHowto_ContainsRegisterSessionStep(t *testing.T) {
+	orch := &toolHarnessOrch{}
+	srv := newToolServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 18, "method": "tools/call",
+		"params": map[string]any{"name": "howto", "arguments": map[string]any{}},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal howto result: %v", err)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("expected non-empty howto response")
+	}
+	text := result.Content[0].Text
+	if !strings.Contains(text, "register_session") {
+		t.Errorf("howto response should contain 'register_session', got: %s", text[:min(200, len(text))])
+	}
+}
+
+func TestToolHowtoBrief_ContainsKeywords(t *testing.T) {
+	orch := &toolHarnessOrch{}
+	srv := newToolServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 19, "method": "tools/call",
+		"params": map[string]any{"name": "howto_brief", "arguments": map[string]any{}},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(r.Result, &result); err != nil {
+		t.Fatalf("unmarshal howto_brief result: %v", err)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("expected non-empty howto_brief response")
+	}
+	text := result.Content[0].Text
+	if !strings.Contains(text, "claim_task") {
+		t.Errorf("howto_brief should contain 'claim_task', got: %s", text[:min(200, len(text))])
 	}
 }
 

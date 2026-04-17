@@ -182,21 +182,25 @@
           <p class="text-xs text-slate-500">
             Select one or more files to ingest into the project brain.
           </p>
-          <input
-            ref="fileInputRef"
-            type="file"
-            multiple
-            accept=".md,.txt,.go,.ts,.vue,.py,.rs,.json,.yaml,.yml"
-            class="hidden"
-            @change="onFilesSelected"
-          />
-          <button
-            @click="fileInputRef?.click()"
-            :disabled="ingesting || !projectPath"
-            class="px-4 py-2 text-xs rounded bg-violet-500/20 hover:bg-violet-500/40 text-violet-300 border border-violet-500/40 disabled:opacity-40"
-          >
-            Select Files…
-          </button>
+          <!-- Wails desktop mode: use native file dialog for real paths -->
+          <template v-if="wailsMode">
+            <button
+              @click="handleWailsIngest"
+              :disabled="ingesting || !projectPath"
+              class="px-4 py-2 text-xs rounded bg-violet-500/20 hover:bg-violet-500/40 text-violet-300 border border-violet-500/40 disabled:opacity-40"
+            >
+              Select File…
+            </button>
+          </template>
+          <!-- Browser dev mode: ingest requires desktop app -->
+          <template v-else>
+            <div
+              class="px-3 py-2 rounded bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300"
+            >
+              File ingest requires the desktop app — full file-system paths are not accessible from
+              the browser. Launch the Wails desktop build to use this feature.
+            </div>
+          </template>
           <div v-if="ingestProgress" class="text-xs text-slate-400">
             {{ ingestProgress }}
           </div>
@@ -234,9 +238,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, shallowRef } from 'vue';
 import { useBrain } from '../composables/useBrain';
 import { currentProject } from '../composables/useProjectState';
+
+const isWails = (): boolean => !!window.go?.main?.App;
 
 const projectPath = ref('');
 const activeTab = ref<'search' | 'entries' | 'ingest' | 'filemap'>('search');
@@ -245,7 +251,7 @@ const kindFilter = ref('');
 const ingesting = ref(false);
 const ingestProgress = ref('');
 const ingestResult = ref('');
-const fileInputRef = ref<HTMLInputElement | null>(null);
+const wailsMode = ref(isWails());
 
 const tabs = [
   { key: 'search' as const, label: 'Search' },
@@ -256,7 +262,7 @@ const tabs = [
 
 // brain ref is swapped when projectPath changes; computed proxies ensure the
 // template always reads from the current instance's reactive state.
-const brain = ref(useBrain(''));
+const brain = shallowRef(useBrain(''));
 
 // Computed proxies — necessary because destructuring brain.value captures refs
 // from the initial instance and won't update when brain.value is reassigned.
@@ -301,23 +307,31 @@ async function handleFetchFileMap() {
   await brain.value.fetchFileMap();
 }
 
-async function onFilesSelected(e: Event) {
-  const files = (e.target as HTMLInputElement).files;
-  if (!files || !projectPath.value) return;
+async function handleWailsIngest() {
+  if (!projectPath.value || !window.go?.main?.App) return;
   ingesting.value = true;
-  ingestProgress.value = '';
+  ingestProgress.value = 'Opening file dialog…';
   ingestResult.value = '';
-  let totalSections = 0;
-  for (let i = 0; i < files.length; i++) {
-    ingestProgress.value = `Ingesting ${i + 1}/${files.length}: ${files[i].name}…`;
-    const count = await brain.value.ingest(files[i].name);
-    totalSections += count;
+  try {
+    const filePath = await window.go.main.App.OpenFileDialog('Select file to ingest', [
+      {
+        displayName: 'Knowledge Files',
+        pattern: '*.md;*.txt;*.go;*.ts;*.vue;*.py;*.rs;*.json;*.yaml;*.yml',
+      },
+    ]);
+    if (!filePath) {
+      ingestProgress.value = '';
+      return;
+    }
+    ingestProgress.value = `Ingesting: ${filePath}…`;
+    const count = await brain.value.ingest(filePath);
+    ingestResult.value = `Ingested ${count} section${count !== 1 ? 's' : ''} from ${filePath}.`;
+  } catch (e) {
+    ingestResult.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    ingesting.value = false;
+    ingestProgress.value = '';
   }
-  ingesting.value = false;
-  ingestProgress.value = '';
-  ingestResult.value = `Ingested ${totalSections} sections from ${files.length} file${files.length !== 1 ? 's' : ''}.`;
-  // Reset input
-  if (fileInputRef.value) fileInputRef.value.value = '';
 }
 
 onMounted(() => {

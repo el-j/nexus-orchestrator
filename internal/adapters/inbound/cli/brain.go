@@ -27,6 +27,7 @@ func newBrainCmd(brain ports.BrainService) *cobra.Command {
 	cmd.AddCommand(newBrainDeleteCmd(brain))
 	cmd.AddCommand(newBrainContextCmd(brain))
 	cmd.AddCommand(newBrainFileMapCmd(brain))
+	cmd.AddCommand(newBrainFocusedContextCmd(brain))
 
 	return cmd
 }
@@ -182,6 +183,33 @@ func newBrainContextCmd(brain ports.BrainService) *cobra.Command {
 	cmd.Flags().StringVar(&project, "project", "", "Project path (required)")
 	cmd.Flags().IntVar(&maxTokens, "max-tokens", 800, "Maximum tokens to include in context")
 	_ = cmd.MarkFlagRequired("project")
+	return cmd
+}
+
+func newBrainFocusedContextCmd(brain ports.BrainService) *cobra.Command {
+	var project, question string
+	var maxTokens int
+	cmd := &cobra.Command{
+		Use:   "focused-context",
+		Short: "Get a focused context response for a specific question",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			resp, err := brain.GetFocusedContext(context.Background(), domain.ContextQuery{
+				ProjectPath: project,
+				Question:    question,
+				MaxTokens:   maxTokens,
+			})
+			if err != nil {
+				return fmt.Errorf("cli: brain focused-context: %w", err)
+			}
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(resp)
+		},
+	}
+	cmd.Flags().StringVar(&project, "project-path", "", "Project path (required)")
+	cmd.Flags().StringVar(&question, "question", "", "Question to answer using project context")
+	cmd.Flags().IntVar(&maxTokens, "max-tokens", 800, "Maximum tokens to include in context")
+	_ = cmd.MarkFlagRequired("project-path")
 	return cmd
 }
 

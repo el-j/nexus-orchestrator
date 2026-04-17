@@ -1,28 +1,28 @@
 {
   "version": "2",
-  "updatedAt": "2026-04-14T03:00:00Z",
+  "updatedAt": "2026-04-16T15:30:00Z",
   "counters": {
-    "nextTaskId": 554,
-    "nextPlanId": 71
+    "nextTaskId": 577,
+    "nextPlanId": 72
   },
-  "activePlanId": null,
+  "activePlanId": "PLAN-071",
   "notes": [
-    "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix). PLAN-013 completed (update CI to latest action versions). PLAN-014 completed (unified publish.yml pipeline, fixed GITHUB_TOKEN cross-trigger bug, fixed CLI/desktop artifact naming collision, updated downloads.md). PLAN-015 completed (production-grade Node20 GitHub Action with TypeScript, built-in agent identity loading from el-j/agency-agents, 24 unit tests, action-ci.yml CI workflow). PLAN-016 completed (release pipeline finalization: deleted conflicting version.yml+release.yml, created CHANGELOG.md, fixed downloads.md desktop links). PLAN-017 completed (fix all broken download links: nexusOrchestrator\u2192nexus-orchestrator prefix, macOS .tar.gz\u2192.zip, add Gatekeeper workaround instructions). PLAN-018 completed (provider visibility: configurable Ollama/LM Studio URLs, BaseURL+Error in ProviderInfo, SQLite-persisted provider CRUD, GUI provider management panel, VS Code extension with submit/queue/status-bar). PLAN-019 completed (VS Code extension VSIX in release pipeline: vsce packaging with publisher+@vscode/vsce, build-vscode job in publish.yml+ci.yml, DownloadsView.vue/HomeView.vue/docs updated to mention extension). PLAN-020 completed (fix ProviderInfo TypeScript PascalCase\u2192camelCase type mismatch, wire AppSidebar routing, create ProvidersView.vue, dogfood confirmed COMPLETED via LM Studio qwen3-coder-next in 9s). PLAN-021 completed (SSE real-time updates via EventSource+fallback, ProviderConfig kind fix, CHANGELOG v0.8.0 \u2014 all 4 tasks dogfooded via daemon, LM Studio qwen3-coder-next). PLAN-022 completed (Universal AI Session Orchestration \u2014 AISession domain type, AISessionRepository+AISessionMonitor ports, SQLite AISessionRepo, HTTP /api/ai-sessions CRUD, MCP register_session+get_ai_sessions (14 tools total), GUI AISessionsView+useAISessions composable, VS Code SessionMonitor+Copilot detection, entry point wiring, 13 QA tests \u2014 all 9 tasks, 7 waves, all green). PLAN-023 active (System-Wide Provider Discovery + Background Service Mode \u2014 detect Claude CLI/Copilot/Antigravity/local AI tools, hide-to-tray, in-app log console, no console window \u2014 13 tasks across 8 waves). PLAN-024 completed (Multi-Project Planning & Idea Staging \u2014 DRAFT/BACKLOG statuses, ProviderName per-task routing, Priority+Tags, SQLite migrations, backlog CRUD on HTTP/MCP/CLI/Wails, BacklogView+BacklogList+ProjectSelector GUI, TaskSubmitForm split-button, 20 new QA tests \u2014 all 12 tasks, 7 waves, all green). PLAN-029 completed (Task Queue UI fix: DashboardView flex wrapper; AI Session dedup by externalId: idempotent RegisterAISession + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code extension heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-030 completed (Comprehensive Hardening: HeartbeatAISession+PromoteProvider bindings, error handling consistency, constructor nil-validation, HTTP API error format, frontend circular dep fix, VSCode memory leak+URLs, VSCode session monitor race fix, processNext decomposition into 4 helpers, silent catch blocks fixed, security hardening CSP nonce+file permissions+XSS, Vue error boundary+rejection handler, GitHub Action 53 tests, golangci-lint+eslint in CI, discovery error logging+configurable builder options, frontend accessibility ARIA labels). PLAN-031 completed (fix duplicate package decl in llm_openaicompat test, go fmt all files, add gofmt CI check + vet gate for test job \u2014 all 4 tasks green). EXPERIMENT 2026-03-12: go build passes even when _test.go files have syntax errors (build only compiles cmd/ entry points, never test files) \u2014 CI pattern Build\u2713 Vet\u2717 Test\u2717 gives false confidence; fixed by adding needs:[vet] gate to test job. EXPERIMENT 2026-03-12: duplicate package declarations caused by appending generated/scaffolded code to an existing file that already had a package line \u2014 always check for duplicate package decls after code generation. EXPERIMENT 2026-03-12: gofmt violations (multi-statement single lines with ;) not caught by go vet or go build \u2014 must add explicit gofmt -l check in lint CI job; find command: find . -name '*.go' | xargs gofmt -l. SESSION 2026-03-12: Completed PLAN-031 (CI hard-failure fix). Files changed: adapter_test.go (dup pkg decl), orchestrator_options_test.go (gofmt), .github/workflows/ci.yml (gofmt check + vet gate). Tests: all green. SESSION 2026-03-13: Completed PLAN-036 (formalized the release-readiness audit into .claude plan/task records and cleared the stale active-plan pointer). SESSION 2026-03-13: Started PLAN-037 (Wave 1 release-readiness hardening for queue authority, publish-gate parity, and provider promotion durability). SESSION 2026-03-13: Completed PLAN-037 (queued-task authority moved to persisted pending rows, publish gained full release-gate parity, provider promotion now persists enabled config, and Go race tests + daemon E2E + frontend/extension coverage all passed). SESSION 2026-03-13 (PLAN-039): Fixed CI failures from build-path unification \u2014 TASK-259: created build/frontend/.gitkeep + .gitignore glob fix so go embed works on fresh clone; TASK-260: bumped esbuild ^0.20.0\u2192^0.27.0 in vscode-extension/package.json + regenerated package-lock.json to fix npm ci sync error. SESSION 2026-03-13 (PLAN-040): Added Google Antigravity LLM provider \u2014 TASK-261: Antigravity now always registered in buildProviders() via NEXUS_ANTIGRAVITY_URL (default http://127.0.0.1:4315/v1); TASK-262: buildProviderFromConfig now handles ProviderKindDesktopApp/LocalAI/VLLM/TextGenUI via llm_openaicompat with /v1 normalization; TASK-263: copilot-instructions.md configuration section updated.",
+    "PLAN-001 completed (MCP + session isolation). PLAN-002 stale. PLAN-003 done (dogfood). PLAN-004 completed (context-window guard). PLAN-005 completed (smart multi-provider routing). PLAN-006 completed (UI provider and model control). PLAN-007 completed (audit hardening). PLAN-008 completed (E2E testing). PLAN-009 completed (GitHub Pages + command-aware routing). PLAN-010 completed (cross-platform release pipeline + download landing page). PLAN-011 completed (industry-grade hardening). PLAN-012 completed (semantic versioning + MIT license + zig CI fix). PLAN-013 completed (update CI to latest action versions). PLAN-014 completed (unified publish.yml pipeline, fixed GITHUB_TOKEN cross-trigger bug, fixed CLI/desktop artifact naming collision, updated downloads.md). PLAN-015 completed (production-grade Node20 GitHub Action with TypeScript, built-in agent identity loading from el-j/agency-agents, 24 unit tests, action-ci.yml CI workflow). PLAN-016 completed (release pipeline finalization: deleted conflicting version.yml+release.yml, created CHANGELOG.md, fixed downloads.md desktop links). PLAN-017 completed (fix all broken download links: nexusOrchestrator→nexus-orchestrator prefix, macOS .tar.gz→.zip, add Gatekeeper workaround instructions). PLAN-018 completed (provider visibility: configurable Ollama/LM Studio URLs, BaseURL+Error in ProviderInfo, SQLite-persisted provider CRUD, GUI provider management panel, VS Code extension with submit/queue/status-bar). PLAN-019 completed (VS Code extension VSIX in release pipeline: vsce packaging with publisher+@vscode/vsce, build-vscode job in publish.yml+ci.yml, DownloadsView.vue/HomeView.vue/docs updated to mention extension). PLAN-020 completed (fix ProviderInfo TypeScript PascalCase→camelCase type mismatch, wire AppSidebar routing, create ProvidersView.vue, dogfood confirmed COMPLETED via LM Studio qwen3-coder-next in 9s). PLAN-021 completed (SSE real-time updates via EventSource+fallback, ProviderConfig kind fix, CHANGELOG v0.8.0 — all 4 tasks dogfooded via daemon, LM Studio qwen3-coder-next). PLAN-022 completed (Universal AI Session Orchestration — AISession domain type, AISessionRepository+AISessionMonitor ports, SQLite AISessionRepo, HTTP /api/ai-sessions CRUD, MCP register_session+get_ai_sessions (14 tools total), GUI AISessionsView+useAISessions composable, VS Code SessionMonitor+Copilot detection, entry point wiring, 13 QA tests — all 9 tasks, 7 waves, all green). PLAN-023 active (System-Wide Provider Discovery + Background Service Mode — detect Claude CLI/Copilot/Antigravity/local AI tools, hide-to-tray, in-app log console, no console window — 13 tasks across 8 waves). PLAN-024 completed (Multi-Project Planning & Idea Staging — DRAFT/BACKLOG statuses, ProviderName per-task routing, Priority+Tags, SQLite migrations, backlog CRUD on HTTP/MCP/CLI/Wails, BacklogView+BacklogList+ProjectSelector GUI, TaskSubmitForm split-button, 20 new QA tests — all 12 tasks, 7 waves, all green). PLAN-029 completed (Task Queue UI fix: DashboardView flex wrapper; AI Session dedup by externalId: idempotent RegisterAISession + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code extension heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-027 archived (build consolidation, CORS, Wails bindings, SessionMonitor backoff). PLAN-028 archived (health TTL cache, provider poll reduction, WorkspaceOrchView tree). PLAN-029 archived (DashboardView flex fix; AI session dedup by externalId + HeartbeatAISession endpoint + stale cleanup goroutine; VS Code heartbeat uses POST not re-register). PLAN-030 completed (Comprehensive Hardening: HeartbeatAISession+PromoteProvider bindings, error handling consistency, constructor nil-validation, HTTP API error format, frontend circular dep fix, VSCode memory leak+URLs, VSCode session monitor race fix, processNext decomposition into 4 helpers, silent catch blocks fixed, security hardening CSP nonce+file permissions+XSS, Vue error boundary+rejection handler, GitHub Action 53 tests, golangci-lint+eslint in CI, discovery error logging+configurable builder options, frontend accessibility ARIA labels). PLAN-031 completed (fix duplicate package decl in llm_openaicompat test, go fmt all files, add gofmt CI check + vet gate for test job — all 4 tasks green). EXPERIMENT 2026-03-12: go build passes even when _test.go files have syntax errors (build only compiles cmd/ entry points, never test files) — CI pattern Build✓ Vet✗ Test✗ gives false confidence; fixed by adding needs:[vet] gate to test job. EXPERIMENT 2026-03-12: duplicate package declarations caused by appending generated/scaffolded code to an existing file that already had a package line — always check for duplicate package decls after code generation. EXPERIMENT 2026-03-12: gofmt violations (multi-statement single lines with ;) not caught by go vet or go build — must add explicit gofmt -l check in lint CI job; find command: find . -name '*.go' | xargs gofmt -l. SESSION 2026-03-12: Completed PLAN-031 (CI hard-failure fix). Files changed: adapter_test.go (dup pkg decl), orchestrator_options_test.go (gofmt), .github/workflows/ci.yml (gofmt check + vet gate). Tests: all green. SESSION 2026-03-13: Completed PLAN-036 (formalized the release-readiness audit into .claude plan/task records and cleared the stale active-plan pointer). SESSION 2026-03-13: Started PLAN-037 (Wave 1 release-readiness hardening for queue authority, publish-gate parity, and provider promotion durability). SESSION 2026-03-13: Completed PLAN-037 (queued-task authority moved to persisted pending rows, publish gained full release-gate parity, provider promotion now persists enabled config, and Go race tests + daemon E2E + frontend/extension coverage all passed). SESSION 2026-03-13 (PLAN-039): Fixed CI failures from build-path unification — TASK-259: created build/frontend/.gitkeep + .gitignore glob fix so go embed works on fresh clone; TASK-260: bumped esbuild ^0.20.0→^0.27.0 in vscode-extension/package.json + regenerated package-lock.json to fix npm ci sync error. SESSION 2026-03-13 (PLAN-040): Added Google Antigravity LLM provider — TASK-261: Antigravity now always registered in buildProviders() via NEXUS_ANTIGRAVITY_URL (default http://127.0.0.1:4315/v1); TASK-262: buildProviderFromConfig now handles ProviderKindDesktopApp/LocalAI/VLLM/TextGenUI via llm_openaicompat with /v1 normalization; TASK-263: copilot-instructions.md configuration section updated.",
     "PLAN-041 complete (2026-03-13): session purge (PurgeDisconnected on AISessionRepository + auto-purge in runSessionCleanup + DELETE /api/ai-sessions endpoint + Wails binding + Clear Disconnected button), Ollama /api/ps active-model detection, LiveActivityView, Live AI nav item. All 8 tasks TASK-264..TASK-271 done. Build + tests all green.",
-    "PLAN-042 complete (2026-03-14): Here-I-Am discovery \u2014 GET /.well-known/nexus.json (beacon) + GET /api/howto (full machine-readable guide, host-dynamic URLs) + MCP howto tool (first in list, returns full text guide) + serverInfo.Instructions in MCP initialize pointing AIs to call howto first + startup banner in both entry points listing all 5 endpoints. 8 new tests (howto_test.go) all green. copilot-instructions.md updated with discovery + howto + MCP howto references. TASK-259..TASK-262 all done.",
-    "PLAN-043 complete (2026-03-14): Task visibility + extension refresh \u2014 Root cause: old VSIX built 2026-03-13 17:57 had port 9999 hardcoded in dist/extension.js (before port migration). Fix: (1) TaskQueueProvider now calls GET /api/tasks/all (all statuses visible, not just queue), active tasks sorted first, DaemonOfflineItem shown when daemon unreachable; (2) WorkspaceOrchView now queries daemon per project via getAllTasks() + projectPath filter, shows LiveTasksGroupNode with active+recent tasks alongside .claude/orchestrator.json plan history; (3) VSIX rebuilt with port 63987, installed. (4) Daemon built + started, LM Studio qwen3-coder-next active, health + discovery + howto endpoints verified, test task submitted + picked up. TASK-272..TASK-275 all done.",
-    "PLAN-044 complete (2026-03-14): Universal AI Takeover \u2014 DiscoveredAgent domain type + AgentKind consts; AgentScanner port + Orchestrator.GetDiscoveredAgents/DelegateToNexus; sys_scanner 5-strategy ScanAgents (fs-config, vscode-ext, MCP port sweep, process-flag, process); SQLite discovered_agents table + 4 ai_sessions columns; OrchestratorService real implementations with 30s cache TTL; HTTP API /discovered + /delegate; VS Code AgentDetector (4 strategies, 30s poll, session lifecycle); AISessionsTreeProvider tree view; nexus.delegateToNexus command (3 paths: cli/mcp/copilot); NexusClient additions; Vue AIAgentsView + AISessionCard with timeline; extension.ts wiring; Go tests (13 sys_scanner + 3 delegate) all green; TS tests (6 new) all green; all 13 Go packages ok with -race. TASK-276..TASK-290 all done.",
+    "PLAN-042 complete (2026-03-14): Here-I-Am discovery — GET /.well-known/nexus.json (beacon) + GET /api/howto (full machine-readable guide, host-dynamic URLs) + MCP howto tool (first in list, returns full text guide) + serverInfo.Instructions in MCP initialize pointing AIs to call howto first + startup banner in both entry points listing all 5 endpoints. 8 new tests (howto_test.go) all green. copilot-instructions.md updated with discovery + howto + MCP howto references. TASK-259..TASK-262 all done.",
+    "PLAN-043 complete (2026-03-14): Task visibility + extension refresh — Root cause: old VSIX built 2026-03-13 17:57 had port 9999 hardcoded in dist/extension.js (before port migration). Fix: (1) TaskQueueProvider now calls GET /api/tasks/all (all statuses visible, not just queue), active tasks sorted first, DaemonOfflineItem shown when daemon unreachable; (2) WorkspaceOrchView now queries daemon per project via getAllTasks() + projectPath filter, shows LiveTasksGroupNode with active+recent tasks alongside .claude/orchestrator.json plan history; (3) VSIX rebuilt with port 63987, installed. (4) Daemon built + started, LM Studio qwen3-coder-next active, health + discovery + howto endpoints verified, test task submitted + picked up. TASK-272..TASK-275 all done.",
+    "PLAN-044 complete (2026-03-14): Universal AI Takeover — DiscoveredAgent domain type + AgentKind consts; AgentScanner port + Orchestrator.GetDiscoveredAgents/DelegateToNexus; sys_scanner 5-strategy ScanAgents (fs-config, vscode-ext, MCP port sweep, process-flag, process); SQLite discovered_agents table + 4 ai_sessions columns; OrchestratorService real implementations with 30s cache TTL; HTTP API /discovered + /delegate; VS Code AgentDetector (4 strategies, 30s poll, session lifecycle); AISessionsTreeProvider tree view; nexus.delegateToNexus command (3 paths: cli/mcp/copilot); NexusClient additions; Vue AIAgentsView + AISessionCard with timeline; extension.ts wiring; Go tests (13 sys_scanner + 3 delegate) all green; TS tests (6 new) all green; all 13 Go packages ok with -race. TASK-276..TASK-290 all done.",
     "PLAN-045 complete (2026-03-14): Polish, Types and Changelog Sprint -- TASK-291: extracted relativeTime/timeAgo/formatDate to frontend/src/utils/time.ts (6 files refactored); TASK-292: CHANGELOG.md updated with v0.10.0 entry covering PLAN-044 + pre-commit; TASK-293: domain.ts Task interface gained retryCount field, wails.ts gained ClaimTask+UpdateTaskStatus; TASK-294: vscode-extension VSIX rebuilt to nexus-orchestrator-0.2.0.vsix (54KB); TASK-295: TASK-014/021/022 marked done (were fully implemented since PLAN-002); All 13 Go packages pass -race, frontend build+type-check clean, VSIX built successfully.",
-    "PLAN-046 complete (2026-03-24): Agent Connection Termination and Workflow Hardening -- TASK-296: added GetStaleProcessing to optRepo+memRepo mocks (orchestrator_options_test.go, orchestrator_test.go); TASK-297: added HeartbeatTask+TerminateAISession stubs to CLI mock (root_test.go); TASK-298: same stubs in MCP mock (mcp/server_test.go) and root app mock (app_test.go); TASK-299: TerminateAISession stub in httpapi mock + wired POST /api/ai-sessions/{id}/terminate and POST /api/tasks/{id}/heartbeat HTTP routes; TASK-300: wired heartbeat_task+terminate_ai_session MCP tool handlers+toolList entries (tool count 18\u219220). go vet clean, all 19 test packages pass.",
+    "PLAN-046 complete (2026-03-24): Agent Connection Termination and Workflow Hardening -- TASK-296: added GetStaleProcessing to optRepo+memRepo mocks (orchestrator_options_test.go, orchestrator_test.go); TASK-297: added HeartbeatTask+TerminateAISession stubs to CLI mock (root_test.go); TASK-298: same stubs in MCP mock (mcp/server_test.go) and root app mock (app_test.go); TASK-299: TerminateAISession stub in httpapi mock + wired POST /api/ai-sessions/{id}/terminate and POST /api/tasks/{id}/heartbeat HTTP routes; TASK-300: wired heartbeat_task+terminate_ai_session MCP tool handlers+toolList entries (tool count 18→20). go vet clean, all 19 test packages pass.",
     "AUDIT 2026-03-25: 5-agent swarm audit completed. Findings: (1) HTTP API 100% covered. (2) MCP missing 9 tools: provider config CRUD (add/update/remove/list), session deregister+heartbeat+purge, discovered-agents, delegate-to-nexus. (3) CLI stubs: GetDiscoveredAgents+DelegateToNexus return zero-values without HTTP calls; TerminateAISession never forwards force flag. (4) Bugs: runWorker double processNext (can run task after stop signal); PromoteProvider swallows persistence error; hardcoded port 63987 in delegationInstruction(). (5) God object: orchestrator.go 1525 lines / 53 methods. (6) Dead code: lmstudio defaultBaseURL const unused; double HTTP call in ActiveModel+ContextLimit. (7) Duplication: message-conversion in 3 adapters; models-list parsing in 3 adapters; buildProviders in 2 mains; HTTP decode pattern in 4 adapters. (8) Error handling silenced: httpapi TerminateAISession JSON body; repo tags unmarshal; PurgeDisconnected RowsAffected; discovered_agent LastSeen parse. (9) Test gaps: httpapi 33%, repo_sqlite 64%, sys_scanner 43%, domain 12%; 8 new httpapi routes untested; discovered_agent_repo has zero tests. (10) Global log.Printf in library code (~40 sites in orchestrator.go). PLAN-047 created: TASK-301..TASK-314.",
-    "PLAN-047 complete (2026-03-25): Comprehensive audit and hardening sprint \u2014 15 tasks across 4 waves: Wave 1 bugs/stubs (TASK-301-305: fixed runWorker double-processNext, PromoteProvider silent error, hardcoded port, 3 CLI stubs, httpapi 400 on bad JSON, 3 repo_sqlite swallowed errors, 9 missing MCP tools); Wave 2 dedup (TASK-306-307: LLM adapter DefaultBaseURL+infoOnce+messagesToMaps, bootstrap.BuildProviders extraction); Wave 3 test coverage (TASK-308-310: 8 httpapi routes, 14 repo_sqlite methods, 16 MCP tool tests); Wave 4 refactoring (TASK-311-314: orchestrator.go split 1525\u21925 files, remoteOrchestrator\u2192httpapi_client package, mcp/server.go\u2192server+tools, httpapi/server.go\u2192server+3 handler files). All 20 packages vet+build+test -race clean.",
-    "PLAN-049 complete (2026-03-27): DX \u2014 make nice + make dev fix. TASK-323: added make nice/nice-go/nice-frontend targets (gofmt -w, go vet, golangci-lint v2 auto-upgrade+fix, vue-tsc --noEmit). TASK-324: fixed Vite proxy /mcp\u2192:63988 (was :63987), added /.well-known proxy. TASK-325: rewrote make dev with health-check wait loop (30 attempts, 1s interval) before starting Vite, accurate banner showing all 5 endpoints. TASK-326+327: validated make nice exits 0, all 15 test packages pass -race. Bonus: fixed 3 lint issues (gocritic assignOp, gocritic singleCaseSwitch, staticcheck SA9003 empty branch), upgraded golangci-lint v1\u2192v2, removed dead code in plan_scanner.go. All 5 tasks done.",
+    "PLAN-047 complete (2026-03-25): Comprehensive audit and hardening sprint — 15 tasks across 4 waves: Wave 1 bugs/stubs (TASK-301-305: fixed runWorker double-processNext, PromoteProvider silent error, hardcoded port, 3 CLI stubs, httpapi 400 on bad JSON, 3 repo_sqlite swallowed errors, 9 missing MCP tools); Wave 2 dedup (TASK-306-307: LLM adapter DefaultBaseURL+infoOnce+messagesToMaps, bootstrap.BuildProviders extraction); Wave 3 test coverage (TASK-308-310: 8 httpapi routes, 14 repo_sqlite methods, 16 MCP tool tests); Wave 4 refactoring (TASK-311-314: orchestrator.go split 1525→5 files, remoteOrchestrator→httpapi_client package, mcp/server.go→server+tools, httpapi/server.go→server+3 handler files). All 20 packages vet+build+test -race clean.",
+    "PLAN-049 complete (2026-03-27): DX — make nice + make dev fix. TASK-323: added make nice/nice-go/nice-frontend targets (gofmt -w, go vet, golangci-lint v2 auto-upgrade+fix, vue-tsc --noEmit). TASK-324: fixed Vite proxy /mcp→:63988 (was :63987), added /.well-known proxy. TASK-325: rewrote make dev with health-check wait loop (30 attempts, 1s interval) before starting Vite, accurate banner showing all 5 endpoints. TASK-326+327: validated make nice exits 0, all 15 test packages pass -race. Bonus: fixed 3 lint issues (gocritic assignOp, gocritic singleCaseSwitch, staticcheck SA9003 empty branch), upgraded golangci-lint v1→v2, removed dead code in plan_scanner.go. All 5 tasks done.",
     "SESSION 2026-03-27: Completed PLAN-050 (Real-Time AI Activity Observatory). 18 tasks TASK-328..TASK-345 done across 5 waves: AIActivity domain type + ActivityReader port; SQLite activity repo; AISession extension; Claude JSONL/history readers; Continue sessions reader; network probe reader; ActivityService with 5s poll + SSE broadcast + session bridge; HTTP /api/activities + /api/activities/timeline endpoints; wired into daemon+Wails; LiveActivityView rebuild; AIActivityCard component; agent detail panel; ProjectActivityView; dashboard provider cards with generating state; VS Code live activity tree + status bar item. Build clean, all tests pass -race. Next: activePlanId cleared.",
     "SESSION 2026-03-28: Started PLAN-051 (Local Model Intelligence Layer). Goal: smart context broker for small-context local models (qwen3.5-35b-a3b via .continue). 10 tasks TASK-346..TASK-355 across 5 waves: Wave1 domain ModelCapabilityProfile + SQLite repo; Wave2 Continue reader model extraction; Wave3 MCP tools get_project_context + get_focused_context + howto_brief; Wave4 register/get_model_capabilities + context-budget headers; Wave5 delegate_to_nexus update + copilot-instructions.md.",
-    "PLAN-052 complete (2026-03-28): MCP Standards Compliance \u2014 SSE/Streamable HTTP/stdio transports. TASK-356: added ping+resources/list+prompts/list standard methods. TASK-357: legacy SSE transport (GET /sse \u2192 endpoint event \u2192 POST /messages via captureWriter \u2192 SSE message responses) with sseManager session tracking. TASK-358: Streamable HTTP (POST-only /mcp with GET\u2192405, Mcp-Session-Id on initialize). TASK-359: Origin validation (localhost allowed, foreign blocked with 403) + CORS headers + OPTIONS preflight. TASK-360: cmd/nexus-mcp-stdio stdio proxy binary (stdin\u2192HTTP POST\u2192stdout). TASK-361: fixed .continue/mcpServers config with SSE+streamable-http+stdio examples. TASK-362: 11 new tests (SSE connect/exchange/405/400/404, GET /mcp 405, Origin validation\u00d73, CORS preflight). TASK-363: copilot-instructions.md MCP section updated. All 44 MCP tests pass -race. 8 tasks TASK-356..TASK-363, 7 waves.",
-    "PLAN-053 complete (2026-03-28): GUI Data Quality & Session Visibility Fixes. TASK-364: DiscoveredPlansView.vue uses currentProject shared state instead of empty ref('') \u2014 plans now populate correctly. TASK-365: ListPlanFiles returns all plans when projectPath empty (removed WHERE clause filter). TASK-366: ActivityService disconnectTimeout reduced from 2h to 15m \u2014 stale sessions cleaned up faster. TASK-367: Added watch(projectPath) in useDiscoveredPlans to refetch on project filter change. GetDiscoveredPlanFiles skips scanning when projectPath empty, returns all persisted plans. 4 tasks TASK-364..TASK-367, 2 waves.",
-    "PLAN-054 complete (2026-03-28): Live Views Overhaul + MCP workflow integration. TASK-368: DiscoveredPlansView.vue rebuilt \u2014 \ud83e\udde0 Project Brain card for nexus-kind, extractParentPlan() parsing **Plan:** PLAN-NNN from summaries, task files grouped under PLAN-NNN accordion headers newest-first, otherFiles section, projectGroups computed replacing grouped/groupCount. TASK-369: ProvidersView.vue 'AI Coding Tools' section added \u2014 fetches /api/ai-sessions/discovered, shows Copilot/Continue/Claude CLI/Cline with Active/Installed/Detected badges, agentLabel()+agentStatusClass() helpers. TASK-370: LiveActivityView.vue session-grouped thread view \u2014 SessionGroup interface, sessionGroups computed grouping by sessionId with 60s time-proximity fallback, session header bars with agent name colored dot/model/tokens/project. TASK-371: HistoryView.vue status summary bar \u2014 statusSummary+summaryBadges computeds, clickable pipeline badge pills (Queued/Processing/Completed/Failed/Backlog/Draft) that toggle selectedFilter. TASK-372: plan_scanner.go summarizeOrchestratorJSON() enriches nexus-kind with plans: N (N completed) \u00b7 tasks: N \u00b7 updated: ISO. MCP workflow documented in copilot-instructions.md: Session Startup/Planning/Execution/Orchestration sections, key conventions incl. IMPORTANT promote_task only for LLM code-gen tasks. 5 tasks TASK-368..372, 2 waves.",
-    "PLAN-055 complete (2026-03-28): Production hardening and release-path test coverage. TASK-373..374 fixed the real MCP-discovered NO_PROVIDER lifecycle bugs by allowing NO_PROVIDER\u2192CANCELLED and returning promote warnings before worker dispatch. TASK-375..377 hardened VS Code workspace isolation with scoped task queue filtering, a workspace-scope toggle, and extension test coverage while verifying WorkspaceOrchView already filtered per folder. TASK-378..379 pushed project filtering server-side in useActivities, HistoryView, and GET /api/tasks/all. TASK-380..381 added MCP tool RPC coverage and HTTP project filter/state-machine coverage. TASK-382..384 added frontend composable/view tests plus extension workspace isolation tests. TASK-385 added integration-tagged black-box HTTP+MCP tests against the live in-process stack. Validation passed: extension npm test, frontend npm test, go test for httpapi/mcp, and go test -tags=integration ./internal/e2e/....",
+    "PLAN-052 complete (2026-03-28): MCP Standards Compliance — SSE/Streamable HTTP/stdio transports. TASK-356: added ping+resources/list+prompts/list standard methods. TASK-357: legacy SSE transport (GET /sse → endpoint event → POST /messages via captureWriter → SSE message responses) with sseManager session tracking. TASK-358: Streamable HTTP (POST-only /mcp with GET→405, Mcp-Session-Id on initialize). TASK-359: Origin validation (localhost allowed, foreign blocked with 403) + CORS headers + OPTIONS preflight. TASK-360: cmd/nexus-mcp-stdio stdio proxy binary (stdin→HTTP POST→stdout). TASK-361: fixed .continue/mcpServers config with SSE+streamable-http+stdio examples. TASK-362: 11 new tests (SSE connect/exchange/405/400/404, GET /mcp 405, Origin validation×3, CORS preflight). TASK-363: copilot-instructions.md MCP section updated. All 44 MCP tests pass -race. 8 tasks TASK-356..TASK-363, 7 waves.",
+    "PLAN-053 complete (2026-03-28): GUI Data Quality & Session Visibility Fixes. TASK-364: DiscoveredPlansView.vue uses currentProject shared state instead of empty ref('') — plans now populate correctly. TASK-365: ListPlanFiles returns all plans when projectPath empty (removed WHERE clause filter). TASK-366: ActivityService disconnectTimeout reduced from 2h to 15m — stale sessions cleaned up faster. TASK-367: Added watch(projectPath) in useDiscoveredPlans to refetch on project filter change. GetDiscoveredPlanFiles skips scanning when projectPath empty, returns all persisted plans. 4 tasks TASK-364..TASK-367, 2 waves.",
+    "PLAN-054 complete (2026-03-28): Live Views Overhaul + MCP workflow integration. TASK-368: DiscoveredPlansView.vue rebuilt — 🧠 Project Brain card for nexus-kind, extractParentPlan() parsing **Plan:** PLAN-NNN from summaries, task files grouped under PLAN-NNN accordion headers newest-first, otherFiles section, projectGroups computed replacing grouped/groupCount. TASK-369: ProvidersView.vue 'AI Coding Tools' section added — fetches /api/ai-sessions/discovered, shows Copilot/Continue/Claude CLI/Cline with Active/Installed/Detected badges, agentLabel()+agentStatusClass() helpers. TASK-370: LiveActivityView.vue session-grouped thread view — SessionGroup interface, sessionGroups computed grouping by sessionId with 60s time-proximity fallback, session header bars with agent name colored dot/model/tokens/project. TASK-371: HistoryView.vue status summary bar — statusSummary+summaryBadges computeds, clickable pipeline badge pills (Queued/Processing/Completed/Failed/Backlog/Draft) that toggle selectedFilter. TASK-372: plan_scanner.go summarizeOrchestratorJSON() enriches nexus-kind with plans: N (N completed) · tasks: N · updated: ISO. MCP workflow documented in copilot-instructions.md: Session Startup/Planning/Execution/Orchestration sections, key conventions incl. IMPORTANT promote_task only for LLM code-gen tasks. 5 tasks TASK-368..372, 2 waves.",
+    "PLAN-055 complete (2026-03-28): Production hardening and release-path test coverage. TASK-373..374 fixed the real MCP-discovered NO_PROVIDER lifecycle bugs by allowing NO_PROVIDER→CANCELLED and returning promote warnings before worker dispatch. TASK-375..377 hardened VS Code workspace isolation with scoped task queue filtering, a workspace-scope toggle, and extension test coverage while verifying WorkspaceOrchView already filtered per folder. TASK-378..379 pushed project filtering server-side in useActivities, HistoryView, and GET /api/tasks/all. TASK-380..381 added MCP tool RPC coverage and HTTP project filter/state-machine coverage. TASK-382..384 added frontend composable/view tests plus extension workspace isolation tests. TASK-385 added integration-tagged black-box HTTP+MCP tests against the live in-process stack. Validation passed: extension npm test, frontend npm test, go test for httpapi/mcp, and go test -tags=integration ./internal/e2e/....",
     "SESSION 2026-03-28: Recovered orphaned PLAN-056 into orchestrator.json, created TASK-386..403 task records/files, completed TASK-386 (nexus-mcp-stdio errcheck fix), updated .claude commands to prefer the Nexus MCP toolchain when available, and aligned the SSE transport test with the already-staged POST /sse behavior. Validation passed: go vet, go build (cli/daemon/submit/mcp-stdio), and go test -race -count=1 ./....",
     "SESSION 2026-03-28 [batch2]: Added PLAN-056 Wave 8 SSE transport fixes (TASK-404..406). Root cause diagnosed: ReadTimeout:15s kills idle SSE; no ping keepalive; missing-session returns unparseable plain-text 400; VS Code mcp.json uses type:sse not type:http. nextTaskId advanced to 407.",
     {
@@ -255,7 +255,7 @@
     },
     "PLAN-013": {
       "id": "PLAN-013",
-      "goal": "Update CI to latest GitHub Action versions: gittools/actions v3.1.11\u2192v4.3.3, zig 0.13.0\u21920.14.0, GitVersion.yml v6 compat",
+      "goal": "Update CI to latest GitHub Action versions: gittools/actions v3.1.11→v4.3.3, zig 0.13.0→0.14.0, GitVersion.yml v6 compat",
       "status": "completed",
       "createdAt": "2026-03-10T21:00:00.000Z",
       "completedAt": "2026-03-10T22:00:00.000Z",
@@ -287,7 +287,7 @@
     },
     "PLAN-017": {
       "id": "PLAN-017",
-      "goal": "Fix all broken download links (nexusOrchestrator\u2192nexus-orchestrator prefix, macOS .tar.gz\u2192.zip) and add macOS Gatekeeper workaround instructions",
+      "goal": "Fix all broken download links (nexusOrchestrator→nexus-orchestrator prefix, macOS .tar.gz→.zip) and add macOS Gatekeeper workaround instructions",
       "status": "completed",
       "createdAt": "2026-03-11T01:00:00.000Z",
       "completedAt": "2026-03-11T01:00:00.000Z",
@@ -339,7 +339,7 @@
     },
     "PLAN-022": {
       "id": "PLAN-022",
-      "goal": "Universal AI Session Orchestration \u2014 discover, visualise, and guide all active AI copilot/LLM sessions (VS Code Copilot, Claude Desktop, any MCP client) from a single nexusOrchestrator meta-orchestrator hub",
+      "goal": "Universal AI Session Orchestration — discover, visualise, and guide all active AI copilot/LLM sessions (VS Code Copilot, Claude Desktop, any MCP client) from a single nexusOrchestrator meta-orchestrator hub",
       "status": "completed",
       "createdAt": "2026-03-12T11:00:00.000Z",
       "taskIds": [
@@ -357,7 +357,7 @@
     },
     "PLAN-023": {
       "id": "PLAN-023",
-      "goal": "System-Wide Provider Discovery + Background Service Mode \u2014 auto-detect all local AI tools (Claude CLI, Copilot, Antigravity, LM Studio, Ollama, etc.), hide-to-tray on window close, in-app log console, suppress console window",
+      "goal": "System-Wide Provider Discovery + Background Service Mode — auto-detect all local AI tools (Claude CLI, Copilot, Antigravity, LM Studio, Ollama, etc.), hide-to-tray on window close, in-app log console, suppress console window",
       "status": "completed",
       "createdAt": "2026-03-11T21:00:00.000Z",
       "taskIds": [
@@ -379,7 +379,7 @@
     },
     "PLAN-024": {
       "id": "PLAN-024",
-      "goal": "Multi-Project Planning & Idea Staging \u2014 add DRAFT/BACKLOG task statuses, per-task explicit provider routing (ProviderName), priority + tags fields, backlog CRUD across HTTP API / MCP / CLI / GUI, project-scoped backlog view with promote-to-queue workflow",
+      "goal": "Multi-Project Planning & Idea Staging — add DRAFT/BACKLOG task statuses, per-task explicit provider routing (ProviderName), priority + tags fields, backlog CRUD across HTTP API / MCP / CLI / GUI, project-scoped backlog view with promote-to-queue workflow",
       "status": "completed",
       "createdAt": "2026-03-12T12:00:00.000Z",
       "completedAt": "2026-03-12T13:40:00.000Z",
@@ -525,7 +525,7 @@
     },
     "PLAN-047": {
       "id": "PLAN-047",
-      "title": "Comprehensive Codebase Hardening \u2014 Bugs, Stubs, Duplication, MCP Gaps & Test Coverage",
+      "title": "Comprehensive Codebase Hardening — Bugs, Stubs, Duplication, MCP Gaps & Test Coverage",
       "goal": "Fix all bugs, stubs, missing implementations, code duplication, MCP gaps, and test coverage issues found in the 2026-03-25 5-agent audit swarm.",
       "status": "completed",
       "createdAt": "2026-03-25T00:00:00.000Z",
@@ -557,7 +557,7 @@
     },
     "PLAN-048": {
       "id": "PLAN-048",
-      "title": "Middlepoint Sniffer \u2014 Universal Agent & Plan Discovery",
+      "title": "Middlepoint Sniffer — Universal Agent & Plan Discovery",
       "goal": "Expand nexusOrchestrator into a true 'middlepoint-sniffer': detect ALL plan/task files (orchestrator.json + markdown + cursor + MCP configs + crew), enrich discovered agents with sub-agent trees, model IDs, and identities, and surface everything in the UI.",
       "status": "completed",
       "createdAt": "2026-03-25T19:39:28Z",
@@ -621,7 +621,7 @@
     },
     "PLAN-052": {
       "id": "PLAN-052",
-      "title": "MCP Standards Compliance \u2014 SSE/Streamable HTTP/stdio Transports",
+      "title": "MCP Standards Compliance — SSE/Streamable HTTP/stdio Transports",
       "goal": "Make MCP server fully compliant with modern MCP standards: legacy SSE transport (2024-11-05), Streamable HTTP (2025-03-26+), stdio proxy, standard protocol methods, Origin validation, CORS, Continue/Claude/Cursor compatibility",
       "status": "completed",
       "createdAt": "2026-03-28T00:00:00Z",
@@ -716,7 +716,7 @@
     },
     "PLAN-058": {
       "id": "PLAN-058",
-      "title": "UX Polish \u2014 Sorting, Filtering, Grouping & Layout Fixes",
+      "title": "UX Polish — Sorting, Filtering, Grouping & Layout Fixes",
       "goal": "Sort active items first, add filtering, group AI tools by kind, collapsible plans tree, fix LogPanel space, denser cards",
       "status": "completed",
       "createdAt": "2026-03-29T12:45:00Z",
@@ -766,7 +766,7 @@
     },
     "PLAN-061": {
       "id": "PLAN-061",
-      "title": "Go Backend \u2014 Pre-Launch Critical Fixes",
+      "title": "Go Backend — Pre-Launch Critical Fixes",
       "goal": "Pre-launch audit of the Go backend identified 10 issues requiring fixes before a production release. Six are critical (data loss, race conditions, silent failures) and four are high-priority (type safety, dead code, missing test coverage). All must be resolved before the v1.0 release gate.",
       "status": "completed",
       "createdAt": "2026-04-04T13:02:34Z",
@@ -810,7 +810,7 @@
     "PLAN-063": {
       "id": "PLAN-063",
       "title": "VS Code Extension: Feature Completion & Distribution",
-      "goal": "Pre-launch audit of the VS Code extension and associated release tooling exposed ten gaps ranging from commands that ship as empty stubs, a session monitor that permanently blocks the daemon worker queue, a CI pipeline that never actually publishes to the Marketplace, and a `nexus-submit` CLI that loops forever on cancelled tasks. This plan drives all ten to done before the first public release. Critical work (TASK-483 \u2013 TASK-488) must ship together; high-priority work (TASK-489 \u2013 TASK-492) can ",
+      "goal": "Pre-launch audit of the VS Code extension and associated release tooling exposed ten gaps ranging from commands that ship as empty stubs, a session monitor that permanently blocks the daemon worker queue, a CI pipeline that never actually publishes to the Marketplace, and a `nexus-submit` CLI that loops forever on cancelled tasks. This plan drives all ten to done before the first public release. Critical work (TASK-483 – TASK-488) must ship together; high-priority work (TASK-489 – TASK-492) can ",
       "status": "completed",
       "createdAt": "2026-04-04T13:02:34Z",
       "tasks": [
@@ -860,8 +860,8 @@
     },
     "PLAN-066": {
       "id": "PLAN-066",
-      "title": "Nexus Brain \u2014 Project Context Intelligence Layer",
-      "goal": "Enable any AI agent to query nexus for \u2264400 tokens of targeted project context instead of loading full CLAUDE.md (3000+ tokens). SQLite FTS5 knowledge store, BrainService, 6 MCP tools, 9 HTTP endpoints, brain CLI subcommands, and self-documenting discovery.",
+      "title": "Nexus Brain — Project Context Intelligence Layer",
+      "goal": "Enable any AI agent to query nexus for ≤400 tokens of targeted project context instead of loading full CLAUDE.md (3000+ tokens). SQLite FTS5 knowledge store, BrainService, 6 MCP tools, 9 HTTP endpoints, brain CLI subcommands, and self-documenting discovery.",
       "status": "completed",
       "createdAt": "2026-04-13T00:00:00Z",
       "completedAt": "2026-04-13T13:00:00Z",
@@ -1687,7 +1687,7 @@
     },
     "TASK-070": {
       "id": "TASK-070",
-      "title": "SSE event lifecycle test (submit \u2192 events \u2192 verify order)",
+      "title": "SSE event lifecycle test (submit → events → verify order)",
       "status": "done",
       "role": "qa",
       "planId": "PLAN-008",
@@ -2170,7 +2170,7 @@
     "TASK-116": {
       "id": "TASK-116",
       "planId": "PLAN-015",
-      "title": "Add .github/workflows/action-ci.yml \u2014 lint, typecheck, build-check CI",
+      "title": "Add .github/workflows/action-ci.yml — lint, typecheck, build-check CI",
       "role": "engineering",
       "status": "done",
       "deps": ["TASK-115"]
@@ -2486,7 +2486,7 @@
     },
     "TASK-146": {
       "id": "TASK-146",
-      "title": "Fix ProviderConfig.type \u2192 kind TypeScript type mismatch",
+      "title": "Fix ProviderConfig.type → kind TypeScript type mismatch",
       "status": "done",
       "role": "api",
       "planId": "PLAN-021",
@@ -2646,7 +2646,7 @@
     },
     "TASK-161": {
       "id": "TASK-161",
-      "title": "sys_scanner outbound adapter \u2014 port, CLI, and process probes",
+      "title": "sys_scanner outbound adapter — port, CLI, and process probes",
       "status": "done",
       "role": "backend",
       "planId": "PLAN-023",
@@ -2767,7 +2767,7 @@
     },
     "TASK-172": {
       "id": "TASK-172",
-      "title": "Domain \u2014 add DRAFT/BACKLOG statuses, Priority, ProviderName, Tags fields",
+      "title": "Domain — add DRAFT/BACKLOG statuses, Priority, ProviderName, Tags fields",
       "status": "done",
       "role": "architecture",
       "planId": "PLAN-024",
@@ -2778,7 +2778,7 @@
     },
     "TASK-173": {
       "id": "TASK-173",
-      "title": "Ports \u2014 extend Orchestrator and TaskRepository for backlog lifecycle",
+      "title": "Ports — extend Orchestrator and TaskRepository for backlog lifecycle",
       "status": "done",
       "role": "architecture",
       "planId": "PLAN-024",
@@ -2789,7 +2789,7 @@
     },
     "TASK-174": {
       "id": "TASK-174",
-      "title": "SQLite \u2014 add columns and repo methods for backlog fields",
+      "title": "SQLite — add columns and repo methods for backlog fields",
       "status": "done",
       "role": "backend",
       "planId": "PLAN-024",
@@ -2800,7 +2800,7 @@
     },
     "TASK-175": {
       "id": "TASK-175",
-      "title": "OrchestratorService \u2014 backlog lifecycle and explicit provider routing",
+      "title": "OrchestratorService — backlog lifecycle and explicit provider routing",
       "status": "done",
       "role": "backend",
       "planId": "PLAN-024",
@@ -2811,7 +2811,7 @@
     },
     "TASK-176": {
       "id": "TASK-176",
-      "title": "HTTP API \u2014 backlog CRUD, promote, and update endpoints",
+      "title": "HTTP API — backlog CRUD, promote, and update endpoints",
       "status": "done",
       "role": "api",
       "planId": "PLAN-024",
@@ -2822,7 +2822,7 @@
     },
     "TASK-177": {
       "id": "TASK-177",
-      "title": "MCP \u2014 draft, backlog, promote, update tools",
+      "title": "MCP — draft, backlog, promote, update tools",
       "status": "done",
       "role": "mcp",
       "planId": "PLAN-024",
@@ -2833,7 +2833,7 @@
     },
     "TASK-178": {
       "id": "TASK-178",
-      "title": "Wails bindings \u2014 backlog lifecycle methods",
+      "title": "Wails bindings — backlog lifecycle methods",
       "status": "done",
       "role": "backend",
       "planId": "PLAN-024",
@@ -2844,7 +2844,7 @@
     },
     "TASK-179": {
       "id": "TASK-179",
-      "title": "Frontend \u2014 TypeScript types, useProjectFilter, enhanced useTasks",
+      "title": "Frontend — TypeScript types, useProjectFilter, enhanced useTasks",
       "status": "done",
       "role": "frontend",
       "planId": "PLAN-024",
@@ -2855,7 +2855,7 @@
     },
     "TASK-180": {
       "id": "TASK-180",
-      "title": "Frontend \u2014 BacklogView, BacklogList, ProjectSelector components",
+      "title": "Frontend — BacklogView, BacklogList, ProjectSelector components",
       "status": "done",
       "role": "frontend",
       "planId": "PLAN-024",
@@ -2866,7 +2866,7 @@
     },
     "TASK-181": {
       "id": "TASK-181",
-      "title": "Frontend \u2014 TaskSubmitForm with provider/model/priority/split-button",
+      "title": "Frontend — TaskSubmitForm with provider/model/priority/split-button",
       "status": "done",
       "role": "frontend",
       "planId": "PLAN-024",
@@ -2877,7 +2877,7 @@
     },
     "TASK-182": {
       "id": "TASK-182",
-      "title": "CLI \u2014 backlog, draft, promote, update subcommands",
+      "title": "CLI — backlog, draft, promote, update subcommands",
       "status": "done",
       "role": "cli",
       "planId": "PLAN-024",
@@ -2888,7 +2888,7 @@
     },
     "TASK-183": {
       "id": "TASK-183",
-      "title": "QA \u2014 unit and integration tests for backlog lifecycle",
+      "title": "QA — unit and integration tests for backlog lifecycle",
       "status": "done",
       "role": "qa",
       "planId": "PLAN-024",
@@ -3441,7 +3441,7 @@
     },
     "TASK-292": {
       "id": "TASK-292",
-      "title": "CHANGELOG.md \u2014 document v0.10.0 (PLAN-044 + pre-commit)",
+      "title": "CHANGELOG.md — document v0.10.0 (PLAN-044 + pre-commit)",
       "role": "docs",
       "planId": "PLAN-045",
       "status": "done",
@@ -3452,7 +3452,7 @@
     },
     "TASK-293": {
       "id": "TASK-293",
-      "title": "Fix domain.ts Task type \u2014 add retryCount and missing fields",
+      "title": "Fix domain.ts Task type — add retryCount and missing fields",
       "role": "frontend",
       "planId": "PLAN-045",
       "status": "done",
@@ -3485,7 +3485,7 @@
     },
     "TASK-296": {
       "id": "TASK-296",
-      "title": "Fix optRepo/memRepo mocks \u2014 add GetStaleProcessing",
+      "title": "Fix optRepo/memRepo mocks — add GetStaleProcessing",
       "status": "done",
       "role": "backend",
       "planId": "PLAN-046",
@@ -3497,7 +3497,7 @@
     },
     "TASK-297": {
       "id": "TASK-297",
-      "title": "Fix CLI mock \u2014 add HeartbeatTask + TerminateAISession",
+      "title": "Fix CLI mock — add HeartbeatTask + TerminateAISession",
       "status": "done",
       "role": "backend",
       "planId": "PLAN-046",
@@ -3509,7 +3509,7 @@
     },
     "TASK-298": {
       "id": "TASK-298",
-      "title": "Fix MCP + app_test mocks \u2014 add HeartbeatTask + TerminateAISession",
+      "title": "Fix MCP + app_test mocks — add HeartbeatTask + TerminateAISession",
       "status": "done",
       "role": "backend",
       "planId": "PLAN-046",
@@ -3712,7 +3712,7 @@
       "id": "TASK-316",
       "planId": "PLAN-048",
       "status": "done",
-      "title": "sys_scanner: ScanPlanFiles \u2014 detect 8+ plan file patterns (nexus/markdown/cursor/claude/mcp/crewai)",
+      "title": "sys_scanner: ScanPlanFiles — detect 8+ plan file patterns (nexus/markdown/cursor/claude/mcp/crewai)",
       "role": "backend",
       "dependencies": ["TASK-315"],
       "createdAt": "2026-03-25T19:39:28Z",
@@ -3750,7 +3750,7 @@
       "id": "TASK-320",
       "planId": "PLAN-048",
       "status": "done",
-      "title": "Frontend: DiscoveredPlansView \u2014 list plan files grouped by project with kind/format badges",
+      "title": "Frontend: DiscoveredPlansView — list plan files grouped by project with kind/format badges",
       "role": "frontend",
       "dependencies": ["TASK-318"],
       "createdAt": "2026-03-25T19:39:28Z"
@@ -4258,7 +4258,7 @@
       "id": "TASK-460",
       "planId": "PLAN-061",
       "status": "done",
-      "title": "Fix httpapi_client \u2014 replace http.DefaultClient bypasses",
+      "title": "Fix httpapi_client — replace http.DefaultClient bypasses",
       "role": "implementation",
       "wave": 1,
       "createdAt": "2026-04-04T13:02:34Z",
@@ -4268,7 +4268,7 @@
       "id": "TASK-461",
       "planId": "PLAN-061",
       "status": "done",
-      "title": "Fix main.go (Wails) \u2014 wire WithRuntimeConfigRepo",
+      "title": "Fix main.go (Wails) — wire WithRuntimeConfigRepo",
       "role": "implementation",
       "wave": 1,
       "createdAt": "2026-04-04T13:02:34Z",
@@ -4278,7 +4278,7 @@
       "id": "TASK-462",
       "planId": "PLAN-061",
       "status": "done",
-      "title": "Fix ActivityService.Stop() \u2014 add WaitGroup for goroutine cleanup",
+      "title": "Fix ActivityService.Stop() — add WaitGroup for goroutine cleanup",
       "role": "implementation",
       "wave": 2,
       "createdAt": "2026-04-04T13:02:34Z",
@@ -4298,7 +4298,7 @@
       "id": "TASK-464",
       "planId": "PLAN-061",
       "status": "done",
-      "title": "Fix SetAgentScanner/SetDiscoveredAgentRepo \u2014 missing mutex",
+      "title": "Fix SetAgentScanner/SetDiscoveredAgentRepo — missing mutex",
       "role": "implementation",
       "wave": 2,
       "createdAt": "2026-04-04T13:02:34Z",
@@ -4363,7 +4363,7 @@
       "id": "TASK-470",
       "planId": "PLAN-062",
       "status": "done",
-      "title": "Fix wails.ts getRuntimeConfig/updateRuntimeConfig \u2014 broken in desktop mode",
+      "title": "Fix wails.ts getRuntimeConfig/updateRuntimeConfig — broken in desktop mode",
       "role": "implementation",
       "wave": 1,
       "createdAt": "2026-04-04T13:02:34Z",
@@ -4373,7 +4373,7 @@
       "id": "TASK-471",
       "planId": "PLAN-062",
       "status": "done",
-      "title": "Fix useGlobalSSE \u2014 currently bypassed, 5-6 concurrent SSE connections",
+      "title": "Fix useGlobalSSE — currently bypassed, 5-6 concurrent SSE connections",
       "role": "implementation",
       "wave": 1,
       "createdAt": "2026-04-04T13:02:34Z",
@@ -4383,7 +4383,7 @@
       "id": "TASK-472",
       "planId": "PLAN-062",
       "status": "done",
-      "title": "Fix useLogs SSE \u2014 no reconnect causes permanent disconnect",
+      "title": "Fix useLogs SSE — no reconnect causes permanent disconnect",
       "role": "implementation",
       "wave": 1,
       "createdAt": "2026-04-04T13:02:34Z",
@@ -4393,7 +4393,7 @@
       "id": "TASK-473",
       "planId": "PLAN-062",
       "status": "done",
-      "title": "Fix AppSidebar daemon status \u2014 always green hardcoded pulse",
+      "title": "Fix AppSidebar daemon status — always green hardcoded pulse",
       "role": "implementation",
       "wave": 2,
       "createdAt": "2026-04-04T13:02:34Z",
@@ -4403,7 +4403,7 @@
       "id": "TASK-474",
       "planId": "PLAN-062",
       "status": "done",
-      "title": "Fix BacklogView error handling \u2014 no try/catch on refresh",
+      "title": "Fix BacklogView error handling — no try/catch on refresh",
       "role": "implementation",
       "wave": 2,
       "createdAt": "2026-04-04T13:02:34Z",
@@ -4413,7 +4413,7 @@
       "id": "TASK-475",
       "planId": "PLAN-062",
       "status": "done",
-      "title": "Fix SettingsView \u2014 hardcoded server addresses and silent token operation failures",
+      "title": "Fix SettingsView — hardcoded server addresses and silent token operation failures",
       "role": "implementation",
       "wave": 2,
       "createdAt": "2026-04-04T13:02:34Z",
@@ -4443,7 +4443,7 @@
       "id": "TASK-478",
       "planId": "PLAN-062",
       "status": "done",
-      "title": "Fix AIActivityCard \u2014 undefined :class binding",
+      "title": "Fix AIActivityCard — undefined :class binding",
       "role": "implementation",
       "wave": 3,
       "createdAt": "2026-04-04T13:02:34Z",
@@ -4453,7 +4453,7 @@
       "id": "TASK-479",
       "planId": "PLAN-062",
       "status": "completed",
-      "title": "Fix useProjectFilter \u2014 misses completed projects",
+      "title": "Fix useProjectFilter — misses completed projects",
       "role": "implementation",
       "wave": 3,
       "createdAt": "2026-04-04T13:02:34Z",
@@ -4464,7 +4464,7 @@
       "id": "TASK-480",
       "planId": "PLAN-062",
       "status": "completed",
-      "title": "Fix DiscoveredPlansView \u2014 display-only cards with no actions",
+      "title": "Fix DiscoveredPlansView — display-only cards with no actions",
       "role": "implementation",
       "wave": 3,
       "createdAt": "2026-04-04T13:02:34Z",
@@ -4475,7 +4475,7 @@
       "id": "TASK-481",
       "planId": "PLAN-062",
       "status": "completed",
-      "title": "Fix TaskDetailDrawer \u2014 no cancel for PROCESSING tasks",
+      "title": "Fix TaskDetailDrawer — no cancel for PROCESSING tasks",
       "role": "implementation",
       "wave": 3,
       "createdAt": "2026-04-04T13:02:34Z",
@@ -4506,7 +4506,7 @@
       "id": "TASK-484",
       "planId": "PLAN-063",
       "status": "done",
-      "title": "Fix SessionMonitor \u2014 remove auto-claim behaviour",
+      "title": "Fix SessionMonitor — remove auto-claim behaviour",
       "role": "implementation",
       "wave": 1,
       "createdAt": "2026-04-04T13:02:34Z",
@@ -4516,7 +4516,7 @@
       "id": "TASK-488",
       "planId": "PLAN-063",
       "status": "done",
-      "title": "Fix waitForCompletion \u2014 terminal state handling",
+      "title": "Fix waitForCompletion — terminal state handling",
       "role": "implementation",
       "wave": 1,
       "createdAt": "2026-04-04T13:02:34Z",
@@ -4537,7 +4537,7 @@
       "id": "TASK-486",
       "planId": "PLAN-063",
       "status": "completed",
-      "title": "Fix nexusClient.ts \u2014 remove blind JSON casts",
+      "title": "Fix nexusClient.ts — remove blind JSON casts",
       "role": "extension",
       "wave": 2,
       "createdAt": "2026-04-04T13:21:26Z",
@@ -4581,7 +4581,7 @@
       "id": "TASK-491",
       "planId": "PLAN-063",
       "status": "completed",
-      "title": "Fix github-action resolveAgents \u2014 rate-limit error handling",
+      "title": "Fix github-action resolveAgents — rate-limit error handling",
       "role": "github-action",
       "wave": 4,
       "createdAt": "2026-04-04T13:21:26Z",
@@ -4592,7 +4592,7 @@
       "id": "TASK-492",
       "planId": "PLAN-063",
       "status": "completed",
-      "title": "Fix release.sh \u2014 rebuild github-action/dist and extension before commit",
+      "title": "Fix release.sh — rebuild github-action/dist and extension before commit",
       "role": "release",
       "wave": 4,
       "createdAt": "2026-04-04T13:21:26Z",
@@ -4647,12 +4647,12 @@
       "id": "TASK-497",
       "planId": "PLAN-064",
       "status": "completed",
-      "title": "Add MCP claim_task \u2192 update_task_status integration test",
+      "title": "Add MCP claim_task → update_task_status integration test",
       "role": "testing",
       "wave": 3,
       "createdAt": "2026-04-04T13:21:26Z",
       "completedAt": "2026-04-04T14:44:57Z",
-      "result": "MCP integration_test.go: 3 tests \u2014 happy path, exclusive ownership, wrong-session rejection"
+      "result": "MCP integration_test.go: 3 tests — happy path, exclusive ownership, wrong-session rejection"
     },
     "TASK-498": {
       "id": "TASK-498",
@@ -4663,7 +4663,7 @@
       "wave": 1,
       "createdAt": "2026-04-04T13:21:26Z",
       "completedAt": "2026-04-04T14:44:57Z",
-      "result": "orchestrator_hardening_test.go: 2 watchdog tests \u2014 stale task re-queued, fresh task untouched"
+      "result": "orchestrator_hardening_test.go: 2 watchdog tests — stale task re-queued, fresh task untouched"
     },
     "TASK-499": {
       "id": "TASK-499",
@@ -4696,7 +4696,7 @@
       "wave": 4,
       "createdAt": "2026-04-04T13:21:26Z",
       "completedAt": "2026-04-04T14:44:57Z",
-      "result": "execution_engine_test.go: 2 failover tests \u2014 dead provider skipped, all fail \u2192 FAILED status"
+      "result": "execution_engine_test.go: 2 failover tests — dead provider skipped, all fail → FAILED status"
     },
     "TASK-502": {
       "id": "TASK-502",
@@ -4912,7 +4912,12 @@
     {
       "date": "2026-04-13T14:01:00Z",
       "author": "antigravity",
-      "note": "PLAN-065 completed (Desktop Launch UX, Branding, Download Detection): TASK-505 Wails close semantics verified graceful (trayEnabled=false \u2192 window close quits, OnShutdown cancels HTTP/MCP via context); TASK-506 branded icon assets verified (tray/icon.png 28KB go:embed, build/appicon.png 1.1MB); TASK-507 DownloadsView.vue macOS arch detection fixed (uncertain detection no longer falls back to mac-intel, sets detectedKey='' so no false Intel recommendation on Safari/Firefox Apple Silicon); TASK-508 validation passed (go build clean, all binaries built). PLAN-068 completed (VS Code Brain Extensions): TASK-525+526 verified already implemented from PLAN-067 (BrainStatus/ContextResponse types and ProjectBrainNode already in nexusClient.ts + workspaceOrchView.ts); TASK-527 nexus.brain.ingest command declared in package.json contributes.commands with $(cloud-upload) icon + inline menu for nexusProjectBrain items; TASK-528 nexus.brain.ingest handler registered in extension.ts activate() with showOpenDialog file picker + ingestKnowledge HTTP call + tree refresh. Extension build: esbuild clean (583.8KB bundle)."
+      "note": "PLAN-065 completed (Desktop Launch UX, Branding, Download Detection): TASK-505 Wails close semantics verified graceful (trayEnabled=false → window close quits, OnShutdown cancels HTTP/MCP via context); TASK-506 branded icon assets verified (tray/icon.png 28KB go:embed, build/appicon.png 1.1MB); TASK-507 DownloadsView.vue macOS arch detection fixed (uncertain detection no longer falls back to mac-intel, sets detectedKey='' so no false Intel recommendation on Safari/Firefox Apple Silicon); TASK-508 validation passed (go build clean, all binaries built). PLAN-068 completed (VS Code Brain Extensions): TASK-525+526 verified already implemented from PLAN-067 (BrainStatus/ContextResponse types and ProjectBrainNode already in nexusClient.ts + workspaceOrchView.ts); TASK-527 nexus.brain.ingest command declared in package.json contributes.commands with $(cloud-upload) icon + inline menu for nexusProjectBrain items; TASK-528 nexus.brain.ingest handler registered in extension.ts activate() with showOpenDialog file picker + ingestKnowledge HTTP call + tree refresh. Extension build: esbuild clean (583.8KB bundle)."
+    },
+    {
+      "date": "2026-04-16T00:00:00Z",
+      "author": "copilot",
+      "note": "PLAN-071 created (Comprehensive Audit Resolution — All 116 Findings): 5-domain parallel audit on 2026-04-15 produced 116 findings. PLAN-071 has 23 tasks TASK-554..TASK-576 across 9 waves: Wave1 (TASK-554-556) P0 ship blockers — broken publish.yml download-artifact@v8, 12 silenced Go errors, frontend r.ok/null-guard/ingest-path; Wave2 (TASK-557-558) architecture — App concrete ActivityService→port, O(n) session task scan; Wave3 (TASK-559-560) hardcoded constants + dead tray package; Wave4 (TASK-561-562) frontend orphan views + timer leaks; Wave5 (TASK-563-565) VS Code Zod validation + memory leaks + dead client methods; Wave6 (TASK-566-568) CLI ~80% API surface gap; Wave7 (TASK-569-571) Go repo+MCP test coverage; Wave8 (TASK-572-574) frontend+VS Code test coverage; Wave9 (TASK-575-576) CI quality gates + time.Sleep flakiness."
     }
   ],
   "PLAN-067": {
@@ -4934,7 +4939,7 @@
   },
   "PLAN-069": {
     "id": "PLAN-069",
-    "title": "Brain Layer Gap-Fill \u2014 API, Client, CLI, Wails, Tests, Docs",
+    "title": "Brain Layer Gap-Fill — API, Client, CLI, Wails, Tests, Docs",
     "goal": "Close all confirmed gaps in the Nexus Brain implementation: missing HTTP routes, stub client methods, Wails binding bug, howto_brief phantom params, missing CLI subcommands, and absent test coverage across all layers.",
     "status": "completed",
     "createdAt": "2026-04-14T00:00:00Z",
@@ -5065,7 +5070,7 @@
   },
   "PLAN-070": {
     "id": "PLAN-070",
-    "title": "Comprehensive Gap-Fill \u2014 Docs, MCP Tools, Frontend, Tests, Backend Quality",
+    "title": "Comprehensive Gap-Fill — Docs, MCP Tools, Frontend, Tests, Backend Quality",
     "goal": "Close all 26 confirmed gaps from 2026-04-14 five-agent swarm audit.",
     "status": "todo",
     "createdAt": "2026-04-14T02:00:00Z",
@@ -5157,7 +5162,7 @@
   "TASK-548": {
     "id": "TASK-548",
     "planId": "PLAN-070",
-    "title": "Write brain_client_test.go \u2014 all 13 methods",
+    "title": "Write brain_client_test.go — all 13 methods",
     "role": "qa",
     "status": "todo",
     "createdAt": "2026-04-14T02:00:00Z"
@@ -5201,5 +5206,247 @@
     "role": "backend",
     "status": "todo",
     "createdAt": "2026-04-14T02:00:00Z"
+  },
+  "PLAN-071": {
+    "id": "PLAN-071",
+    "title": "Comprehensive Audit Resolution — All 116 Findings",
+    "goal": "Resolve every finding from the 2026-04-15 five-domain audit across Go backend, frontend, VS Code extension, CLI/DevOps, and test coverage.",
+    "status": "todo",
+    "createdAt": "2026-04-16T00:00:00Z",
+    "tasks": [
+      "TASK-554",
+      "TASK-555",
+      "TASK-556",
+      "TASK-557",
+      "TASK-558",
+      "TASK-559",
+      "TASK-560",
+      "TASK-561",
+      "TASK-562",
+      "TASK-563",
+      "TASK-564",
+      "TASK-565",
+      "TASK-566",
+      "TASK-567",
+      "TASK-568",
+      "TASK-569",
+      "TASK-570",
+      "TASK-571",
+      "TASK-572",
+      "TASK-573",
+      "TASK-574",
+      "TASK-575",
+      "TASK-576"
+    ]
+  },
+  "TASK-554": {
+    "id": "TASK-554",
+    "planId": "PLAN-071",
+    "title": "Fix CI release pipeline — broken artifact action, CGO flag, marketplace publish",
+    "role": "devops",
+    "status": "in-progress",
+    "dependencies": [],
+    "createdAt": "2026-04-16T00:00:00Z",
+    "startedAt": "2026-04-16T09:29:49Z"
+  },
+  "TASK-555": {
+    "id": "TASK-555",
+    "planId": "PLAN-071",
+    "title": "Fix all 12 silenced Go errors across session service, MCP server, and SSE",
+    "role": "backend",
+    "status": "in-progress",
+    "dependencies": [],
+    "createdAt": "2026-04-16T00:00:00Z",
+    "startedAt": "2026-04-16T09:29:49Z"
+  },
+  "TASK-556": {
+    "id": "TASK-556",
+    "planId": "PLAN-071",
+    "title": "Fix frontend critical safety — missing r.ok checks, null-guard, BrainView ingest path, SettingsView loadConfig",
+    "role": "frontend",
+    "status": "in-progress",
+    "dependencies": [],
+    "createdAt": "2026-04-16T00:00:00Z",
+    "startedAt": "2026-04-16T09:29:49Z"
+  },
+  "TASK-557": {
+    "id": "TASK-557",
+    "planId": "PLAN-071",
+    "title": "Fix App architecture — ActivityService concrete→port interface, constructor panics, httpapi_client context",
+    "role": "backend",
+    "status": "todo",
+    "dependencies": ["TASK-554", "TASK-555"],
+    "createdAt": "2026-04-16T00:00:00Z"
+  },
+  "TASK-558": {
+    "id": "TASK-558",
+    "planId": "PLAN-071",
+    "title": "Fix handleGetSessionTasks O(n) scan → GetTasksBySessionID",
+    "role": "api",
+    "status": "todo",
+    "dependencies": ["TASK-555"],
+    "createdAt": "2026-04-16T00:00:00Z"
+  },
+  "TASK-559": {
+    "id": "TASK-559",
+    "planId": "PLAN-071",
+    "title": "Extract Go hardcoded constants — daemonAddr, queue cap, timeouts, MCP version from ldflags",
+    "role": "backend",
+    "status": "todo",
+    "dependencies": ["TASK-557"],
+    "createdAt": "2026-04-16T00:00:00Z"
+  },
+  "TASK-560": {
+    "id": "TASK-560",
+    "planId": "PLAN-071",
+    "title": "Fix LLM context limits and delete dead tray stub package",
+    "role": "backend",
+    "status": "todo",
+    "dependencies": ["TASK-557"],
+    "createdAt": "2026-04-16T00:00:00Z"
+  },
+  "TASK-561": {
+    "id": "TASK-561",
+    "planId": "PLAN-071",
+    "title": "Wire orphan views into router and fix all promote handlers",
+    "role": "frontend",
+    "status": "todo",
+    "dependencies": ["TASK-556"],
+    "createdAt": "2026-04-16T00:00:00Z"
+  },
+  "TASK-562": {
+    "id": "TASK-562",
+    "planId": "PLAN-071",
+    "title": "Fix frontend leaks, as-any casts, brittle MCP URL, and missing agentStatusFilter UI",
+    "role": "frontend",
+    "status": "todo",
+    "dependencies": ["TASK-556"],
+    "createdAt": "2026-04-16T00:00:00Z"
+  },
+  "TASK-563": {
+    "id": "TASK-563",
+    "planId": "PLAN-071",
+    "title": "Add Zod schema validation to all VS Code nexusClient API response paths",
+    "role": "vscode",
+    "status": "todo",
+    "dependencies": ["TASK-556"],
+    "createdAt": "2026-04-16T00:00:00Z"
+  },
+  "TASK-564": {
+    "id": "TASK-564",
+    "planId": "PLAN-071",
+    "title": "Fix VS Code memory leaks and unsafe error handling",
+    "role": "vscode",
+    "status": "todo",
+    "dependencies": ["TASK-556"],
+    "createdAt": "2026-04-16T00:00:00Z"
+  },
+  "TASK-565": {
+    "id": "TASK-565",
+    "planId": "PLAN-071",
+    "title": "Wire VS Code dead client methods to commands and add brain command menu bindings",
+    "role": "vscode",
+    "status": "todo",
+    "dependencies": ["TASK-563", "TASK-564"],
+    "createdAt": "2026-04-16T00:00:00Z"
+  },
+  "TASK-566": {
+    "id": "TASK-566",
+    "planId": "PLAN-071",
+    "title": "CLI expansion — daemon URL flag and full ai-sessions command group",
+    "role": "cli",
+    "status": "todo",
+    "dependencies": ["TASK-557", "TASK-558"],
+    "createdAt": "2026-04-16T00:00:00Z"
+  },
+  "TASK-567": {
+    "id": "TASK-567",
+    "planId": "PLAN-071",
+    "title": "CLI expansion — providers config CRUD and discovery subcommands",
+    "role": "cli",
+    "status": "todo",
+    "dependencies": ["TASK-566"],
+    "createdAt": "2026-04-16T00:00:00Z"
+  },
+  "TASK-568": {
+    "id": "TASK-568",
+    "planId": "PLAN-071",
+    "title": "CLI expansion — config, plans, logs, brain focused-context, tasks claim/heartbeat",
+    "role": "cli",
+    "status": "todo",
+    "dependencies": ["TASK-566"],
+    "createdAt": "2026-04-16T00:00:00Z"
+  },
+  "TASK-569": {
+    "id": "TASK-569",
+    "planId": "PLAN-071",
+    "title": "Go repo tests — activity_repo complex dynamic SQL and runtime_config_repo",
+    "role": "qa",
+    "status": "todo",
+    "dependencies": ["TASK-557"],
+    "createdAt": "2026-04-16T00:00:00Z"
+  },
+  "TASK-570": {
+    "id": "TASK-570",
+    "planId": "PLAN-071",
+    "title": "Go repo tests — model_capability_repo and plan_file_repo full CRUD coverage",
+    "role": "qa",
+    "status": "todo",
+    "dependencies": ["TASK-557"],
+    "createdAt": "2026-04-16T00:00:00Z"
+  },
+  "TASK-571": {
+    "id": "TASK-571",
+    "planId": "PLAN-071",
+    "title": "MCP tool tests — provider config CRUD, session lifecycle, and howto tools",
+    "role": "qa",
+    "status": "todo",
+    "dependencies": ["TASK-555"],
+    "createdAt": "2026-04-16T00:00:00Z"
+  },
+  "TASK-572": {
+    "id": "TASK-572",
+    "planId": "PLAN-071",
+    "title": "Frontend composable tests — useBrain, useDaemonHealth, useDiscovery, useLogs",
+    "role": "qa",
+    "status": "todo",
+    "dependencies": ["TASK-561", "TASK-562"],
+    "createdAt": "2026-04-16T00:00:00Z"
+  },
+  "TASK-573": {
+    "id": "TASK-573",
+    "planId": "PLAN-071",
+    "title": "Frontend composable tests — useProjectFilter, useProviderActivity, useProviders, useServerUrl",
+    "role": "qa",
+    "status": "todo",
+    "dependencies": ["TASK-561", "TASK-562"],
+    "createdAt": "2026-04-16T00:00:00Z"
+  },
+  "TASK-574": {
+    "id": "TASK-574",
+    "planId": "PLAN-071",
+    "title": "VS Code extension tests — nexusClient, extension activation, AISessionsTreeProvider",
+    "role": "qa",
+    "status": "todo",
+    "dependencies": ["TASK-563", "TASK-564", "TASK-565"],
+    "createdAt": "2026-04-16T00:00:00Z"
+  },
+  "TASK-575": {
+    "id": "TASK-575",
+    "planId": "PLAN-071",
+    "title": "CI quality gates — coverage gate, E2E hard gate, and missing Makefile targets",
+    "role": "devops",
+    "status": "todo",
+    "dependencies": ["TASK-554"],
+    "createdAt": "2026-04-16T00:00:00Z"
+  },
+  "TASK-576": {
+    "id": "TASK-576",
+    "planId": "PLAN-071",
+    "title": "Replace time.Sleep synchronisation in Go tests with channel/sync primitives",
+    "role": "qa",
+    "status": "todo",
+    "dependencies": ["TASK-569", "TASK-570", "TASK-571"],
+    "createdAt": "2026-04-16T00:00:00Z"
   }
 }

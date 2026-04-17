@@ -14,10 +14,19 @@ import (
 // planScanMockOrch implements only the TriggerScan method needed for the worker test.
 type planScanMockOrch struct {
 	triggerScanCount atomic.Int32
+	scanned          chan struct{} // closed/sent on each TriggerScan call
+}
+
+func newPlanScanMockOrch() *planScanMockOrch {
+	return &planScanMockOrch{scanned: make(chan struct{}, 64)}
 }
 
 func (m *planScanMockOrch) TriggerScan(context.Context) ([]domain.DiscoveredProvider, error) {
 	m.triggerScanCount.Add(1)
+	select {
+	case m.scanned <- struct{}{}:
+	default:
+	}
 	return nil, nil
 }
 
@@ -87,32 +96,46 @@ func (m *planScanMockOrch) GetDiscoveredPlanFiles(context.Context, string) ([]do
 	return nil, nil
 }
 
+func (m *planScanMockOrch) GetTasksBySessionID(_ string) ([]domain.Task, error) {
+	return nil, nil
+}
+
 func TestStartPlanScanWorker_CallsTriggerScanPeriodically(t *testing.T) {
-	orch := &planScanMockOrch{}
+	orch := newPlanScanMockOrch()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	httpapi.StartPlanScanWorker(ctx, orch, 20*time.Millisecond)
 
-	time.Sleep(80 * time.Millisecond)
-	cancel()
-	time.Sleep(10 * time.Millisecond)
-
-	count := orch.triggerScanCount.Load()
-	if count < 2 {
-		t.Errorf("expected at least 2 scans in 80ms with 20ms interval, got %d", count)
+	// Wait for at least 2 scans using the signal channel.
+	timeout := time.After(5 * time.Second)
+	for i := 0; i < 2; i++ {
+		select {
+		case <-orch.scanned:
+		case <-timeout:
+			t.Fatalf("timed out waiting for scan %d", i+1)
+		}
 	}
 }
 
 func TestStartPlanScanWorker_StopsOnContextCancel(t *testing.T) {
-	orch := &planScanMockOrch{}
+	orch := newPlanScanMockOrch()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	httpapi.StartPlanScanWorker(ctx, orch, 10*time.Millisecond)
-	time.Sleep(25 * time.Millisecond)
+
+	// Wait for at least one scan before cancelling.
+	timeout := time.After(5 * time.Second)
+	select {
+	case <-orch.scanned:
+	case <-timeout:
+		t.Fatal("timed out waiting for initial scan")
+	}
 	cancel()
 	countAfterCancel := orch.triggerScanCount.Load()
+
+	// Drain any in-flight scan, then verify no more fire.
 	time.Sleep(30 * time.Millisecond)
 	if orch.triggerScanCount.Load() > countAfterCancel+1 {
 		t.Error("worker continued scanning after context cancel")

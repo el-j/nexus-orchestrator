@@ -144,6 +144,10 @@ func (m *mockOrchestrator) UpdateRuntimeConfig(_ context.Context, update domain.
 	return cfg, nil
 }
 
+func (m *mockOrchestrator) GetTasksBySessionID(_ string) ([]domain.Task, error) {
+	return nil, nil
+}
+
 var _ ports.Orchestrator = (*mockOrchestrator)(nil)
 
 func TestApp_SubmitTask_Delegates(t *testing.T) {

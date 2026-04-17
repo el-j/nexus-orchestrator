@@ -63,7 +63,10 @@ func newMCPTestStack(t *testing.T) *mcpTestStack {
 	aiSessionRepo := repo_sqlite.NewAISessionRepo(repo)
 	writer := fs_writer.New()
 	discovery := services.NewDiscoveryService(&integrationMockLLM{})
-	orch := services.NewOrchestrator(discovery, repo, writer, sessionRepo)
+	orch, err := services.NewOrchestrator(discovery, repo, writer, sessionRepo)
+	if err != nil {
+		t.Fatal(err)
+	}
 	orch.SetAISessionRepo(aiSessionRepo)
 
 	mcpSrv := mcp.NewMcpServer(orch, nil)
@@ -118,6 +121,29 @@ func extractToolText(t *testing.T, r rpcResp) string {
 	return result.Content[0].Text
 }
 
+// pollMCPTask polls get_task via MCP tools/call until the task reaches a terminal status.
+func pollMCPTask(t *testing.T, srv *httptest.Server, taskID string, rpcID int, timeout time.Duration) domain.Task {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		r := callTool(t, srv, rpcID, "get_task", map[string]any{"id": taskID})
+		text := extractToolText(t, r)
+		var task domain.Task
+		if err := json.Unmarshal([]byte(text), &task); err != nil {
+			t.Fatalf("unmarshal task: %v", err)
+		}
+		switch task.Status {
+		case domain.StatusCompleted, domain.StatusFailed,
+			domain.StatusCancelled, domain.StatusNoProvider,
+			domain.StatusTooLarge:
+			return task
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatalf("task %s did not reach terminal status within %s", taskID, timeout)
+	return domain.Task{}
+}
+
 // --- Integration tests ---
 
 func TestMCPIntegration_SubmitAndComplete(t *testing.T) {
@@ -140,26 +166,9 @@ func TestMCPIntegration_SubmitAndComplete(t *testing.T) {
 		t.Fatal("expected non-empty task id")
 	}
 
-	// Poll get_task until COMPLETED (timeout 15s)
-	deadline := time.Now().Add(15 * time.Second)
-	var finalStatus string
-	for time.Now().Before(deadline) {
-		time.Sleep(200 * time.Millisecond)
-
-		r := callTool(t, ts.srv, 2, "get_task", map[string]any{"id": taskID})
-		text := extractToolText(t, r)
-
-		var task domain.Task
-		if err := json.Unmarshal([]byte(text), &task); err != nil {
-			t.Fatalf("unmarshal task: %v", err)
-		}
-		finalStatus = string(task.Status)
-		if task.Status == domain.StatusCompleted || task.Status == domain.StatusFailed {
-			break
-		}
-	}
-	if finalStatus != string(domain.StatusCompleted) {
-		t.Fatalf("expected COMPLETED, got %s", finalStatus)
+	finalTask := pollMCPTask(t, ts.srv, taskID, 2, 15*time.Second)
+	if finalTask.Status != domain.StatusCompleted {
+		t.Fatalf("expected COMPLETED, got %s", finalTask.Status)
 	}
 
 	// Verify queue is empty (or only contains completed tasks)
@@ -208,32 +217,12 @@ func TestMCPIntegration_CancelTask(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 	cancelR := callTool(t, ts.srv, 2, "cancel_task", map[string]any{"id": taskID})
 
-	// Poll get_task to determine final status
-	deadline := time.Now().Add(10 * time.Second)
-	var finalStatus domain.TaskStatus
-	for time.Now().Before(deadline) {
-		time.Sleep(200 * time.Millisecond)
-
-		r := callTool(t, ts.srv, 3, "get_task", map[string]any{"id": taskID})
-		text := extractToolText(t, r)
-
-		var task domain.Task
-		if err := json.Unmarshal([]byte(text), &task); err != nil {
-			t.Fatalf("unmarshal task: %v", err)
-		}
-		finalStatus = task.Status
-		if finalStatus == domain.StatusCancelled || finalStatus == domain.StatusCompleted {
-			break
-		}
+	// Poll until terminal — accept either CANCELLED or COMPLETED (inherent race).
+	finalTask := pollMCPTask(t, ts.srv, taskID, 3, 10*time.Second)
+	if finalTask.Status != domain.StatusCancelled && finalTask.Status != domain.StatusCompleted {
+		t.Errorf("expected CANCELLED or COMPLETED, got %s", finalTask.Status)
 	}
-
-	// Accept either CANCELLED or COMPLETED — the race is inherent
-	if finalStatus != domain.StatusCancelled && finalStatus != domain.StatusCompleted {
-		t.Errorf("expected CANCELLED or COMPLETED, got %s", finalStatus)
-	}
-
-	// If cancel succeeded, verify the RPC response was successful
-	if finalStatus == domain.StatusCancelled && cancelR.Error != nil {
+	if finalTask.Status == domain.StatusCancelled && cancelR.Error != nil {
 		t.Errorf("cancel_task returned error: %s", cancelR.Error.Message)
 	}
 }

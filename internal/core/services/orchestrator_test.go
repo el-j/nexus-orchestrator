@@ -18,16 +18,72 @@ import (
 
 type memRepo struct {
 	mu    sync.Mutex
+	cond  *sync.Cond
 	tasks map[string]domain.Task
 }
 
-func newMemRepo() *memRepo { return &memRepo{tasks: make(map[string]domain.Task)} }
+func newMemRepo() *memRepo {
+	r := &memRepo{tasks: make(map[string]domain.Task)}
+	r.cond = sync.NewCond(&r.mu)
+	return r
+}
 
 func (r *memRepo) Save(t domain.Task) error {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	r.tasks[t.ID] = t
+	r.cond.Broadcast()
+	r.mu.Unlock()
 	return nil
+}
+
+// waitHelper describes test helpers that provide failure reporting.
+type waitHelper interface {
+	Helper()
+	Fatalf(string, ...any)
+}
+
+// WaitForStatus blocks until task id reaches want or timeout expires.
+func (r *memRepo) WaitForStatus(tb waitHelper, id string, want domain.TaskStatus, timeout time.Duration) domain.Task {
+	tb.Helper()
+	return r.WaitUntil(tb, id, func(t domain.Task) bool { return t.Status == want }, timeout,
+		fmt.Sprintf("task %s: want status %s", id, want))
+}
+
+// WaitUntil blocks until pred returns true for the task or timeout expires.
+func (r *memRepo) WaitUntil(tb waitHelper, id string, pred func(domain.Task) bool, timeout time.Duration, desc string) domain.Task {
+	tb.Helper()
+	deadline := time.Now().Add(timeout)
+
+	// Kick a broadcast every 10ms so Wait() does not block forever if the service
+	// finishes without a final Save (e.g. already-completed at test start).
+	stopKick := make(chan struct{})
+	defer close(stopKick)
+	go func() {
+		ticker := time.NewTicker(10 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stopKick:
+				return
+			case <-ticker.C:
+				r.cond.Broadcast()
+			}
+		}
+	}()
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for {
+		task := r.tasks[id]
+		if pred(task) {
+			return task
+		}
+		if time.Now().After(deadline) {
+			tb.Fatalf("%s, got status %s after %s", desc, task.Status, timeout)
+			return task
+		}
+		r.cond.Wait()
+	}
 }
 
 func (r *memRepo) GetByID(id string) (domain.Task, error) {
@@ -237,7 +293,10 @@ func (r *memProviderConfigRepo) DeleteProviderConfig(_ context.Context, id strin
 func TestOrchestrator_SubmitTask_AssignsIDAndQueues(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService() // no providers — worker won't process
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	task := domain.Task{
@@ -266,11 +325,14 @@ func TestOrchestrator_SubmitTask_AssignsIDAndQueues(t *testing.T) {
 func TestOrchestrator_GetQueue_ReturnsPendingTasks(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	for i, status := range []domain.TaskStatus{domain.StatusQueued, domain.StatusProcessing, domain.StatusQueued} {
-		err := repo.Save(domain.Task{
+		err = repo.Save(domain.Task{
 			ID:          fmt.Sprintf("pending-%d", i),
 			Instruction: "task",
 			Status:      status,
@@ -292,7 +354,10 @@ func TestOrchestrator_GetQueue_ReturnsPendingTasks(t *testing.T) {
 func TestOrchestrator_CancelTask_RemovesFromQueue(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, _ := orch.SubmitTask(domain.Task{Instruction: "to cancel"})
@@ -313,21 +378,16 @@ func TestOrchestrator_WorkerProcessesTask(t *testing.T) {
 	repo := newMemRepo()
 	llm := &mockLLMClient{alive: true, name: "mock", code: "package main"}
 	discovery := services.NewDiscoveryService(llm)
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, _ := orch.SubmitTask(domain.Task{Instruction: "write code"})
 
-	// Allow the worker loop (2 s ticker) to fire
-	deadline := time.Now().Add(10 * time.Second)
-	for time.Now().Before(deadline) {
-		time.Sleep(300 * time.Millisecond)
-		saved, _ := repo.GetByID(id)
-		if saved.Status == domain.StatusCompleted {
-			return // success
-		}
-	}
-	t.Errorf("task did not reach COMPLETED within timeout; last status from repo")
+	// Allow the worker loop to fire; WaitForStatus uses sync.Cond — no sleeps.
+	repo.WaitForStatus(t, id, domain.StatusCompleted, 10*time.Second)
 }
 
 // --- Session isolation stubs -------------------------------------------------
@@ -388,26 +448,21 @@ func TestOrchestrator_Session_UsesChatWhenRepoProvided(t *testing.T) {
 	llm := &chatTrackingLLM{mockLLMClient: mockLLMClient{alive: true, name: "mock", code: "result"}}
 	discovery := services.NewDiscoveryService(llm)
 	sessRepo := newMemSessionRepo()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, sessRepo)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, sessRepo)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, _ := orch.SubmitTask(domain.Task{ProjectPath: "/proj/a", Instruction: "do something"})
 
-	deadline := time.Now().Add(10 * time.Second)
-	for time.Now().Before(deadline) {
-		time.Sleep(300 * time.Millisecond)
-		saved, _ := repo.GetByID(id)
-		if saved.Status == domain.StatusCompleted {
-			llm.mu.Lock()
-			called := llm.chatCalled
-			llm.mu.Unlock()
-			if called == 0 {
-				t.Error("expected Chat() to be called when sessionRepo is provided")
-			}
-			return
-		}
+	repo.WaitForStatus(t, id, domain.StatusCompleted, 10*time.Second)
+	llm.mu.Lock()
+	called := llm.chatCalled
+	llm.mu.Unlock()
+	if called == 0 {
+		t.Error("expected Chat() to be called when sessionRepo is provided")
 	}
-	t.Errorf("task did not reach COMPLETED within timeout")
 }
 
 func TestOrchestrator_Session_HistoryAccumulatedPerProject(t *testing.T) {
@@ -415,7 +470,10 @@ func TestOrchestrator_Session_HistoryAccumulatedPerProject(t *testing.T) {
 	llm := &chatTrackingLLM{mockLLMClient: mockLLMClient{alive: true, name: "mock", code: "reply"}}
 	discovery := services.NewDiscoveryService(llm)
 	sessRepo := newMemSessionRepo()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, sessRepo)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, sessRepo)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	path := "/proj/history"
@@ -442,7 +500,10 @@ func TestOrchestrator_Session_IsolatedByProjectPath(t *testing.T) {
 	llm := &chatTrackingLLM{mockLLMClient: mockLLMClient{alive: true, name: "mock", code: "reply"}}
 	discovery := services.NewDiscoveryService(llm)
 	sessRepo := newMemSessionRepo()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, sessRepo)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, sessRepo)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	idA, _ := orch.SubmitTask(domain.Task{ProjectPath: "/proj/alpha", Instruction: "alpha task"})
@@ -464,15 +525,7 @@ func TestOrchestrator_Session_IsolatedByProjectPath(t *testing.T) {
 
 func waitCompleted(t *testing.T, repo *memRepo, id string, timeout time.Duration) {
 	t.Helper()
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		time.Sleep(300 * time.Millisecond)
-		saved, _ := repo.GetByID(id)
-		if saved.Status == domain.StatusCompleted {
-			return
-		}
-	}
-	t.Fatalf("task %s did not reach COMPLETED within %s", id, timeout)
+	repo.WaitForStatus(t, id, domain.StatusCompleted, timeout)
 }
 
 // --- Pre-flight context-window guard tests -----------------------------------
@@ -482,7 +535,10 @@ func TestOrchestrator_PreFlight_TooLarge(t *testing.T) {
 	// contextLimit=10 means limit-512 = -502; any non-empty instruction overflows
 	llm := &mockLLMClient{alive: true, name: "mock", code: "ok", contextLimit: 10}
 	discovery := services.NewDiscoveryService(llm)
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, err := orch.SubmitTask(domain.Task{
@@ -492,21 +548,17 @@ func TestOrchestrator_PreFlight_TooLarge(t *testing.T) {
 		t.Fatalf("SubmitTask: %v", err)
 	}
 
-	deadline := time.Now().Add(10 * time.Second)
-	for time.Now().Before(deadline) {
-		time.Sleep(200 * time.Millisecond)
-		saved, _ := repo.GetByID(id)
-		if saved.Status == domain.StatusTooLarge {
-			if !strings.Contains(saved.Logs, "context too large") {
-				t.Errorf("expected 'context too large' in Logs, got: %s", saved.Logs)
-			}
-			return
-		}
-		if saved.Status == domain.StatusCompleted || saved.Status == domain.StatusFailed {
-			t.Fatalf("expected StatusTooLarge but got %s (logs: %s)", saved.Status, saved.Logs)
-		}
+	saved := repo.WaitUntil(t, id, func(task domain.Task) bool {
+		return task.Status == domain.StatusTooLarge ||
+			task.Status == domain.StatusCompleted ||
+			task.Status == domain.StatusFailed
+	}, 10*time.Second, "task did not reach terminal status")
+	if saved.Status != domain.StatusTooLarge {
+		t.Fatalf("expected StatusTooLarge but got %s (logs: %s)", saved.Status, saved.Logs)
 	}
-	t.Fatal("task did not reach StatusTooLarge within timeout")
+	if !strings.Contains(saved.Logs, "context too large") {
+		t.Errorf("expected 'context too large' in Logs, got: %s", saved.Logs)
+	}
 }
 
 func TestOrchestrator_PreFlight_NoLimitSkipsCheck(t *testing.T) {
@@ -514,7 +566,10 @@ func TestOrchestrator_PreFlight_NoLimitSkipsCheck(t *testing.T) {
 	// contextLimit=0 means no pre-flight check; large instruction must still complete
 	llm := &mockLLMClient{alive: true, name: "mock", code: "package main", contextLimit: 0}
 	discovery := services.NewDiscoveryService(llm)
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, _ := orch.SubmitTask(domain.Task{Instruction: strings.Repeat("x", 10000)})
@@ -526,7 +581,10 @@ func TestOrchestrator_PreFlight_WithinLimit_Completes(t *testing.T) {
 	// contextLimit=8192 — "short instruction" is well under 8192-512=7680 tokens
 	llm := &mockLLMClient{alive: true, name: "mock", code: "ok", contextLimit: 8192}
 	discovery := services.NewDiscoveryService(llm)
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, _ := orch.SubmitTask(domain.Task{Instruction: "short instruction"})
@@ -538,7 +596,10 @@ func TestOrchestrator_StatusNoProvider_WhenModelUnavailable(t *testing.T) {
 	// Provider is alive but only has "llama3" — "gpt-4o" will not be found.
 	llm := &mockLLMClient{alive: true, name: "Ollama", activeModel: "llama3", models: []string{"llama3"}}
 	discovery := services.NewDiscoveryService(llm)
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, err := orch.SubmitTask(domain.Task{
@@ -549,18 +610,14 @@ func TestOrchestrator_StatusNoProvider_WhenModelUnavailable(t *testing.T) {
 		t.Fatalf("SubmitTask: %v", err)
 	}
 
-	deadline := time.Now().Add(10 * time.Second)
-	for time.Now().Before(deadline) {
-		time.Sleep(200 * time.Millisecond)
-		saved, _ := repo.GetByID(id)
-		if saved.Status == domain.StatusNoProvider {
-			return // success
-		}
-		if saved.Status == domain.StatusCompleted || saved.Status == domain.StatusFailed {
-			t.Fatalf("expected StatusNoProvider but got %s", saved.Status)
-		}
+	saved := repo.WaitUntil(t, id, func(task domain.Task) bool {
+		return task.Status == domain.StatusNoProvider ||
+			task.Status == domain.StatusCompleted ||
+			task.Status == domain.StatusFailed
+	}, 10*time.Second, "task did not reach terminal status")
+	if saved.Status != domain.StatusNoProvider {
+		t.Fatalf("expected StatusNoProvider but got %s", saved.Status)
 	}
-	t.Fatal("task did not reach StatusNoProvider within timeout")
 }
 
 // --- Stop / CancelTask guard tests -------------------------------------------
@@ -568,10 +625,13 @@ func TestOrchestrator_StatusNoProvider_WhenModelUnavailable(t *testing.T) {
 func TestOrchestrator_CancelTask_UnknownReturnsNotFound(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
-	err := orch.CancelTask("unknown-task-id")
+	err = orch.CancelTask("unknown-task-id")
 	if err == nil {
 		t.Fatal("expected error for unknown task, got nil")
 	}
@@ -583,11 +643,14 @@ func TestOrchestrator_CancelTask_UnknownReturnsNotFound(t *testing.T) {
 func TestOrchestrator_Stop_ThenSubmitReturnsError(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	orch.Stop()
 
-	_, err := orch.SubmitTask(domain.Task{Instruction: "should fail"})
+	_, err = orch.SubmitTask(domain.Task{Instruction: "should fail"})
 	if err == nil {
 		t.Fatal("expected error after Stop, got nil")
 	}
@@ -599,7 +662,10 @@ func TestOrchestrator_Stop_ThenSubmitReturnsError(t *testing.T) {
 func TestOrchestrator_Stop_Idempotent(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Calling Stop() multiple times must not panic.
 	orch.Stop()
@@ -612,11 +678,14 @@ func TestOrchestrator_Stop_Idempotent(t *testing.T) {
 func TestOrchestrator_RegisterCloudProvider_NoFactory(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	// No factory wired — must return an error.
-	err := orch.RegisterCloudProvider(domain.ProviderConfig{Name: "x", Kind: domain.ProviderKindOllama})
+	err = orch.RegisterCloudProvider(domain.ProviderConfig{Name: "x", Kind: domain.ProviderKindOllama})
 	if err == nil {
 		t.Fatal("expected error when no provider factory is configured")
 	}
@@ -625,14 +694,17 @@ func TestOrchestrator_RegisterCloudProvider_NoFactory(t *testing.T) {
 func TestOrchestrator_RegisterCloudProvider_FactoryError(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	orch.WithProviderFactory(func(cfg domain.ProviderConfig) (ports.LLMClient, error) {
 		return nil, errors.New("unsupported kind")
 	})
 
-	err := orch.RegisterCloudProvider(domain.ProviderConfig{Name: "bad", Kind: "unknown"})
+	err = orch.RegisterCloudProvider(domain.ProviderConfig{Name: "bad", Kind: "unknown"})
 	if err == nil {
 		t.Fatal("expected error from factory")
 	}
@@ -641,7 +713,10 @@ func TestOrchestrator_RegisterCloudProvider_FactoryError(t *testing.T) {
 func TestOrchestrator_RegisterCloudProvider_Success(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	stub := &mockLLMClient{alive: true, name: "new-provider", models: []string{"llama3"}}
@@ -672,10 +747,13 @@ func TestOrchestrator_RegisterCloudProvider_Success(t *testing.T) {
 func TestOrchestrator_RemoveProvider_NotFound(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
-	err := orch.RemoveProvider("ghost")
+	err = orch.RemoveProvider("ghost")
 	if err == nil {
 		t.Fatal("expected error when removing non-existent provider")
 	}
@@ -688,7 +766,10 @@ func TestOrchestrator_RemoveProvider_Success(t *testing.T) {
 	repo := newMemRepo()
 	stub := &mockLLMClient{alive: true, name: "removeme"}
 	discovery := services.NewDiscoveryService(stub)
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	if err := orch.RemoveProvider("removeme"); err != nil {
@@ -706,10 +787,13 @@ func TestOrchestrator_RemoveProvider_Success(t *testing.T) {
 func TestOrchestrator_GetProviderModels_NotFound(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
-	_, err := orch.GetProviderModels("ghost")
+	_, err = orch.GetProviderModels("ghost")
 	if err == nil {
 		t.Fatal("expected error for unknown provider")
 	}
@@ -722,7 +806,10 @@ func TestOrchestrator_GetProviderModels_Success(t *testing.T) {
 	repo := newMemRepo()
 	stub := &mockLLMClient{alive: true, name: "mycloud", models: []string{"model-a", "model-b"}}
 	discovery := services.NewDiscoveryService(stub)
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	models, err := orch.GetProviderModels("mycloud")
@@ -742,7 +829,10 @@ func TestOrchestrator_GetProviderModels_Success(t *testing.T) {
 func TestOrchestrator_CommandPlan_Succeeds(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, err := orch.SubmitTask(domain.Task{
@@ -765,11 +855,13 @@ func TestOrchestrator_CommandPlan_Succeeds(t *testing.T) {
 func TestOrchestrator_CommandExecute_NoPlan_ReturnsErrNoPlan(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
-	_, err := orch.SubmitTask(domain.Task{
-		ProjectPath: "/proj/no-plan",
+	_, err = orch.SubmitTask(domain.Task{ProjectPath: "/proj/no-plan",
 		Instruction: "execute now",
 		Command:     domain.CommandExecute,
 	})
@@ -785,7 +877,10 @@ func TestOrchestrator_CommandExecute_WithPlan_Succeeds(t *testing.T) {
 	repo := newMemRepo()
 	llm := &mockLLMClient{alive: true, name: "mock", code: "done"}
 	discovery := services.NewDiscoveryService(llm)
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	// Submit a plan task first
@@ -818,11 +913,13 @@ func TestOrchestrator_CommandExecute_WithPlan_Succeeds(t *testing.T) {
 func TestOrchestrator_InvalidCommand_ReturnsError(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
-	_, err := orch.SubmitTask(domain.Task{
-		ProjectPath: "/proj/bad",
+	_, err = orch.SubmitTask(domain.Task{ProjectPath: "/proj/bad",
 		Instruction: "bad command",
 		Command:     domain.CommandType("bogus"),
 	})
@@ -837,7 +934,10 @@ func TestOrchestrator_InvalidCommand_ReturnsError(t *testing.T) {
 func TestOrchestrator_EmptyCommand_DefaultsToAuto(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, err := orch.SubmitTask(domain.Task{
@@ -860,12 +960,14 @@ func TestOrchestrator_EmptyCommand_DefaultsToAuto(t *testing.T) {
 func TestOrchestrator_CommandExecute_PlanNotCompleted_ReturnsErrNoPlan(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	// Submit a plan task but DON'T wait for it to complete — it stays QUEUED
-	_, err := orch.SubmitTask(domain.Task{
-		ProjectPath: "/proj/pending-plan",
+	_, err = orch.SubmitTask(domain.Task{ProjectPath: "/proj/pending-plan",
 		Instruction: "plan the work",
 		Command:     domain.CommandPlan,
 	})
@@ -892,7 +994,10 @@ func TestOrchestrator_StatusNoProvider_AfterRemove(t *testing.T) {
 	// Provider supports llama3. We remove it, then submit a task that needs it.
 	stub := &mockLLMClient{alive: true, name: "ollama", activeModel: "llama3", models: []string{"llama3"}}
 	discovery := services.NewDiscoveryService(stub)
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	if err := orch.RemoveProvider("ollama"); err != nil {
@@ -904,18 +1009,14 @@ func TestOrchestrator_StatusNoProvider_AfterRemove(t *testing.T) {
 		t.Fatalf("SubmitTask: %v", err)
 	}
 
-	deadline := time.Now().Add(10 * time.Second)
-	for time.Now().Before(deadline) {
-		time.Sleep(200 * time.Millisecond)
-		saved, _ := repo.GetByID(id)
-		if saved.Status == domain.StatusNoProvider {
-			return
-		}
-		if saved.Status == domain.StatusCompleted || saved.Status == domain.StatusFailed {
-			t.Fatalf("expected StatusNoProvider but got %s", saved.Status)
-		}
+	saved2 := repo.WaitUntil(t, id, func(task domain.Task) bool {
+		return task.Status == domain.StatusNoProvider ||
+			task.Status == domain.StatusCompleted ||
+			task.Status == domain.StatusFailed
+	}, 10*time.Second, "task did not reach terminal status")
+	if saved2.Status != domain.StatusNoProvider {
+		t.Fatalf("expected StatusNoProvider but got %s", saved2.Status)
 	}
-	t.Fatal("task did not reach StatusNoProvider within timeout")
 }
 
 // --- Backlog lifecycle tests -------------------------------------------------
@@ -923,7 +1024,10 @@ func TestOrchestrator_StatusNoProvider_AfterRemove(t *testing.T) {
 func TestCreateDraft_CreatesStatusDraft(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, err := orch.CreateDraft(domain.Task{
@@ -955,7 +1059,10 @@ func TestCreateDraft_CreatesStatusDraft(t *testing.T) {
 func TestCreateDraft_DefaultsPriorityToTwo(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, err := orch.CreateDraft(domain.Task{
@@ -975,11 +1082,13 @@ func TestCreateDraft_DefaultsPriorityToTwo(t *testing.T) {
 func TestCreateDraft_RequiresInstruction(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
-	_, err := orch.CreateDraft(domain.Task{
-		ProjectPath: "/proj/empty",
+	_, err = orch.CreateDraft(domain.Task{ProjectPath: "/proj/empty",
 		Instruction: "",
 	})
 	if err == nil {
@@ -990,7 +1099,10 @@ func TestCreateDraft_RequiresInstruction(t *testing.T) {
 func TestGetBacklog_ReturnsOnlyDraftAndBacklog(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	const proj = "/proj/backlog"
@@ -1043,7 +1155,10 @@ func TestGetBacklog_ReturnsOnlyDraftAndBacklog(t *testing.T) {
 func TestPromoteTask_DraftToQueued(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, err := orch.CreateDraft(domain.Task{
@@ -1070,7 +1185,10 @@ func TestPromoteTask_DraftToQueued(t *testing.T) {
 func TestPromoteTask_ErrorOnAlreadyQueued(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, err := orch.SubmitTask(domain.Task{
@@ -1091,7 +1209,10 @@ func TestPromoteTask_EnforcesQueueCap(t *testing.T) {
 	const queueCap = 1
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	orch.WithQueueCap(queueCap)
 	defer orch.Stop()
 
@@ -1124,7 +1245,10 @@ func TestPromoteTask_EnforcesQueueCap(t *testing.T) {
 func TestUpdateTask_MergesFields(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, err := orch.CreateDraft(domain.Task{
@@ -1159,7 +1283,10 @@ func TestUpdateTask_MergesFields(t *testing.T) {
 func TestUpdateTask_RejectsQueuedTransition(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, err := orch.CreateDraft(domain.Task{
@@ -1220,7 +1347,10 @@ func (m *mockScanner) Scan(_ context.Context) ([]domain.DiscoveredProvider, erro
 func TestOrchestrator_GetDiscoveredProviders_EmptyWithoutScanner(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	providers, err := orch.GetDiscoveredProviders()
@@ -1240,7 +1370,10 @@ func TestOrchestrator_GetDiscoveredProviders_EmptyWithoutScanner(t *testing.T) {
 func TestOrchestrator_TriggerScan_WithMockScanner(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	scanner := &mockScanner{
@@ -1266,10 +1399,13 @@ func TestOrchestrator_TriggerScan_WithMockScanner(t *testing.T) {
 func TestOrchestrator_TriggerScan_NoScanner_ReturnsError(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
-	_, err := orch.TriggerScan(context.Background())
+	_, err = orch.TriggerScan(context.Background())
 	if err == nil {
 		t.Fatal("expected error when no scanner configured, got nil")
 	}
@@ -1283,7 +1419,10 @@ func TestOrchestrator_TriggerScan_NoScanner_ReturnsError(t *testing.T) {
 func TestOrchestrator_PromoteProvider_NotFound(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	scanner := &mockScanner{
@@ -1297,7 +1436,7 @@ func TestOrchestrator_PromoteProvider_NotFound(t *testing.T) {
 		t.Fatalf("TriggerScan: %v", err)
 	}
 
-	err := orch.PromoteProvider(context.Background(), "nonexistent-id")
+	err = orch.PromoteProvider(context.Background(), "nonexistent-id")
 	if err == nil {
 		t.Fatal("expected error for nonexistent provider ID, got nil")
 	}
@@ -1311,7 +1450,10 @@ func TestOrchestrator_PromoteProvider_NotFound(t *testing.T) {
 func TestOrchestrator_PromoteProvider_NotReachable(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	scanner := &mockScanner{
@@ -1324,7 +1466,7 @@ func TestOrchestrator_PromoteProvider_NotReachable(t *testing.T) {
 		t.Fatalf("TriggerScan: %v", err)
 	}
 
-	err := orch.PromoteProvider(context.Background(), "cli-ollama")
+	err = orch.PromoteProvider(context.Background(), "cli-ollama")
 	if err == nil {
 		t.Fatal("expected error for non-reachable provider, got nil")
 	}
@@ -1338,7 +1480,10 @@ func TestOrchestrator_PromoteProvider_NotReachable(t *testing.T) {
 func TestOrchestrator_PromoteProvider_Reachable(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	orch.WithProviderFactory(func(cfg domain.ProviderConfig) (ports.LLMClient, error) {
@@ -1369,7 +1514,10 @@ func TestOrchestrator_PromoteProvider_Reachable(t *testing.T) {
 func TestOrchestrator_PromoteProvider_PersistsEnabledWithoutDuplicateRegistration(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	cfgRepo := newMemProviderConfigRepo()
@@ -1465,22 +1613,25 @@ func mustPanic(t *testing.T, wantMsg string, f func()) {
 	f()
 }
 
-func TestNewOrchestrator_NilPanics(t *testing.T) {
+func TestNewOrchestrator_NilErrors(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
 	writer := &noopWriter{}
 
-	mustPanic(t, "discovery is required", func() {
-		services.NewOrchestrator(nil, repo, writer, nil)
-	})
+	_, err := services.NewOrchestrator(nil, repo, writer, nil)
+	if err == nil || !strings.Contains(err.Error(), "discovery") {
+		t.Errorf("nil discovery: want error containing 'discovery', got %v", err)
+	}
 
-	mustPanic(t, "repo is required", func() {
-		services.NewOrchestrator(discovery, nil, writer, nil)
-	})
+	_, err = services.NewOrchestrator(discovery, nil, writer, nil)
+	if err == nil || !strings.Contains(err.Error(), "repo") {
+		t.Errorf("nil repo: want error containing 'repo', got %v", err)
+	}
 
-	mustPanic(t, "writer is required", func() {
-		services.NewOrchestrator(discovery, repo, nil, nil)
-	})
+	_, err = services.NewOrchestrator(discovery, repo, nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "writer") {
+		t.Errorf("nil writer: want error containing 'writer', got %v", err)
+	}
 }
 
 // TestPromoteProvider_EmptyBaseURL verifies that PromoteProvider returns an
@@ -1488,7 +1639,10 @@ func TestNewOrchestrator_NilPanics(t *testing.T) {
 func TestPromoteProvider_EmptyBaseURL(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	orch.WithProviderFactory(func(cfg domain.ProviderConfig) (ports.LLMClient, error) {
@@ -1511,7 +1665,7 @@ func TestPromoteProvider_EmptyBaseURL(t *testing.T) {
 		t.Fatalf("TriggerScan: %v", err)
 	}
 
-	err := orch.PromoteProvider(context.Background(), "no-url")
+	err = orch.PromoteProvider(context.Background(), "no-url")
 	if err == nil {
 		t.Fatal("expected error for empty BaseURL, got nil")
 	}
@@ -1627,7 +1781,10 @@ func setupClaimTestOrch(t *testing.T) (*services.OrchestratorService, *memRepo, 
 	repo := newMemRepo()
 	aiRepo := newMemAISessionRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil, services.WithDisableBackgroundWorkers())
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil, services.WithDisableBackgroundWorkers())
+	if err != nil {
+		t.Fatal(err)
+	}
 	orch.SetAISessionRepo(aiRepo)
 	t.Cleanup(orch.Stop)
 	return orch, repo, aiRepo

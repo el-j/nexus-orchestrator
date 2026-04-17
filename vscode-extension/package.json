@@ -131,6 +131,21 @@
         "command": "nexus.brain.search",
         "title": "Nexus: Search Project Brain",
         "icon": "$(search)"
+      },
+      {
+        "command": "nexus.brain.listKnowledge",
+        "title": "Nexus: List Project Knowledge",
+        "icon": "$(list-unordered)"
+      },
+      {
+        "command": "nexus.brain.getContext",
+        "title": "Nexus: Get Project Context",
+        "icon": "$(book)"
+      },
+      {
+        "command": "nexus.brain.getFileMap",
+        "title": "Nexus: Get Project File Map",
+        "icon": "$(file-directory)"
       }
     ],
     "menus": {
@@ -190,6 +205,36 @@
           "command": "nexus.brain.ingest",
           "when": "viewItem == nexusProjectBrain",
           "group": "inline"
+        },
+        {
+          "command": "nexus.brain.status",
+          "when": "viewItem == nexusProjectBrain",
+          "group": "brain@1"
+        },
+        {
+          "command": "nexus.brain.init",
+          "when": "viewItem == nexusProjectBrain",
+          "group": "brain@2"
+        },
+        {
+          "command": "nexus.brain.search",
+          "when": "viewItem == nexusProjectBrain",
+          "group": "brain@3"
+        },
+        {
+          "command": "nexus.brain.listKnowledge",
+          "when": "viewItem == nexusProjectBrain",
+          "group": "brain@4"
+        },
+        {
+          "command": "nexus.brain.getContext",
+          "when": "viewItem == nexusProjectBrain",
+          "group": "brain@5"
+        },
+        {
+          "command": "nexus.brain.getFileMap",
+          "when": "viewItem == nexusProjectBrain",
+          "group": "brain@6"
         }
       ]
     },

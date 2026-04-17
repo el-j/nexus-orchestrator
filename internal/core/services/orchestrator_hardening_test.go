@@ -33,21 +33,15 @@ func TestStartupRecovery(t *testing.T) {
 	// Wire a working LLM so the worker can complete the re-queued task.
 	llm := &mockLLMClient{alive: true, name: "mock", code: "recovered code"}
 	discovery := services.NewDiscoveryService(llm)
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	// Startup recovery must have re-queued the task; the worker will complete it.
 	// Reaching COMPLETED proves the task left the PROCESSING state and was re-queued.
-	deadline := time.Now().Add(10 * time.Second)
-	for time.Now().Before(deadline) {
-		time.Sleep(200 * time.Millisecond)
-		saved, _ := repo.GetByID(stuckTask.ID)
-		if saved.Status == domain.StatusCompleted {
-			return // success
-		}
-	}
-	saved, _ := repo.GetByID(stuckTask.ID)
-	t.Errorf("task did not reach COMPLETED after startup recovery; final status: %s", saved.Status)
+	repo.WaitForStatus(t, stuckTask.ID, domain.StatusCompleted, 10*time.Second)
 }
 
 // TestPathNormalization verifies that SubmitTask normalises a relative ProjectPath
@@ -55,7 +49,10 @@ func TestStartupRecovery(t *testing.T) {
 func TestPathNormalization(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService() // no providers — task stays QUEUED
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, err := orch.SubmitTask(domain.Task{
@@ -84,7 +81,10 @@ func TestQueueCap(t *testing.T) {
 	const queueCap = 3
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService() // no providers — tasks never leave queue
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	orch.WithQueueCap(queueCap)
 	defer orch.Stop()
 
@@ -103,7 +103,7 @@ func TestQueueCap(t *testing.T) {
 	}
 
 	// The next submission must be rejected.
-	_, err := orch.SubmitTask(domain.Task{Instruction: "overflow"})
+	_, err = orch.SubmitTask(domain.Task{Instruction: "overflow"})
 	if err == nil {
 		t.Fatal("expected ErrQueueFull for the (queueCap+1)-th task, got nil")
 	}
@@ -115,7 +115,10 @@ func TestQueueCap(t *testing.T) {
 func TestCancelTask_CancelsPersistedQueuedTask(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	now := time.Now()
@@ -161,19 +164,13 @@ func TestStartupRecoverySignalsExistingQueuedTask(t *testing.T) {
 
 	llm := &mockLLMClient{alive: true, name: "mock", code: "queued startup code"}
 	discovery := services.NewDiscoveryService(llm)
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
-	deadline := time.Now().Add(10 * time.Second)
-	for time.Now().Before(deadline) {
-		time.Sleep(200 * time.Millisecond)
-		saved, _ := repo.GetByID(queuedTask.ID)
-		if saved.Status == domain.StatusCompleted {
-			return
-		}
-	}
-	saved, _ := repo.GetByID(queuedTask.ID)
-	t.Fatalf("task did not reach COMPLETED from persisted queued state; final status: %s", saved.Status)
+	repo.WaitForStatus(t, queuedTask.ID, domain.StatusCompleted, 10*time.Second)
 }
 
 // TestRetryLimit verifies that a task whose LLM calls always fail is retried
@@ -182,7 +179,10 @@ func TestRetryLimit(t *testing.T) {
 	repo := newMemRepo()
 	llm := &mockLLMClient{alive: true, name: "mock", codeErr: errors.New("llm unavailable")}
 	discovery := services.NewDiscoveryService(llm)
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, err := orch.SubmitTask(domain.Task{Instruction: "fail me"})
@@ -192,28 +192,21 @@ func TestRetryLimit(t *testing.T) {
 
 	// 1 initial attempt + 3 retries = 4 total LLM calls.
 	// Allow generous time for all retry cycles to complete.
-	deadline := time.Now().Add(20 * time.Second)
-	for time.Now().Before(deadline) {
-		time.Sleep(300 * time.Millisecond)
-		saved, _ := repo.GetByID(id)
-		if saved.Status == domain.StatusFailed {
-			const wantRetries = 3 // maxRetries in services package
-			if saved.RetryCount != wantRetries {
-				t.Errorf("expected RetryCount=%d after exhausting retries, got %d",
-					wantRetries, saved.RetryCount)
-			}
-			return // success
-		}
+	saved := repo.WaitForStatus(t, id, domain.StatusFailed, 20*time.Second)
+	const wantRetries = 3 // maxRetries in services package
+	if saved.RetryCount != wantRetries {
+		t.Errorf("expected RetryCount=%d after exhausting retries, got %d",
+			wantRetries, saved.RetryCount)
 	}
-	saved, _ := repo.GetByID(id)
-	t.Errorf("task did not reach StatusFailed within timeout; final status=%s RetryCount=%d",
-		saved.Status, saved.RetryCount)
 }
 
 func TestCancelTask_NoProviderState_Succeeds(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService() // no providers
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, err := orch.CreateDraft(domain.Task{
@@ -245,7 +238,10 @@ func TestCancelTask_NoProviderState_Succeeds(t *testing.T) {
 func TestCancelTask_DraftState_Succeeds(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, err := orch.CreateDraft(domain.Task{
@@ -272,7 +268,10 @@ func TestCancelTask_DraftState_Succeeds(t *testing.T) {
 func TestCancelTask_BacklogState_Succeeds(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	now := time.Now()
@@ -304,7 +303,10 @@ func TestCancelTask_BacklogState_Succeeds(t *testing.T) {
 func TestPromoteTask_NoProvider_ReturnsWarning(t *testing.T) {
 	repo := newMemRepo()
 	discovery := services.NewDiscoveryService() // no providers registered
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, err := orch.CreateDraft(domain.Task{
@@ -363,9 +365,12 @@ func TestWatchdog_StaleProcessingTaskFailed(t *testing.T) {
 	repo := &staleAwareRepo{base}
 
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil,
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil,
 		services.WithWatchdogInterval(200*time.Millisecond),
 	)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	// Seed AFTER orchestrator starts so startup recovery (which runs on construction)
@@ -382,16 +387,7 @@ func TestWatchdog_StaleProcessingTaskFailed(t *testing.T) {
 		t.Fatalf("seed stale task: %v", err)
 	}
 
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		time.Sleep(150 * time.Millisecond)
-		saved, _ := repo.GetByID(staleTask.ID)
-		if saved.Status == domain.StatusFailed {
-			return // success
-		}
-	}
-	saved, _ := repo.GetByID(staleTask.ID)
-	t.Errorf("stale task not FAILED by watchdog; final status: %s", saved.Status)
+	base.WaitForStatus(t, staleTask.ID, domain.StatusFailed, 5*time.Second)
 }
 
 // TestWatchdog_FreshProcessingTaskUntouched verifies that a PROCESSING task with
@@ -401,9 +397,12 @@ func TestWatchdog_FreshProcessingTaskUntouched(t *testing.T) {
 	repo := &staleAwareRepo{base}
 
 	discovery := services.NewDiscoveryService()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil,
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil,
 		services.WithWatchdogInterval(200*time.Millisecond),
 	)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	// Seed AFTER orchestrator starts so startup recovery doesn't re-queue it.

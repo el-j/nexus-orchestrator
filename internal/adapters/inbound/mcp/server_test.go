@@ -147,6 +147,10 @@ func (m *mockOrch) UpdateRuntimeConfig(_ context.Context, update domain.RuntimeC
 	return cfg, nil
 }
 
+func (m *mockOrch) GetTasksBySessionID(_ string) ([]domain.Task, error) {
+	return nil, nil
+}
+
 // --- Helpers ---
 
 type rpcResp struct {

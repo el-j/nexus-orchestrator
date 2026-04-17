@@ -51,13 +51,9 @@
             class="text-xs bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-slate-300 placeholder-slate-600 focus:outline-none focus:border-violet-500/40 w-40"
           />
           <button
-            v-for="opt in [
-              { v: '', l: 'All' },
-              { v: 'active', l: 'Active' },
-              { v: 'unreachable', l: 'Unreachable' },
-            ]"
+            v-for="opt in providerFilterOptions"
             :key="'pf-' + opt.v"
-            @click="providerStatusFilter = opt.v as any"
+            @click="providerStatusFilter = opt.v"
             :class="[
               'text-[10px] px-2 py-1 rounded-full border transition-colors font-medium',
               providerStatusFilter === opt.v
@@ -164,14 +160,9 @@
             class="text-xs bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-slate-300 placeholder-slate-600 focus:outline-none focus:border-violet-500/40 w-40"
           />
           <button
-            v-for="opt in [
-              { v: '', l: 'All' },
-              { v: 'running', l: 'Running' },
-              { v: 'installed', l: 'Installed' },
-              { v: 'detected', l: 'Detected' },
-            ]"
+            v-for="opt in toolFilterOptions"
             :key="'tf-' + opt.v"
-            @click="toolStatusFilter = opt.v as any"
+            @click="toolStatusFilter = opt.v"
             :class="[
               'text-[10px] px-2 py-1 rounded-full border transition-colors font-medium',
               toolStatusFilter === opt.v
@@ -192,9 +183,7 @@
           <div v-for="[kind, kindAgents] in groupedAgents" :key="kind">
             <!-- Group header -->
             <div class="flex items-center gap-2 mb-2">
-              <span class="text-xs font-semibold text-slate-400">{{
-                agentLabel({ kind } as any)
-              }}</span>
+              <span class="text-xs font-semibold text-slate-400">{{ kindLabel(kind) }}</span>
               <span class="text-[10px] text-slate-600">({{ kindAgents.length }})</span>
               <div class="flex-1 h-px bg-white/5 ml-1"></div>
             </div>
@@ -404,8 +393,19 @@ const sortedAgents = computed(() => {
 
 const providerSearch = ref('');
 const providerStatusFilter = ref<'' | 'active' | 'unreachable'>('');
+const providerFilterOptions: { v: '' | 'active' | 'unreachable'; l: string }[] = [
+  { v: '', l: 'All' },
+  { v: 'active', l: 'Active' },
+  { v: 'unreachable', l: 'Unreachable' },
+];
 const toolSearch = ref('');
 const toolStatusFilter = ref<'' | 'running' | 'installed' | 'detected'>('');
+const toolFilterOptions: { v: '' | 'running' | 'installed' | 'detected'; l: string }[] = [
+  { v: '', l: 'All' },
+  { v: 'running', l: 'Running' },
+  { v: 'installed', l: 'Installed' },
+  { v: 'detected', l: 'Detected' },
+];
 
 const filteredProviders = computed(() => {
   let list = sortedProviders.value;
@@ -414,7 +414,7 @@ const filteredProviders = computed(() => {
   if (providerSearch.value) {
     const q = providerSearch.value.toLowerCase();
     list = list.filter(
-      (p) => p.name.toLowerCase().includes(q) || p.baseURL.toLowerCase().includes(q),
+      (p) => p.name.toLowerCase().includes(q) || (p.baseURL ?? '').toLowerCase().includes(q),
     );
   }
   return list;
@@ -471,7 +471,7 @@ onMounted(() => {
   lastRefreshed.value = new Date();
 });
 
-function agentLabel(a: DiscoveredAgent): string {
+function kindLabel(kind: string): string {
   const labels: Record<string, string> = {
     copilot: 'GitHub Copilot',
     continue: 'Continue',
@@ -479,7 +479,11 @@ function agentLabel(a: DiscoveredAgent): string {
     cline: 'Cline',
     cursor: 'Cursor',
   };
-  return labels[a.kind] ?? a.name ?? a.kind;
+  return labels[kind] ?? kind;
+}
+
+function agentLabel(a: DiscoveredAgent): string {
+  return a.name ?? kindLabel(a.kind);
 }
 
 function agentStatusClass(a: DiscoveredAgent): string {

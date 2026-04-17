@@ -421,7 +421,7 @@ func (r *Repository) GetByProjectPathAndStatus(projectPath string, statuses ...d
 	}
 	projectPath = filepath.Clean(projectPath)
 	placeholders := make([]string, len(statuses))
-	args := make([]interface{}, 0, 1+len(statuses))
+	args := make([]any, 0, 1+len(statuses))
 	args = append(args, projectPath)
 	for i, s := range statuses {
 		placeholders[i] = "?"
@@ -478,6 +478,9 @@ func (r *Repository) Update(t domain.Task) error {
 // Close releases the underlying database connection.
 func (r *Repository) Close() error { return r.db.Close() }
 
+// DB exposes the underlying *sql.DB for test helpers that need to inject fixtures.
+func (r *Repository) DB() *sql.DB { return r.db }
+
 // GetTasksBySessionID returns all tasks claimed by the given AI session, ordered by creation time descending.
 func (r *Repository) GetTasksBySessionID(sessionID string) ([]domain.Task, error) {
 	rows, err := r.db.Query(
@@ -526,7 +529,7 @@ func (r *Repository) GetStaleProcessing(ctx context.Context, threshold time.Dura
 }
 
 type scanner interface {
-	Scan(dest ...interface{}) error
+	Scan(dest ...any) error
 }
 
 func scanTask(s scanner) (domain.Task, error) {

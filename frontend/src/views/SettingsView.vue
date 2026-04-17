@@ -230,7 +230,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, reactive } from 'vue';
+import { ref, onMounted, onUnmounted, computed, reactive } from 'vue';
 import type { RuntimeConfig } from '../types/domain';
 import { getRuntimeConfig, updateRuntimeConfig } from '../types/wails';
 import { resolveServerUrl } from '../composables/useServerUrl';
@@ -338,14 +338,19 @@ const resolvedApiUrl = ref('http://127.0.0.1:63987');
 const resolvedMcpUrl = ref('http://127.0.0.1:63988/mcp');
 
 onMounted(async () => {
-  loadConfig();
+  await loadConfig();
   try {
     const base = await resolveServerUrl();
     resolvedApiUrl.value = base;
-    resolvedMcpUrl.value = base.replace(':63987', ':63988') + '/mcp';
+    resolvedMcpUrl.value = base.replace(/:\d+/, ':63988') + '/mcp';
   } catch {
     /* keep defaults */
   }
+});
+
+onUnmounted(() => {
+  if (tokenCopyTimer) clearTimeout(tokenCopyTimer);
+  if (copyTimer) clearTimeout(copyTimer);
 });
 
 const serverAddresses = computed(() => [
