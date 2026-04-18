@@ -2,15 +2,15 @@ import { defineComponent, h, ref } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { resolveServerUrl, mockOn, mockOff, connectedRef } = vi.hoisted(() => {
-  const connectedRef = ref(true);
-  return {
-    resolveServerUrl: vi.fn(),
-    mockOn: vi.fn(),
-    mockOff: vi.fn(),
-    connectedRef,
-  };
-});
+// vi.hoisted runs before imports — cannot reference imported values (e.g. ref) here
+const { resolveServerUrl, mockOn, mockOff } = vi.hoisted(() => ({
+  resolveServerUrl: vi.fn(),
+  mockOn: vi.fn(),
+  mockOff: vi.fn(),
+}));
+
+// ref() is safe at module scope (after imports resolve)
+const connectedRef = ref(true);
 
 vi.mock('./useServerUrl', () => ({ resolveServerUrl }));
 vi.mock('./useGlobalSSE', () => ({
@@ -141,12 +141,12 @@ describe('useLogs', () => {
     connectedRef.value = true;
     await flushPromises();
 
-    const callsAtReconnect = fetchMock.mock.calls.length;
+    const callsAtReconnect = fetchMock.mock.calls.length; // includes watcher-triggered fetch
     await vi.advanceTimersByTimeAsync(6_000);
     await flushPromises();
 
-    // No additional polling calls after reconnect
-    expect(fetchMock.mock.calls.length).toBe(callsAtReconnect + 1); // the watcher-triggered fetch
+    // Polling stopped — fetch count must not grow after reconnect
+    expect(fetchMock.mock.calls.length).toBe(callsAtReconnect);
 
     wrapper.unmount();
     vi.useRealTimers();

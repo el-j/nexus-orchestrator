@@ -1,13 +1,7 @@
 name: E2E Tests
 
 on:
-  push:
-    branches:
-      - main
-      - 'feature/**'
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch: # run manually only — requires a live dev server (localhost:63989)
 
 # NOTE: These tests require a running nexus-daemon. In CI they run in smoke-only
 # mode against mocked API responses (no real daemon). Tests that require a live

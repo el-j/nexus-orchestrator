@@ -83,7 +83,7 @@ describe('useDiscovery', () => {
     await flushPromises();
 
     const scanPromise = get().scanNow();
-    await vi.runAllTimersAsync();
+    await vi.advanceTimersByTimeAsync(2000); // cover the 1500 ms setTimeout in scanNow
     await flushPromises();
     await scanPromise;
 
@@ -108,7 +108,7 @@ describe('useDiscovery', () => {
     expect(get().scanning.value).toBe(true);
 
     resolveScan();
-    await vi.runAllTimersAsync();
+    await vi.advanceTimersByTimeAsync(2000); // cover the 1500 ms setTimeout in scanNow
     await flushPromises();
     expect(get().scanning.value).toBe(false);
 
