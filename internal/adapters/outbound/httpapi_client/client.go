@@ -1,5 +1,5 @@
 // Package httpapi_client provides an HTTP client that implements ports.Orchestrator
-// by forwarding calls to a running nexusOrchestrator daemon via its HTTP API.
+// by forwarding calls to a running nexus-orchestrator daemon via its HTTP API.
 package httpapi_client
 
 import (
@@ -17,7 +17,7 @@ import (
 	"nexus-orchestrator/internal/core/ports"
 )
 
-// Client forwards orchestrator calls to the running nexusOrchestrator HTTP API.
+// Client forwards orchestrator calls to the running nexus-orchestrator HTTP API.
 type Client struct {
 	baseURL string
 	token   string
@@ -46,7 +46,7 @@ type updateTaskStatusRequest struct {
 	Logs      string `json:"logs,omitempty"`
 }
 
-// NewClient returns a new Client that talks to the nexusOrchestrator daemon at baseURL.
+// NewClient returns a new Client that talks to the nexus-orchestrator daemon at baseURL.
 func NewClient(baseURL string) *Client {
 	return &Client{
 		baseURL: strings.TrimRight(baseURL, "/"),

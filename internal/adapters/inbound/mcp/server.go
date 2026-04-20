@@ -338,9 +338,9 @@ func (s *Server) handleInitialize(w http.ResponseWriter, req rpcRequest) {
 		ProtocolVersion: "2024-11-05",
 		Capabilities:    capabilities{Tools: map[string]any{}},
 		ServerInfo: serverInfo{
-			Name:    "nexusOrchestrator",
+			Name:    "nexus-orchestrator",
 			Version: Version,
-			Instructions: "You are connected to nexusOrchestrator — a multi-LLM AI task " +
+			Instructions: "You are connected to nexus-orchestrator — a multi-LLM AI task " +
 				"orchestration server. Call 'howto_brief' first if you have a small context " +
 				"window (< 64K tokens), or 'howto' for the full guide. " +
 				"Use 'register_session' to identify yourself, " +

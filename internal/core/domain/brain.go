@@ -1,4 +1,4 @@
-// Package domain contains the pure domain types for nexusOrchestrator.
+// Package domain contains the pure domain types for nexus-orchestrator.
 // This file defines the brain / context-intelligence types.
 package domain
 

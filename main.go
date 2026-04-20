@@ -1,4 +1,4 @@
-// Command nexus-orchestrator is the nexusOrchestrator desktop application.
+// Command nexus-orchestrator is the nexus-orchestrator desktop application.
 // It runs a native GUI via Wails with an embedded HTTP API on :63987 and MCP server on :63988.
 package main
 
@@ -184,12 +184,12 @@ func run() error {
 		withActivityService(activitySvc).
 		withBrainService(brainSvc)
 
-	log.Printf("nexusOrchestrator started — closing window hides to dock/taskbar")
+	log.Printf("nexus-orchestrator started — closing window hides to dock/taskbar")
 	// Print a human- and AI-readable ready banner.
 	httpBase := "http://" + httpAddr
 	fmt.Printf("\n")
 	fmt.Printf("┌────────────────────────────────────────────────────────┐\n")
-	fmt.Printf("│  nexusOrchestrator — ready (GUI)                       │\n")
+	fmt.Printf("│  nexus-orchestrator — ready (GUI)                       │\n")
 	fmt.Printf("├────────────────────────────────────────────────────────┤\n")
 	fmt.Printf("│  HTTP API  →  %-39s  │\n", httpBase)
 	fmt.Printf("│  Dashboard →  %-39s  │\n", httpBase+"/ui")
@@ -201,7 +201,7 @@ func run() error {
 
 	// 5. Launch Wails desktop window
 	if err := wails.Run(&options.App{
-		Title:  "nexusOrchestrator",
+		Title:  "nexus-orchestrator",
 		Width:  1024,
 		Height: 768,
 		AssetServer: &assetserver.Options{
@@ -211,7 +211,7 @@ func run() error {
 		// Users can quit via Cmd+Q or the OS-provided mechanism.
 		HideWindowOnClose: true,
 		OnBeforeClose: func(ctx context.Context) (prevent bool) {
-			log.Printf("nexusOrchestrator: window close intercepted — hiding to dock/taskbar")
+			log.Printf("nexus-orchestrator: window close intercepted — hiding to dock/taskbar")
 			return false
 		},
 		OnStartup: func(ctx context.Context) {

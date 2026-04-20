@@ -1,5 +1,5 @@
 # =============================================================================
-# NexusOrchestrator — Makefile
+# nexus-orchestrator — Makefile
 # =============================================================================
 # Usage:
 #   make build           native CLI + daemon (current OS/arch)
@@ -131,7 +131,7 @@ dev: check-air
 	@cd frontend && npm install --prefer-offline --silent 2>/dev/null
 	@echo ""
 	@echo "┌──────────────────────────────────────────────────────────┐"
-	@echo "│  nexusOrchestrator — dev mode                            │"
+	@echo "│  nexus-orchestrator — dev mode                            │"
 	@echo "│                                                          │"
 	@echo "│  Starting daemon via air (hot-reload)…                   │"
 	@echo "└──────────────────────────────────────────────────────────┘"

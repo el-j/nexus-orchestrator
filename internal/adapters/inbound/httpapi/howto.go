@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-// howToDoc is the machine-readable "how to work with nexusOrchestrator" guide.
+// howToDoc is the machine-readable "how to work with nexus-orchestrator" guide.
 // Served at GET /api/howto and consumed by AIs, CLIs, and clients on first contact.
 type howToDoc struct {
 	Name        string          `json:"name"`
@@ -71,7 +71,7 @@ type nexusDiscoveryMCP struct {
 // so every link in the document points at the actual live server address.
 func buildHowToDoc(baseURL string) howToDoc {
 	return howToDoc{
-		Name:    "nexusOrchestrator",
+		Name:    "nexus-orchestrator",
 		Version: "1.0.0",
 		Description: "Multi-LLM AI task orchestration server. A human (or another AI) submits " +
 			"coding, research, or analysis tasks. AI agents discover the queue, claim tasks, " +
@@ -238,7 +238,7 @@ func (s *Server) handleWellKnownNexus(w http.ResponseWriter, r *http.Request) {
 
 	doc := nexusDiscoveryDoc{
 		SchemaVersion: "1",
-		Name:          "nexusOrchestrator",
+		Name:          "nexus-orchestrator",
 		Description:   "Multi-LLM AI task orchestration server — submit tasks, coordinate agents, track results",
 		API: nexusDiscoveryAPI{
 			BaseURL: base + "/api",

@@ -139,7 +139,7 @@ func (a *App) RemoveProviderConfig(id string) error {
 
 // Greet is the default Wails example method — kept for scaffolding compatibility.
 func (a *App) Greet(name string) string {
-	return fmt.Sprintf("Hello, %s! nexusOrchestrator is running.", name)
+	return fmt.Sprintf("Hello, %s! nexus-orchestrator is running.", name)
 }
 
 // GetDiscoveredProviders returns system-detected AI tools (not yet promoted).

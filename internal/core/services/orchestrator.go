@@ -1,4 +1,4 @@
-// Package services implements the core business logic of nexusOrchestrator.
+// Package services implements the core business logic of nexus-orchestrator.
 // The OrchestratorService manages a task queue, routes code-generation tasks to
 // available LLM providers, and maintains per-project conversation history.
 package services

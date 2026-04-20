@@ -265,10 +265,10 @@ func (o *OrchestratorService) writeTaskOutput(task domain.Task, code string, pro
 }
 
 // delegationInstruction returns a formatted prompt instructing an AI agent to
-// operate under nexusOrchestrator coordination.
+// operate under nexus-orchestrator coordination.
 func (o *OrchestratorService) delegationInstruction(session domain.AISession, now time.Time) string {
 	addr := o.daemonAddr
-	return fmt.Sprintf(`You are now operating under nexusOrchestrator coordination.
+	return fmt.Sprintf(`You are now operating under nexus-orchestrator coordination.
 
 YOUR NEW WORKFLOW:
 1. Check the nexus queue:  GET %s/api/tasks

@@ -1,5 +1,5 @@
 // nexus-mcp-stdio is a thin proxy that bridges MCP's stdio transport to the
-// running nexusOrchestrator daemon's HTTP-based MCP endpoint.
+// running nexus-orchestrator daemon's HTTP-based MCP endpoint.
 //
 // Usage:
 //

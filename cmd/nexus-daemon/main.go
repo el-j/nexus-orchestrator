@@ -1,5 +1,5 @@
 // Package main is the entry point for the nexus-daemon binary.
-// It runs the full nexusOrchestrator orchestration engine without the desktop GUI,
+// It runs the full nexus-orchestrator orchestration engine without the desktop GUI,
 // suitable for headless server environments or automated workflows.
 package main
 
@@ -139,7 +139,7 @@ func main() {
 		httpBase := "http://" + addr
 		fmt.Printf("\n")
 		fmt.Printf("┌────────────────────────────────────────────────────────┐\n")
-		fmt.Printf("│  nexusOrchestrator %s — ready                     │\n", version)
+		fmt.Printf("│  nexus-orchestrator %s — ready                     │\n", version)
 		fmt.Printf("├────────────────────────────────────────────────────────┤\n")
 		fmt.Printf("│  HTTP API  →  %-39s  │\n", httpBase)
 		fmt.Printf("│  Dashboard →  %-39s  │\n", httpBase+"/ui")
@@ -189,5 +189,5 @@ func main() {
 		log.Printf("daemon: httpapi: %v", err)
 	}
 
-	fmt.Println("nexusOrchestrator daemon shutting down.")
+	fmt.Println("nexus-orchestrator daemon shutting down.")
 }

@@ -1,5 +1,5 @@
 // Package main is the entry point for the nexus CLI binary.
-// It connects to a running nexusOrchestrator daemon via the HTTP API.
+// It connects to a running nexus-orchestrator daemon via the HTTP API.
 package main
 
 import (

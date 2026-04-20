@@ -1,8 +1,8 @@
-title: nexusOrchestrator
+title: nexus-orchestrator
 description: >-
   A local AI orchestrator that routes code-generation tasks to LM Studio, Ollama,
   OpenAI, Anthropic — with per-project session memory, MCP server, and live dashboard.
-baseurl: "/nexusOrchestrator"
+baseurl: "/nexus-orchestrator"
 url: ""
 remote_theme: just-the-docs/just-the-docs
 
@@ -15,10 +15,10 @@ nav_sort: case_insensitive
 
 aux_links:
   "View on GitHub":
-    - "https://github.com/el-j/nexusOrchestrator"
+    - "https://github.com/el-j/nexus-orchestrator"
 
 footer_content: >-
-  nexusOrchestrator &mdash; Local AI task orchestration with multi-provider routing.
+  nexus-orchestrator &mdash; Local AI task orchestration with multi-provider routing.
 
 back_to_top: true
 back_to_top_text: "Back to top"

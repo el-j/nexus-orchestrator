@@ -1,5 +1,5 @@
 # =============================================================================
-# nexusOrchestrator — Multi-stage Docker image
+# nexus-orchestrator — Multi-stage Docker image
 # =============================================================================
 # Stage 1: build nexus-daemon (requires CGO for go-sqlite3)
 # Stage 2: minimal Alpine runtime

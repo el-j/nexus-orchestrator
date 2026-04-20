@@ -1,4 +1,4 @@
-# nexusOrchestrator – Project Guidelines
+# nexus-orchestrator – Project Guidelines
 
 ## Architecture
 
@@ -132,7 +132,7 @@ No Makefile — use plain `go` toolchain commands.
 
 ## AI Orchestrator Workflow (Copilot / Agents using the MCP)
 
-When the nexusOrchestrator MCP is available (`:63988`), **use it as the primary source of truth** for all planning and orchestration. The MCP tools replace ad-hoc task tracking.
+When the nexus-orchestrator MCP is available (`:63988`), **use it as the primary source of truth** for all planning and orchestration. The MCP tools replace ad-hoc task tracking.
 
 > **VS Code MCP Connection** — In `~/Library/Application Support/Code/User/mcp.json` use
 > `"type": "http"` (Streamable HTTP, stateless) **not** `"type": "sse"`. The SSE transport

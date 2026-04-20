@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ── E2E Smoke Test for nexusOrchestrator ──────────────────────────────────────
+# ── E2E Smoke Test for nexus-orchestrator ──────────────────────────────────────
 # Builds the daemon, starts it, exercises HTTP + MCP endpoints, and reports.
 # No external dependencies beyond curl and grep.
 #

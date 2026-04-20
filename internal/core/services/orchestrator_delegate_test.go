@@ -28,8 +28,8 @@ func TestDelegateToNexus_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DelegateToNexus: %v", err)
 	}
-	if !strings.Contains(instruction, "nexusOrchestrator") {
-		t.Errorf("instruction missing 'nexusOrchestrator': %q", instruction)
+	if !strings.Contains(instruction, "nexus-orchestrator") {
+		t.Errorf("instruction missing 'nexus-orchestrator': %q", instruction)
 	}
 
 	sessions, err := orch.ListAISessions(ctx)
