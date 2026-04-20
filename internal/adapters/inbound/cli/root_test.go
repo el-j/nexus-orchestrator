@@ -138,6 +138,10 @@ func (m *mockOrchestrator) UpdateRuntimeConfig(_ context.Context, update domain.
 	return cfg, nil
 }
 
+func (m *mockOrchestrator) GetTasksBySessionID(_ string) ([]domain.Task, error) {
+	return nil, nil
+}
+
 // captureStdout redirects os.Stdout while fn runs and returns the collected
 // output. fn must not call t.Fatal/t.FailNow (runtime.Goexit) directly, as
 // that would skip the pipe teardown; capture the command error via a closure
@@ -360,7 +364,7 @@ func TestProviders_Success(t *testing.T) {
 		},
 	}
 	root := cli.NewRootCmd(mock, nil)
-	root.SetArgs([]string{"providers"})
+	root.SetArgs([]string{"providers", "--json"})
 	root.SilenceErrors = true
 	root.SilenceUsage = true
 

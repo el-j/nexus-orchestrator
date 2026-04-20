@@ -1,13 +1,7 @@
 name: E2E Tests
 
 on:
-  push:
-    branches:
-      - main
-      - 'feature/**'
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch: # run manually only — requires a live dev server (localhost:63989)
 
 # NOTE: These tests require a running nexus-daemon. In CI they run in smoke-only
 # mode against mocked API responses (no real daemon). Tests that require a live
@@ -46,7 +40,6 @@ jobs:
           # Frontend dev server must be started externally for real runs.
           # In CI we skip tests requiring a live server; this step validates config only.
         run: npm run test:e2e -- --reporter=html,github
-        continue-on-error: true
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4

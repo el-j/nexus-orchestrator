@@ -44,7 +44,10 @@ func newBlackboxStack(t *testing.T) *blackboxStack {
 
 	sessionRepo := repo_sqlite.NewSessionRepo(repo)
 	aiSessionRepo := repo_sqlite.NewAISessionRepo(repo)
-	orch := services.NewOrchestrator(services.NewDiscoveryService(), repo, fs_writer.New(), sessionRepo)
+	orch, err := services.NewOrchestrator(services.NewDiscoveryService(), repo, fs_writer.New(), sessionRepo)
+	if err != nil {
+		t.Fatal(err)
+	}
 	orch.SetAISessionRepo(aiSessionRepo)
 	hub := httpapi.NewHub()
 	orch.SetBroadcaster(hub)
@@ -189,7 +192,7 @@ func TestBlackboxHTTPDraftPromoteCancel_NoProvider(t *testing.T) {
 		if task.Status == domain.StatusNoProvider {
 			break
 		}
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(20 * time.Millisecond)
 	}
 
 	resp, body = httpJSON(t, client, http.MethodDelete, stack.httpSrv.URL+"/api/tasks/"+id, nil)

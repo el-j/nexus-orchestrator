@@ -83,6 +83,16 @@ func (o *OrchestratorService) GetTasksForProject(projectPath string) ([]domain.T
 	return o.repo.GetByProjectPath(filepath.Clean(projectPath))
 }
 
+// GetTasksBySessionID returns all tasks claimed by the given AI session.
+// Returns an empty slice (not an error) when sessionID is not found.
+func (o *OrchestratorService) GetTasksBySessionID(sessionID string) ([]domain.Task, error) {
+	tasks, err := o.repo.GetTasksBySessionID(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("orchestrator: get tasks by session id: %w", err)
+	}
+	return tasks, nil
+}
+
 // CancelTask removes a QUEUED or NO_PROVIDER task before it is processed.
 func (o *OrchestratorService) CancelTask(id string) error {
 	// First try QUEUED → CANCELLED

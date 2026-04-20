@@ -1,4 +1,4 @@
-// Package ports defines the hexagonal architecture port interfaces for nexusOrchestrator.
+// Package ports defines the hexagonal architecture port interfaces for nexus-orchestrator.
 // This file contains the brain / context-intelligence port interfaces.
 package ports
 

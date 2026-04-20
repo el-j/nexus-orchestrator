@@ -31,7 +31,7 @@ func (s AISessionStatus) IsTerminal() bool {
 }
 
 // AISession tracks a registered external AI agent session (GitHub Copilot,
-// Claude Code, Cursor, etc.) that nexusOrchestrator can route tasks to.
+// Claude Code, Cursor, etc.) that nexus-orchestrator can route tasks to.
 type AISession struct {
 	ID                  string          `json:"id"`
 	Source              AISessionSource `json:"source"`

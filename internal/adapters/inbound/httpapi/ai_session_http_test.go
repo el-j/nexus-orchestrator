@@ -44,7 +44,10 @@ func newAISessionStack(t *testing.T) (*httptest.Server, func()) {
 	aiSessionRepo := repo_sqlite.NewAISessionRepo(repo)
 	writer := fs_writer.New()
 	discovery := services.NewDiscoveryService(&aiSessionTestLLM{})
-	orch := services.NewOrchestrator(discovery, repo, writer, sessionRepo)
+	orch, err := services.NewOrchestrator(discovery, repo, writer, sessionRepo)
+	if err != nil {
+		t.Fatal(err)
+	}
 	orch.SetAISessionRepo(aiSessionRepo)
 
 	hub := httpapi.NewHub()
@@ -64,17 +67,17 @@ func TestAISessionHTTP(t *testing.T) {
 	// Validation cases — each spins up its own server and runs in parallel.
 	validationCases := []struct {
 		name       string
-		body       map[string]interface{}
+		body       map[string]any
 		wantStatus int
 	}{
 		{
 			name:       "missing_agentName_returns_400",
-			body:       map[string]interface{}{"source": "mcp"},
+			body:       map[string]any{"source": "mcp"},
 			wantStatus: http.StatusBadRequest,
 		},
 		{
 			name:       "invalid_source_returns_400",
-			body:       map[string]interface{}{"agentName": "Claude Desktop", "source": "invalid"},
+			body:       map[string]any{"agentName": "Claude Desktop", "source": "invalid"},
 			wantStatus: http.StatusBadRequest,
 		},
 	}
@@ -108,7 +111,7 @@ func TestAISessionHTTP(t *testing.T) {
 		defer cleanup()
 
 		// Step 3: POST valid session → 201 + JSON body with "id" field.
-		reqBody, _ := json.Marshal(map[string]interface{}{
+		reqBody, _ := json.Marshal(map[string]any{
 			"agentName": "Claude Desktop",
 			"source":    "mcp",
 		})

@@ -35,10 +35,10 @@ type sessionFile struct {
 }
 
 type historyMessage struct {
-	Role      string `json:"role"`
-	Content   any    `json:"content"`   // can be string or structured
-	Timestamp int64  `json:"timestamp"` // unix seconds
-	Model     string `json:"model,omitempty"`
+	Role      string          `json:"role"`
+	Content   json.RawMessage `json:"content"` // string or structured content blocks
+	Timestamp int64           `json:"timestamp"`
+	Model     string          `json:"model,omitempty"`
 }
 
 // ContinueSessionReader reads ~/.continue/sessions/ to observe Continue IDE activity.

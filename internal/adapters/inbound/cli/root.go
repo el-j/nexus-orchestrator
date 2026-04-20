@@ -1,4 +1,4 @@
-// Package cli provides the Cobra-based CLI inbound adapter for nexusOrchestrator.
+// Package cli provides the Cobra-based CLI inbound adapter for nexus-orchestrator.
 // It is a thin HTTP client that forwards commands to the daemon API.
 package cli
 
@@ -14,13 +14,39 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const defaultDaemonURL = "http://127.0.0.1:63987"
+
+// baseURLUpdater is satisfied by the HTTP client types that support runtime URL override.
+type baseURLUpdater interface {
+	SetBaseURL(string)
+}
+
 // NewRootCmd builds and returns the root Cobra command tree.
 func NewRootCmd(orch ports.Orchestrator, brain ports.BrainService) *cobra.Command {
+	var daemonURL string
+
 	root := &cobra.Command{
 		Use:   "nexus",
-		Short: "nexusOrchestrator — Local-first AI orchestrator CLI",
-		Long:  "Control the nexusOrchestrator daemon: list the queue, submit tasks, and check provider status.",
+		Short: "nexus-orchestrator — Local-first AI orchestrator CLI",
+		Long:  "Control the nexus-orchestrator daemon: list the queue, submit tasks, and check provider status.",
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			effective := daemonURL
+			if effective == "" {
+				effective = os.Getenv("NEXUS_ADDR")
+			}
+			if effective == "" {
+				effective = defaultDaemonURL
+			}
+			if s, ok := orch.(baseURLUpdater); ok {
+				s.SetBaseURL(effective)
+			}
+			if s, ok := brain.(baseURLUpdater); ok {
+				s.SetBaseURL(effective)
+			}
+		},
 	}
+
+	root.PersistentFlags().StringVar(&daemonURL, "daemon-url", "", "Override daemon URL (or set NEXUS_ADDR)")
 
 	root.AddCommand(newQueueCmd(orch))
 	root.AddCommand(newProvidersCmd(orch))
@@ -29,6 +55,11 @@ func NewRootCmd(orch ports.Orchestrator, brain ports.BrainService) *cobra.Comman
 	root.AddCommand(newPromoteCmd(orch))
 	root.AddCommand(newUpdateCmd(orch))
 	root.AddCommand(newBrainCmd(brain))
+	root.AddCommand(newAISessionsCmd(orch))
+	root.AddCommand(newConfigCmd(orch))
+	root.AddCommand(newPlansCmd(orch))
+	root.AddCommand(newLogsCmd(orch))
+	root.AddCommand(newTasksCmd(orch))
 
 	return root
 }
@@ -244,12 +275,13 @@ func newUpdateCmd(orch ports.Orchestrator) *cobra.Command {
 	return cmd
 }
 
-// newProvidersCmd returns the `nexus providers` command which queries the live
-// daemon for the status of each registered LLM backend.
+// newProvidersCmd returns the `nexus providers` command group.
 func newProvidersCmd(orch ports.Orchestrator) *cobra.Command {
-	return &cobra.Command{
+	var jsonOut bool
+
+	cmd := &cobra.Command{
 		Use:   "providers",
-		Short: "Show the status of all registered LLM backends",
+		Short: "Manage LLM providers",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			providers, err := orch.GetProviders()
 			if err != nil {
@@ -259,9 +291,238 @@ func newProvidersCmd(orch ports.Orchestrator) *cobra.Command {
 				fmt.Println("No providers registered.")
 				return nil
 			}
-			enc := json.NewEncoder(os.Stdout)
-			enc.SetIndent("", "  ")
-			return enc.Encode(providers)
+			if jsonOut {
+				enc := json.NewEncoder(os.Stdout)
+				enc.SetIndent("", "  ")
+				return enc.Encode(providers)
+			}
+			fmt.Printf("%-20s  %-8s  %s\n", "NAME", "STATUS", "BASE_URL")
+			fmt.Println(strings.Repeat("-", 60))
+			for _, p := range providers {
+				st := "inactive"
+				if p.Active {
+					st = "active"
+				}
+				fmt.Printf("%-20s  %-8s  %s\n", p.Name, st, p.BaseURL)
+			}
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "Output as JSON")
+
+	cmd.AddCommand(newProvidersConfigCmd(orch))
+	cmd.AddCommand(newProvidersDiscoveredCmd(orch))
+	cmd.AddCommand(newProvidersScanCmd(orch))
+	cmd.AddCommand(newProvidersPromoteCmd(orch))
+
+	return cmd
+}
+
+func newProvidersConfigCmd(orch ports.Orchestrator) *cobra.Command {
+	cfg := &cobra.Command{
+		Use:   "config",
+		Short: "Manage persisted provider configurations",
+	}
+	cfg.AddCommand(newProvidersConfigListCmd(orch))
+	cfg.AddCommand(newProvidersConfigAddCmd(orch))
+	cfg.AddCommand(newProvidersConfigUpdateCmd(orch))
+	cfg.AddCommand(newProvidersConfigRemoveCmd(orch))
+	return cfg
+}
+
+func newProvidersConfigListCmd(orch ports.Orchestrator) *cobra.Command {
+	var jsonOut bool
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "List all persisted provider configurations",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfgs, err := orch.ListProviderConfigs(cmd.Context())
+			if err != nil {
+				return fmt.Errorf("providers config list: %w", err)
+			}
+			if jsonOut {
+				enc := json.NewEncoder(os.Stdout)
+				enc.SetIndent("", "  ")
+				return enc.Encode(cfgs)
+			}
+			fmt.Printf("%-36s  %-12s  %-20s  %-7s  %s\n", "ID", "KIND", "NAME", "ENABLED", "BASE_URL")
+			fmt.Println(strings.Repeat("-", 100))
+			for _, c := range cfgs {
+				enabled := "false"
+				if c.Enabled {
+					enabled = "true"
+				}
+				fmt.Printf("%-36s  %-12s  %-20s  %-7s  %s\n", c.ID, c.Kind, c.Name, enabled, c.BaseURL)
+			}
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "Output as JSON")
+	return cmd
+}
+
+func newProvidersConfigAddCmd(orch ports.Orchestrator) *cobra.Command {
+	var kind, name, baseURL, apiKey string
+	var jsonOut bool
+	cmd := &cobra.Command{
+		Use:   "add",
+		Short: "Add a new provider configuration",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if apiKey == "" {
+				apiKey = os.Getenv("NEXUS_API_KEY")
+			}
+			cfg := domain.ProviderConfig{
+				Kind:    domain.ProviderKind(kind),
+				Name:    name,
+				BaseURL: baseURL,
+				APIKey:  apiKey,
+				Enabled: true,
+			}
+			created, err := orch.AddProviderConfig(cmd.Context(), cfg)
+			if err != nil {
+				return fmt.Errorf("providers config add: %w", err)
+			}
+			if jsonOut {
+				enc := json.NewEncoder(os.Stdout)
+				enc.SetIndent("", "  ")
+				return enc.Encode(created)
+			}
+			fmt.Printf("Created provider config: %s (%s)\n", created.Name, created.ID)
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&kind, "kind", "", "Provider kind (required)")
+	cmd.Flags().StringVar(&name, "name", "", "Provider name (required)")
+	cmd.Flags().StringVar(&baseURL, "base-url", "", "API base URL")
+	cmd.Flags().StringVar(&apiKey, "api-key", "", "API key (or set NEXUS_API_KEY)")
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "Output as JSON")
+	_ = cmd.MarkFlagRequired("kind")
+	_ = cmd.MarkFlagRequired("name")
+	return cmd
+}
+
+func newProvidersConfigUpdateCmd(orch ports.Orchestrator) *cobra.Command {
+	var name, baseURL, apiKey string
+	var enabled bool
+	var jsonOut bool
+	cmd := &cobra.Command{
+		Use:   "update <id>",
+		Short: "Update an existing provider configuration",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if apiKey == "" {
+				apiKey = os.Getenv("NEXUS_API_KEY")
+			}
+			cfg := domain.ProviderConfig{ID: args[0]}
+			if cmd.Flags().Changed("name") {
+				cfg.Name = name
+			}
+			if cmd.Flags().Changed("base-url") {
+				cfg.BaseURL = baseURL
+			}
+			if cmd.Flags().Changed("enabled") {
+				cfg.Enabled = enabled
+			}
+			if apiKey != "" {
+				cfg.APIKey = apiKey
+			}
+			updated, err := orch.UpdateProviderConfig(cmd.Context(), cfg)
+			if err != nil {
+				return fmt.Errorf("providers config update: %w", err)
+			}
+			if jsonOut {
+				enc := json.NewEncoder(os.Stdout)
+				enc.SetIndent("", "  ")
+				return enc.Encode(updated)
+			}
+			fmt.Printf("Updated provider config: %s (%s)\n", updated.Name, updated.ID)
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&name, "name", "", "New provider name")
+	cmd.Flags().StringVar(&baseURL, "base-url", "", "New API base URL")
+	cmd.Flags().StringVar(&apiKey, "api-key", "", "API key (or set NEXUS_API_KEY)")
+	cmd.Flags().BoolVar(&enabled, "enabled", false, "Set enabled state")
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "Output as JSON")
+	return cmd
+}
+
+func newProvidersConfigRemoveCmd(orch ports.Orchestrator) *cobra.Command {
+	return &cobra.Command{
+		Use:   "remove <id>",
+		Short: "Remove a provider configuration by ID",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := orch.RemoveProviderConfig(cmd.Context(), args[0]); err != nil {
+				return fmt.Errorf("providers config remove: %w", err)
+			}
+			fmt.Printf("Removed provider config: %s\n", args[0])
+			return nil
+		},
+	}
+}
+
+func newProvidersDiscoveredCmd(orch ports.Orchestrator) *cobra.Command {
+	var jsonOut bool
+	cmd := &cobra.Command{
+		Use:   "discovered",
+		Short: "List discovered local AI providers",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			providers, err := orch.GetDiscoveredProviders()
+			if err != nil {
+				return fmt.Errorf("providers discovered: %w", err)
+			}
+			if jsonOut {
+				enc := json.NewEncoder(os.Stdout)
+				enc.SetIndent("", "  ")
+				return enc.Encode(providers)
+			}
+			fmt.Printf("%-20s  %-12s  %-10s  %s\n", "NAME", "KIND", "STATUS", "BASE_URL")
+			fmt.Println(strings.Repeat("-", 80))
+			for _, p := range providers {
+				fmt.Printf("%-20s  %-12s  %-10s  %s\n", p.Name, p.Kind, p.Status, p.BaseURL)
+			}
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "Output as JSON")
+	return cmd
+}
+
+func newProvidersScanCmd(orch ports.Orchestrator) *cobra.Command {
+	var jsonOut bool
+	cmd := &cobra.Command{
+		Use:   "scan",
+		Short: "Trigger a provider discovery scan",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			providers, err := orch.TriggerScan(cmd.Context())
+			if err != nil {
+				return fmt.Errorf("providers scan: %w", err)
+			}
+			if jsonOut {
+				enc := json.NewEncoder(os.Stdout)
+				enc.SetIndent("", "  ")
+				return enc.Encode(providers)
+			}
+			fmt.Printf("Discovered %d providers.\n", len(providers))
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&jsonOut, "json", false, "Output as JSON")
+	return cmd
+}
+
+func newProvidersPromoteCmd(orch ports.Orchestrator) *cobra.Command {
+	return &cobra.Command{
+		Use:   "promote <name>",
+		Short: "Promote a discovered provider to the active registry",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := orch.PromoteProvider(cmd.Context(), args[0]); err != nil {
+				return fmt.Errorf("providers promote: %w", err)
+			}
+			fmt.Printf("Provider %s promoted.\n", args[0])
+			return nil
 		},
 	}
 }

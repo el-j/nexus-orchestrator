@@ -276,22 +276,14 @@ func (s *Server) handleHeartbeatTask(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleGetSessionTasks(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	// We use GetAllTasks and filter by AISessionID since there's no direct port method on Orchestrator
-	// for session-scoped task query. The repo method is on TaskRepository, not Orchestrator.
-	allTasks, err := s.orch.GetAllTasks()
+	tasks, err := s.orch.GetTasksBySessionID(id)
 	if err != nil {
 		log.Printf("httpapi: get session tasks %s: %v", id, err)
 		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	var sessionTasks []domain.Task
-	for _, t := range allTasks {
-		if t.AISessionID == id {
-			sessionTasks = append(sessionTasks, t)
-		}
+	if tasks == nil {
+		tasks = []domain.Task{}
 	}
-	if sessionTasks == nil {
-		sessionTasks = []domain.Task{}
-	}
-	writeJSON(w, http.StatusOK, sessionTasks)
+	writeJSON(w, http.StatusOK, tasks)
 }

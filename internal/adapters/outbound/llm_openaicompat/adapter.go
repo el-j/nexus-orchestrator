@@ -50,13 +50,24 @@ func (a *Adapter) ProviderName() string { return a.name }
 func (a *Adapter) ActiveModel() string  { return a.model }
 func (a *Adapter) BaseURL() string      { return a.baseURL }
 
-// ContextLimit returns 131072 (128K) when a model is configured, 0 otherwise.
-// 128K is a conservative default for modern OpenAI-compatible endpoints.
+// openAIContextLimits maps known OpenAI model IDs to their context window sizes.
+var openAIContextLimits = map[string]int{
+	"gpt-4o":      128000,
+	"gpt-4o-mini": 128000,
+	"gpt-4":       8192,
+	"gpt-4-turbo": 128000,
+}
+
+// ContextLimit returns the context window size for the configured model.
+// Falls back to 32768 for unknown models.
 func (a *Adapter) ContextLimit() int {
 	if a.model == "" {
 		return 0
 	}
-	return 131072
+	if limit, ok := openAIContextLimits[a.model]; ok {
+		return limit
+	}
+	return 32768
 }
 
 // Ping checks whether the provider is reachable by hitting the /models endpoint.

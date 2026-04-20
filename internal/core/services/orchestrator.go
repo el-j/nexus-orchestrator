@@ -1,4 +1,4 @@
-// Package services implements the core business logic of nexusOrchestrator.
+// Package services implements the core business logic of nexus-orchestrator.
 // The OrchestratorService manages a task queue, routes code-generation tasks to
 // available LLM providers, and maintains per-project conversation history.
 package services
@@ -120,15 +120,15 @@ func NewOrchestrator(
 	writer ports.FileWriter,
 	sessionRepo ports.SessionRepository,
 	opts ...Option,
-) *OrchestratorService {
+) (*OrchestratorService, error) {
 	if discovery == nil {
-		panic("orchestrator: NewOrchestrator: discovery is required")
+		return nil, fmt.Errorf("orchestrator: new: missing %s dependency", "discovery")
 	}
 	if repo == nil {
-		panic("orchestrator: NewOrchestrator: repo is required")
+		return nil, fmt.Errorf("orchestrator: new: missing %s dependency", "repo")
 	}
 	if writer == nil {
-		panic("orchestrator: NewOrchestrator: writer is required")
+		return nil, fmt.Errorf("orchestrator: new: missing %s dependency", "writer")
 	}
 	svc := &OrchestratorService{
 		discovery:         discovery,
@@ -155,7 +155,7 @@ func NewOrchestrator(
 		svc.workerWg.Add(1)
 		go svc.runTaskWatchdog()
 	}
-	return svc
+	return svc, nil
 }
 
 // Stop signals the worker goroutine to exit and waits for it to finish.
@@ -223,7 +223,7 @@ func (o *OrchestratorService) GetRuntimeConfig(ctx context.Context) (domain.Runt
 
 	effectiveCap := queueCap
 	if effectiveCap <= 0 {
-		effectiveCap = 50
+		effectiveCap = DefaultQueueCap
 	}
 
 	cfg := domain.RuntimeConfig{
@@ -361,7 +361,7 @@ func (o *OrchestratorService) validateQueueAdmission(task domain.Task) error {
 		return fmt.Errorf("orchestrator: queue task: service is stopped")
 	}
 	if queueCap <= 0 {
-		queueCap = 50
+		queueCap = DefaultQueueCap
 	}
 
 	pending, err := o.repo.GetPending()
@@ -519,8 +519,8 @@ func (o *OrchestratorService) runSessionCleanup() {
 					}
 				}
 			}
-			// Purge disconnected sessions older than 2 hours to prevent unbounded growth.
-			if n, purgeErr := repo.PurgeDisconnected(ctx, 2*time.Hour); purgeErr != nil {
+			// Purge disconnected sessions older than DefaultPurgeDisconnectAge to prevent unbounded growth.
+			if n, purgeErr := repo.PurgeDisconnected(ctx, DefaultPurgeDisconnectAge); purgeErr != nil {
 				log.Printf("orchestrator: session cleanup: purge: %v", purgeErr)
 			} else if n > 0 {
 				log.Printf("orchestrator: session cleanup: purged %d stale disconnected sessions", n)
@@ -548,8 +548,8 @@ func (o *OrchestratorService) runTaskWatchdog() {
 		case <-o.stopCh:
 			return
 		case <-ticker.C:
-			// 5 minutes timeout for processing tasks
-			tasks, err := o.repo.GetStaleProcessing(ctx, 5*time.Minute)
+			// DefaultWatchdogStale timeout for processing tasks
+			tasks, err := o.repo.GetStaleProcessing(ctx, DefaultWatchdogStale)
 			if err != nil {
 				log.Printf("orchestrator: task watchdog: get stale tasks: %v", err)
 				continue

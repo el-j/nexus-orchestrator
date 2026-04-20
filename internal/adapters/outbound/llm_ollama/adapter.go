@@ -150,17 +150,14 @@ func (a *Adapter) ContextLimit() int {
 		}
 		defer resp.Body.Close()
 		var result struct {
-			ModelInfo map[string]interface{} `json:"model_info"`
+			ModelInfo map[string]json.Number `json:"model_info"`
 		}
 		if json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result) != nil {
 			return
 		}
 		if v, ok := result.ModelInfo["llama.context_length"]; ok {
-			switch n := v.(type) {
-			case float64:
+			if n, err := v.Float64(); err == nil {
 				a.contextLimit = int(n)
-			case int:
-				a.contextLimit = n
 			}
 		}
 	})

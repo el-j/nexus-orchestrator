@@ -24,17 +24,7 @@ import (
 
 func waitStatus(t *testing.T, repo *memRepo, id string, want domain.TaskStatus, timeout time.Duration) domain.Task {
 	t.Helper()
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		time.Sleep(100 * time.Millisecond)
-		saved, _ := repo.GetByID(id)
-		if saved.Status == want {
-			return saved
-		}
-	}
-	saved, _ := repo.GetByID(id)
-	t.Fatalf("task %s: want status %s, got %s after %s", id, want, saved.Status, timeout)
-	return saved
+	return repo.WaitForStatus(t, id, want, timeout)
 }
 
 // errWriter returns an error from WriteCodeToFile so we can verify writeTaskOutput
@@ -91,7 +81,10 @@ func TestSelectProvider_MatchingProviderName(t *testing.T) {
 	repo := newMemRepo()
 	llm := &mockLLMClient{alive: true, name: "target-provider", code: "ok"}
 	discovery := services.NewDiscoveryService(llm)
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, err := orch.SubmitTask(domain.Task{
@@ -110,7 +103,10 @@ func TestSelectProvider_UnknownProviderName(t *testing.T) {
 	repo := newMemRepo()
 	llm := &mockLLMClient{alive: true, name: "real-provider", code: "ok"}
 	discovery := services.NewDiscoveryService(llm)
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, err := orch.SubmitTask(domain.Task{
@@ -130,7 +126,10 @@ func TestSelectProvider_NoHint_UsesFirstActive(t *testing.T) {
 	dead := &mockLLMClient{alive: false, name: "dead"}
 	alive := &mockLLMClient{alive: true, name: "alive", code: "result"}
 	discovery := services.NewDiscoveryService(dead, alive)
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, err := orch.SubmitTask(domain.Task{Instruction: "no hint"})
@@ -149,7 +148,10 @@ func TestExecuteGeneration_ChatCalledWithSessionRepo(t *testing.T) {
 	llm := &chatTrackingLLM{mockLLMClient: mockLLMClient{alive: true, name: "mock", code: "chat result"}}
 	discovery := services.NewDiscoveryService(llm)
 	sessRepo := newMemSessionRepo()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, sessRepo)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, sessRepo)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, _ := orch.SubmitTask(domain.Task{ProjectPath: "/proj/chat", Instruction: "use chat"})
@@ -170,7 +172,10 @@ func TestExecuteGeneration_GenerateCodeWithoutSessionRepo(t *testing.T) {
 	llm := &chatTrackingLLM{mockLLMClient: mockLLMClient{alive: true, name: "mock", code: "gen result"}}
 	discovery := services.NewDiscoveryService(llm)
 	// nil sessionRepo → GenerateCode path
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, _ := orch.SubmitTask(domain.Task{Instruction: "no session"})
@@ -191,7 +196,10 @@ func TestExecuteGeneration_ChatError_EventuallyFails(t *testing.T) {
 	llm := &mockLLMClient{alive: true, name: "mock", codeErr: errors.New("llm down")}
 	discovery := services.NewDiscoveryService(llm)
 	sessRepo := newMemSessionRepo()
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, sessRepo)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, sessRepo)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, _ := orch.SubmitTask(domain.Task{ProjectPath: "/proj/fail-chat", Instruction: "will fail"})
@@ -207,7 +215,10 @@ func TestBuildChatContext_TooLargeContext(t *testing.T) {
 	// contextLimit=10 means limit-512 = -502; any non-empty instruction overflows.
 	llm := &mockLLMClient{alive: true, name: "mock", code: "ok", contextLimit: 10}
 	discovery := services.NewDiscoveryService(llm)
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, _ := orch.SubmitTask(domain.Task{
@@ -224,7 +235,10 @@ func TestWriteTaskOutput_WriteError_TaskFailed(t *testing.T) {
 	repo := newMemRepo()
 	llm := &mockLLMClient{alive: true, name: "mock", code: "code"}
 	discovery := services.NewDiscoveryService(llm)
-	orch := services.NewOrchestrator(discovery, repo, &errWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &errWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, _ := orch.SubmitTask(domain.Task{
@@ -248,7 +262,10 @@ func TestExtractCode_FencedBlock(t *testing.T) {
 	discovery := services.NewDiscoveryService(llm)
 
 	writer := &diskWriter{dir: dir}
-	orch := services.NewOrchestrator(discovery, repo, writer, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, writer, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, _ := orch.SubmitTask(domain.Task{
@@ -288,7 +305,10 @@ func TestProviderFailover_DeadProviderSkipped(t *testing.T) {
 	dead := &countingLLM{name: "dead-provider", alive: false}
 	alive := &countingLLM{name: "alive-provider", alive: true, code: "done"}
 	discovery := services.NewDiscoveryService(dead, alive)
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, _ := orch.SubmitTask(domain.Task{Instruction: "find alive provider"})
@@ -309,7 +329,10 @@ func TestProviderFailover_AllProvidersFail(t *testing.T) {
 	p1 := &countingLLM{name: "p1", alive: true, codeErr: errors.New("p1 error")}
 	p2 := &countingLLM{name: "p2", alive: true, codeErr: errors.New("p2 error")}
 	discovery := services.NewDiscoveryService(p1, p2)
-	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	orch, err := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer orch.Stop()
 
 	id, _ := orch.SubmitTask(domain.Task{Instruction: "both fail"})

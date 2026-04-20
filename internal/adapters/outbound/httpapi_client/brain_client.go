@@ -27,6 +27,16 @@ func NewBrainClient(baseURL string) *BrainClient {
 	}
 }
 
+// SetBaseURL updates the daemon URL at runtime (used by the --daemon-url CLI flag).
+func (r *BrainClient) SetBaseURL(u string) {
+	r.baseURL = strings.TrimRight(u, "/")
+}
+
+// GetBaseURL returns the current daemon base URL.
+func (r *BrainClient) GetBaseURL() string {
+	return r.baseURL
+}
+
 func (r *BrainClient) newRequest(ctx context.Context, method, path string, body []byte) (*http.Request, error) {
 	var bodyReader *bytes.Reader
 	if body != nil {

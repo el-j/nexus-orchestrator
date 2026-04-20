@@ -128,7 +128,18 @@ jobs:
           restore-keys: ${{ runner.os }}-go-
 
       - name: Run tests
-        run: CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" CGO_LDFLAGS="-lm" go test -race -count=1 ./...
+        run: CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" CGO_LDFLAGS="-lm" go test -race -count=1 -coverprofile=coverage.out ./...
+
+      - name: Print coverage
+        run: go tool cover -func=coverage.out | tail -1
+
+      - name: Coverage gate (≥50%)
+        run: go tool cover -func=coverage.out | awk '/^total:/{gsub(/%/,""); if ($3+0 < 50) { print "Coverage "$3"% below 50% threshold"; exit 1 }}'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out
 
   build:
     name: Build
@@ -151,7 +162,7 @@ jobs:
         run: |
           CGO_ENABLED=0 go build ./cmd/nexus-cli/...
           CGO_ENABLED=0 go build ./cmd/nexus-submit/...
-          CGO_ENABLED=1 go build ./cmd/nexus-daemon/...
+          CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" CGO_LDFLAGS="-lm" go build ./cmd/nexus-daemon/...
 
   frontend-test:
     name: Frontend Smoke Coverage

@@ -6,6 +6,21 @@
  */
 
 import { z } from 'zod';
+import {
+  NexusValidationError,
+  AIActivitySchema,
+  DiscoveredAgentSchema,
+  BrainStatusSchema,
+  ContextResponseSchema,
+  ContextSectionSchema,
+  ProjectKnowledgeSchema,
+  DelegateResponseSchema,
+  IngestKnowledgeResponseSchema,
+  SearchKnowledgeResponseSchema,
+  FileMapResponseSchema,
+} from './schemas';
+
+export { NexusValidationError };
 
 // ---- Domain types (mirror internal/core/domain/task.go) ----
 
@@ -441,7 +456,7 @@ export class NexusClient {
 
   /** Return all discovered AI agents on this machine. */
   async getDiscoveredAgents(): Promise<DiscoveredAgent[]> {
-    return this.get<DiscoveredAgent[]>('/api/ai-sessions/discovered');
+    return this.get('/api/ai-sessions/discovered', z.array(DiscoveredAgentSchema));
   }
 
   /** Return recent AI activities, optionally filtered by agent, project, or type. */
@@ -456,17 +471,19 @@ export class NexusClient {
     if (options?.projectPath) params.set('project', options.projectPath);
     if (options?.type) params.set('type', options.type);
     if (options?.limit) params.set('limit', String(options.limit));
-    const url = `${this.baseUrl}/api/activities${params.size ? '?' + params.toString() : ''}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
-    if (!res.ok) return [];
-    return res.json() as Promise<AIActivity[]>;
+    const path = `/api/activities${params.size ? '?' + params.toString() : ''}`;
+    const resp = await fetch(`${this.baseUrl}${path}`, { signal: AbortSignal.timeout(3000) });
+    if (!resp.ok) return [];
+    const data: unknown = await resp.json();
+    return this.parseResponse(z.array(AIActivitySchema), data);
   }
 
   /** Delegate a session to nexusOrchestrator for task handling. */
   async delegateSession(sessionId: string): Promise<DelegateResponse> {
-    return this.post<DelegateResponse>(
+    return this.post(
       `/api/ai-sessions/${encodeURIComponent(sessionId)}/delegate`,
       {},
+      DelegateResponseSchema,
     );
   }
 
@@ -493,10 +510,11 @@ export class NexusClient {
    * Ingest a markdown file into the project's brain context.
    */
   async ingestKnowledge(projectPath: string, filePath: string): Promise<number> {
-    const data = await this.post<{ ingestedSections: number }>('/api/brain/ingest', {
-      projectPath,
-      filePath,
-    });
+    const data = await this.post(
+      '/api/brain/ingest',
+      { projectPath, filePath },
+      IngestKnowledgeResponseSchema,
+    );
     return data.ingestedSections;
   }
 
@@ -504,8 +522,9 @@ export class NexusClient {
    * Get the indexing status and token size of the project knowledge brain.
    */
   async getBrainStatus(projectPath: string): Promise<BrainStatus> {
-    return this.get<BrainStatus>(
+    return this.get(
       `/api/brain/status?projectPath=${encodeURIComponent(projectPath)}`,
+      BrainStatusSchema,
     );
   }
 
@@ -513,7 +532,7 @@ export class NexusClient {
    * Aggregate the top-level macro context for LLM system prompts.
    */
   async getProjectContext(projectPath: string, maxTokens?: number): Promise<ContextResponse> {
-    return this.post<ContextResponse>('/api/brain/context', { projectPath, maxTokens });
+    return this.post('/api/brain/context', { projectPath, maxTokens }, ContextResponseSchema);
   }
 
   /**
@@ -524,11 +543,11 @@ export class NexusClient {
     question: string,
     maxTokens?: number,
   ): Promise<ContextResponse> {
-    return this.post<ContextResponse>('/api/brain/focused-context', {
-      projectPath,
-      question,
-      maxTokens,
-    });
+    return this.post(
+      '/api/brain/focused-context',
+      { projectPath, question, maxTokens },
+      ContextResponseSchema,
+    );
   }
 
   /**
@@ -536,7 +555,7 @@ export class NexusClient {
    */
   async searchKnowledge(projectPath: string, query: string, limit = 5): Promise<ContextSection[]> {
     const params = new URLSearchParams({ projectPath, query, limit: String(limit) });
-    const data = await this.get<{ results: ContextSection[] }>(`/api/brain/search?${params}`);
+    const data = await this.get(`/api/brain/search?${params}`, SearchKnowledgeResponseSchema);
     return data.results ?? [];
   }
 
@@ -544,7 +563,11 @@ export class NexusClient {
    * Initialize the project brain, optionally seeding from a CLAUDE.md file.
    */
   async initProject(projectPath: string, claudeMDPath?: string): Promise<BrainStatus> {
-    return this.post('/api/brain/init', { projectPath, claudeMDPath: claudeMDPath ?? '' });
+    return this.post(
+      '/api/brain/init',
+      { projectPath, claudeMDPath: claudeMDPath ?? '' },
+      BrainStatusSchema,
+    );
   }
 
   /**
@@ -553,7 +576,10 @@ export class NexusClient {
   async listKnowledge(projectPath: string, kind?: string): Promise<ProjectKnowledge[]> {
     const params = new URLSearchParams({ projectPath });
     if (kind) params.set('kind', kind);
-    const data = await this.get<ProjectKnowledge[] | null>(`/api/brain/knowledge?${params}`);
+    const data = await this.get(
+      `/api/brain/knowledge?${params}`,
+      z.array(ProjectKnowledgeSchema).nullable(),
+    );
     return data ?? [];
   }
 
@@ -570,7 +596,7 @@ export class NexusClient {
   async getFileMap(projectPath: string, focusArea?: string): Promise<string[]> {
     const params = new URLSearchParams({ projectPath });
     if (focusArea) params.set('focusArea', focusArea);
-    const data = await this.get<{ filePaths: string[] }>(`/api/brain/file-map?${params}`);
+    const data = await this.get(`/api/brain/file-map?${params}`, FileMapResponseSchema);
     return data.filePaths ?? [];
   }
 

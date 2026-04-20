@@ -1,5 +1,5 @@
 // Package httpapi_client provides an HTTP client that implements ports.Orchestrator
-// by forwarding calls to a running nexusOrchestrator daemon via its HTTP API.
+// by forwarding calls to a running nexus-orchestrator daemon via its HTTP API.
 package httpapi_client
 
 import (
@@ -17,7 +17,7 @@ import (
 	"nexus-orchestrator/internal/core/ports"
 )
 
-// Client forwards orchestrator calls to the running nexusOrchestrator HTTP API.
+// Client forwards orchestrator calls to the running nexus-orchestrator HTTP API.
 type Client struct {
 	baseURL string
 	token   string
@@ -46,7 +46,7 @@ type updateTaskStatusRequest struct {
 	Logs      string `json:"logs,omitempty"`
 }
 
-// NewClient returns a new Client that talks to the nexusOrchestrator daemon at baseURL.
+// NewClient returns a new Client that talks to the nexus-orchestrator daemon at baseURL.
 func NewClient(baseURL string) *Client {
 	return &Client{
 		baseURL: strings.TrimRight(baseURL, "/"),
@@ -61,6 +61,16 @@ func NewClientWithHTTP(baseURL string, httpClient *http.Client) *Client {
 	c := NewClient(baseURL)
 	c.client = httpClient
 	return c
+}
+
+// SetBaseURL updates the daemon URL at runtime (used by the --daemon-url CLI flag).
+func (r *Client) SetBaseURL(u string) {
+	r.baseURL = strings.TrimRight(u, "/")
+}
+
+// GetBaseURL returns the current daemon base URL.
+func (r *Client) GetBaseURL() string {
+	return r.baseURL
 }
 
 func (r *Client) newRequest(ctx context.Context, method, path string, body io.Reader) (*http.Request, error) {
@@ -148,6 +158,27 @@ func (r *Client) GetQueue() ([]domain.Task, error) {
 	var tasks []domain.Task
 	if err := json.NewDecoder(resp.Body).Decode(&tasks); err != nil {
 		return nil, fmt.Errorf("remote: decode queue: %w", err)
+	}
+	return tasks, nil
+}
+
+func (r *Client) GetTasksBySessionID(sessionID string) ([]domain.Task, error) {
+	u := "/api/sessions/" + url.PathEscape(sessionID) + "/tasks"
+	req, err := r.newRequest(context.Background(), http.MethodGet, u, nil)
+	if err != nil {
+		return nil, fmt.Errorf("remote: build get tasks by session request: %w", err)
+	}
+	resp, err := r.do(req)
+	if err != nil {
+		return nil, fmt.Errorf("remote: get tasks by session: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("remote: get tasks by session: unexpected status %d", resp.StatusCode)
+	}
+	var tasks []domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&tasks); err != nil {
+		return nil, fmt.Errorf("remote: decode tasks by session: %w", err)
 	}
 	return tasks, nil
 }

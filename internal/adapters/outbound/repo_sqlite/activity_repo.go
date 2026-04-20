@@ -55,7 +55,7 @@ func (a *ActivityRepo) ListActivities(ctx context.Context, f domain.ActivityFilt
 	}
 
 	var clauses []string
-	var args []interface{}
+	var args []any
 
 	if f.AgentName != "" {
 		clauses = append(clauses, "agent_name = ?")

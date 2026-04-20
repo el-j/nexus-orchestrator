@@ -162,15 +162,25 @@ func TestActivityService_PollSavesAndBridgesSession(t *testing.T) {
 	}
 	reader := &mockReader{name: "test-reader", activities: []domain.AIActivity{activity}}
 
+	broadcastCh := make(chan struct{}, 1)
 	var broadcastCalls int
-	broadcaster := &stubBroadcaster{onBroadcast: func(a domain.AIActivity) { broadcastCalls++ }}
+	broadcaster := &stubBroadcaster{onBroadcast: func(a domain.AIActivity) {
+		broadcastCalls++
+		select {
+		case broadcastCh <- struct{}{}:
+		default:
+		}
+	}}
 
 	svc := services.NewActivityService(repo, sessRepo, reader)
 	svc.SetBroadcaster(broadcaster)
 
-	// Start, give one poll cycle, then stop.
 	svc.Start()
-	time.Sleep(50 * time.Millisecond)
+	select {
+	case <-broadcastCh:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for activity broadcast")
+	}
 	svc.Stop()
 
 	ctx := context.Background()

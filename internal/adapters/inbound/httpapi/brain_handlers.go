@@ -148,7 +148,9 @@ func (s *Server) handleSearchKnowledge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]interface{}{"results": results})
+	writeJSON(w, http.StatusOK, struct {
+		Results []domain.ContextSection `json:"results"`
+	}{Results: results})
 }
 
 func (s *Server) handleInitProject(w http.ResponseWriter, r *http.Request) {

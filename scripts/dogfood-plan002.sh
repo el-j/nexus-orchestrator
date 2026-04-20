@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# nexusOrchestrator PLAN-002 dogfood runner
+# nexus-orchestrator PLAN-002 dogfood runner
 # Builds daemon + nexus-submit, starts daemon, submits PLAN-002 implementation tasks.
 set -euo pipefail
 
@@ -11,7 +11,7 @@ SUBMIT_BINARY="/tmp/nexus-submit-dogfood"
 
 cd "$PROJECT_ROOT"
 
-echo "=== nexusOrchestrator PLAN-002 Dogfood Runner ==="
+echo "=== nexus-orchestrator PLAN-002 Dogfood Runner ==="
 echo "Project: $PROJECT_ROOT"
 echo "DB:      $DB_PATH"
 echo "Addr:    $NEXUS_ADDR"

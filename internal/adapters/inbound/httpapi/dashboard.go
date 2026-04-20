@@ -41,7 +41,7 @@ const dashboardTemplateHTML = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>nexusOrchestrator</title>
+  <title>nexus-orchestrator</title>
   <style nonce="{{.Nonce}}">
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
     :root {
@@ -136,7 +136,7 @@ const dashboardTemplateHTML = `<!DOCTYPE html>
 </head>
 <body>
 <header>
-  <h1>nexusOrchestrator</h1>
+  <h1>nexus-orchestrator</h1>
   <span class="subtitle">Live Queue Dashboard</span>
   <span id="refresh-ts">–</span>
 </header>

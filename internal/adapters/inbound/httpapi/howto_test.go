@@ -54,8 +54,8 @@ func TestHowto_StructureIsComplete(t *testing.T) {
 			t.Errorf("missing field %q", f)
 		}
 	}
-	if doc["name"] != "nexusOrchestrator" {
-		t.Errorf("name = %v, want nexusOrchestrator", doc["name"])
+	if doc["name"] != "nexus-orchestrator" {
+		t.Errorf("name = %v, want nexus-orchestrator", doc["name"])
 	}
 }
 
@@ -157,8 +157,8 @@ func TestWellKnownNexus_DocStructure(t *testing.T) {
 			t.Errorf("missing field %q", f)
 		}
 	}
-	if doc["name"] != "nexusOrchestrator" {
-		t.Errorf("name = %v, want nexusOrchestrator", doc["name"])
+	if doc["name"] != "nexus-orchestrator" {
+		t.Errorf("name = %v, want nexus-orchestrator", doc["name"])
 	}
 	if doc["schema_version"] != "1" {
 		t.Errorf("schema_version = %v, want 1", doc["schema_version"])

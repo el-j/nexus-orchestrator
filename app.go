@@ -7,7 +7,6 @@ import (
 
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
-	"nexus-orchestrator/internal/core/services"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -19,7 +18,7 @@ type App struct {
 	orchestrator ports.Orchestrator
 	brainSvc     ports.BrainService
 	httpAddr     string
-	activitySvc  *services.ActivityService
+	activitySvc  ports.ActivityServicePort
 }
 
 // NewApp creates a new App instance.
@@ -140,7 +139,7 @@ func (a *App) RemoveProviderConfig(id string) error {
 
 // Greet is the default Wails example method — kept for scaffolding compatibility.
 func (a *App) Greet(name string) string {
-	return fmt.Sprintf("Hello, %s! nexusOrchestrator is running.", name)
+	return fmt.Sprintf("Hello, %s! nexus-orchestrator is running.", name)
 }
 
 // GetDiscoveredProviders returns system-detected AI tools (not yet promoted).
@@ -251,8 +250,8 @@ func (a *App) UpdateTaskStatus(taskID string, sessionID string, status string, l
 	return t, nil
 }
 
-// withActivityService injects an ActivityService into the App for observatory bindings.
-func (a *App) withActivityService(svc *services.ActivityService) *App {
+// withActivityService injects an ActivityServicePort into the App for observatory bindings.
+func (a *App) withActivityService(svc ports.ActivityServicePort) *App {
 	a.activitySvc = svc
 	return a
 }
@@ -380,6 +379,29 @@ func (a *App) GetActivityTimeline(sinceRFC3339 string, limit int) ([]domain.AIAc
 		limit = 100
 	}
 	return a.activitySvc.GetTimeline(context.Background(), since, limit)
+}
+
+// OpenFileDialog opens a native file picker dialog and returns the selected file path.
+// Returns an empty string if the user cancels.
+func (a *App) OpenFileDialog(title string, filters []map[string]string) (string, error) {
+	if a.ctx == nil {
+		return "", fmt.Errorf("app: context not initialised")
+	}
+	var dialogFilters []runtime.FileFilter
+	for _, f := range filters {
+		dialogFilters = append(dialogFilters, runtime.FileFilter{
+			DisplayName: f["displayName"],
+			Pattern:     f["pattern"],
+		})
+	}
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title:   title,
+		Filters: dialogFilters,
+	})
+	if err != nil {
+		return "", fmt.Errorf("app: open file dialog: %w", err)
+	}
+	return path, nil
 }
 
 // GetRuntimeConfig returns the current effective runtime configuration.

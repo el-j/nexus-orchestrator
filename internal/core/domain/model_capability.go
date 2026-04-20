@@ -16,7 +16,7 @@ type ModelCapabilityProfile struct {
 	RecommendedMaxOutput int `json:"recommendedMaxOutput"`
 	// Notes contains human-readable guidance for callers constructing prompts.
 	Notes string `json:"notes,omitempty"`
-	// BuiltIn is true for profiles shipped with nexusOrchestrator.
+	// BuiltIn is true for profiles shipped with nexus-orchestrator.
 	BuiltIn bool `json:"builtIn"`
 	// CreatedAt is the time the record was first persisted.
 	CreatedAt time.Time `json:"createdAt"`
@@ -25,7 +25,7 @@ type ModelCapabilityProfile struct {
 }
 
 // BuiltInModelProfiles is the catalogue of well-known local model profiles
-// shipped with nexusOrchestrator. All entries have BuiltIn set to true.
+// shipped with nexus-orchestrator. All entries have BuiltIn set to true.
 var BuiltInModelProfiles = []ModelCapabilityProfile{
 	{
 		ModelID:              "qwen3.5-35b-a3b",

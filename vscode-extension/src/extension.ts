@@ -26,6 +26,7 @@ import { delegateToNexusCommand } from './commands/delegateToNexus';
 let client: NexusClient | undefined;
 let statusBar: NexusStatusBar | undefined;
 let monitor: SessionMonitor | undefined;
+let clientBuilding = false;
 
 /** Returns the shared NexusClient instance (created during activation). */
 export function getClient(): NexusClient {
@@ -75,17 +76,6 @@ export function getStatusBar(): NexusStatusBar {
 
 export function activate(context: vscode.ExtensionContext): void {
   client = new NexusClient(daemonUrl(), mcpPort());
-  // Fire-and-forget port sweep on activation
-  void buildClient()
-    .then((c) => {
-      client = c;
-      statusBar?.dispose();
-      statusBar = new NexusStatusBar(client);
-      context.subscriptions.push(statusBar.startPolling(30000));
-    })
-    .catch(() => {
-      /* ignore — client already set above */
-    });
   context.subscriptions.push(getNexusActivityChannel());
 
   // ── Session monitor (GitHub Copilot activity → daemon AISession) ────────────
@@ -113,8 +103,28 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   // ── Status bar ──────────────────────────────────────────────────────────────
+  // Initial statusBar created immediately so UI is responsive; replaced once
+  // the async port sweep completes (mutex prevents double-creation).
   statusBar = new NexusStatusBar(client);
   context.subscriptions.push(statusBar.startPolling(30000)); // matches backend health cache TTL (30 s)
+
+  // Fire-and-forget port sweep on activation — guarded by mutex
+  if (!clientBuilding) {
+    clientBuilding = true;
+    void buildClient()
+      .then((c) => {
+        client = c;
+        statusBar?.dispose();
+        statusBar = new NexusStatusBar(client);
+        context.subscriptions.push(statusBar.startPolling(30000));
+      })
+      .catch(() => {
+        /* ignore — client already set above */
+      })
+      .finally(() => {
+        clientBuilding = false;
+      });
+  }
 
   // Re-create the client and refresh status bar whenever the daemon URL or MCP port changes.
   // Dispose the old status bar first to prevent accumulating pollers.
@@ -125,12 +135,18 @@ export function activate(context: vscode.ExtensionContext): void {
         e.affectsConfiguration('nexus.mcpPort') ||
         e.affectsConfiguration('nexus.enableMCPPortSweep')
       ) {
-        void buildClient().then((c) => {
-          client = c;
-          statusBar?.dispose();
-          statusBar = new NexusStatusBar(client);
-          context.subscriptions.push(statusBar.startPolling(30000));
-        });
+        if (clientBuilding) return;
+        clientBuilding = true;
+        void buildClient()
+          .then((c) => {
+            client = c;
+            statusBar?.dispose();
+            statusBar = new NexusStatusBar(client);
+            context.subscriptions.push(statusBar.startPolling(30000));
+          })
+          .finally(() => {
+            clientBuilding = false;
+          });
       }
     }),
   );
@@ -138,6 +154,11 @@ export function activate(context: vscode.ExtensionContext): void {
   // ── nexus.reconnect ─────────────────────────────────────────────────────────
   context.subscriptions.push(
     vscode.commands.registerCommand('nexus.reconnect', async () => {
+      if (clientBuilding) {
+        vscode.window.showInformationMessage('Nexus: connection already in progress');
+        return;
+      }
+      clientBuilding = true;
       try {
         client = await buildClient();
         statusBar?.dispose();
@@ -147,6 +168,8 @@ export function activate(context: vscode.ExtensionContext): void {
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         vscode.window.showErrorMessage(`Nexus: reconnect failed — ${msg}`);
+      } finally {
+        clientBuilding = false;
       }
     }),
   );
@@ -357,8 +380,9 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showInformationMessage(
           `Brain: ${status.entryCount} entries, ${status.totalTokens} tokens`,
         );
-      } catch (e: any) {
-        vscode.window.showErrorMessage(`Brain status failed: ${e.message}`);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        vscode.window.showErrorMessage(`Brain status failed: ${msg}`);
       }
     }),
   );
@@ -374,8 +398,9 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showInformationMessage(
           `Brain initialized: ${status.entryCount} entries ingested`,
         );
-      } catch (e: any) {
-        vscode.window.showErrorMessage(`Brain init failed: ${e.message}`);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        vscode.window.showErrorMessage(`Brain init failed: ${msg}`);
       }
     }),
   );
@@ -403,8 +428,112 @@ export function activate(context: vscode.ExtensionContext): void {
         await vscode.window.showQuickPick(items, {
           placeHolder: `${results.length} results for "${query}"`,
         });
-      } catch (e: any) {
-        vscode.window.showErrorMessage(`Brain search failed: ${e.message}`);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        vscode.window.showErrorMessage(`Brain search failed: ${msg}`);
+      }
+    }),
+  );
+
+  // ── nexus.brain.listKnowledge ────────────────────────────────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand('nexus.brain.listKnowledge', async (projectPath?: string) => {
+      const path = projectPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (!path) {
+        vscode.window.showErrorMessage('Nexus Brain: No workspace folder found.');
+        return;
+      }
+      let entries: import('./nexusClient').ProjectKnowledge[];
+      try {
+        entries = await getClient().listKnowledge(path);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        vscode.window.showErrorMessage(`Brain list knowledge failed: ${msg}`);
+        return;
+      }
+      if (entries.length === 0) {
+        vscode.window.showInformationMessage('Nexus Brain: No knowledge entries found.');
+        return;
+      }
+      await vscode.window.showQuickPick(
+        entries.map((entry) => ({
+          label: `[${entry.kind}] ${entry.topic}`,
+          description: `${entry.tokenCount} tokens`,
+          detail: entry.content.length > 120 ? entry.content.slice(0, 120) + '…' : entry.content,
+        })),
+        {
+          placeHolder: `${entries.length} knowledge entries`,
+          matchOnDescription: true,
+          matchOnDetail: true,
+        },
+      );
+    }),
+  );
+
+  // ── nexus.brain.getContext ───────────────────────────────────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand('nexus.brain.getContext', async (projectPath?: string) => {
+      const path = projectPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (!path) {
+        vscode.window.showErrorMessage('Nexus Brain: No workspace folder found.');
+        return;
+      }
+      let ctx: import('./nexusClient').ContextResponse;
+      try {
+        ctx = await getClient().getProjectContext(path);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        vscode.window.showErrorMessage(`Brain get context failed: ${msg}`);
+        return;
+      }
+      const lines: string[] = [
+        `# Project Context — ${ctx.projectPath}`,
+        `# Total tokens: ${ctx.totalTokens}${ctx.truncated ? ' (truncated)' : ''}`,
+        '',
+      ];
+      for (const section of ctx.sections) {
+        const heading = section.title ?? section.topic;
+        lines.push(`## [${section.kind}] ${heading}`, '', section.content, '');
+      }
+      const doc = await vscode.workspace.openTextDocument({
+        language: 'markdown',
+        content: lines.join('\n'),
+      });
+      await vscode.window.showTextDocument(doc, { preview: true, preserveFocus: false });
+    }),
+  );
+
+  // ── nexus.brain.getFileMap ───────────────────────────────────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand('nexus.brain.getFileMap', async (projectPath?: string) => {
+      const path = projectPath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (!path) {
+        vscode.window.showErrorMessage('Nexus Brain: No workspace folder found.');
+        return;
+      }
+      let filePaths: string[];
+      try {
+        filePaths = await getClient().getFileMap(path);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        vscode.window.showErrorMessage(`Brain get file map failed: ${msg}`);
+        return;
+      }
+      if (filePaths.length === 0) {
+        vscode.window.showInformationMessage('Nexus Brain: File map is empty.');
+        return;
+      }
+      const picked = await vscode.window.showQuickPick(
+        filePaths.map((fp) => ({ label: fp })),
+        { placeHolder: `${filePaths.length} files in project map` },
+      );
+      if (picked) {
+        const fileUri = vscode.Uri.file(picked.label);
+        try {
+          await vscode.window.showTextDocument(fileUri);
+        } catch {
+          vscode.window.showErrorMessage(`Could not open file: ${picked.label}`);
+        }
       }
     }),
   );

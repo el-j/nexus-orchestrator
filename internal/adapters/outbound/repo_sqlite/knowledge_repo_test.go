@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"nexus-orchestrator/internal/adapters/outbound/repo_sqlite"
 	"nexus-orchestrator/internal/core/domain"
@@ -131,9 +130,6 @@ func TestKnowledgeRepo_SearchFTS(t *testing.T) {
 	for _, e := range entries {
 		_ = kr.SaveKnowledge(ctx, e)
 	}
-
-	// SQLite triggers need to fire, wait briefly just in case, though they are synchronous.
-	time.Sleep(10 * time.Millisecond)
 
 	results, err := kr.SearchFTS(ctx, "/proj", "interface", 10)
 	if err != nil {

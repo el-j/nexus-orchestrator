@@ -93,7 +93,7 @@ func (s *Scanner) probeClaudeConfig(ctx context.Context) []domain.DiscoveredAgen
 
 	settingsPath := filepath.Join(home, ".claude", "settings.json")
 	if data, err := os.ReadFile(settingsPath); err == nil {
-		var m map[string]interface{}
+		var m map[string]json.RawMessage
 		if json.Unmarshal(data, &m) == nil {
 			results = append(results, domain.DiscoveredAgent{
 				ID:              "claude-cli",

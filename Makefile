@@ -1,5 +1,5 @@
 # =============================================================================
-# NexusOrchestrator — Makefile
+# nexus-orchestrator — Makefile
 # =============================================================================
 # Usage:
 #   make build           native CLI + daemon (current OS/arch)
@@ -38,7 +38,8 @@ VSIX_VERSION := $(shell echo "$(GIT_TAG)" | sed 's/^v//')
 
 VERSION_FLAGS := -X 'main.version=$(VERSION)' \
                  -X 'main.commit=$(GIT_COMMIT)' \
-                 -X 'main.buildDate=$(BUILD_DATE)'
+                 -X 'main.buildDate=$(BUILD_DATE)' \
+                 -X 'nexus-orchestrator/internal/adapters/inbound/mcp.Version=$(VERSION)'
 
 # Build tags that enable the mattn/go-sqlite3 driver
 BUILD_FLAGS := -trimpath
@@ -50,6 +51,13 @@ LDFLAGS_WIN_GUI := -s -w -H windowsgui $(VERSION_FLAGS)
 LINUX_BUILD_FLAGS := -trimpath -tags netgo,osusergo
 LINUX_LDFLAGS     := -s -w -extldflags='-static' $(VERSION_FLAGS)
 
+# SQLite FTS5 support — required by go-sqlite3's SQLite amalgamation.
+# Must be present for every CGO build so the knowledge_repo migration succeeds.
+# On Linux (native gcc and zig/musl) FTS5's BM25 ranking uses log() from libm,
+# which must be linked explicitly; macOS and Windows supply it automatically.
+CGO_FTS5_CFLAGS       := -DSQLITE_ENABLE_FTS5
+LINUX_CGO_FTS5_LDFLAGS := -lm
+
 # Detect host OS for zig target triple selection
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 
@@ -57,7 +65,7 @@ UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
         build-linux-amd64 build-linux-arm64 \
         build-darwin-amd64 build-darwin-arm64 \
         build-windows-amd64 \
-        build-frontend build-vscode build-dev dev dev-daemon check-air \
+        build-frontend build-vscode build-dev dev dev-daemon dev-gui check-air \
         version version-sync release-alpha release-beta release-rc release \
         docker-build docker-push docker-run \
         nice nice-go nice-frontend
@@ -67,9 +75,9 @@ UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 # ---------------------------------------------------------------------------
 build: vet
 	@mkdir -p $(DIST)/native
-	CGO_ENABLED=1 go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+	CGO_ENABLED=1 CGO_CFLAGS="$(CGO_FTS5_CFLAGS)" go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/native/$(BINARY_CLI) ./cmd/nexus-cli/...
-	CGO_ENABLED=1 go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+	CGO_ENABLED=1 CGO_CFLAGS="$(CGO_FTS5_CFLAGS)" go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/native/$(BINARY_DAEMON) ./cmd/nexus-daemon/...
 	@echo "Built → $(DIST)/native/"
 
@@ -123,7 +131,7 @@ dev: check-air
 	@cd frontend && npm install --prefer-offline --silent 2>/dev/null
 	@echo ""
 	@echo "┌──────────────────────────────────────────────────────────┐"
-	@echo "│  nexusOrchestrator — dev mode                            │"
+	@echo "│  nexus-orchestrator — dev mode                            │"
 	@echo "│                                                          │"
 	@echo "│  Starting daemon via air (hot-reload)…                   │"
 	@echo "└──────────────────────────────────────────────────────────┘"
@@ -162,6 +170,11 @@ dev: check-air
 dev-daemon: check-air
 	air
 
+# Wails desktop hot-reload (GUI dev mode).
+# CGO_CFLAGS is required so go-sqlite3 compiles with FTS5 support.
+dev-gui:
+	CGO_ENABLED=1 CGO_CFLAGS="$(CGO_FTS5_CFLAGS)" wails dev
+
 # ---------------------------------------------------------------------------
 # Desktop GUI (Wails — native only, requires wails CLI)
 # ---------------------------------------------------------------------------
@@ -169,6 +182,7 @@ build-gui: build-frontend
 	@echo "Building Wails desktop application..."
 	@mkdir -p $(DIST_DESKTOP)
 	@if command -v wails >/dev/null 2>&1; then \
+		CGO_ENABLED=1 CGO_CFLAGS="$(CGO_FTS5_CFLAGS)" \
 		wails build -clean -ldflags "-s -w -X 'main.version=$(VERSION)' -X 'main.commit=$(GIT_COMMIT)' -X 'main.buildDate=$(BUILD_DATE)'"; \
 		cp -r build/bin/* $(DIST_DESKTOP)/; \
 		echo "  → $(DIST_DESKTOP)/"; \
@@ -181,6 +195,7 @@ build-gui: build-frontend
 # Windows GUI build — uses -H windowsgui to suppress the console window.
 # Requires wails CLI and a Windows-capable cross-compilation environment.
 build-gui-windows-amd64:
+	CGO_ENABLED=1 CGO_CFLAGS="$(CGO_FTS5_CFLAGS) -fno-sanitize=all" \
 	GOOS=windows GOARCH=amd64 \
 		wails build -platform windows/amd64 \
 		-ldflags "-s -w -H windowsgui -X 'main.version=$(VERSION)' -X 'main.commit=$(GIT_COMMIT)' -X 'main.buildDate=$(BUILD_DATE)'"
@@ -195,11 +210,13 @@ build-all: build-linux-amd64 build-linux-arm64 build-darwin-amd64 build-darwin-a
 build-linux-amd64:
 	@mkdir -p $(DIST)/linux_amd64
 	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
+		CGO_CFLAGS="$(CGO_FTS5_CFLAGS)" CGO_LDFLAGS="$(LINUX_CGO_FTS5_LDFLAGS)" \
 		CC="zig cc -target x86_64-linux-musl" \
 		CXX="zig c++ -target x86_64-linux-musl" \
 		go build $(LINUX_BUILD_FLAGS) -ldflags "$(LINUX_LDFLAGS)" \
 		-o $(DIST)/linux_amd64/$(BINARY_CLI) ./cmd/nexus-cli/...
 	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
+		CGO_CFLAGS="$(CGO_FTS5_CFLAGS)" CGO_LDFLAGS="$(LINUX_CGO_FTS5_LDFLAGS)" \
 		CC="zig cc -target x86_64-linux-musl" \
 		CXX="zig c++ -target x86_64-linux-musl" \
 		go build $(LINUX_BUILD_FLAGS) -ldflags "$(LINUX_LDFLAGS)" \
@@ -209,11 +226,13 @@ build-linux-amd64:
 build-linux-arm64:
 	@mkdir -p $(DIST)/linux_arm64
 	CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
+		CGO_CFLAGS="$(CGO_FTS5_CFLAGS)" CGO_LDFLAGS="$(LINUX_CGO_FTS5_LDFLAGS)" \
 		CC="zig cc -target aarch64-linux-musl" \
 		CXX="zig c++ -target aarch64-linux-musl" \
 		go build $(LINUX_BUILD_FLAGS) -ldflags "$(LINUX_LDFLAGS)" \
 		-o $(DIST)/linux_arm64/$(BINARY_CLI) ./cmd/nexus-cli/...
 	CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
+		CGO_CFLAGS="$(CGO_FTS5_CFLAGS)" CGO_LDFLAGS="$(LINUX_CGO_FTS5_LDFLAGS)" \
 		CC="zig cc -target aarch64-linux-musl" \
 		CXX="zig c++ -target aarch64-linux-musl" \
 		go build $(LINUX_BUILD_FLAGS) -ldflags "$(LINUX_LDFLAGS)" \
@@ -222,16 +241,16 @@ build-linux-arm64:
 
 build-darwin-amd64:
 	@mkdir -p $(DIST)/darwin_amd64
-	# macOS cross-arch: pass -arch x86_64 to the native clang via CGO_CFLAGS/CGO_LDFLAGS.
+	# macOS cross-arch: pass -arch x86_64 plus FTS5 flag to native clang.
 	# Requires Xcode Command Line Tools (xcrun sdk present). Skips gracefully if SDK absent.
 	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
-		CGO_CFLAGS="-arch x86_64" \
+		CGO_CFLAGS="$(CGO_FTS5_CFLAGS) -arch x86_64" \
 		CGO_LDFLAGS="-arch x86_64" \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/darwin_amd64/$(BINARY_CLI) ./cmd/nexus-cli/... || \
 		(echo "NOTE: build-darwin-amd64 requires Xcode SDK with x86_64 support — skipped."; exit 0)
 	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
-		CGO_CFLAGS="-arch x86_64" \
+		CGO_CFLAGS="$(CGO_FTS5_CFLAGS) -arch x86_64" \
 		CGO_LDFLAGS="-arch x86_64" \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/darwin_amd64/$(BINARY_DAEMON) ./cmd/nexus-daemon/... || \
@@ -241,9 +260,11 @@ build-darwin-amd64:
 build-darwin-arm64:
 	@mkdir -p $(DIST)/darwin_arm64
 	CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
+		CGO_CFLAGS="$(CGO_FTS5_CFLAGS)" \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/darwin_arm64/$(BINARY_CLI) ./cmd/nexus-cli/...
 	CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
+		CGO_CFLAGS="$(CGO_FTS5_CFLAGS)" \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/darwin_arm64/$(BINARY_DAEMON) ./cmd/nexus-daemon/...
 	@echo "Built → $(DIST)/darwin_arm64/"
@@ -251,12 +272,19 @@ build-darwin-arm64:
 build-windows-amd64:
 	@mkdir -p $(DIST)/windows_amd64
 	# NOTE: for the GUI binary (main.go), use LDFLAGS_WIN_GUI (-H windowsgui) to suppress the console window.
+	#
+	# -fno-sanitize=all: zig's clang injects UBSan instrumentation (__ubsan_handle_*)
+	# when targeting x86_64-windows-gnu, but the UBSan runtime is absent from zig's
+	# Windows toolchain → lld-link fails with "undefined symbol: __ubsan_handle_*".
+	# Disabling all sanitizers at compile time prevents these references from being emitted.
 	CGO_ENABLED=1 GOOS=windows GOARCH=amd64 \
+		CGO_CFLAGS="$(CGO_FTS5_CFLAGS) -fno-sanitize=all" \
 		CC="zig cc -target x86_64-windows-gnu" \
 		CXX="zig c++ -target x86_64-windows-gnu" \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/windows_amd64/$(BINARY_CLI).exe ./cmd/nexus-cli/...
 	CGO_ENABLED=1 GOOS=windows GOARCH=amd64 \
+		CGO_CFLAGS="$(CGO_FTS5_CFLAGS) -fno-sanitize=all" \
 		CC="zig cc -target x86_64-windows-gnu" \
 		CXX="zig c++ -target x86_64-windows-gnu" \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
@@ -272,10 +300,17 @@ test:
 test-unit:
 	CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" go test -race -count=1 ./internal/core/...
 
-test-cover:
+test-cover: ## Run tests with coverage report
 	CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" go test -race -count=1 -coverprofile=coverage.out ./...
-	go tool cover -html=coverage.out -o coverage.html
-	@echo "Coverage report → coverage.html"
+	go tool cover -func=coverage.out | tail -1
+
+test-e2e: ## Run Playwright E2E tests
+	cd frontend && npx playwright test
+
+build-action: ## Build the GitHub Action dist
+	cd github-action && npm ci && npm run build
+
+lint-fix: nice-go ## Alias: run Go linter with auto-fix
 
 vet:
 	go vet ./...
@@ -441,6 +476,7 @@ help:
 	@echo "Dev:"
 	@echo "  make dev                    daemon (air, health-wait) + Vite HMR"
 	@echo "  make dev-daemon             daemon hot-reload only"
+	@echo "  make dev-gui                Wails desktop hot-reload (CGO_CFLAGS set automatically)"
 	@echo ""
 	@echo "Test & quality:"
 	@echo "  make test                   All tests with -race"
@@ -476,6 +512,7 @@ help:
 	@echo "Other:"
 	@echo "  make upgrade-latest         Upgrade all Node.js and Go dependencies to latest"
 	@echo "  make clean                  Remove build/ output subdirs"
-	@echo "  wails dev                   Wails hot-reload dev mode"
-	@echo "  wails build                 Production Wails binary"
+	@echo "  make dev-gui                Wails hot-reload (preferred — sets CGO_CFLAGS)"
+	@echo "  CGO_CFLAGS=-DSQLITE_ENABLE_FTS5 wails dev    Manual Wails hot-reload"
+	@echo "  CGO_CFLAGS=-DSQLITE_ENABLE_FTS5 wails build  Manual production Wails build"
 	@echo ""

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -129,7 +130,9 @@ func (s *Server) handleToolCall(w http.ResponseWriter, r *http.Request, req rpcR
 	}
 
 	resp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: result}
-	_ = json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Printf("mcp: encode response: %v", err)
+	}
 }
 
 // ----- Individual tool handlers -----
@@ -184,7 +187,9 @@ func (s *Server) toolGetQueue(args json.RawMessage) (callToolResult, error) {
 	}
 	// args may be null/empty for backwards-compat — that is fine.
 	if len(args) > 0 {
-		_ = json.Unmarshal(args, &p)
+		if err := json.Unmarshal(args, &p); err != nil {
+			return callToolResult{}, &mcpError{code: codeInvalidParams, msg: "malformed arguments"}
+		}
 	}
 
 	var (
@@ -211,7 +216,9 @@ func (s *Server) toolGetAllTasks(args json.RawMessage) (callToolResult, error) {
 		ProjectPath string `json:"projectPath"`
 	}
 	if len(args) > 0 {
-		_ = json.Unmarshal(args, &p)
+		if err := json.Unmarshal(args, &p); err != nil {
+			return callToolResult{}, &mcpError{code: codeInvalidParams, msg: "malformed arguments"}
+		}
 	}
 
 	var (
@@ -703,7 +710,7 @@ func (s *Server) toolDelegateToNexus(ctx context.Context, args json.RawMessage) 
 // This is the in-protocol equivalent of GET /api/howto — useful when an AI
 // agent has only MCP access and no direct HTTP connectivity.
 func (s *Server) toolHowto() (callToolResult, error) {
-	guide := `nexusOrchestrator — Integration Guide
+	guide := `nexus-orchestrator — Integration Guide
 ======================================
 
 WHAT IS THIS?
@@ -801,9 +808,9 @@ GET  /api/tasks               list tasks
 
 // toolHowtoBrief returns an ultra-compact integration guide for small-context models.
 func (s *Server) toolHowtoBrief() (callToolResult, error) {
-	guide := `nexusOrchestrator — Quick Start (compact edition)
+	guide := `nexus-orchestrator — Quick Start (compact edition)
 ==================================================
-You are connected to nexusOrchestrator, an AI task orchestration server.
+You are connected to nexus-orchestrator, an AI task orchestration server.
 
 FIRST STEPS (run in order):
   1. get_project_context {"projectPath": "/path/to/project"}
@@ -912,7 +919,7 @@ func toolList() []toolDef {
 		},
 		{
 			Name:        "health",
-			Description: "Check that the nexusOrchestrator daemon is reachable.",
+			Description: "Check that the nexus-orchestrator daemon is reachable.",
 			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
 		},
 		{
@@ -988,7 +995,7 @@ func toolList() []toolDef {
 		},
 		{
 			Name:        "register_session",
-			Description: "Announce this AI agent session to nexusOrchestrator for visualisation and orchestration. Call once when starting, and periodically as a heartbeat to update last_activity.",
+			Description: "Announce this AI agent session to nexus-orchestrator for visualisation and orchestration. Call once when starting, and periodically as a heartbeat to update last_activity.",
 			InputSchema: inputSchema{
 				Type: "object",
 				Properties: map[string]property{
@@ -1001,7 +1008,7 @@ func toolList() []toolDef {
 		},
 		{
 			Name:        "get_ai_sessions",
-			Description: "Return the list of all known external AI agent sessions registered with this nexusOrchestrator instance.",
+			Description: "Return the list of all known external AI agent sessions registered with this nexus-orchestrator instance.",
 			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
 		},
 		{
@@ -1018,7 +1025,7 @@ func toolList() []toolDef {
 		},
 		{
 			Name:        "howto",
-			Description: "Return a complete integration guide — what nexusOrchestrator does, all tools, workflow patterns for worker/planner/orchestrator roles, and HTTP endpoint reference. Call this first when you connect.",
+			Description: "Return a complete integration guide — what nexus-orchestrator does, all tools, workflow patterns for worker/planner/orchestrator roles, and HTTP endpoint reference. Call this first when you connect.",
 			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
 		},
 		{

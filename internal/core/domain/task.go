@@ -1,4 +1,4 @@
-// Package domain contains the pure domain types for nexusOrchestrator: Task, Session,
+// Package domain contains the pure domain types for nexus-orchestrator: Task, Session,
 // Message, and their associated enumerations. No framework imports.
 package domain
 

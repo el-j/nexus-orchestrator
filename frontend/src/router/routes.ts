@@ -79,6 +79,22 @@ const routes: AppRoute[] = [
     component: () => import('../views/BrainView.vue'),
   },
   {
+    icon: 'pi-search',
+    name: 'discovery',
+    path: '/discovery',
+    label: 'Discovery',
+    nav: true,
+    component: () => import('../views/DiscoveryView.vue'),
+  },
+  {
+    icon: 'pi-desktop',
+    name: 'ai-sessions',
+    path: '/ai-sessions',
+    label: 'AI Sessions',
+    nav: true,
+    component: () => import('../views/AISessionsView.vue'),
+  },
+  {
     icon: 'pi-cog',
     name: 'settings',
     path: '/settings',

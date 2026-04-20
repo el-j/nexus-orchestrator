@@ -147,6 +147,10 @@ func (m *mockOrch) UpdateRuntimeConfig(_ context.Context, update domain.RuntimeC
 	return cfg, nil
 }
 
+func (m *mockOrch) GetTasksBySessionID(_ string) ([]domain.Task, error) {
+	return nil, nil
+}
+
 // --- Helpers ---
 
 type rpcResp struct {
@@ -302,8 +306,8 @@ func TestMCP_Initialize(t *testing.T) {
 	if result.ProtocolVersion != "2024-11-05" {
 		t.Errorf("protocolVersion: want 2024-11-05, got %q", result.ProtocolVersion)
 	}
-	if result.ServerInfo.Name != "nexusOrchestrator" {
-		t.Errorf("serverInfo.name: want nexusOrchestrator, got %q", result.ServerInfo.Name)
+	if result.ServerInfo.Name != "nexus-orchestrator" {
+		t.Errorf("serverInfo.name: want nexus-orchestrator, got %q", result.ServerInfo.Name)
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -49,6 +50,12 @@ var claudeContextLimits = map[string]int{
 	"claude-3-5-sonnet-20241022": 200000,
 	"claude-3-5-sonnet-20240620": 200000,
 	"claude-3-5-haiku-20241022":  200000,
+	// Claude 4.x models
+	"claude-opus-4-5":           200000,
+	"claude-sonnet-4-5":         200000,
+	"claude-opus-4-6":           200000,
+	"claude-sonnet-4-6":         200000,
+	"claude-haiku-4-5-20251001": 200000,
 }
 
 func (a *Adapter) ProviderName() string { return "Anthropic" }
@@ -56,10 +63,13 @@ func (a *Adapter) ActiveModel() string  { return a.model }
 func (a *Adapter) BaseURL() string      { return a.baseURL }
 
 // ContextLimit returns the context window size for the configured Claude model.
-// Defaults to 200000 for unknown models (all modern Claude models support 200K).
+// Defaults to 200000 for unknown claude- prefixed models (all modern Claude models support 200K).
 func (a *Adapter) ContextLimit() int {
 	if limit, ok := claudeContextLimits[a.model]; ok {
 		return limit
+	}
+	if strings.HasPrefix(a.model, "claude-") {
+		return 200000
 	}
 	return 200000
 }
