@@ -1,5 +1,10 @@
 # nexusOrchestrator
 
+> [!CAUTION]
+> **PROJECT STATUS: ARCHIVED & SUNSET**
+> This repository is officially archived. The software architecture was designed for early single-turn prompt-and-write LLM orchestration. With the rise of autonomous tool-using agentic loops (Hermes, Claude Code, Aider, LiteLLM), this project has reached its end of life.
+> For the comprehensive technical retrospective and modern remote agent architecture blueprint, see [PROJECT_ASSESSMENT_AND_WORKFLOW_BLUEPRINT.md](PROJECT_ASSESSMENT_AND_WORKFLOW_BLUEPRINT.md).
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-v0.9.1-blue)](https://github.com/el-j/nexusOrchestrator/releases/tag/v0.9.1)
 [![Go Report Card](https://goreportcard.com/badge/github.com/el-j/nexusOrchestrator)](https://goreportcard.com/report/github.com/el-j/nexusOrchestrator)
@@ -9,11 +14,13 @@ A local AI orchestrator that routes code-generation tasks to LM Studio or Ollama
 ## Features
 
 **Core**
+
 - Hexagonal architecture (Ports & Adapters) — core never imports adapters
 - Multi-turn AI session isolation per project path (SQLite-backed conversation history)
 - SQLite persistence with additive schema migration and WAL mode
 
 **LLM Backends**
+
 - LM Studio (local, `127.0.0.1:1234`)
 - Ollama (local, `127.0.0.1:11434`)
 - Anthropic Claude (cloud)
@@ -21,17 +28,20 @@ A local AI orchestrator that routes code-generation tasks to LM Studio or Ollama
 - Any OpenAI-compatible endpoint (`llm_openaicompat`)
 
 **Provider Discovery**
+
 - Automatic port + process scanner detects running LLM runtimes at startup
 - Persistent provider config with API-key masking in logs
 - Live availability ping per provider
 
 **Task Management**
+
 - Submit / queue / cancel with per-task context files and target file writeback
 - Backlog / draft workflow — stage tasks before queuing
 - Queue cap (configurable, default 50) with crash-recovery on restart
 - Configurable retry limit (default 3) before marking a task failed
 
 **Interfaces**
+
 - HTTP REST API on `:63987` with SSE events stream (`/api/events`)
 - MCP JSON-RPC 2.0 server on `:63988` (14 tools, VS Code Copilot compatible)
 - Desktop GUI (Wails + Vue 3) with Dashboard, Provider Status, Task Queue, History, Settings
@@ -40,6 +50,7 @@ A local AI orchestrator that routes code-generation tasks to LM Studio or Ollama
 - GitHub Action for CI/CD task submission
 
 **Observability**
+
 - AI session registry (track which Copilot / Cursor / Claude Desktop sessions are active)
 - SSE events stream for real-time task status updates
 - Structured operational logs via `log.Printf`
@@ -61,11 +72,11 @@ Download `nexus-orchestrator-desktop-darwin-arm64.zip` (Apple Silicon) or `nexus
 
 Download `nexus-orchestrator-darwin-arm64.tar.gz` (or your platform's archive) from [Releases](https://github.com/el-j/nexus-orchestrator/releases/latest). The archive contains three binaries:
 
-| Binary | Purpose |
-|--------|---------|
+| Binary         | Purpose                                            |
+| -------------- | -------------------------------------------------- |
 | `nexus-daemon` | Headless background daemon (HTTP API + MCP server) |
-| `nexus-cli` | Interactive CLI client for a running daemon |
-| `nexus-submit` | One-shot task submission from a task-file |
+| `nexus-cli`    | Interactive CLI client for a running daemon        |
+| `nexus-submit` | One-shot task submission from a task-file          |
 
 ```sh
 # Start the daemon
@@ -87,11 +98,14 @@ CGO_ENABLED=1 go build ./cmd/nexus-daemon/...
 ```
 
 ### VS Code Extension
+
 Install `nexus-orchestrator-0.2.0.vsix` from the [releases page](https://github.com/el-j/nexusOrchestrator/releases) or build from source:
+
 ```sh
 cd vscode-extension && npm install && npm run package
 code --install-extension nexus-orchestrator-0.2.0.vsix
 ```
+
 The extension auto-registers the `nexus-orchest` MCP server in VS Code 1.99+ — no manual configuration required. See [vscode-extension/README.md](vscode-extension/README.md) for details.
 
 ## MCP Integration (Claude Desktop)
@@ -110,14 +124,14 @@ Add the following to your Claude Desktop `claude_desktop_config.json`:
 
 ### Available MCP Tools
 
-| Tool | Description |
-|------|-------------|
-| `submit_task` | Submit a code-generation task (projectPath, targetFile, instruction) |
-| `get_task` | Get status and output of a task by ID |
-| `get_queue` | List all pending tasks |
-| `cancel_task` | Cancel a queued task by ID |
-| `get_providers` | List available LLM backends and their status |
-| `health` | Check daemon connectivity |
+| Tool            | Description                                                          |
+| --------------- | -------------------------------------------------------------------- |
+| `submit_task`   | Submit a code-generation task (projectPath, targetFile, instruction) |
+| `get_task`      | Get status and output of a task by ID                                |
+| `get_queue`     | List all pending tasks                                               |
+| `cancel_task`   | Cancel a queued task by ID                                           |
+| `get_providers` | List available LLM backends and their status                         |
+| `health`        | Check daemon connectivity                                            |
 
 ## VS Code Extension
 
@@ -132,11 +146,11 @@ See [`vscode-extension/README.md`](vscode-extension/README.md) for installation 
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `NEXUS_DB_PATH` | `nexus.db` | SQLite database path |
-| `NEXUS_LISTEN_ADDR` | `:63987` | HTTP API listen address |
-| `NEXUS_MCP_ADDR` | `:63988` | MCP server listen address |
+| Variable            | Default    | Description               |
+| ------------------- | ---------- | ------------------------- |
+| `NEXUS_DB_PATH`     | `nexus.db` | SQLite database path      |
+| `NEXUS_LISTEN_ADDR` | `:63987`   | HTTP API listen address   |
+| `NEXUS_MCP_ADDR`    | `:63988`   | MCP server listen address |
 
 ## Build & Test
 
