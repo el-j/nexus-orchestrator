@@ -3,7 +3,8 @@ id: TASK-549
 planId: PLAN-070
 title: 'MCP brain_tools unit tests + fix E2E FTS search failure'
 role: qa
-status: todo
+status: completed
+completedAt: 2026-09-24T17:36:00Z
 createdAt: 2026-04-14T02:00:00Z
 ---
 

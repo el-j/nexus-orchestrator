@@ -3,7 +3,8 @@ id: TASK-547
 planId: PLAN-070
 title: 'Fix processNextTask silent errors + IngestFromFile error aggregation + FTS sanitization'
 role: backend
-status: todo
+status: completed
+completedAt: 2026-09-24T17:32:00Z
 createdAt: 2026-04-14T02:00:00Z
 ---
 

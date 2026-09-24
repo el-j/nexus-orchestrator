@@ -3,7 +3,8 @@ id: TASK-545
 planId: PLAN-070
 title: 'Create useBrain composable + /brain route + wire dead context/search UI code'
 role: frontend
-status: todo
+status: completed
+completedAt: 2026-09-24T17:29:00Z
 createdAt: 2026-04-14T02:00:00Z
 ---
 

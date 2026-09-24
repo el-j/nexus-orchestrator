@@ -437,3 +437,84 @@ func TestMCP_GetBrainStatus_ServiceError(t *testing.T) {
 		t.Fatal("expected error when service returns error")
 	}
 }
+
+func TestMCP_BrainTools_NilBrain(t *testing.T) {
+	srv := newNilBrainToolServer(t)
+	toolCalls := []string{
+		"get_project_context",
+		"get_focused_context",
+		"search_knowledge",
+		"ingest_knowledge",
+		"init_project",
+		"list_knowledge",
+		"delete_knowledge",
+		"get_file_map",
+	}
+
+	for id, tool := range toolCalls {
+		r := postRPC(t, srv, map[string]any{
+			"jsonrpc": "2.0",
+			"id":      200 + id,
+			"method":  "tools/call",
+			"params": map[string]any{
+				"name": tool,
+				"arguments": map[string]any{
+					"projectPath": "/repo",
+					"filePath":    "/repo/file.md",
+					"question":    "why",
+					"query":       "why",
+					"id":          "123",
+				},
+			},
+		})
+		if r.Error == nil {
+			t.Errorf("expected error for nil brain on tool %s, got nil", tool)
+		}
+	}
+}
+
+func TestMCP_BrainTools_ServiceErrors(t *testing.T) {
+	brain := &mockBrainForMCP{
+		contextErr:    errors.New("err context"),
+		focusedErr:    errors.New("err focused"),
+		searchErr:     errors.New("err search"),
+		ingestFileErr: errors.New("err ingest"),
+		initErr:       errors.New("err init"),
+		listErr:       errors.New("err list"),
+		deleteErr:     errors.New("err delete"),
+		fileMapErr:    errors.New("err filemap"),
+	}
+	srv := newBrainToolServer(t, brain)
+
+	tools := []string{
+		"get_project_context",
+		"get_focused_context",
+		"search_knowledge",
+		"ingest_knowledge",
+		"init_project",
+		"list_knowledge",
+		"delete_knowledge",
+		"get_file_map",
+	}
+
+	for id, tool := range tools {
+		r := postRPC(t, srv, map[string]any{
+			"jsonrpc": "2.0",
+			"id":      300 + id,
+			"method":  "tools/call",
+			"params": map[string]any{
+				"name": tool,
+				"arguments": map[string]any{
+					"projectPath": "/repo",
+					"filePath":    "/repo/file.md",
+					"question":    "why",
+					"query":       "why",
+					"id":          "123",
+				},
+			},
+		})
+		if r.Error == nil {
+			t.Errorf("expected error for service error on tool %s, got nil", tool)
+		}
+	}
+}

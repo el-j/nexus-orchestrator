@@ -3,7 +3,8 @@ id: TASK-540
 planId: PLAN-070
 title: 'Rebuild mcpTools + endpoints arrays in ApiReferenceView.vue and McpIntegrationView.vue'
 role: docs
-status: todo
+status: completed
+completedAt: 2026-09-24T17:21:00Z
 createdAt: 2026-04-14T02:00:00Z
 ---
 

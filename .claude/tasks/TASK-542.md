@@ -3,7 +3,7 @@ id: TASK-542
 planId: PLAN-070
 title: 'Add 4 missing brain MCP tools + fix howto full guide enumeration'
 role: mcp
-status: todo
+status: done
 createdAt: 2026-04-14T02:00:00Z
 ---
 

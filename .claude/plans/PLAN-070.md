@@ -2,7 +2,8 @@
 id: PLAN-070
 title: 'Comprehensive Gap-Fill — Docs, MCP Tools, Frontend, Tests, Backend Quality'
 goal: 'Close all gaps found in the 2026-04-14 five-agent swarm audit: stale docs, 4 missing MCP brain tools, VS Code extension brain gaps, stale Wails bindings, dead UI code, zero-coverage critical paths, and silent error swallowing.'
-status: todo
+status: completed
+completedAt: 2026-09-24T17:46:00Z
 createdAt: 2026-04-14T02:00:00Z
 ---
 

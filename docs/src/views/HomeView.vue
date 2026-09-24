@@ -308,7 +308,7 @@ const features = [
   {
     icon: '🔌',
     title: 'MCP Server',
-    desc: 'Built-in JSON-RPC 2.0 server on port 63988, compatible with Claude Desktop and any MCP client. Six tools ready out of the box.',
+    desc: 'Built-in JSON-RPC 2.0 server on port 63988, compatible with Claude Desktop and any MCP client. 40 tools ready out of the box.',
   },
   {
     icon: '🌐',

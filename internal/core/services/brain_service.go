@@ -260,16 +260,28 @@ func (b *BrainServiceImpl) IngestFromFile(ctx context.Context, projectPath, file
 
 // SearchKnowledge performs BM25 search and returns ContextSection slices within budget.
 func (b *BrainServiceImpl) SearchKnowledge(ctx context.Context, projectPath, query string, maxTokens int) ([]domain.ContextSection, error) {
-	if maxTokens == 0 {
+	itemLimit := 0
+	if maxTokens > 0 && maxTokens <= 20 {
+		// Caller passed an item count limit (e.g. limit=5 or limit=10), not a token budget.
+		itemLimit = maxTokens
+		maxTokens = 400
+	} else if maxTokens <= 0 {
 		maxTokens = 400
 	}
-	entries, err := b.repo.SearchFTS(ctx, filepath.Clean(projectPath), query, 20)
+	fetchCount := 20
+	if itemLimit > 0 && itemLimit > fetchCount {
+		fetchCount = itemLimit
+	}
+	entries, err := b.repo.SearchFTS(ctx, filepath.Clean(projectPath), query, fetchCount)
 	if err != nil {
 		return nil, fmt.Errorf("brain_service: search knowledge: %w", err)
 	}
 	var sections []domain.ContextSection
 	used := 0
 	for _, e := range entries {
+		if itemLimit > 0 && len(sections) >= itemLimit {
+			break
+		}
 		if used+e.TokenCount > maxTokens {
 			break
 		}

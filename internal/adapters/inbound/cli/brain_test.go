@@ -174,3 +174,30 @@ func TestBrainCLI_Delete_OK(t *testing.T) {
 		t.Errorf("expected output to contain %q; got: %q", "deleted", out)
 	}
 }
+
+// TestBrainCLI_Context_OK verifies that the context command prints JSON output to stdout.
+func TestBrainCLI_Context_OK(t *testing.T) {
+	brain := &mockBrainService{
+		getContextResult: domain.ContextResponse{
+			ProjectPath: "/proj",
+			TokenBudget: 500,
+			Sections: []domain.ContextSection{
+				{Topic: "Architecture", Kind: domain.KnowledgeArchitecture, Content: "Hexagonal"},
+			},
+		},
+	}
+	root := cli.NewRootCmd(&mockOrchestrator{}, brain)
+	root.SetArgs([]string{"brain", "context", "--project", "/proj"})
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+
+	var execErr error
+	out := captureStdout(t, func() { execErr = root.Execute() })
+
+	if execErr != nil {
+		t.Fatalf("unexpected error: %v", execErr)
+	}
+	if !strings.Contains(out, "Hexagonal") {
+		t.Errorf("expected output to contain %q; got: %q", "Hexagonal", out)
+	}
+}

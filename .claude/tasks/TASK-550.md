@@ -3,7 +3,8 @@ id: TASK-550
 planId: PLAN-070
 title: 'Brain service: test GetFileMap, ListKnowledge, DeleteKnowledge + CLI brain error paths'
 role: qa
-status: todo
+status: completed
+completedAt: 2026-09-24T17:38:00Z
 createdAt: 2026-04-14T02:00:00Z
 ---
 

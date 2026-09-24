@@ -3,7 +3,8 @@ id: TASK-544
 planId: PLAN-070
 title: 'Regenerate App.d.ts + models.ts; add 4 Wails App brain method bindings'
 role: frontend
-status: todo
+status: completed
+completedAt: 2026-09-24T17:27:00Z
 createdAt: 2026-04-14T02:00:00Z
 ---
 
