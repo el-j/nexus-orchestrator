@@ -72,13 +72,14 @@ internal/adapters/inbound/   →  internal/core/services/  →  internal/core/po
 | PLAN-016 | Release pipeline finalization: delete version.yml+release.yml, CHANGELOG.md  | TASK-118–121 | completed | 2026-03-11 |
 | PLAN-017 | Fix all broken download links + macOS Gatekeeper UX instructions             | TASK-122–124 | completed | 2026-03-11 |
 | PLAN-029 | Task Queue UI Fix + AI Session Deduplication & Cleanup                       | TASK-203–207 | completed | 2026-03-12 |
+| PLAN-071 | Self-Healing Execution Gates & Role-Driven Gateway Architecture              | TASK-554–558 | completed | 2026-09-24 |
 
 ---
 
 ## Counters
 
-- **Next Task ID**: 208
-- **Next Plan ID**: 30
+- **Next Task ID**: 559
+- **Next Plan ID**: 72
 
 ---
 

@@ -123,6 +123,9 @@ func migrate(db *sql.DB) error {
 		{"tags", "TEXT NOT NULL DEFAULT '[]'"},
 		{"retry_count", "INTEGER NOT NULL DEFAULT 0"},
 		{"ai_session_id", "TEXT NOT NULL DEFAULT ''"},
+		{"verification_command", "TEXT NOT NULL DEFAULT ''"},
+		{"max_correction_turns", "INTEGER NOT NULL DEFAULT 0"},
+		{"verification_output", "TEXT NOT NULL DEFAULT ''"},
 	} {
 		_, _ = db.Exec(fmt.Sprintf("ALTER TABLE tasks ADD COLUMN %s %s", col.name, col.def))
 	}
@@ -208,6 +211,8 @@ func migrate(db *sql.DB) error {
 	return nil
 }
 
+const taskColumns = `id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id, verification_command, max_correction_turns, verification_output`
+
 // Save inserts a new Task record.
 func (r *Repository) Save(t domain.Task) error {
 	t.ProjectPath = filepath.Clean(t.ProjectPath)
@@ -222,13 +227,14 @@ func (r *Repository) Save(t domain.Task) error {
 		}
 	}
 	_, err = r.db.Exec(
-		`INSERT INTO tasks (id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO tasks (`+taskColumns+`)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		t.ID, t.ProjectPath, t.TargetFile, t.Instruction,
 		string(ctxJSON), string(t.Status),
 		t.CreatedAt.UnixMilli(), t.UpdatedAt.UnixMilli(),
 		t.Logs, t.ModelID, t.ProviderHint, string(t.Command),
 		t.ProviderName, t.Priority, string(tagsJSON), t.RetryCount, t.AISessionID,
+		t.VerificationCommand, t.MaxCorrectionTurns, t.VerificationOutput,
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: insert task: %w", err)
@@ -239,7 +245,7 @@ func (r *Repository) Save(t domain.Task) error {
 // GetByID retrieves a single task by its ID.
 // Returns domain.ErrNotFound when no row matches.
 func (r *Repository) GetByID(id string) (domain.Task, error) {
-	row := r.db.QueryRow(`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id FROM tasks WHERE id = ?`, id)
+	row := r.db.QueryRow(`SELECT `+taskColumns+` FROM tasks WHERE id = ?`, id)
 	t, err := scanTask(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Task{}, fmt.Errorf("sqlite: get task: %w", domain.ErrNotFound)
@@ -250,8 +256,7 @@ func (r *Repository) GetByID(id string) (domain.Task, error) {
 // GetPending returns all tasks in QUEUED or PROCESSING state.
 func (r *Repository) GetPending() ([]domain.Task, error) {
 	rows, err := r.db.Query(
-		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id
-		 FROM tasks WHERE status IN ('QUEUED','PROCESSING') ORDER BY created_at ASC`,
+		`SELECT ` + taskColumns + ` FROM tasks WHERE status IN ('QUEUED','PROCESSING') ORDER BY created_at ASC`,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: query pending: %w", err)
@@ -280,8 +285,7 @@ func (r *Repository) ClaimNextQueued() (domain.Task, error) {
 	}()
 
 	row := tx.QueryRow(
-		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id
-		 FROM tasks WHERE status = 'QUEUED' ORDER BY created_at ASC LIMIT 1`,
+		`SELECT ` + taskColumns + ` FROM tasks WHERE status = 'QUEUED' ORDER BY created_at ASC LIMIT 1`,
 	)
 	task, err := scanTask(row)
 	if err != nil {
@@ -370,8 +374,7 @@ func (r *Repository) UpdateLogs(id, logs string) error {
 // GetAll returns every task, ordered by creation time descending.
 func (r *Repository) GetAll() ([]domain.Task, error) {
 	rows, err := r.db.Query(
-		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id
-		 FROM tasks ORDER BY created_at DESC`,
+		`SELECT ` + taskColumns + ` FROM tasks ORDER BY created_at DESC`,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: query all tasks: %w", err)
@@ -393,8 +396,7 @@ func (r *Repository) GetAll() ([]domain.Task, error) {
 func (r *Repository) GetByProjectPath(projectPath string) ([]domain.Task, error) {
 	projectPath = filepath.Clean(projectPath)
 	rows, err := r.db.Query(
-		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id
-		 FROM tasks WHERE project_path = ? ORDER BY created_at DESC`,
+		`SELECT `+taskColumns+` FROM tasks WHERE project_path = ? ORDER BY created_at DESC`,
 		projectPath,
 	)
 	if err != nil {
@@ -428,8 +430,7 @@ func (r *Repository) GetByProjectPathAndStatus(projectPath string, statuses ...d
 		args = append(args, string(s))
 	}
 	query := fmt.Sprintf(
-		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id
-		 FROM tasks WHERE project_path = ? AND status IN (%s) ORDER BY priority ASC, created_at ASC`,
+		`SELECT `+taskColumns+` FROM tasks WHERE project_path = ? AND status IN (%s) ORDER BY priority ASC, created_at ASC`,
 		strings.Join(placeholders, ","),
 	)
 	rows, err := r.db.Query(query, args...)
@@ -459,8 +460,8 @@ func (r *Repository) Update(t domain.Task) error {
 		}
 	}
 	res, err := r.db.Exec(
-		`UPDATE tasks SET instruction=?, target_file=?, provider_name=?, priority=?, tags=?, status=?, retry_count=?, ai_session_id=?, updated_at=? WHERE id=?`,
-		t.Instruction, t.TargetFile, t.ProviderName, t.Priority, string(tagsJSON), string(t.Status), t.RetryCount, t.AISessionID, t.UpdatedAt.UnixMilli(), t.ID,
+		`UPDATE tasks SET instruction=?, target_file=?, provider_name=?, priority=?, tags=?, status=?, retry_count=?, ai_session_id=?, verification_command=?, max_correction_turns=?, verification_output=?, updated_at=? WHERE id=?`,
+		t.Instruction, t.TargetFile, t.ProviderName, t.Priority, string(tagsJSON), string(t.Status), t.RetryCount, t.AISessionID, t.VerificationCommand, t.MaxCorrectionTurns, t.VerificationOutput, t.UpdatedAt.UnixMilli(), t.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: update task: %w", err)
@@ -481,8 +482,7 @@ func (r *Repository) Close() error { return r.db.Close() }
 // GetTasksBySessionID returns all tasks claimed by the given AI session, ordered by creation time descending.
 func (r *Repository) GetTasksBySessionID(sessionID string) ([]domain.Task, error) {
 	rows, err := r.db.Query(
-		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id
-		 FROM tasks WHERE ai_session_id = ? ORDER BY created_at DESC`,
+		`SELECT `+taskColumns+` FROM tasks WHERE ai_session_id = ? ORDER BY created_at DESC`,
 		sessionID,
 	)
 	if err != nil {
@@ -505,8 +505,7 @@ func (r *Repository) GetTasksBySessionID(sessionID string) ([]domain.Task, error
 func (r *Repository) GetStaleProcessing(ctx context.Context, threshold time.Duration) ([]domain.Task, error) {
 	cutoff := time.Now().Add(-threshold).UnixMilli()
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id
-		 FROM tasks WHERE status = 'PROCESSING' AND updated_at < ? ORDER BY updated_at ASC`,
+		`SELECT `+taskColumns+` FROM tasks WHERE status = 'PROCESSING' AND updated_at < ? ORDER BY updated_at ASC`,
 		cutoff,
 	)
 	if err != nil {
@@ -541,6 +540,7 @@ func scanTask(s scanner) (domain.Task, error) {
 		&t.ID, &t.ProjectPath, &t.TargetFile, &t.Instruction,
 		&ctxJSON, &status, &createdMS, &updatedMS, &t.Logs,
 		&t.ModelID, &t.ProviderHint, &command, &t.ProviderName, &t.Priority, &tagsJSON, &t.RetryCount, &t.AISessionID,
+		&t.VerificationCommand, &t.MaxCorrectionTurns, &t.VerificationOutput,
 	); err != nil {
 		return t, fmt.Errorf("sqlite: scan task: %w", err)
 	}

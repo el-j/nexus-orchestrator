@@ -64,6 +64,11 @@ type FileWriter interface {
 	ReadContextFiles(projectPath string, files []string) (string, error)
 }
 
+// CommandRunner is the port for executing verification commands within a project directory.
+type CommandRunner interface {
+	Run(ctx context.Context, dir string, command string) (string, error)
+}
+
 // --- Inbound Ports (Driving Adapters) ---
 
 // ProviderInfo summarises the liveness status of a single LLM backend.

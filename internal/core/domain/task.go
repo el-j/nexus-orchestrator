@@ -97,6 +97,14 @@ type Task struct {
 	RetryCount  int         `json:"retryCount,omitempty"`
 	Logs        string      `json:"logs,omitempty"`
 	AISessionID string      `json:"aiSessionId,omitempty"`
+	// VerificationCommand is an optional shell command (e.g. "go test ./...", "npm test")
+	// executed after writing code to verify correctness before marking the task COMPLETED.
+	VerificationCommand string `json:"verificationCommand,omitempty"`
+	// MaxCorrectionTurns limits how many times the model can attempt to fix its mistakes
+	// if the verification command fails. Defaults to 2 when VerificationCommand is set and this is 0.
+	MaxCorrectionTurns int `json:"maxCorrectionTurns,omitempty"`
+	// VerificationOutput captures the stdout/stderr from the last verification run.
+	VerificationOutput string `json:"verificationOutput,omitempty"`
 }
 
 // IsExecutable returns true if the task can enter the execution queue.

@@ -27,6 +27,8 @@ func main() {
 		addr     = flag.String("addr", getEnv("NEXUS_ADDR", "http://127.0.0.1:63987"), "daemon base URL")
 		wait     = flag.Bool("wait", false, "poll until task completes and print result")
 		timeout  = flag.Duration("timeout", 5*time.Minute, "max wait time when --wait is set")
+		verify   = flag.String("verify", "", "verification command (e.g. 'go test ./...', 'npm test') to trigger self-healing verification gates")
+		turns    = flag.Int("turns", 2, "max self-healing correction turns if verification fails")
 	)
 	flag.Parse()
 
@@ -70,6 +72,10 @@ func main() {
 		"targetFile":   *target,
 		"instruction":  string(content),
 		"contextFiles": contextFiles,
+	}
+	if *verify != "" {
+		body["verificationCommand"] = *verify
+		body["maxCorrectionTurns"] = *turns
 	}
 	reqJSON, err := json.Marshal(body)
 	if err != nil {

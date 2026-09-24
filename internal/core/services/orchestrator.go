@@ -73,6 +73,11 @@ func WithWatchdogInterval(d time.Duration) Option {
 	return func(s *OrchestratorService) { s.watchdogInterval = d }
 }
 
+// WithCommandRunner sets the command runner used for post-execution verification gates.
+func WithCommandRunner(runner ports.CommandRunner) Option {
+	return func(s *OrchestratorService) { s.commandRunner = runner }
+}
+
 // OrchestratorService implements ports.Orchestrator and drives the worker loop.
 type OrchestratorService struct {
 	mu          sync.Mutex
@@ -99,6 +104,7 @@ type OrchestratorService struct {
 	agentScanner       ports.AgentScanner
 	agentRepo          discoveredAgentStore
 	planFileRepo       ports.DiscoveredPlanFileRepo
+	commandRunner      ports.CommandRunner
 	lastAgentScan      time.Time
 	lastAgentScanMu    sync.Mutex
 	maxRetries         int

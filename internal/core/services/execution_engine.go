@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -74,7 +75,7 @@ func (o *OrchestratorService) processNext() bool {
 		return true
 	}
 
-	o.writeTaskOutput(task, code, llm.ProviderName())
+	o.writeAndVerifyTaskOutput(task, code, llm, sessionHistory)
 	return true
 }
 
@@ -236,8 +237,21 @@ func (o *OrchestratorService) executeGeneration(task domain.Task, llm ports.LLMC
 }
 
 // writeTaskOutput optionally writes the generated code to disk and marks the task
-// as COMPLETED. On write failure it persists StatusFailed and emits the event.
+// as COMPLETED. It delegates to writeAndVerifyTaskOutput without active LLM correction.
 func (o *OrchestratorService) writeTaskOutput(task domain.Task, code string, providerName string) {
+	o.writeAndVerifyTaskOutput(task, code, nil, nil)
+}
+
+// writeAndVerifyTaskOutput writes the generated code to disk, runs verification commands if configured,
+// and initiates a self-healing correction loop if verification fails.
+func (o *OrchestratorService) writeAndVerifyTaskOutput(task domain.Task, code string, llm ports.LLMClient, sessionHistory []domain.Message) {
+	providerName := "unknown"
+	if llm != nil {
+		providerName = llm.ProviderName()
+	} else if task.ProviderName != "" {
+		providerName = task.ProviderName
+	}
+
 	if o.fileWriter != nil && task.TargetFile != "" {
 		if err := o.fileWriter.WriteCodeToFile(task.ProjectPath, task.TargetFile, extractCode(code)); err != nil {
 			logEntry := fmt.Sprintf("failed writing output via %s: %v", providerName, err)
@@ -253,15 +267,93 @@ func (o *OrchestratorService) writeTaskOutput(task domain.Task, code string, pro
 		}
 	}
 
-	logEntry := fmt.Sprintf("completed via %s at %s", providerName, time.Now().UTC().Format(time.RFC3339))
-	if err := o.repo.UpdateLogs(task.ID, logEntry); err != nil {
-		log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
+	// If no verification command is configured or command runner is nil, complete normally.
+	if strings.TrimSpace(task.VerificationCommand) == "" || o.commandRunner == nil {
+		logEntry := fmt.Sprintf("completed via %s at %s", providerName, time.Now().UTC().Format(time.RFC3339))
+		if err := o.repo.UpdateLogs(task.ID, logEntry); err != nil {
+			log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
+		}
+		if err := o.repo.UpdateStatus(task.ID, domain.StatusCompleted); err != nil {
+			log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+		}
+		o.emit(task.ID, domain.StatusCompleted)
+		log.Printf("orchestrator: task %s completed via %s", task.ID, providerName)
+		return
 	}
-	if err := o.repo.UpdateStatus(task.ID, domain.StatusCompleted); err != nil {
-		log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+
+	// Run verification command
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	output, runErr := o.commandRunner.Run(ctx, task.ProjectPath, task.VerificationCommand)
+	task.VerificationOutput = output
+
+	if runErr == nil {
+		// Verification passed on first attempt
+		logEntry := fmt.Sprintf("verification passed (%s) — completed via %s at %s", task.VerificationCommand, providerName, time.Now().UTC().Format(time.RFC3339))
+		_ = o.repo.Update(task)
+		if err := o.repo.UpdateLogs(task.ID, logEntry); err != nil {
+			log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
+		}
+		if err := o.repo.UpdateStatus(task.ID, domain.StatusCompleted); err != nil {
+			log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+		}
+		o.emit(task.ID, domain.StatusCompleted)
+		log.Printf("orchestrator: task %s verification passed, completed via %s", task.ID, providerName)
+		return
 	}
-	o.emit(task.ID, domain.StatusCompleted)
-	log.Printf("orchestrator: task %s completed via %s", task.ID, providerName)
+
+	// Verification failed — attempt self-healing correction loop if LLM is available
+	maxTurns := task.MaxCorrectionTurns
+	if maxTurns <= 0 {
+		maxTurns = 2
+	}
+
+	if llm != nil {
+		for turn := 1; turn <= maxTurns; turn++ {
+			log.Printf("orchestrator: task %s: verification failed on turn %d/%d (%v), attempting self-healing correction", task.ID, turn, maxTurns, runErr)
+			feedbackPrompt := fmt.Sprintf(
+				"The code written to %s failed verification using command %q:\n\n%s\n\nPlease fix the errors and output the entire corrected file content.",
+				task.TargetFile, task.VerificationCommand, output,
+			)
+
+			correctedCode, genErr := o.executeGeneration(task, llm, feedbackPrompt, sessionHistory)
+			if genErr != nil {
+				log.Printf("orchestrator: task %s: self-healing generation turn %d failed: %v", task.ID, turn, genErr)
+				return
+			}
+
+			if o.fileWriter != nil && task.TargetFile != "" {
+				if err := o.fileWriter.WriteCodeToFile(task.ProjectPath, task.TargetFile, extractCode(correctedCode)); err != nil {
+					logEntry := fmt.Sprintf("failed writing corrected output via %s: %v", providerName, err)
+					_ = o.repo.UpdateLogs(task.ID, logEntry)
+					_ = o.repo.UpdateStatus(task.ID, domain.StatusFailed)
+					o.emit(task.ID, domain.StatusFailed)
+					return
+				}
+			}
+
+			output, runErr = o.commandRunner.Run(ctx, task.ProjectPath, task.VerificationCommand)
+			task.VerificationOutput = output
+			if runErr == nil {
+				logEntry := fmt.Sprintf("verification passed on correction turn %d/%d (%s) — completed via %s at %s", turn, maxTurns, task.VerificationCommand, providerName, time.Now().UTC().Format(time.RFC3339))
+				_ = o.repo.Update(task)
+				_ = o.repo.UpdateLogs(task.ID, logEntry)
+				_ = o.repo.UpdateStatus(task.ID, domain.StatusCompleted)
+				o.emit(task.ID, domain.StatusCompleted)
+				log.Printf("orchestrator: task %s verification passed on correction turn %d via %s", task.ID, turn, providerName)
+				return
+			}
+		}
+	}
+
+	// Verification failed and correction turns exhausted
+	logEntry := fmt.Sprintf("verification failed after %d correction turns (%s): %v\nOutput:\n%s", maxTurns, task.VerificationCommand, runErr, output)
+	log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
+	_ = o.repo.Update(task)
+	_ = o.repo.UpdateLogs(task.ID, logEntry)
+	_ = o.repo.UpdateStatus(task.ID, domain.StatusFailed)
+	o.emit(task.ID, domain.StatusFailed)
 }
 
 // delegationInstruction returns a formatted prompt instructing an AI agent to

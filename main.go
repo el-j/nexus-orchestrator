@@ -22,6 +22,7 @@ import (
 	"nexus-orchestrator/internal/adapters/outbound/activity_claude"
 	"nexus-orchestrator/internal/adapters/outbound/activity_continue"
 	"nexus-orchestrator/internal/adapters/outbound/activity_network"
+	"nexus-orchestrator/internal/adapters/outbound/cmd_runner"
 	"nexus-orchestrator/internal/adapters/outbound/fs_writer"
 	"nexus-orchestrator/internal/adapters/outbound/repo_sqlite"
 	"nexus-orchestrator/internal/adapters/outbound/sys_scanner"
@@ -62,11 +63,15 @@ func run() error {
 	defer repo.Close()
 
 	writer := fs_writer.New()
+	runner := cmd_runner.New()
 
 	// 2. Core services (Hexagonal wiring)
 	discoverySvc := services.NewDiscoveryService(bootstrap.BuildProviders()...)
 	sessionRepo := repo_sqlite.NewSessionRepo(repo)
-	orchestratorSvc := services.NewOrchestrator(discoverySvc, repo, writer, sessionRepo)
+	orchestratorSvc := services.NewOrchestrator(
+		discoverySvc, repo, writer, sessionRepo,
+		services.WithCommandRunner(runner),
+	)
 	orchestratorSvc.WithProviderFactory(bootstrap.BuildProviderFromConfig)
 
 	providerConfigRepo := repo_sqlite.NewProviderConfigRepo(repo)
