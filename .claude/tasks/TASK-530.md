@@ -3,7 +3,8 @@ id: TASK-530
 planId: PLAN-069
 title: 'Implement 4 stub methods in brain_client.go'
 role: backend
-status: todo
+status: done
+completedAt: 2026-04-13T18:00:00Z
 createdAt: 2026-04-13T16:00:00Z
 ---
 

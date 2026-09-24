@@ -3,7 +3,8 @@ id: TASK-529
 planId: PLAN-069
 title: 'Add 4 missing brain HTTP routes and handlers'
 role: backend
-status: todo
+status: done
+completedAt: 2026-04-13T18:00:00Z
 createdAt: 2026-04-13T16:00:00Z
 ---
 

@@ -3,7 +3,8 @@ id: TASK-538
 planId: PLAN-069
 title: 'Add search_knowledge MCP + re-ingest dedup E2E cases to brain_test.go'
 role: qa
-status: todo
+status: done
+completedAt: 2026-04-13T18:00:00Z
 createdAt: 2026-04-13T16:00:00Z
 ---
 

@@ -3,7 +3,8 @@ id: TASK-539
 planId: PLAN-069
 title: 'SQLite quality: explicit BM25 ORDER BY + UpdateKnowledge token_count recompute'
 role: quality
-status: todo
+status: done
+completedAt: 2026-04-13T18:00:00Z
 createdAt: 2026-04-13T16:00:00Z
 ---
 
