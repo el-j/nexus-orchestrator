@@ -8,10 +8,11 @@ type MessageRole string
 const (
 	RoleUser      MessageRole = "user"
 	RoleAssistant MessageRole = "assistant"
+	RoleSystem    MessageRole = "system"
 )
 
 // Message is a single turn in a conversation with an LLM.
-// Role must be one of the typed MessageRole constants (RoleUser, RoleAssistant).
+// Role must be one of the typed MessageRole constants (RoleUser, RoleAssistant, RoleSystem).
 type Message struct {
 	Role      MessageRole `json:"role"`
 	Content   string      `json:"content"`

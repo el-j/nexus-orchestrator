@@ -83,6 +83,8 @@ type Task struct {
 	// ProviderName is an explicit provider lock. Non-empty means skip discovery
 	// and route directly to the named provider. Empty falls back to ProviderHint/ModelID.
 	ProviderName string `json:"providerName,omitempty"`
+	// Role optionally hints the model tier or persona needed (e.g. "architect", "techlead", "coder", "tester", "linter").
+	Role string `json:"role,omitempty"`
 	// Priority controls backlog ordering (1=highest, 2=medium default, 3+=low).
 	Priority int `json:"priority,omitempty"`
 	// Tags are free-form labels for organising ideas and backlog items.

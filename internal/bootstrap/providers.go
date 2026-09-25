@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"nexus-orchestrator/internal/adapters/outbound/llm_anthropic"
+	"nexus-orchestrator/internal/adapters/outbound/llm_gemini"
 	"nexus-orchestrator/internal/adapters/outbound/llm_lmstudio"
 	"nexus-orchestrator/internal/adapters/outbound/llm_ollama"
 	"nexus-orchestrator/internal/adapters/outbound/llm_openaicompat"
@@ -51,6 +52,20 @@ func BuildProviders() []ports.LLMClient {
 		}
 		providers = append(providers, llm_anthropic.NewAdapter(key, model))
 	}
+	geminiKey := os.Getenv("NEXUS_GEMINI_API_KEY")
+	if geminiKey == "" {
+		geminiKey = os.Getenv("GEMINI_API_KEY")
+	}
+	if geminiKey != "" {
+		model := os.Getenv("NEXUS_GEMINI_MODEL")
+		if model == "" {
+			model = os.Getenv("GEMINI_MODEL")
+		}
+		if model == "" {
+			model = "gemini-2.5-pro"
+		}
+		providers = append(providers, llm_gemini.NewAdapter(geminiKey, model))
+	}
 	antigravityURL := os.Getenv("NEXUS_ANTIGRAVITY_URL")
 	if antigravityURL == "" {
 		antigravityURL = "http://127.0.0.1:4315/v1"
@@ -77,6 +92,8 @@ func BuildProviderFromConfig(cfg domain.ProviderConfig) (ports.LLMClient, error)
 		return llm_openaicompat.NewAdapter(cfg.Name, cfg.BaseURL, cfg.APIKey, cfg.Model), nil
 	case domain.ProviderKindAnthropic:
 		return llm_anthropic.NewAdapter(cfg.APIKey, cfg.Model), nil
+	case domain.ProviderKindGemini:
+		return llm_gemini.NewAdapter(cfg.APIKey, cfg.Model, cfg.BaseURL), nil
 	case domain.ProviderKindDesktopApp, domain.ProviderKindLocalAI, domain.ProviderKindVLLM, domain.ProviderKindTextGenUI:
 		baseURL := cfg.BaseURL
 		if baseURL == "" {

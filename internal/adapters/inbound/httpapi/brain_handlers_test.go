@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -56,17 +57,22 @@ type mockBrainService struct {
 	retIngestKnowledge    domain.ProjectKnowledge
 	retIngestKnowledgeErr error
 
+	// GetOnboardingContext
+	retOnboardingContext string
+	retOnboardingErr     error
+
 	// call counters
-	ingestFromFileCalls    int
-	getStatusCalls         int
-	getContextCalls        int
-	getFocusedContextCalls int
-	searchKnowledgeCalls   int
-	initProjectCalls       int
-	listKnowledgeCalls     int
-	deleteKnowledgeCalls   int
-	getFileMapCalls        int
-	ingestKnowledgeCalls   int
+	ingestFromFileCalls       int
+	getStatusCalls            int
+	getContextCalls           int
+	getFocusedContextCalls    int
+	searchKnowledgeCalls      int
+	initProjectCalls          int
+	listKnowledgeCalls        int
+	deleteKnowledgeCalls      int
+	getFileMapCalls           int
+	ingestKnowledgeCalls      int
+	getOnboardingContextCalls int
 }
 
 func (m *mockBrainService) IngestFromFile(_ context.Context, _, _ string) (int, error) {
@@ -117,6 +123,11 @@ func (m *mockBrainService) GetFileMap(_ context.Context, _, _ string) ([]string,
 func (m *mockBrainService) IngestKnowledge(_ context.Context, k domain.ProjectKnowledge) (domain.ProjectKnowledge, error) {
 	m.ingestKnowledgeCalls++
 	return m.retIngestKnowledge, m.retIngestKnowledgeErr
+}
+
+func (m *mockBrainService) GetOnboardingContext(_ context.Context, _ string, _ int) (string, error) {
+	m.getOnboardingContextCalls++
+	return m.retOnboardingContext, m.retOnboardingErr
 }
 
 // serveWithBrain creates a Server with a minimal mockOrchestrator and the given
@@ -482,5 +493,63 @@ func TestHandleGetFileMap_OK(t *testing.T) {
 	}
 	if mock.getFileMapCalls != 1 {
 		t.Errorf("expected 1 call to GetFileMap, got %d", mock.getFileMapCalls)
+	}
+}
+
+// --- handleGetOnboardingContext ---
+
+func TestHandleGetOnboardingContext_OK(t *testing.T) {
+	mock := &mockBrainService{
+		retOnboardingContext: "# Project Onboarding: test-proj\n**Stack:** Go\n",
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/brain/onboarding?projectPath=/tmp/test-proj&maxTokens=600", nil)
+	rec := httptest.NewRecorder()
+
+	serveWithBrain(mock, req, rec)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d; body: %s", rec.Code, rec.Body.String())
+	}
+	var resp map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp["projectPath"] != "/tmp/test-proj" {
+		t.Errorf("expected projectPath /tmp/test-proj, got %v", resp["projectPath"])
+	}
+	if resp["maxTokens"] != float64(600) {
+		t.Errorf("expected maxTokens 600, got %v", resp["maxTokens"])
+	}
+	if resp["content"] != "# Project Onboarding: test-proj\n**Stack:** Go\n" {
+		t.Errorf("unexpected content: %v", resp["content"])
+	}
+	if mock.getOnboardingContextCalls != 1 {
+		t.Errorf("expected 1 call to GetOnboardingContext, got %d", mock.getOnboardingContextCalls)
+	}
+}
+
+func TestHandleGetOnboardingContext_MissingProjectPath(t *testing.T) {
+	mock := &mockBrainService{}
+	req := httptest.NewRequest(http.MethodGet, "/api/brain/onboarding", nil)
+	rec := httptest.NewRecorder()
+
+	serveWithBrain(mock, req, rec)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d; body: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHandleGetOnboardingContext_Error(t *testing.T) {
+	mock := &mockBrainService{
+		retOnboardingErr: errors.New("storage failure"),
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/brain/onboarding?projectPath=/tmp/test-proj", nil)
+	rec := httptest.NewRecorder()
+
+	serveWithBrain(mock, req, rec)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d; body: %s", rec.Code, rec.Body.String())
 	}
 }

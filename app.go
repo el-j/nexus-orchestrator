@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"nexus-orchestrator/internal/adapters/outbound/fs_watcher"
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
 	"nexus-orchestrator/internal/core/services"
@@ -20,6 +21,7 @@ type App struct {
 	brainSvc     ports.BrainService
 	httpAddr     string
 	activitySvc  *services.ActivityService
+	fsWatcher    *fs_watcher.Watcher
 }
 
 // NewApp creates a new App instance.
@@ -261,6 +263,28 @@ func (a *App) withActivityService(svc *services.ActivityService) *App {
 func (a *App) withBrainService(svc ports.BrainService) *App {
 	a.brainSvc = svc
 	return a
+}
+
+// withFsWatcher injects a filesystem watcher into the App.
+func (a *App) withFsWatcher(w *fs_watcher.Watcher) *App {
+	a.fsWatcher = w
+	return a
+}
+
+// WatchWorkspace registers a workspace directory to be actively monitored for file changes.
+func (a *App) WatchWorkspace(projectPath string) error {
+	if a.fsWatcher == nil {
+		return fmt.Errorf("filesystem watcher not available")
+	}
+	return a.fsWatcher.Watch(projectPath)
+}
+
+// UnwatchWorkspace unregisters a workspace directory from active file monitoring.
+func (a *App) UnwatchWorkspace(projectPath string) error {
+	if a.fsWatcher == nil {
+		return fmt.Errorf("filesystem watcher not available")
+	}
+	return a.fsWatcher.Unwatch(projectPath)
 }
 
 // IngestKnowledge processes a markdown file to be added to the project's brain.

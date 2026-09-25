@@ -38,62 +38,79 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Resolve project path
-	projectPath := *project
+	body, err := BuildRequestBody(*taskFile, *project, *target, *context, *verify, *turns)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		os.Exit(1)
+	}
+
+	taskID, status, err := SubmitTask(*addr, body)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("submitted: task_id=%s status=%s\n", taskID, status)
+	fmt.Printf("track: %s/api/tasks/%s\n", *addr, taskID)
+	fmt.Printf("ui:    %s/ui\n", *addr)
+
+	if *wait {
+		waitForCompletion(*addr, taskID, *timeout)
+	}
+}
+
+// BuildRequestBody prepares the JSON payload for submitting a task to the daemon.
+func BuildRequestBody(taskFilePath, projectPath, targetFile, contextFilesStr, verify string, turns int) (map[string]interface{}, error) {
 	if projectPath == "" {
 		var err error
 		projectPath, err = os.Getwd()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "error: get cwd:", err)
-			os.Exit(1)
+			return nil, fmt.Errorf("get cwd: %w", err)
 		}
 	}
 
-	// Read task file content as the instruction
-	content, err := os.ReadFile(*taskFile)
+	content, err := os.ReadFile(taskFilePath)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error: read task file:", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("read task file: %w", err)
 	}
 
-	// Parse optional comma-separated context files
 	var contextFiles []string
-	if *context != "" {
-		for _, f := range strings.Split(*context, ",") {
+	if contextFilesStr != "" {
+		for _, f := range strings.Split(contextFilesStr, ",") {
 			if f = strings.TrimSpace(f); f != "" {
 				contextFiles = append(contextFiles, f)
 			}
 		}
 	}
 
-	// Build request body using camelCase field names (aligns with domain.Task json tags from TASK-032)
 	body := map[string]interface{}{
 		"projectPath":  projectPath,
-		"targetFile":   *target,
+		"targetFile":   targetFile,
 		"instruction":  string(content),
 		"contextFiles": contextFiles,
 	}
-	if *verify != "" {
-		body["verificationCommand"] = *verify
-		body["maxCorrectionTurns"] = *turns
+	if verify != "" {
+		body["verificationCommand"] = verify
+		body["maxCorrectionTurns"] = turns
 	}
+	return body, nil
+}
+
+// SubmitTask POSTs a task payload to the daemon and returns the task ID and initial status.
+func SubmitTask(addr string, body map[string]interface{}) (string, string, error) {
 	reqJSON, err := json.Marshal(body)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error: marshal request:", err)
-		os.Exit(1)
+		return "", "", fmt.Errorf("marshal request: %w", err)
 	}
 
-	// POST to daemon
-	resp, err := http.Post(*addr+"/api/tasks", "application/json", bytes.NewReader(reqJSON))
+	resp, err := http.Post(addr+"/api/tasks", "application/json", bytes.NewReader(reqJSON))
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error: POST /api/tasks:", err)
-		os.Exit(1)
+		return "", "", fmt.Errorf("POST /api/tasks: %w", err)
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		resp.Body.Close()
-		fmt.Fprintf(os.Stderr, "error: daemon returned HTTP %d\n", resp.StatusCode)
-		os.Exit(1)
+		return "", "", fmt.Errorf("daemon returned HTTP %d", resp.StatusCode)
 	}
 
 	var result struct {
@@ -101,19 +118,10 @@ func main() {
 		Status string `json:"status"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		resp.Body.Close()
-		fmt.Fprintln(os.Stderr, "error: decode response:", err)
-		os.Exit(1)
+		return "", "", fmt.Errorf("decode response: %w", err)
 	}
-	resp.Body.Close()
 
-	fmt.Printf("submitted: task_id=%s status=%s\n", result.TaskID, result.Status)
-	fmt.Printf("track: %s/api/tasks/%s\n", *addr, result.TaskID)
-	fmt.Printf("ui:    %s/ui\n", *addr)
-
-	if *wait {
-		waitForCompletion(*addr, result.TaskID, *timeout)
-	}
+	return result.TaskID, result.Status, nil
 }
 
 func waitForCompletion(addr, taskID string, timeout time.Duration) {

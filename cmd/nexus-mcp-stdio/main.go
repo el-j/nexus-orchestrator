@@ -29,11 +29,20 @@ func main() {
 	}
 	mcpToken := strings.TrimSpace(os.Getenv("NEXUS_MCP_TOKEN"))
 
+	if err := proxy(os.Stdin, os.Stdout, os.Stderr, mcpURL, mcpToken); err != nil {
+		fmt.Fprintf(os.Stderr, "nexus-mcp-stdio: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+// proxy reads JSON-RPC messages from in, forwards them via HTTP POST to mcpURL,
+// and writes responses to out. Diagnostic logs go to errOut.
+func proxy(in io.Reader, out, errOut io.Writer, mcpURL, mcpToken string) error {
 	client := &http.Client{Timeout: 120 * time.Second}
 
-	fmt.Fprintf(os.Stderr, "nexus-mcp-stdio: forwarding to %s\n", mcpURL)
+	fmt.Fprintf(errOut, "nexus-mcp-stdio: forwarding to %s\n", mcpURL)
 
-	scanner := bufio.NewScanner(os.Stdin)
+	scanner := bufio.NewScanner(in)
 	scanner.Buffer(make([]byte, 0, 1<<20), 1<<20)
 
 	for scanner.Scan() {
@@ -44,8 +53,8 @@ func main() {
 
 		req, err := http.NewRequest(http.MethodPost, mcpURL, bytes.NewReader(line))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "nexus-mcp-stdio: new request error: %v\n", err)
-			writeErr("proxy request error")
+			fmt.Fprintf(errOut, "nexus-mcp-stdio: new request error: %v\n", err)
+			writeErrTo(out, "proxy request error")
 			continue
 		}
 		req.Header.Set("Content-Type", "application/json")
@@ -55,16 +64,16 @@ func main() {
 
 		resp, err := client.Do(req)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "nexus-mcp-stdio: POST error: %v\n", err)
-			writeErr(err.Error())
+			fmt.Fprintf(errOut, "nexus-mcp-stdio: POST error: %v\n", err)
+			writeErrTo(out, err.Error())
 			continue
 		}
 
 		body, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "nexus-mcp-stdio: read response: %v\n", err)
-			writeErr("proxy read error")
+			fmt.Fprintf(errOut, "nexus-mcp-stdio: read response: %v\n", err)
+			writeErrTo(out, "proxy read error")
 			continue
 		}
 
@@ -72,24 +81,23 @@ func main() {
 			continue
 		}
 
-		if _, err := fmt.Fprint(os.Stdout, string(body)); err != nil {
-			fmt.Fprintf(os.Stderr, "nexus-mcp-stdio: stdout write error: %v\n", err)
-			os.Exit(1)
+		if _, err := fmt.Fprint(out, string(body)); err != nil {
+			return fmt.Errorf("stdout write error: %w", err)
 		}
 		if body[len(body)-1] != '\n' {
-			if _, err := fmt.Fprint(os.Stdout, "\n"); err != nil {
-				fmt.Fprintf(os.Stderr, "nexus-mcp-stdio: stdout newline error: %v\n", err)
-				os.Exit(1)
+			if _, err := fmt.Fprint(out, "\n"); err != nil {
+				return fmt.Errorf("stdout newline error: %w", err)
 			}
 		}
 	}
 
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "nexus-mcp-stdio: stdin read error: %v\n", err)
-		os.Exit(1)
-	}
+	return scanner.Err()
+}
+
+func writeErrTo(out io.Writer, msg string) {
+	fmt.Fprintf(out, "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32603,\"message\":\"%s\"}}\n", msg)
 }
 
 func writeErr(msg string) {
-	fmt.Fprintf(os.Stdout, "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32603,\"message\":\"%s\"}}\n", msg)
+	writeErrTo(os.Stdout, msg)
 }

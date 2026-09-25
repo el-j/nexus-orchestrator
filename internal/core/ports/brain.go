@@ -54,4 +54,7 @@ type BrainService interface {
 	ListKnowledge(ctx context.Context, projectPath, kind string) ([]domain.ProjectKnowledge, error)
 	// DeleteKnowledge removes a knowledge entry by ID.
 	DeleteKnowledge(ctx context.Context, id string) error
+	// GetOnboardingContext returns a concise, token-budgeted (< 800 tokens by default) Tier 0/1 summary
+	// of the project for agent bootstrap (stack, invariants, test commands, active plan/tasks).
+	GetOnboardingContext(ctx context.Context, projectPath string, maxTokens int) (string, error)
 }

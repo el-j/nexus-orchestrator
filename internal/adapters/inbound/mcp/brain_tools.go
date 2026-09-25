@@ -207,3 +207,151 @@ func (s *Server) toolGetFileMap(ctx context.Context, args json.RawMessage) (call
 	b, _ := json.Marshal(map[string]any{"filePaths": paths})
 	return textResult(string(b)), nil
 }
+
+func (s *Server) toolGetOnboardingContext(ctx context.Context, args json.RawMessage) (callToolResult, error) {
+	var p struct {
+		ProjectPath string `json:"projectPath"`
+		MaxTokens   int    `json:"maxTokens,omitempty"`
+	}
+	if err := json.Unmarshal(args, &p); err != nil {
+		return callToolResult{}, fmt.Errorf("mcp: get_onboarding_context: invalid args: %w", err)
+	}
+	if p.ProjectPath == "" {
+		return callToolResult{}, &mcpError{code: codeInvalidParams, msg: "projectPath is required"}
+	}
+	if s.brain == nil {
+		return callToolResult{}, fmt.Errorf("brain service not configured")
+	}
+	summary, err := s.brain.GetOnboardingContext(ctx, p.ProjectPath, p.MaxTokens)
+	if err != nil {
+		return callToolResult{}, fmt.Errorf("mcp: get_onboarding_context: %w", err)
+	}
+	return textResult(summary), nil
+}
+
+// ----- Brain Schema Definitions -----
+
+func brainToolDefs() []toolDef {
+	return []toolDef{
+		{
+			Name:        "get_onboarding_context",
+			Description: "Get a token-budgeted (< 800 tokens) Tier 0/1 onboarding summary of the project for agent bootstrap (stack, invariants, test commands, active plan/tasks).",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+					"maxTokens":   {Type: "number", Description: "Maximum tokens to return (default: 800)"},
+				},
+				Required: []string{"projectPath"},
+			},
+		},
+		{
+			Name:        "get_project_context",
+			Description: "Get the macro context for a project (Architectures, Conventions, File Maps) bounded by a token budget.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+					"maxTokens":   {Type: "number", Description: "Maximum tokens to return (default: 400)"},
+				},
+				Required: []string{"projectPath"},
+			},
+		},
+		{
+			Name:        "get_focused_context",
+			Description: "Get task-specific micro context (Learning, Definitions, Gotchas) bounded by a token budget.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+					"question":    {Type: "string", Description: "Semantic search query to match against knowledge"},
+					"maxTokens":   {Type: "number", Description: "Maximum tokens to return (default: 400)"},
+				},
+				Required: []string{"projectPath", "question"},
+			},
+		},
+		{
+			Name:        "search_knowledge",
+			Description: "Perform full-text search across the project's knowledge base.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+					"query":       {Type: "string", Description: "The FTS query"},
+					"limit":       {Type: "number", Description: "Max results to return"},
+				},
+				Required: []string{"projectPath", "query"},
+			},
+		},
+		{
+			Name:        "get_brain_status",
+			Description: "Check the knowledge repository status for a project.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+				},
+				Required: []string{"projectPath"},
+			},
+		},
+		{
+			Name:        "ingest_knowledge",
+			Description: "Parse and ingest a markdown file (often CLAUDE.md) into the project knowledge repository.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+					"filePath":    {Type: "string", Description: "Path to the markdown file to ingest"},
+				},
+				Required: []string{"projectPath", "filePath"},
+			},
+		},
+		{
+			Name:        "init_project",
+			Description: "Auto-ingest CLAUDE.md and initialize a project's knowledge base",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath":  {Type: "string", Description: "Absolute path to the project"},
+					"claudeMDPath": {Type: "string", Description: "Path to CLAUDE.md (optional, auto-detected if empty)"},
+				},
+				Required: []string{"projectPath"},
+			},
+		},
+		{
+			Name:        "list_knowledge",
+			Description: "List all knowledge entries for a project, optionally filtered by kind",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project"},
+					"kind":        {Type: "string", Description: "Knowledge kind filter (optional)"},
+				},
+				Required: []string{"projectPath"},
+			},
+		},
+		{
+			Name:        "delete_knowledge",
+			Description: "Delete a knowledge entry by ID",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"id": {Type: "string", Description: "Knowledge entry ID"},
+				},
+				Required: []string{"id"},
+			},
+		},
+		{
+			Name:        "get_file_map",
+			Description: "Get the file path map for a project from the knowledge base",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Absolute path to the project"},
+					"focusArea":   {Type: "string", Description: "Optional focus area filter"},
+				},
+				Required: []string{"projectPath"},
+			},
+		},
+	}
+}

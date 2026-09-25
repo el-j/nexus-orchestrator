@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -349,5 +350,86 @@ func TestBrainService_GetFileMap(t *testing.T) {
 	// Verify only file_map content is returned (2 entries)
 	if len(paths) != 2 {
 		t.Errorf("Expected 2 file map paths, got %d", len(paths))
+	}
+}
+
+func TestBrainService_GetOnboardingContext_Defaults(t *testing.T) {
+	repo := &mockKnowledgeRepo{}
+	b := services.NewBrainService(repo, nil)
+	ctx := context.Background()
+
+	ctxStr, err := b.GetOnboardingContext(ctx, "/path/to/my-service", 800)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(ctxStr, "# Project Onboarding: my-service") {
+		t.Errorf("expected title with project name, got: %s", ctxStr)
+	}
+	if !strings.Contains(ctxStr, "## Active Development State") {
+		t.Errorf("expected Active Development State section, got: %s", ctxStr)
+	}
+	if !strings.Contains(ctxStr, "## Verification Commands") {
+		t.Errorf("expected Verification Commands section, got: %s", ctxStr)
+	}
+}
+
+func TestBrainService_GetOnboardingContext_WithStackAndKnowledge(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte("module testmod\n\ngo 1.22\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	repo := &mockKnowledgeRepo{
+		entries: []domain.ProjectKnowledge{
+			{
+				ProjectPath: tmpDir,
+				Kind:        domain.KnowledgeArchitecture,
+				Topic:       "Hexagonal Core",
+				Content:     "Core services have zero dependencies on outer adapters.",
+			},
+			{
+				ProjectPath: tmpDir,
+				Kind:        domain.KnowledgeConvention,
+				Topic:       "TDD Rules",
+				Content:     "Always run tests with -race and FTS5 flags enabled.",
+			},
+		},
+	}
+	b := services.NewBrainService(repo, nil)
+	ctx := context.Background()
+
+	ctxStr, err := b.GetOnboardingContext(ctx, tmpDir, 800)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(ctxStr, "**Stack:** Go") {
+		t.Errorf("expected Go stack detection, got: %s", ctxStr)
+	}
+	if !strings.Contains(ctxStr, "Hexagonal Core") {
+		t.Errorf("expected Hexagonal Core in architecture, got: %s", ctxStr)
+	}
+	if !strings.Contains(ctxStr, "TDD Rules") {
+		t.Errorf("expected TDD Rules in conventions, got: %s", ctxStr)
+	}
+	if !strings.Contains(ctxStr, "go test") {
+		t.Errorf("expected go test in verification commands, got: %s", ctxStr)
+	}
+}
+
+func TestBrainService_GetOnboardingContext_TokenBudgetLimit(t *testing.T) {
+	repo := &mockKnowledgeRepo{}
+	b := services.NewBrainService(repo, nil)
+	ctx := context.Background()
+
+	ctxStr, err := b.GetOnboardingContext(ctx, "/path/to/very-long-project-name-with-deep-hierarchy", 20)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// 20 tokens * 4 chars = ~80 chars + notice
+	if len(ctxStr) > 250 {
+		t.Errorf("expected truncated string under budget, got %d chars: %s", len(ctxStr), ctxStr)
 	}
 }

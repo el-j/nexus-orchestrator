@@ -469,6 +469,95 @@ func TestExecutionEngine_VerificationGate_ExhaustedTurns(t *testing.T) {
 	}
 }
 
+// ---- TASK-562: Smart Provider Fallback Chain & Role-Driven Router ----------
+
+// TestProviderFallback_PrimaryFails_SecondarySucceeds verifies that when the primary provider
+// fails (e.g. rate-limit or network 500 error), the orchestrator automatically executes via the fallback provider.
+func TestProviderFallback_PrimaryFails_SecondarySucceeds(t *testing.T) {
+	repo := newMemRepo()
+	p1 := &countingLLM{name: "primary-anthropic", alive: true, codeErr: errors.New("rate limited: 429 Too Many Requests")}
+	p2 := &countingLLM{name: "secondary-gemini", alive: true, code: "package main\n\nfunc main() {}"}
+	discovery := services.NewDiscoveryService(p1, p2)
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.SubmitTask(domain.Task{
+		Instruction: "generate something resilient",
+	})
+	if err != nil {
+		t.Fatalf("SubmitTask: %v", err)
+	}
+
+	task := waitStatus(t, repo, id, domain.StatusCompleted, 10*time.Second)
+	if p1.calls.Load() != 1 {
+		t.Errorf("expected primary provider to be attempted once; got %d calls", p1.calls.Load())
+	}
+	if p2.calls.Load() != 1 {
+		t.Errorf("expected secondary provider to be executed once; got %d calls", p2.calls.Load())
+	}
+	if !strings.Contains(task.Logs, "failover: primary provider failed, executed via secondary-gemini") {
+		t.Errorf("expected logs to contain failover notice; got: %q", task.Logs)
+	}
+}
+
+// TestRoleDrivenRouter_ArchitectRoutesToFrontierFirst verifies that tasks with Role='architect'
+// prioritize frontier cloud models over local models.
+func TestRoleDrivenRouter_ArchitectRoutesToFrontierFirst(t *testing.T) {
+	repo := newMemRepo()
+	local := &countingLLM{name: "ollama-local", alive: true, code: "local code"}
+	frontier := &countingLLM{name: "anthropic-claude", alive: true, code: "frontier architecture code"}
+	// Register local first to ensure default ordering would have picked local if not for role
+	discovery := services.NewDiscoveryService(local, frontier)
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.SubmitTask(domain.Task{
+		Instruction: "design microservice architecture",
+		Role:        "architect",
+	})
+	if err != nil {
+		t.Fatalf("SubmitTask: %v", err)
+	}
+
+	waitStatus(t, repo, id, domain.StatusCompleted, 10*time.Second)
+
+	if frontier.calls.Load() != 1 {
+		t.Errorf("expected frontier model to be called first for architect role; got %d calls", frontier.calls.Load())
+	}
+	if local.calls.Load() != 0 {
+		t.Errorf("expected local model NOT to be called when frontier succeeds; got %d calls", local.calls.Load())
+	}
+}
+
+// TestRoleDrivenRouter_LinterRoutesToLocalFirst verifies that tasks with Role='linter'
+// prioritize fast local models over expensive frontier models.
+func TestRoleDrivenRouter_LinterRoutesToLocalFirst(t *testing.T) {
+	repo := newMemRepo()
+	frontier := &countingLLM{name: "anthropic-claude", alive: true, code: "frontier code"}
+	local := &countingLLM{name: "ollama-local", alive: true, code: "local linted code"}
+	// Register frontier first to verify role overrides discovery order
+	discovery := services.NewDiscoveryService(frontier, local)
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.SubmitTask(domain.Task{
+		Instruction: "lint this file and format imports",
+		Role:        "linter",
+	})
+	if err != nil {
+		t.Fatalf("SubmitTask: %v", err)
+	}
+
+	waitStatus(t, repo, id, domain.StatusCompleted, 10*time.Second)
+
+	if local.calls.Load() != 1 {
+		t.Errorf("expected local model to be called first for linter role; got %d calls", local.calls.Load())
+	}
+	if frontier.calls.Load() != 0 {
+		t.Errorf("expected frontier model NOT to be called when local succeeds; got %d calls", frontier.calls.Load())
+	}
+}
+
 func discoveryWithCounter(client ports.LLMClient, counter *atomic.Int32) *services.DiscoveryService {
 	return services.NewDiscoveryService(client)
 }

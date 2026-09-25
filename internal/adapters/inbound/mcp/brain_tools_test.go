@@ -2,6 +2,7 @@ package mcp_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http/httptest"
 	"testing"
@@ -12,25 +13,27 @@ import (
 
 // mockBrainForMCP implements ports.BrainService with configurable return values.
 type mockBrainForMCP struct {
-	contextResp     domain.ContextResponse
-	contextErr      error
-	focusedResp     domain.ContextResponse
-	focusedErr      error
-	ingestResult    domain.ProjectKnowledge
-	ingestErr       error
-	ingestFileCount int
-	ingestFileErr   error
-	searchResults   []domain.ContextSection
-	searchErr       error
-	fileMapPaths    []string
-	fileMapErr      error
-	initStatus      domain.BrainStatus
-	initErr         error
-	status          domain.BrainStatus
-	statusErr       error
-	listEntries     []domain.ProjectKnowledge
-	listErr         error
-	deleteErr       error
+	contextResp       domain.ContextResponse
+	contextErr        error
+	focusedResp       domain.ContextResponse
+	focusedErr        error
+	ingestResult      domain.ProjectKnowledge
+	ingestErr         error
+	ingestFileCount   int
+	ingestFileErr     error
+	searchResults     []domain.ContextSection
+	searchErr         error
+	fileMapPaths      []string
+	fileMapErr        error
+	initStatus        domain.BrainStatus
+	initErr           error
+	status            domain.BrainStatus
+	statusErr         error
+	listEntries       []domain.ProjectKnowledge
+	listErr           error
+	deleteErr         error
+	onboardingContext string
+	onboardingErr     error
 }
 
 func (m *mockBrainForMCP) GetContext(_ context.Context, _ domain.ContextQuery) (domain.ContextResponse, error) {
@@ -62,6 +65,9 @@ func (m *mockBrainForMCP) ListKnowledge(_ context.Context, _, _ string) ([]domai
 }
 func (m *mockBrainForMCP) DeleteKnowledge(_ context.Context, _ string) error {
 	return m.deleteErr
+}
+func (m *mockBrainForMCP) GetOnboardingContext(_ context.Context, _ string, _ int) (string, error) {
+	return m.onboardingContext, m.onboardingErr
 }
 
 // newBrainToolServer creates a test HTTP server with the given brain mock (and a nil orch mock).
@@ -449,6 +455,7 @@ func TestMCP_BrainTools_NilBrain(t *testing.T) {
 		"list_knowledge",
 		"delete_knowledge",
 		"get_file_map",
+		"get_onboarding_context",
 	}
 
 	for id, tool := range toolCalls {
@@ -483,6 +490,7 @@ func TestMCP_BrainTools_ServiceErrors(t *testing.T) {
 		listErr:       errors.New("err list"),
 		deleteErr:     errors.New("err delete"),
 		fileMapErr:    errors.New("err filemap"),
+		onboardingErr: errors.New("err onboarding"),
 	}
 	srv := newBrainToolServer(t, brain)
 
@@ -495,6 +503,7 @@ func TestMCP_BrainTools_ServiceErrors(t *testing.T) {
 		"list_knowledge",
 		"delete_knowledge",
 		"get_file_map",
+		"get_onboarding_context",
 	}
 
 	for id, tool := range tools {
@@ -516,5 +525,72 @@ func TestMCP_BrainTools_ServiceErrors(t *testing.T) {
 		if r.Error == nil {
 			t.Errorf("expected error for service error on tool %s, got nil", tool)
 		}
+	}
+}
+
+func extractResultText(t *testing.T, raw []byte) string {
+	t.Helper()
+	var result struct {
+		Content []struct {
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		t.Fatalf("unmarshal tool result envelope: %v", err)
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("expected tool result content")
+	}
+	return result.Content[0].Text
+}
+
+func TestMCP_ToolCall_GetOnboardingContext(t *testing.T) {
+	brain := &mockBrainForMCP{
+		onboardingContext: "# Project Onboarding: sample\n**Stack:** Go\n",
+	}
+	ts := newBrainToolServer(t, brain)
+	defer ts.Close()
+
+	r := postRPC(t, ts, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      100,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "get_onboarding_context",
+			"arguments": map[string]any{
+				"projectPath": "/path/to/project",
+				"maxTokens":   500,
+			},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+
+	text := extractResultText(t, r.Result)
+	if text != "# Project Onboarding: sample\n**Stack:** Go\n" {
+		t.Errorf("unexpected content: %q", text)
+	}
+}
+
+func TestMCP_ToolCall_GetOnboardingContext_MissingProjectPath(t *testing.T) {
+	brain := &mockBrainForMCP{}
+	ts := newBrainToolServer(t, brain)
+	defer ts.Close()
+
+	r := postRPC(t, ts, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      101,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "get_onboarding_context",
+			"arguments": map[string]any{},
+		},
+	})
+	if r.Error == nil {
+		t.Fatal("expected error for missing projectPath, got nil")
+	}
+	if r.Error.Code != -32602 {
+		t.Errorf("expected code -32602, got %d", r.Error.Code)
 	}
 }

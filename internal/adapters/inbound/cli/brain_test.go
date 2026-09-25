@@ -69,6 +69,10 @@ func (m *mockBrainService) GetFileMap(_ context.Context, _, _ string) ([]string,
 	return m.getFileMapResult, m.getFileMapErr
 }
 
+func (m *mockBrainService) GetOnboardingContext(_ context.Context, _ string, _ int) (string, error) {
+	return "", nil
+}
+
 // TestBrainCLI_Status_ServiceError verifies that a brain service error surfaces in the command error.
 func TestBrainCLI_Status_ServiceError(t *testing.T) {
 	brain := &mockBrainService{getStatusErr: errors.New("database unavailable")}
