@@ -1723,6 +1723,69 @@ func TestClaimTask_AlreadyClaimed(t *testing.T) {
 	}
 }
 
+// TestClaimTask_CrossProjectRejection is the critical isolation test:
+// a session registered for /proj/b must NOT be able to claim a task from /proj/a.
+func TestClaimTask_CrossProjectRejection(t *testing.T) {
+	orch, _, aiRepo := setupClaimTestOrch(t)
+
+	// Session scoped to project B.
+	if err := aiRepo.SaveAISession(context.Background(), domain.AISession{
+		ID:          "sess-proj-b",
+		AgentName:   "agent-b",
+		Source:      domain.SessionSourceMCP,
+		Status:      domain.SessionStatusActive,
+		ProjectPath: "/proj/b",
+	}); err != nil {
+		t.Fatalf("seed session: %v", err)
+	}
+
+	// Task belongs to project A.
+	taskID, _ := orch.SubmitTask(domain.Task{Instruction: "work", ProjectPath: "/proj/a"})
+
+	_, err := orch.ClaimTask(context.Background(), taskID, "sess-proj-b")
+	if err == nil {
+		t.Fatal("expected error: session from /proj/b should not claim task from /proj/a")
+	}
+	if !strings.Contains(err.Error(), "does not match task project") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+
+	// Verify the task was NOT transitioned — it must still be QUEUED.
+	task, fetchErr := orch.GetTask(taskID)
+	if fetchErr != nil {
+		t.Fatalf("GetTask: %v", fetchErr)
+	}
+	if task.Status != domain.StatusQueued {
+		t.Errorf("task should remain QUEUED after rejected claim, got %s", task.Status)
+	}
+}
+
+// TestClaimTask_SameProjectSucceeds verifies that project ownership matching works
+// for the happy path: a session registered for /proj/a can claim /proj/a tasks.
+func TestClaimTask_SameProjectSucceeds(t *testing.T) {
+	orch, _, aiRepo := setupClaimTestOrch(t)
+
+	if err := aiRepo.SaveAISession(context.Background(), domain.AISession{
+		ID:          "sess-proj-a",
+		AgentName:   "agent-a",
+		Source:      domain.SessionSourceMCP,
+		Status:      domain.SessionStatusActive,
+		ProjectPath: "/proj/a",
+	}); err != nil {
+		t.Fatalf("seed session: %v", err)
+	}
+
+	taskID, _ := orch.SubmitTask(domain.Task{Instruction: "work", ProjectPath: "/proj/a"})
+
+	task, err := orch.ClaimTask(context.Background(), taskID, "sess-proj-a")
+	if err != nil {
+		t.Fatalf("same-project claim should succeed: %v", err)
+	}
+	if task.Status != domain.StatusProcessing {
+		t.Errorf("expected PROCESSING, got %s", task.Status)
+	}
+}
+
 func TestClaimTask_AppendRoutedTaskID(t *testing.T) {
 	orch, _, aiRepo := setupClaimTestOrch(t)
 	seedActiveSession(t, aiRepo, "sess-1")

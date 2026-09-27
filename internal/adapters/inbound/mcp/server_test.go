@@ -49,8 +49,26 @@ func (m *mockOrch) SubmitTask(t domain.Task) (string, error) {
 }
 func (m *mockOrch) GetTask(_ string) (domain.Task, error) { return m.getTask, m.getErr }
 func (m *mockOrch) GetQueue() ([]domain.Task, error)      { return m.queue, m.queueErr }
-func (m *mockOrch) GetAllTasks() ([]domain.Task, error)   { return m.queue, m.queueErr }
-func (m *mockOrch) CancelTask(_ string) error             { return m.cancelErr }
+func (m *mockOrch) GetQueueForProject(projectPath string) ([]domain.Task, error) {
+	var out []domain.Task
+	for _, t := range m.queue {
+		if t.ProjectPath == projectPath {
+			out = append(out, t)
+		}
+	}
+	return out, m.queueErr
+}
+func (m *mockOrch) GetAllTasks() ([]domain.Task, error) { return m.queue, m.queueErr }
+func (m *mockOrch) GetTasksForProject(projectPath string) ([]domain.Task, error) {
+	var out []domain.Task
+	for _, t := range m.queue {
+		if t.ProjectPath == projectPath {
+			out = append(out, t)
+		}
+	}
+	return out, m.queueErr
+}
+func (m *mockOrch) CancelTask(_ string) error { return m.cancelErr }
 func (m *mockOrch) GetProviders() ([]ports.ProviderInfo, error) {
 	return m.providers, m.provErr
 }

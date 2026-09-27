@@ -38,9 +38,9 @@ func (s *Server) handleToolCall(w http.ResponseWriter, r *http.Request, req rpcR
 	case "get_task":
 		result, err = s.toolGetTask(p.Arguments)
 	case "get_queue":
-		result, err = s.toolGetQueue()
+		result, err = s.toolGetQueue(p.Arguments)
 	case "get_all_tasks":
-		result, err = s.toolGetAllTasks()
+		result, err = s.toolGetAllTasks(p.Arguments)
 	case "cancel_task":
 		result, err = s.toolCancelTask(p.Arguments)
 	case "create_draft":

@@ -298,6 +298,99 @@ func TestToolGetDiscoveredPlans_EmptyReturnsUnknown(t *testing.T) {
 	}
 }
 
+// TestToolGetQueue_WithProjectPath verifies that get_queue scopes results to the
+// supplied projectPath, preventing agents from different projects seeing each other's work.
+func TestToolGetQueue_WithProjectPath(t *testing.T) {
+	orch := &toolHarnessOrch{}
+	orch.queue = []domain.Task{
+		{ID: "ta1", ProjectPath: "/proj/a", Status: domain.StatusQueued},
+		{ID: "tb1", ProjectPath: "/proj/b", Status: domain.StatusQueued},
+		{ID: "ta2", ProjectPath: "/proj/a", Status: domain.StatusProcessing},
+	}
+	srv := newToolServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 10,
+		"method": "tools/call",
+		"params": map[string]any{
+			"name":      "get_queue",
+			"arguments": map[string]any{"projectPath": "/proj/a"},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var tasks []domain.Task
+	decodeToolText(t, r.Result, &tasks)
+	if len(tasks) != 2 {
+		t.Fatalf("want 2 tasks for /proj/a, got %d", len(tasks))
+	}
+	for _, task := range tasks {
+		if task.ProjectPath != "/proj/a" {
+			t.Errorf("got task from wrong project: %s (id=%s)", task.ProjectPath, task.ID)
+		}
+	}
+}
+
+// TestToolGetQueue_NoProjectPath verifies that get_queue without projectPath returns all tasks
+// (admin/global view — allowed but caller is responsible for not confusing projects).
+func TestToolGetQueue_NoProjectPath(t *testing.T) {
+	orch := &toolHarnessOrch{}
+	orch.queue = []domain.Task{
+		{ID: "ta1", ProjectPath: "/proj/a", Status: domain.StatusQueued},
+		{ID: "tb1", ProjectPath: "/proj/b", Status: domain.StatusQueued},
+	}
+	srv := newToolServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 11,
+		"method": "tools/call",
+		"params": map[string]any{
+			"name":      "get_queue",
+			"arguments": map[string]any{},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var tasks []domain.Task
+	decodeToolText(t, r.Result, &tasks)
+	if len(tasks) != 2 {
+		t.Fatalf("want 2 tasks (all projects), got %d", len(tasks))
+	}
+}
+
+// TestToolGetAllTasks_WithProjectPath verifies that get_all_tasks filters by project.
+func TestToolGetAllTasks_WithProjectPath(t *testing.T) {
+	orch := &toolHarnessOrch{}
+	orch.queue = []domain.Task{
+		{ID: "ta1", ProjectPath: "/proj/a", Status: domain.StatusCompleted},
+		{ID: "tb1", ProjectPath: "/proj/b", Status: domain.StatusCompleted},
+		{ID: "ta2", ProjectPath: "/proj/a", Status: domain.StatusFailed},
+	}
+	srv := newToolServer(t, orch)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 12,
+		"method": "tools/call",
+		"params": map[string]any{
+			"name":      "get_all_tasks",
+			"arguments": map[string]any{"projectPath": "/proj/b"},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var tasks []domain.Task
+	decodeToolText(t, r.Result, &tasks)
+	if len(tasks) != 1 {
+		t.Fatalf("want 1 task for /proj/b, got %d", len(tasks))
+	}
+	if tasks[0].ID != "tb1" {
+		t.Errorf("expected task tb1, got %s", tasks[0].ID)
+	}
+}
+
 func TestToolDelegateToNexus_ReturnsInstruction(t *testing.T) {
 	orch := &toolHarnessOrch{delegateInstruction: "claim task and report back"}
 	srv := newToolServer(t, orch)

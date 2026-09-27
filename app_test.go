@@ -42,6 +42,14 @@ func (m *mockOrchestrator) GetQueue() ([]domain.Task, error) {
 	return m.tasksReturn, m.errReturn
 }
 
+func (m *mockOrchestrator) GetQueueForProject(_ string) ([]domain.Task, error) {
+	return m.tasksReturn, m.errReturn
+}
+
+func (m *mockOrchestrator) GetTasksForProject(_ string) ([]domain.Task, error) {
+	return m.tasksReturn, m.errReturn
+}
+
 func (m *mockOrchestrator) CancelTask(id string) error {
 	m.cancelTaskCalled = true
 	m.lastIDArg = id

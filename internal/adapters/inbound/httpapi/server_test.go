@@ -100,6 +100,30 @@ func (m *mockOrchestrator) GetQueue() ([]domain.Task, error) {
 	return m.getQueueResult, m.getQueueErr
 }
 
+func (m *mockOrchestrator) GetQueueForProject(projectPath string) ([]domain.Task, error) {
+	var out []domain.Task
+	for _, t := range m.getQueueResult {
+		if t.ProjectPath == projectPath {
+			out = append(out, t)
+		}
+	}
+	return out, m.getQueueErr
+}
+
+func (m *mockOrchestrator) GetAllTasks() ([]domain.Task, error) {
+	return m.getQueueResult, m.getQueueErr
+}
+
+func (m *mockOrchestrator) GetTasksForProject(projectPath string) ([]domain.Task, error) {
+	var out []domain.Task
+	for _, t := range m.getQueueResult {
+		if t.ProjectPath == projectPath {
+			out = append(out, t)
+		}
+	}
+	return out, m.getQueueErr
+}
+
 func (m *mockOrchestrator) GetProviders() ([]ports.ProviderInfo, error) {
 	return m.getProvidersResult, m.getProvidersErr
 }
@@ -189,9 +213,6 @@ func (m *mockOrchestrator) UpdateTaskStatus(_ context.Context, _ string, _ strin
 }
 func (m *mockOrchestrator) PurgeDisconnectedSessions(_ context.Context) (int, error) {
 	return m.purgeCount, m.purgeErr
-}
-func (m *mockOrchestrator) GetAllTasks() ([]domain.Task, error) {
-	return m.getQueueResult, m.getQueueErr
 }
 func (m *mockOrchestrator) GetDiscoveredAgents(_ context.Context) ([]domain.DiscoveredAgent, error) {
 	return nil, nil
@@ -1126,6 +1147,41 @@ func TestHandleGetAllTasks_Returns200WithTasks(t *testing.T) {
 	}
 }
 
+// TestHandleListTasks_ProjectPathFilter verifies GET /api/tasks?projectPath= scopes the queue.
+func TestHandleListTasks_ProjectPathFilter_ReturnsMatchingTasks(t *testing.T) {
+	tasks := []domain.Task{
+		{ID: "q-a1", ProjectPath: "/proj/a", Status: domain.StatusQueued},
+		{ID: "q-b1", ProjectPath: "/proj/b", Status: domain.StatusQueued},
+		{ID: "q-a2", ProjectPath: "/proj/a", Status: domain.StatusProcessing},
+	}
+	mock := &mockOrchestrator{getQueueResult: tasks}
+	srv := httpapi.NewServer(mock, nil, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/api/tasks?projectPath=/proj/a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("want 200, got %d", resp.StatusCode)
+	}
+	var result []domain.Task
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("want 2 tasks for /proj/a, got %d", len(result))
+	}
+	for _, task := range result {
+		if task.ProjectPath != "/proj/a" {
+			t.Fatalf("unexpected project in queue result: %s", task.ProjectPath)
+		}
+	}
+}
+
 func TestHandleGetAllTasks_ProjectPathFilter_ReturnsMatchingTasks(t *testing.T) {
 	tasks := []domain.Task{
 		{ID: "task-a", ProjectPath: "/repo/a", Status: domain.StatusDraft},
@@ -1456,6 +1512,14 @@ func TestHandleClaimTask(t *testing.T) {
 		{"success", "task-1", `{"sessionId":"sess-1"}`, claimedTask, nil, http.StatusOK},
 		{"missing sessionId", "task-1", `{}`, domain.Task{}, nil, http.StatusBadRequest},
 		{"not found", "task-1", `{"sessionId":"sess-x"}`, domain.Task{}, domain.ErrNotFound, http.StatusNotFound},
+		{
+			"project mismatch",
+			"task-1",
+			`{"sessionId":"sess-other-proj"}`,
+			domain.Task{},
+			fmt.Errorf("orchestrator: claim task: session project %q does not match task project %q", "/proj/b", "/proj/a"),
+			http.StatusForbidden,
+		},
 	}
 
 	for _, tc := range tests {
