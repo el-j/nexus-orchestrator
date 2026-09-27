@@ -57,8 +57,22 @@ func (s *Server) toolGetTask(args json.RawMessage) (callToolResult, error) {
 	return textResult(string(b)), nil
 }
 
-func (s *Server) toolGetQueue() (callToolResult, error) {
-	tasks, err := s.orch.GetQueue()
+func (s *Server) toolGetQueue(args json.RawMessage) (callToolResult, error) {
+	var p struct {
+		ProjectPath string `json:"projectPath"`
+	}
+	if len(args) > 0 {
+		_ = json.Unmarshal(args, &p)
+	}
+	var (
+		tasks []domain.Task
+		err   error
+	)
+	if p.ProjectPath != "" {
+		tasks, err = s.orch.GetQueueForProject(p.ProjectPath)
+	} else {
+		tasks, err = s.orch.GetQueue()
+	}
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_queue: %w", err)
 	}
@@ -69,8 +83,22 @@ func (s *Server) toolGetQueue() (callToolResult, error) {
 	return textResult(string(b)), nil
 }
 
-func (s *Server) toolGetAllTasks() (callToolResult, error) {
-	tasks, err := s.orch.GetAllTasks()
+func (s *Server) toolGetAllTasks(args json.RawMessage) (callToolResult, error) {
+	var p struct {
+		ProjectPath string `json:"projectPath"`
+	}
+	if len(args) > 0 {
+		_ = json.Unmarshal(args, &p)
+	}
+	var (
+		tasks []domain.Task
+		err   error
+	)
+	if p.ProjectPath != "" {
+		tasks, err = s.orch.GetTasksForProject(p.ProjectPath)
+	} else {
+		tasks, err = s.orch.GetAllTasks()
+	}
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_all_tasks: %w", err)
 	}
@@ -224,13 +252,23 @@ func taskToolDefs() []toolDef {
 		},
 		{
 			Name:        "get_queue",
-			Description: "List all tasks currently in the queue.",
-			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
+			Description: "List all tasks currently in the queue, optionally filtered by project.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Optional absolute path to filter tasks by project."},
+				},
+			},
 		},
 		{
 			Name:        "get_all_tasks",
-			Description: "Return every task regardless of status (QUEUED, PROCESSING, DRAFT, BACKLOG, COMPLETED, FAILED, CANCELLED).",
-			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
+			Description: "Return every task regardless of status, optionally filtered by project.",
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"projectPath": {Type: "string", Description: "Optional absolute path to filter tasks by project."},
+				},
+			},
 		},
 		{
 			Name:        "cancel_task",

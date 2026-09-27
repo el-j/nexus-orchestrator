@@ -87,6 +87,12 @@ func (m *mockOrchForTray) DelegateToNexus(context.Context, string) (string, erro
 func (m *mockOrchForTray) GetDiscoveredPlanFiles(context.Context, string) ([]domain.DiscoveredPlanFile, error) {
 	return nil, nil
 }
+func (m *mockOrchForTray) GetQueueForProject(projectPath string) ([]domain.Task, error) {
+	return nil, nil
+}
+func (m *mockOrchForTray) GetTasksForProject(projectPath string) ([]domain.Task, error) {
+	return nil, nil
+}
 
 func TestTrayAdapter_HonestStub(t *testing.T) {
 	adapter := tray.NewTrayAdapter(&mockOrchForTray{}, func() {}, func() {})
