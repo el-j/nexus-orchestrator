@@ -238,10 +238,12 @@ func (o *OrchestratorService) GetDiscoveredPlanFiles(ctx context.Context, projec
 		if o.planFileRepo != nil {
 			return o.planFileRepo.ListPlanFiles(ctx, "")
 		}
-		return nil, nil
+		return nil, domain.ErrSubsystemNotConfigured
 	}
+	var files []domain.DiscoveredPlanFile
 	if o.agentScanner != nil {
-		files, err := o.agentScanner.ScanPlanFiles(ctx, []string{projectPath})
+		var err error
+		files, err = o.agentScanner.ScanPlanFiles(ctx, []string{projectPath})
 		if err != nil {
 			return nil, err
 		}
@@ -254,7 +256,10 @@ func (o *OrchestratorService) GetDiscoveredPlanFiles(ctx context.Context, projec
 	if o.planFileRepo != nil {
 		return o.planFileRepo.ListPlanFiles(ctx, projectPath)
 	}
-	return nil, nil
+	if files != nil {
+		return files, nil
+	}
+	return nil, domain.ErrSubsystemNotConfigured
 }
 
 // DelegateToNexus marks the AI session as delegated to the nexus orchestrator

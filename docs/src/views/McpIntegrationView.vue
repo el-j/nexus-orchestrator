@@ -540,6 +540,26 @@ const tools = [
     name: 'search_knowledge',
     desc: "Perform full-text search across the project's knowledge base",
   },
+  {
+    category: 'Brain / Knowledge',
+    name: 'init_project',
+    desc: "Auto-ingest CLAUDE.md and initialize a project's knowledge base in one step",
+  },
+  {
+    category: 'Brain / Knowledge',
+    name: 'list_knowledge',
+    desc: 'List all knowledge documents stored for a project, optionally filtered by kind',
+  },
+  {
+    category: 'Brain / Knowledge',
+    name: 'delete_knowledge',
+    desc: 'Delete a knowledge document by ID from the project repository',
+  },
+  {
+    category: 'Brain / Knowledge',
+    name: 'get_file_map',
+    desc: 'Retrieve the cached or structured file map knowledge document for a project',
+  },
   // Discovery & System
   {
     category: 'Discovery & System',

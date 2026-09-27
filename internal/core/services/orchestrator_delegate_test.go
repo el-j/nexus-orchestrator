@@ -82,3 +82,26 @@ func TestGetDiscoveredAgents_NilScanner(t *testing.T) {
 		t.Errorf("expected 0 agents with nil scanner, got %d", len(agents))
 	}
 }
+
+func TestGetDiscoveredPlanFiles_NotConfigured(t *testing.T) {
+	t.Parallel()
+	orch := newTestOrchestratorWithAISessionRepo(t)
+	ctx := context.Background()
+
+	_, err := orch.GetDiscoveredPlanFiles(ctx, "/some/path")
+	if err == nil {
+		t.Fatal("expected error when plan scanning subsystem is not configured, got nil")
+	}
+	if !errors.Is(err, domain.ErrSubsystemNotConfigured) {
+		t.Errorf("expected ErrSubsystemNotConfigured, got: %v", err)
+	}
+
+	// Also when projectPath is empty
+	_, err = orch.GetDiscoveredPlanFiles(ctx, "")
+	if err == nil {
+		t.Fatal("expected error when projectPath is empty and subsystem is not configured, got nil")
+	}
+	if !errors.Is(err, domain.ErrSubsystemNotConfigured) {
+		t.Errorf("expected ErrSubsystemNotConfigured for empty projectPath, got: %v", err)
+	}
+}

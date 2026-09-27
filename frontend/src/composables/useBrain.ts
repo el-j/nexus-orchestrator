@@ -8,6 +8,8 @@ import {
   deleteKnowledge,
   searchKnowledge,
   getFileMap,
+  getProjectContext,
+  getFocusedContext,
 } from '../types/wails';
 
 export function useBrain(projectPath: string) {
@@ -101,6 +103,32 @@ export function useBrain(projectPath: string) {
     }
   }
 
+  async function getContext(maxTokens = 800) {
+    loading.value = true;
+    error.value = null;
+    try {
+      return await getProjectContext(projectPath, maxTokens);
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : String(e);
+      return null;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function getFocused(question: string, maxTokens = 400) {
+    loading.value = true;
+    error.value = null;
+    try {
+      return await getFocusedContext(projectPath, question, maxTokens);
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : String(e);
+      return null;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   return {
     status,
     entries,
@@ -115,5 +143,7 @@ export function useBrain(projectPath: string) {
     deleteEntry,
     search,
     fetchFileMap,
+    getContext,
+    getFocusedContext: getFocused,
   };
 }

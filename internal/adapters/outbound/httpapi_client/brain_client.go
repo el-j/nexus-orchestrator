@@ -248,3 +248,29 @@ func (r *BrainClient) DeleteKnowledge(ctx context.Context, id string) error {
 	}
 	return nil
 }
+
+func (r *BrainClient) GetOnboardingContext(ctx context.Context, projectPath string, maxTokens int) (string, error) {
+	u := fmt.Sprintf("/api/brain/onboarding?projectPath=%s", url.QueryEscape(projectPath))
+	if maxTokens > 0 {
+		u += fmt.Sprintf("&maxTokens=%d", maxTokens)
+	}
+	req, err := r.newRequest(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return "", fmt.Errorf("brain_client: GetOnboardingContext: %w", err)
+	}
+	resp, err := r.do(req)
+	if err != nil {
+		return "", fmt.Errorf("brain_client: GetOnboardingContext: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("brain_client: GetOnboardingContext: remote status %d", resp.StatusCode)
+	}
+	var out struct {
+		Content string `json:"content"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return "", fmt.Errorf("brain_client: GetOnboardingContext: %w", err)
+	}
+	return out.Content, nil
+}

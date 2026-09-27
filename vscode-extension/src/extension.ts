@@ -263,6 +263,10 @@ export function activate(context: vscode.ExtensionContext): void {
         { label: '$(list-unordered) View Queue', action: 'nexus.viewQueue' },
         { label: '$(output) Show Activity Log', action: 'nexus.showActivityLog' },
         { label: '$(server) Select Provider / Model', action: 'nexus.selectProvider' },
+        { label: '$(database) Get Brain Status', action: 'nexus.brain.status' },
+        { label: '$(search) Search Project Brain', action: 'nexus.brain.search' },
+        { label: '$(cloud-upload) Ingest Knowledge into Brain', action: 'nexus.brain.ingest' },
+        { label: '$(rocket) Initialize Project Brain', action: 'nexus.brain.init' },
         { label: '$(refresh) Refresh Providers', action: 'nexus.statusBarRefresh' },
       ];
       const chosen = await vscode.window.showQuickPick(items, {

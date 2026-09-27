@@ -128,6 +128,10 @@ func (s *Server) handleGetDiscoveredPlanFiles(w http.ResponseWriter, r *http.Req
 	projectPath := r.URL.Query().Get("projectPath")
 	files, err := s.orch.GetDiscoveredPlanFiles(r.Context(), projectPath)
 	if err != nil {
+		if errors.Is(err, domain.ErrSubsystemNotConfigured) {
+			writeJSONError(w, err.Error(), http.StatusServiceUnavailable)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -142,6 +146,10 @@ func (s *Server) handleScanPlanFiles(w http.ResponseWriter, r *http.Request) {
 	projectPath := r.URL.Query().Get("projectPath")
 	files, err := s.orch.GetDiscoveredPlanFiles(r.Context(), projectPath)
 	if err != nil {
+		if errors.Is(err, domain.ErrSubsystemNotConfigured) {
+			writeJSONError(w, err.Error(), http.StatusServiceUnavailable)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

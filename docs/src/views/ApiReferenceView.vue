@@ -894,6 +894,30 @@ const mcpTools = [
     desc: "Perform full-text search across the project's knowledge base",
     params: 'projectPath, query, limit?',
   },
+  {
+    category: 'Brain / Knowledge',
+    name: 'init_project',
+    desc: "Auto-ingest CLAUDE.md and initialize a project's knowledge base in one step",
+    params: 'projectPath',
+  },
+  {
+    category: 'Brain / Knowledge',
+    name: 'list_knowledge',
+    desc: 'List all knowledge documents stored for a project, optionally filtered by kind',
+    params: 'projectPath, kind?',
+  },
+  {
+    category: 'Brain / Knowledge',
+    name: 'delete_knowledge',
+    desc: 'Delete a knowledge document by ID from the project repository',
+    params: 'projectPath, id',
+  },
+  {
+    category: 'Brain / Knowledge',
+    name: 'get_file_map',
+    desc: 'Retrieve the cached or structured file map knowledge document for a project',
+    params: 'projectPath',
+  },
   // Discovery & System
   {
     category: 'Discovery & System',

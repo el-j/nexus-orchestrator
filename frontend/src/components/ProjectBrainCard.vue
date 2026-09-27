@@ -33,12 +33,24 @@
         <p v-if="ingestProgress" class="text-[11px] text-violet-300 font-mono mt-1">
           {{ ingestProgress }}
         </p>
-        <p v-if="ingestResult" class="text-[11px] text-emerald-300 font-mono mt-1">
-          {{ ingestResult }}
-        </p>
-        <p v-if="ingestError" class="text-[11px] text-red-400 font-mono mt-1">
-          {{ ingestError }}
-        </p>
+        <div
+          v-if="ingestResult"
+          class="flex items-center justify-between text-[11px] text-emerald-300 font-mono mt-1"
+        >
+          <span>{{ ingestResult }}</span>
+          <button @click="ingestResult = ''" class="text-slate-500 hover:text-slate-300 ml-2">
+            ✕
+          </button>
+        </div>
+        <div
+          v-if="ingestError"
+          class="flex items-center justify-between text-[11px] text-red-400 font-mono mt-1"
+        >
+          <span>{{ ingestError }}</span>
+          <button @click="ingestError = ''" class="text-slate-500 hover:text-slate-300 ml-2">
+            ✕
+          </button>
+        </div>
 
         <!-- Brain Stats Section -->
         <div v-if="status?.initialized" class="flex items-center gap-4 mt-2 text-xs">
@@ -73,15 +85,15 @@
           formatDate(nexusFile.lastModified)
         }}</span>
 
-        <!-- Init button — shown when not initialized -->
+        <!-- Init button — shown when not initialized or entryCount === 0 -->
         <button
-          v-if="!status?.initialized && !loading"
+          v-if="(!status?.initialized || status?.entryCount === 0) && !loading"
           @click="handleInit"
           :disabled="ingesting"
           class="px-2 py-1 bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 text-xs rounded border border-amber-500/50 transition-all flex items-center gap-1"
         >
           <i v-if="ingesting" class="pi pi-spin pi-spinner text-[10px]"></i>
-          <span>{{ ingesting ? 'Initializing…' : 'Init Brain' }}</span>
+          <span>{{ ingesting ? 'Initializing…' : 'Initialize Brain' }}</span>
         </button>
 
         <!-- Multi-file ingest -->
@@ -93,15 +105,25 @@
           class="hidden"
           @change="onFilesSelected"
         />
-        <button
-          v-if="isIngestible"
-          @click="fileInputRef?.click()"
-          :disabled="ingesting"
-          class="px-2 py-1 bg-violet-500/20 hover:bg-violet-500/40 text-violet-300 text-xs rounded border border-violet-500/50 transition-all flex items-center justify-center gap-1 min-w-[70px]"
-        >
-          <i v-if="ingesting" class="pi pi-spin pi-spinner text-[10px]"></i>
-          <span>{{ ingesting ? ingestProgress || 'Syncing…' : 'Sync Brain' }}</span>
-        </button>
+        <div class="flex items-center gap-1">
+          <button
+            v-if="nexusFile"
+            @click="handleSyncNexusFile"
+            :disabled="ingesting"
+            class="px-2 py-1 bg-violet-500/20 hover:bg-violet-500/40 text-violet-300 text-xs rounded border border-violet-500/50 transition-all flex items-center justify-center gap-1 min-w-[70px]"
+          >
+            <i v-if="ingesting" class="pi pi-spin pi-spinner text-[10px]"></i>
+            <span>{{ ingesting ? ingestProgress || 'Syncing…' : 'Sync Brain' }}</span>
+          </button>
+          <button
+            v-if="projectPath"
+            @click="fileInputRef?.click()"
+            :disabled="ingesting"
+            class="px-2 py-1 bg-white/5 hover:bg-white/10 text-slate-300 text-xs rounded border border-white/10 transition-all flex items-center justify-center gap-1"
+          >
+            <span>Ingest File…</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -162,6 +184,24 @@ async function handleInit() {
     ingestError.value = err instanceof Error ? err.message : String(err);
   } finally {
     ingesting.value = false;
+  }
+}
+
+async function handleSyncNexusFile() {
+  if (!props.nexusFile) return;
+  ingesting.value = true;
+  ingestProgress.value = 'Syncing…';
+  ingestResult.value = '';
+  ingestError.value = '';
+  try {
+    const count = await ingestKnowledge(props.projectPath, props.nexusFile.path);
+    ingestResult.value = `Ingested ${count} sections from ${props.nexusFile.path.split('/').pop()}.`;
+    await fetchStatus();
+  } catch (err) {
+    ingestError.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    ingesting.value = false;
+    ingestProgress.value = '';
   }
 }
 

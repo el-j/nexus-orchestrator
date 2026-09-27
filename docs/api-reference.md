@@ -517,19 +517,70 @@ Base URL: `http://localhost:63988`
 
 ### Available Tools
 
-| Tool                  | Description                                                        | Parameters                                                            |
-| --------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------- |
-| `submit_task`         | Submit a code-generation task                                      | `projectPath`, `targetFile`, `instruction`, `contextFiles`, `command` |
-| `get_task`            | Get task by ID                                                     | `id`                                                                  |
-| `get_queue`           | List all pending tasks                                             | —                                                                     |
-| `cancel_task`         | Cancel a queued task                                               | `id`                                                                  |
-| `get_providers`       | List LLM providers                                                 | —                                                                     |
-| `health`              | Check daemon status                                                | —                                                                     |
-| `get_brain_status`    | Retrieve indexing status and token size of project knowledge brain | `projectPath`                                                         |
-| `ingest_knowledge`    | Parse and inject knowledge from files into project brain storage   | `projectPath`, `filePath`                                             |
-| `get_project_context` | Obtain base macro context representation of the project            | `projectPath`, `maxTokens?`                                           |
-| `get_focused_context` | Query bounded context sections specific to a reasoning question    | `projectPath`, `question`, `maxTokens?`                               |
-| `search_knowledge`    | Search project intelligence via BM25 matching                      | `projectPath`, `query`                                                |
+#### Tasks (13)
+
+| Tool                   | Description                                                     | Parameters                                                                                                             |
+| ---------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `submit_task`          | Submit a code-generation task to the orchestrator               | `projectPath`, `targetFile`, `instruction`, `contextFiles?`, `command?`, `verificationCommand?`, `maxCorrectionTurns?` |
+| `get_task`             | Get task status and output by ID                                | `id`                                                                                                                   |
+| `get_queue`            | List all pending (QUEUED or PROCESSING) tasks                   | —                                                                                                                      |
+| `get_all_tasks`        | Return every task regardless of status                          | —                                                                                                                      |
+| `cancel_task`          | Cancel a pending task by ID                                     | `id`                                                                                                                   |
+| `update_task`          | Update mutable fields on an existing task                       | `id`, `instruction?`, `priority?`, `providerName?`, `modelId?`, `tags?`, `status?`                                     |
+| `create_draft`         | Create a draft idea without entering the execution queue        | `projectPath`, `instruction`, `targetFile?`, `providerName?`, `modelId?`, `priority?`, `tags?`                         |
+| `get_backlog`          | List draft and backlog items for a project, ordered by priority | `projectPath`                                                                                                          |
+| `promote_task`         | Promote a draft or backlog task to the execution queue          | `id`                                                                                                                   |
+| `claim_task`           | Claim a QUEUED task for execution by the specified AI session   | `task_id`, `session_id`                                                                                                |
+| `update_task_status`   | Report task completion or failure from executing AI session     | `task_id`, `session_id`, `status`, `logs?`                                                                             |
+| `heartbeat_task`       | Keep a PROCESSING task alive (prevents watchdog failure)        | `task_id`, `session_id`                                                                                                |
+| `terminate_ai_session` | Terminate an external AI agent session (SIGTERM or SIGKILL)     | `session_id`, `force?`                                                                                                 |
+
+#### AI Sessions (5)
+
+| Tool                          | Description                                                          | Parameters                                    |
+| ----------------------------- | -------------------------------------------------------------------- | --------------------------------------------- |
+| `register_session`            | Announce external AI agent session for visualization & orchestration | `agent_name`, `project_path?`, `external_id?` |
+| `get_ai_sessions`             | Return all external AI agent sessions registered with this daemon    | —                                             |
+| `deregister_ai_session`       | Soft-disconnect an AI agent session without killing process          | `session_id`                                  |
+| `heartbeat_ai_session`        | Refresh last-activity timestamp of an AI session to keep it alive    | `session_id`                                  |
+| `purge_disconnected_sessions` | Delete all disconnected AI sessions inactive for > 2 hours           | —                                             |
+
+#### Providers (7)
+
+| Tool                     | Description                                                      | Parameters                                                  |
+| ------------------------ | ---------------------------------------------------------------- | ----------------------------------------------------------- |
+| `get_providers`          | List available LLM providers and models                          | —                                                           |
+| `discover_providers`     | Scan local system for installed AI providers/agents              | —                                                           |
+| `promote_provider`       | Promote a discovered provider to an active LLM backend           | `id`                                                        |
+| `list_provider_configs`  | List all persisted LLM provider configuration records            | —                                                           |
+| `add_provider_config`    | Add a new LLM provider configuration and register when enabled   | `kind`, `name`, `base_url?`, `api_key?`, `enabled?`         |
+| `update_provider_config` | Update an existing LLM provider configuration by ID              | `id`, `kind?`, `name?`, `base_url?`, `api_key?`, `enabled?` |
+| `remove_provider_config` | Delete a persisted provider configuration and deregister adapter | `id`                                                        |
+
+#### Brain / Knowledge (9)
+
+| Tool                  | Description                                                                     | Parameters                              |
+| --------------------- | ------------------------------------------------------------------------------- | --------------------------------------- |
+| `get_brain_status`    | Retrieve indexing status and entry count of project knowledge brain             | `projectPath`                           |
+| `ingest_knowledge`    | Parse and ingest a markdown file (e.g. CLAUDE.md) into project knowledge base   | `projectPath`, `filePath`               |
+| `get_project_context` | Obtain base macro context representation of the project bounded by token budget | `projectPath`, `maxTokens?`             |
+| `get_focused_context` | Query bounded context sections specific to a reasoning question                 | `projectPath`, `question`, `maxTokens?` |
+| `search_knowledge`    | Search project intelligence via BM25 matching                                   | `projectPath`, `query`, `limit?`        |
+| `init_project`        | Auto-ingest CLAUDE.md and initialize a project's knowledge base in one step     | `projectPath`                           |
+| `list_knowledge`      | List all knowledge documents stored for a project, optionally filtered by kind  | `projectPath`, `kind?`                  |
+| `delete_knowledge`    | Delete a knowledge document by ID from the project repository                   | `projectPath`, `id`                     |
+| `get_file_map`        | Retrieve cached file path map knowledge document for a project                  | `projectPath`                           |
+
+#### Discovery & System (6)
+
+| Tool                    | Description                                                                       | Parameters     |
+| ----------------------- | --------------------------------------------------------------------------------- | -------------- |
+| `get_discovered_agents` | Return AI agent tools detected on the local system (Claude CLI, Copilot, etc.)    | —              |
+| `delegate_to_nexus`     | Delegate an AI agent session to the nexus task queue                              | `session_id`   |
+| `get_discovered_plans`  | Scan for plan/task/orchestration files in a project directory                     | `projectPath?` |
+| `howto`                 | Return a complete integration guide — all tools, workflow patterns, and endpoints | —              |
+| `howto_brief`           | Ultra-compact integration guide (~200 tokens) for small-context models            | —              |
+| `health`                | Check daemon reachable and operational                                            | —              |
 
 ### Example: Submit Task via MCP
 

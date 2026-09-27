@@ -3,7 +3,8 @@ id: TASK-543
 planId: PLAN-070
 title: 'VS Code: add missing brain nexusClient methods, commands, package.json entries, fix searchKnowledge'
 role: vscode
-status: todo
+status: completed
+completedAt: 2026-09-24T17:24:00Z
 createdAt: 2026-04-14T02:00:00Z
 ---
 

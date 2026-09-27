@@ -3,7 +3,8 @@ id: TASK-553
 planId: PLAN-070
 title: 'Fix GetDiscoveredPlanFiles nil/nil + honest tray stub with feature flag'
 role: backend
-status: todo
+status: done
+completedAt: 2026-09-24T17:45:00Z
 createdAt: 2026-04-14T02:00:00Z
 ---
 

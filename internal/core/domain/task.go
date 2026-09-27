@@ -83,6 +83,8 @@ type Task struct {
 	// ProviderName is an explicit provider lock. Non-empty means skip discovery
 	// and route directly to the named provider. Empty falls back to ProviderHint/ModelID.
 	ProviderName string `json:"providerName,omitempty"`
+	// Role optionally hints the model tier or persona needed (e.g. "architect", "techlead", "coder", "tester", "linter").
+	Role string `json:"role,omitempty"`
 	// Priority controls backlog ordering (1=highest, 2=medium default, 3+=low).
 	Priority int `json:"priority,omitempty"`
 	// Tags are free-form labels for organising ideas and backlog items.
@@ -97,6 +99,14 @@ type Task struct {
 	RetryCount  int         `json:"retryCount,omitempty"`
 	Logs        string      `json:"logs,omitempty"`
 	AISessionID string      `json:"aiSessionId,omitempty"`
+	// VerificationCommand is an optional shell command (e.g. "go test ./...", "npm test")
+	// executed after writing code to verify correctness before marking the task COMPLETED.
+	VerificationCommand string `json:"verificationCommand,omitempty"`
+	// MaxCorrectionTurns limits how many times the model can attempt to fix its mistakes
+	// if the verification command fails. Defaults to 2 when VerificationCommand is set and this is 0.
+	MaxCorrectionTurns int `json:"maxCorrectionTurns,omitempty"`
+	// VerificationOutput captures the stdout/stderr from the last verification run.
+	VerificationOutput string `json:"verificationOutput,omitempty"`
 }
 
 // IsExecutable returns true if the task can enter the execution queue.

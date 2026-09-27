@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -10,6 +11,8 @@ import (
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
 )
+
+var errContextTooLarge = errors.New("context too large")
 
 // statusEventType maps a TaskStatus to its corresponding EventType.
 var statusEventMap = map[domain.TaskStatus]ports.EventType{
@@ -55,31 +58,193 @@ func (o *OrchestratorService) processNext() bool {
 		return false
 	}
 
-	llm, err := o.selectProviderForTask(task)
-	if err != nil {
+	chain, err := o.resolveProviderWithFallback(task)
+	if err != nil || len(chain) == 0 {
+		logMsg := "no provider available"
+		if err != nil {
+			logMsg = err.Error()
+		}
+		log.Printf("orchestrator: no provider for task %s (role=%q, model=%q): %s", task.ID, task.Role, task.ModelID, logMsg)
+		if err2 := o.repo.UpdateLogs(task.ID, logMsg); err2 != nil {
+			log.Printf("orchestrator: update logs for task %s: %v", task.ID, err2)
+		}
+		if err2 := o.repo.UpdateStatus(task.ID, domain.StatusNoProvider); err2 != nil {
+			log.Printf("orchestrator: update status for task %s: %v", task.ID, err2)
+		}
+		o.emit(task.ID, domain.StatusNoProvider)
 		return true
 	}
 	o.emit(task.ID, domain.StatusProcessing)
 
-	prompt, sessionHistory, err := o.buildChatContext(task, llm)
+	prompt, sessionHistory, err := o.prepareChatPrompt(task)
 	if err != nil {
-		// buildChatContext sets the task status internally before returning an error.
-		// No second UpdateStatus call here — that would overwrite TooLarge/Failed correctly set within.
+		// prepareChatPrompt sets the task status internally before returning an error.
 		return true
 	}
 
-	code, err := o.executeGeneration(task, llm, prompt, sessionHistory)
-	if err != nil {
-		// executeGeneration sets the task status internally before returning an error.
-		return true
-	}
-
-	o.writeTaskOutput(task, code, llm.ProviderName())
-	return true
+	return o.executeWithFallbackChain(task, chain, prompt, sessionHistory)
 }
 
-// selectProviderForTask resolves the LLM client for the task by provider name or
-// by model/hint lookup. On failure it sets StatusNoProvider, logs the reason, and emits the event.
+// isFrontierRole returns true for complex reasoning, architectural, and planning roles.
+func isFrontierRole(role string) bool {
+	switch strings.ToLower(strings.TrimSpace(role)) {
+	case "architect", "techlead", "planner", "frontier", "deep_debug", "complex", "backend":
+		return true
+	default:
+		return false
+	}
+}
+
+// isFastLocalRole returns true for routine, formatting, and boilerplate tasks.
+func isFastLocalRole(role string) bool {
+	switch strings.ToLower(strings.TrimSpace(role)) {
+	case "linter", "formatter", "test", "tester", "boilerplate", "fast", "local":
+		return true
+	default:
+		return false
+	}
+}
+
+// isFrontierProvider tests if a provider matches known frontier cloud LLMs.
+func isFrontierProvider(p ports.LLMClient) bool {
+	name := strings.ToLower(p.ProviderName())
+	return strings.Contains(name, "anthropic") ||
+		strings.Contains(name, "gemini") ||
+		strings.Contains(name, "openai") ||
+		strings.Contains(name, "claude")
+}
+
+// isLocalProvider tests if a provider matches known local/on-premise LLMs.
+func isLocalProvider(p ports.LLMClient) bool {
+	name := strings.ToLower(p.ProviderName())
+	return strings.Contains(name, "ollama") ||
+		strings.Contains(name, "lmstudio") ||
+		strings.Contains(name, "localai") ||
+		strings.Contains(name, "vllm") ||
+		strings.Contains(name, "local")
+}
+
+// resolveProviderWithFallback returns an ordered chain of available LLM providers
+// based on task requirements, role-driven routing hints, and health status.
+func (o *OrchestratorService) resolveProviderWithFallback(task domain.Task) ([]ports.LLMClient, error) {
+	if o.discovery == nil {
+		return nil, errors.New("discovery service not configured")
+	}
+
+	// Case 1: Explicit ProviderName specified
+	if task.ProviderName != "" {
+		client, ok := o.discovery.GetClientByName(task.ProviderName)
+		if !ok {
+			return nil, fmt.Errorf("provider %q not found or not active", task.ProviderName)
+		}
+		chain := []ports.LLMClient{client}
+		for _, c := range o.discovery.GetAllClients() {
+			if !strings.EqualFold(c.ProviderName(), client.ProviderName()) && c.Ping() {
+				chain = append(chain, c)
+			}
+		}
+		return chain, nil
+	}
+
+	all := o.discovery.GetAllClients()
+	if len(all) == 0 {
+		return nil, errors.New("discovery: no active provider available")
+	}
+
+	// Check if a specific model was requested
+	var preferred ports.LLMClient
+	if task.ModelID != "" {
+		c, err := o.discovery.FindForModel(task.ModelID, task.ProviderHint)
+		if err != nil {
+			return nil, err
+		}
+		preferred = c
+	}
+
+	// Filter down to alive providers that can serve the task
+	var alive []ports.LLMClient
+	for _, c := range all {
+		if c.Ping() {
+			if task.ModelID != "" {
+				if strings.EqualFold(c.ActiveModel(), task.ModelID) {
+					alive = append(alive, c)
+				} else if models, err := c.GetAvailableModels(); err == nil {
+					for _, m := range models {
+						if strings.EqualFold(m, task.ModelID) {
+							alive = append(alive, c)
+							break
+						}
+					}
+				}
+			} else {
+				alive = append(alive, c)
+			}
+		}
+	}
+	if len(alive) == 0 {
+		if task.ModelID != "" {
+			return nil, fmt.Errorf("discovery: model %q not available on any registered provider", task.ModelID)
+		}
+		return nil, errors.New("discovery: no active provider available")
+	}
+
+	// Classify alive providers
+	var frontierClients, localClients, otherClients []ports.LLMClient
+	for _, c := range alive {
+		if isFrontierProvider(c) {
+			frontierClients = append(frontierClients, c)
+		} else if isLocalProvider(c) {
+			localClients = append(localClients, c)
+		} else {
+			otherClients = append(otherClients, c)
+		}
+	}
+
+	var ordered []ports.LLMClient
+	if isFastLocalRole(task.Role) {
+		// Fast local chain: Local -> Other -> Frontier
+		ordered = append(ordered, localClients...)
+		ordered = append(ordered, otherClients...)
+		ordered = append(ordered, frontierClients...)
+	} else if isFrontierRole(task.Role) {
+		// Frontier chain: Frontier -> Other -> Local
+		ordered = append(ordered, frontierClients...)
+		ordered = append(ordered, otherClients...)
+		ordered = append(ordered, localClients...)
+	} else {
+		// Default / Balanced: preserve alive order, or Frontier first if alive
+		if len(frontierClients) > 0 {
+			ordered = append(ordered, frontierClients...)
+			ordered = append(ordered, otherClients...)
+			ordered = append(ordered, localClients...)
+		} else {
+			ordered = alive
+		}
+	}
+
+	// Deduplicate, ensuring preferred client is at index 0 if present
+	var result []ports.LLMClient
+	seen := make(map[string]bool)
+	if preferred != nil {
+		result = append(result, preferred)
+		seen[strings.ToLower(preferred.ProviderName())] = true
+	}
+	for _, c := range ordered {
+		name := strings.ToLower(c.ProviderName())
+		if !seen[name] {
+			result = append(result, c)
+			seen[name] = true
+		}
+	}
+
+	if len(result) == 0 {
+		return nil, errors.New("discovery: no active provider available")
+	}
+	return result, nil
+}
+
+// selectProviderForTask resolves the single primary LLM client for the task.
+// Retained for backward compatibility and direct single-provider invocations.
 func (o *OrchestratorService) selectProviderForTask(task domain.Task) (ports.LLMClient, error) {
 	if task.ProviderName != "" {
 		client, ok := o.discovery.GetClientByName(task.ProviderName)
@@ -112,11 +277,8 @@ func (o *OrchestratorService) selectProviderForTask(task domain.Task) (ports.LLM
 	return llm, nil
 }
 
-// buildChatContext constructs the prompt with optional context file content prepended,
-// loads session history, and guards against context-window overflow.
-// On overflow it sets StatusTooLarge, logs the reason, and emits the event.
-func (o *OrchestratorService) buildChatContext(task domain.Task, llm ports.LLMClient) (string, []domain.Message, error) {
-	// Build the prompt with optional context files.
+// prepareChatPrompt loads context files and session history once for the task.
+func (o *OrchestratorService) prepareChatPrompt(task domain.Task) (string, []domain.Message, error) {
 	prompt := task.Instruction
 	if len(task.ContextFiles) > 0 && o.fileWriter != nil {
 		ctx, err := o.fileWriter.ReadContextFiles(task.ProjectPath, task.ContextFiles)
@@ -136,8 +298,6 @@ func (o *OrchestratorService) buildChatContext(task domain.Task, llm ports.LLMCl
 		}
 	}
 
-	// Load session history once — reused for both the pre-flight token check and
-	// the Chat call to avoid double GetByProjectPath.
 	var sessionHistory []domain.Message
 	if o.sessionRepo != nil {
 		sess, err := o.sessionRepo.GetByProjectPath(task.ProjectPath)
@@ -154,6 +314,18 @@ func (o *OrchestratorService) buildChatContext(task domain.Task, llm ports.LLMCl
 			return "", nil, fmt.Errorf("orchestrator: load session: %w", err)
 		}
 		sessionHistory = sess.Messages
+	}
+
+	return prompt, sessionHistory, nil
+}
+
+// buildChatContext constructs the prompt with optional context file content prepended,
+// loads session history, and guards against context-window overflow.
+// On overflow it sets StatusTooLarge, logs the reason, and emits the event.
+func (o *OrchestratorService) buildChatContext(task domain.Task, llm ports.LLMClient) (string, []domain.Message, error) {
+	prompt, sessionHistory, err := o.prepareChatPrompt(task)
+	if err != nil {
+		return "", nil, err
 	}
 
 	// Pre-flight: guard against context-window overflow before spending LLM time.
@@ -174,11 +346,110 @@ func (o *OrchestratorService) buildChatContext(task domain.Task, llm ports.LLMCl
 				log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
 			}
 			o.emit(task.ID, domain.StatusTooLarge)
-			return "", nil, fmt.Errorf("context too large")
+			return "", nil, errContextTooLarge
 		}
 	}
 
 	return prompt, sessionHistory, nil
+}
+
+// tryGenerate dispatches to Chat (when sessionRepo is set) or GenerateCode for a single attempt.
+func (o *OrchestratorService) tryGenerate(task domain.Task, llm ports.LLMClient, prompt string, sessionHistory []domain.Message) (string, error) {
+	if o.sessionRepo != nil {
+		userMsg := domain.Message{Role: domain.RoleUser, Content: prompt, CreatedAt: time.Now()}
+		history := append(append([]domain.Message(nil), sessionHistory...), userMsg)
+		return llm.Chat(history)
+	}
+	return llm.GenerateCode(prompt)
+}
+
+// appendTaskLog appends a new log line to existing task logs without overwriting history.
+func (o *OrchestratorService) appendTaskLog(taskID string, newEntry string) {
+	entry := newEntry
+	if existing, err := o.repo.GetByID(taskID); err == nil && existing.Logs != "" {
+		entry = existing.Logs + "\n" + newEntry
+	}
+	if err := o.repo.UpdateLogs(taskID, entry); err != nil {
+		log.Printf("orchestrator: update logs for task %s: %v", taskID, err)
+	}
+}
+
+// executeWithFallbackChain attempts generation across an ordered chain of providers.
+// On transient error or rate limit, it falls back to the next provider in the chain.
+func (o *OrchestratorService) executeWithFallbackChain(task domain.Task, chain []ports.LLMClient, prompt string, sessionHistory []domain.Message) bool {
+	var lastErr error
+	var tried []string
+	allTooLarge := true
+
+	for i, llm := range chain {
+		if limit := llm.ContextLimit(); limit > 0 {
+			estHistory := make([]domain.Message, len(sessionHistory)+1)
+			copy(estHistory, sessionHistory)
+			estHistory[len(sessionHistory)] = domain.Message{Role: domain.RoleUser, Content: prompt}
+			if estimated := estimateTokens(estHistory); estimated > limit-o.maxResponseTokens {
+				logEntry := fmt.Sprintf(
+					"context too large for %s: ~%d tokens estimated, model limit is %d (headroom %d)",
+					llm.ProviderName(), estimated, limit, o.maxResponseTokens,
+				)
+				log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
+				lastErr = errContextTooLarge
+				continue
+			}
+		}
+		allTooLarge = false
+
+		code, err := o.tryGenerate(task, llm, prompt, sessionHistory)
+		if err != nil {
+			lastErr = err
+			tried = append(tried, llm.ProviderName())
+			logEntry := fmt.Sprintf("provider %s failed: %v", llm.ProviderName(), err)
+			log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
+			o.appendTaskLog(task.ID, logEntry)
+			continue
+		}
+
+		// Success!
+		if i > 0 {
+			failoverNote := fmt.Sprintf("[failover: primary provider failed, executed via %s]", llm.ProviderName())
+			log.Printf("orchestrator: task %s: %s", task.ID, failoverNote)
+			o.appendTaskLog(task.ID, failoverNote)
+		}
+
+		if o.sessionRepo != nil {
+			userMsg := domain.Message{Role: domain.RoleUser, Content: prompt, CreatedAt: time.Now()}
+			assistantMsg := domain.Message{Role: domain.RoleAssistant, Content: code, CreatedAt: time.Now()}
+			if err := o.sessionRepo.AppendMessage(task.ProjectPath, userMsg); err != nil {
+				log.Printf("orchestrator: append user message for task %s: %v", task.ID, err)
+			}
+			if err := o.sessionRepo.AppendMessage(task.ProjectPath, assistantMsg); err != nil {
+				log.Printf("orchestrator: append assistant message for task %s: %v", task.ID, err)
+			}
+		}
+
+		o.writeAndVerifyTaskOutput(task, code, llm, sessionHistory)
+		return true
+	}
+
+	// All providers failed
+	if allTooLarge && errors.Is(lastErr, errContextTooLarge) {
+		logEntry := "context too large: all candidate providers exceeded context limits"
+		_ = o.repo.UpdateLogs(task.ID, logEntry)
+		_ = o.repo.UpdateStatus(task.ID, domain.StatusTooLarge)
+		o.emit(task.ID, domain.StatusTooLarge)
+		return true
+	}
+
+	if o.requeueForRetry(task) {
+		return true
+	}
+
+	failLog := fmt.Sprintf("all candidate providers failed: %s (last error: %v)", strings.Join(tried, ", "), lastErr)
+	_ = o.repo.UpdateLogs(task.ID, failLog)
+	if err := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err != nil {
+		log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+	}
+	o.emit(task.ID, domain.StatusFailed)
+	return true
 }
 
 // executeGeneration dispatches to Chat (when sessionRepo is set) or GenerateCode,
@@ -236,8 +507,21 @@ func (o *OrchestratorService) executeGeneration(task domain.Task, llm ports.LLMC
 }
 
 // writeTaskOutput optionally writes the generated code to disk and marks the task
-// as COMPLETED. On write failure it persists StatusFailed and emits the event.
+// as COMPLETED. It delegates to writeAndVerifyTaskOutput without active LLM correction.
 func (o *OrchestratorService) writeTaskOutput(task domain.Task, code string, providerName string) {
+	o.writeAndVerifyTaskOutput(task, code, nil, nil)
+}
+
+// writeAndVerifyTaskOutput writes the generated code to disk, runs verification commands if configured,
+// and initiates a self-healing correction loop if verification fails.
+func (o *OrchestratorService) writeAndVerifyTaskOutput(task domain.Task, code string, llm ports.LLMClient, sessionHistory []domain.Message) {
+	providerName := "unknown"
+	if llm != nil {
+		providerName = llm.ProviderName()
+	} else if task.ProviderName != "" {
+		providerName = task.ProviderName
+	}
+
 	if o.fileWriter != nil && task.TargetFile != "" {
 		if err := o.fileWriter.WriteCodeToFile(task.ProjectPath, task.TargetFile, extractCode(code)); err != nil {
 			logEntry := fmt.Sprintf("failed writing output via %s: %v", providerName, err)
@@ -253,15 +537,89 @@ func (o *OrchestratorService) writeTaskOutput(task domain.Task, code string, pro
 		}
 	}
 
-	logEntry := fmt.Sprintf("completed via %s at %s", providerName, time.Now().UTC().Format(time.RFC3339))
-	if err := o.repo.UpdateLogs(task.ID, logEntry); err != nil {
-		log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
+	// If no verification command is configured or command runner is nil, complete normally.
+	if strings.TrimSpace(task.VerificationCommand) == "" || o.commandRunner == nil {
+		logEntry := fmt.Sprintf("completed via %s at %s", providerName, time.Now().UTC().Format(time.RFC3339))
+		o.appendTaskLog(task.ID, logEntry)
+		if err := o.repo.UpdateStatus(task.ID, domain.StatusCompleted); err != nil {
+			log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+		}
+		o.emit(task.ID, domain.StatusCompleted)
+		log.Printf("orchestrator: task %s completed via %s", task.ID, providerName)
+		return
 	}
-	if err := o.repo.UpdateStatus(task.ID, domain.StatusCompleted); err != nil {
-		log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+
+	// Run verification command
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	output, runErr := o.commandRunner.Run(ctx, task.ProjectPath, task.VerificationCommand)
+	task.VerificationOutput = output
+
+	if runErr == nil {
+		// Verification passed on first attempt
+		logEntry := fmt.Sprintf("verification passed (%s) — completed via %s at %s", task.VerificationCommand, providerName, time.Now().UTC().Format(time.RFC3339))
+		_ = o.repo.Update(task)
+		o.appendTaskLog(task.ID, logEntry)
+		if err := o.repo.UpdateStatus(task.ID, domain.StatusCompleted); err != nil {
+			log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+		}
+		o.emit(task.ID, domain.StatusCompleted)
+		log.Printf("orchestrator: task %s verification passed, completed via %s", task.ID, providerName)
+		return
 	}
-	o.emit(task.ID, domain.StatusCompleted)
-	log.Printf("orchestrator: task %s completed via %s", task.ID, providerName)
+
+	// Verification failed — attempt self-healing correction loop if LLM is available
+	maxTurns := task.MaxCorrectionTurns
+	if maxTurns <= 0 {
+		maxTurns = 2
+	}
+
+	if llm != nil {
+		for turn := 1; turn <= maxTurns; turn++ {
+			log.Printf("orchestrator: task %s: verification failed on turn %d/%d (%v), attempting self-healing correction", task.ID, turn, maxTurns, runErr)
+			feedbackPrompt := fmt.Sprintf(
+				"The code written to %s failed verification using command %q:\n\n%s\n\nPlease fix the errors and output the entire corrected file content.",
+				task.TargetFile, task.VerificationCommand, output,
+			)
+
+			correctedCode, genErr := o.executeGeneration(task, llm, feedbackPrompt, sessionHistory)
+			if genErr != nil {
+				log.Printf("orchestrator: task %s: self-healing generation turn %d failed: %v", task.ID, turn, genErr)
+				return
+			}
+
+			if o.fileWriter != nil && task.TargetFile != "" {
+				if err := o.fileWriter.WriteCodeToFile(task.ProjectPath, task.TargetFile, extractCode(correctedCode)); err != nil {
+					logEntry := fmt.Sprintf("failed writing corrected output via %s: %v", providerName, err)
+					o.appendTaskLog(task.ID, logEntry)
+					_ = o.repo.UpdateStatus(task.ID, domain.StatusFailed)
+					o.emit(task.ID, domain.StatusFailed)
+					return
+				}
+			}
+
+			output, runErr = o.commandRunner.Run(ctx, task.ProjectPath, task.VerificationCommand)
+			task.VerificationOutput = output
+			if runErr == nil {
+				logEntry := fmt.Sprintf("verification passed on correction turn %d/%d (%s) — completed via %s at %s", turn, maxTurns, task.VerificationCommand, providerName, time.Now().UTC().Format(time.RFC3339))
+				_ = o.repo.Update(task)
+				o.appendTaskLog(task.ID, logEntry)
+				_ = o.repo.UpdateStatus(task.ID, domain.StatusCompleted)
+				o.emit(task.ID, domain.StatusCompleted)
+				log.Printf("orchestrator: task %s verification passed on correction turn %d via %s", task.ID, turn, providerName)
+				return
+			}
+		}
+	}
+
+	// Verification failed and correction turns exhausted
+	logEntry := fmt.Sprintf("verification failed after %d correction turns (%s): %v\nOutput:\n%s", maxTurns, task.VerificationCommand, runErr, output)
+	log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
+	_ = o.repo.Update(task)
+	o.appendTaskLog(task.ID, logEntry)
+	_ = o.repo.UpdateStatus(task.ID, domain.StatusFailed)
+	o.emit(task.ID, domain.StatusFailed)
 }
 
 // delegationInstruction returns a formatted prompt instructing an AI agent to

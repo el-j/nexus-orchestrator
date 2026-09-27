@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -260,16 +261,28 @@ func (b *BrainServiceImpl) IngestFromFile(ctx context.Context, projectPath, file
 
 // SearchKnowledge performs BM25 search and returns ContextSection slices within budget.
 func (b *BrainServiceImpl) SearchKnowledge(ctx context.Context, projectPath, query string, maxTokens int) ([]domain.ContextSection, error) {
-	if maxTokens == 0 {
+	itemLimit := 0
+	if maxTokens > 0 && maxTokens <= 20 {
+		// Caller passed an item count limit (e.g. limit=5 or limit=10), not a token budget.
+		itemLimit = maxTokens
+		maxTokens = 400
+	} else if maxTokens <= 0 {
 		maxTokens = 400
 	}
-	entries, err := b.repo.SearchFTS(ctx, filepath.Clean(projectPath), query, 20)
+	fetchCount := 20
+	if itemLimit > 0 && itemLimit > fetchCount {
+		fetchCount = itemLimit
+	}
+	entries, err := b.repo.SearchFTS(ctx, filepath.Clean(projectPath), query, fetchCount)
 	if err != nil {
 		return nil, fmt.Errorf("brain_service: search knowledge: %w", err)
 	}
 	var sections []domain.ContextSection
 	used := 0
 	for _, e := range entries {
+		if itemLimit > 0 && len(sections) >= itemLimit {
+			break
+		}
 		if used+e.TokenCount > maxTokens {
 			break
 		}
@@ -340,4 +353,147 @@ func (b *BrainServiceImpl) ListKnowledge(ctx context.Context, projectPath, kind 
 // DeleteKnowledge removes a knowledge entry by ID.
 func (b *BrainServiceImpl) DeleteKnowledge(ctx context.Context, id string) error {
 	return b.repo.DeleteKnowledge(ctx, id)
+}
+
+// GetOnboardingContext returns a concise, token-budgeted Tier 0/1 onboarding summary
+// for an AI agent starting a session on a project.
+func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath string, maxTokens int) (string, error) {
+	if maxTokens <= 0 {
+		maxTokens = 800
+	}
+	clean := filepath.Clean(projectPath)
+	projectName := filepath.Base(clean)
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("# Project Onboarding: %s\n\n", projectName))
+	sb.WriteString(fmt.Sprintf("**Path:** `%s`\n", clean))
+
+	// 1. Stack detection
+	var stackParts []string
+	if _, err := os.Stat(filepath.Join(clean, "go.mod")); err == nil {
+		stackParts = append(stackParts, "Go")
+	}
+	if _, err := os.Stat(filepath.Join(clean, "package.json")); err == nil {
+		stackParts = append(stackParts, "TypeScript/JavaScript (Node)")
+	}
+	if _, err := os.Stat(filepath.Join(clean, "Cargo.toml")); err == nil {
+		stackParts = append(stackParts, "Rust")
+	}
+	if _, err := os.Stat(filepath.Join(clean, "pyproject.toml")); err == nil {
+		stackParts = append(stackParts, "Python")
+	} else if _, err := os.Stat(filepath.Join(clean, "requirements.txt")); err == nil {
+		stackParts = append(stackParts, "Python")
+	}
+
+	stackStr := "Generic"
+	if len(stackParts) > 0 {
+		stackStr = strings.Join(stackParts, ", ")
+	}
+	sb.WriteString(fmt.Sprintf("**Stack:** %s\n\n", stackStr))
+
+	// 2. Active Development State
+	sb.WriteString("## Active Development State\n")
+	activePlan := "None"
+	orchestratorPath := filepath.Join(clean, ".claude", "orchestrator.json")
+	if data, err := os.ReadFile(orchestratorPath); err == nil {
+		var orchConfig struct {
+			ActivePlanID string `json:"activePlanId"`
+		}
+		if err := json.Unmarshal(data, &orchConfig); err == nil && orchConfig.ActivePlanID != "" {
+			activePlan = orchConfig.ActivePlanID
+		}
+	}
+	sb.WriteString(fmt.Sprintf("- **Active Plan:** %s\n", activePlan))
+
+	if b.taskRepo != nil {
+		tasks, _ := b.taskRepo.GetByProjectPath(clean)
+		var queued, processing, completed, failed int
+		var activeTaskDesc string
+		for _, t := range tasks {
+			switch t.Status {
+			case domain.StatusQueued:
+				queued++
+			case domain.StatusProcessing:
+				processing++
+				if activeTaskDesc == "" {
+					activeTaskDesc = fmt.Sprintf("%s (%s)", t.ID, t.Instruction)
+				}
+			case domain.StatusCompleted:
+				completed++
+			case domain.StatusFailed:
+				failed++
+			}
+		}
+		sb.WriteString(fmt.Sprintf("- **Tasks:** %d queued, %d processing, %d completed, %d failed\n",
+			queued, processing, completed, failed))
+		if activeTaskDesc != "" {
+			sb.WriteString(fmt.Sprintf("- **Current Task:** %s\n", activeTaskDesc))
+		}
+	}
+	sb.WriteString("\n")
+
+	// 3. Architecture & Invariants
+	archEntries, _ := b.repo.GetByProjectAndKind(ctx, clean, domain.KnowledgeArchitecture)
+	if len(archEntries) > 0 {
+		sb.WriteString("## Architectural Overview\n")
+		for _, a := range archEntries {
+			content := strings.TrimSpace(a.Content)
+			if len(content) > 300 {
+				content = content[:300] + "..."
+			}
+			sb.WriteString(fmt.Sprintf("### %s\n%s\n\n", a.Topic, content))
+		}
+	}
+
+	// 4. Key Conventions & Rules
+	convEntries, _ := b.repo.GetByProjectAndKind(ctx, clean, domain.KnowledgeConvention)
+	if len(convEntries) > 0 {
+		sb.WriteString("## Key Conventions & Constraints\n")
+		count := 0
+		for _, c := range convEntries {
+			content := strings.TrimSpace(c.Content)
+			if len(content) > 250 {
+				content = content[:250] + "..."
+			}
+			sb.WriteString(fmt.Sprintf("- **%s:** %s\n", c.Topic, content))
+			count++
+			if count >= 5 {
+				break
+			}
+		}
+		sb.WriteString("\n")
+	}
+
+	// 5. Mandatory Verification Commands
+	sb.WriteString("## Verification Commands\n")
+	var verifCommands []string
+	if strings.Contains(stackStr, "Go") {
+		verifCommands = append(verifCommands, "CGO_ENABLED=1 CGO_CFLAGS=\"-DSQLITE_ENABLE_FTS5\" go test -race -count=1 ./...")
+	}
+	if strings.Contains(stackStr, "TypeScript") || strings.Contains(stackStr, "Node") {
+		verifCommands = append(verifCommands, "npm test")
+	}
+	if strings.Contains(stackStr, "Rust") {
+		verifCommands = append(verifCommands, "cargo test")
+	}
+	if strings.Contains(stackStr, "Python") {
+		verifCommands = append(verifCommands, "pytest")
+	}
+	if len(verifCommands) == 0 {
+		verifCommands = append(verifCommands, "Run project-specific test suite before committing.")
+	}
+	for _, cmd := range verifCommands {
+		sb.WriteString(fmt.Sprintf("- `%s`\n", cmd))
+	}
+
+	result := sb.String()
+	tokens := estimateStringTokens(result)
+	if tokens > maxTokens {
+		maxChars := maxTokens * 4
+		if len(result) > maxChars {
+			result = result[:maxChars] + "\n\n...[Onboarding context truncated to fit token budget]"
+		}
+	}
+
+	return result, nil
 }

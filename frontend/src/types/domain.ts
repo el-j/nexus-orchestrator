@@ -127,13 +127,7 @@ export interface DiscoveredAgent {
 }
 
 export type PlanFileKind =
-  | 'nexus'
-  | 'claude-task'
-  | 'markdown'
-  | 'cursor'
-  | 'mcp-config'
-  | 'crewai'
-  | 'claude';
+  'nexus' | 'claude-task' | 'markdown' | 'cursor' | 'mcp-config' | 'crewai' | 'claude';
 
 export interface DiscoveredPlanFile {
   id: string;
@@ -194,11 +188,14 @@ export interface ContextQuery {
 }
 
 export interface ContextSection {
-  title: string;
+  title?: string;
+  topic?: string;
   kind: string;
   content: string;
   tokens: number;
-  source: string;
+  source?: string;
+  tokenCount?: number;
+  relevanceScore?: number;
 }
 
 export interface ContextResponse {
@@ -208,18 +205,7 @@ export interface ContextResponse {
   truncated: boolean;
 }
 
-export interface KnowledgeResult {
-  id: string;
-  projectPath: string;
-  kind: string;
-  topic: string;
-  content: string;
-  source: string;
-  tokens: number;
-  relevance: number;
-  createdAt: string;
-  updatedAt: string;
-}
+export type KnowledgeResult = ProjectKnowledge;
 
 export interface ProjectKnowledge {
   id: string;

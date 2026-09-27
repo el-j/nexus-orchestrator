@@ -796,3 +796,311 @@ func TestClient_UpdateRuntimeConfig_OK(t *testing.T) {
 		t.Error("expected error on non-200, got nil")
 	}
 }
+
+func TestClient_GetProviders(t *testing.T) {
+	want := []ports.ProviderInfo{
+		{Name: "openai", Active: true, Models: []string{"gpt-4"}},
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/providers" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(want) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	got, err := c.GetProviders()
+	if err != nil {
+		t.Fatalf("GetProviders: %v", err)
+	}
+	if len(got) != 1 || got[0].Name != "openai" {
+		t.Errorf("unexpected providers: %+v", got)
+	}
+
+	// non-200 returns error
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv2.Close()
+	if _, err := httpapi_client.NewClient(srv2.URL).GetProviders(); err == nil {
+		t.Error("expected error on non-200, got nil")
+	}
+}
+
+func TestClient_RegisterCloudProvider(t *testing.T) {
+	cfg := domain.ProviderConfig{ID: "p1", Name: "anthropic", Kind: "anthropic"}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/providers" {
+			http.NotFound(w, r)
+			return
+		}
+		assertContentType(t, r)
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	if err := c.RegisterCloudProvider(cfg); err != nil {
+		t.Fatalf("RegisterCloudProvider: %v", err)
+	}
+
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer srv2.Close()
+	if err := httpapi_client.NewClient(srv2.URL).RegisterCloudProvider(cfg); err == nil {
+		t.Error("expected error on non-201, got nil")
+	}
+}
+
+func TestClient_RemoveProvider(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			http.NotFound(w, r)
+			return
+		}
+		switch r.URL.Path {
+		case "/api/providers/openai":
+			w.WriteHeader(http.StatusNoContent)
+		case "/api/providers/unknown":
+			w.WriteHeader(http.StatusNotFound)
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	if err := c.RemoveProvider("openai"); err != nil {
+		t.Fatalf("RemoveProvider: %v", err)
+	}
+	if err := c.RemoveProvider("unknown"); err == nil {
+		t.Error("expected not-found error, got nil")
+	}
+	if err := c.RemoveProvider("other"); err == nil {
+		t.Error("expected error on 500, got nil")
+	}
+}
+
+func TestClient_GetProviderModels(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.NotFound(w, r)
+			return
+		}
+		switch r.URL.Path {
+		case "/api/providers/openai/models":
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode([]string{"gpt-4o", "gpt-4o-mini"}) //nolint:errcheck
+		case "/api/providers/unknown/models":
+			w.WriteHeader(http.StatusNotFound)
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	models, err := c.GetProviderModels("openai")
+	if err != nil {
+		t.Fatalf("GetProviderModels: %v", err)
+	}
+	if len(models) != 2 || models[0] != "gpt-4o" {
+		t.Errorf("unexpected models: %+v", models)
+	}
+	if _, err := c.GetProviderModels("unknown"); err == nil {
+		t.Error("expected not-found error, got nil")
+	}
+	if _, err := c.GetProviderModels("error-case"); err == nil {
+		t.Error("expected error on 500, got nil")
+	}
+}
+
+func TestClient_UpdateProviderConfig(t *testing.T) {
+	cfg := domain.ProviderConfig{ID: "cfg-1", Name: "updated"}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			http.NotFound(w, r)
+			return
+		}
+		switch r.URL.Path {
+		case "/api/providers/config/cfg-1":
+			assertContentType(t, r)
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(cfg) //nolint:errcheck
+		case "/api/providers/config/notfound":
+			w.WriteHeader(http.StatusNotFound)
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	got, err := c.UpdateProviderConfig(context.Background(), cfg)
+	if err != nil {
+		t.Fatalf("UpdateProviderConfig: %v", err)
+	}
+	if got.ID != cfg.ID || got.Name != cfg.Name {
+		t.Errorf("unexpected updated cfg: %+v", got)
+	}
+
+	if _, err := c.UpdateProviderConfig(context.Background(), domain.ProviderConfig{ID: "notfound"}); err == nil {
+		t.Error("expected not-found error, got nil")
+	}
+	if _, err := c.UpdateProviderConfig(context.Background(), domain.ProviderConfig{ID: "other"}); err == nil {
+		t.Error("expected error on 500, got nil")
+	}
+}
+
+func TestClient_ListProviderConfigs(t *testing.T) {
+	want := []domain.ProviderConfig{{ID: "c1", Name: "prov1"}}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/providers/config" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(want) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	got, err := c.ListProviderConfigs(context.Background())
+	if err != nil {
+		t.Fatalf("ListProviderConfigs: %v", err)
+	}
+	if len(got) != 1 || got[0].ID != "c1" {
+		t.Errorf("unexpected configs: %+v", got)
+	}
+
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv2.Close()
+	if _, err := httpapi_client.NewClient(srv2.URL).ListProviderConfigs(context.Background()); err == nil {
+		t.Error("expected error on non-200, got nil")
+	}
+}
+
+func TestClient_PromoteProvider(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/providers/promote/p1" {
+			http.NotFound(w, r)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	if err := c.PromoteProvider(context.Background(), "p1"); err != nil {
+		t.Fatalf("PromoteProvider: %v", err)
+	}
+
+	if err := c.PromoteProvider(context.Background(), "unknown"); err == nil {
+		t.Error("expected error on 404, got nil")
+	}
+}
+
+func TestClient_GetDiscoveredAgents(t *testing.T) {
+	want := []domain.DiscoveredAgent{{ID: "agent-1", Name: "copilot", IsRunning: true}}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/ai-sessions/discovered" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(want) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	got, err := c.GetDiscoveredAgents(context.Background())
+	if err != nil {
+		t.Fatalf("GetDiscoveredAgents: %v", err)
+	}
+	if len(got) != 1 || got[0].Name != "copilot" {
+		t.Errorf("unexpected agents: %+v", got)
+	}
+
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv2.Close()
+	if _, err := httpapi_client.NewClient(srv2.URL).GetDiscoveredAgents(context.Background()); err == nil {
+		t.Error("expected error on non-200, got nil")
+	}
+}
+
+func TestClient_DelegateToNexus(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.NotFound(w, r)
+			return
+		}
+		switch r.URL.Path {
+		case "/api/ai-sessions/sess-1/delegate":
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]string{"instruction": "do work"}) //nolint:errcheck
+		case "/api/ai-sessions/unknown/delegate":
+			w.WriteHeader(http.StatusNotFound)
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	inst, err := c.DelegateToNexus(context.Background(), "sess-1")
+	if err != nil {
+		t.Fatalf("DelegateToNexus: %v", err)
+	}
+	if inst != "do work" {
+		t.Errorf("expected instruction 'do work', got %q", inst)
+	}
+
+	if _, err := c.DelegateToNexus(context.Background(), "unknown"); err == nil {
+		t.Error("expected not-found error, got nil")
+	}
+	if _, err := c.DelegateToNexus(context.Background(), "err"); err == nil {
+		t.Error("expected error on 500, got nil")
+	}
+}
+
+func TestClient_GetDiscoveredPlanFiles(t *testing.T) {
+	want := []domain.DiscoveredPlanFile{{ID: "p1", Path: "plan.md", Kind: domain.PlanFileKindMarkdown}}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/plans/discovered" {
+			http.NotFound(w, r)
+			return
+		}
+		if r.URL.Query().Get("projectPath") != "/tmp/test" {
+			http.Error(w, "missing projectPath", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(want) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	got, err := c.GetDiscoveredPlanFiles(context.Background(), "/tmp/test")
+	if err != nil {
+		t.Fatalf("GetDiscoveredPlanFiles: %v", err)
+	}
+	if len(got) != 1 || got[0].Path != "plan.md" {
+		t.Errorf("unexpected plan files: %+v", got)
+	}
+
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv2.Close()
+	if _, err := httpapi_client.NewClient(srv2.URL).GetDiscoveredPlanFiles(context.Background(), "/tmp/test"); err == nil {
+		t.Error("expected error on non-200, got nil")
+	}
+}

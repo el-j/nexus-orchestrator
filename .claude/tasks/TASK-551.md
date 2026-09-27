@@ -3,7 +3,8 @@ id: TASK-551
 planId: PLAN-070
 title: 'httpapi provider handler tests + activity handler tests'
 role: qa
-status: todo
+status: completed
+completedAt: 2026-09-24T17:39:00Z
 createdAt: 2026-04-14T02:00:00Z
 ---
 

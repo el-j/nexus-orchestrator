@@ -69,19 +69,70 @@ Reload the VS Code window after saving the configuration.
 
 ## Available Tools
 
-| Tool                  | Description                                                                   |
-| --------------------- | ----------------------------------------------------------------------------- |
-| `submit_task`         | Submit a code-generation task with project path, target file, and instruction |
-| `get_task`            | Retrieve the status and output of a task by its ID                            |
-| `get_queue`           | List all pending (QUEUED/PROCESSING) tasks                                    |
-| `cancel_task`         | Cancel a queued task before it is processed                                   |
-| `get_providers`       | List all registered LLM providers and their liveness status                   |
-| `health`              | Check if the orchestrator daemon is running and responsive                    |
-| `get_brain_status`    | Retrieve indexing status and token size of project knowledge brain            |
-| `ingest_knowledge`    | Parse and inject knowledge from files into project brain storage              |
-| `get_project_context` | Obtain base macro context representation of the project                       |
-| `get_focused_context` | Query bounded context sections specific to a reasoning question               |
-| `search_knowledge`    | Search project intelligence via BM25 matching                                 |
+### Tasks (13)
+
+| Tool                   | Description                                                                                           |
+| ---------------------- | ----------------------------------------------------------------------------------------------------- |
+| `submit_task`          | Submit a code-generation task with project path, target file, instruction, verification command, etc. |
+| `get_task`             | Retrieve the status and output of a task by its ID (`id`)                                             |
+| `get_queue`            | List all pending (QUEUED or PROCESSING) tasks                                                         |
+| `get_all_tasks`        | Return every task regardless of status                                                                |
+| `cancel_task`          | Cancel a pending task before it is processed (`id`)                                                   |
+| `update_task`          | Update mutable fields on an existing task (instruction, priority, provider, tags, status)             |
+| `create_draft`         | Create a draft idea for a project without entering the execution queue                                |
+| `get_backlog`          | List draft and backlog items for a project, ordered by priority                                       |
+| `promote_task`         | Promote a draft or backlog task to the execution queue (`id`)                                         |
+| `claim_task`           | Claim a QUEUED task for execution by an external AI session                                           |
+| `update_task_status`   | Report task completion or failure from the executing AI session                                       |
+| `heartbeat_task`       | Keep a PROCESSING task alive (prevents watchdog from marking it failed)                               |
+| `terminate_ai_session` | Terminate an external AI agent session (SIGTERM or SIGKILL)                                           |
+
+### AI Sessions (5)
+
+| Tool                          | Description                                                            |
+| ----------------------------- | ---------------------------------------------------------------------- |
+| `register_session`            | Announce external AI agent session for visualization and orchestration |
+| `get_ai_sessions`             | Return all external AI agent sessions registered with this daemon      |
+| `deregister_ai_session`       | Soft-disconnect an AI agent session without killing process            |
+| `heartbeat_ai_session`        | Refresh last-activity timestamp of an AI session to keep it alive      |
+| `purge_disconnected_sessions` | Delete all disconnected AI sessions inactive for > 2 hours             |
+
+### Providers (7)
+
+| Tool                     | Description                                                      |
+| ------------------------ | ---------------------------------------------------------------- |
+| `get_providers`          | List all registered LLM providers and their liveness status      |
+| `discover_providers`     | Scan the local system for installed AI providers/agents          |
+| `promote_provider`       | Promote a discovered provider to an active LLM backend           |
+| `list_provider_configs`  | List all persisted LLM provider configuration records            |
+| `add_provider_config`    | Add a new LLM provider configuration and register when enabled   |
+| `update_provider_config` | Update an existing LLM provider configuration by ID              |
+| `remove_provider_config` | Delete a persisted provider configuration and deregister adapter |
+
+### Brain / Knowledge (9)
+
+| Tool                  | Description                                                                                |
+| --------------------- | ------------------------------------------------------------------------------------------ |
+| `get_brain_status`    | Retrieve indexing status and entry count of project knowledge brain                        |
+| `ingest_knowledge`    | Parse and inject knowledge from markdown files into project brain storage                  |
+| `get_project_context` | Obtain macro context (Architectures, Conventions, File Maps) bounded by token budget       |
+| `get_focused_context` | Query task-specific micro context (Learning, Definitions, Gotchas) bounded by token budget |
+| `search_knowledge`    | Full-text search across the project's knowledge base via FTS5 BM25 matching                |
+| `init_project`        | Auto-ingest CLAUDE.md and initialize a project's knowledge base in one step                |
+| `list_knowledge`      | List all knowledge documents stored for a project, optionally filtered by kind             |
+| `delete_knowledge`    | Delete a knowledge document by ID from the project repository                              |
+| `get_file_map`        | Retrieve cached file path map knowledge document for a project                             |
+
+### Discovery & System (6)
+
+| Tool                    | Description                                                                       |
+| ----------------------- | --------------------------------------------------------------------------------- |
+| `get_discovered_agents` | Return AI agent tools detected on the local system (Claude CLI, Copilot, etc.)    |
+| `delegate_to_nexus`     | Delegate an AI agent session to the nexus task queue                              |
+| `get_discovered_plans`  | Scan for plan/task/orchestration files in a project directory                     |
+| `howto`                 | Return a complete integration guide — all tools, workflow patterns, and endpoints |
+| `howto_brief`           | Ultra-compact integration guide (~200 tokens) for small-context models            |
+| `health`                | Check if the orchestrator daemon is running and responsive                        |
 
 ## Usage Examples
 
@@ -247,6 +298,42 @@ Full-text BM25 search across all ingested knowledge entries for a project.
   "params": {
     "name": "search_knowledge",
     "arguments": { "projectPath": "/your/project", "query": "architecture", "limit": 5 }
+  }
+}
+```
+
+### Get Focused Context
+
+Retrieve task-specific micro context (Learning, Definitions, Gotchas) bounded by a token budget for a specific reasoning query.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "get_focused_context",
+    "arguments": {
+      "projectPath": "/your/project",
+      "question": "How does authentication middleware work?",
+      "maxTokens": 400
+    }
+  }
+}
+```
+
+### Initialize Project Brain
+
+Initialize the knowledge repository schema and auto-ingest `CLAUDE.md` in one call.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 6,
+  "method": "tools/call",
+  "params": {
+    "name": "init_project",
+    "arguments": { "projectPath": "/your/project" }
   }
 }
 ```

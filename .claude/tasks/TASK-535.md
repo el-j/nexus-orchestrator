@@ -3,7 +3,8 @@ id: TASK-535
 planId: PLAN-069
 title: 'Write brain HTTP handler tests'
 role: qa
-status: todo
+status: done
+completedAt: 2026-04-13T18:00:00Z
 createdAt: 2026-04-13T16:00:00Z
 ---
 

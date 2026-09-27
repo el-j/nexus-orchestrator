@@ -253,3 +253,35 @@ func (s *Server) handleGetFileMap(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string][]string{"filePaths": filePaths})
 }
+
+func (s *Server) handleGetOnboardingContext(w http.ResponseWriter, r *http.Request) {
+	if s.brain == nil {
+		writeJSONError(w, "brain service not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	projectPath := r.URL.Query().Get("projectPath")
+	if projectPath == "" {
+		writeJSONError(w, "projectPath query parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	maxTokens := 800
+	if mtStr := r.URL.Query().Get("maxTokens"); mtStr != "" {
+		if parsed, err := strconv.Atoi(mtStr); err == nil && parsed > 0 {
+			maxTokens = parsed
+		}
+	}
+
+	summary, err := s.brain.GetOnboardingContext(r.Context(), projectPath, maxTokens)
+	if err != nil {
+		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"projectPath": projectPath,
+		"maxTokens":   maxTokens,
+		"content":     summary,
+	})
+}

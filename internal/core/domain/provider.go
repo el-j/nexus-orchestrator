@@ -10,6 +10,7 @@ const (
 	ProviderKindOllama       ProviderKind = "ollama"
 	ProviderKindOpenAICompat ProviderKind = "openaicompat"
 	ProviderKindAnthropic    ProviderKind = "anthropic"
+	ProviderKindGemini       ProviderKind = "gemini"
 	ProviderKindLocalAI      ProviderKind = "localai"
 	ProviderKindVLLM         ProviderKind = "vllm"
 	ProviderKindTextGenUI    ProviderKind = "textgenui"

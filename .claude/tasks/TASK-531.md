@@ -3,7 +3,8 @@ id: TASK-531
 planId: PLAN-069
 title: 'Fix app.go GetFocusedContext bug and unexport With*Service setters'
 role: backend
-status: todo
+status: done
+completedAt: 2026-04-13T18:00:00Z
 createdAt: 2026-04-13T16:00:00Z
 ---
 

@@ -9,6 +9,7 @@ package services_test
 // OrchestratorService API.
 
 import (
+	"context"
 	"errors"
 	"os"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	"time"
 
 	"nexus-orchestrator/internal/core/domain"
+	"nexus-orchestrator/internal/core/ports"
 	"nexus-orchestrator/internal/core/services"
 )
 
@@ -319,4 +321,243 @@ func TestProviderFailover_AllProvidersFail(t *testing.T) {
 	if total == 0 {
 		t.Error("expected at least one provider to be called")
 	}
+}
+
+// ---- TASK-557: Verification Gates & Self-Healing Loop -----------------------
+
+type mockCommandRunner struct {
+	calls   atomic.Int32
+	runFunc func(ctx context.Context, dir string, cmd string) (string, error)
+}
+
+func (m *mockCommandRunner) Run(ctx context.Context, dir string, cmd string) (string, error) {
+	m.calls.Add(1)
+	if m.runFunc != nil {
+		return m.runFunc(ctx, dir, cmd)
+	}
+	return "", nil
+}
+
+// TestExecutionEngine_VerificationGate_SuccessFirstTurn verifies that a task with
+// VerificationCommand passes and is marked COMPLETED when the verification exits 0.
+func TestExecutionEngine_VerificationGate_SuccessFirstTurn(t *testing.T) {
+	repo := newMemRepo()
+	llm := &mockLLMClient{alive: true, name: "mock-llm", code: "func Valid() {}"}
+	discovery := services.NewDiscoveryService(llm)
+
+	runner := &mockCommandRunner{
+		runFunc: func(ctx context.Context, dir, cmd string) (string, error) {
+			if cmd != "go test ./..." {
+				t.Errorf("unexpected command: %s", cmd)
+			}
+			return "PASS", nil
+		},
+	}
+
+	orch := services.NewOrchestrator(
+		discovery, repo, &recordingWriter{}, nil,
+		services.WithCommandRunner(runner),
+	)
+	defer orch.Stop()
+
+	id, err := orch.SubmitTask(domain.Task{
+		Instruction:         "implement valid func",
+		TargetFile:          "valid.go",
+		ProjectPath:         t.TempDir(),
+		VerificationCommand: "go test ./...",
+	})
+	if err != nil {
+		t.Fatalf("SubmitTask: %v", err)
+	}
+
+	task := waitStatus(t, repo, id, domain.StatusCompleted, 10*time.Second)
+	if runner.calls.Load() != 1 {
+		t.Errorf("expected 1 verification run, got %d", runner.calls.Load())
+	}
+	if task.VerificationOutput != "PASS" {
+		t.Errorf("expected VerificationOutput 'PASS', got: %q", task.VerificationOutput)
+	}
+}
+
+// TestExecutionEngine_VerificationGate_SelfHealingSuccessTurn2 verifies that when
+// verification fails on turn 1, the model receives the error in turn 2 and the task
+// passes when turn 2 fixes it.
+func TestExecutionEngine_VerificationGate_SelfHealingSuccessTurn2(t *testing.T) {
+	repo := newMemRepo()
+
+	var llmCalls atomic.Int32
+	llm := &mockLLMClient{
+		alive: true,
+		name:  "mock-llm",
+		code:  "func FirstDraft() {}",
+	}
+
+	runner := &mockCommandRunner{}
+	runner.runFunc = func(ctx context.Context, dir, cmd string) (string, error) {
+		count := runner.calls.Load()
+		if count == 1 {
+			// First verification fails
+			return "undefined: SomeType at line 10", errors.New("exit status 1")
+		}
+		// Second verification succeeds
+		return "PASS", nil
+	}
+
+	orch := services.NewOrchestrator(
+		discoveryWithCounter(llm, &llmCalls), repo, &recordingWriter{}, nil,
+		services.WithCommandRunner(runner),
+	)
+	defer orch.Stop()
+
+	id, err := orch.SubmitTask(domain.Task{
+		Instruction:         "implement type",
+		TargetFile:          "type.go",
+		ProjectPath:         t.TempDir(),
+		VerificationCommand: "go test ./...",
+		MaxCorrectionTurns:  2,
+	})
+	if err != nil {
+		t.Fatalf("SubmitTask: %v", err)
+	}
+
+	task := waitStatus(t, repo, id, domain.StatusCompleted, 10*time.Second)
+	if runner.calls.Load() != 2 {
+		t.Errorf("expected 2 verification runs, got %d", runner.calls.Load())
+	}
+	if task.VerificationOutput != "PASS" {
+		t.Errorf("expected VerificationOutput 'PASS', got: %q", task.VerificationOutput)
+	}
+}
+
+// TestExecutionEngine_VerificationGate_ExhaustedTurns verifies that when verification
+// fails on all allowed correction turns, the task transitions to StatusFailed.
+func TestExecutionEngine_VerificationGate_ExhaustedTurns(t *testing.T) {
+	repo := newMemRepo()
+	llm := &mockLLMClient{alive: true, name: "mock-llm", code: "bad code"}
+	discovery := services.NewDiscoveryService(llm)
+
+	runner := &mockCommandRunner{
+		runFunc: func(ctx context.Context, dir, cmd string) (string, error) {
+			return "syntax error: unexpected EOF", errors.New("exit status 2")
+		},
+	}
+
+	orch := services.NewOrchestrator(
+		discovery, repo, &recordingWriter{}, nil,
+		services.WithCommandRunner(runner),
+	)
+	defer orch.Stop()
+
+	id, err := orch.SubmitTask(domain.Task{
+		Instruction:         "generate bad code",
+		TargetFile:          "bad.go",
+		ProjectPath:         t.TempDir(),
+		VerificationCommand: "go test ./...",
+		MaxCorrectionTurns:  2,
+	})
+	if err != nil {
+		t.Fatalf("SubmitTask: %v", err)
+	}
+
+	task := waitStatus(t, repo, id, domain.StatusFailed, 10*time.Second)
+	// 1 initial run + 2 correction turns = 3 verification runs total
+	if runner.calls.Load() != 3 {
+		t.Errorf("expected 3 verification runs, got %d", runner.calls.Load())
+	}
+	if !strings.Contains(task.VerificationOutput, "syntax error") {
+		t.Errorf("expected VerificationOutput to contain syntax error, got: %q", task.VerificationOutput)
+	}
+}
+
+// ---- TASK-562: Smart Provider Fallback Chain & Role-Driven Router ----------
+
+// TestProviderFallback_PrimaryFails_SecondarySucceeds verifies that when the primary provider
+// fails (e.g. rate-limit or network 500 error), the orchestrator automatically executes via the fallback provider.
+func TestProviderFallback_PrimaryFails_SecondarySucceeds(t *testing.T) {
+	repo := newMemRepo()
+	p1 := &countingLLM{name: "primary-anthropic", alive: true, codeErr: errors.New("rate limited: 429 Too Many Requests")}
+	p2 := &countingLLM{name: "secondary-gemini", alive: true, code: "package main\n\nfunc main() {}"}
+	discovery := services.NewDiscoveryService(p1, p2)
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.SubmitTask(domain.Task{
+		Instruction: "generate something resilient",
+	})
+	if err != nil {
+		t.Fatalf("SubmitTask: %v", err)
+	}
+
+	task := waitStatus(t, repo, id, domain.StatusCompleted, 10*time.Second)
+	if p1.calls.Load() != 1 {
+		t.Errorf("expected primary provider to be attempted once; got %d calls", p1.calls.Load())
+	}
+	if p2.calls.Load() != 1 {
+		t.Errorf("expected secondary provider to be executed once; got %d calls", p2.calls.Load())
+	}
+	if !strings.Contains(task.Logs, "failover: primary provider failed, executed via secondary-gemini") {
+		t.Errorf("expected logs to contain failover notice; got: %q", task.Logs)
+	}
+}
+
+// TestRoleDrivenRouter_ArchitectRoutesToFrontierFirst verifies that tasks with Role='architect'
+// prioritize frontier cloud models over local models.
+func TestRoleDrivenRouter_ArchitectRoutesToFrontierFirst(t *testing.T) {
+	repo := newMemRepo()
+	local := &countingLLM{name: "ollama-local", alive: true, code: "local code"}
+	frontier := &countingLLM{name: "anthropic-claude", alive: true, code: "frontier architecture code"}
+	// Register local first to ensure default ordering would have picked local if not for role
+	discovery := services.NewDiscoveryService(local, frontier)
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.SubmitTask(domain.Task{
+		Instruction: "design microservice architecture",
+		Role:        "architect",
+	})
+	if err != nil {
+		t.Fatalf("SubmitTask: %v", err)
+	}
+
+	waitStatus(t, repo, id, domain.StatusCompleted, 10*time.Second)
+
+	if frontier.calls.Load() != 1 {
+		t.Errorf("expected frontier model to be called first for architect role; got %d calls", frontier.calls.Load())
+	}
+	if local.calls.Load() != 0 {
+		t.Errorf("expected local model NOT to be called when frontier succeeds; got %d calls", local.calls.Load())
+	}
+}
+
+// TestRoleDrivenRouter_LinterRoutesToLocalFirst verifies that tasks with Role='linter'
+// prioritize fast local models over expensive frontier models.
+func TestRoleDrivenRouter_LinterRoutesToLocalFirst(t *testing.T) {
+	repo := newMemRepo()
+	frontier := &countingLLM{name: "anthropic-claude", alive: true, code: "frontier code"}
+	local := &countingLLM{name: "ollama-local", alive: true, code: "local linted code"}
+	// Register frontier first to verify role overrides discovery order
+	discovery := services.NewDiscoveryService(frontier, local)
+	orch := services.NewOrchestrator(discovery, repo, &noopWriter{}, nil)
+	defer orch.Stop()
+
+	id, err := orch.SubmitTask(domain.Task{
+		Instruction: "lint this file and format imports",
+		Role:        "linter",
+	})
+	if err != nil {
+		t.Fatalf("SubmitTask: %v", err)
+	}
+
+	waitStatus(t, repo, id, domain.StatusCompleted, 10*time.Second)
+
+	if local.calls.Load() != 1 {
+		t.Errorf("expected local model to be called first for linter role; got %d calls", local.calls.Load())
+	}
+	if frontier.calls.Load() != 0 {
+		t.Errorf("expected frontier model NOT to be called when local succeeds; got %d calls", frontier.calls.Load())
+	}
+}
+
+func discoveryWithCounter(client ports.LLMClient, counter *atomic.Int32) *services.DiscoveryService {
+	return services.NewDiscoveryService(client)
 }

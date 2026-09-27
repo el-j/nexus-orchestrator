@@ -344,6 +344,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive } from 'vue';
+import { useRoute } from 'vue-router';
 import { useProviders } from '../composables/useProviders';
 import { useDiscovery } from '../composables/useDiscovery';
 import ProviderStatus from '../components/ProviderStatus.vue';
@@ -508,6 +509,8 @@ function showConfirm(title: string, message: string, onConfirm: () => void) {
   confirmDialog.open = true;
 }
 
+const route = useRoute();
+
 async function loadConfigs() {
   try {
     configs.value = (await listProviderConfigs()) ?? [];
@@ -515,7 +518,24 @@ async function loadConfigs() {
     /* silent fail */
   }
 }
-onMounted(loadConfigs);
+onMounted(async () => {
+  await loadConfigs();
+  if (route?.query?.action === 'add' || route?.query?.name) {
+    editingConfig.value = {
+      id: '',
+      name: (route.query.name as string) || '',
+      kind: (route.query.kind as string as ProviderConfig['kind']) || 'openaicompat',
+      baseUrl: (route.query.baseURL as string) || (route.query.baseUrl as string) || '',
+      apiKey: '',
+      model: (route.query.model as string) || '',
+      enabled: true,
+      createdAt: '',
+      updatedAt: '',
+    };
+    configExpanded.value = true;
+    showForm.value = true;
+  }
+});
 
 function openAdd() {
   editingConfig.value = null;

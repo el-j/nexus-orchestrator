@@ -745,3 +745,59 @@ func TestTagsRoundtrip(t *testing.T) {
 		}
 	}
 }
+
+func TestRepository_TaskVerificationFields(t *testing.T) {
+	repo := newTestRepo(t)
+	defer repo.Close()
+
+	now := time.Now().Truncate(time.Millisecond)
+	task := domain.Task{
+		ID:                  "verify-task-1",
+		ProjectPath:         "/projects/verify",
+		TargetFile:          "calc.go",
+		Instruction:         "implement Add",
+		Status:              domain.StatusQueued,
+		VerificationCommand: "go test -v ./...",
+		MaxCorrectionTurns:  3,
+		VerificationOutput:  "FAIL: TestAdd",
+		CreatedAt:           now,
+		UpdatedAt:           now,
+	}
+
+	if err := repo.Save(task); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	got, err := repo.GetByID("verify-task-1")
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+
+	if got.VerificationCommand != "go test -v ./..." {
+		t.Errorf("VerificationCommand: got %q, want %q", got.VerificationCommand, "go test -v ./...")
+	}
+	if got.MaxCorrectionTurns != 3 {
+		t.Errorf("MaxCorrectionTurns: got %d, want 3", got.MaxCorrectionTurns)
+	}
+	if got.VerificationOutput != "FAIL: TestAdd" {
+		t.Errorf("VerificationOutput: got %q, want %q", got.VerificationOutput, "FAIL: TestAdd")
+	}
+
+	// Test Update
+	got.VerificationOutput = "PASS"
+	got.Status = domain.StatusCompleted
+	if err := repo.Update(got); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	updated, err := repo.GetByID("verify-task-1")
+	if err != nil {
+		t.Fatalf("GetByID after update: %v", err)
+	}
+	if updated.VerificationOutput != "PASS" {
+		t.Errorf("Updated VerificationOutput: got %q, want %q", updated.VerificationOutput, "PASS")
+	}
+	if updated.Status != domain.StatusCompleted {
+		t.Errorf("Updated Status: got %q, want %q", updated.Status, domain.StatusCompleted)
+	}
+}

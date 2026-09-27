@@ -145,6 +145,15 @@ func TestKnowledgeRepo_SearchFTS(t *testing.T) {
 	if results[0].ID != "fts1" {
 		t.Errorf("Expected fts1, got %s", results[0].ID)
 	}
+
+	// Unbalanced quotes must not cause syntax error or panic
+	unbalanced, err := kr.SearchFTS(ctx, "/proj", `"interface`, 10)
+	if err != nil {
+		t.Fatalf("SearchFTS with unbalanced quotes: %v", err)
+	}
+	if len(unbalanced) != 1 {
+		t.Fatalf("Expected 1 result for '\"interface', got %d", len(unbalanced))
+	}
 }
 
 func TestKnowledgeRepo_UpsertDedup(t *testing.T) {

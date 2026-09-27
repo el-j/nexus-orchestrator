@@ -2,7 +2,8 @@
 id: PLAN-069
 title: 'Brain Layer Gap-Fill — API, Client, CLI, Wails, Tests, Docs'
 goal: 'Close all confirmed gaps in the Nexus Brain implementation: missing HTTP routes, stub client methods, Wails binding bug, howto_brief phantom params, missing CLI subcommands, and absent test coverage across all layers.'
-status: todo
+status: completed
+completedAt: 2026-04-13T18:00:00Z
 createdAt: 2026-04-13T16:00:00Z
 ---
 

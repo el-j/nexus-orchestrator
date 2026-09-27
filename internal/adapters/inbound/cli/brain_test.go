@@ -69,6 +69,10 @@ func (m *mockBrainService) GetFileMap(_ context.Context, _, _ string) ([]string,
 	return m.getFileMapResult, m.getFileMapErr
 }
 
+func (m *mockBrainService) GetOnboardingContext(_ context.Context, _ string, _ int) (string, error) {
+	return "", nil
+}
+
 // TestBrainCLI_Status_ServiceError verifies that a brain service error surfaces in the command error.
 func TestBrainCLI_Status_ServiceError(t *testing.T) {
 	brain := &mockBrainService{getStatusErr: errors.New("database unavailable")}
@@ -172,5 +176,32 @@ func TestBrainCLI_Delete_OK(t *testing.T) {
 	}
 	if !strings.Contains(out, "deleted") {
 		t.Errorf("expected output to contain %q; got: %q", "deleted", out)
+	}
+}
+
+// TestBrainCLI_Context_OK verifies that the context command prints JSON output to stdout.
+func TestBrainCLI_Context_OK(t *testing.T) {
+	brain := &mockBrainService{
+		getContextResult: domain.ContextResponse{
+			ProjectPath: "/proj",
+			TokenBudget: 500,
+			Sections: []domain.ContextSection{
+				{Topic: "Architecture", Kind: domain.KnowledgeArchitecture, Content: "Hexagonal"},
+			},
+		},
+	}
+	root := cli.NewRootCmd(&mockOrchestrator{}, brain)
+	root.SetArgs([]string{"brain", "context", "--project", "/proj"})
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+
+	var execErr error
+	out := captureStdout(t, func() { execErr = root.Execute() })
+
+	if execErr != nil {
+		t.Fatalf("unexpected error: %v", execErr)
+	}
+	if !strings.Contains(out, "Hexagonal") {
+		t.Errorf("expected output to contain %q; got: %q", "Hexagonal", out)
 	}
 }

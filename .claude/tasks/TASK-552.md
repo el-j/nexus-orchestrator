@@ -3,7 +3,8 @@ id: TASK-552
 planId: PLAN-070
 title: 'httpapi_client/client.go coverage + session lifecycle tests'
 role: qa
-status: todo
+status: done
+completedAt: 2026-09-24T17:42:00Z
 createdAt: 2026-04-14T02:00:00Z
 ---
 

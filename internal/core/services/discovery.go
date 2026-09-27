@@ -75,6 +75,15 @@ func (s *DiscoveryService) GetClientByName(name string) (ports.LLMClient, bool) 
 	return nil, false
 }
 
+// GetAllClients returns a copy of all registered LLM clients.
+func (s *DiscoveryService) GetAllClients() []ports.LLMClient {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	clients := make([]ports.LLMClient, len(s.availableClients))
+	copy(clients, s.availableClients)
+	return clients
+}
+
 // DetectActive returns the first LLM provider that responds to a Ping,
 // or nil when none are reachable.
 func (s *DiscoveryService) DetectActive() ports.LLMClient {

@@ -22,6 +22,8 @@ import (
 	"nexus-orchestrator/internal/adapters/outbound/activity_claude"
 	"nexus-orchestrator/internal/adapters/outbound/activity_continue"
 	"nexus-orchestrator/internal/adapters/outbound/activity_network"
+	"nexus-orchestrator/internal/adapters/outbound/cmd_runner"
+	"nexus-orchestrator/internal/adapters/outbound/fs_watcher"
 	"nexus-orchestrator/internal/adapters/outbound/fs_writer"
 	"nexus-orchestrator/internal/adapters/outbound/repo_sqlite"
 	"nexus-orchestrator/internal/adapters/outbound/sys_scanner"
@@ -62,11 +64,15 @@ func run() error {
 	defer repo.Close()
 
 	writer := fs_writer.New()
+	runner := cmd_runner.New()
 
 	// 2. Core services (Hexagonal wiring)
 	discoverySvc := services.NewDiscoveryService(bootstrap.BuildProviders()...)
 	sessionRepo := repo_sqlite.NewSessionRepo(repo)
-	orchestratorSvc := services.NewOrchestrator(discoverySvc, repo, writer, sessionRepo)
+	orchestratorSvc := services.NewOrchestrator(
+		discoverySvc, repo, writer, sessionRepo,
+		services.WithCommandRunner(runner),
+	)
 	orchestratorSvc.WithProviderFactory(bootstrap.BuildProviderFromConfig)
 
 	providerConfigRepo := repo_sqlite.NewProviderConfigRepo(repo)
@@ -137,6 +143,17 @@ func run() error {
 	knowledgeRepo := repo_sqlite.NewKnowledgeRepo(repo)
 	brainSvc := services.NewBrainService(knowledgeRepo, repo)
 
+	// Real-time workspace filesystem watcher
+	fsWatcher, err := fs_watcher.New(fs_watcher.WithBrain(brainSvc))
+	if err != nil {
+		log.Printf("startup: create fs watcher: %v", err)
+	} else {
+		defer fsWatcher.Close()
+		if cwd, err := os.Getwd(); err == nil {
+			_ = fsWatcher.Watch(cwd)
+		}
+	}
+
 	go func() {
 		if err := httpapi.StartServerFull(httpCtx, orchestratorSvc, brainSvc, httpAddr, activitySvc, logHub); err != nil {
 			log.Printf("httpapi: %v", err)
@@ -181,7 +198,8 @@ func run() error {
 	// 4. Initialise Wails app binding
 	app := NewApp(orchestratorSvc, httpAddr).
 		withActivityService(activitySvc).
-		withBrainService(brainSvc)
+		withBrainService(brainSvc).
+		withFsWatcher(fsWatcher)
 
 	trayAdapter := tray.NewTrayAdapter(orchestratorSvc, func() {
 		app.ShowWindow()

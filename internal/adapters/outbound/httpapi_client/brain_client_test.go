@@ -293,3 +293,128 @@ func TestBrainClient_GetFileMap_OK(t *testing.T) {
 		t.Errorf("unexpected file map: %+v", got)
 	}
 }
+
+// TestBrainClient_IngestKnowledge_Unsupported verifies that direct IngestKnowledge returns an error.
+func TestBrainClient_IngestKnowledge_Unsupported(t *testing.T) {
+	c := httpapi_client.NewBrainClient("http://127.0.0.1:9999")
+	_, err := c.IngestKnowledge(context.Background(), domain.ProjectKnowledge{})
+	if err == nil {
+		t.Fatal("expected error from IngestKnowledge, got nil")
+	}
+}
+
+// TestBrainClient_GetProjectContext_Error verifies 500 surfaces error.
+func TestBrainClient_GetProjectContext_Error(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewBrainClient(srv.URL)
+	_, err := c.GetContext(context.Background(), domain.ContextQuery{ProjectPath: "/proj"})
+	if err == nil {
+		t.Fatal("expected error on 500, got nil")
+	}
+}
+
+// TestBrainClient_GetFocusedContext_Error verifies 500 surfaces error.
+func TestBrainClient_GetFocusedContext_Error(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewBrainClient(srv.URL)
+	_, err := c.GetFocusedContext(context.Background(), domain.ContextQuery{ProjectPath: "/proj", Question: "q"})
+	if err == nil {
+		t.Fatal("expected error on 500, got nil")
+	}
+}
+
+// TestBrainClient_SearchKnowledge_Error verifies 500 surfaces error.
+func TestBrainClient_SearchKnowledge_Error(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewBrainClient(srv.URL)
+	_, err := c.SearchKnowledge(context.Background(), "/proj", "query", 10)
+	if err == nil {
+		t.Fatal("expected error on 500, got nil")
+	}
+}
+
+// TestBrainClient_InitProject_Error verifies 500 surfaces error.
+func TestBrainClient_InitProject_Error(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewBrainClient(srv.URL)
+	_, err := c.InitProject(context.Background(), "/proj", "")
+	if err == nil {
+		t.Fatal("expected error on 500, got nil")
+	}
+}
+
+// TestBrainClient_ListKnowledge_Empty verifies null/empty returns empty slice not nil.
+func TestBrainClient_ListKnowledge_Empty(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte("null")) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewBrainClient(srv.URL)
+	got, err := c.ListKnowledge(context.Background(), "/proj", "")
+	if err != nil {
+		t.Fatalf("ListKnowledge: %v", err)
+	}
+	if got == nil {
+		t.Fatal("expected non-nil empty slice, got nil")
+	}
+}
+
+// TestBrainClient_ListKnowledge_Error verifies 500 surfaces error.
+func TestBrainClient_ListKnowledge_Error(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewBrainClient(srv.URL)
+	_, err := c.ListKnowledge(context.Background(), "/proj", "")
+	if err == nil {
+		t.Fatal("expected error on 500, got nil")
+	}
+}
+
+// TestBrainClient_DeleteKnowledge_NotFound verifies 404 surfaces error.
+func TestBrainClient_DeleteKnowledge_NotFound(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewBrainClient(srv.URL)
+	err := c.DeleteKnowledge(context.Background(), "nonexistent")
+	if err == nil {
+		t.Fatal("expected error on 404, got nil")
+	}
+}
+
+// TestBrainClient_GetFileMap_Error verifies 500 surfaces error.
+func TestBrainClient_GetFileMap_Error(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewBrainClient(srv.URL)
+	_, err := c.GetFileMap(context.Background(), "/proj", "")
+	if err == nil {
+		t.Fatal("expected error on 500, got nil")
+	}
+}

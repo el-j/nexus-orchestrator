@@ -333,10 +333,110 @@ export GITHUB_TOKEN=ghp_...</code></pre>
       </div>
     </div>
 
-    <div class="code-panel mt-4 animate-on-scroll" style="text-align: center; padding: 3rem 2rem; background: var(--bg-card); border: 1px dashed var(--border);">
-      <p style="font-size: 2rem; margin-bottom: 0.75rem;" aria-hidden="true">🖥️</p>
-      <p style="color: var(--text-muted); font-size: 0.9375rem;">Dashboard screenshot placeholder</p>
-      <p style="color: var(--text-muted); font-size: 0.8125rem; margin-top: 0.5rem;">Open <code>http://localhost:63987/ui</code> after starting the daemon</p>
+    <div class="code-panel mt-4 animate-on-scroll" style="padding: 1.5rem; background: #0c0d14; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; overflow: hidden;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #10b981;"></span>
+          <span style="font-weight: 600; font-size: 0.875rem; color: #f8fafc;">nexusOrchestrator Mission Control</span>
+          <span style="font-size: 0.75rem; color: #64748b; margin-left: 0.5rem;">http://localhost:63987/ui</span>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <span style="background: rgba(16,185,129,0.15); color: #34d399; font-size: 0.75rem; padding: 2px 8px; border-radius: 6px; font-weight: 500;">4 Active Providers</span>
+          <span style="background: rgba(139,92,246,0.15); color: #a78bfa; font-size: 0.75rem; padding: 2px 8px; border-radius: 6px; font-weight: 500;">Context Broker Ready</span>
+        </div>
+      </div>
+      <svg viewBox="0 0 800 320" width="100%" height="auto" style="border-radius: 8px; display: block; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <defs>
+          <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#12131f"/>
+            <stop offset="100%" stop-color="#0a0a12"/>
+          </linearGradient>
+          <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#1a1c2e"/>
+            <stop offset="100%" stop-color="#141524"/>
+          </linearGradient>
+          <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#7c3aed"/>
+            <stop offset="100%" stop-color="#06b6d4"/>
+          </linearGradient>
+        </defs>
+
+        <rect width="800" height="320" fill="url(#bgGrad)" rx="8"/>
+
+        <!-- Top stats row -->
+        <g transform="translate(24, 20)">
+          <!-- Stat 1 -->
+          <rect width="170" height="70" rx="8" fill="url(#cardGrad)" stroke="rgba(255,255,255,0.06)"/>
+          <text x="16" y="28" fill="#94a3b8" font-size="11" font-weight="600">LIVE QUEUE</text>
+          <text x="16" y="54" fill="#38bdf8" font-size="22" font-weight="700">0 pending</text>
+
+          <!-- Stat 2 -->
+          <rect x="190" width="170" height="70" rx="8" fill="url(#cardGrad)" stroke="rgba(255,255,255,0.06)"/>
+          <text x="206" y="28" fill="#94a3b8" font-size="11" font-weight="600">ACTIVE SESSIONS</text>
+          <text x="206" y="54" fill="#34d399" font-size="22" font-weight="700">3 connected</text>
+
+          <!-- Stat 3 -->
+          <rect x="380" width="170" height="70" rx="8" fill="url(#cardGrad)" stroke="rgba(255,255,255,0.06)"/>
+          <text x="396" y="28" fill="#94a3b8" font-size="11" font-weight="600">CONTEXT KNOWLEDGE</text>
+          <text x="396" y="54" fill="#a78bfa" font-size="22" font-weight="700">142 entries</text>
+
+          <!-- Stat 4 -->
+          <rect x="570" width="180" height="70" rx="8" fill="url(#cardGrad)" stroke="rgba(255,255,255,0.06)"/>
+          <text x="586" y="28" fill="#94a3b8" font-size="11" font-weight="600">DISCOVERY</text>
+          <text x="586" y="54" fill="#f43f5e" font-size="22" font-weight="700">4 providers</text>
+        </g>
+
+        <!-- Main Panel: Active Task & Smart Routing -->
+        <g transform="translate(24, 110)">
+          <!-- Left: Active Pipeline -->
+          <rect width="460" height="186" rx="8" fill="url(#cardGrad)" stroke="rgba(255,255,255,0.06)"/>
+          <text x="20" y="30" fill="#f8fafc" font-size="14" font-weight="600">Recent Workflow Execution</text>
+          <rect x="340" y="16" width="100" height="22" rx="11" fill="rgba(16,185,129,0.15)"/>
+          <text x="390" y="31" fill="#34d399" font-size="11" font-weight="600" text-anchor="middle">COMPLETED</text>
+
+          <text x="20" y="62" fill="#94a3b8" font-size="12">Task:</text>
+          <text x="65" y="62" fill="#e2e8f0" font-size="12" font-weight="500">TASK-562 — Smart Provider Fallback Chain</text>
+
+          <text x="20" y="92" fill="#94a3b8" font-size="12">Role:</text>
+          <rect x="65" y="78" width="70" height="20" rx="4" fill="rgba(124,58,237,0.2)"/>
+          <text x="100" y="92" fill="#c084fc" font-size="11" font-weight="600" text-anchor="middle">architect</text>
+
+          <text x="145" y="92" fill="#94a3b8" font-size="12">Routed Provider:</text>
+          <text x="250" y="92" fill="#38bdf8" font-size="12" font-weight="500">Anthropic Claude 3.5 Sonnet</text>
+
+          <text x="20" y="125" fill="#94a3b8" font-size="12">Verification:</text>
+          <text x="100" y="125" fill="#a7f3d0" font-size="12" font-family="monospace">go test -race ./... (Exit: 0)</text>
+
+          <!-- Progress bar -->
+          <rect x="20" y="150" width="420" height="6" rx="3" fill="#1e293b"/>
+          <rect x="20" y="150" width="420" height="6" rx="3" fill="url(#accentGrad)"/>
+          <text x="20" y="172" fill="#64748b" font-size="11">Duration: 1.84s · Ingested 4 sections · Token Headroom: 98%</text>
+        </g>
+
+        <!-- Right: Connected Agent Swarm -->
+        <g transform="translate(504, 110)">
+          <rect width="270" height="186" rx="8" fill="url(#cardGrad)" stroke="rgba(255,255,255,0.06)"/>
+          <text x="20" y="30" fill="#f8fafc" font-size="14" font-weight="600">Active AI Swarm</text>
+
+          <g transform="translate(20, 50)">
+            <circle cx="8" cy="8" r="4" fill="#34d399"/>
+            <text x="20" y="12" fill="#f1f5f9" font-size="12" font-weight="500">Claude Code (CLI)</text>
+            <text x="20" y="26" fill="#64748b" font-size="10">Session: s-claude-91 · MCP Ready</text>
+          </g>
+
+          <g transform="translate(20, 95)">
+            <circle cx="8" cy="8" r="4" fill="#34d399"/>
+            <text x="20" y="12" fill="#f1f5f9" font-size="12" font-weight="500">Google Gemini Agent</text>
+            <text x="20" y="26" fill="#64748b" font-size="10">Native Gemini Pro Adapter · Healthy</text>
+          </g>
+
+          <g transform="translate(20, 140)">
+            <circle cx="8" cy="8" r="4" fill="#38bdf8"/>
+            <text x="20" y="12" fill="#f1f5f9" font-size="12" font-weight="500">Ollama Local (codellama)</text>
+            <text x="20" y="26" fill="#64748b" font-size="10">Fast Boilerplate &amp; Linter Chain</text>
+          </g>
+        </g>
+      </svg>
     </div>
   </section>
 

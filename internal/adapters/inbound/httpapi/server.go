@@ -215,6 +215,7 @@ func (s *Server) Handler() http.Handler {
 	r.Get("/api/brain/knowledge", s.handleListKnowledge)
 	r.Delete("/api/brain/knowledge/{id}", s.handleDeleteKnowledge)
 	r.Get("/api/brain/file-map", s.handleGetFileMap)
+	r.Get("/api/brain/onboarding", s.handleGetOnboardingContext)
 
 	return r
 }

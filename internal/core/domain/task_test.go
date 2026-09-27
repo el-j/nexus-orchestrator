@@ -56,3 +56,21 @@ func TestTaskIsExecutable(t *testing.T) {
 		}
 	}
 }
+
+func TestTaskVerificationFields(t *testing.T) {
+	task := Task{
+		ID:                  "task-123",
+		VerificationCommand: "go test ./...",
+		MaxCorrectionTurns:  3,
+		VerificationOutput:  "PASS",
+	}
+	if task.VerificationCommand != "go test ./..." {
+		t.Errorf("unexpected command: %s", task.VerificationCommand)
+	}
+	if task.MaxCorrectionTurns != 3 {
+		t.Errorf("unexpected max turns: %d", task.MaxCorrectionTurns)
+	}
+	if task.VerificationOutput != "PASS" {
+		t.Errorf("unexpected output: %s", task.VerificationOutput)
+	}
+}
