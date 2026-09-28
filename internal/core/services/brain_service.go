@@ -365,8 +365,8 @@ func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath
 	projectName := filepath.Base(clean)
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("# Project Onboarding: %s\n\n", projectName))
-	sb.WriteString(fmt.Sprintf("**Path:** `%s`\n", clean))
+	fmt.Fprintf(&sb, "# Project Onboarding: %s\n\n", projectName)
+	fmt.Fprintf(&sb, "**Path:** `%s`\n", clean)
 
 	// 1. Stack detection
 	var stackParts []string
@@ -389,7 +389,7 @@ func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath
 	if len(stackParts) > 0 {
 		stackStr = strings.Join(stackParts, ", ")
 	}
-	sb.WriteString(fmt.Sprintf("**Stack:** %s\n\n", stackStr))
+	fmt.Fprintf(&sb, "**Stack:** %s\n\n", stackStr)
 
 	// 2. Active Development State
 	sb.WriteString("## Active Development State\n")
@@ -403,7 +403,7 @@ func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath
 			activePlan = orchConfig.ActivePlanID
 		}
 	}
-	sb.WriteString(fmt.Sprintf("- **Active Plan:** %s\n", activePlan))
+	fmt.Fprintf(&sb, "- **Active Plan:** %s\n", activePlan)
 
 	if b.taskRepo != nil {
 		tasks, _ := b.taskRepo.GetByProjectPath(clean)
@@ -424,10 +424,10 @@ func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath
 				failed++
 			}
 		}
-		sb.WriteString(fmt.Sprintf("- **Tasks:** %d queued, %d processing, %d completed, %d failed\n",
-			queued, processing, completed, failed))
+		fmt.Fprintf(&sb, "- **Tasks:** %d queued, %d processing, %d completed, %d failed\n",
+			queued, processing, completed, failed)
 		if activeTaskDesc != "" {
-			sb.WriteString(fmt.Sprintf("- **Current Task:** %s\n", activeTaskDesc))
+			fmt.Fprintf(&sb, "- **Current Task:** %s\n", activeTaskDesc)
 		}
 	}
 	sb.WriteString("\n")
@@ -441,7 +441,7 @@ func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath
 			if len(content) > 300 {
 				content = content[:300] + "..."
 			}
-			sb.WriteString(fmt.Sprintf("### %s\n%s\n\n", a.Topic, content))
+			fmt.Fprintf(&sb, "### %s\n%s\n\n", a.Topic, content)
 		}
 	}
 
@@ -455,7 +455,7 @@ func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath
 			if len(content) > 250 {
 				content = content[:250] + "..."
 			}
-			sb.WriteString(fmt.Sprintf("- **%s:** %s\n", c.Topic, content))
+			fmt.Fprintf(&sb, "- **%s:** %s\n", c.Topic, content)
 			count++
 			if count >= 5 {
 				break
@@ -483,7 +483,7 @@ func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath
 		verifCommands = append(verifCommands, "Run project-specific test suite before committing.")
 	}
 	for _, cmd := range verifCommands {
-		sb.WriteString(fmt.Sprintf("- `%s`\n", cmd))
+		fmt.Fprintf(&sb, "- `%s`\n", cmd)
 	}
 
 	result := sb.String()
