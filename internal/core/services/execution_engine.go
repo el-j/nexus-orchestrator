@@ -191,27 +191,29 @@ func (o *OrchestratorService) resolveProviderWithFallback(task domain.Task) ([]p
 	// Classify alive providers
 	var frontierClients, localClients, otherClients []ports.LLMClient
 	for _, c := range alive {
-		if isFrontierProvider(c) {
+		switch {
+		case isFrontierProvider(c):
 			frontierClients = append(frontierClients, c)
-		} else if isLocalProvider(c) {
+		case isLocalProvider(c):
 			localClients = append(localClients, c)
-		} else {
+		default:
 			otherClients = append(otherClients, c)
 		}
 	}
 
 	var ordered []ports.LLMClient
-	if isFastLocalRole(task.Role) {
+	switch {
+	case isFastLocalRole(task.Role):
 		// Fast local chain: Local -> Other -> Frontier
 		ordered = append(ordered, localClients...)
 		ordered = append(ordered, otherClients...)
 		ordered = append(ordered, frontierClients...)
-	} else if isFrontierRole(task.Role) {
+	case isFrontierRole(task.Role):
 		// Frontier chain: Frontier -> Other -> Local
 		ordered = append(ordered, frontierClients...)
 		ordered = append(ordered, otherClients...)
 		ordered = append(ordered, localClients...)
-	} else {
+	default:
 		// Default / Balanced: preserve alive order, or Frontier first if alive
 		if len(frontierClients) > 0 {
 			ordered = append(ordered, frontierClients...)

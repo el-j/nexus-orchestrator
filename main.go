@@ -148,7 +148,7 @@ func run() error {
 	if err != nil {
 		log.Printf("startup: create fs watcher: %v", err)
 	} else {
-		defer fsWatcher.Close()
+		defer func() { _ = fsWatcher.Close() }()
 		if cwd, err := os.Getwd(); err == nil {
 			_ = fsWatcher.Watch(cwd)
 		}
