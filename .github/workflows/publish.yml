@@ -313,7 +313,8 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
-          CGO_CFLAGS: "-DSQLITE_ENABLE_FTS5"
+          # zig cc enables UBSan by default; its runtime is not linked on windows-gnu
+          CGO_CFLAGS: "-DSQLITE_ENABLE_FTS5 -fno-sanitize=undefined"
           CGO_LDFLAGS: ${{ matrix.cgo_ldflags }}
         run: |
           VERSION="${{ needs.version.outputs.tag }}"
