@@ -1,276 +1,128 @@
 package httpapi_client
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
-	"strings"
+	"strconv"
 
 	"nexus-orchestrator/internal/core/domain"
+	"nexus-orchestrator/internal/core/ports"
 )
 
+// Compile-time proof that BrainClient satisfies the brain port.
+var _ ports.BrainService = (*BrainClient)(nil)
+
+// BrainClient implements ports.BrainService by calling the daemon's
+// /api/brain/* endpoints. It shares the transport, bearer-token handling and
+// error conventions of Client.
 type BrainClient struct {
-	baseURL string
-	token   string
-	client  *http.Client
+	c *Client
 }
 
+// NewBrainClient returns a BrainClient for the daemon at baseURL. The bearer
+// token, when required, is read from NEXUS_API_TOKEN.
 func NewBrainClient(baseURL string) *BrainClient {
-	return &BrainClient{
-		baseURL: strings.TrimRight(baseURL, "/"),
-		token:   strings.TrimSpace(os.Getenv("NEXUS_API_TOKEN")),
-		client:  http.DefaultClient,
-	}
+	return &BrainClient{c: NewClient(baseURL)}
 }
 
-func (r *BrainClient) newRequest(ctx context.Context, method, path string, body []byte) (*http.Request, error) {
-	var bodyReader *bytes.Reader
-	if body != nil {
-		bodyReader = bytes.NewReader(body)
-	} else {
-		bodyReader = bytes.NewReader([]byte{})
-	}
-	req, err := http.NewRequestWithContext(ctx, method, r.baseURL+path, bodyReader)
-	if err != nil {
-		return nil, err
-	}
-	if r.token != "" {
-		req.Header.Set("Authorization", "Bearer "+r.token)
-	}
-	return req, nil
-}
-
-func (r *BrainClient) do(req *http.Request) (*http.Response, error) {
-	return r.client.Do(req)
-}
-
+// GetContext assembles a token-budgeted context response for a project.
 func (r *BrainClient) GetContext(ctx context.Context, q domain.ContextQuery) (domain.ContextResponse, error) {
-	body, _ := json.Marshal(q)
-	req, err := r.newRequest(ctx, http.MethodPost, "/api/brain/context", body)
-	if err != nil {
-		return domain.ContextResponse{}, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := r.do(req)
-	if err != nil {
-		return domain.ContextResponse{}, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return domain.ContextResponse{}, fmt.Errorf("remote: status %d", resp.StatusCode)
-	}
 	var out domain.ContextResponse
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return domain.ContextResponse{}, err
-	}
-	return out, nil
+	err := r.c.send(ctx, call{op: "brain get context", method: http.MethodPost, path: "/api/brain/context", body: q}, &out)
+	return out, err
 }
 
+// GetFocusedContext assembles context relevant to q.Question using full-text search.
 func (r *BrainClient) GetFocusedContext(ctx context.Context, q domain.ContextQuery) (domain.ContextResponse, error) {
-	body, _ := json.Marshal(q)
-	req, err := r.newRequest(ctx, http.MethodPost, "/api/brain/focused-context", body)
-	if err != nil {
-		return domain.ContextResponse{}, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := r.do(req)
-	if err != nil {
-		return domain.ContextResponse{}, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return domain.ContextResponse{}, fmt.Errorf("remote: status %d", resp.StatusCode)
-	}
 	var out domain.ContextResponse
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return domain.ContextResponse{}, err
-	}
-	return out, nil
+	err := r.c.send(ctx, call{op: "brain get focused context", method: http.MethodPost, path: "/api/brain/focused-context", body: q}, &out)
+	return out, err
 }
 
-func (r *BrainClient) IngestKnowledge(ctx context.Context, k domain.ProjectKnowledge) (domain.ProjectKnowledge, error) {
+// IngestKnowledge is not available over HTTP: the daemon only exposes bulk
+// ingestion from a file (see IngestFromFile).
+func (r *BrainClient) IngestKnowledge(_ context.Context, _ domain.ProjectKnowledge) (domain.ProjectKnowledge, error) {
 	return domain.ProjectKnowledge{}, fmt.Errorf("brain_client: IngestKnowledge: direct knowledge upsert not supported via HTTP client; use IngestFromFile")
 }
 
+// IngestFromFile asks the daemon to ingest a CLAUDE.md-style file and returns
+// the number of sections stored.
 func (r *BrainClient) IngestFromFile(ctx context.Context, projectPath, filePath string) (int, error) {
-	body, _ := json.Marshal(map[string]string{"projectPath": projectPath, "filePath": filePath})
-	req, err := r.newRequest(ctx, http.MethodPost, "/api/brain/ingest", body)
-	if err != nil {
-		return 0, err
+	var out struct {
+		IngestedSections int `json:"ingestedSections"`
 	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := r.do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("remote: status %d", resp.StatusCode)
-	}
-	var out map[string]int
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return 0, err
-	}
-	return out["ingestedSections"], nil
+	body := map[string]string{"projectPath": projectPath, "filePath": filePath}
+	err := r.c.send(ctx, call{op: "brain ingest from file", method: http.MethodPost, path: "/api/brain/ingest", body: body}, &out)
+	return out.IngestedSections, err
 }
 
+// SearchKnowledge runs a full-text search and returns at most limit sections.
 func (r *BrainClient) SearchKnowledge(ctx context.Context, projectPath, query string, limit int) ([]domain.ContextSection, error) {
-	u := fmt.Sprintf("/api/brain/search?projectPath=%s&q=%s&limit=%d", url.QueryEscape(projectPath), url.QueryEscape(query), limit)
-	req, err := r.newRequest(ctx, http.MethodGet, u, nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("remote: status %d", resp.StatusCode)
-	}
+	q := url.Values{"projectPath": {projectPath}, "q": {query}, "limit": {strconv.Itoa(limit)}}
 	var out struct {
 		Results []domain.ContextSection `json:"results"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil, err
-	}
-	return out.Results, nil
+	err := r.c.send(ctx, call{op: "brain search", method: http.MethodGet, path: "/api/brain/search?" + q.Encode()}, &out)
+	return out.Results, err
 }
 
+// GetFileMap returns the project's file-map entries, optionally narrowed by focusArea.
 func (r *BrainClient) GetFileMap(ctx context.Context, projectPath, focusArea string) ([]string, error) {
-	u := fmt.Sprintf("/api/brain/file-map?projectPath=%s&focusArea=%s", url.QueryEscape(projectPath), url.QueryEscape(focusArea))
-	req, err := r.newRequest(ctx, http.MethodGet, u, nil)
-	if err != nil {
-		return nil, fmt.Errorf("brain_client: GetFileMap: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return nil, fmt.Errorf("brain_client: GetFileMap: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("brain_client: GetFileMap: remote status %d", resp.StatusCode)
-	}
+	q := url.Values{"projectPath": {projectPath}, "focusArea": {focusArea}}
 	var out struct {
 		FilePaths []string `json:"filePaths"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil, fmt.Errorf("brain_client: GetFileMap: %w", err)
-	}
-	return out.FilePaths, nil
+	err := r.c.send(ctx, call{op: "brain file map", method: http.MethodGet, path: "/api/brain/file-map?" + q.Encode()}, &out)
+	return out.FilePaths, err
 }
 
+// InitProject ingests the project's CLAUDE.md (auto-detected when claudeMDPath
+// is empty) and returns the resulting brain status.
 func (r *BrainClient) InitProject(ctx context.Context, projectPath, claudeMDPath string) (domain.BrainStatus, error) {
-	body, _ := json.Marshal(map[string]string{"projectPath": projectPath, "claudeMDPath": claudeMDPath})
-	req, err := r.newRequest(ctx, http.MethodPost, "/api/brain/init", body)
-	if err != nil {
-		return domain.BrainStatus{}, fmt.Errorf("brain_client: InitProject: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := r.do(req)
-	if err != nil {
-		return domain.BrainStatus{}, fmt.Errorf("brain_client: InitProject: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return domain.BrainStatus{}, fmt.Errorf("brain_client: InitProject: remote status %d", resp.StatusCode)
-	}
 	var out domain.BrainStatus
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return domain.BrainStatus{}, fmt.Errorf("brain_client: InitProject: %w", err)
-	}
-	return out, nil
+	body := map[string]string{"projectPath": projectPath, "claudeMDPath": claudeMDPath}
+	err := r.c.send(ctx, call{op: "brain init project", method: http.MethodPost, path: "/api/brain/init", body: body}, &out)
+	return out, err
 }
 
+// GetStatus returns the knowledge-base status for a project.
 func (r *BrainClient) GetStatus(ctx context.Context, projectPath string) (domain.BrainStatus, error) {
-	u := fmt.Sprintf("/api/brain/status?projectPath=%s", url.QueryEscape(projectPath))
-	req, err := r.newRequest(ctx, http.MethodGet, u, nil)
-	if err != nil {
-		return domain.BrainStatus{}, err
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return domain.BrainStatus{}, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return domain.BrainStatus{}, fmt.Errorf("remote: status %d", resp.StatusCode)
-	}
 	var out domain.BrainStatus
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return domain.BrainStatus{}, err
-	}
-	return out, nil
+	err := r.c.send(ctx, call{op: "brain status", method: http.MethodGet, path: "/api/brain/status" + query("projectPath", projectPath)}, &out)
+	return out, err
 }
 
+// ListKnowledge lists a project's knowledge entries, optionally filtered by kind.
+// The result is never nil.
 func (r *BrainClient) ListKnowledge(ctx context.Context, projectPath, kind string) ([]domain.ProjectKnowledge, error) {
-	u := fmt.Sprintf("/api/brain/knowledge?projectPath=%s&kind=%s", url.QueryEscape(projectPath), url.QueryEscape(kind))
-	req, err := r.newRequest(ctx, http.MethodGet, u, nil)
-	if err != nil {
-		return nil, fmt.Errorf("brain_client: ListKnowledge: %w", err)
+	q := url.Values{"projectPath": {projectPath}, "kind": {kind}}
+	out := []domain.ProjectKnowledge{}
+	if err := r.c.send(ctx, call{op: "brain list knowledge", method: http.MethodGet, path: "/api/brain/knowledge?" + q.Encode()}, &out); err != nil {
+		return nil, err
 	}
-	resp, err := r.do(req)
-	if err != nil {
-		return nil, fmt.Errorf("brain_client: ListKnowledge: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("brain_client: ListKnowledge: remote status %d", resp.StatusCode)
-	}
-	var out []domain.ProjectKnowledge
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil, fmt.Errorf("brain_client: ListKnowledge: %w", err)
-	}
-	if out == nil {
+	if out == nil { // the daemon answered with JSON null
 		out = []domain.ProjectKnowledge{}
 	}
 	return out, nil
 }
 
+// DeleteKnowledge removes a knowledge entry by ID.
 func (r *BrainClient) DeleteKnowledge(ctx context.Context, id string) error {
-	req, err := r.newRequest(ctx, http.MethodDelete, "/api/brain/knowledge/"+url.PathEscape(id), nil)
-	if err != nil {
-		return fmt.Errorf("brain_client: DeleteKnowledge: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return fmt.Errorf("brain_client: DeleteKnowledge: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("brain_client: DeleteKnowledge: remote status %d", resp.StatusCode)
-	}
-	return nil
+	return r.c.send(ctx, call{op: "brain delete knowledge", method: http.MethodDelete, path: "/api/brain/knowledge/" + esc(id), ok: statusNoBody}, nil)
 }
 
+// GetOnboardingContext returns a concise onboarding summary for an agent
+// starting work on a project; maxTokens <= 0 lets the daemon choose.
 func (r *BrainClient) GetOnboardingContext(ctx context.Context, projectPath string, maxTokens int) (string, error) {
-	u := fmt.Sprintf("/api/brain/onboarding?projectPath=%s", url.QueryEscape(projectPath))
+	q := url.Values{"projectPath": {projectPath}}
 	if maxTokens > 0 {
-		u += fmt.Sprintf("&maxTokens=%d", maxTokens)
-	}
-	req, err := r.newRequest(ctx, http.MethodGet, u, nil)
-	if err != nil {
-		return "", fmt.Errorf("brain_client: GetOnboardingContext: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return "", fmt.Errorf("brain_client: GetOnboardingContext: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("brain_client: GetOnboardingContext: remote status %d", resp.StatusCode)
+		q.Set("maxTokens", strconv.Itoa(maxTokens))
 	}
 	var out struct {
 		Content string `json:"content"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return "", fmt.Errorf("brain_client: GetOnboardingContext: %w", err)
-	}
-	return out.Content, nil
+	err := r.c.send(ctx, call{op: "brain onboarding context", method: http.MethodGet, path: "/api/brain/onboarding?" + q.Encode()}, &out)
+	return out.Content, err
 }
