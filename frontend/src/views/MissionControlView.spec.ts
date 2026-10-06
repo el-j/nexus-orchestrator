@@ -261,6 +261,10 @@ describe('MissionControlView — interactions', () => {
         projectPath: '/test',
         targetFile: 'test.go',
         logs: '',
+        contextFiles: [],
+        modelId: '',
+        providerHint: '',
+        command: 'execute',
       },
     ]);
 
@@ -305,6 +309,10 @@ describe('MissionControlView — interactions', () => {
         projectPath: '/test',
         targetFile: 'test.go',
         logs: '',
+        contextFiles: [],
+        modelId: '',
+        providerHint: '',
+        command: 'execute',
       },
     ]);
 

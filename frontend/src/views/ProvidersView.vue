@@ -415,7 +415,7 @@ const filteredProviders = computed(() => {
   if (providerSearch.value) {
     const q = providerSearch.value.toLowerCase();
     list = list.filter(
-      (p) => p.name.toLowerCase().includes(q) || p.baseURL.toLowerCase().includes(q),
+      (p) => p.name.toLowerCase().includes(q) || (p.baseURL ?? '').toLowerCase().includes(q),
     );
   }
   return list;

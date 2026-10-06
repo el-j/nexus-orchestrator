@@ -130,7 +130,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import type { DiscoveredPlanFile, BrainStatus } from '../types/domain';
 import { getBrainStatus, ingestKnowledge, initProject } from '../types/wails';
 
@@ -146,8 +146,6 @@ const ingestProgress = ref('');
 const ingestResult = ref('');
 const ingestError = ref('');
 const fileInputRef = ref<HTMLInputElement | null>(null);
-
-const isIngestible = computed(() => !!props.nexusFile);
 
 async function fetchStatus() {
   loading.value = true;

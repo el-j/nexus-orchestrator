@@ -85,7 +85,7 @@ describe('AgentsView', () => {
   });
 
   it('loads discovered agents via fetch', async () => {
-    const wrapper = shallowMount(AgentsView);
+    shallowMount(AgentsView);
     await flushPromises();
 
     expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/api/ai-sessions/discovered'));

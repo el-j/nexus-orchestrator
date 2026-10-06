@@ -49,7 +49,7 @@ function handlePromote(provider: DiscoveredProvider) {
     query: {
       action: 'add',
       name: provider.name,
-      baseURL: provider.baseURL,
+      baseURL: provider.baseUrl,
       kind: provider.kind,
     },
   });

@@ -104,6 +104,9 @@ jobs:
         with:
           version: latest
 
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
   test:
     name: Test
     needs: [vet]
@@ -172,7 +175,7 @@ jobs:
 
       - name: Type-check frontend
         working-directory: frontend
-        run: npx vue-tsc --noEmit
+        run: npm run typecheck
 
       - name: Run frontend smoke coverage
         working-directory: frontend
@@ -197,7 +200,7 @@ jobs:
 
       - name: Type-check extension
         working-directory: vscode-extension
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: Run extension smoke coverage
         working-directory: vscode-extension

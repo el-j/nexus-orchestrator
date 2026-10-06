@@ -385,7 +385,7 @@ const filteredProjectGroups = computed(() => {
     const planGroups = group.planGroups
       .map(
         ([planId, files]) =>
-          [planId, files.filter((f) => activeFilters.value.has('claude-task'))] as [
+          [planId, files.filter(() => activeFilters.value.has('claude-task'))] as [
             string,
             DiscoveredPlanFile[],
           ],

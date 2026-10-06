@@ -242,7 +242,8 @@
     "watch": "npm run build -- --watch",
     "package": "vsce package --no-dependencies",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

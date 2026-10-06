@@ -234,7 +234,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, shallowRef, computed, onMounted } from 'vue';
 import { useBrain } from '../composables/useBrain';
 import { currentProject } from '../composables/useProjectState';
 
@@ -256,7 +256,9 @@ const tabs = [
 
 // brain ref is swapped when projectPath changes; computed proxies ensure the
 // template always reads from the current instance's reactive state.
-const brain = ref(useBrain(''));
+// shallowRef (not ref): ref() would deep-unwrap the composable's inner refs and
+// make the `.value` accesses below read `undefined`.
+const brain = shallowRef(useBrain(''));
 
 // Computed proxies — necessary because destructuring brain.value captures refs
 // from the initial instance and won't update when brain.value is reassigned.
