@@ -14,11 +14,9 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"nexus-orchestrator/internal/adapters/inbound/httpapi"
 	"nexus-orchestrator/internal/adapters/inbound/mcp"
-	"nexus-orchestrator/internal/adapters/inbound/tray"
 	"nexus-orchestrator/internal/adapters/outbound/activity_claude"
 	"nexus-orchestrator/internal/adapters/outbound/activity_continue"
 	"nexus-orchestrator/internal/adapters/outbound/activity_network"
@@ -201,18 +199,7 @@ func run() error {
 		withBrainService(brainSvc).
 		withFsWatcher(fsWatcher)
 
-	trayAdapter := tray.NewTrayAdapter(orchestratorSvc, func() {
-		app.ShowWindow()
-	}, func() {
-		app.QuitApp()
-	})
-	trayEnabled := trayAdapter.Enabled()
-
-	if trayEnabled {
-		log.Printf("nexusOrchestrator started — closing window hides to tray")
-	} else {
-		log.Printf("nexusOrchestrator started — closing window quits the app")
-	}
+	log.Printf("nexusOrchestrator started — closing the window hides it to the dock/taskbar")
 	// Print a human- and AI-readable ready banner.
 	httpBase := "http://" + httpAddr
 	fmt.Printf("\n")
@@ -235,26 +222,11 @@ func run() error {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		// Always hide the window on close so the app remains alive in the dock.
-		// When tray is enabled the tray icon provides reopen; when it is not, the
-		// dock icon on macOS / taskbar on Windows serves the same purpose.
-		// Users can quit via Cmd+Q or the OS-provided mechanism.
+		// Closing the window hides it; the dock icon (macOS) or taskbar (Windows)
+		// reopens it, and Cmd+Q / the OS quit mechanism exits the app.
 		HideWindowOnClose: true,
-		OnBeforeClose: func(ctx context.Context) (prevent bool) {
-			if trayEnabled {
-				log.Printf("nexusOrchestrator: window close intercepted — hiding to tray")
-				runtime.WindowHide(ctx)
-				return true
-			}
-			log.Printf("nexusOrchestrator: window close intercepted — hiding to dock/taskbar")
-			return false
-		},
-		OnStartup: func(ctx context.Context) {
-			app.startup(ctx)
-			trayAdapter.Start()
-		},
+		OnStartup:         app.startup,
 		OnShutdown: func(_ context.Context) {
-			trayAdapter.Stop()
 			cancelHTTP()
 		},
 		Bind: []interface{}{

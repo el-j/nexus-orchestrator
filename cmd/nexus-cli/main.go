@@ -17,7 +17,7 @@ var (
 )
 
 func main() {
-	// Use a lightweight HTTP-backed orchestrator stub that talks to the daemon.
+	// Use the HTTP client adapter that talks to the running daemon.
 	orch := httpapi_client.NewClient("http://127.0.0.1:63987")
 	brain := httpapi_client.NewBrainClient("http://127.0.0.1:63987")
 

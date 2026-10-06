@@ -120,6 +120,9 @@ type OrchestratorService struct {
 // worker that pulls QUEUED tasks and sends them to the active LLM.
 // sessionRepo may be nil; when nil, sessions are not persisted and GenerateCode
 // is used as a fallback instead of Chat.
+//
+// NewOrchestrator panics if discovery, repo or writer is nil: these are wiring
+// errors in the composition root, not recoverable runtime conditions.
 func NewOrchestrator(
 	discovery *DiscoveryService,
 	repo ports.TaskRepository,

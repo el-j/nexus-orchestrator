@@ -313,8 +313,11 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
-          # zig cc enables UBSan by default; its runtime is not linked on windows-gnu
-          CGO_CFLAGS: "-DSQLITE_ENABLE_FTS5 -fno-sanitize=undefined"
+          # zig cc enables UBSan by default and its runtime is not linked on
+          # windows-gnu (undefined __ubsan_handle_*). Disabling it makes Go's own
+          # runtime/cgo compile fail on an unused -fno-rtlib-defaultlib argument
+          # (-Werror), so that warning is silenced too. Verified with zig 0.14.0.
+          CGO_CFLAGS: "-DSQLITE_ENABLE_FTS5 -fno-sanitize=undefined -Wno-unused-command-line-argument"
           CGO_LDFLAGS: ${{ matrix.cgo_ldflags }}
         run: |
           VERSION="${{ needs.version.outputs.tag }}"

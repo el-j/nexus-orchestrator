@@ -46,7 +46,6 @@ A universal control plane, context broker, and execution gatekeeper that coordin
 - MCP JSON-RPC 2.0 server on `:63988` (41 tools, VS Code Copilot, Claude Code, and Cursor compatible)
 - Stdio transport proxy (`nexus-mcp-stdio`) for local agent CLI integration
 - Desktop GUI (Wails + Vue 3) with Dashboard, Provider Management, Brain Knowledge, Activity Observatory
-- System Tray with quick-stats and task notifications
 - [VS Code Extension](vscode-extension/README.md) — auto-registers MCP server via `contributes.mcpServers` (VS Code 1.99+)
 - GitHub Action for CI/CD task submission
 
