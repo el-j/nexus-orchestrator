@@ -3,7 +3,6 @@ package httpapi
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"sync"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -98,50 +97,6 @@ func (h *Hub) BroadcastActivityEvent(a domain.AIActivity) {
 		select {
 		case ch <- msg:
 		default:
-		}
-	}
-}
-
-// ServeSSE handles a single SSE connection for the lifetime of the request.
-func (h *Hub) ServeSSE(w http.ResponseWriter, r *http.Request) {
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "streaming not supported", http.StatusInternalServerError)
-		return
-	}
-
-	ch := make(chan []byte, 16)
-	h.mu.Lock()
-	h.clients[ch] = struct{}{}
-	h.mu.Unlock()
-
-	defer func() {
-		h.mu.Lock()
-		delete(h.clients, ch)
-		close(ch)
-		h.mu.Unlock()
-	}()
-
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("X-Accel-Buffering", "no") // disable nginx buffering if behind proxy
-	// Initial "connected" ping
-	fmt.Fprint(w, "data: {\"type\":\"connected\"}\n\n")
-	flusher.Flush()
-
-	for {
-		select {
-		case msg, ok := <-ch:
-			if !ok {
-				return
-			}
-			if _, err := w.Write(msg); err != nil {
-				return
-			}
-			flusher.Flush()
-		case <-r.Context().Done():
-			return
 		}
 	}
 }

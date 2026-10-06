@@ -132,7 +132,8 @@ func (s *Server) handleGetDiscoveredPlanFiles(w http.ResponseWriter, r *http.Req
 			writeJSONError(w, err.Error(), http.StatusServiceUnavailable)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("httpapi: discovered plan files: %v", err)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	if files == nil {
@@ -150,7 +151,8 @@ func (s *Server) handleScanPlanFiles(w http.ResponseWriter, r *http.Request) {
 			writeJSONError(w, err.Error(), http.StatusServiceUnavailable)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("httpapi: discovered plan files: %v", err)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	if files == nil {
@@ -167,7 +169,8 @@ func (s *Server) handleDelegateToNexus(w http.ResponseWriter, r *http.Request) {
 			writeJSONError(w, "session not found", http.StatusNotFound)
 			return
 		}
-		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("httpapi: delegate to nexus %s: %v", id, err)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{

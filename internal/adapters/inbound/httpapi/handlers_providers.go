@@ -82,9 +82,9 @@ func (s *Server) handleProviderModels(w http.ResponseWriter, r *http.Request) {
 // if longer than 4 characters, the last 4 are preserved; otherwise "****".
 func maskAPIKey(key string) string {
 	if len(key) > 4 {
-		return "****" + key[len(key)-4:]
+		return domain.MaskedSecretPrefix + key[len(key)-4:]
 	}
-	return "****"
+	return domain.MaskedSecretPrefix
 }
 
 // maskedProviderConfig returns a copy of cfg with the APIKey field masked.

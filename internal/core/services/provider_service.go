@@ -191,6 +191,11 @@ func (o *OrchestratorService) UpdateProviderConfig(ctx context.Context, cfg doma
 
 	cfg.CreatedAt = old.CreatedAt
 	cfg.UpdatedAt = time.Now()
+	// Clients receive masked API keys. If one sends the placeholder back it means
+	// "unchanged"; storing it would silently destroy the real credential.
+	if domain.IsMaskedSecret(cfg.APIKey) {
+		cfg.APIKey = old.APIKey
+	}
 
 	if err := repo.SaveProviderConfig(ctx, cfg); err != nil {
 		return domain.ProviderConfig{}, fmt.Errorf("orchestrator: update provider config: %w", err)

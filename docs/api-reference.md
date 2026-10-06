@@ -21,6 +21,24 @@ nav_order: 3
 
 Base URL: `http://localhost:63987`
 
+### Authentication and local-access protection
+
+By default the daemon trusts local callers. Three layers protect it:
+
+- **Bearer token (optional).** Set `NEXUS_API_TOKEN` (or rotate one via `PUT /api/config`) and every `/api/*`
+  request except `/api/health`, `/api/howto` and `/.well-known/nexus.json` must send
+  `Authorization: Bearer <token>`. The MCP server uses `NEXUS_MCP_TOKEN` the same way.
+- **Browser origin check (always on).** A request carrying an `Origin` header that is not a local origin
+  (`localhost`, `127.0.0.1`, `[::1]`, `wails://wails.localhost`) is rejected with `403`. This stops a web page
+  you happen to visit from driving the daemon with a cross-site request. CLI tools, the MCP stdio proxy and
+  `curl` send no `Origin` and are unaffected. Add trusted origins with `NEXUS_ALLOWED_ORIGINS`
+  (comma-separated, e.g. `https://dash.example.com`).
+- **Host check (loopback binds).** When `NEXUS_LISTEN_ADDR` is a loopback address, the `Host` header must be
+  `localhost` or an IP literal, which defeats DNS-rebinding. Add host names with `NEXUS_ALLOWED_HOSTS`. A
+  daemon deliberately bound to all interfaces (containers, LAN) skips the Host check - set `NEXUS_API_TOKEN` there.
+
+Error bodies are always `{"error": "<message>"}`. Server faults (`5xx`) never include internal details.
+
 ### Submit Task
 
 ```
@@ -56,17 +74,14 @@ Submit a new code-generation task to the queue.
 **Response:** `201 Created`
 
 ```json
-{
-  "id": "a1b2c3d4-e5f6-...",
-  "projectPath": "/path/to/project",
-  "targetFile": "output.go",
-  "instruction": "Write a function that sorts strings",
-  "status": "QUEUED",
-  "command": "execute",
-  "createdAt": "2025-01-01T00:00:00Z",
-  "updatedAt": "2025-01-01T00:00:00Z"
-}
+{ "task_id": "a1b2c3d4-e5f6-...", "status": "QUEUED" }
 ```
+
+| Status | Meaning                                                                                    |
+| ------ | ------------------------------------------------------------------------------------------ |
+| `400`  | Body is not valid JSON                                                                     |
+| `422`  | `command` is `execute` but the project has no completed `plan` task                        |
+| `429`  | The queue is full (`queueCap`). Transient: honour the `Retry-After` header and retry later |
 
 ---
 
@@ -660,14 +675,21 @@ A task moves through these states:
 
 ## Environment Variables
 
-| Variable                    | Default                      | Description                                    |
-| --------------------------- | ---------------------------- | ---------------------------------------------- |
-| `NEXUS_DB_PATH`             | `nexus.db`                   | SQLite database file path                      |
-| `NEXUS_LISTEN_ADDR`         | `127.0.0.1:63987`            | HTTP API listen address                        |
-| `NEXUS_MCP_ADDR`            | `127.0.0.1:63988`            | MCP server listen address                      |
-| `NEXUS_OPENAI_API_KEY`      | —                            | OpenAI API key (enables OpenAI provider)       |
-| `NEXUS_OPENAI_MODEL`        | `gpt-4o-mini`                | Default OpenAI model                           |
-| `NEXUS_ANTHROPIC_API_KEY`   | —                            | Anthropic API key (enables Anthropic provider) |
-| `NEXUS_ANTHROPIC_MODEL`     | `claude-3-5-sonnet-20241022` | Default Anthropic model                        |
-| `NEXUS_GITHUBCOPILOT_TOKEN` | —                            | GitHub Copilot token                           |
-| `NEXUS_GITHUBCOPILOT_MODEL` | `gpt-4o`                     | Default GitHub Copilot model                   |
+| Variable                    | Default                      | Description                                     |
+| --------------------------- | ---------------------------- | ----------------------------------------------- |
+| `NEXUS_DB_PATH`             | `nexus.db`                   | SQLite database file path                       |
+| `NEXUS_LISTEN_ADDR`         | `127.0.0.1:63987`            | HTTP API listen address                         |
+| `NEXUS_MCP_ADDR`            | `127.0.0.1:63988`            | MCP server listen address                       |
+| `NEXUS_API_TOKEN`           | —                            | Require `Authorization: Bearer` on `/api/*`     |
+| `NEXUS_MCP_TOKEN`           | —                            | Require `Authorization: Bearer` on the MCP API  |
+| `NEXUS_ALLOWED_ORIGINS`     | —                            | Extra browser origins allowed (comma-separated) |
+| `NEXUS_ALLOWED_HOSTS`       | —                            | Extra `Host` names allowed on loopback binds    |
+| `NEXUS_SCAN_INTERVAL`       | `30s`                        | Provider re-scan interval (must be > 0)         |
+| `NEXUS_ADDR`                | `http://127.0.0.1:63987`     | Daemon URL used by `nexus` and `nexus-submit`   |
+| `NEXUS_MCP_URL`             | `http://127.0.0.1:63988/mcp` | MCP endpoint used by `nexus-mcp-stdio`          |
+| `NEXUS_OPENAI_API_KEY`      | —                            | OpenAI API key (enables OpenAI provider)        |
+| `NEXUS_OPENAI_MODEL`        | `gpt-4o-mini`                | Default OpenAI model                            |
+| `NEXUS_ANTHROPIC_API_KEY`   | —                            | Anthropic API key (enables Anthropic provider)  |
+| `NEXUS_ANTHROPIC_MODEL`     | `claude-3-5-sonnet-20241022` | Default Anthropic model                         |
+| `NEXUS_GITHUBCOPILOT_TOKEN` | —                            | GitHub Copilot token                            |
+| `NEXUS_GITHUBCOPILOT_MODEL` | `gpt-4o`                     | Default GitHub Copilot model                    |

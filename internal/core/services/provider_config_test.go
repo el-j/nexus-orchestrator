@@ -213,3 +213,54 @@ func TestGetDiscoveredProviders_ReturnsCopyOfLastScan(t *testing.T) {
 		t.Error("GetDiscoveredProviders must return a defensive copy")
 	}
 }
+
+// Clients only ever see masked API keys. Sending a config back with the masked
+// placeholder must keep the stored credential; an explicit new value replaces it;
+// an explicit empty string clears it.
+func TestUpdateProviderConfig_MaskedAPIKeyKeepsTheStoredSecret(t *testing.T) {
+	repo := newMemProviderConfigRepo()
+	orch, _ := newProviderOrch(t, repo, namedFactory)
+	added, err := orch.AddProviderConfig(bg, domain.ProviderConfig{Name: "openai", Kind: domain.ProviderKindOpenAICompat, APIKey: "sk-real-key-abcd", Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stored := func() string {
+		t.Helper()
+		got, err := repo.GetProviderConfig(bg, added.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got.APIKey
+	}
+
+	// The UI edits the model and sends back the masked key it was shown.
+	if _, err := orch.UpdateProviderConfig(bg, domain.ProviderConfig{ID: added.ID, Name: "openai", Model: "gpt-x", APIKey: "****abcd"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := stored(); got != "sk-real-key-abcd" {
+		t.Fatalf("a masked placeholder destroyed the stored key: now %q", got)
+	}
+
+	// A genuinely new key replaces it.
+	if _, err := orch.UpdateProviderConfig(bg, domain.ProviderConfig{ID: added.ID, Name: "openai", APIKey: "sk-rotated-wxyz"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := stored(); got != "sk-rotated-wxyz" {
+		t.Errorf("explicit new key not stored: %q", got)
+	}
+
+	// An explicit empty value clears the key.
+	if _, err := orch.UpdateProviderConfig(bg, domain.ProviderConfig{ID: added.ID, Name: "openai", APIKey: ""}); err != nil {
+		t.Fatal(err)
+	}
+	if got := stored(); got != "" {
+		t.Errorf("explicit clear ignored: %q", got)
+	}
+}
+
+func TestErrQueueFull_IsTheDomainSentinel(t *testing.T) {
+	if !errors.Is(services.ErrQueueFull, domain.ErrQueueFull) {
+		t.Error("services.ErrQueueFull must alias domain.ErrQueueFull so adapters can match it without importing services")
+	}
+}

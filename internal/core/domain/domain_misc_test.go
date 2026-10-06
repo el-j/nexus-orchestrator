@@ -68,3 +68,16 @@ func TestCommandType_IsValid(t *testing.T) {
 		}
 	}
 }
+
+func TestIsMaskedSecret(t *testing.T) {
+	for _, s := range []string{"****", "****abcd", MaskedSecretPrefix + "x"} {
+		if !IsMaskedSecret(s) {
+			t.Errorf("%q is a masked placeholder", s)
+		}
+	}
+	for _, s := range []string{"", "sk-real", "***abcd", "abcd****"} {
+		if IsMaskedSecret(s) {
+			t.Errorf("%q is not masked", s)
+		}
+	}
+}

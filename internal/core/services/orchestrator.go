@@ -26,7 +26,8 @@ type discoveredAgentStore interface {
 }
 
 // ErrQueueFull is returned by SubmitTask when the number of QUEUED tasks reaches the queue cap.
-var ErrQueueFull = errors.New("queue is full")
+// It aliases domain.ErrQueueFull so adapters can match it without importing this package.
+var ErrQueueFull = domain.ErrQueueFull
 
 // Option is a functional option for configuring OrchestratorService.
 type Option func(*OrchestratorService)

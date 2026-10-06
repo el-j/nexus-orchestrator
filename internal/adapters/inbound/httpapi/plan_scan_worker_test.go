@@ -2,119 +2,103 @@ package httpapi_test
 
 import (
 	"context"
-	"sync/atomic"
+	"errors"
+	"sort"
+	"sync"
 	"testing"
 	"time"
 
 	"nexus-orchestrator/internal/adapters/inbound/httpapi"
 	"nexus-orchestrator/internal/core/domain"
-	"nexus-orchestrator/internal/core/ports"
 )
 
-// planScanMockOrch implements only the TriggerScan method needed for the worker test.
-type planScanMockOrch struct {
-	triggerScanCount atomic.Int32
+// planWorkerOrch records which projects were plan-scanned and whether the
+// (unrelated) provider scan was ever triggered.
+type planWorkerOrch struct {
+	*failOrch
+	mu            sync.Mutex
+	scanned       []string
+	tasks         []domain.Task
+	sessions      []domain.AISession
+	failProject   string
+	providerScans int
 }
 
-func (m *planScanMockOrch) TriggerScan(context.Context) ([]domain.DiscoveredProvider, error) {
-	m.triggerScanCount.Add(1)
+func (p *planWorkerOrch) GetAllTasks() ([]domain.Task, error) { return p.tasks, nil }
+func (p *planWorkerOrch) ListAISessions(context.Context) ([]domain.AISession, error) {
+	return p.sessions, nil
+}
+func (p *planWorkerOrch) TriggerScan(context.Context) ([]domain.DiscoveredProvider, error) {
+	p.mu.Lock()
+	p.providerScans++
+	p.mu.Unlock()
 	return nil, nil
 }
-
-// Minimal stubs for other Orchestrator methods used by compilation. They are
-// never called by the worker tests.
-func (m *planScanMockOrch) SubmitTask(domain.Task) (string, error)             { return "", nil }
-func (m *planScanMockOrch) GetTask(string) (domain.Task, error)                { return domain.Task{}, nil }
-func (m *planScanMockOrch) GetQueue() ([]domain.Task, error)                   { return nil, nil }
-func (m *planScanMockOrch) GetQueueForProject(_ string) ([]domain.Task, error) { return nil, nil }
-func (m *planScanMockOrch) GetAllTasks() ([]domain.Task, error)                { return nil, nil }
-func (m *planScanMockOrch) GetTasksForProject(_ string) ([]domain.Task, error) { return nil, nil }
-func (m *planScanMockOrch) GetProviders() ([]ports.ProviderInfo, error)        { return nil, nil }
-func (m *planScanMockOrch) GetRuntimeConfig(context.Context) (domain.RuntimeConfig, error) {
-	return domain.RuntimeConfig{}, nil
-}
-func (m *planScanMockOrch) UpdateRuntimeConfig(context.Context, domain.RuntimeConfigUpdate) (domain.RuntimeConfig, error) {
-	return domain.RuntimeConfig{}, nil
-}
-func (m *planScanMockOrch) CancelTask(string) error                           { return nil }
-func (m *planScanMockOrch) RegisterCloudProvider(domain.ProviderConfig) error { return nil }
-func (m *planScanMockOrch) RemoveProvider(string) error                       { return nil }
-func (m *planScanMockOrch) GetProviderModels(string) ([]string, error)        { return nil, nil }
-func (m *planScanMockOrch) AddProviderConfig(context.Context, domain.ProviderConfig) (domain.ProviderConfig, error) {
-	return domain.ProviderConfig{}, nil
-}
-func (m *planScanMockOrch) UpdateProviderConfig(context.Context, domain.ProviderConfig) (domain.ProviderConfig, error) {
-	return domain.ProviderConfig{}, nil
-}
-func (m *planScanMockOrch) RemoveProviderConfig(context.Context, string) error { return nil }
-func (m *planScanMockOrch) ListProviderConfigs(context.Context) ([]domain.ProviderConfig, error) {
-	return nil, nil
-}
-func (m *planScanMockOrch) GetDiscoveredProviders() ([]domain.DiscoveredProvider, error) {
-	return nil, nil
-}
-func (m *planScanMockOrch) PromoteProvider(context.Context, string) error { return nil }
-func (m *planScanMockOrch) CreateDraft(domain.Task) (string, error)       { return "", nil }
-func (m *planScanMockOrch) GetBacklog(string) ([]domain.Task, error)      { return nil, nil }
-func (m *planScanMockOrch) PromoteTask(string) (ports.PromoteResult, error) {
-	return ports.PromoteResult{}, nil
-}
-func (m *planScanMockOrch) UpdateTask(string, domain.Task) (domain.Task, error) {
-	return domain.Task{}, nil
-}
-func (m *planScanMockOrch) RegisterAISession(context.Context, domain.AISession) (domain.AISession, error) {
-	return domain.AISession{}, nil
-}
-func (m *planScanMockOrch) ListAISessions(context.Context) ([]domain.AISession, error) {
-	return nil, nil
-}
-func (m *planScanMockOrch) DeregisterAISession(context.Context, string) error      { return nil }
-func (m *planScanMockOrch) TerminateAISession(context.Context, string, bool) error { return nil }
-func (m *planScanMockOrch) HeartbeatAISession(context.Context, string) error       { return nil }
-func (m *planScanMockOrch) ClaimTask(context.Context, string, string) (domain.Task, error) {
-	return domain.Task{}, nil
-}
-func (m *planScanMockOrch) UpdateTaskStatus(context.Context, string, string, domain.TaskStatus, string) (domain.Task, error) {
-	return domain.Task{}, nil
-}
-func (m *planScanMockOrch) HeartbeatTask(context.Context, string, string) error    { return nil }
-func (m *planScanMockOrch) PurgeDisconnectedSessions(context.Context) (int, error) { return 0, nil }
-func (m *planScanMockOrch) GetDiscoveredAgents(context.Context) ([]domain.DiscoveredAgent, error) {
-	return nil, nil
-}
-func (m *planScanMockOrch) DelegateToNexus(context.Context, string) (string, error) { return "", nil }
-func (m *planScanMockOrch) GetDiscoveredPlanFiles(context.Context, string) ([]domain.DiscoveredPlanFile, error) {
+func (p *planWorkerOrch) GetDiscoveredPlanFiles(_ context.Context, project string) ([]domain.DiscoveredPlanFile, error) {
+	p.mu.Lock()
+	p.scanned = append(p.scanned, project)
+	p.mu.Unlock()
+	if project == p.failProject {
+		return nil, errors.New("scan failed")
+	}
 	return nil, nil
 }
 
-func TestStartPlanScanWorker_CallsTriggerScanPeriodically(t *testing.T) {
-	orch := &planScanMockOrch{}
+func (p *planWorkerOrch) snapshot() ([]string, int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return append([]string(nil), p.scanned...), p.providerScans
+}
 
+func TestPlanScanWorker_ScansPlanFilesOfEveryKnownProject(t *testing.T) {
+	orch := &planWorkerOrch{
+		failOrch: newFailOrch(),
+		tasks: []domain.Task{
+			{ProjectPath: "/work/b"}, {ProjectPath: "/work/a/"}, {ProjectPath: ""}, {ProjectPath: "/work/b"},
+		},
+		sessions:    []domain.AISession{{ProjectPath: "/work/a"}, {ProjectPath: "/work/c"}},
+		failProject: "/work/a", // an erroring project must not stop the sweep
+	}
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	httpapi.StartPlanScanWorker(ctx, orch, 10*time.Millisecond)
 
-	httpapi.StartPlanScanWorker(ctx, orch, 20*time.Millisecond)
-
-	time.Sleep(80 * time.Millisecond)
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if scanned, _ := orch.snapshot(); len(scanned) >= 3 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 	cancel()
-	time.Sleep(10 * time.Millisecond)
 
-	count := orch.triggerScanCount.Load()
-	if count < 2 {
-		t.Errorf("expected at least 2 scans in 80ms with 20ms interval, got %d", count)
+	scanned, providerScans := orch.snapshot()
+	if len(scanned) < 3 {
+		t.Fatalf("scanned %v", scanned)
+	}
+	first := append([]string(nil), scanned[:3]...)
+	if !sort.StringsAreSorted(first) || first[0] != "/work/a" || first[1] != "/work/b" || first[2] != "/work/c" {
+		t.Errorf("each distinct, cleaned project is scanned once per sweep, in order: %v", first)
+	}
+	if providerScans != 0 {
+		t.Errorf("the plan worker must not trigger provider scans (the daemon does that itself); got %d", providerScans)
+	}
+
+	// After cancellation the worker goes quiet.
+	time.Sleep(30 * time.Millisecond)
+	before, _ := orch.snapshot()
+	time.Sleep(60 * time.Millisecond)
+	if after, _ := orch.snapshot(); len(after) != len(before) {
+		t.Errorf("worker kept scanning after cancel: %d -> %d", len(before), len(after))
 	}
 }
 
-func TestStartPlanScanWorker_StopsOnContextCancel(t *testing.T) {
-	orch := &planScanMockOrch{}
-
+func TestPlanScanWorker_NonPositiveIntervalFallsBackToDefaultAndStops(t *testing.T) {
+	orch := &planWorkerOrch{failOrch: newFailOrch(), tasks: []domain.Task{{ProjectPath: "/p"}}}
 	ctx, cancel := context.WithCancel(context.Background())
-	httpapi.StartPlanScanWorker(ctx, orch, 10*time.Millisecond)
-	time.Sleep(25 * time.Millisecond)
+	httpapi.StartPlanScanWorker(ctx, orch, 0) // 5-minute default: nothing runs in this test
+	time.Sleep(20 * time.Millisecond)
 	cancel()
-	countAfterCancel := orch.triggerScanCount.Load()
-	time.Sleep(30 * time.Millisecond)
-	if orch.triggerScanCount.Load() > countAfterCancel+1 {
-		t.Error("worker continued scanning after context cancel")
+	if scanned, _ := orch.snapshot(); len(scanned) != 0 {
+		t.Errorf("default interval is minutes, got scans: %v", scanned)
 	}
 }

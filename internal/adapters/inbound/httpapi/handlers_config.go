@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -35,7 +36,8 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	cfg, err := s.orch.GetRuntimeConfig(r.Context())
 	if err != nil {
-		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("httpapi: get runtime config: %v", err)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	resp := runtimeConfigResponse{

@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // ProviderKind identifies the adapter family for a cloud LLM provider.
 type ProviderKind string
@@ -17,6 +20,16 @@ const (
 	ProviderKindCLI          ProviderKind = "cli"
 	ProviderKindDesktopApp   ProviderKind = "desktopapp"
 )
+
+// MaskedSecretPrefix starts every masked secret shown to API clients
+// (for example "****abcd"). A masked value is a display placeholder, never a
+// real credential.
+const MaskedSecretPrefix = "****"
+
+// IsMaskedSecret reports whether s is a masked placeholder produced for display
+// rather than a real secret. Updating a config with a masked API key means
+// "leave the stored key unchanged".
+func IsMaskedSecret(s string) bool { return strings.HasPrefix(s, MaskedSecretPrefix) }
 
 // String returns the underlying string value of the ProviderKind.
 func (k ProviderKind) String() string { return string(k) }

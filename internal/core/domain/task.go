@@ -10,6 +10,11 @@ import (
 // ErrNotFound is returned when a task cannot be found by its ID.
 var ErrNotFound = errors.New("task not found")
 
+// ErrQueueFull is returned when a task cannot be queued because the number of
+// QUEUED tasks has reached the configured queue cap. It is transient: callers
+// should back off and retry.
+var ErrQueueFull = errors.New("queue is full")
+
 // ErrNoPlan is returned when an execute task is submitted but no prior plan exists for the project.
 var ErrNoPlan = errors.New("no plan exists; planning required before execution")
 

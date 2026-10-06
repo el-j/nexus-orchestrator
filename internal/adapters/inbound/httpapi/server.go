@@ -5,6 +5,7 @@ package httpapi
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"nexus-orchestrator/internal/adapters/inbound/httpguard"
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
 
@@ -28,11 +30,19 @@ type Server struct {
 	logHub      *LogHub
 	activitySvc activityQuerier
 	brain       ports.BrainService
+	guard       *httpguard.Policy
 }
 
 // NewServer constructs a Server. hub may be nil to disable SSE.
 func NewServer(orch ports.Orchestrator, brain ports.BrainService, hub *Hub) *Server {
 	return &Server{orch: orch, brain: brain, hub: hub}
+}
+
+// WithGuard sets the Origin/Host policy applied to every request. Without it
+// the handler still rejects foreign browser origins but does not check Host.
+func (s *Server) WithGuard(g *httpguard.Policy) *Server {
+	s.guard = g
+	return s
 }
 
 // WithLogHub configures the Server to capture and stream log entries via SSE.
@@ -116,7 +126,9 @@ func (s *Server) tokenAuthMiddleware(next http.Handler) http.Handler {
 
 		auth := r.Header.Get("Authorization")
 		const prefix = "Bearer "
-		if !strings.HasPrefix(auth, prefix) || strings.TrimSpace(strings.TrimPrefix(auth, prefix)) != token {
+		// Constant-time comparison so response timing does not leak the token.
+		given := strings.TrimSpace(strings.TrimPrefix(auth, prefix))
+		if !strings.HasPrefix(auth, prefix) || subtle.ConstantTimeCompare([]byte(given), []byte(token)) != 1 {
 			writeJSONError(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -129,6 +141,11 @@ func (s *Server) Handler() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	guard := s.guard
+	if guard == nil {
+		guard = httpguard.New("")
+	}
+	r.Use(guard.Middleware)
 	r.Use(corsMiddleware)
 	r.Use(s.tokenAuthMiddleware)
 	r.Use(maxBodySize)
@@ -228,7 +245,7 @@ func StartServer(ctx context.Context, orch ports.Orchestrator, brain ports.Brain
 	if bs, ok := orch.(broadcasterSetter); ok {
 		bs.SetBroadcaster(hub)
 	}
-	s := NewServer(orch, brain, hub)
+	s := NewServer(orch, brain, hub).WithGuard(httpguard.New(addr))
 	if len(logHub) > 0 && logHub[0] != nil {
 		s.WithLogHub(logHub[0])
 	}
@@ -274,7 +291,7 @@ func StartServerFull(ctx context.Context, orch ports.Orchestrator, brain ports.B
 			abs.SetBroadcaster(hub)
 		}
 	}
-	s := NewServer(orch, brain, hub)
+	s := NewServer(orch, brain, hub).WithGuard(httpguard.New(addr))
 	if len(logHub) > 0 && logHub[0] != nil {
 		s.WithLogHub(logHub[0])
 	}
@@ -316,6 +333,13 @@ func writeJSONError(w http.ResponseWriter, msg string, code int) {
 	if err := json.NewEncoder(w).Encode(map[string]string{"error": msg}); err != nil {
 		log.Printf("httpapi: json encode: %v", err)
 	}
+}
+
+// writeQueueFull answers 429 with a Retry-After hint: a full queue is a
+// transient condition clients should back off from, not a server fault.
+func writeQueueFull(w http.ResponseWriter) {
+	w.Header().Set("Retry-After", "5")
+	writeJSONError(w, "queue is full; retry later", http.StatusTooManyRequests)
 }
 
 // writeJSON sets Content-Type to application/json, writes the given HTTP status

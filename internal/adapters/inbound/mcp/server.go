@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"nexus-orchestrator/internal/adapters/inbound/httpguard"
 	"nexus-orchestrator/internal/core/ports"
 )
 
@@ -111,6 +112,9 @@ type Server struct {
 	// authToken is the env-configured token (NEXUS_MCP_TOKEN). When set it
 	// takes precedence over persisted runtime config.
 	authToken string
+	// guard additionally rejects foreign Host headers (DNS rebinding) and honours
+	// NEXUS_ALLOWED_ORIGINS / NEXUS_ALLOWED_HOSTS. Always non-nil.
+	guard *httpguard.Policy
 }
 
 // NewMcpServer creates a Server and registers its HTTP handlers.
@@ -127,6 +131,7 @@ func NewMcpServer(orch ports.Orchestrator, brain ports.BrainService) *Server {
 			"https://127.0.0.1": true,
 		},
 		authToken: strings.TrimSpace(os.Getenv("NEXUS_MCP_TOKEN")),
+		guard:     httpguard.New(""),
 	}
 	s.mux.HandleFunc("/mcp", s.handleRPC)
 	s.mux.HandleFunc("/health", s.handleHealth)
@@ -137,6 +142,11 @@ func NewMcpServer(orch ports.Orchestrator, brain ports.BrainService) *Server {
 
 // ServeHTTP implements http.Handler so *Server can be passed to httptest.NewServer.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// DNS-rebinding protection (only enforced when bound to loopback).
+	if !s.guard.HostAllowed(r.Host) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
 	// CORS preflight.
 	if r.Method == http.MethodOptions {
 		s.writeCORSHeaders(w, r)
@@ -146,7 +156,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Origin validation per MCP spec security requirements.
 	origin := r.Header.Get("Origin")
-	if origin != "" && !s.isAllowedOrigin(origin) {
+	if origin != "" && !s.isAllowedOrigin(origin) && !s.guard.OriginAllowed(origin) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -231,6 +241,7 @@ func (s *Server) effectiveAuthToken(ctx context.Context) string {
 // It blocks until ctx is cancelled, then shuts down gracefully.
 func StartMCPServer(ctx context.Context, orch ports.Orchestrator, brain ports.BrainService, addr string) error {
 	handler := NewMcpServer(orch, brain)
+	handler.guard = httpguard.New(addr)
 	srv := &http.Server{
 		Addr:    addr,
 		Handler: handler,
