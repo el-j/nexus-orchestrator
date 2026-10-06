@@ -81,3 +81,17 @@ func TestIsMaskedSecret(t *testing.T) {
 		}
 	}
 }
+
+func TestMaskSecretAndMasked(t *testing.T) {
+	cases := map[string]string{"": "", "a": "****", "abcd": "****", "abcde": "****bcde", "sk-real-key-wxyz": "****wxyz"}
+	for in, want := range cases {
+		if got := MaskSecret(in); got != want {
+			t.Errorf("MaskSecret(%q) = %q, want %q", in, got, want)
+		}
+	}
+	cfg := ProviderConfig{Name: "n", APIKey: "sk-secret-9999"}
+	m := cfg.Masked()
+	if m.APIKey != "****9999" || cfg.APIKey != "sk-secret-9999" || m.Name != "n" {
+		t.Errorf("Masked must copy, not mutate: %+v / %+v", m, cfg)
+	}
+}

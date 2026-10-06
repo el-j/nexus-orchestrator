@@ -26,6 +26,27 @@ const (
 // real credential.
 const MaskedSecretPrefix = "****"
 
+// MaskSecret returns the display form of a secret: "****" followed by its last
+// four characters, or just "****" when it is four characters or shorter. The
+// empty string stays empty.
+func MaskSecret(secret string) string {
+	switch {
+	case secret == "":
+		return ""
+	case len(secret) > 4:
+		return MaskedSecretPrefix + secret[len(secret)-4:]
+	default:
+		return MaskedSecretPrefix
+	}
+}
+
+// Masked returns a copy of the config that is safe to show to API and MCP
+// clients: the API key is replaced by its masked display form.
+func (c ProviderConfig) Masked() ProviderConfig {
+	c.APIKey = MaskSecret(c.APIKey)
+	return c
+}
+
 // IsMaskedSecret reports whether s is a masked placeholder produced for display
 // rather than a real secret. Updating a config with a masked API key means
 // "leave the stored key unchanged".
