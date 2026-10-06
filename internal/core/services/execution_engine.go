@@ -504,18 +504,17 @@ func (o *OrchestratorService) writeAndVerifyTaskOutput(task domain.Task, code st
 	}
 
 	if llm != nil {
+		latest := code // the most recent output the model produced; advances every turn
 		for turn := 1; turn <= maxTurns; turn++ {
 			log.Printf("orchestrator: task %s: verification failed on turn %d/%d (%v), attempting self-healing correction", task.ID, turn, maxTurns, runErr)
-			feedbackPrompt := fmt.Sprintf(
-				"The code written to %s failed verification using command %q:\n\n%s\n\nPlease fix the errors and output the entire corrected file content.",
-				task.TargetFile, task.VerificationCommand, output,
-			)
+			feedbackPrompt := correctionPrompt(task, latest, output)
 
 			correctedCode, genErr := o.executeGeneration(task, llm, feedbackPrompt, sessionHistory)
 			if genErr != nil {
 				log.Printf("orchestrator: task %s: self-healing generation turn %d failed: %v", task.ID, turn, genErr)
 				return
 			}
+			latest = correctedCode
 
 			if o.fileWriter != nil && task.TargetFile != "" {
 				if err := o.fileWriter.WriteCodeToFile(task.ProjectPath, task.TargetFile, extractCode(correctedCode)); err != nil {
@@ -576,6 +575,19 @@ Timestamp:        %s`,
 		addr, session.ID,
 		session.ID, session.ProjectPath,
 		now.UTC().Format(time.RFC3339))
+}
+
+// correctionPrompt builds the self-healing prompt for a failed verification. It
+// restates the original instruction and the model's latest output so that a
+// stateless GenerateCode call (no session history) has everything it needs to
+// produce a corrected file.
+func correctionPrompt(task domain.Task, latestOutput, verificationOutput string) string {
+	return fmt.Sprintf(
+		"Original task:\n%s\n\nYour latest output for %s:\n%s\n\n"+
+			"It failed verification using command %q:\n\n%s\n\n"+
+			"Please fix the errors and output the entire corrected file content.",
+		task.Instruction, task.TargetFile, extractCode(latestOutput), task.VerificationCommand, verificationOutput,
+	)
 }
 
 // extractCode strips the first markdown code fence from s, returning the raw

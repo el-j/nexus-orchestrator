@@ -280,7 +280,6 @@ func (o *OrchestratorService) UpdateRuntimeConfig(ctx context.Context, update do
 			return domain.RuntimeConfig{}, fmt.Errorf("orchestrator: update runtime config: queueCap must be > 0")
 		}
 		current.QueueCap = *update.QueueCap
-		o.WithQueueCap(current.QueueCap)
 	}
 
 	if update.RotateAPIToken {
@@ -309,6 +308,12 @@ func (o *OrchestratorService) UpdateRuntimeConfig(ctx context.Context, update do
 		if err := repo.SaveRuntimeConfig(ctx, current); err != nil {
 			return domain.RuntimeConfig{}, fmt.Errorf("orchestrator: save runtime config: %w", err)
 		}
+	}
+
+	// Apply the in-memory cap only after it has been persisted, so a failed save
+	// cannot leave the running service and the stored config disagreeing.
+	if update.QueueCap != nil {
+		o.WithQueueCap(current.QueueCap)
 	}
 
 	return current, nil
@@ -571,12 +576,9 @@ func (o *OrchestratorService) runTaskWatchdog() {
 					log.Printf("orchestrator: task watchdog: update task %s fail: %v", t.ID, err)
 					continue
 				}
+				// emit already publishes the task.failed event (under the lock that
+				// guards o.broadcaster); broadcasting again would duplicate it.
 				o.emit(t.ID, domain.StatusFailed)
-				if o.broadcaster != nil {
-					o.broadcaster.Broadcast(ports.TaskEvent{
-						Type: ports.EventTaskFailed, TaskID: t.ID, Status: domain.StatusFailed,
-					})
-				}
 			}
 		}
 	}
