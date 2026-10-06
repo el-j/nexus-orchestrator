@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
@@ -37,6 +38,27 @@ func estimateStringTokens(text string) int {
 		return 1
 	}
 	return n
+}
+
+// cutUTF8 returns the longest prefix of s that is at most maxBytes long and does
+// not end in the middle of a multi-byte character.
+func cutUTF8(s string, maxBytes int) string {
+	if len(s) <= maxBytes {
+		return s
+	}
+	for maxBytes > 0 && !utf8.RuneStart(s[maxBytes]) {
+		maxBytes--
+	}
+	return s[:maxBytes]
+}
+
+// truncateUTF8 shortens s to at most maxBytes (rune-safe) and appends "..." when
+// anything was removed.
+func truncateUTF8(s string, maxBytes int) string {
+	if len(s) <= maxBytes {
+		return s
+	}
+	return cutUTF8(s, maxBytes) + "..."
 }
 
 // classifySection maps a markdown heading to the most appropriate KnowledgeKind.
@@ -197,7 +219,10 @@ func (b *BrainServiceImpl) IngestFromFile(ctx context.Context, projectPath, file
 	}
 	src := "file:" + filepath.Base(filePath)
 	// Split on "## " to get sections; the first element is preamble before the first ##.
-	raw := strings.Split(string(data), "\n## ")
+	// A leading "\n" makes a file that starts directly with "## Heading" split into
+	// an empty preamble plus a normal first section, instead of the heading being
+	// mistaken for a "# Title" line and discarded.
+	raw := strings.Split("\n"+string(data), "\n## ")
 	count := 0
 	var sectionErrors []error
 	for i, section := range raw {
@@ -269,10 +294,8 @@ func (b *BrainServiceImpl) SearchKnowledge(ctx context.Context, projectPath, que
 	} else if maxTokens <= 0 {
 		maxTokens = 400
 	}
-	fetchCount := 20
-	if itemLimit > 0 && itemLimit > fetchCount {
-		fetchCount = itemLimit
-	}
+	// itemLimit is at most 20 (see above), so a fixed fetch of 20 always covers it.
+	const fetchCount = 20
 	entries, err := b.repo.SearchFTS(ctx, filepath.Clean(projectPath), query, fetchCount)
 	if err != nil {
 		return nil, fmt.Errorf("brain_service: search knowledge: %w", err)
@@ -437,10 +460,7 @@ func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath
 	if len(archEntries) > 0 {
 		sb.WriteString("## Architectural Overview\n")
 		for _, a := range archEntries {
-			content := strings.TrimSpace(a.Content)
-			if len(content) > 300 {
-				content = content[:300] + "..."
-			}
+			content := truncateUTF8(strings.TrimSpace(a.Content), 300)
 			fmt.Fprintf(&sb, "### %s\n%s\n\n", a.Topic, content)
 		}
 	}
@@ -451,10 +471,7 @@ func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath
 		sb.WriteString("## Key Conventions & Constraints\n")
 		count := 0
 		for _, c := range convEntries {
-			content := strings.TrimSpace(c.Content)
-			if len(content) > 250 {
-				content = content[:250] + "..."
-			}
+			content := truncateUTF8(strings.TrimSpace(c.Content), 250)
 			fmt.Fprintf(&sb, "- **%s:** %s\n", c.Topic, content)
 			count++
 			if count >= 5 {
@@ -491,7 +508,7 @@ func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath
 	if tokens > maxTokens {
 		maxChars := maxTokens * 4
 		if len(result) > maxChars {
-			result = result[:maxChars] + "\n\n...[Onboarding context truncated to fit token budget]"
+			result = cutUTF8(result, maxChars) + "\n\n...[Onboarding context truncated to fit token budget]"
 		}
 	}
 

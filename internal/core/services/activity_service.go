@@ -26,6 +26,10 @@ type ActivityService struct {
 	readers      []ports.ActivityReader
 	broadcaster  ports.ActivityBroadcaster // optional; may be nil
 
+	// pollEvery and purgeEvery default to the package constants; tests shorten them.
+	pollEvery  time.Duration
+	purgeEvery time.Duration
+
 	stopCh   chan struct{}
 	stopOnce sync.Once
 	wg       sync.WaitGroup
@@ -44,6 +48,8 @@ func NewActivityService(
 		activityRepo: activityRepo,
 		sessionRepo:  sessionRepo,
 		readers:      readers,
+		pollEvery:    activityPollInterval,
+		purgeEvery:   retentionPurgeInterval,
 		stopCh:       make(chan struct{}),
 		lastSeen:     make(map[string]time.Time),
 	}
@@ -83,7 +89,7 @@ func (s *ActivityService) GetTimeline(ctx context.Context, since time.Time, limi
 
 func (s *ActivityService) pollLoop() {
 	defer s.wg.Done()
-	ticker := time.NewTicker(activityPollInterval)
+	ticker := time.NewTicker(s.pollEvery)
 	defer ticker.Stop()
 
 	// Do an immediate first poll.
@@ -101,7 +107,7 @@ func (s *ActivityService) pollLoop() {
 
 func (s *ActivityService) purgeLoop() {
 	defer s.wg.Done()
-	ticker := time.NewTicker(retentionPurgeInterval)
+	ticker := time.NewTicker(s.purgeEvery)
 	defer ticker.Stop()
 	for {
 		select {
