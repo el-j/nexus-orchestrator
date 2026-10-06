@@ -158,7 +158,7 @@ func sseClient(t *testing.T, srvURL string) (endpoint string, r *bufio.Reader, c
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, srvURL+"/sse", nil)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req) //nolint:bodyclose // closed by the returned closeFn
 	if err != nil {
 		cancel()
 		t.Fatal(err)
