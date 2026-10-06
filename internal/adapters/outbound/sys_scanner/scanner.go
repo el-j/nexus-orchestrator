@@ -4,6 +4,7 @@ package sys_scanner
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -118,7 +119,7 @@ func (s *Scanner) Scan(ctx context.Context) ([]domain.DiscoveredProvider, error)
 	rawByName := make(map[string]domain.DiscoveredProvider)
 	for r := range resultCh {
 		if r.err != nil {
-			if r.err != context.Canceled && r.err != context.DeadlineExceeded {
+			if !errors.Is(r.err, context.Canceled) && !errors.Is(r.err, context.DeadlineExceeded) {
 				log.Printf("sys_scanner: probe error: %v", r.err)
 			}
 			continue

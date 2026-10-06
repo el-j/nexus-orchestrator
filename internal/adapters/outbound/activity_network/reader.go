@@ -21,9 +21,7 @@ type NetworkProbeReader struct {
 	lmStudioURL    string
 	ollamaURL      string
 	antigravityURL string
-	httpClient     *http.Client         // 2s timeout
-	lastModels     map[string]time.Time // modelID -> time first seen
-	mu             sync.Mutex
+	httpClient     *http.Client // 2s timeout
 }
 
 // NewNetworkProbeReader creates a NetworkProbeReader reading base URLs from
@@ -56,7 +54,6 @@ func newWithURLs(lmStudioURL, ollamaURL, antigravityURL string) *NetworkProbeRea
 		ollamaURL:      ollamaURL,
 		antigravityURL: antigravityURL,
 		httpClient:     &http.Client{Timeout: 2 * time.Second},
-		lastModels:     make(map[string]time.Time),
 	}
 }
 

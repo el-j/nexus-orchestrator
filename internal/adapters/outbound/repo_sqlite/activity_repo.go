@@ -77,7 +77,8 @@ func (a *ActivityRepo) ListActivities(ctx context.Context, f domain.ActivityFilt
 	query := `SELECT id, session_id, agent_name, activity_type, summary, project_path, model, tokens_in, tokens_out, timestamp, metadata
 	          FROM ai_activities`
 	if len(clauses) > 0 {
-		query += " WHERE " + strings.Join(clauses, " AND ")
+		// clauses are fixed "<column> = ?" fragments; every value is bound via args.
+		query += " WHERE " + strings.Join(clauses, " AND ") //nolint:gosec // G202: no user input in the SQL text
 	}
 	query += " ORDER BY timestamp DESC LIMIT ?"
 	args = append(args, limit)

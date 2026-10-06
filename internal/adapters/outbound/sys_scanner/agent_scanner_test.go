@@ -93,9 +93,6 @@ func TestProbeClaudeSubAgents(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	const rootAgentID = "root-agent-abc123"
-	const subAgentID = "sub-agent-xyz456"
-
 	rootJSONL := `{"agentId":"root-agent-abc123","model":"claude-sonnet-4-6","cwd":"/Users/foo/myproject","isSidechain":false}` + "\n"
 	subJSONL := `{"agentId":"sub-agent-xyz456","isSidechain":true,"parentUuid":"root-agent-abc123"}` + "\n"
 

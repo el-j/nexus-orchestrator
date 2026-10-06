@@ -245,40 +245,6 @@ func (o *OrchestratorService) resolveProviderWithFallback(task domain.Task) ([]p
 	return result, nil
 }
 
-// selectProviderForTask resolves the single primary LLM client for the task.
-// Retained for backward compatibility and direct single-provider invocations.
-func (o *OrchestratorService) selectProviderForTask(task domain.Task) (ports.LLMClient, error) {
-	if task.ProviderName != "" {
-		client, ok := o.discovery.GetClientByName(task.ProviderName)
-		if !ok {
-			logMsg := fmt.Sprintf("provider '%s' not found or not active", task.ProviderName)
-			log.Printf("orchestrator: no provider for task %s: %s", task.ID, logMsg)
-			if err := o.repo.UpdateLogs(task.ID, logMsg); err != nil {
-				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
-			}
-			if err := o.repo.UpdateStatus(task.ID, domain.StatusNoProvider); err != nil {
-				log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
-			}
-			o.emit(task.ID, domain.StatusNoProvider)
-			return nil, fmt.Errorf("provider %q not found or not active", task.ProviderName)
-		}
-		return client, nil
-	}
-	llm, err := o.discovery.FindForModel(task.ModelID, task.ProviderHint)
-	if err != nil {
-		log.Printf("orchestrator: no provider for task %s (model=%q): %v", task.ID, task.ModelID, err)
-		if err2 := o.repo.UpdateLogs(task.ID, err.Error()); err2 != nil {
-			log.Printf("orchestrator: update logs for task %s: %v", task.ID, err2)
-		}
-		if err2 := o.repo.UpdateStatus(task.ID, domain.StatusNoProvider); err2 != nil {
-			log.Printf("orchestrator: update status for task %s: %v", task.ID, err2)
-		}
-		o.emit(task.ID, domain.StatusNoProvider)
-		return nil, err
-	}
-	return llm, nil
-}
-
 // prepareChatPrompt loads context files and session history once for the task.
 func (o *OrchestratorService) prepareChatPrompt(task domain.Task) (string, []domain.Message, error) {
 	prompt := task.Instruction
@@ -321,42 +287,8 @@ func (o *OrchestratorService) prepareChatPrompt(task domain.Task) (string, []dom
 	return prompt, sessionHistory, nil
 }
 
-// buildChatContext constructs the prompt with optional context file content prepended,
-// loads session history, and guards against context-window overflow.
-// On overflow it sets StatusTooLarge, logs the reason, and emits the event.
-func (o *OrchestratorService) buildChatContext(task domain.Task, llm ports.LLMClient) (string, []domain.Message, error) {
-	prompt, sessionHistory, err := o.prepareChatPrompt(task)
-	if err != nil {
-		return "", nil, err
-	}
-
-	// Pre-flight: guard against context-window overflow before spending LLM time.
-	if limit := llm.ContextLimit(); limit > 0 {
-		estHistory := make([]domain.Message, len(sessionHistory)+1)
-		copy(estHistory, sessionHistory)
-		estHistory[len(sessionHistory)] = domain.Message{Role: domain.RoleUser, Content: prompt}
-		if estimated := estimateTokens(estHistory); estimated > limit-o.maxResponseTokens {
-			logEntry := fmt.Sprintf(
-				"context too large: ~%d tokens estimated, model limit is %d (headroom %d) — shorten the instruction or reduce context files",
-				estimated, limit, o.maxResponseTokens,
-			)
-			log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
-			if err := o.repo.UpdateLogs(task.ID, logEntry); err != nil {
-				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err)
-			}
-			if err := o.repo.UpdateStatus(task.ID, domain.StatusTooLarge); err != nil {
-				log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
-			}
-			o.emit(task.ID, domain.StatusTooLarge)
-			return "", nil, errContextTooLarge
-		}
-	}
-
-	return prompt, sessionHistory, nil
-}
-
 // tryGenerate dispatches to Chat (when sessionRepo is set) or GenerateCode for a single attempt.
-func (o *OrchestratorService) tryGenerate(task domain.Task, llm ports.LLMClient, prompt string, sessionHistory []domain.Message) (string, error) {
+func (o *OrchestratorService) tryGenerate(llm ports.LLMClient, prompt string, sessionHistory []domain.Message) (string, error) {
 	if o.sessionRepo != nil {
 		userMsg := domain.Message{Role: domain.RoleUser, Content: prompt, CreatedAt: time.Now()}
 		history := append(append([]domain.Message(nil), sessionHistory...), userMsg)
@@ -400,7 +332,7 @@ func (o *OrchestratorService) executeWithFallbackChain(task domain.Task, chain [
 		}
 		allTooLarge = false
 
-		code, err := o.tryGenerate(task, llm, prompt, sessionHistory)
+		code, err := o.tryGenerate(llm, prompt, sessionHistory)
 		if err != nil {
 			lastErr = err
 			tried = append(tried, llm.ProviderName())
@@ -506,12 +438,6 @@ func (o *OrchestratorService) executeGeneration(task domain.Task, llm ports.LLMC
 		return "", err
 	}
 	return code, nil
-}
-
-// writeTaskOutput optionally writes the generated code to disk and marks the task
-// as COMPLETED. It delegates to writeAndVerifyTaskOutput without active LLM correction.
-func (o *OrchestratorService) writeTaskOutput(task domain.Task, code string, providerName string) {
-	o.writeAndVerifyTaskOutput(task, code, nil, nil)
 }
 
 // writeAndVerifyTaskOutput writes the generated code to disk, runs verification commands if configured,

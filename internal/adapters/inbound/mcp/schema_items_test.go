@@ -20,6 +20,7 @@ func TestToolSchemaArrayItems(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer resp.Body.Close()
 
 	var rpcResp map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&rpcResp); err != nil {

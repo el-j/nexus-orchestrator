@@ -429,7 +429,8 @@ func (r *Repository) GetByProjectPathAndStatus(projectPath string, statuses ...d
 		placeholders[i] = "?"
 		args = append(args, string(s))
 	}
-	query := fmt.Sprintf(
+	// Only "?" placeholders are interpolated; every status is bound via args.
+	query := fmt.Sprintf( //nolint:gosec // G201: no user input in the SQL text
 		`SELECT `+taskColumns+` FROM tasks WHERE project_path = ? AND status IN (%s) ORDER BY priority ASC, created_at ASC`,
 		strings.Join(placeholders, ","),
 	)

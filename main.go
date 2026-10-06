@@ -199,7 +199,7 @@ func run() error {
 		withBrainService(brainSvc).
 		withFsWatcher(fsWatcher)
 
-	log.Printf("nexusOrchestrator started — closing the window hides it to the dock/taskbar")
+	log.Printf("nexusOrchestrator %s started — closing the window hides it to the dock/taskbar", version)
 	// Print a human- and AI-readable ready banner.
 	httpBase := "http://" + httpAddr
 	fmt.Printf("\n")

@@ -299,26 +299,6 @@ func registerSession(t *testing.T, ts *mcpTestStack, name string) string {
 	return id
 }
 
-// submitQueuedTask submits a task and ensures it reaches QUEUED status.
-func submitQueuedTask(t *testing.T, ts *mcpTestStack) string {
-	t.Helper()
-	r := callTool(t, ts.srv, 100, "submit_task", map[string]any{
-		"projectPath": ts.tmpDir,
-		"targetFile":  "",
-		"instruction": "test claim task flow",
-	})
-	text := extractToolText(t, r)
-	var payload map[string]string
-	if err := json.Unmarshal([]byte(text), &payload); err != nil {
-		t.Fatalf("unmarshal submit: %v", err)
-	}
-	taskID := payload["id"]
-	if taskID == "" {
-		t.Fatalf("expected non-empty task id")
-	}
-	return taskID
-}
-
 // TestMCPIntegration_ClaimAndComplete is the happy path:
 // create QUEUED task → claim_task → verify PROCESSING → update_task_status COMPLETED → verify COMPLETED.
 func TestMCPIntegration_ClaimAndComplete(t *testing.T) {

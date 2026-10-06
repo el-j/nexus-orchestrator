@@ -2,6 +2,7 @@ package services_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -322,7 +323,7 @@ func TestBrainService_DeleteKnowledge(t *testing.T) {
 	if err == nil {
 		t.Error("Expected ErrNotFound after deletion, got nil")
 	}
-	if err != domain.ErrNotFound {
+	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("Expected domain.ErrNotFound, got: %v", err)
 	}
 }

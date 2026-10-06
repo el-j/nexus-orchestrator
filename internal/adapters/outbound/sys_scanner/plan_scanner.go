@@ -3,7 +3,7 @@ package sys_scanner
 import (
 	"bufio"
 	"context"
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec // G505: non-cryptographic stable id, see the id derivation below
 	"encoding/json"
 	"fmt"
 	"os"
@@ -36,7 +36,7 @@ func (s *Scanner) ScanPlanFiles(_ context.Context, rootPaths []string) ([]domain
 			filepath.Join(absRoot, ".github", "agents"),
 		}
 		for _, dir := range scanDirs {
-			found, err := scanDir(dir, absRoot, home, seen)
+			found, err := scanDir(dir, home, seen)
 			if err != nil {
 				continue
 			}
@@ -118,7 +118,7 @@ func scanRecursiveInstructionFiles(base, home string, seen map[string]bool, maxD
 }
 
 // scanDir inspects dir for all recognised plan-file patterns.
-func scanDir(dir, root, home string, seen map[string]bool) ([]domain.DiscoveredPlanFile, error) {
+func scanDir(dir, home string, seen map[string]bool) ([]domain.DiscoveredPlanFile, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
@@ -347,7 +347,9 @@ func buildPlanFile(absPath string, kind domain.PlanFileKind, format, home string
 		return domain.DiscoveredPlanFile{}, err
 	}
 
-	id := fmt.Sprintf("%x", sha1.Sum([]byte(absPath)))[:12]
+	// Non-cryptographic: a short stable id for a path. Changing the hash would
+	// orphan ids already persisted for discovered plan files.
+	id := fmt.Sprintf("%x", sha1.Sum([]byte(absPath)))[:12] //nolint:gosec // G401
 	var summary string
 	if kind == domain.PlanFileKindNexus {
 		summary = summarizeOrchestratorJSON(absPath)

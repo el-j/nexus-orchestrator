@@ -97,7 +97,3 @@ func proxy(in io.Reader, out, errOut io.Writer, mcpURL, mcpToken string) error {
 func writeErrTo(out io.Writer, msg string) {
 	fmt.Fprintf(out, "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32603,\"message\":\"%s\"}}\n", msg)
 }
-
-func writeErr(msg string) {
-	writeErrTo(os.Stdout, msg)
-}

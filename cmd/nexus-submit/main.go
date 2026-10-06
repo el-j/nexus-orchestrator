@@ -29,8 +29,14 @@ func main() {
 		timeout  = flag.Duration("timeout", 5*time.Minute, "max wait time when --wait is set")
 		verify   = flag.String("verify", "", "verification command (e.g. 'go test ./...', 'npm test') to trigger self-healing verification gates")
 		turns    = flag.Int("turns", 2, "max self-healing correction turns if verification fails")
+		showVer  = flag.Bool("version", false, "print version information and exit")
 	)
 	flag.Parse()
+
+	if *showVer {
+		fmt.Printf("nexus-submit %s (%s %s)\n", version, commit, buildDate)
+		return
+	}
 
 	if *taskFile == "" {
 		fmt.Fprintln(os.Stderr, "error: --task-file is required")
