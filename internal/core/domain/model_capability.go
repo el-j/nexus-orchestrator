@@ -95,9 +95,14 @@ var BuiltInModelProfiles = []ModelCapabilityProfile{
 // LookupBuiltInProfile searches BuiltInModelProfiles for a profile that matches
 // modelID using case-insensitive substring matching in both directions: the
 // lookup key contains the profile's ModelID, or the profile's ModelID contains
-// the lookup key.  Returns nil when no match is found.
+// the lookup key.  Returns nil when no match is found, and always for a blank
+// modelID (an empty string is a substring of every profile and must not
+// silently select an arbitrary one).
 func LookupBuiltInProfile(modelID string) *ModelCapabilityProfile {
-	lower := strings.ToLower(modelID)
+	lower := strings.ToLower(strings.TrimSpace(modelID))
+	if lower == "" {
+		return nil
+	}
 	for i := range BuiltInModelProfiles {
 		profileLower := strings.ToLower(BuiltInModelProfiles[i].ModelID)
 		if strings.Contains(lower, profileLower) || strings.Contains(profileLower, lower) {

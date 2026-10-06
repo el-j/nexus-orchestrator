@@ -11,13 +11,14 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"nexus-orchestrator/internal/core/domain"
 )
 
 // ScanPlanFiles scans rootPaths and their well-known subdirectories for plan/task/orchestration files.
 func (s *Scanner) ScanPlanFiles(_ context.Context, rootPaths []string) ([]domain.DiscoveredPlanFile, error) {
-	home := os.Getenv("HOME")
+	home := userHome()
 	seen := map[string]bool{}
 	var results []domain.DiscoveredPlanFile
 
@@ -381,7 +382,8 @@ func readSummary(path string) string {
 
 	buf := make([]byte, 300)
 	n, _ := f.Read(buf)
-	raw := string(buf[:n])
+	// The 300-byte window may end inside a multi-byte character; drop the fragment.
+	raw := strings.ToValidUTF8(string(buf[:n]), "")
 
 	var sb strings.Builder
 	for _, r := range raw {
@@ -389,14 +391,23 @@ func readSummary(path string) string {
 			sb.WriteRune(r)
 		}
 	}
-	summary := strings.TrimSpace(sb.String())
-	if len(summary) > 200 {
-		summary = summary[:200]
-	}
+	summary := cutUTF8(strings.TrimSpace(sb.String()), 200)
 	if strings.HasSuffix(strings.ToLower(path), ".md") {
 		summary = summarizeMarkdownHeuristics(raw, summary)
 	}
 	return summary
+}
+
+// cutUTF8 returns the longest prefix of s that is at most maxBytes long and does
+// not end in the middle of a multi-byte character.
+func cutUTF8(s string, maxBytes int) string {
+	if len(s) <= maxBytes {
+		return s
+	}
+	for maxBytes > 0 && !utf8.RuneStart(s[maxBytes]) {
+		maxBytes--
+	}
+	return s[:maxBytes]
 }
 
 func summarizeMarkdownHeuristics(raw, summary string) string {
@@ -405,11 +416,7 @@ func summarizeMarkdownHeuristics(raw, summary string) string {
 		return summary
 	}
 	prefix := "[" + strings.Join(features, ", ") + "] "
-	out := prefix + summary
-	if len(out) > 200 {
-		return out[:200]
-	}
-	return out
+	return cutUTF8(prefix+summary, 200)
 }
 
 func markdownFeatures(raw string) []string {

@@ -10,9 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -89,7 +87,10 @@ func (s *Scanner) ScanAgents(ctx context.Context) ([]domain.DiscoveredAgent, err
 
 func (s *Scanner) probeClaudeConfig(ctx context.Context) []domain.DiscoveredAgent {
 	var results []domain.DiscoveredAgent
-	home := os.Getenv("HOME")
+	home := userHome()
+	if home == "" {
+		return nil
+	}
 
 	settingsPath := filepath.Join(home, ".claude", "settings.json")
 	if data, err := os.ReadFile(settingsPath); err == nil {
@@ -167,12 +168,11 @@ func probeVSCodeExtensionsDir(_ context.Context, extDir string) []domain.Discove
 }
 
 func (s *Scanner) probeVSCodeExtensions(ctx context.Context) []domain.DiscoveredAgent {
-	home := os.Getenv("HOME")
-	extDir := filepath.Join(home, ".vscode", "extensions")
-	if runtime.GOOS == "windows" {
-		extDir = filepath.Join(os.Getenv("USERPROFILE"), ".vscode", "extensions")
+	home := userHome()
+	if home == "" {
+		return nil
 	}
-	return probeVSCodeExtensionsDir(ctx, extDir)
+	return probeVSCodeExtensionsDir(ctx, filepath.Join(home, ".vscode", "extensions"))
 }
 
 func probeMCPPortList(ctx context.Context, ports []int) []domain.DiscoveredAgent {
@@ -227,32 +227,21 @@ func (s *Scanner) probeMCPPorts(ctx context.Context) []domain.DiscoveredAgent {
 }
 
 func (s *Scanner) probeProcessFlags(ctx context.Context) []domain.DiscoveredAgent {
-	if runtime.GOOS == "windows" {
+	if goos == "windows" {
 		return nil
 	}
 	patterns := []string{"--mcp", "--mcp-server"}
 	seen := map[string]bool{}
 	var results []domain.DiscoveredAgent
 	for _, pat := range patterns {
-		out, err := exec.CommandContext(ctx, "pgrep", "-lf", pat).Output()
+		out, err := runPgrep(ctx, pat)
 		if err != nil {
 			continue
 		}
 		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-			if line == "" {
-				continue
-			}
-			parts := strings.SplitN(line, " ", 2)
-			procName := ""
-			pid := 0
-			if len(parts) > 1 {
-				pid, _ = strconv.Atoi(parts[0])
-				procName = strings.TrimSpace(parts[1])
-				if idx := strings.Index(procName, " "); idx > 0 {
-					procName = procName[:idx]
-				}
-			}
-			if procName == "" || seen[procName] {
+			// pattern "" => a line without a command column yields an empty name.
+			found, procName, pid := parsePgrep(line, "")
+			if !found || procName == "" || seen[procName] {
 				continue
 			}
 			seen[procName] = true

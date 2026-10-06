@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"os/exec"
 	"runtime"
 	"sort"
@@ -191,11 +192,20 @@ func (s *Scanner) probePort(ctx context.Context, t portTarget) ([]domain.Discove
 	}
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return []domain.DiscoveredProvider{makePortProvider(t, nil, nil, false)}, nil
+		return nil, nil // something listens there, but it does not speak HTTP
 	}
 	defer resp.Body.Close()
+	// Ports such as 5000, 8000 and 8080 are shared with AirPlay, dev servers and
+	// proxies. Only a 2xx answer carrying a model-list shaped body counts as an
+	// LLM server; anything else is not reported as a provider.
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, nil
+	}
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 256*1024))
-	models := parseModels(body)
+	models, ok := parseModelList(body)
+	if !ok {
+		return nil, nil
+	}
 
 	// For Ollama, also probe /api/ps to detect actively loaded / generating models.
 	var activeModels []string
@@ -259,44 +269,51 @@ func makePortProvider(t portTarget, models []string, activeModels []string, gene
 	}
 }
 
-type openAIModelsResponse struct {
-	Data []struct {
-		ID string `json:"id"`
-	} `json:"data"`
-}
-
-type ollamaTagsResponse struct {
-	Models []struct {
-		Name string `json:"name"`
-	} `json:"models"`
-}
-
+// parseModels returns the model names advertised in an OpenAI-style
+// ({"data":[{"id":...}]}) or Ollama-style ({"models":[{"name":...}]}) listing.
 func parseModels(body []byte) []string {
-	var oai openAIModelsResponse
-	if err := json.Unmarshal(body, &oai); err == nil && len(oai.Data) > 0 {
-		var names []string
-		for _, d := range oai.Data {
-			if d.ID != "" {
-				names = append(names, d.ID)
-			}
-		}
-		if len(names) > 0 {
-			return names
+	models, _ := parseModelList(body)
+	return models
+}
+
+// parseModelList is parseModels plus a flag telling whether body has the shape
+// of a model listing at all (a "data" or "models" array, possibly empty). An
+// idle server with no model loaded is still a valid listing.
+func parseModelList(body []byte) (models []string, ok bool) {
+	var shape struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+		Models []struct {
+			Name string `json:"name"`
+		} `json:"models"`
+	}
+	if err := json.Unmarshal(body, &shape); err != nil {
+		return nil, false
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil, false
+	}
+	_, hasData := raw["data"]
+	_, hasModels := raw["models"]
+	if !hasData && !hasModels {
+		return nil, false
+	}
+	for _, d := range shape.Data {
+		if d.ID != "" {
+			models = append(models, d.ID)
 		}
 	}
-	var oll ollamaTagsResponse
-	if err := json.Unmarshal(body, &oll); err == nil && len(oll.Models) > 0 {
-		var names []string
-		for _, m := range oll.Models {
-			if m.Name != "" {
-				names = append(names, m.Name)
-			}
-		}
-		if len(names) > 0 {
-			return names
+	if len(models) > 0 {
+		return models, true
+	}
+	for _, m := range shape.Models {
+		if m.Name != "" {
+			models = append(models, m.Name)
 		}
 	}
-	return nil
+	return models, true
 }
 
 func (s *Scanner) probeCLI(ctx context.Context, t cliTarget) ([]domain.DiscoveredProvider, error) {
@@ -330,25 +347,58 @@ func (s *Scanner) probeProcess(ctx context.Context, p processPattern) ([]domain.
 	}}, nil
 }
 
+// userHome returns the current user's home directory, or "" when it cannot be
+// determined. Callers must skip home-relative probes on "": filepath.Join("", x)
+// is a path relative to the working directory, which would make a project's own
+// .claude/ folder look like the user's configuration.
+func userHome() string {
+	h, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return h
+}
+
+// Seams replaced by tests; production code never reassigns them.
+var (
+	goos = runtime.GOOS
+	// runPgrep returns the output of `pgrep -lf pattern`.
+	runPgrep = func(ctx context.Context, pattern string) ([]byte, error) {
+		return exec.CommandContext(ctx, "pgrep", "-lf", pattern).Output()
+	}
+	// runTasklist returns the output of `tasklist /fo csv /nh`.
+	runTasklist = func(ctx context.Context) ([]byte, error) {
+		return exec.CommandContext(ctx, "tasklist", "/fo", "csv", "/nh").Output()
+	}
+)
+
 func detectProcess(ctx context.Context, pattern string) (bool, string, int, error) {
-	if runtime.GOOS == "windows" {
+	if goos == "windows" {
 		return detectProcessWindows(ctx, pattern)
 	}
 	return detectProcessPgrep(ctx, pattern)
 }
 
 func detectProcessPgrep(ctx context.Context, pattern string) (bool, string, int, error) {
-	out, err := exec.CommandContext(ctx, "pgrep", "-lf", pattern).Output()
+	out, err := runPgrep(ctx, pattern)
 	if err != nil {
 		return false, "", 0, nil
 	}
-	line := strings.TrimSpace(string(out))
+	found, name, pid := parsePgrep(string(out), pattern)
+	return found, name, pid, nil
+}
+
+// parsePgrep interprets `pgrep -lf` output ("<pid> <command line>" per line).
+// Only the first match is used; when no command column is present the pattern
+// itself is returned as the name.
+func parsePgrep(out, pattern string) (found bool, name string, pid int) {
+	line, _, _ := strings.Cut(strings.TrimSpace(out), "\n")
+	line = strings.TrimSpace(line)
 	if line == "" {
-		return false, "", 0, nil
+		return false, "", 0
 	}
 	parts := strings.SplitN(line, " ", 2)
-	name := pattern
-	pid := 0
+	name = pattern
 	if len(parts) == 2 {
 		pid, _ = strconv.Atoi(parts[0])
 		name = strings.TrimSpace(parts[1])
@@ -356,34 +406,38 @@ func detectProcessPgrep(ctx context.Context, pattern string) (bool, string, int,
 			name = name[:idx]
 		}
 	}
-	return true, name, pid, nil
+	return true, name, pid
 }
 
 func detectProcessWindows(ctx context.Context, pattern string) (bool, string, int, error) {
-	out, err := exec.CommandContext(ctx, "tasklist", "/fo", "csv", "/nh").Output()
+	out, err := runTasklist(ctx)
 	if err != nil {
 		return false, "", 0, fmt.Errorf("sys_scanner: tasklist: %w", err)
 	}
+	found, name, pid := parseTasklist(string(out), pattern)
+	return found, name, pid, nil
+}
+
+// parseTasklist interprets `tasklist /fo csv /nh` output and returns the first
+// process whose line contains pattern (case-insensitive), with its image name
+// and PID.
+func parseTasklist(out, pattern string) (found bool, name string, pid int) {
 	lower := strings.ToLower(pattern)
-	for _, line := range strings.Split(string(out), "\n") {
+	for _, line := range strings.Split(out, "\n") {
 		if !strings.Contains(strings.ToLower(line), lower) {
 			continue
 		}
 		line = strings.TrimSpace(line)
-
-		pid := 0
 		parts := strings.Split(line, ",")
 		if len(parts) > 1 {
-			pidStr := strings.Trim(parts[1], `"`)
-			pid, _ = strconv.Atoi(pidStr)
+			pid, _ = strconv.Atoi(strings.Trim(parts[1], `"`))
 		}
-
 		if len(line) > 0 && line[0] == '"' {
 			if end := strings.Index(line[1:], "\""); end >= 0 {
-				return true, line[1 : end+1], pid, nil
+				return true, line[1 : end+1], pid
 			}
 		}
-		return true, pattern, pid, nil
+		return true, pattern, pid
 	}
-	return false, "", 0, nil
+	return false, "", 0
 }
