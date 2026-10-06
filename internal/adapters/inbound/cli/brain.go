@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
@@ -41,7 +40,7 @@ func newBrainStatusCmd(brain ports.BrainService) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("cli: brain status: %w", err)
 			}
-			enc := json.NewEncoder(os.Stdout)
+			enc := json.NewEncoder(cmd.OutOrStdout())
 			enc.SetIndent("", "  ")
 			return enc.Encode(status)
 		},
@@ -62,7 +61,7 @@ func newBrainIngestCmd(brain ports.BrainService) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("cli: brain ingest: %w", err)
 			}
-			fmt.Printf("Ingested %d knowledge sections from %s into project %s\n", count, file, project)
+			fmt.Fprintf(cmd.OutOrStdout(), "Ingested %d knowledge sections from %s into project %s\n", count, file, project)
 			return nil
 		},
 	}
@@ -85,7 +84,7 @@ func newBrainSearchCmd(brain ports.BrainService) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("cli: brain search: %w", err)
 			}
-			enc := json.NewEncoder(os.Stdout)
+			enc := json.NewEncoder(cmd.OutOrStdout())
 			enc.SetIndent("", "  ")
 			return enc.Encode(results)
 		},
@@ -109,7 +108,7 @@ func newBrainInitCmd(brain ports.BrainService) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("cli: brain init: %w", err)
 			}
-			enc := json.NewEncoder(os.Stdout)
+			enc := json.NewEncoder(cmd.OutOrStdout())
 			enc.SetIndent("", "  ")
 			return enc.Encode(status)
 		},
@@ -131,7 +130,7 @@ func newBrainListCmd(brain ports.BrainService) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("cli: brain list: %w", err)
 			}
-			enc := json.NewEncoder(os.Stdout)
+			enc := json.NewEncoder(cmd.OutOrStdout())
 			enc.SetIndent("", "  ")
 			return enc.Encode(entries)
 		},
@@ -151,7 +150,7 @@ func newBrainDeleteCmd(brain ports.BrainService) *cobra.Command {
 			if err := brain.DeleteKnowledge(context.Background(), id); err != nil {
 				return fmt.Errorf("cli: brain delete: %w", err)
 			}
-			fmt.Printf("deleted %s\n", id)
+			fmt.Fprintf(cmd.OutOrStdout(), "deleted %s\n", id)
 			return nil
 		},
 	}
@@ -174,7 +173,7 @@ func newBrainContextCmd(brain ports.BrainService) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("cli: brain context: %w", err)
 			}
-			enc := json.NewEncoder(os.Stdout)
+			enc := json.NewEncoder(cmd.OutOrStdout())
 			enc.SetIndent("", "  ")
 			return enc.Encode(resp)
 		},
@@ -197,11 +196,11 @@ func newBrainFileMapCmd(brain ports.BrainService) *cobra.Command {
 				return fmt.Errorf("cli: brain file-map: %w", err)
 			}
 			if len(paths) == 0 {
-				fmt.Println("no file map entries")
+				fmt.Fprintln(cmd.OutOrStdout(), "no file map entries")
 				return nil
 			}
 			for _, p := range paths {
-				fmt.Println(p)
+				fmt.Fprintln(cmd.OutOrStdout(), p)
 			}
 			return nil
 		},

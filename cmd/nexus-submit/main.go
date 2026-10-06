@@ -4,8 +4,10 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -18,51 +20,78 @@ var (
 	buildDate = "unknown"
 )
 
+// Exit codes returned by run. 1 covers every generic failure (bad usage,
+// unreadable task file, daemon unreachable, task FAILED/CANCELLED, timeout).
+const (
+	exitOK         = 0
+	exitFailure    = 1
+	exitTooLarge   = 2 // task prompt exceeds the model's context limit
+	exitNoProvider = 3 // no LLM provider was available for the task
+)
+
+// httpClient bounds every daemon call; the default client would wait forever.
+var httpClient = &http.Client{Timeout: 30 * time.Second}
+
 func main() {
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, 3*time.Second))
+}
+
+// run is the testable body of main. It parses args, submits the task and, with
+// --wait, polls every pollEvery until the task reaches a terminal state. It
+// returns the process exit code.
+func run(args []string, stdout, stderr io.Writer, pollEvery time.Duration) int {
+	fs := flag.NewFlagSet("nexus-submit", flag.ContinueOnError)
+	fs.SetOutput(stderr)
 	var (
-		taskFile = flag.String("task-file", "", "path to .claude/tasks/TASK-NNN.md (required)")
-		project  = flag.String("project", "", "project root path (default: $PWD)")
-		target   = flag.String("target", "", "relative target file path for LLM output (e.g. internal/foo/bar.go)")
-		context  = flag.String("context", "", "comma-separated relative file paths to include as context")
-		addr     = flag.String("addr", getEnv("NEXUS_ADDR", "http://127.0.0.1:63987"), "daemon base URL")
-		wait     = flag.Bool("wait", false, "poll until task completes and print result")
-		timeout  = flag.Duration("timeout", 5*time.Minute, "max wait time when --wait is set")
-		verify   = flag.String("verify", "", "verification command (e.g. 'go test ./...', 'npm test') to trigger self-healing verification gates")
-		turns    = flag.Int("turns", 2, "max self-healing correction turns if verification fails")
-		showVer  = flag.Bool("version", false, "print version information and exit")
+		taskFile = fs.String("task-file", "", "path to .claude/tasks/TASK-NNN.md (required)")
+		project  = fs.String("project", "", "project root path (default: $PWD)")
+		target   = fs.String("target", "", "relative target file path for LLM output (e.g. internal/foo/bar.go)")
+		context  = fs.String("context", "", "comma-separated relative file paths to include as context")
+		addr     = fs.String("addr", getEnv("NEXUS_ADDR", "http://127.0.0.1:63987"), "daemon base URL")
+		wait     = fs.Bool("wait", false, "poll until task completes and print result")
+		timeout  = fs.Duration("timeout", 5*time.Minute, "max wait time when --wait is set")
+		verify   = fs.String("verify", "", "verification command (e.g. 'go test ./...', 'npm test') to trigger self-healing verification gates")
+		turns    = fs.Int("turns", 2, "max self-healing correction turns if verification fails")
+		showVer  = fs.Bool("version", false, "print version information and exit")
 	)
-	flag.Parse()
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return exitOK
+		}
+		return exitFailure
+	}
 
 	if *showVer {
-		fmt.Printf("nexus-submit %s (%s %s)\n", version, commit, buildDate)
-		return
+		fmt.Fprintf(stdout, "nexus-submit %s (%s %s)\n", version, commit, buildDate)
+		return exitOK
 	}
 
 	if *taskFile == "" {
-		fmt.Fprintln(os.Stderr, "error: --task-file is required")
-		flag.Usage()
-		os.Exit(1)
+		fmt.Fprintln(stderr, "error: --task-file is required")
+		fs.Usage()
+		return exitFailure
 	}
 
 	body, err := BuildRequestBody(*taskFile, *project, *target, *context, *verify, *turns)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
-		os.Exit(1)
+		fmt.Fprintln(stderr, "error:", err)
+		return exitFailure
 	}
 
 	taskID, status, err := SubmitTask(*addr, body)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
-		os.Exit(1)
+		fmt.Fprintln(stderr, "error:", err)
+		return exitFailure
 	}
 
-	fmt.Printf("submitted: task_id=%s status=%s\n", taskID, status)
-	fmt.Printf("track: %s/api/tasks/%s\n", *addr, taskID)
-	fmt.Printf("ui:    %s/ui\n", *addr)
+	fmt.Fprintf(stdout, "submitted: task_id=%s status=%s\n", taskID, status)
+	fmt.Fprintf(stdout, "track: %s/api/tasks/%s\n", *addr, taskID)
+	fmt.Fprintf(stdout, "ui:    %s/ui\n", *addr)
 
 	if *wait {
-		waitForCompletion(*addr, taskID, *timeout)
+		return waitForCompletion(stdout, stderr, *addr, taskID, *timeout, pollEvery)
 	}
+	return exitOK
 }
 
 // BuildRequestBody prepares the JSON payload for submitting a task to the daemon.
@@ -109,7 +138,7 @@ func SubmitTask(addr string, body map[string]interface{}) (string, string, error
 		return "", "", fmt.Errorf("marshal request: %w", err)
 	}
 
-	resp, err := http.Post(addr+"/api/tasks", "application/json", bytes.NewReader(reqJSON))
+	resp, err := httpClient.Post(addr+"/api/tasks", "application/json", bytes.NewReader(reqJSON))
 	if err != nil {
 		return "", "", fmt.Errorf("POST /api/tasks: %w", err)
 	}
@@ -130,13 +159,15 @@ func SubmitTask(addr string, body map[string]interface{}) (string, string, error
 	return result.TaskID, result.Status, nil
 }
 
-func waitForCompletion(addr, taskID string, timeout time.Duration) {
+// waitForCompletion polls the task every pollEvery until it reaches a terminal
+// state or timeout elapses, and returns the exit code describing the outcome.
+func waitForCompletion(stdout, stderr io.Writer, addr, taskID string, timeout, pollEvery time.Duration) int {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		time.Sleep(3 * time.Second)
-		resp, err := http.Get(addr + "/api/tasks/" + taskID)
+		time.Sleep(pollEvery)
+		resp, err := httpClient.Get(addr + "/api/tasks/" + taskID)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "poll error:", err)
+			fmt.Fprintln(stderr, "poll error:", err)
 			continue
 		}
 		var t struct {
@@ -146,31 +177,31 @@ func waitForCompletion(addr, taskID string, timeout time.Duration) {
 		_ = json.NewDecoder(resp.Body).Decode(&t)
 		resp.Body.Close()
 
-		fmt.Printf("  [%s] status=%s\n", time.Now().Format("15:04:05"), t.Status)
+		fmt.Fprintf(stdout, "  [%s] status=%s\n", time.Now().Format("15:04:05"), t.Status)
 		switch t.Status {
 		case "COMPLETED":
 			if t.Logs != "" {
-				fmt.Println("logs:", t.Logs)
+				fmt.Fprintln(stdout, "logs:", t.Logs)
 			}
-			return
+			return exitOK
 		case "FAILED":
 			if t.Logs != "" {
-				fmt.Println("logs:", t.Logs)
+				fmt.Fprintln(stdout, "logs:", t.Logs)
 			}
-			os.Exit(1)
+			return exitFailure
 		case "CANCELLED":
-			fmt.Fprintln(os.Stderr, "Task cancelled")
-			os.Exit(1)
+			fmt.Fprintln(stderr, "Task cancelled")
+			return exitFailure
 		case "TOO_LARGE":
-			fmt.Fprintln(os.Stderr, "Task rejected: prompt exceeds model context limit")
-			os.Exit(2)
+			fmt.Fprintln(stderr, "Task rejected: prompt exceeds model context limit")
+			return exitTooLarge
 		case "NO_PROVIDER":
-			fmt.Fprintln(os.Stderr, "Task failed: no LLM provider available")
-			os.Exit(3)
+			fmt.Fprintln(stderr, "Task failed: no LLM provider available")
+			return exitNoProvider
 		}
 	}
-	fmt.Fprintln(os.Stderr, "error: timed out waiting for task completion")
-	os.Exit(1)
+	fmt.Fprintln(stderr, "error: timed out waiting for task completion")
+	return exitFailure
 }
 
 func getEnv(key, fallback string) string {

@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -35,17 +36,38 @@ var (
 )
 
 func main() {
-	// 0. Log hub — capture log output for SSE streaming before anything logs.
+	os.Exit(runMain())
+}
+
+// runMain installs signal handling and the log hub, runs the daemon and
+// returns the process exit code. It is separate from main so deferred cleanup
+// (signal.NotifyContext's stop) runs before os.Exit.
+func runMain() int {
+	// Capture log output for SSE streaming before anything logs.
 	logHub := httpapi.NewLogHub()
 	log.SetOutput(logHub)
 
-	cfg := resolveConfig()
+	// Cancel on SIGINT / SIGTERM — drives HTTP graceful shutdown.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
+	if err := run(ctx, resolveConfig(), logHub, os.Stdout); err != nil {
+		fmt.Fprintln(os.Stderr, "daemon:", err)
+		return 1
+	}
+	return 0
+}
+
+// run wires every adapter and service, serves the HTTP and MCP APIs and blocks
+// until ctx is cancelled, then shuts everything down gracefully. It returns an
+// error only when startup cannot proceed (for example, the database cannot be
+// opened); runtime server errors are logged. Output for humans (the ready
+// banner and shutdown notice) is written to out.
+func run(ctx context.Context, cfg daemonConfig, logHub *httpapi.LogHub, out io.Writer) error {
 	// 1. Outbound adapters
 	repo, err := repo_sqlite.New(cfg.dbPath)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "daemon: open database:", err)
-		os.Exit(1)
+		return fmt.Errorf("open database: %w", err)
 	}
 	defer repo.Close()
 
@@ -131,15 +153,11 @@ func main() {
 	}
 	defer orchestratorSvc.Stop()
 
-	// 3. Context that cancels on SIGINT / SIGTERM — drives HTTP graceful shutdown
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
 	log.Printf("nexus-daemon %s (%s %s) starting...", version, commit, buildDate)
 	// Print a human- and AI-readable ready banner once both servers are about to start.
 	go func() {
 		time.Sleep(50 * time.Millisecond)
-		fmt.Print(formatBanner(version, cfg.listenAddr, cfg.mcpAddr))
+		fmt.Fprint(out, formatBanner(version, cfg.listenAddr, cfg.mcpAddr))
 	}()
 	// Initial non-blocking scan.
 	go func() {
@@ -148,14 +166,8 @@ func main() {
 		}
 	}()
 	// Periodic re-scan.
-	scanInterval := 30 * time.Second
-	if v := os.Getenv("NEXUS_SCAN_INTERVAL"); v != "" {
-		if d, err := time.ParseDuration(v); err == nil {
-			scanInterval = d
-		}
-	}
 	go func() {
-		ticker := time.NewTicker(scanInterval)
+		ticker := time.NewTicker(cfg.scanInterval)
 		defer ticker.Stop()
 		for {
 			select {
@@ -181,7 +193,8 @@ func main() {
 		log.Printf("daemon: httpapi: %v", err)
 	}
 
-	fmt.Println("nexusOrchestrator daemon shutting down.")
+	fmt.Fprintln(out, "nexusOrchestrator daemon shutting down.")
+	return nil
 }
 
 // daemonConfig encapsulates startup parameters resolved from environment variables.
@@ -206,8 +219,9 @@ func resolveConfig() daemonConfig {
 		mcpAddr = "127.0.0.1:63988"
 	}
 	scanInterval := 30 * time.Second
+	// Only positive durations are valid: time.NewTicker panics on <= 0.
 	if v := os.Getenv("NEXUS_SCAN_INTERVAL"); v != "" {
-		if d, err := time.ParseDuration(v); err == nil {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
 			scanInterval = d
 		}
 	}

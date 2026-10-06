@@ -14,6 +14,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -23,16 +24,23 @@ import (
 )
 
 func main() {
-	mcpURL := os.Getenv("NEXUS_MCP_URL")
+	os.Exit(run(os.Stdin, os.Stdout, os.Stderr, os.Getenv))
+}
+
+// run resolves the endpoint and token via getenv, proxies stdin to the daemon
+// and returns the process exit code.
+func run(in io.Reader, out, errOut io.Writer, getenv func(string) string) int {
+	mcpURL := getenv("NEXUS_MCP_URL")
 	if mcpURL == "" {
 		mcpURL = "http://127.0.0.1:63988/mcp"
 	}
-	mcpToken := strings.TrimSpace(os.Getenv("NEXUS_MCP_TOKEN"))
+	mcpToken := strings.TrimSpace(getenv("NEXUS_MCP_TOKEN"))
 
-	if err := proxy(os.Stdin, os.Stdout, os.Stderr, mcpURL, mcpToken); err != nil {
-		fmt.Fprintf(os.Stderr, "nexus-mcp-stdio: %v\n", err)
-		os.Exit(1)
+	if err := proxy(in, out, errOut, mcpURL, mcpToken); err != nil {
+		fmt.Fprintf(errOut, "nexus-mcp-stdio: %v\n", err)
+		return 1
 	}
+	return 0
 }
 
 // proxy reads JSON-RPC messages from in, forwards them via HTTP POST to mcpURL,
@@ -94,6 +102,20 @@ func proxy(in io.Reader, out, errOut io.Writer, mcpURL, mcpToken string) error {
 	return scanner.Err()
 }
 
+// writeErrTo emits a JSON-RPC internal-error response. The message is marshalled
+// (not interpolated) because Go's HTTP errors contain double quotes, which would
+// otherwise produce invalid JSON on the wire.
 func writeErrTo(out io.Writer, msg string) {
-	fmt.Fprintf(out, "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32603,\"message\":\"%s\"}}\n", msg)
+	resp := struct {
+		JSONRPC string `json:"jsonrpc"`
+		ID      any    `json:"id"`
+		Error   struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}{JSONRPC: "2.0"}
+	resp.Error.Code = -32603
+	resp.Error.Message = msg
+	b, _ := json.Marshal(resp) // cannot fail: only strings, ints and nil
+	fmt.Fprintf(out, "%s\n", b)
 }
