@@ -57,12 +57,27 @@ func (s *Server) toolGetTask(args json.RawMessage) (callToolResult, error) {
 	return textResult(string(b)), nil
 }
 
+// decodeOptionalArgs decodes tool arguments where every field is optional.
+// Absent, empty and JSON null arguments leave v untouched; anything else that
+// does not decode is an invalid-params error. Silently ignoring a malformed
+// projectPath would make list tools fall back to the unfiltered, cross-project
+// result.
+func decodeOptionalArgs(args json.RawMessage, v any) error {
+	if len(args) == 0 || string(args) == "null" {
+		return nil
+	}
+	if err := json.Unmarshal(args, v); err != nil {
+		return &mcpError{code: codeInvalidParams, msg: "invalid arguments: " + err.Error()}
+	}
+	return nil
+}
+
 func (s *Server) toolGetQueue(args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
 	}
-	if len(args) > 0 {
-		_ = json.Unmarshal(args, &p)
+	if err := decodeOptionalArgs(args, &p); err != nil {
+		return callToolResult{}, err
 	}
 	var (
 		tasks []domain.Task
@@ -87,8 +102,8 @@ func (s *Server) toolGetAllTasks(args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
 	}
-	if len(args) > 0 {
-		_ = json.Unmarshal(args, &p)
+	if err := decodeOptionalArgs(args, &p); err != nil {
+		return callToolResult{}, err
 	}
 	var (
 		tasks []domain.Task
