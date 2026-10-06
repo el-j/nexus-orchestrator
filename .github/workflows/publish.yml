@@ -586,9 +586,60 @@ jobs:
      #   run: npx ovsx publish ../build/vscode/nexus-orchestrator.vsix --pat ${{ secrets.OVSX_PAT }}
 
 
+  smoke-test:
+    name: Smoke ${{ matrix.os }}-${{ matrix.arch }}
+    needs: [version, build-cli]
+    if: needs.version.outputs.exists == 'false'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: linux, arch: amd64, runner: ubuntu-latest, ext: tar.gz, bin_ext: "" }
+          - { os: darwin, arch: arm64, runner: macos-latest, ext: tar.gz, bin_ext: "" }
+          - { os: windows, arch: amd64, runner: windows-latest, ext: zip, bin_ext: ".exe" }
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          name: nexus-orchestrator-${{ matrix.os }}-${{ matrix.arch }}.${{ matrix.ext }}
+
+      - name: Extract archive
+        shell: bash
+        run: |
+          ARCHIVE="nexus-orchestrator-${{ matrix.os }}-${{ matrix.arch }}.${{ matrix.ext }}"
+          mkdir smoke
+          if [ "${{ matrix.ext }}" = "zip" ]; then 7z x -y -osmoke "$ARCHIVE"; else tar xzf "$ARCHIVE" -C smoke; fi
+          ls -la smoke
+
+      - name: CLI reports its version
+        shell: bash
+        run: |
+          out=$(./smoke/nexus-cli${{ matrix.bin_ext }} --version)
+          echo "$out"
+          echo "$out" | grep -F "${{ needs.version.outputs.tag }}"
+
+      - name: Daemon boots and serves /api/health
+        shell: bash
+        env:
+          NEXUS_DB_PATH: smoke/smoke.db
+          NEXUS_LISTEN_ADDR: 127.0.0.1:63987
+          NEXUS_MCP_ADDR: 127.0.0.1:63988
+        run: |
+          ./smoke/nexus-daemon${{ matrix.bin_ext }} > smoke/daemon.log 2>&1 &
+          DAEMON_PID=$!
+          ok=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:63987/api/health | grep -q '"status":"ok"'; then ok=1; break; fi
+            sleep 1
+          done
+          kill "$DAEMON_PID" 2>/dev/null || true
+          if [ "$ok" != 1 ]; then echo "daemon did not become healthy"; cat smoke/daemon.log; exit 1; fi
+          echo "daemon healthy"
+
   release:
     name: Create Release
-    needs: [version, build-cli, build-desktop, build-vscode]
+    needs: [version, build-cli, smoke-test, build-desktop, build-vscode]
     if: needs.version.outputs.exists == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 30
