@@ -126,17 +126,27 @@ func scanModelCapability(s scanner) (domain.ModelCapabilityProfile, error) {
 
 	p.BuiltIn = builtInInt != 0
 
-	// Parse DATETIME strings returned from SQLite
-	if createdAtStr != "" {
-		if parsed, err := time.Parse("2006-01-02 15:04:05", createdAtStr); err == nil {
-			p.CreatedAt = parsed.UTC()
-		}
-	}
-	if updatedAtStr != "" {
-		if parsed, err := time.Parse("2006-01-02 15:04:05", updatedAtStr); err == nil {
-			p.UpdatedAt = parsed.UTC()
-		}
-	}
+	p.CreatedAt = parseSQLiteTime(createdAtStr)
+	p.UpdatedAt = parseSQLiteTime(updatedAtStr)
 
 	return p, nil
+}
+
+// sqliteTimeLayouts lists the timestamp encodings that can appear in a DATETIME
+// column: the RFC 3339 form written by the driver for time.Time values, and
+// SQLite's own CURRENT_TIMESTAMP form.
+var sqliteTimeLayouts = []string{time.RFC3339Nano, "2006-01-02 15:04:05"}
+
+// parseSQLiteTime parses a stored DATETIME string into UTC. Empty or
+// unrecognised values yield the zero time.
+func parseSQLiteTime(s string) time.Time {
+	if s == "" {
+		return time.Time{}
+	}
+	for _, layout := range sqliteTimeLayouts {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t.UTC()
+		}
+	}
+	return time.Time{}
 }
