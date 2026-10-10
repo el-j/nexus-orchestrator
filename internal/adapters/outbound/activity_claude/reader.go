@@ -115,6 +115,12 @@ func (r *ClaudeJSONLReader) readNewLines(path string, offset int64, since time.T
 	}
 	defer f.Close()
 
+	// A file that is now smaller than our offset was truncated or rotated.
+	// Seeking past EOF does not fail, so without this check the reader would
+	// return nothing until the file outgrew the old offset.
+	if fi, statErr := f.Stat(); statErr == nil && fi.Size() < offset {
+		offset = 0
+	}
 	if offset > 0 {
 		if _, seekErr := f.Seek(offset, io.SeekStart); seekErr != nil {
 			// File may have been truncated and rewritten; restart from beginning.

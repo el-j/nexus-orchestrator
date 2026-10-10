@@ -16,6 +16,9 @@ import (
 	"nexus-orchestrator/internal/core/ports"
 )
 
+// defaultOpenAIBaseURL is used for OpenAI-compatible configs without a base URL.
+const defaultOpenAIBaseURL = "https://api.openai.com/v1"
+
 // BuildProviders constructs all default LLM provider clients from environment variables.
 // Local providers are always included; cloud providers require env-var API keys.
 func BuildProviders() []ports.LLMClient {
@@ -89,10 +92,19 @@ func BuildProviderFromConfig(cfg domain.ProviderConfig) (ports.LLMClient, error)
 		}
 		return llm_ollama.NewOllamaAdapter(cfg.BaseURL, cfg.Model), nil
 	case domain.ProviderKindOpenAICompat:
+		if strings.TrimSpace(cfg.BaseURL) == "" {
+			cfg.BaseURL = defaultOpenAIBaseURL // an unset endpoint means OpenAI itself
+		}
 		return llm_openaicompat.NewAdapter(cfg.Name, cfg.BaseURL, cfg.APIKey, cfg.Model), nil
 	case domain.ProviderKindAnthropic:
+		if strings.TrimSpace(cfg.APIKey) == "" {
+			return nil, fmt.Errorf("provider %q (anthropic): apiKey is required", cfg.Name)
+		}
 		return llm_anthropic.NewAdapter(cfg.APIKey, cfg.Model), nil
 	case domain.ProviderKindGemini:
+		if strings.TrimSpace(cfg.APIKey) == "" {
+			return nil, fmt.Errorf("provider %q (gemini): apiKey is required", cfg.Name)
+		}
 		return llm_gemini.NewAdapter(cfg.APIKey, cfg.Model, cfg.BaseURL), nil
 	case domain.ProviderKindDesktopApp, domain.ProviderKindLocalAI, domain.ProviderKindVLLM, domain.ProviderKindTextGenUI:
 		baseURL := cfg.BaseURL

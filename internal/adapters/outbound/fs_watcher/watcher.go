@@ -184,7 +184,7 @@ func (w *Watcher) Unwatch(projectPath string) error {
 
 	delete(w.projects, absPath)
 	for dir, proj := range w.dirs {
-		if proj == absPath || strings.HasPrefix(dir, absPath) {
+		if proj == absPath || isWithin(absPath, dir) {
 			_ = w.watcher.Remove(dir)
 			delete(w.dirs, dir)
 		}
@@ -286,12 +286,20 @@ func (w *Watcher) findProjectForPath(path string) string {
 	if proj, ok := w.dirs[dir]; ok {
 		return proj
 	}
+	// Longest match wins so nested projects resolve to the innermost one.
+	best := ""
 	for p := range w.projects {
-		if strings.HasPrefix(path, p) {
-			return p
+		if isWithin(p, path) && len(p) > len(best) {
+			best = p
 		}
 	}
-	return ""
+	return best
+}
+
+// isWithin reports whether path equals root or lies beneath it. A plain
+// strings.HasPrefix would also match siblings such as /work/app2 for /work/app.
+func isWithin(root, path string) bool {
+	return path == root || strings.HasPrefix(path, root+string(filepath.Separator))
 }
 
 func (w *Watcher) triggerChange(projectPath, filePath string) {

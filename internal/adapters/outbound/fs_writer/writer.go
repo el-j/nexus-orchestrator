@@ -30,10 +30,51 @@ func safePath(projectPath, rel string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("fs_writer: abs result path: %w", err)
 	}
-	if absResult != absProject && !strings.HasPrefix(absResult, absProject+string(filepath.Separator)) {
+	if !within(absProject, absResult) {
 		return "", fmt.Errorf("fs_writer: path traversal blocked: %q escapes project root", rel)
 	}
+	// The lexical check cannot see symlinks: "link/x" with link -> /etc would pass
+	// it but write outside the project. Resolve the deepest existing ancestor of
+	// the target and require the real location to stay inside the real root.
+	realProject, err := filepath.EvalSymlinks(absProject)
+	if err != nil {
+		return "", fmt.Errorf("fs_writer: resolve project path: %w", err)
+	}
+	realExisting, err := evalDeepestExisting(absResult)
+	if err != nil {
+		return "", fmt.Errorf("fs_writer: resolve %q: %w", rel, err)
+	}
+	if !within(realProject, realExisting) {
+		return "", fmt.Errorf("fs_writer: path traversal blocked: %q resolves outside the project root via a symlink", rel)
+	}
 	return absResult, nil
+}
+
+// within reports whether path equals root or lies beneath it.
+func within(root, path string) bool {
+	return path == root || strings.HasPrefix(path, root+string(filepath.Separator))
+}
+
+// evalDeepestExisting resolves symlinks in the longest existing prefix of path
+// and re-appends the not-yet-existing remainder.
+func evalDeepestExisting(path string) (string, error) {
+	existing, rest := path, ""
+	for {
+		if _, err := os.Lstat(existing); err == nil {
+			break
+		}
+		parent := filepath.Dir(existing)
+		if parent == existing {
+			return path, nil // nothing exists (cannot happen for an absolute path on a real FS)
+		}
+		rest = filepath.Join(filepath.Base(existing), rest)
+		existing = parent
+	}
+	resolved, err := filepath.EvalSymlinks(existing)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(resolved, rest), nil
 }
 
 // WriteCodeToFile writes the generated code to <projectPath>/<targetFile>,
