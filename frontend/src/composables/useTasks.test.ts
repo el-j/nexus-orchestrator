@@ -108,8 +108,14 @@ describe('useTasks', () => {
     expect(sseCalls.length).toBeGreaterThan(0);
     const sseHandler = sseCalls[0][1] as (d: Record<string, unknown>) => void;
 
-    // Fire a non-'connected' SSE event to trigger refresh
-    sseHandler({ type: 'task_updated', id: 'T-updated' });
+    // Log lines and activity events share the stream but must not refetch the queue
+    sseHandler({ type: 'log', message: 'noise' });
+    sseHandler({ type: 'ai_activity_new' });
+    await flushPromises();
+    expect(mockGetQueue).toHaveBeenCalledTimes(1);
+
+    // A task lifecycle event does
+    sseHandler({ type: 'task.updated', taskId: 'T-updated' });
     await flushPromises();
 
     expect(mockGetQueue).toHaveBeenCalledTimes(2);
