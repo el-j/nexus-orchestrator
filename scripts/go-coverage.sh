@@ -13,7 +13,7 @@ set -euo pipefail
 profile="$(mktemp)"
 trap 'rm -f "$profile"' EXIT
 
-CGO_ENABLED=1 CGO_CFLAGS="${CGO_CFLAGS:--DSQLITE_ENABLE_FTS5}" \
+CGO_ENABLED=1 CGO_CFLAGS="${CGO_CFLAGS:--DSQLITE_ENABLE_FTS5}" CGO_LDFLAGS="${CGO_LDFLAGS:--lm}" \
   go test -count=1 -coverpkg=./... -coverprofile="$profile" ./... >/dev/null
 
 python3 - "$profile" "${MIN_COVERAGE:-0}" <<'PY'
