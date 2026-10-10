@@ -144,9 +144,10 @@ const emit = defineEmits<{
 
 const router = useRouter();
 
-const { activities, loading } = useActivities({
-  agentFilter: computed(() => props.agentName).value,
-  limit: 10,
+// `filtered` applies the agent filter; the raw `activities` list holds every
+// agent's events, so using it would show another agent's work in this drawer.
+const { filtered: activities, loading } = useActivities({
+  agentFilter: props.agentName,
 });
 
 const totalTokens = computed(() =>

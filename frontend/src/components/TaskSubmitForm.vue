@@ -2,7 +2,9 @@
   <div class="border-t border-white/5 bg-[#0a0a10] p-4">
     <form @submit.prevent="handleSubmit" class="flex flex-col gap-3">
       <div class="flex items-center justify-between">
-        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Submit Task</span>
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider"
+          >Submit Task</span
+        >
         <button
           type="button"
           @click="expanded = !expanded"
@@ -101,7 +103,9 @@
                 @click="removeTag(i)"
                 class="ml-0.5 text-indigo-400 hover:text-indigo-100 leading-none"
                 :aria-label="`Remove tag ${tag}`"
-              >×</button>
+              >
+                ×
+              </button>
             </span>
           </div>
         </div>
@@ -172,27 +176,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
-import Button from 'primevue/button'
-import InputText from 'primevue/inputtext'
-import Textarea from 'primevue/textarea'
-import Select from 'primevue/select'
-import { useToast } from 'primevue/usetoast'
-import { submitTask, createDraft } from '../types/wails'
-import type { Task } from '../types/domain'
-import { useProviders } from '../composables/useProviders'
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
+import Button from 'primevue/button';
+import InputText from 'primevue/inputtext';
+import Textarea from 'primevue/textarea';
+import Select from 'primevue/select';
+import { useToast } from 'primevue/usetoast';
+import { submitTask, createDraft } from '../types/wails';
+import type { Task } from '../types/domain';
+import { useProviders } from '../composables/useProviders';
 
-const emit = defineEmits<{ submitted: [id: string] }>()
+const emit = defineEmits<{ submitted: [id: string] }>();
 
-const toast = useToast()
-const expanded = ref(true)
-const submitting = ref(false)
-const submitted = ref(false)
-const splitOpen = ref(false)
-const splitRef = ref<HTMLElement | null>(null)
-const tagInput = ref('')
+const toast = useToast();
+const expanded = ref(true);
+const submitting = ref(false);
+const submitted = ref(false);
+const splitOpen = ref(false);
+const splitRef = ref<HTMLElement | null>(null);
+const tagInput = ref('');
 
-const { providers } = useProviders()
+const { providers } = useProviders();
 
 // --- Options ---
 
@@ -200,38 +204,38 @@ const commandOptions = [
   { label: 'Auto', value: 'auto' },
   { label: 'Plan', value: 'plan' },
   { label: 'Execute', value: 'execute' },
-]
+];
 
 const priorityOptions = [
   { label: '🔴 High', value: 1 },
   { label: '🟡 Medium', value: 2 },
   { label: '🟢 Low', value: 3 },
-]
+];
 
 const providerOptions = computed(() => [
   { label: 'Auto (best available)', value: '' },
-  ...providers.value.map(p => ({ label: p.name, value: p.name })),
-])
+  ...providers.value.map((p) => ({ label: p.name, value: p.name })),
+]);
 
 const modelOptions = computed(() => {
-  const selected = providers.value.find(p => p.name === form.ProviderName)
+  const selected = providers.value.find((p) => p.name === form.ProviderName);
   return [
     { label: 'Default model', value: '' },
-    ...(selected?.models ?? []).map(m => ({ label: m, value: m })),
-  ]
-})
+    ...(selected?.models ?? []).map((m) => ({ label: m, value: m })),
+  ];
+});
 
 // --- Form state ---
 
 interface FormState {
-  ProjectPath: string
-  TargetFile: string
-  Instruction: string
-  Command: 'auto' | 'plan' | 'execute'
-  ProviderName: string
-  ModelID: string
-  Priority: number
-  Tags: string[]
+  ProjectPath: string;
+  TargetFile: string;
+  Instruction: string;
+  Command: 'auto' | 'plan' | 'execute';
+  ProviderName: string;
+  ModelID: string;
+  Priority: number;
+  Tags: string[];
 }
 
 function defaultForm(): FormState {
@@ -244,37 +248,37 @@ function defaultForm(): FormState {
     ModelID: '',
     Priority: 2,
     Tags: [],
-  }
+  };
 }
 
-const form = reactive<FormState>(defaultForm())
+const form = reactive<FormState>(defaultForm());
 
 function resetForm() {
-  submitted.value = false
-  tagInput.value = ''
-  splitOpen.value = false
-  Object.assign(form, defaultForm())
+  submitted.value = false;
+  tagInput.value = '';
+  splitOpen.value = false;
+  Object.assign(form, defaultForm());
 }
 
 // --- Tag helpers ---
 
 function addTag() {
-  const tag = tagInput.value.replace(/,/g, '').trim()
+  const tag = tagInput.value.replace(/,/g, '').trim();
   if (tag && !form.Tags.includes(tag)) {
-    form.Tags.push(tag)
+    form.Tags.push(tag);
   }
-  tagInput.value = ''
+  tagInput.value = '';
 }
 
 function onTagKeydown(e: KeyboardEvent) {
   if (e.key === ',') {
-    e.preventDefault()
-    addTag()
+    e.preventDefault();
+    addTag();
   }
 }
 
 function removeTag(index: number) {
-  form.Tags.splice(index, 1)
+  form.Tags.splice(index, 1);
 }
 
 // --- Payload builder ---
@@ -290,18 +294,18 @@ function buildTaskPayload(): Partial<Task> {
     priority: form.Priority,
     tags: form.Tags.length > 0 ? [...form.Tags] : [],
     contextFiles: [],
-  }
+  };
 }
 
 // --- Submit handlers ---
 
 async function handleSubmit() {
-  submitted.value = true
-  if (!form.Instruction?.trim()) return
+  submitted.value = true;
+  if (!form.Instruction?.trim()) return;
 
-  submitting.value = true
+  submitting.value = true;
   try {
-    const p = buildTaskPayload()
+    const p = buildTaskPayload();
     const id = await submitTask({
       projectPath: p.projectPath ?? '',
       targetFile: p.targetFile ?? '',
@@ -310,59 +314,61 @@ async function handleSubmit() {
       providerHint: p.providerHint ?? '',
       modelId: p.modelId ?? '',
       contextFiles: [],
-    })
-    toast.add({ severity: 'success', summary: 'Task submitted', detail: `ID: ${id}`, life: 3000 })
-    emit('submitted', id)
-    resetForm()
+      priority: p.priority,
+      tags: p.tags,
+    });
+    toast.add({ severity: 'success', summary: 'Task submitted', detail: `ID: ${id}`, life: 3000 });
+    emit('submitted', id);
+    resetForm();
   } catch (e) {
     toast.add({
       severity: 'error',
       summary: 'Submit failed',
       detail: e instanceof Error ? e.message : String(e),
       life: 5000,
-    })
+    });
   } finally {
-    submitting.value = false
+    submitting.value = false;
   }
 }
 
 async function handleSaveDraft() {
-  splitOpen.value = false
-  submitted.value = true
-  if (!form.Instruction?.trim()) return
+  splitOpen.value = false;
+  submitted.value = true;
+  if (!form.Instruction?.trim()) return;
 
   try {
-    const id = await createDraft({ ...buildTaskPayload(), status: 'DRAFT' })
-    toast.add({ severity: 'info', summary: 'Draft saved', detail: `ID: ${id}`, life: 3000 })
-    emit('submitted', id)
-    resetForm()
+    const id = await createDraft({ ...buildTaskPayload(), status: 'DRAFT' });
+    toast.add({ severity: 'info', summary: 'Draft saved', detail: `ID: ${id}`, life: 3000 });
+    emit('submitted', id);
+    resetForm();
   } catch (e) {
     toast.add({
       severity: 'error',
       summary: 'Save failed',
       detail: e instanceof Error ? e.message : String(e),
       life: 5000,
-    })
+    });
   }
 }
 
 async function handleSaveBacklog() {
-  splitOpen.value = false
-  submitted.value = true
-  if (!form.Instruction?.trim()) return
+  splitOpen.value = false;
+  submitted.value = true;
+  if (!form.Instruction?.trim()) return;
 
   try {
-    const id = await createDraft({ ...buildTaskPayload(), status: 'BACKLOG' })
-    toast.add({ severity: 'info', summary: 'Added to backlog', detail: `ID: ${id}`, life: 3000 })
-    emit('submitted', id)
-    resetForm()
+    const id = await createDraft({ ...buildTaskPayload(), status: 'BACKLOG' });
+    toast.add({ severity: 'info', summary: 'Added to backlog', detail: `ID: ${id}`, life: 3000 });
+    emit('submitted', id);
+    resetForm();
   } catch (e) {
     toast.add({
       severity: 'error',
       summary: 'Save failed',
       detail: e instanceof Error ? e.message : String(e),
       life: 5000,
-    })
+    });
   }
 }
 
@@ -370,18 +376,20 @@ async function handleSaveBacklog() {
 
 function onDocumentClick(e: MouseEvent) {
   if (splitRef.value && !splitRef.value.contains(e.target as Node)) {
-    splitOpen.value = false
+    splitOpen.value = false;
   }
 }
 
-onMounted(() => document.addEventListener('click', onDocumentClick))
-onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
+onMounted(() => document.addEventListener('click', onDocumentClick));
+onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick));
 </script>
 
 <style scoped>
 .split-menu-enter-active,
 .split-menu-leave-active {
-  transition: opacity 0.1s ease, transform 0.1s ease;
+  transition:
+    opacity 0.1s ease,
+    transform 0.1s ease;
 }
 .split-menu-enter-from,
 .split-menu-leave-to {

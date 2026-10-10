@@ -39,6 +39,8 @@ export interface TaskInput {
   modelId?: string;
   providerHint?: string;
   command?: CommandType;
+  priority?: number;
+  tags?: string[];
 }
 
 export interface ProviderInfo {
