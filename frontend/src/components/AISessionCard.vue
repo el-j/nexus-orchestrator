@@ -126,7 +126,9 @@ defineEmits<{ (e: 'delegate', session: AISession): void }>();
 const open = ref(false);
 const loadingTasks = ref(false);
 const sessionTasks = ref<Task[]>([]);
-let es: EventSource | null = null;
+let refreshTimer: ReturnType<typeof setInterval> | null = null;
+let disposed = false;
+const TIMELINE_REFRESH_MS = 5000;
 
 const cardBorderColour = computed((): string => {
   if (props.session.status === 'active' && props.session.delegatedToNexus) return '#4ade80';
@@ -165,48 +167,33 @@ function statusChipClass(status: TaskStatus | undefined): string {
   }
 }
 
-async function openTimeline() {
-  loadingTasks.value = true;
+/** Loads the tasks claimed by THIS session (not every task of its project). */
+async function loadSessionTasks(): Promise<void> {
   try {
     const base = await resolveServerUrl();
-    const r = await fetch(`${base}/api/tasks/all`);
-    if (r.ok) {
-      const all = (await r.json()) as Task[];
-      sessionTasks.value = (all ?? []).filter((t) => t.projectPath === props.session.projectPath);
-    }
+    const r = await fetch(`${base}/api/ai-sessions/${encodeURIComponent(props.session.id)}/tasks`);
+    if (r.ok) sessionTasks.value = ((await r.json()) as Task[] | null) ?? [];
   } catch {
-    /* non-critical */
-  } finally {
-    loadingTasks.value = false;
-  }
-
-  if (typeof EventSource !== 'undefined') {
-    try {
-      const base = await resolveServerUrl();
-      es = new EventSource(`${base}/api/ai-sessions/${props.session.id}/tasks`);
-      es.onmessage = (event) => {
-        try {
-          const task = JSON.parse(event.data) as Task;
-          const idx = sessionTasks.value.findIndex((t) => t.id === task.id);
-          if (idx >= 0) sessionTasks.value[idx] = task;
-          else sessionTasks.value.unshift(task);
-        } catch {
-          /* ignore malformed events */
-        }
-      };
-      es.onerror = () => {
-        es?.close();
-        es = null;
-      };
-    } catch {
-      /* EventSource not supported for this endpoint */
-    }
+    /* non-critical: keep showing what we have */
   }
 }
 
+async function openTimeline() {
+  loadingTasks.value = true;
+  await loadSessionTasks();
+  loadingTasks.value = false;
+  // The panel may have been closed (or the card unmounted) while the request was
+  // in flight; starting the poll now would leak a timer nobody clears.
+  if (!open.value || disposed) return;
+  // /api/ai-sessions/{id}/tasks is a plain JSON endpoint (not an event stream),
+  // so keep the list fresh by re-reading it while the panel is open.
+  closeTimeline();
+  refreshTimer = setInterval(() => void loadSessionTasks(), TIMELINE_REFRESH_MS);
+}
+
 function closeTimeline() {
-  es?.close();
-  es = null;
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = null;
 }
 
 function handleToggle(e: Event) {
@@ -219,7 +206,7 @@ function handleToggle(e: Event) {
 }
 
 onUnmounted(() => {
-  es?.close();
-  es = null;
+  disposed = true;
+  closeTimeline();
 });
 </script>

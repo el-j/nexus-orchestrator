@@ -57,7 +57,7 @@ export interface ProviderInfo {
 export interface ProviderConfig {
   id: string;
   name: string;
-  kind: 'lmstudio' | 'ollama' | 'openai' | 'anthropic' | 'openaicompat';
+  kind: 'lmstudio' | 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'openaicompat';
   baseUrl: string;
   apiKey: string;
   model: string;
