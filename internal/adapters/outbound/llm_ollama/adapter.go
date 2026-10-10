@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,12 +21,24 @@ const DefaultBaseURL = "http://127.0.0.1:11434"
 
 // Adapter implements ports.LLMClient for Ollama's REST API.
 type Adapter struct {
-	baseURL      string
-	model        string
-	httpClient   *http.Client
-	contextLimit int       // cached value; 0 = unknown
-	limitOnce    sync.Once // ensures the network query runs at most once
+	baseURL    string
+	model      string
+	httpClient *http.Client
+
+	infoMu       sync.Mutex
+	contextLimit int       // last successfully read value; 0 = unknown
+	infoAt       time.Time // when contextLimit was last read successfully
+	infoTried    time.Time // when the last attempt (successful or not) started
 }
+
+// Package-level so tests can shorten them; production code never reassigns them.
+var (
+	// infoTTL is how long a successfully read context limit is trusted. Models can
+	// be swapped or re-created with another num_ctx, so it must not live forever.
+	infoTTL = 5 * time.Minute
+	// infoRetry throttles re-queries while Ollama is unreachable or the model unknown.
+	infoRetry = 10 * time.Second
+)
 
 // NewOllamaAdapter creates an Adapter pointing at the given Ollama base URL
 // (e.g. "http://127.0.0.1:11434") with the specified default model.
@@ -137,34 +151,84 @@ func (a *Adapter) GenerateCode(prompt string) (string, error) {
 }
 
 // ContextLimit queries Ollama's /api/show endpoint for the model's context
-// window size. Returns 0 on any error (safe fallback — caller skips pre-flight).
+// window size. Returns 0 when it cannot be determined (safe fallback — the
+// caller skips its pre-flight check). A successful value is cached for infoTTL;
+// failures are retried at most every infoRetry, so a transient outage at the
+// first call does not disable the check for the life of the process.
 func (a *Adapter) ContextLimit() int {
-	a.limitOnce.Do(func() {
-		body, err := json.Marshal(map[string]string{"name": a.model})
-		if err != nil {
-			return
-		}
-		resp, err := a.httpClient.Post(a.baseURL+"/api/show", "application/json", bytes.NewReader(body))
-		if err != nil {
-			return
-		}
-		defer resp.Body.Close()
-		var result struct {
-			ModelInfo map[string]interface{} `json:"model_info"`
-		}
-		if json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result) != nil {
-			return
-		}
-		if v, ok := result.ModelInfo["llama.context_length"]; ok {
-			switch n := v.(type) {
-			case float64:
-				a.contextLimit = int(n)
-			case int:
-				a.contextLimit = n
-			}
-		}
-	})
+	a.infoMu.Lock()
+	defer a.infoMu.Unlock()
+	now := time.Now()
+	if a.contextLimit > 0 && now.Sub(a.infoAt) < infoTTL {
+		return a.contextLimit
+	}
+	if now.Sub(a.infoTried) < infoRetry {
+		return a.contextLimit
+	}
+	a.infoTried = now
+	if n := a.fetchContextLimit(); n > 0 {
+		a.contextLimit = n
+		a.infoAt = now
+	}
 	return a.contextLimit
+}
+
+// fetchContextLimit reads the context length from /api/show. Ollama names the
+// key after the model architecture ("llama.context_length",
+// "qwen2.context_length", "gemma3.context_length", ...), so the architecture
+// from "general.architecture" is tried first, then any "*.context_length" key.
+func (a *Adapter) fetchContextLimit() int {
+	body, err := json.Marshal(map[string]string{"name": a.model})
+	if err != nil {
+		return 0
+	}
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Post(a.baseURL+"/api/show", "application/json", bytes.NewReader(body))
+	if err != nil {
+		return 0
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return 0
+	}
+	var result struct {
+		ModelInfo map[string]any `json:"model_info"`
+	}
+	if json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result) != nil {
+		return 0
+	}
+	return contextLengthFromModelInfo(result.ModelInfo)
+}
+
+// contextLengthFromModelInfo extracts the context length from /api/show's model_info.
+func contextLengthFromModelInfo(info map[string]any) int {
+	asInt := func(v any) int {
+		switch n := v.(type) {
+		case float64:
+			return int(n)
+		case int:
+			return n
+		}
+		return 0
+	}
+	if arch, ok := info["general.architecture"].(string); ok && arch != "" {
+		if n := asInt(info[arch+".context_length"]); n > 0 {
+			return n
+		}
+	}
+	keys := make([]string, 0, len(info))
+	for k := range info {
+		if strings.HasSuffix(k, ".context_length") {
+			keys = append(keys, k)
+		}
+	}
+	sort.Strings(keys) // deterministic when several architectures are reported
+	for _, k := range keys {
+		if n := asInt(info[k]); n > 0 {
+			return n
+		}
+	}
+	return 0
 }
 
 // messagesToMaps converts a slice of domain.Message to the map representation

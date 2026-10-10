@@ -14,6 +14,19 @@ import (
 
 var errContextTooLarge = errors.New("context too large")
 
+// errEmptyResponse is returned when a provider answers successfully but with no
+// usable text. Treating it as a failed attempt lets the fallback chain and retry
+// logic engage instead of "completing" a task with an empty file.
+var errEmptyResponse = errors.New("provider returned an empty response")
+
+// nonEmpty turns a blank successful reply into errEmptyResponse.
+func nonEmpty(code string, err error) (string, error) {
+	if err == nil && strings.TrimSpace(code) == "" {
+		return "", errEmptyResponse
+	}
+	return code, err
+}
+
 // statusEventType maps a TaskStatus to its corresponding EventType.
 var statusEventMap = map[domain.TaskStatus]ports.EventType{
 	domain.StatusQueued:     ports.EventTaskQueued,
@@ -292,9 +305,9 @@ func (o *OrchestratorService) tryGenerate(llm ports.LLMClient, prompt string, se
 	if o.sessionRepo != nil {
 		userMsg := domain.Message{Role: domain.RoleUser, Content: prompt, CreatedAt: time.Now()}
 		history := append(append([]domain.Message(nil), sessionHistory...), userMsg)
-		return llm.Chat(history)
+		return nonEmpty(llm.Chat(history))
 	}
-	return llm.GenerateCode(prompt)
+	return nonEmpty(llm.GenerateCode(prompt))
 }
 
 // appendTaskLog appends a new log line to existing task logs without overwriting history.
@@ -394,7 +407,7 @@ func (o *OrchestratorService) executeGeneration(task domain.Task, llm ports.LLMC
 		// Build the chat history using the already-loaded session (no second DB call).
 		userMsg := domain.Message{Role: domain.RoleUser, Content: prompt, CreatedAt: time.Now()}
 		history := append(append([]domain.Message(nil), sessionHistory...), userMsg)
-		code, err := llm.Chat(history)
+		code, err := nonEmpty(llm.Chat(history))
 		if err != nil {
 			logEntry := fmt.Sprintf("failed via %s: %v", llm.ProviderName(), err)
 			log.Printf("orchestrator: chat for task %s: %v", task.ID, err)
@@ -421,7 +434,7 @@ func (o *OrchestratorService) executeGeneration(task domain.Task, llm ports.LLMC
 		return code, nil
 	}
 
-	code, err := llm.GenerateCode(prompt)
+	code, err := nonEmpty(llm.GenerateCode(prompt))
 	if err != nil {
 		logEntry := fmt.Sprintf("failed via %s: %v", llm.ProviderName(), err)
 		log.Printf("orchestrator: generate code for task %s: %v", task.ID, err)

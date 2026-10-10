@@ -276,3 +276,50 @@ func TestGetFileMap_FocusFilter(t *testing.T) {
 		t.Errorf("no focus: %v", got)
 	}
 }
+
+// A provider that answers "successfully" with nothing must be treated as a failed
+// attempt: otherwise the task would "complete" and an empty file would be written.
+func TestEmptyProviderResponseIsAFailedAttempt(t *testing.T) {
+	t.Run("failover to the next provider", func(t *testing.T) {
+		empty := &scriptLLM{name: "anthropic-blank", alive: true, replies: []string{"   \n"}}
+		good := &scriptLLM{name: "ollama-good", alive: true, replies: []string{"real code"}}
+		w := &contextWriter{}
+		e := newEngine(t, w, nil, nil, empty, good)
+		id := e.queue(domain.Task{Instruction: "blank-then-good", TargetFile: "f.go", Role: "architect"})
+		got := e.runOne(id, domain.StatusCompleted)
+		if len(w.writes) != 1 || w.writes[0] != "f.go:real code" {
+			t.Errorf("only the real answer may be written, got %v", w.writes)
+		}
+		if !strings.Contains(got.Logs, "empty response") {
+			t.Errorf("the empty answer should be logged: %q", got.Logs)
+		}
+	})
+
+	t.Run("single provider: retried then failed, nothing written", func(t *testing.T) {
+		blank := &scriptLLM{name: "only", alive: true, replies: []string{""}}
+		w := &contextWriter{}
+		e := newEngine(t, w, nil, nil, blank)
+		id := e.queue(domain.Task{Instruction: "blank-only", TargetFile: "f.go"})
+		e.runOne(id, domain.StatusQueued) // retry 1
+		e.runOne(id, domain.StatusQueued) // retry 2
+		got := e.runOne(id, domain.StatusFailed)
+		if len(w.writes) != 0 {
+			t.Errorf("an empty answer must never reach disk: %v", w.writes)
+		}
+		if !strings.Contains(got.Logs, "empty response") {
+			t.Errorf("logs = %q", got.Logs)
+		}
+	})
+
+	t.Run("self-healing: an empty correction does not overwrite the file", func(t *testing.T) {
+		llm := &scriptLLM{name: "p", alive: true, replies: []string{"v1", ""}}
+		w := &contextWriter{}
+		runner := &scriptedRunner{results: []runResult{{"fail", errors.New("exit 1")}}}
+		e := newEngine(t, w, nil, runner, llm)
+		id := e.queue(domain.Task{Instruction: "heal-blank", TargetFile: "f.go", VerificationCommand: "t", RetryCount: 2})
+		e.runOne(id, domain.StatusFailed)
+		if len(w.writes) != 1 || w.writes[0] != "f.go:v1" {
+			t.Errorf("the empty correction must not be written: %v", w.writes)
+		}
+	})
+}

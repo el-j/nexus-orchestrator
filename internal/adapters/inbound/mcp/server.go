@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -237,14 +238,24 @@ func (s *Server) effectiveAuthToken(ctx context.Context) string {
 	return strings.TrimSpace(cfg.MCPToken)
 }
 
+// shutdownGrace is how long in-flight requests get to finish on shutdown before
+// the remaining connections are closed.
+const shutdownGrace = 2 * time.Second
+
 // StartMCPServer runs an HTTP server serving the MCP JSON-RPC 2.0 endpoint.
 // It blocks until ctx is cancelled, then shuts down gracefully.
 func StartMCPServer(ctx context.Context, orch ports.Orchestrator, brain ports.BrainService, addr string) error {
 	handler := NewMcpServer(orch, brain)
 	handler.guard = httpguard.New(addr)
+	// Long-lived SSE requests only end when their context is cancelled, which
+	// http.Server.Shutdown does not do. Deriving every request context from
+	// baseCtx lets shutdown end them promptly.
+	baseCtx, cancelBase := context.WithCancel(context.Background())
+	defer cancelBase()
 	srv := &http.Server{
-		Addr:    addr,
-		Handler: handler,
+		Addr:        addr,
+		Handler:     handler,
+		BaseContext: func(net.Listener) context.Context { return baseCtx },
 		// ReadTimeout is deliberately 0 so that long-lived SSE connections are not
 		// killed after an idle period. Individual RPC handlers impose their own
 		// context deadlines where needed.
@@ -262,10 +273,14 @@ func StartMCPServer(ctx context.Context, orch ports.Orchestrator, brain ports.Br
 
 	select {
 	case <-ctx.Done():
-		shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		cancelBase() // end SSE streams so Shutdown does not wait for them
+		shutCtx, cancel := context.WithTimeout(context.Background(), shutdownGrace)
 		defer cancel()
 		if err := srv.Shutdown(shutCtx); err != nil {
-			return fmt.Errorf("mcp: shutdown: %w", err)
+			// Grace period over (for example a speculative client connection that
+			// never sent a request still counts as active): drop what is left.
+			log.Printf("mcp: shutdown grace period elapsed, closing remaining connections: %v", err)
+			_ = srv.Close()
 		}
 		return nil
 	case err := <-errCh:

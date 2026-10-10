@@ -174,7 +174,7 @@ func (a *Adapter) chat(messages []map[string]string) (string, error) {
 		return "", fmt.Errorf("%s: rate limited (429)", a.name)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("%s: unexpected status %d", a.name, resp.StatusCode)
+		return "", fmt.Errorf("%s: unexpected status %d%s", a.name, resp.StatusCode, errorDetail(resp.Body))
 	}
 	var result struct {
 		Choices []struct {
@@ -190,6 +190,20 @@ func (a *Adapter) chat(messages []map[string]string) (string, error) {
 		return "", fmt.Errorf("%s: no choices in response", a.name)
 	}
 	return result.Choices[0].Message.Content, nil
+}
+
+// errorDetail extracts ": <message>" from an OpenAI-style error body
+// ({"error":{"message":"..."}}), or "" when the body carries none.
+func errorDetail(body io.Reader) string {
+	var e struct {
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.NewDecoder(io.LimitReader(body, 4096)).Decode(&e); err != nil || e.Error.Message == "" {
+		return ""
+	}
+	return ": " + e.Error.Message
 }
 
 func (a *Adapter) setAuthHeader(req *http.Request) {

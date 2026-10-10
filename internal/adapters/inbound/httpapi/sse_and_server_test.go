@@ -290,3 +290,33 @@ func TestStartServer_ReportsListenErrors(t *testing.T) {
 		t.Error("an address already in use must be reported (full)")
 	}
 }
+
+func TestStartServer_ShutsDownPromptlyWithAConnectedEventsClient(t *testing.T) {
+	t.Setenv("NEXUS_API_TOKEN", "")
+	addr := freeAddr(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	errCh := make(chan error, 1)
+	go func() { errCh <- httpapi.StartServer(ctx, newFailOrch(), nil, addr) }()
+	waitHTTP(t, "http://"+addr+"/api/health")
+
+	resp, err := http.Get("http://" + addr + "/api/events")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	readUntil(t, bufio.NewReader(resp.Body), `"type":"connected"`)
+
+	start := time.Now()
+	cancel()
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Errorf("returned %v", err)
+		}
+		if took := time.Since(start); took > 3*time.Second {
+			t.Errorf("shutdown took %v with an /api/events stream open", took)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("shutdown hung on the events client")
+	}
+}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -109,13 +110,14 @@ func (a *Adapter) GetAvailableModels() ([]string, error) {
 
 // GenerateCode sends a single prompt as a user message to Claude.
 func (a *Adapter) GenerateCode(prompt string) (string, error) {
-	return a.sendMessages([]anthropicMessage{{Role: "user", Content: prompt}})
+	return a.sendMessages("", []anthropicMessage{{Role: "user", Content: prompt}})
 }
 
 // Chat converts the multi-turn conversation history into Anthropic format.
 // Consecutive same-role messages are merged (Anthropic requires alternating turns).
 func (a *Adapter) Chat(messages []domain.Message) (string, error) {
-	return a.sendMessages(toAnthropicMessages(messages))
+	system, turns := toAnthropicMessages(messages)
+	return a.sendMessages(system, turns)
 }
 
 type anthropicMessage struct {
@@ -123,34 +125,52 @@ type anthropicMessage struct {
 	Content string `json:"content"`
 }
 
-// toAnthropicMessages converts domain messages, filtering non-user/assistant roles
-// and merging consecutive same-role messages.
-func toAnthropicMessages(msgs []domain.Message) []anthropicMessage {
-	out := make([]anthropicMessage, 0, len(msgs))
+// toAnthropicMessages converts domain messages to the Messages API shape:
+//
+//   - system messages are joined into the top-level "system" prompt (the API has
+//     no system role inside "messages"; dropping them would lose instructions),
+//   - empty messages are skipped (the API rejects empty text blocks),
+//   - consecutive same-role messages are merged (turns must alternate),
+//   - leading assistant turns are dropped (the first turn must be a user turn).
+func toAnthropicMessages(msgs []domain.Message) (system string, out []anthropicMessage) {
+	var systemParts []string
 	for _, m := range msgs {
-		if m.Role != domain.RoleUser && m.Role != domain.RoleAssistant {
+		if strings.TrimSpace(m.Content) == "" {
 			continue
 		}
-		if len(out) > 0 && out[len(out)-1].Role == string(m.Role) {
-			out[len(out)-1].Content += "\n" + m.Content
-		} else {
-			out = append(out, anthropicMessage{Role: string(m.Role), Content: m.Content})
+		switch m.Role {
+		case domain.RoleSystem:
+			systemParts = append(systemParts, m.Content)
+		case domain.RoleUser, domain.RoleAssistant:
+			if len(out) > 0 && out[len(out)-1].Role == string(m.Role) {
+				out[len(out)-1].Content += "\n" + m.Content
+			} else {
+				out = append(out, anthropicMessage{Role: string(m.Role), Content: m.Content})
+			}
 		}
 	}
-	return out
+	for len(out) > 0 && out[0].Role != "user" {
+		out = out[1:]
+	}
+	return strings.Join(systemParts, "\n\n"), out
 }
 
 // anthropicRequest is the request body for the Anthropic /v1/messages endpoint.
 type anthropicRequest struct {
 	Model     string             `json:"model"`
 	MaxTokens int                `json:"max_tokens"`
+	System    string             `json:"system,omitempty"`
 	Messages  []anthropicMessage `json:"messages"`
 }
 
-func (a *Adapter) sendMessages(messages []anthropicMessage) (string, error) {
+func (a *Adapter) sendMessages(system string, messages []anthropicMessage) (string, error) {
+	if len(messages) == 0 {
+		return "", fmt.Errorf("anthropic: no user message to send")
+	}
 	reqBody, err := json.Marshal(anthropicRequest{
 		Model:     a.model,
 		MaxTokens: defaultMaxTokens,
+		System:    system,
 		Messages:  messages,
 	})
 	if err != nil {
@@ -170,7 +190,7 @@ func (a *Adapter) sendMessages(messages []anthropicMessage) (string, error) {
 		return "", fmt.Errorf("anthropic: rate limited (429)")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("anthropic: unexpected status %d", resp.StatusCode)
+		return "", fmt.Errorf("anthropic: unexpected status %d%s", resp.StatusCode, errorDetail(resp.Body))
 	}
 	var result struct {
 		Content []struct {
@@ -187,6 +207,22 @@ func (a *Adapter) sendMessages(messages []anthropicMessage) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("anthropic: no text content in response")
+}
+
+// errorDetail extracts ": <message>" from an Anthropic error body
+// ({"type":"error","error":{"type":"...","message":"..."}}), or "" when the body
+// carries none. The message tells the user *why* (for example "prompt is too
+// long" or "invalid x-api-key"); it never contains the request's API key.
+func errorDetail(body io.Reader) string {
+	var e struct {
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.NewDecoder(io.LimitReader(body, 4096)).Decode(&e); err != nil || e.Error.Message == "" {
+		return ""
+	}
+	return ": " + e.Error.Message
 }
 
 func (a *Adapter) newRequest(method, url string, body io.Reader) (*http.Request, error) {

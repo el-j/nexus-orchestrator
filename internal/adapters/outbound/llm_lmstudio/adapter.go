@@ -20,13 +20,25 @@ const DefaultBaseURL = "http://127.0.0.1:1234/v1"
 
 // Adapter implements ports.LLMClient for LM Studio's OpenAI-compatible REST API.
 type Adapter struct {
-	baseURL      string
-	nativeBase   string // LM Studio-native base URL (without /v1 suffix)
-	httpClient   *http.Client
-	contextLimit int       // cached value; 0 = unknown
-	activeModel  string    // cached active model ID
-	infoOnce     sync.Once // ensures the /api/v0/model query runs at most once
+	baseURL    string
+	nativeBase string // LM Studio-native base URL (without /v1 suffix)
+	httpClient *http.Client
+
+	infoMu       sync.Mutex
+	contextLimit int       // last read value; 0 = unknown
+	activeModel  string    // last read active model ID
+	infoAt       time.Time // when the model info was last read successfully
+	infoTried    time.Time // when the last attempt (successful or not) started
 }
+
+// Package-level so tests can shorten them; production code never reassigns them.
+var (
+	// infoTTL bounds how long the loaded model's identity and context length are
+	// trusted: users swap models in LM Studio while the daemon keeps running.
+	infoTTL = 30 * time.Second
+	// infoRetry throttles re-queries while LM Studio is unreachable.
+	infoRetry = 10 * time.Second
+)
 
 // NewLMStudioAdapter creates an Adapter pointing at the given LM Studio base URL
 // (e.g. "http://127.0.0.1:1234/v1").
@@ -46,10 +58,29 @@ func (a *Adapter) ProviderName() string { return "LM Studio" }
 // BaseURL returns the configured endpoint URL for this adapter.
 func (a *Adapter) BaseURL() string { return a.baseURL }
 
-// fetchModelInfo queries /api/v0/model once and populates both activeModel and
-// contextLimit. Falls back to the OpenAI-compat /models list for the model ID
-// when the native endpoint is unavailable.
-func (a *Adapter) fetchModelInfo() {
+// modelInfo returns the loaded model's identifier and context length, reading
+// them from LM Studio at most once per infoTTL (and, while LM Studio cannot be
+// reached, retrying at most once per infoRetry). Both are zero values when
+// unknown; a failed refresh keeps the last known values.
+func (a *Adapter) modelInfo() (model string, contextLimit int) {
+	a.infoMu.Lock()
+	defer a.infoMu.Unlock()
+	now := time.Now()
+	fresh := a.activeModel != "" && now.Sub(a.infoAt) < infoTTL
+	if !fresh && now.Sub(a.infoTried) >= infoRetry {
+		a.infoTried = now
+		if m, limit, ok := a.fetchModelInfo(); ok {
+			a.activeModel, a.contextLimit, a.infoAt = m, limit, now
+		}
+	}
+	return a.activeModel, a.contextLimit
+}
+
+// fetchModelInfo queries the native /api/v0/model endpoint for the loaded model
+// and its context length. It falls back to the first ID of the OpenAI-compatible
+// /models list when the native endpoint is unavailable. ok is false when no
+// model identifier could be determined.
+func (a *Adapter) fetchModelInfo() (model string, contextLimit int, ok bool) {
 	resp, err := a.httpClient.Get(a.nativeBase + "/api/v0/model")
 	if err == nil {
 		defer resp.Body.Close()
@@ -57,23 +88,20 @@ func (a *Adapter) fetchModelInfo() {
 			Identifier    string `json:"identifier"`
 			ContextLength int    `json:"contextLength"`
 		}
-		if json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result) == nil {
-			if result.Identifier != "" {
-				a.activeModel = result.Identifier
-			}
+		if resp.StatusCode == http.StatusOK && json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result) == nil {
 			if result.ContextLength > 0 {
-				a.contextLimit = result.ContextLength
+				contextLimit = result.ContextLength
 			}
-			if a.activeModel != "" {
-				return
+			if result.Identifier != "" {
+				return result.Identifier, contextLimit, true
 			}
 		}
 	}
-	// Fallback: first model ID from OpenAI-compat /models list
 	models, err2 := a.GetAvailableModels()
 	if err2 == nil && len(models) > 0 {
-		a.activeModel = models[0]
+		return models[0], contextLimit, true
 	}
+	return "", 0, false
 }
 
 // ActiveModel returns the identifier of the model currently loaded in LM Studio.
@@ -81,8 +109,8 @@ func (a *Adapter) fetchModelInfo() {
 // the OpenAI-compat /models list if the native endpoint is not available.
 // Returns empty string when LM Studio is not reachable.
 func (a *Adapter) ActiveModel() string {
-	a.infoOnce.Do(a.fetchModelInfo)
-	return a.activeModel
+	m, _ := a.modelInfo()
+	return m
 }
 
 // activeModelOrDefault returns the currently active model ID, or "local-model" as
@@ -98,8 +126,8 @@ func (a *Adapter) activeModelOrDefault() string {
 // It queries the native LM Studio /api/v0/model endpoint which includes
 // contextLength; falls back to 0 when unavailable.
 func (a *Adapter) ContextLimit() int {
-	a.infoOnce.Do(a.fetchModelInfo)
-	return a.contextLimit
+	_, limit := a.modelInfo()
+	return limit
 }
 
 // Ping checks whether LM Studio is reachable by hitting the /models endpoint.

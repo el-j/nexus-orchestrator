@@ -238,3 +238,38 @@ func TestSSEMessageErrorsAreDeliveredOverTheStream(t *testing.T) {
 		t.Errorf("response event: %q", d)
 	}
 }
+
+// A connected SSE client must not hold shutdown hostage: the server used to wait
+// out the full grace period and then fail with "context deadline exceeded".
+func TestStartMCPServer_ShutsDownPromptlyWithAConnectedSSEClient(t *testing.T) {
+	t.Setenv("NEXUS_MCP_TOKEN", "")
+	addr := freeAddr(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	errCh := make(chan error, 1)
+	go func() { errCh <- mcp.StartMCPServer(ctx, newFailOrch(), newFailBrain(), addr) }()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if resp, err := http.Get("http://" + addr + "/health"); err == nil {
+			resp.Body.Close()
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	_, _, closeFn := sseClient(t, "http://"+addr)
+	defer closeFn()
+
+	start := time.Now()
+	cancel()
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Errorf("shutdown with an open SSE stream returned %v", err)
+		}
+		if took := time.Since(start); took > 3*time.Second {
+			t.Errorf("shutdown took %v; open streams must be ended promptly", took)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("shutdown hung on the SSE client")
+	}
+}
