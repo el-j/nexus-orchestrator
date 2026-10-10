@@ -137,6 +137,9 @@ jobs:
         shell: bash
         run: CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" CGO_LDFLAGS="-lm" go test -race -count=1 ./...
 
+      - name: Go coverage gate (merged, ratchet)
+        run: MIN_COVERAGE=95 ./scripts/go-coverage.sh
+
   frontend-test:
     needs: version
     if: needs.version.outputs.exists == 'false'
