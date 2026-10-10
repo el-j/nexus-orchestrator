@@ -19,7 +19,10 @@ export function useTasks() {
   const { on, off } = useGlobalSSE();
 
   function sseHandler(data: { type: string; [key: string]: unknown }) {
-    if (data.type !== 'connected') refresh();
+    // Only task lifecycle events ("task.queued", "task.completed", …) change the
+    // queue. The stream also carries every log line and activity event, and
+    // refetching the queue for each of those would hammer the daemon.
+    if (data.type.startsWith('task.')) void refresh();
   }
 
   const queuedTasks = computed(() =>
