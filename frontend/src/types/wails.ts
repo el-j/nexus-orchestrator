@@ -77,140 +77,127 @@ declare global {
 // Safe wrappers that fall back gracefully when not in Wails (browser dev mode)
 const isWails = (): boolean => !!window.go?.main?.App;
 
+/**
+ * Calls the daemon's REST API (browser dev mode) and returns the parsed JSON body.
+ * A non-2xx response throws an Error carrying the server's `{"error": "..."}`
+ * message (or `HTTP <status>`), so callers can never mistake a 429/422/500 for
+ * success. An empty body (204) yields undefined.
+ */
+async function request<T = void>(method: string, path: string, body?: unknown): Promise<T> {
+  const r = await fetch(path, {
+    method,
+    ...(body === undefined
+      ? {}
+      : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  });
+  if (!r.ok) {
+    let detail = `HTTP ${r.status}`;
+    try {
+      const data = (await r.json()) as { error?: unknown };
+      if (typeof data.error === 'string' && data.error) detail = data.error;
+    } catch {
+      /* body was not JSON: keep the status line */
+    }
+    throw new Error(detail);
+  }
+  const text = await r.text();
+  return (text ? JSON.parse(text) : undefined) as T;
+}
+
+const q = encodeURIComponent;
+
 export async function submitTask(task: TaskInput): Promise<string> {
   if (isWails()) return window.go!.main!.App!.SubmitTask(task);
-  // Dev fallback: mock response
-  const r = await fetch('/api/tasks', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(task),
-  });
-  const data = (await r.json()) as { id: string };
-  return data.id;
+  // The REST API answers {"task_id": "...", "status": "QUEUED"}.
+  return (await request<{ task_id: string }>('POST', '/api/tasks', task)).task_id;
 }
 
 export async function getTask(id: string): Promise<Task> {
   if (isWails()) return window.go!.main!.App!.GetTask(id);
-  const r = await fetch(`/api/tasks/${id}`);
-  return r.json() as Promise<Task>;
+  return request<Task>('GET', `/api/tasks/${q(id)}`);
 }
 
 export async function getQueue(): Promise<Task[]> {
   if (isWails()) return window.go!.main!.App!.GetQueue();
-  const r = await fetch('/api/tasks');
-  return r.json() as Promise<Task[]>;
+  return request<Task[]>('GET', '/api/tasks');
 }
 
 export async function getAllTasks(): Promise<Task[]> {
   if (isWails()) return (await window.go!.main!.App!.GetAllTasks()) ?? [];
-  const r = await fetch('/api/tasks/all');
-  return (await r.json()) as Task[];
+  return request<Task[]>('GET', '/api/tasks/all');
 }
 
 export async function getProviders(): Promise<ProviderInfo[]> {
   if (isWails()) return window.go!.main!.App!.GetProviders();
-  const r = await fetch('/api/providers');
-  return r.json() as Promise<ProviderInfo[]>;
+  return request<ProviderInfo[]>('GET', '/api/providers');
 }
 
 export async function cancelTask(id: string): Promise<void> {
   if (isWails()) return window.go!.main!.App!.CancelTask(id);
-  await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+  await request('DELETE', `/api/tasks/${q(id)}`);
 }
 
 export async function addProviderConfig(cfg: Partial<ProviderConfig>): Promise<ProviderConfig> {
   if (isWails()) return window.go!.main!.App!.AddProviderConfig(cfg);
-  const r = await fetch('/api/providers/config', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(cfg),
-  });
-  return r.json() as Promise<ProviderConfig>;
+  return request<ProviderConfig>('POST', '/api/providers/config', cfg);
 }
 
 export async function listProviderConfigs(): Promise<ProviderConfig[]> {
   if (isWails()) return window.go!.main!.App!.ListProviderConfigs();
-  const r = await fetch('/api/providers/config');
-  return r.json() as Promise<ProviderConfig[]>;
+  return request<ProviderConfig[]>('GET', '/api/providers/config');
 }
 
 export async function updateProviderConfig(cfg: ProviderConfig): Promise<ProviderConfig> {
   if (isWails()) return window.go!.main!.App!.UpdateProviderConfig(cfg);
-  const r = await fetch(`/api/providers/config/${cfg.id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(cfg),
-  });
-  return r.json() as Promise<ProviderConfig>;
+  return request<ProviderConfig>('PUT', `/api/providers/config/${q(cfg.id)}`, cfg);
 }
 
 export async function removeProviderConfig(id: string): Promise<void> {
   if (isWails()) return window.go!.main!.App!.RemoveProviderConfig(id);
-  await fetch(`/api/providers/config/${id}`, { method: 'DELETE' });
+  await request('DELETE', `/api/providers/config/${q(id)}`);
 }
 
 export async function getDiscoveredProviders(): Promise<DiscoveredProvider[]> {
   if (isWails()) return window.go!.main!.App!.GetDiscoveredProviders();
-  const r = await fetch('/api/providers/discovered');
-  return r.json() as Promise<DiscoveredProvider[]>;
+  return request<DiscoveredProvider[]>('GET', '/api/providers/discovered');
 }
 
 export async function triggerScan(): Promise<void> {
   if (isWails()) return window.go!.main!.App!.TriggerScan();
-  await fetch('/api/providers/discovered/scan', { method: 'POST' });
+  await request('POST', '/api/providers/discovered/scan');
 }
 
 export async function createDraft(task: Partial<Task>): Promise<string> {
   if (isWails()) return window.go!.main!.App!.CreateDraft(task);
-  const r = await fetch('/api/tasks/draft', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(task),
-  });
-  const data = (await r.json()) as { id: string };
-  return data.id;
+  return (await request<{ id: string }>('POST', '/api/tasks/draft', task)).id;
 }
 
 export async function getBacklog(projectPath: string): Promise<Task[]> {
   if (isWails()) return (await window.go!.main!.App!.GetBacklog(projectPath)) ?? [];
-  const query = projectPath ? `?project=${encodeURIComponent(projectPath)}` : '';
-  const r = await fetch(`/api/tasks/backlog${query}`);
-  return (await r.json()) as Task[];
+  const query = projectPath ? `?project=${q(projectPath)}` : '';
+  return (await request<Task[] | null>('GET', `/api/tasks/backlog${query}`)) ?? [];
 }
 
 export async function promoteTask(id: string): Promise<void> {
   if (isWails()) return window.go!.main!.App!.PromoteTask(id);
-  await fetch(`/api/tasks/${id}/promote`, { method: 'POST' });
+  await request('POST', `/api/tasks/${q(id)}/promote`);
 }
 
 export async function updateTask(id: string, updates: Partial<Task>): Promise<Task> {
   if (isWails()) return window.go!.main!.App!.UpdateTask(id, updates);
-  const r = await fetch(`/api/tasks/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(updates),
-  });
-  return r.json() as Promise<Task>;
+  return request<Task>('PUT', `/api/tasks/${q(id)}`, updates);
 }
 
 export async function listAISessions(): Promise<AISession[]> {
   if (isWails()) return window.go!.main!.App!.ListAISessions();
-  const r = await fetch('/api/ai-sessions');
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json() as Promise<AISession[]>;
+  return request<AISession[]>('GET', '/api/ai-sessions');
 }
 
 export async function registerAISession(
   session: Omit<AISession, 'id' | 'createdAt' | 'updatedAt'>,
 ): Promise<AISession> {
   if (isWails()) return window.go!.main!.App!.RegisterAISession(session as AISession);
-  const r = await fetch('/api/ai-sessions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(session),
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json() as Promise<AISession>;
+  return request<AISession>('POST', '/api/ai-sessions', session);
 }
 
 /** Returns the base HTTP URL of the embedded API server (e.g. http://127.0.0.1:63987). */
@@ -224,50 +211,33 @@ export async function getServerAddr(): Promise<string> {
     }
   }
   // Browser dev mode: respect VITE_SERVER_URL env or fall back to the default address.
-  return (
-    (import.meta as { env?: { VITE_SERVER_URL?: string } }).env?.VITE_SERVER_URL ??
-    'http://127.0.0.1:63987'
-  );
+  return import.meta.env.VITE_SERVER_URL ?? 'http://127.0.0.1:63987';
 }
 
+/** Keeps a session alive. Failures are expected while the daemon is down, so they only warn. */
 export async function heartbeatAISession(id: string): Promise<void> {
-  if (isWails()) {
-    try {
-      await window.go!.main!.App!.HeartbeatAISession(id);
-    } catch (e) {
-      console.warn('heartbeatAISession: failed:', e);
-    }
-    //  catch {
-    //       // heartbeat failures are expected during daemon downtime
-    //     }
-    return;
+  try {
+    if (isWails()) await window.go!.main!.App!.HeartbeatAISession(id);
+    else await request('POST', `/api/ai-sessions/${q(id)}/heartbeat`);
+  } catch (e) {
+    console.warn('heartbeatAISession: failed:', e);
   }
-  await fetch(`/api/ai-sessions/${id}/heartbeat`, { method: 'POST' });
 }
 
 export async function deregisterAISession(id: string): Promise<void> {
   if (isWails()) return window.go!.main!.App!.DeregisterAISession(id);
-  const r = await fetch(`/api/ai-sessions/${id}`, { method: 'DELETE' });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  await request('DELETE', `/api/ai-sessions/${q(id)}`);
 }
 
 export async function purgeDisconnectedSessions(): Promise<number> {
   if (isWails()) return window.go!.main!.App!.PurgeDisconnectedSessions();
-  const r = await fetch('/api/ai-sessions', { method: 'DELETE' });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  const data = (await r.json()) as { deleted: number };
-  return data.deleted ?? 0;
+  const data = await request<{ deleted?: number }>('DELETE', '/api/ai-sessions');
+  return data?.deleted ?? 0;
 }
 
 export async function claimTask(taskID: string, sessionID: string): Promise<Task> {
   if (isWails()) return window.go!.main!.App!.ClaimTask(taskID, sessionID);
-  const r = await fetch(`/api/tasks/${taskID}/claim`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionId: sessionID }),
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json() as Promise<Task>;
+  return request<Task>('POST', `/api/tasks/${q(taskID)}/claim`, { sessionId: sessionID });
 }
 
 export async function updateTaskStatus(
@@ -277,50 +247,35 @@ export async function updateTaskStatus(
   logs: string,
 ): Promise<Task> {
   if (isWails()) return window.go!.main!.App!.UpdateTaskStatus(taskID, sessionID, status, logs);
-  const r = await fetch(`/api/tasks/${taskID}/status`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionId: sessionID, status, logs }),
+  return request<Task>('PUT', `/api/tasks/${q(taskID)}/status`, {
+    sessionId: sessionID,
+    status,
+    logs,
   });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json() as Promise<Task>;
 }
 
 export async function getRuntimeConfig(): Promise<RuntimeConfig> {
   if (isWails()) return window.go!.main!.App!.GetRuntimeConfig();
-  const r = await fetch('/api/config');
-  if (!r.ok) throw new Error(`getConfig: ${r.status}`);
-  return r.json() as Promise<RuntimeConfig>;
+  return request<RuntimeConfig>('GET', '/api/config');
 }
 
 export async function updateRuntimeConfig(update: RuntimeConfigUpdate): Promise<RuntimeConfig> {
   if (isWails()) return window.go!.main!.App!.UpdateRuntimeConfig(update);
-  const r = await fetch('/api/config', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(update),
-  });
-  if (!r.ok) throw new Error(`updateConfig: ${r.status}`);
-  return r.json() as Promise<RuntimeConfig>;
+  return request<RuntimeConfig>('PUT', '/api/config', update);
 }
 
 export async function ingestKnowledge(projectPath: string, filePath: string): Promise<number> {
   if (isWails()) return window.go!.main!.App!.IngestKnowledge(projectPath, filePath);
-  const r = await fetch('/api/brain/ingest', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ projectPath, filePath }),
+  const data = await request<{ ingestedSections: number }>('POST', '/api/brain/ingest', {
+    projectPath,
+    filePath,
   });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  const data = (await r.json()) as { ingestedSections: number };
   return data.ingestedSections;
 }
 
 export async function getBrainStatus(projectPath: string): Promise<BrainStatus> {
   if (isWails()) return window.go!.main!.App!.GetBrainStatus(projectPath);
-  const r = await fetch(`/api/brain/status?projectPath=${encodeURIComponent(projectPath)}`);
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json() as Promise<BrainStatus>;
+  return request<BrainStatus>('GET', `/api/brain/status?projectPath=${q(projectPath)}`);
 }
 
 export async function getProjectContext(
@@ -328,13 +283,7 @@ export async function getProjectContext(
   maxTokens: number,
 ): Promise<ContextResponse> {
   if (isWails()) return window.go!.main!.App!.GetProjectContext(projectPath, maxTokens);
-  const r = await fetch('/api/brain/context', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ projectPath, maxTokens }),
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json() as Promise<ContextResponse>;
+  return request<ContextResponse>('POST', '/api/brain/context', { projectPath, maxTokens });
 }
 
 export async function getFocusedContext(
@@ -343,13 +292,11 @@ export async function getFocusedContext(
   maxTokens: number,
 ): Promise<ContextResponse> {
   if (isWails()) return window.go!.main!.App!.GetFocusedContext(projectPath, question, maxTokens);
-  const r = await fetch('/api/brain/focused-context', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ projectPath, question, maxTokens }),
+  return request<ContextResponse>('POST', '/api/brain/focused-context', {
+    projectPath,
+    question,
+    maxTokens,
   });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json() as Promise<ContextResponse>;
 }
 
 export async function searchKnowledge(
@@ -358,43 +305,36 @@ export async function searchKnowledge(
   limit: number,
 ): Promise<ContextSection[]> {
   if (isWails()) return window.go!.main!.App!.SearchKnowledge(projectPath, query, limit);
-  const r = await fetch(
-    `/api/brain/search?projectPath=${encodeURIComponent(projectPath)}&q=${encodeURIComponent(query)}&limit=${limit}`,
+  // The REST API wraps the hits: {"results": [...]}.
+  const data = await request<{ results?: ContextSection[] | null }>(
+    'GET',
+    `/api/brain/search?projectPath=${q(projectPath)}&q=${q(query)}&limit=${limit}`,
   );
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json() as Promise<ContextSection[]>;
+  return data.results ?? [];
 }
 
 export async function initProject(projectPath: string, claudeMDPath = ''): Promise<BrainStatus> {
   if (isWails()) return window.go!.main!.App!.InitProject(projectPath, claudeMDPath);
-  const r = await fetch('/api/brain/init', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ projectPath, claudeMDPath }),
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json() as Promise<BrainStatus>;
+  return request<BrainStatus>('POST', '/api/brain/init', { projectPath, claudeMDPath });
 }
 
 export async function listKnowledge(projectPath: string, kind = ''): Promise<ProjectKnowledge[]> {
   if (isWails()) return window.go!.main!.App!.ListKnowledge(projectPath, kind);
-  const query = `projectPath=${encodeURIComponent(projectPath)}${kind ? `&kind=${encodeURIComponent(kind)}` : ''}`;
-  const r = await fetch(`/api/brain/knowledge?${query}`);
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return ((await r.json()) as ProjectKnowledge[]) ?? [];
+  const query = `projectPath=${q(projectPath)}${kind ? `&kind=${q(kind)}` : ''}`;
+  return (await request<ProjectKnowledge[] | null>('GET', `/api/brain/knowledge?${query}`)) ?? [];
 }
 
 export async function deleteKnowledge(id: string): Promise<void> {
   if (isWails()) return window.go!.main!.App!.DeleteKnowledge(id);
-  const r = await fetch(`/api/brain/knowledge/${encodeURIComponent(id)}`, { method: 'DELETE' });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  await request('DELETE', `/api/brain/knowledge/${q(id)}`);
 }
 
 export async function getFileMap(projectPath: string, focusArea = ''): Promise<string[]> {
   if (isWails()) return window.go!.main!.App!.GetFileMap(projectPath, focusArea);
-  const query = `projectPath=${encodeURIComponent(projectPath)}${focusArea ? `&focusArea=${encodeURIComponent(focusArea)}` : ''}`;
-  const r = await fetch(`/api/brain/file-map?${query}`);
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  const data = (await r.json()) as { filePaths: string[] };
+  const query = `projectPath=${q(projectPath)}${focusArea ? `&focusArea=${q(focusArea)}` : ''}`;
+  const data = await request<{ filePaths?: string[] | null }>(
+    'GET',
+    `/api/brain/file-map?${query}`,
+  );
   return data.filePaths ?? [];
 }
