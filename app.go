@@ -9,14 +9,11 @@ import (
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
 	"nexus-orchestrator/internal/core/services"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App is the Wails application struct. Its exported methods are bound to the
 // JavaScript frontend.
 type App struct {
-	ctx          context.Context
 	orchestrator ports.Orchestrator
 	brainSvc     ports.BrainService
 	httpAddr     string
@@ -33,27 +30,6 @@ func NewApp(orch ports.Orchestrator, httpAddr string) *App {
 // frontend can derive EventSource and fetch URLs without hardcoding the port.
 func (a *App) GetServerAddr() string {
 	return "http://" + a.httpAddr
-}
-
-// startup is called by Wails when the application starts.
-func (a *App) startup(ctx context.Context) {
-	a.ctx = ctx
-}
-
-// ShowWindow reveals the desktop window if the Wails runtime is ready.
-func (a *App) ShowWindow() {
-	if a.ctx == nil {
-		return
-	}
-	runtime.WindowShow(a.ctx)
-}
-
-// QuitApp requests a graceful Wails shutdown so deferred cleanup can run.
-func (a *App) QuitApp() {
-	if a.ctx == nil {
-		return
-	}
-	runtime.Quit(a.ctx)
 }
 
 // SubmitTask forwards a task from the frontend to the orchestrator.
@@ -138,11 +114,6 @@ func (a *App) UpdateProviderConfig(cfg domain.ProviderConfig) (domain.ProviderCo
 // RemoveProviderConfig deletes a persisted provider configuration by ID.
 func (a *App) RemoveProviderConfig(id string) error {
 	return a.orchestrator.RemoveProviderConfig(context.Background(), id)
-}
-
-// Greet is the default Wails example method — kept for scaffolding compatibility.
-func (a *App) Greet(name string) string {
-	return fmt.Sprintf("Hello, %s! nexusOrchestrator is running.", name)
 }
 
 // GetDiscoveredProviders returns system-detected AI tools (not yet promoted).

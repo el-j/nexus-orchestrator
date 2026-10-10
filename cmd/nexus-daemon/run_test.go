@@ -15,6 +15,7 @@ import (
 
 	"nexus-orchestrator/internal/adapters/inbound/httpapi"
 	"nexus-orchestrator/internal/adapters/outbound/repo_sqlite"
+	"nexus-orchestrator/internal/bootstrap"
 	"nexus-orchestrator/internal/core/domain"
 )
 
@@ -91,15 +92,15 @@ func TestRun_StartsServesHealthAndShutsDownOnCancel(t *testing.T) {
 		}
 	}
 
-	cfg := daemonConfig{
-		dbPath:       filepath.Join(t.TempDir(), "d.db"),
-		listenAddr:   freeAddr(t),
-		mcpAddr:      freeAddr(t),
-		scanInterval: 20 * time.Millisecond, // exercises the periodic re-scan ticker
+	cfg := bootstrap.Config{
+		DBPath:       filepath.Join(t.TempDir(), "d.db"),
+		ListenAddr:   freeAddr(t),
+		MCPAddr:      freeAddr(t),
+		ScanInterval: 20 * time.Millisecond, // exercises the periodic re-scan ticker
 	}
 
 	// Pre-seed persisted state the daemon must load at startup.
-	seed, err := repo_sqlite.New(cfg.dbPath)
+	seed, err := repo_sqlite.New(cfg.DBPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +125,7 @@ func TestRun_StartsServesHealthAndShutsDownOnCancel(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- run(runCtx, cfg, httpapi.NewLogHubWithWriter(io.Discard), &out) }()
 
-	waitHealthy(t, "http://"+cfg.listenAddr)
+	waitHealthy(t, "http://"+cfg.ListenAddr)
 	time.Sleep(150 * time.Millisecond) // let the ticker fire at least once
 	cancel()
 
@@ -138,7 +139,7 @@ func TestRun_StartsServesHealthAndShutsDownOnCancel(t *testing.T) {
 	}
 
 	got := out.String()
-	for _, want := range []string{"ready", "http://" + cfg.listenAddr, "shutting down"} {
+	for _, want := range []string{"ready", "http://" + cfg.ListenAddr, "shutting down"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("output missing %q:\n%s", want, got)
 		}
@@ -147,11 +148,11 @@ func TestRun_StartsServesHealthAndShutsDownOnCancel(t *testing.T) {
 
 func TestRun_FailsWhenDatabaseCannotBeOpened(t *testing.T) {
 	isolate(t)
-	cfg := daemonConfig{
-		dbPath:       filepath.Join(t.TempDir(), "missing", "dir", "d.db"),
-		listenAddr:   freeAddr(t),
-		mcpAddr:      freeAddr(t),
-		scanInterval: time.Minute,
+	cfg := bootstrap.Config{
+		DBPath:       filepath.Join(t.TempDir(), "missing", "dir", "d.db"),
+		ListenAddr:   freeAddr(t),
+		MCPAddr:      freeAddr(t),
+		ScanInterval: time.Minute,
 	}
 	err := run(context.Background(), cfg, httpapi.NewLogHubWithWriter(io.Discard), io.Discard)
 	if err == nil || !strings.Contains(err.Error(), "open database") {
@@ -159,11 +160,12 @@ func TestRun_FailsWhenDatabaseCannotBeOpened(t *testing.T) {
 	}
 }
 
-func TestResolveConfig_IgnoresNonPositiveOrInvalidScanInterval(t *testing.T) {
-	for _, v := range []string{"0s", "-5s", "garbage"} {
-		t.Setenv("NEXUS_SCAN_INTERVAL", v)
-		if got := resolveConfig().scanInterval; got != 30*time.Second {
-			t.Errorf("NEXUS_SCAN_INTERVAL=%q: scanInterval = %v, want default 30s", v, got)
-		}
+func TestRunMain_ReturnsOneWhenStartupFails(t *testing.T) {
+	isolate(t)
+	t.Setenv("NEXUS_DB_PATH", filepath.Join(t.TempDir(), "missing", "dir", "d.db"))
+	t.Setenv("NEXUS_LISTEN_ADDR", freeAddr(t))
+	t.Setenv("NEXUS_MCP_ADDR", freeAddr(t))
+	if code := runMain(); code != 1 {
+		t.Errorf("exit code %d, want 1", code)
 	}
 }
