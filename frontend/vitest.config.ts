@@ -17,7 +17,14 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
-      include: ['src/views/BacklogView.vue', 'src/views/HistoryView.vue'],
+      // Measure ALL application source, not a hand-picked pair of files.
+      include: ['src/**/*.{ts,vue}'],
+      exclude: [
+        'src/**/*.{spec,test}.ts',
+        'src/test/**',
+        'src/wailsjs/**', // generated Wails bindings
+        'src/**/*.d.ts',
+      ],
     },
   },
 });
