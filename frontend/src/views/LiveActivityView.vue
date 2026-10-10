@@ -114,7 +114,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref, onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import AIActivityCard from '../components/AIActivityCard.vue';
 import RefreshIndicator from '../components/RefreshIndicator.vue';
 import { useActivities } from '../composables/useActivities';
@@ -136,8 +137,19 @@ onMounted(() => {
   lastRefreshed.value = new Date();
 });
 
-const selectedAgent = ref('');
-const selectedProject = ref('');
+// Deep links ("View in timeline" from the agent drawer, "View timeline" on a project
+// card) arrive as ?agent=… / ?project=… and must pre-select the filters.
+const route = useRoute();
+const queryText = (v: unknown): string => (typeof v === 'string' ? v : '');
+const selectedAgent = ref(queryText(route.query.agent));
+const selectedProject = ref(queryText(route.query.project));
+watch(
+  () => route.query,
+  (q) => {
+    selectedAgent.value = queryText(q.agent);
+    selectedProject.value = queryText(q.project);
+  },
+);
 const selectedTypes = ref<ActivityType[]>([]);
 
 const typeOptions: { type: ActivityType; emoji: string }[] = [

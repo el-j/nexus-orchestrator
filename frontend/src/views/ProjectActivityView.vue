@@ -84,7 +84,7 @@
           <div class="px-4 py-2.5 flex justify-end border-t border-white/[0.04]">
             <button
               class="text-[11px] text-violet-400 hover:text-violet-300 transition-colors"
-              @click="router.push('/projects/live-activity')"
+              @click="openTimeline(project.path)"
             >
               View timeline →
             </button>
@@ -103,6 +103,16 @@ import { resolveServerUrl } from '../composables/useServerUrl';
 import { timeAgo } from '../utils/time';
 
 const router = useRouter();
+
+/** Activities without a project are grouped under this key; there is nothing to filter by. */
+const NO_PROJECT = '(no project)';
+
+function openTimeline(projectPath: string) {
+  router.push({
+    name: 'live-activity',
+    query: projectPath === NO_PROJECT ? {} : { project: projectPath },
+  });
+}
 
 interface ProjectGroup {
   path: string;
@@ -135,7 +145,7 @@ async function fetchActivities() {
 const projects = computed((): ProjectGroup[] => {
   const byPath = new Map<string, AIActivity[]>();
   for (const a of allActivities.value) {
-    const key = a.projectPath ?? '(no project)';
+    const key = a.projectPath ?? NO_PROJECT;
     const existing = byPath.get(key);
     if (existing) {
       existing.push(a);
