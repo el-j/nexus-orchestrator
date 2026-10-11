@@ -42,8 +42,7 @@ func tsAppMethods(t *testing.T) map[string]tsMethod {
 	if start < 0 {
 		t.Fatal("no App declaration in wails.ts")
 	}
-	body := src[start:]
-	body = body[:strings.Index(body, "\n        };")]
+	body, _, _ := strings.Cut(src[start:], "\n        };")
 
 	decl := regexp.MustCompile(`(?s)\n\s+(\w+)\((.*?)\): Promise<(.*?)>;`)
 	out := map[string]tsMethod{}
