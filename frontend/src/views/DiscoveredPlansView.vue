@@ -359,9 +359,8 @@ const projectGroups = computed(() => {
     const sortedGroups = Object.entries(groups).sort(([a], [b]) => {
       if (a === 'ungrouped') return 1;
       if (b === 'ungrouped') return -1;
-      const numA = parseInt(a.match(/PLAN-(\d+)/)?.[1] ?? '0');
-      const numB = parseInt(b.match(/PLAN-(\d+)/)?.[1] ?? '0');
-      return numB - numA;
+      // Group keys are "PLAN-<n>" (see extractParentPlan) or "ungrouped", handled above.
+      return Number(b.slice('PLAN-'.length)) - Number(a.slice('PLAN-'.length));
     });
     map[proj] = { nexus, planGroups: sortedGroups, others };
   }
@@ -400,7 +399,7 @@ async function handlePromote(plan: DiscoveredPlanFile) {
   try {
     const id = await createDraft({
       projectPath: plan.projectPath,
-      instruction: plan.summary ?? `Execute task from ${plan.path}`,
+      instruction: plan.summary!, // only todo tasks (which have a summary) can be promoted
       targetFile: plan.path,
     });
     toast.add({

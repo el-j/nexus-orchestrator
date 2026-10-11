@@ -253,4 +253,50 @@ describe('ProviderConfigForm', () => {
     expect((inputs(w)[NAME].element as HTMLInputElement).value).toBe('');
     w.unmount();
   });
+
+  it('closes on Escape inside the dialog, on a backdrop click and on Cancel', async () => {
+    const { w, onClose } = mountForm();
+    await w.find('[role="dialog"]').trigger('keydown.esc');
+    await w.find('.fixed').trigger('click');
+    await w
+      .findAll('button')
+      .find((b) => b.text() === 'Cancel')!
+      .trigger('click');
+    expect(onClose).toHaveBeenCalledTimes(3);
+    w.unmount();
+  });
+
+  it('saves the default model and the enabled flag that were edited', async () => {
+    const { w, onSave } = mountForm();
+    await inputs(w)[NAME].setValue('Mine');
+    await inputs(w)[MODEL].setValue('qwen');
+    await w.find('#cfg-enabled').setValue(false);
+    await w.find('form').trigger('submit');
+    await flushPromises();
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ model: 'qwen', enabled: false }));
+    w.unmount();
+  });
+
+  it('clears the URL when switching to a custom endpoint, and reads configs without a URL', async () => {
+    const { w } = mountForm();
+    await w.find('[data-testid="provider-type"]').setValue('openaicompat');
+    expect((inputs(w)[URL].element as HTMLInputElement).value).toBe('');
+    w.unmount();
+
+    const { w: custom } = mountForm(
+      existing({ kind: 'openaicompat', baseUrl: undefined as unknown as string }),
+    );
+    expect((custom.find('[data-testid="provider-type"]').element as HTMLSelectElement).value).toBe(
+      'openaicompat',
+    );
+    custom.unmount();
+  });
+
+  it('saves a config that has no base URL at all', async () => {
+    const { w, onSave } = mountForm(existing({ baseUrl: undefined as unknown as string }));
+    await w.find('form').trigger('submit');
+    await flushPromises();
+    expect(onSave).toHaveBeenCalled();
+    w.unmount();
+  });
 });

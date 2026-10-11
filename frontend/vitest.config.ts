@@ -26,7 +26,7 @@ export default defineConfig({
         'src/**/*.d.ts',
       ],
       // Ratchet: raise these when coverage rises, never lower them.
-      thresholds: { statements: 98, lines: 99, functions: 98, branches: 96 },
+      thresholds: { statements: 100, lines: 100, functions: 100, branches: 100 },
     },
   },
 });

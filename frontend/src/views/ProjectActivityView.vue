@@ -165,7 +165,7 @@ const projects = computed((): ProjectGroup[] => {
       path,
       agents,
       recentActivities: sorted.slice(0, 5),
-      lastActivity: sorted[0]?.timestamp ?? '',
+      lastActivity: sorted[0].timestamp,
     });
   }
 

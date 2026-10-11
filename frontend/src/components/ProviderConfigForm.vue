@@ -191,10 +191,7 @@ watch(
 
 function onTypeChange() {
   form.value.kind = kindForPreset(preset.value);
-  const url = BASE_URL_PRESETS[preset.value];
-  if (url !== undefined) {
-    form.value.baseUrl = url;
-  }
+  form.value.baseUrl = BASE_URL_PRESETS[preset.value];
 }
 
 async function handleSave() {

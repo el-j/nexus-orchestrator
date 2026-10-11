@@ -53,7 +53,7 @@ export function useLogs() {
   }
 
   function startPolling() {
-    if (pollTimer) return;
+    stopPolling();
     pollTimer = setInterval(() => {
       void fetchLogs();
     }, POLL_INTERVAL_MS);

@@ -165,4 +165,14 @@ describe('ProjectActivityView', () => {
     await vi.advanceTimersByTimeAsync(60_000);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('starts no polling when unmounted before the first load finishes', async () => {
+    respond([act()]);
+    const w = mount(ProjectActivityView);
+    w.unmount();
+    await flush();
+    fetchMock.mockClear();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

@@ -203,4 +203,14 @@ describe('useBrain', () => {
       expect(b.error.value).toBe('plain');
     });
   });
+
+  it('reports a non-Error rejection as text from ingest and deleteEntry', async () => {
+    api.ingestKnowledge.mockRejectedValue('plain text failure');
+    const b = useBrain('/p');
+    expect(await b.ingest('/p/x.md')).toBe(0);
+    expect(b.error.value).toBe('plain text failure');
+    api.deleteKnowledge.mockRejectedValue('nope');
+    await b.deleteEntry('k1');
+    expect(b.error.value).toBe('nope');
+  });
 });

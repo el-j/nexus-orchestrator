@@ -61,7 +61,7 @@ function sseHandler(data: { type: string; [key: string]: unknown }) {
 }
 
 function startPolling() {
-  if (interval) return;
+  stopPolling();
   interval = setInterval(() => {
     void refresh();
   }, 2000);

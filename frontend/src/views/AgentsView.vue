@@ -366,10 +366,8 @@ const sortedSessions = computed(() => {
       return list.sort(
         (a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime(),
       );
-    case 'name':
-      return list.sort((a, b) => a.agentName.localeCompare(b.agentName));
     default:
-      return list;
+      return list.sort((a, b) => a.agentName.localeCompare(b.agentName));
   }
 });
 
@@ -405,10 +403,8 @@ const sortedAgentRoots = computed(() => {
       );
     case 'recent':
       return list.sort((a, b) => new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime());
-    case 'name':
-      return list.sort((a, b) => a.name.localeCompare(b.name));
     default:
-      return list;
+      return list.sort((a, b) => a.name.localeCompare(b.name));
   }
 });
 

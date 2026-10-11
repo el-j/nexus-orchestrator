@@ -450,8 +450,7 @@ function formatDuration(ms?: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
-function formatContextLimit(limit?: number): string {
-  if (!limit) return '';
+function formatContextLimit(limit: number): string {
   return `${Math.round(limit / 1024)}k ctx`;
 }
 

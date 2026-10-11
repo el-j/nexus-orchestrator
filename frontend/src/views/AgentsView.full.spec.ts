@@ -302,6 +302,30 @@ describe('AgentsView — discovered agents', () => {
     await search(w).setValue('needle');
     expect(w.text()).toContain('Two');
   });
+
+  it('nests several sub-agents under one parent', async () => {
+    const parent = agent({ id: 'p', name: 'Parent' });
+    const w = await mountView({
+      agents: [
+        parent,
+        agent({ id: 'c1', name: 'One', parentAgentId: 'p' }),
+        agent({ id: 'c2', name: 'Two', parentAgentId: 'p' }),
+      ],
+    });
+    expect(w.findAll('.ml-6')).toHaveLength(1);
+    expect(w.text()).toContain('One');
+    expect(w.text()).toContain('Two');
+  });
+
+  it('keeps unknown-status sessions in a stable order after the known ones', async () => {
+    h.s.sessions = [
+      sess({ agentName: 'X', status: 'odd' as AISession['status'] }),
+      sess({ agentName: 'Y', status: 'weird' as AISession['status'] }),
+      sess({ agentName: 'Z', status: 'active' }),
+    ];
+    const w = await mountView();
+    expect(cards(w)[0].find('.font-semibold').text()).toBe('Z');
+  });
 });
 
 describe('AgentsView — activity tab', () => {
@@ -354,5 +378,29 @@ describe('AgentsView — activity tab', () => {
     await projectSel.setValue('/work/a');
     expect(w.text()).toContain('A1');
     expect(w.text()).not.toContain('B1');
+  });
+
+  it('ranks a session with an unknown status after the known ones', async () => {
+    h.s.sessions = [
+      sess({ agentName: 'Odd', status: 'mystery' as AISession['status'] }),
+      sess({ agentName: 'Fine', status: 'active' }),
+    ];
+    const w = await mountView();
+    expect(cards(w).map((c) => c.find('.font-semibold').text())).toEqual(['Fine', 'Odd']);
+  });
+
+  it('shows a running sub-agent that has no model or working directory', async () => {
+    const parent = agent({ id: 'p', name: 'Parent' });
+    const child = agent({
+      id: 'c',
+      name: 'Helper',
+      parentAgentId: 'p',
+      isRunning: true,
+      modelId: undefined,
+      workingDir: undefined,
+    });
+    const w = await mountView({ agents: [parent, child] });
+    expect(w.text()).toContain('Helper');
+    expect(w.find('.ml-6 .bg-emerald-400').exists()).toBe(true);
   });
 });

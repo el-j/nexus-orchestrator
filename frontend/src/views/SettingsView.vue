@@ -319,9 +319,10 @@ async function disableToken(kind: 'api' | 'mcp') {
 const tokenCopied = ref(false);
 let tokenCopyTimer: ReturnType<typeof setTimeout> | null = null;
 async function copyToken() {
-  if (!newToken.value) return;
+  // The Copy button only exists while a freshly generated token is shown.
+  const token = newToken.value!.value;
   try {
-    await navigator.clipboard.writeText(newToken.value.value);
+    await navigator.clipboard.writeText(token);
     tokenCopied.value = true;
     if (tokenCopyTimer) clearTimeout(tokenCopyTimer);
     tokenCopyTimer = setTimeout(() => {

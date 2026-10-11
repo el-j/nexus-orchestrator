@@ -244,7 +244,7 @@
       :message="confirmDialog.message"
       :danger="true"
       @confirm="
-        confirmDialog.onConfirm();
+        confirmDialog.onConfirm!();
         confirmDialog.open = false;
       "
       @cancel="confirmDialog.open = false"
@@ -331,7 +331,7 @@ const confirmDialog = reactive({
   open: false,
   title: '',
   message: '',
-  onConfirm: () => {},
+  onConfirm: null as (() => void) | null, // set by showConfirm before the dialog opens
 });
 function showConfirm(title: string, message: string, onConfirm: () => void) {
   confirmDialog.title = title;

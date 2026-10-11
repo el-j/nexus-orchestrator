@@ -79,8 +79,7 @@ function formatLine(entry: LogEntry): string {
 }
 
 function onScroll() {
-  if (!listEl.value) return;
-  const { scrollTop, clientHeight, scrollHeight } = listEl.value;
+  const { scrollTop, clientHeight, scrollHeight } = listEl.value!;
   if (scrollTop + clientHeight < scrollHeight - 5) {
     autoScroll.value = false;
   }

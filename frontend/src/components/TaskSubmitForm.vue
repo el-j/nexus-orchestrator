@@ -200,7 +200,6 @@ import Textarea from 'primevue/textarea';
 import Select from 'primevue/select';
 import { useToast } from 'primevue/usetoast';
 import { submitTask, createDraft } from '../types/wails';
-import type { Task } from '../types/domain';
 import { useProviders } from '../composables/useProviders';
 
 const emit = defineEmits<{ submitted: [id: string] }>();
@@ -302,7 +301,7 @@ function removeTag(index: number) {
 
 // --- Payload builder ---
 
-function buildTaskPayload(): Partial<Task> {
+function buildTaskPayload() {
   return {
     projectPath: form.ProjectPath,
     targetFile: form.TargetFile,
@@ -327,12 +326,12 @@ async function handleSubmit() {
   try {
     const p = buildTaskPayload();
     const id = await submitTask({
-      projectPath: p.projectPath ?? '',
-      targetFile: p.targetFile ?? '',
-      instruction: p.instruction ?? '',
+      projectPath: p.projectPath,
+      targetFile: p.targetFile,
+      instruction: p.instruction,
       command: p.command,
-      providerHint: p.providerHint ?? '',
-      modelId: p.modelId ?? '',
+      providerHint: p.providerHint,
+      modelId: p.modelId,
       contextFiles: [],
       priority: p.priority,
       tags: p.tags,
