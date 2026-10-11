@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -161,5 +162,33 @@ func TestReader_MissingDirAndStaleFiles(t *testing.T) {
 	appendTo(t, filepath.Join(dir, "notes.txt"), "ignored")
 	if got := read(t, activity_claude.NewClaudeJSONLReaderAt(dir)); len(got) != 0 {
 		t.Errorf("files untouched since the cutoff and non-jsonl files are skipped: %+v", got)
+	}
+}
+
+func TestReader_SkipsFilesAndFoldersItCannotOpen(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("file permissions are not enforced here")
+	}
+	dir := t.TempDir()
+	locked := filepath.Join(dir, "locked.jsonl")
+	appendTo(t, locked, jsonl(`{"type":"user","timestamp":"`+now+`","message":{"content":"hi"}}`))
+	if err := os.Chmod(locked, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	sub := filepath.Join(dir, "private")
+	if err := os.Mkdir(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	appendTo(t, filepath.Join(sub, "hidden.jsonl"), jsonl(`{"type":"user","timestamp":"`+now+`"}`))
+	if err := os.Chmod(sub, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(sub, 0o755); _ = os.Chmod(locked, 0o600) })
+	ok := filepath.Join(dir, "ok.jsonl")
+	appendTo(t, ok, jsonl(`{"type":"user","timestamp":"`+now+`","message":{"content":"visible"}}`))
+
+	got := read(t, activity_claude.NewClaudeJSONLReaderAt(dir))
+	if len(got) != 1 {
+		t.Fatalf("got %d activities, want only the readable file's", len(got))
 	}
 }

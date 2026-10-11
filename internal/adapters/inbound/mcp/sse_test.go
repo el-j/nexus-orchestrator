@@ -649,3 +649,58 @@ func TestMessages_RejectsANonPost(t *testing.T) {
 		t.Errorf("status = %d, want 405", resp.StatusCode)
 	}
 }
+
+func TestAuth_OnlyAWellFormedMatchingBearerTokenPasses(t *testing.T) {
+	t.Setenv("NEXUS_MCP_TOKEN", "secret-token")
+	srv := newServer(t, &mockOrch{})
+	for header, want := range map[string]int{
+		"":                       http.StatusUnauthorized,
+		"Bearer":                 http.StatusUnauthorized, // too short to hold a token
+		"Bearer ":                http.StatusUnauthorized,
+		"Basic secret-token":     http.StatusUnauthorized, // wrong scheme
+		"Bearer     ":            http.StatusUnauthorized, // blank token
+		"Bearer wrong-token":     http.StatusUnauthorized,
+		"Bearer secret-token":    http.StatusOK,
+		"bearer  secret-token  ": http.StatusOK, // scheme is case-insensitive, whitespace is trimmed
+	} {
+		req, err := http.NewRequest(http.MethodPost, srv.URL+"/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"ping"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if header != "" {
+			req.Header.Set("Authorization", header)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != want {
+			t.Errorf("Authorization %q: status %d, want %d", header, resp.StatusCode, want)
+		}
+	}
+}
+
+func TestOrigin_AnyPortOnAnAllowedHostPasses_AForeignOriginDoesNot(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	for origin, want := range map[string]int{
+		"http://localhost:5173":    http.StatusOK,
+		"http://127.0.0.1:63987":   http.StatusOK,
+		"http://localhost.evil.io": http.StatusForbidden,
+		"https://evil.example":     http.StatusForbidden,
+	} {
+		req, err := http.NewRequest(http.MethodGet, srv.URL+"/health", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Origin", origin)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != want {
+			t.Errorf("Origin %q: status %d, want %d", origin, resp.StatusCode, want)
+		}
+	}
+}
