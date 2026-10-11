@@ -92,7 +92,22 @@ func (o *OrchestratorService) TriggerScan(ctx context.Context) ([]domain.Discove
 
 	o.discovery.InvalidateHealthCache()
 
+	// Tell connected UIs so they refresh now instead of at their next poll.
+	o.mu.Lock()
+	b := o.broadcaster
+	o.mu.Unlock()
+	if pb, ok := b.(providerDiscoveryBroadcaster); ok {
+		pb.BroadcastProviderDiscovered(len(results))
+	}
+
 	return results, nil
+}
+
+// providerDiscoveryBroadcaster is implemented by broadcasters that can announce a
+// finished provider scan (the SSE hub does). It is optional so the core
+// EventBroadcaster port, and its many test doubles, stay unchanged.
+type providerDiscoveryBroadcaster interface {
+	BroadcastProviderDiscovered(count int)
 }
 
 // PromoteProvider converts a discovered provider into an active registered backend.

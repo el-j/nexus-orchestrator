@@ -79,6 +79,32 @@ func (h *Hub) BroadcastAISessionEvent(event domain.AISessionEvent) {
 	}
 }
 
+// BroadcastProviderDiscovered announces that a provider scan finished, so
+// connected UIs can refresh their provider lists immediately. count is the
+// number of providers the scan found.
+func (h *Hub) BroadcastProviderDiscovered(count int) {
+	data, err := json.Marshal(struct {
+		Type  string `json:"type"`
+		Count int    `json:"count"`
+	}{"provider_discovered", count})
+	if err != nil {
+		return
+	}
+	h.broadcastRaw(fmt.Sprintf("data: %s\n\n", data))
+}
+
+// broadcastRaw fans a pre-encoded SSE message out to every subscriber without blocking.
+func (h *Hub) broadcastRaw(msg string) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for ch := range h.clients {
+		select {
+		case ch <- []byte(msg):
+		default: // slow client — drop this event rather than blocking
+		}
+	}
+}
+
 // BroadcastActivityEvent sends an AI activity event to all active SSE subscribers.
 func (h *Hub) BroadcastActivityEvent(a domain.AIActivity) {
 	type activityEvent struct {

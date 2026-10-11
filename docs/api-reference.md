@@ -252,26 +252,49 @@ List available models from a specific provider.
 GET /api/events
 ```
 
-Server-Sent Events stream for real-time task lifecycle updates.
+Server-Sent Events stream for real-time updates. Every frame is a plain `data:` line carrying a JSON object
+whose `type` field says what happened (there is no SSE `event:` field, except for `log` frames, see below).
+The first frame is `{"type":"connected"}`.
 
-**Event Types:**
+**Task events** (`{"type": "...", "taskId": "...", "status": "..."}`):
 
-| Event              | Description                        |
-| ------------------ | ---------------------------------- |
-| `task.queued`      | Task was added to the queue        |
-| `task.processing`  | Task is being processed by an LLM  |
-| `task.completed`   | Task completed successfully        |
-| `task.failed`      | Task processing failed             |
-| `task.cancelled`   | Task was cancelled                 |
-| `task.too_large`   | Task exceeded context window       |
-| `task.no_provider` | No provider available for the task |
+| `type`             | Description                                            |
+| ------------------ | ------------------------------------------------------ |
+| `task.queued`      | Task was added to the queue                            |
+| `task.processing`  | Task is being processed by an LLM                      |
+| `task.completed`   | Task completed successfully                            |
+| `task.failed`      | Task processing failed                                 |
+| `task.cancelled`   | Task was cancelled (also after aborting a running one) |
+| `task.too_large`   | Task exceeded the context window                       |
+| `task.no_provider` | No provider available for the task                     |
+| `task.draft`       | A draft was created                                    |
+| `task.backlog`     | A task was moved to the backlog                        |
+| `task.updated`     | A task's fields were edited                            |
 
-**Event Format:**
+**Other events:**
+
+| `type`                  | Payload                              | Description                                    |
+| ----------------------- | ------------------------------------ | ---------------------------------------------- |
+| `ai_session_changed`    | `aiSessionId`, `status`, `timestamp` | A session registered, heartbeated or went idle |
+| `ai_session_terminated` | `aiSessionId`, `status`, `timestamp` | A session was terminated                       |
+| `ai_activity_new`       | `activity` (an AI activity record)   | A new agent activity was observed              |
+| `provider_discovered`   | `count`                              | A provider scan finished (refresh your list)   |
+
+**Log frames** use a named event so they can be told apart:
 
 ```
-event: task.completed
+event: log
+data: {"timestamp":"2026-01-01T12:00:00Z","level":"info","source":"httpapi","message":"..."}
+```
+
+**Frame format:**
+
+```
 data: {"type":"task.completed","taskId":"abc-123","status":"COMPLETED"}
 ```
+
+Slow clients are skipped rather than blocking the daemon, so a client that reconnects should re-read the
+state it cares about (for example `GET /api/tasks`) instead of relying on having seen every frame.
 
 ---
 

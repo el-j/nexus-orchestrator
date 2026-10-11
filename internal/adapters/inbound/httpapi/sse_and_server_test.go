@@ -320,3 +320,33 @@ func TestStartServer_ShutsDownPromptlyWithAConnectedEventsClient(t *testing.T) {
 		t.Fatal("shutdown hung on the events client")
 	}
 }
+
+func TestHubAnnouncesFinishedProviderScans(t *testing.T) {
+	hub := httpapi.NewHub()
+	ch := hub.Subscribe()
+	defer hub.Unsubscribe(ch)
+
+	hub.BroadcastProviderDiscovered(3)
+	select {
+	case msg := <-ch:
+		if string(msg) != "data: {\"type\":\"provider_discovered\",\"count\":3}\n\n" {
+			t.Fatalf("message = %q", msg)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("no message delivered")
+	}
+
+	// A subscriber that never reads must not block the broadcaster.
+	done := make(chan struct{})
+	go func() {
+		for i := 0; i < 100; i++ {
+			hub.BroadcastProviderDiscovered(i)
+		}
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("BroadcastProviderDiscovered blocked on a slow client")
+	}
+}
