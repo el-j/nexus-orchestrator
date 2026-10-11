@@ -47,9 +47,14 @@ func NewAdapter(name, baseURL, apiKey, model string) *Adapter {
 	}
 }
 
+// ProviderName returns the human-readable provider name shown in the UI and used for routing.
 func (a *Adapter) ProviderName() string { return a.name }
-func (a *Adapter) ActiveModel() string  { return a.model }
-func (a *Adapter) BaseURL() string      { return a.baseURL }
+
+// ActiveModel returns the model this adapter sends requests to.
+func (a *Adapter) ActiveModel() string { return a.model }
+
+// BaseURL returns the API endpoint this adapter talks to.
+func (a *Adapter) BaseURL() string { return a.baseURL }
 
 // ContextLimit returns 131072 (128K) when a model is configured, 0 otherwise.
 // 128K is a conservative default for modern OpenAI-compatible endpoints.

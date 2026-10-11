@@ -2,8 +2,10 @@ package domain
 
 import "time"
 
+// AgentKind names a kind of AI agent the system scanner can discover on the machine.
 type AgentKind string
 
+// The known AgentKind values.
 const (
 	AgentKindClaudeCLI     AgentKind = "claude-cli"
 	AgentKindClaudeDesktop AgentKind = "claude-desktop"
@@ -17,6 +19,8 @@ const (
 	AgentKindGeneric       AgentKind = "generic"
 )
 
+// DiscoveredAgent is an AI agent found on the machine by the system scanner,
+// as opposed to one that registered itself.
 type DiscoveredAgent struct {
 	ID              string    `json:"id"`
 	Kind            AgentKind `json:"kind"`
@@ -38,6 +42,7 @@ type DiscoveredAgent struct {
 // PlanFileKind identifies the format/tool of a discovered plan file.
 type PlanFileKind string
 
+// The PlanFileKind values: which convention a discovered plan file follows.
 const (
 	PlanFileKindNexus      PlanFileKind = "nexus"       // .claude/orchestrator.json
 	PlanFileKindClaudeTask PlanFileKind = "claude-task" // .claude/tasks/*.md

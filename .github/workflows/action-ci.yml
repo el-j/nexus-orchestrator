@@ -52,6 +52,9 @@ jobs:
         # to package.json, add a "lint" script and this step will start enforcing it.
         run: npm run lint --if-present
 
+      - name: Exported declarations are documented
+        run: npm run check:docs
+
       - name: Unit tests with coverage gate
         run: npm run test:coverage
 

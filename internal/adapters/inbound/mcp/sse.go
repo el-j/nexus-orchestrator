@@ -79,6 +79,7 @@ type captureWriter struct {
 	status int
 }
 
+// Header implements http.ResponseWriter for the captured response.
 func (c *captureWriter) Header() http.Header {
 	if c.header == nil {
 		c.header = make(http.Header)
@@ -91,6 +92,7 @@ func (c *captureWriter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
+// WriteHeader implements http.ResponseWriter and records the status code.
 func (c *captureWriter) WriteHeader(code int) {
 	c.status = code
 }

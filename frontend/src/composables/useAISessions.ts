@@ -3,6 +3,7 @@ import type { AISession } from '../types/domain';
 import { listAISessions, deregisterAISession, purgeDisconnectedSessions } from '../types/wails';
 import { useGlobalSSE } from './useGlobalSSE';
 
+/** Reactive list of AI sessions with register/deregister/purge actions, refreshed on SSE events. */
 export function useAISessions() {
   const sessions = ref<AISession[]>([]);
   const loading = ref(false);

@@ -126,6 +126,9 @@ func migrate(db *sql.DB) error {
 		{"verification_command", "TEXT NOT NULL DEFAULT ''"},
 		{"max_correction_turns", "INTEGER NOT NULL DEFAULT 0"},
 		{"verification_output", "TEXT NOT NULL DEFAULT ''"},
+		{"role", "TEXT NOT NULL DEFAULT ''"},
+		{"agentic", "INTEGER NOT NULL DEFAULT 0"},
+		{"max_agent_turns", "INTEGER NOT NULL DEFAULT 0"},
 	} {
 		_, _ = db.Exec(fmt.Sprintf("ALTER TABLE tasks ADD COLUMN %s %s", col.name, col.def))
 	}
@@ -211,7 +214,7 @@ func migrate(db *sql.DB) error {
 	return nil
 }
 
-const taskColumns = `id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id, verification_command, max_correction_turns, verification_output`
+const taskColumns = `id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id, verification_command, max_correction_turns, verification_output, role, agentic, max_agent_turns`
 
 // Save inserts a new Task record.
 func (r *Repository) Save(t domain.Task) error {
@@ -228,13 +231,14 @@ func (r *Repository) Save(t domain.Task) error {
 	}
 	_, err = r.db.Exec(
 		`INSERT INTO tasks (`+taskColumns+`)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		t.ID, t.ProjectPath, t.TargetFile, t.Instruction,
 		string(ctxJSON), string(t.Status),
 		t.CreatedAt.UnixMilli(), t.UpdatedAt.UnixMilli(),
 		t.Logs, t.ModelID, t.ProviderHint, string(t.Command),
 		t.ProviderName, t.Priority, string(tagsJSON), t.RetryCount, t.AISessionID,
 		t.VerificationCommand, t.MaxCorrectionTurns, t.VerificationOutput,
+		t.Role, t.Agentic, t.MaxAgentTurns,
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: insert task: %w", err)
@@ -542,6 +546,7 @@ func scanTask(s scanner) (domain.Task, error) {
 		&ctxJSON, &status, &createdMS, &updatedMS, &t.Logs,
 		&t.ModelID, &t.ProviderHint, &command, &t.ProviderName, &t.Priority, &tagsJSON, &t.RetryCount, &t.AISessionID,
 		&t.VerificationCommand, &t.MaxCorrectionTurns, &t.VerificationOutput,
+		&t.Role, &t.Agentic, &t.MaxAgentTurns,
 	); err != nil {
 		return t, fmt.Errorf("sqlite: scan task: %w", err)
 	}

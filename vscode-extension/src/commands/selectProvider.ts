@@ -12,6 +12,7 @@ interface ProviderPickItem extends vscode.QuickPickItem {
   modelName: string;
 }
 
+/** Command: choose the provider (and model) new tasks are routed to. */
 export async function selectProviderCommand(client: NexusClient): Promise<void> {
   let providers;
   try {

@@ -183,6 +183,10 @@ jobs:
         working-directory: frontend
         run: npm run typecheck
 
+      - name: Exported declarations are documented
+        working-directory: frontend
+        run: npm run check:docs
+
       - name: Run frontend smoke coverage
         working-directory: frontend
         run: npm run test:coverage
@@ -232,6 +236,10 @@ jobs:
       - name: Type-check extension
         working-directory: vscode-extension
         run: npm run typecheck
+
+      - name: Exported declarations are documented
+        working-directory: vscode-extension
+        run: npm run check:docs
 
       - name: Run extension smoke coverage
         working-directory: vscode-extension

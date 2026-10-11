@@ -52,12 +52,12 @@ func TestDraftCmd(t *testing.T) {
 		return "draft-1", nil
 	}}
 	out, err := execute(orch, nil, "draft", "--project", "/p", "--instruction", "do it",
-		"--target", "a.go", "--provider", "ollama", "--model", "m", "--priority", "1", "--tags", "a, b")
+		"--target", "a.go", "--provider", "ollama", "--provider-hint", "lmstudio", "--role", "coder", "--model", "m", "--priority", "1", "--tags", "a, b")
 	if err != nil || !strings.Contains(out, "Draft created: draft-1") {
 		t.Fatalf("out=%q err=%v", out, err)
 	}
 	if got.ProjectPath != "/p" || got.Instruction != "do it" || got.TargetFile != "a.go" ||
-		got.ProviderName != "ollama" || got.ModelID != "m" || got.Priority != 1 ||
+		got.ProviderName != "ollama" || got.ProviderHint != "lmstudio" || got.Role != "coder" || got.ModelID != "m" || got.Priority != 1 ||
 		len(got.Tags) != 2 || got.Tags[0] != "a" || got.Tags[1] != "b" {
 		t.Errorf("task passed to CreateDraft = %+v", got)
 	}

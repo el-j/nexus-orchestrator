@@ -243,6 +243,7 @@ func (o *OrchestratorService) WithQueueCap(n int) *OrchestratorService {
 	return o
 }
 
+// GetRuntimeConfig returns the current runtime configuration.
 func (o *OrchestratorService) GetRuntimeConfig(ctx context.Context) (domain.RuntimeConfig, error) {
 	o.mu.Lock()
 	queueCap := o.queueCap
@@ -284,6 +285,7 @@ func (o *OrchestratorService) GetRuntimeConfig(ctx context.Context) (domain.Runt
 	return cfg, nil
 }
 
+// UpdateRuntimeConfig validates, applies and persists a new runtime configuration.
 func (o *OrchestratorService) UpdateRuntimeConfig(ctx context.Context, update domain.RuntimeConfigUpdate) (domain.RuntimeConfig, error) {
 	o.mu.Lock()
 	repo := o.runtimeCfg

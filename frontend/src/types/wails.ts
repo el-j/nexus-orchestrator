@@ -107,93 +107,111 @@ async function request<T = void>(method: string, path: string, body?: unknown): 
 
 const q = encodeURIComponent;
 
+/** Queues a task and returns its id. */
 export async function submitTask(task: TaskInput): Promise<string> {
   if (isWails()) return window.go!.main!.App!.SubmitTask(task);
   // The REST API answers {"task_id": "...", "status": "QUEUED"}.
   return (await request<{ task_id: string }>('POST', '/api/tasks', task)).task_id;
 }
 
+/** Fetches one task by id. */
 export async function getTask(id: string): Promise<Task> {
   if (isWails()) return window.go!.main!.App!.GetTask(id);
   return request<Task>('GET', `/api/tasks/${q(id)}`);
 }
 
+/** Lists tasks that are queued or running. */
 export async function getQueue(): Promise<Task[]> {
   if (isWails()) return window.go!.main!.App!.GetQueue();
   return request<Task[]>('GET', '/api/tasks');
 }
 
+/** Lists every task including finished ones. */
 export async function getAllTasks(): Promise<Task[]> {
   if (isWails()) return (await window.go!.main!.App!.GetAllTasks()) ?? [];
   return request<Task[]>('GET', '/api/tasks/all');
 }
 
+/** Lists registered providers with liveness. */
 export async function getProviders(): Promise<ProviderInfo[]> {
   if (isWails()) return window.go!.main!.App!.GetProviders();
   return request<ProviderInfo[]>('GET', '/api/providers');
 }
 
+/** Cancels a queued or running task. */
 export async function cancelTask(id: string): Promise<void> {
   if (isWails()) return window.go!.main!.App!.CancelTask(id);
   await request('DELETE', `/api/tasks/${q(id)}`);
 }
 
+/** Saves a provider configuration and activates it. */
 export async function addProviderConfig(cfg: Partial<ProviderConfig>): Promise<ProviderConfig> {
   if (isWails()) return window.go!.main!.App!.AddProviderConfig(cfg);
   return request<ProviderConfig>('POST', '/api/providers/config', cfg);
 }
 
+/** Lists saved provider configurations. */
 export async function listProviderConfigs(): Promise<ProviderConfig[]> {
   if (isWails()) return window.go!.main!.App!.ListProviderConfigs();
   return request<ProviderConfig[]>('GET', '/api/providers/config');
 }
 
+/** Updates a saved provider configuration. */
 export async function updateProviderConfig(cfg: ProviderConfig): Promise<ProviderConfig> {
   if (isWails()) return window.go!.main!.App!.UpdateProviderConfig(cfg);
   return request<ProviderConfig>('PUT', `/api/providers/config/${q(cfg.id)}`, cfg);
 }
 
+/** Deletes a saved provider configuration. */
 export async function removeProviderConfig(id: string): Promise<void> {
   if (isWails()) return window.go!.main!.App!.RemoveProviderConfig(id);
   await request('DELETE', `/api/providers/config/${q(id)}`);
 }
 
+/** Lists providers found by the scanner. */
 export async function getDiscoveredProviders(): Promise<DiscoveredProvider[]> {
   if (isWails()) return window.go!.main!.App!.GetDiscoveredProviders();
   return request<DiscoveredProvider[]>('GET', '/api/providers/discovered');
 }
 
+/** Runs a provider scan now and returns what it found. */
 export async function triggerScan(): Promise<void> {
   if (isWails()) return window.go!.main!.App!.TriggerScan();
   await request('POST', '/api/providers/discovered/scan');
 }
 
+/** Creates a draft task that is not queued. */
 export async function createDraft(task: Partial<Task>): Promise<string> {
   if (isWails()) return window.go!.main!.App!.CreateDraft(task);
   return (await request<{ id: string }>('POST', '/api/tasks/draft', task)).id;
 }
 
+/** Lists drafts and backlog tasks, optionally for one project. */
 export async function getBacklog(projectPath: string): Promise<Task[]> {
   if (isWails()) return (await window.go!.main!.App!.GetBacklog(projectPath)) ?? [];
   const query = projectPath ? `?project=${q(projectPath)}` : '';
   return (await request<Task[] | null>('GET', `/api/tasks/backlog${query}`)) ?? [];
 }
 
+/** Moves a draft into the execution queue. */
 export async function promoteTask(id: string): Promise<void> {
   if (isWails()) return window.go!.main!.App!.PromoteTask(id);
   await request('POST', `/api/tasks/${q(id)}/promote`);
 }
 
+/** Patches the mutable fields of a task. */
 export async function updateTask(id: string, updates: Partial<Task>): Promise<Task> {
   if (isWails()) return window.go!.main!.App!.UpdateTask(id, updates);
   return request<Task>('PUT', `/api/tasks/${q(id)}`, updates);
 }
 
+/** Lists AI sessions known to the daemon. */
 export async function listAISessions(): Promise<AISession[]> {
   if (isWails()) return window.go!.main!.App!.ListAISessions();
   return request<AISession[]>('GET', '/api/ai-sessions');
 }
 
+/** Registers an AI session and returns it. */
 export async function registerAISession(
   session: Omit<AISession, 'id' | 'createdAt' | 'updatedAt'>,
 ): Promise<AISession> {
@@ -225,22 +243,26 @@ export async function heartbeatAISession(id: string): Promise<void> {
   }
 }
 
+/** Removes an AI session. */
 export async function deregisterAISession(id: string): Promise<void> {
   if (isWails()) return window.go!.main!.App!.DeregisterAISession(id);
   await request('DELETE', `/api/ai-sessions/${q(id)}`);
 }
 
+/** Deletes sessions that disconnected, returning how many. */
 export async function purgeDisconnectedSessions(): Promise<number> {
   if (isWails()) return window.go!.main!.App!.PurgeDisconnectedSessions();
   const data = await request<{ deleted?: number }>('DELETE', '/api/ai-sessions');
   return data?.deleted ?? 0;
 }
 
+/** Lets an external agent claim a queued task. */
 export async function claimTask(taskID: string, sessionID: string): Promise<Task> {
   if (isWails()) return window.go!.main!.App!.ClaimTask(taskID, sessionID);
   return request<Task>('POST', `/api/tasks/${q(taskID)}/claim`, { sessionId: sessionID });
 }
 
+/** Lets an external agent report the outcome of a claimed task. */
 export async function updateTaskStatus(
   taskID: string,
   sessionID: string,
@@ -255,16 +277,19 @@ export async function updateTaskStatus(
   });
 }
 
+/** Reads the runtime configuration. */
 export async function getRuntimeConfig(): Promise<RuntimeConfig> {
   if (isWails()) return window.go!.main!.App!.GetRuntimeConfig();
   return request<RuntimeConfig>('GET', '/api/config');
 }
 
+/** Applies and persists runtime configuration changes. */
 export async function updateRuntimeConfig(update: RuntimeConfigUpdate): Promise<RuntimeConfig> {
   if (isWails()) return window.go!.main!.App!.UpdateRuntimeConfig(update);
   return request<RuntimeConfig>('PUT', '/api/config', update);
 }
 
+/** Ingests a project's documentation into the Context Brain. */
 export async function ingestKnowledge(projectPath: string, filePath: string): Promise<number> {
   if (isWails()) return window.go!.main!.App!.IngestKnowledge(projectPath, filePath);
   const data = await request<{ ingestedSections: number }>('POST', '/api/brain/ingest', {
@@ -292,11 +317,13 @@ export async function ingestContent(
   return data.ingestedSections;
 }
 
+/** Reports the Context Brain state for a project. */
 export async function getBrainStatus(projectPath: string): Promise<BrainStatus> {
   if (isWails()) return window.go!.main!.App!.GetBrainStatus(projectPath);
   return request<BrainStatus>('GET', `/api/brain/status?projectPath=${q(projectPath)}`);
 }
 
+/** Fetches token-budgeted context for a project. */
 export async function getProjectContext(
   projectPath: string,
   maxTokens: number,
@@ -305,6 +332,7 @@ export async function getProjectContext(
   return request<ContextResponse>('POST', '/api/brain/context', { projectPath, maxTokens });
 }
 
+/** Fetches context focused on a query or file. */
 export async function getFocusedContext(
   projectPath: string,
   question: string,
@@ -318,6 +346,7 @@ export async function getFocusedContext(
   });
 }
 
+/** Full-text searches a project's knowledge. */
 export async function searchKnowledge(
   projectPath: string,
   query: string,
@@ -332,22 +361,26 @@ export async function searchKnowledge(
   return data.results ?? [];
 }
 
+/** Initialises the knowledge base for a project. */
 export async function initProject(projectPath: string, claudeMDPath = ''): Promise<BrainStatus> {
   if (isWails()) return window.go!.main!.App!.InitProject(projectPath, claudeMDPath);
   return request<BrainStatus>('POST', '/api/brain/init', { projectPath, claudeMDPath });
 }
 
+/** Lists stored knowledge entries. */
 export async function listKnowledge(projectPath: string, kind = ''): Promise<ProjectKnowledge[]> {
   if (isWails()) return window.go!.main!.App!.ListKnowledge(projectPath, kind);
   const query = `projectPath=${q(projectPath)}${kind ? `&kind=${q(kind)}` : ''}`;
   return (await request<ProjectKnowledge[] | null>('GET', `/api/brain/knowledge?${query}`)) ?? [];
 }
 
+/** Deletes a knowledge entry. */
 export async function deleteKnowledge(id: string): Promise<void> {
   if (isWails()) return window.go!.main!.App!.DeleteKnowledge(id);
   await request('DELETE', `/api/brain/knowledge/${q(id)}`);
 }
 
+/** Returns the project file map. */
 export async function getFileMap(projectPath: string, focusArea = ''): Promise<string[]> {
   if (isWails()) return window.go!.main!.App!.GetFileMap(projectPath, focusArea);
   const query = `projectPath=${q(projectPath)}${focusArea ? `&focusArea=${q(focusArea)}` : ''}`;

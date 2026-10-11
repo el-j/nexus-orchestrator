@@ -55,15 +55,21 @@ Submit a new code-generation task to the queue.
 }
 ```
 
-| Field          | Required | Description                                               |
-| -------------- | -------- | --------------------------------------------------------- |
-| `projectPath`  | Yes      | Absolute path to the project directory                    |
-| `targetFile`   | Yes      | Relative path for the generated output file               |
-| `instruction`  | Yes      | Natural language prompt for the LLM                       |
-| `contextFiles` | No       | List of files to include as context                       |
-| `modelId`      | No       | Constrain to a specific model                             |
-| `providerHint` | No       | Prefer a specific provider by name                        |
-| `command`      | No       | Task type: `plan`, `execute`, or `auto` (default: `auto`) |
+| Field           | Required | Description                                                                                                 |
+| --------------- | -------- | ----------------------------------------------------------------------------------------------------------- |
+| `projectPath`   | Yes      | Absolute path to the project directory                                                                      |
+| `targetFile`    | Yes      | Relative path for the generated output file                                                                 |
+| `instruction`   | Yes      | Natural language prompt for the LLM                                                                         |
+| `contextFiles`  | No       | List of files to include as context                                                                         |
+| `modelId`       | No       | Constrain to a specific model                                                                               |
+| `providerHint`  | No       | Prefer a specific provider by name                                                                          |
+| `command`       | No       | Task type: `plan`, `execute`, or `auto` (default: `auto`)                                                   |
+| `providerName`  | No       | Lock routing to this exact provider                                                                         |
+| `role`          | No       | Routing tier: `architect`/`techlead` prefer frontier providers, `coder`/`tester`/`linter` prefer local ones |
+| `priority`      | No       | 1 = high, 2 = medium (default), 3 = low                                                                     |
+| `tags`          | No       | Free-form labels                                                                                            |
+| `agentic`       | No       | Run as a multi-turn tool loop (see below)                                                                   |
+| `maxAgentTurns` | No       | Upper bound on model turns when `agentic` (default 8, max 25)                                               |
 
 **Response:** `201 Created`
 
@@ -76,6 +82,28 @@ Submit a new code-generation task to the queue.
 | `400`  | Body is not valid JSON                                                                     |
 | `422`  | `command` is `execute` but the project has no completed `plan` task                        |
 | `429`  | The queue is full (`queueCap`). Transient: honour the `Retry-After` header and retry later |
+
+#### Agentic tasks
+
+With `"agentic": true` the model no longer answers once and has the answer written to
+`targetFile`. Instead it works over several turns, replying each time with fenced
+` ```nexus-tool ` blocks holding one JSON call each, and the daemon answers with the results:
+
+| Tool         | Arguments         | Effect                                                            |
+| ------------ | ----------------- | ----------------------------------------------------------------- |
+| `read_file`  | `path`            | Returns the file (truncated to 16 KiB)                            |
+| `write_file` | `path`, `content` | Creates or replaces a whole file                                  |
+| `verify`     | none              | Runs the task's `verificationCommand`                             |
+| `finish`     | `summary`         | Ends the task; refused while the verification command still fails |
+
+Safety: all file access is confined to `projectPath` (absolute paths, `..` and symlinks
+that leave the project are rejected, and the model is told so). There is no tool that runs
+an arbitrary command; only the `verificationCommand` the task was submitted with can run.
+At most 8 calls of one reply are executed, the loop stops after `maxAgentTurns` turns
+(status `FAILED`), the transcript must fit the provider's context window (otherwise
+`TOO_LARGE`, or the next provider in the chain is used), and `DELETE /api/tasks/{id}`
+aborts a turn that is in flight. A task re-queued by a daemon restart starts again from
+the first turn; files already written remain.
 
 ---
 

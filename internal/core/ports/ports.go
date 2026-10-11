@@ -212,6 +212,7 @@ type Orchestrator interface {
 // EventType identifies a task lifecycle event.
 type EventType string
 
+// The EventType values broadcast to SSE subscribers and the UI.
 const (
 	EventTaskQueued     EventType = "task.queued"
 	EventTaskProcessing EventType = "task.processing"

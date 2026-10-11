@@ -93,6 +93,7 @@ export function getStatusBar(): NexusStatusBar {
   return statusBar;
 }
 
+/** Extension entry point: builds the client, status bar, views and commands. */
 export function activate(context: vscode.ExtensionContext): void {
   client = new NexusClient(daemonUrl(), mcpPort(), apiToken());
   statusBar = new NexusStatusBar(client);
@@ -426,6 +427,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 }
 
+/** Extension exit point: stops pollers and monitors. */
 export function deactivate(): Promise<void> | void {
   return monitor?.stop();
 }

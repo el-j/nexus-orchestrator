@@ -2,6 +2,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import type { ProviderInfo } from '../types/domain';
 import { getProviders } from '../types/wails';
 
+/** Provider list plus add/update/remove/scan actions. */
 export function useProviders() {
   const providers = ref<ProviderInfo[]>([]);
   const loading = ref(false);

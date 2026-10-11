@@ -3,6 +3,7 @@ import type { DiscoveredProvider } from '../types/discovery';
 import { getDiscoveredProviders, triggerScan } from '../types/wails';
 import { useGlobalSSE } from './useGlobalSSE';
 
+/** Providers and agents discovered on the machine, with a rescan action. */
 export function useDiscovery() {
   const discovered = ref<DiscoveredProvider[]>([]);
   const loading = ref(false);

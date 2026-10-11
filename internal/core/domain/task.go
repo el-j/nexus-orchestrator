@@ -35,6 +35,7 @@ var ErrSubsystemNotConfigured = errors.New("plan scanning subsystem not configur
 // TaskStatus represents the lifecycle state of a Task.
 type TaskStatus string
 
+// The TaskStatus lifecycle values (see docs/api-reference.md, Task Lifecycle).
 const (
 	StatusQueued     TaskStatus = "QUEUED"
 	StatusProcessing TaskStatus = "PROCESSING"
@@ -99,6 +100,12 @@ type Task struct {
 	ProviderName string `json:"providerName,omitempty"`
 	// Role optionally hints the model tier or persona needed (e.g. "architect", "techlead", "coder", "tester", "linter").
 	Role string `json:"role,omitempty"`
+	// Agentic switches the task from one-shot generation to a bounded multi-turn
+	// tool loop: the model may read and write files inside the project and run the
+	// task's verification command before it declares the work finished.
+	Agentic bool `json:"agentic,omitempty"`
+	// MaxAgentTurns bounds the loop; zero means the engine default.
+	MaxAgentTurns int `json:"maxAgentTurns,omitempty"`
 	// Priority controls backlog ordering (1=highest, 2=medium default, 3+=low).
 	Priority int `json:"priority,omitempty"`
 	// Tags are free-form labels for organising ideas and backlog items.

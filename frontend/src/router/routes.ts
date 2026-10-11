@@ -1,5 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router';
 
+/** A route entry of the app shell: path, title and view. */
 export type AppRoute = RouteRecordRaw & {
   label?: string;
   icon?: string;

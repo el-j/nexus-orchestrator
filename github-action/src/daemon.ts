@@ -2,6 +2,7 @@ import * as core from '@actions/core';
 import * as fs from 'fs';
 import * as http from 'http';
 
+/** Options for starting the nexus daemon from the Action. */
 export interface DaemonOptions {
   readonly binPath: string;
   readonly listenAddr: string;
@@ -20,6 +21,7 @@ export interface DaemonOptions {
 
 const DEFAULT_HEALTH_TIMEOUT_MS = 20_000;
 
+/** A started daemon: its base URL plus a function that stops it. */
 export interface DaemonHandle {
   readonly pid: number;
   readonly logFile: string;

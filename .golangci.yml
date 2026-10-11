@@ -54,7 +54,6 @@ linters:
       rules:
         # Style-only rules — disabled to avoid noisy CI failures
         - name: exported
-          disabled: true
         - name: unexported-return
           disabled: true
         - name: var-naming
@@ -137,6 +136,10 @@ linters:
           - noctx
       # Test helpers legitimately take parameters that every caller passes the
       # same value for, and tests are not a security boundary.
+      # Test doubles implement the production ports; their methods are documented there.
+      - path: "internal/testutil/"
+        linters:
+          - revive
       - path: "_test\\.go"
         linters:
           - unparam

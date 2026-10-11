@@ -1,3 +1,4 @@
+/** Task lifecycle status. */
 export type TaskStatus =
   | 'DRAFT'
   | 'BACKLOG'
@@ -9,8 +10,10 @@ export type TaskStatus =
   | 'TOO_LARGE'
   | 'NO_PROVIDER';
 
+/** Task command: plan, execute or auto-routed. */
 export type CommandType = 'plan' | 'execute' | 'auto';
 
+/** A task as returned by the daemon. */
 export interface Task {
   id: string;
   projectPath: string;
@@ -29,8 +32,12 @@ export interface Task {
   durationMs?: number;
   priority?: number;
   tags?: string[];
+  role?: string;
+  agentic?: boolean;
+  maxAgentTurns?: number;
 }
 
+/** Fields accepted when submitting or drafting a task. */
 export interface TaskInput {
   projectPath: string;
   targetFile: string;
@@ -41,8 +48,11 @@ export interface TaskInput {
   command?: CommandType;
   priority?: number;
   tags?: string[];
+  agentic?: boolean;
+  maxAgentTurns?: number;
 }
 
+/** Liveness summary of one LLM backend. */
 export interface ProviderInfo {
   name: string;
   active: boolean;
@@ -56,6 +66,7 @@ export interface ProviderInfo {
   consecutiveFails?: number;
 }
 
+/** A saved provider configuration. */
 export interface ProviderConfig {
   id: string;
   name: string;
@@ -68,8 +79,10 @@ export interface ProviderConfig {
   updatedAt: string;
 }
 
+/** Severity of a log entry. */
 export type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
+/** One daemon log line. */
 export interface LogEntry {
   timestamp: string;
   level: LogLevel;
@@ -77,6 +90,7 @@ export interface LogEntry {
   message: string;
 }
 
+/** A provider found by the system scanner, not yet saved. */
 export interface DiscoveredProvider {
   id: string;
   name: string;
@@ -94,9 +108,12 @@ export interface DiscoveredProvider {
   lastSeen: string;
 }
 
+/** How an AI session came to exist: registered over HTTP or discovered by VS Code. */
 export type AISessionSource = 'mcp' | 'vscode' | 'http';
+/** How recently an AI session was heard from. */
 export type AISessionStatus = 'active' | 'idle' | 'disconnected';
 
+/** An AI agent session known to the daemon. */
 export interface AISession {
   id: string;
   source: AISessionSource;
@@ -113,6 +130,7 @@ export interface AISession {
   modelId?: string;
 }
 
+/** An agent found on the machine by the system scanner. */
 export interface DiscoveredAgent {
   id: string;
   kind: string;
@@ -128,9 +146,11 @@ export interface DiscoveredAgent {
   subAgentIds?: string[];
 }
 
+/** Which convention a discovered plan file follows. */
 export type PlanFileKind =
   'nexus' | 'claude-task' | 'markdown' | 'cursor' | 'mcp-config' | 'crewai' | 'claude';
 
+/** A plan file found on disk. */
 export interface DiscoveredPlanFile {
   id: string;
   path: string;
@@ -142,8 +162,10 @@ export interface DiscoveredPlanFile {
   isActive: boolean;
 }
 
+/** Kind of an agent activity entry. */
 export type ActivityType = 'message' | 'tool_use' | 'thinking' | 'file_edit' | 'generation';
 
+/** One entry of an agent's activity stream. */
 export interface AIActivity {
   id: string;
   sessionId?: string;
@@ -158,6 +180,7 @@ export interface AIActivity {
   metadata?: Record<string, string>;
 }
 
+/** Daemon settings that can change without a restart. */
 export interface RuntimeConfig {
   queueCap: number;
   apiTokenEnabled: boolean;
@@ -166,6 +189,7 @@ export interface RuntimeConfig {
   mcpToken?: string;
 }
 
+/** Partial update of the runtime config. */
 export interface RuntimeConfigUpdate {
   queueCap?: number;
   apiToken?: string;
@@ -174,6 +198,7 @@ export interface RuntimeConfigUpdate {
   rotateMcpToken?: boolean;
 }
 
+/** Size and health of the Context Brain. */
 export interface BrainStatus {
   projectPath: string;
   initialized: boolean;
@@ -183,12 +208,14 @@ export interface BrainStatus {
   lastUpdated?: string;
 }
 
+/** Parameters of a project context request. */
 export interface ContextQuery {
   projectPath: string;
   question?: string;
   maxTokens?: number;
 }
 
+/** One ranked section of project knowledge. */
 export interface ContextSection {
   title?: string;
   topic?: string;
@@ -200,6 +227,7 @@ export interface ContextSection {
   relevanceScore?: number;
 }
 
+/** Token-budgeted project context. */
 export interface ContextResponse {
   projectPath: string;
   sections: ContextSection[];
@@ -212,8 +240,10 @@ export interface ContextResponse {
   truncated: boolean;
 }
 
+/** One hit of a knowledge search. */
 export type KnowledgeResult = ProjectKnowledge;
 
+/** A stored knowledge entry. */
 export interface ProjectKnowledge {
   id: string;
   projectPath: string;

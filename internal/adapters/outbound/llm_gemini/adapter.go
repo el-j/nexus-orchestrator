@@ -55,9 +55,14 @@ var geminiContextLimits = map[string]int{
 	"gemini-1.0-pro":   32768,
 }
 
+// ProviderName returns the human-readable provider name shown in the UI and used for routing.
 func (a *Adapter) ProviderName() string { return "Google Gemini" }
-func (a *Adapter) ActiveModel() string  { return a.model }
-func (a *Adapter) BaseURL() string      { return a.baseURL }
+
+// ActiveModel returns the model this adapter sends requests to.
+func (a *Adapter) ActiveModel() string { return a.model }
+
+// BaseURL returns the API endpoint this adapter talks to.
+func (a *Adapter) BaseURL() string { return a.baseURL }
 
 // ContextLimit returns the maximum input token count for the configured Gemini model.
 func (a *Adapter) ContextLimit(_ context.Context) int {

@@ -12,6 +12,7 @@ import * as vscode from 'vscode';
 import { NexusClient, AISession, AIActivity } from './nexusClient';
 import { getActivitySnapshot } from './activityLog';
 
+/** Status bar item showing daemon connectivity and queue depth. */
 export class NexusStatusBar {
   private item: vscode.StatusBarItem;
   private pollTimer?: NodeJS.Timeout;

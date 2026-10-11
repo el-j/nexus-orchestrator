@@ -155,7 +155,7 @@ func TestReadmeNamesTheReleaseFilesThatExist(t *testing.T) {
 			continue
 		}
 		g := regexp.MustCompile(`^nexus-orchestrator-(\w+)-(\w+)$`).FindStringSubmatch(base)
-		if g == nil || !facts.oses[g[1]] || !facts.arches[g[2]] {
+		if len(g) < 3 || !facts.oses[g[1]] || !facts.arches[g[2]] {
 			t.Errorf("README names %s, which publish.yml does not produce", m[1])
 		}
 	}

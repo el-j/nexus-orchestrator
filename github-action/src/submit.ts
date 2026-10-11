@@ -6,6 +6,7 @@ import { TERMINAL_STATUSES } from './types.js';
 /** HTTP 201 Created — @actions/http-client v4 does not export this constant */
 const HTTP_CREATED = 201;
 
+/** The subset of the daemon HTTP API the Action needs to submit a task and wait for it. */
 export class NexusClient {
   private readonly client: HttpClient;
   private readonly baseUrl: string;

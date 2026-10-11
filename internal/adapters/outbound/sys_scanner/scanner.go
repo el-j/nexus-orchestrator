@@ -25,8 +25,10 @@ import (
 
 var _ ports.SystemScanner = (*Scanner)(nil)
 
+// Scanner finds LLM providers installed or running on the local machine.
 type Scanner struct{ httpClient *http.Client }
 
+// New returns a Scanner that probes endpoints with a short-timeout HTTP client.
 func New() *Scanner {
 	return &Scanner{httpClient: &http.Client{Timeout: 2 * time.Second}}
 }
@@ -71,6 +73,7 @@ var processPatterns = []processPattern{
 	{"Copilot", "Copilot", domain.ProviderKindDesktopApp},
 }
 
+// Scan probes the known ports, CLIs and processes and returns every provider found.
 func (s *Scanner) Scan(ctx context.Context) ([]domain.DiscoveredProvider, error) {
 	deadline := time.Now().Add(5 * time.Second)
 	if d, ok := ctx.Deadline(); ok && d.Before(deadline) {

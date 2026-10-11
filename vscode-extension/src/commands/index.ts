@@ -10,6 +10,7 @@ export { selectProviderCommand } from './selectProvider';
 export { viewQueueCommand } from './viewQueue';
 export { delegateToNexusCommand } from './delegateToNexus';
 
+/** Command: list the daemon's providers and their models. */
 export async function showProvidersCommand(client: NexusClient): Promise<void> {
   let providers: Provider[];
   try {

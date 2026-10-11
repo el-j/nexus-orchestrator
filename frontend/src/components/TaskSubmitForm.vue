@@ -82,6 +82,23 @@
           />
         </div>
 
+        <!-- Agentic -->
+        <label class="flex items-start gap-2 text-xs text-slate-300 cursor-pointer">
+          <input
+            v-model="form.Agentic"
+            type="checkbox"
+            data-testid="agentic"
+            class="mt-0.5 accent-purple-500"
+          />
+          <span>
+            Agentic mode
+            <span class="text-slate-500"
+              >— the model reads and edits several project files over multiple turns and re-runs
+              verification before finishing</span
+            >
+          </span>
+        </label>
+
         <!-- Tags -->
         <div>
           <InputText
@@ -236,6 +253,7 @@ interface FormState {
   ModelID: string;
   Priority: number;
   Tags: string[];
+  Agentic: boolean;
 }
 
 function defaultForm(): FormState {
@@ -248,6 +266,7 @@ function defaultForm(): FormState {
     ModelID: '',
     Priority: 2,
     Tags: [],
+    Agentic: false,
   };
 }
 
@@ -294,6 +313,7 @@ function buildTaskPayload(): Partial<Task> {
     priority: form.Priority,
     tags: form.Tags.length > 0 ? [...form.Tags] : [],
     contextFiles: [],
+    agentic: form.Agentic,
   };
 }
 
@@ -316,6 +336,7 @@ async function handleSubmit() {
       contextFiles: [],
       priority: p.priority,
       tags: p.tags,
+      agentic: p.agentic,
     });
     toast.add({ severity: 'success', summary: 'Task submitted', detail: `ID: ${id}`, life: 3000 });
     emit('submitted', id);

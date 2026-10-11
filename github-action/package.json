@@ -9,7 +9,9 @@
     "build": "ncc build src/index.ts -o dist --minify --license licenses.txt",
     "typecheck": "tsc --noEmit",
     "test": "jest --runInBand --forceExit",
-    "test:coverage": "jest --runInBand --forceExit --coverage"
+    "test:coverage": "jest --runInBand --forceExit --coverage",
+    "test:mutation": "stryker run",
+    "check:docs": "node ../scripts/check-tsdoc.mjs src"
   },
   "dependencies": {
     "@actions/core": "1.11.1",
@@ -18,6 +20,8 @@
     "@actions/tool-cache": "2.0.2"
   },
   "devDependencies": {
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/jest-runner": "^9.6.1",
     "@types/jest": "30.0.0",
     "@types/node": "22.0.0",
     "@vercel/ncc": "0.38.4",

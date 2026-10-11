@@ -94,7 +94,7 @@ func newQueueCmd(orch ports.Orchestrator) *cobra.Command {
 
 // newDraftCmd returns the `nexus draft` command which creates a DRAFT task.
 func newDraftCmd(orch ports.Orchestrator) *cobra.Command {
-	var project, instruction, target, provider, model, tags string
+	var project, instruction, target, provider, providerHint, model, role, tags string
 	var priority int
 
 	cmd := &cobra.Command{
@@ -106,7 +106,9 @@ func newDraftCmd(orch ports.Orchestrator) *cobra.Command {
 				Instruction:  instruction,
 				TargetFile:   target,
 				ProviderName: provider,
+				ProviderHint: providerHint,
 				ModelID:      model,
+				Role:         role,
 				Priority:     priority,
 			}
 			if cmd.Flags().Changed("tags") {
@@ -127,7 +129,9 @@ func newDraftCmd(orch ports.Orchestrator) *cobra.Command {
 	cmd.Flags().StringVar(&instruction, "instruction", "", "Task instruction (required)")
 	cmd.Flags().StringVar(&target, "target", "", "Target file")
 	cmd.Flags().StringVar(&provider, "provider", "", "Provider name")
+	cmd.Flags().StringVar(&providerHint, "provider-hint", "", "Preferred provider when several serve the model")
 	cmd.Flags().StringVar(&model, "model", "", "Model ID")
+	cmd.Flags().StringVar(&role, "role", "", "Routing tier hint (architect, techlead, coder, tester, linter)")
 	cmd.Flags().IntVar(&priority, "priority", 2, "Priority (1=highest, 2=medium, 3+=low)")
 	cmd.Flags().StringVar(&tags, "tags", "", "Comma-separated tags")
 	_ = cmd.MarkFlagRequired("project")

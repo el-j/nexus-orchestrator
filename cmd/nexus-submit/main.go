@@ -53,6 +53,14 @@ func run(args []string, stdout, stderr io.Writer, pollEvery time.Duration) int {
 		timeout  = fs.Duration("timeout", 5*time.Minute, "max wait time when --wait is set")
 		verify   = fs.String("verify", "", "verification command (e.g. 'go test ./...', 'npm test') to trigger self-healing verification gates")
 		turns    = fs.Int("turns", 2, "max self-healing correction turns if verification fails")
+		provider = fs.String("provider", "", "lock routing to this exact provider name")
+		hint     = fs.String("provider-hint", "", "preferred provider when several serve the model")
+		model    = fs.String("model", "", "model ID that must process the task")
+		role     = fs.String("role", "", "routing tier hint: architect, techlead, coder, tester or linter")
+		priority = fs.Int("priority", 0, "priority 1=high, 2=medium, 3=low (0 = server default)")
+		tags     = fs.String("tags", "", "comma-separated labels")
+		agentic  = fs.Bool("agentic", false, "let the model read/write project files over several turns and re-verify before finishing")
+		maxTurns = fs.Int("max-agent-turns", 0, "upper bound on model turns for --agentic (0 = daemon default)")
 		showVer  = fs.Bool("version", false, "print version information and exit")
 	)
 	if err := fs.Parse(args); err != nil {
@@ -77,6 +85,14 @@ func run(args []string, stdout, stderr io.Writer, pollEvery time.Duration) int {
 	if err != nil {
 		fmt.Fprintln(stderr, "error:", err)
 		return exitFailure
+	}
+
+	ApplyRouting(body, *provider, *hint, *model, *role, *priority, *tags)
+	if *agentic {
+		body["agentic"] = true
+		if *maxTurns > 0 {
+			body["maxAgentTurns"] = *maxTurns
+		}
 	}
 
 	taskID, status, err := SubmitTask(context.Background(), *addr, body)
@@ -133,6 +149,28 @@ func BuildRequestBody(taskFilePath, projectPath, targetFile, contextFilesStr, ve
 		body["maxCorrectionTurns"] = turns
 	}
 	return body, nil
+}
+
+// ApplyRouting copies the routing flags onto the request body; unset flags are
+// left out so the daemon applies its own defaults.
+func ApplyRouting(body map[string]interface{}, provider, hint, model, role string, priority int, tags string) {
+	for k, v := range map[string]string{"providerName": provider, "providerHint": hint, "modelId": model, "role": role} {
+		if v != "" {
+			body[k] = v
+		}
+	}
+	if priority > 0 {
+		body["priority"] = priority
+	}
+	var list []string
+	for _, t := range strings.Split(tags, ",") {
+		if t = strings.TrimSpace(t); t != "" {
+			list = append(list, t)
+		}
+	}
+	if len(list) > 0 {
+		body["tags"] = list
+	}
 }
 
 // SubmitTask POSTs a task payload to the daemon and returns the task ID and initial status.
