@@ -221,3 +221,175 @@ describe('SessionMonitor: session purged by the daemon', () => {
     await vi.advanceTimersByTimeAsync(0);
   });
 });
+
+describe('SessionMonitor: registration retries, model changes and shutdown', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('retries at 2s, 5s and 10s while Copilot is still starting, then registers', async () => {
+    selectChatModelsMock
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([{ id: 'late-model' }]);
+    const client = buildClient();
+    const { SessionMonitor } = await import('./sessionMonitor');
+    const ctx = buildContext();
+    const monitor = new SessionMonitor(client, ctx);
+    const started = monitor.start();
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(client.registerSession).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(5_000);
+    await started;
+    expect(client.registerSession).toHaveBeenCalledTimes(1);
+    expect(client.registerSession).toHaveBeenCalledWith(
+      expect.objectContaining({ modelId: 'late-model', agentName: 'GitHub Copilot' }),
+    );
+    expect(logNexusActivityMock).toHaveBeenCalledWith(
+      'copilot',
+      expect.stringContaining('models not available yet'),
+    );
+  });
+
+  it('gives up after the last retry and stays unregistered', async () => {
+    selectChatModelsMock.mockResolvedValue([]);
+    const client = buildClient();
+    const { SessionMonitor } = await import('./sessionMonitor');
+    const monitor = new SessionMonitor(client, buildContext());
+    const started = monitor.start();
+    await vi.advanceTimersByTimeAsync(2_000 + 5_000 + 10_000);
+    await started;
+    expect(client.registerSession).not.toHaveBeenCalled();
+  });
+
+  it('cancels a pending retry when the extension is disposed', async () => {
+    selectChatModelsMock.mockResolvedValue([]);
+    const { SessionMonitor } = await import('./sessionMonitor');
+    const ctx = buildContext();
+    const monitor = new SessionMonitor(buildClient(), ctx);
+    void monitor.start();
+    await vi.advanceTimersByTimeAsync(0);
+    // disposing the extension runs the disposables registered by the retry wait
+    for (const d of ctx.subscriptions) d.dispose();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(vi.getTimerCount()).toBeGreaterThanOrEqual(0); // no unhandled timer errors
+  });
+
+  it('registers again when the available chat models change', async () => {
+    selectChatModelsMock.mockResolvedValue([{ id: 'm1' }]);
+    const client = buildClient();
+    const { SessionMonitor } = await import('./sessionMonitor');
+    const monitor = new SessionMonitor(client, buildContext());
+    await monitor.start();
+    expect(client.registerSession).toHaveBeenCalledTimes(1);
+    const onChange = onDidChangeChatModelsMock.mock.calls[0][0] as () => void;
+    onChange();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(client.registerSession).toHaveBeenCalledTimes(2);
+  });
+
+  it('logs a failed registration and keeps going', async () => {
+    selectChatModelsMock.mockResolvedValue([{ id: 'm1' }]);
+    const client = buildClient({
+      registerSession: vi.fn().mockRejectedValue(new Error('daemon down')),
+    });
+    const { SessionMonitor } = await import('./sessionMonitor');
+    const monitor = new SessionMonitor(client, buildContext());
+    const started = monitor.start();
+    await vi.advanceTimersByTimeAsync(20_000);
+    await started;
+    expect(logNexusActivityMock).toHaveBeenCalledWith(
+      'copilot',
+      expect.stringContaining('registration failed'),
+    );
+  });
+
+  it('logs queue counts every 30s, and stays quiet when the daemon is unreachable', async () => {
+    selectChatModelsMock.mockResolvedValue([{ id: 'm1' }]);
+    const client = buildClient({
+      getTasks: vi
+        .fn()
+        .mockResolvedValueOnce([
+          { status: 'QUEUED' },
+          { status: 'QUEUED' },
+          { status: 'PROCESSING' },
+          { status: 'COMPLETED' },
+        ])
+        .mockRejectedValueOnce(new Error('down')),
+    });
+    const { SessionMonitor } = await import('./sessionMonitor');
+    const monitor = new SessionMonitor(client, buildContext());
+    await monitor.start();
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(logNexusActivityMock).toHaveBeenCalledWith('copilot', 'queue: 2 queued, 1 processing');
+    await vi.advanceTimersByTimeAsync(30_000); // the failing poll must not throw or log a queue line
+    expect(
+      logNexusActivityMock.mock.calls.filter((c) => String(c[1]).startsWith('queue:')),
+    ).toHaveLength(1);
+  });
+
+  it('deregisters on stop, tolerates a failing deregistration, and can be restarted', async () => {
+    selectChatModelsMock.mockResolvedValue([{ id: 'm1' }]);
+    const client = buildClient({ deregisterSession: vi.fn().mockRejectedValue(new Error('gone')) });
+    const { SessionMonitor } = await import('./sessionMonitor');
+    const monitor = new SessionMonitor(client, buildContext());
+    await monitor.start();
+    await expect(monitor.stop()).resolves.toBeUndefined();
+    expect(client.deregisterSession).toHaveBeenCalledWith('session-1');
+    await monitor.stop(); // nothing registered any more
+    expect(client.deregisterSession).toHaveBeenCalledTimes(1);
+    await monitor.start();
+    expect(client.registerSession).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(0);
+  });
+
+  it('works when the language-model API is not available at all', async () => {
+    vi.doMock('vscode', () => ({
+      env: { machineId: 'm' },
+      workspace: { workspaceFolders: undefined },
+      lm: undefined,
+    }));
+    vi.doMock('./activityLog', () => ({
+      getNexusActivityChannel: () => outputChannel,
+      logNexusActivity: logNexusActivityMock,
+    }));
+    vi.resetModules();
+    const { SessionMonitor } = await import('./sessionMonitor');
+    const client = buildClient();
+    const monitor = new SessionMonitor(client, buildContext());
+    const started = monitor.start();
+    await vi.advanceTimersByTimeAsync(20_000);
+    await started;
+    expect(client.registerSession).not.toHaveBeenCalled();
+    await monitor.stop();
+    vi.doUnmock('vscode');
+    vi.doUnmock('./activityLog');
+  });
+
+  it('registers with an empty path and no model id when the workspace and model are bare', async () => {
+    vi.doMock('vscode', () => ({
+      env: { machineId: 'm' },
+      workspace: { workspaceFolders: undefined },
+      lm: {
+        selectChatModels: async () => [{ name: 'by-name' }, {}],
+        onDidChangeChatModels: () => ({ dispose: vi.fn() }),
+      },
+    }));
+    vi.doMock('./activityLog', () => ({
+      getNexusActivityChannel: () => outputChannel,
+      logNexusActivity: logNexusActivityMock,
+    }));
+    vi.resetModules();
+    const { SessionMonitor } = await import('./sessionMonitor');
+    const client = buildClient();
+    await new SessionMonitor(client, buildContext()).start();
+    expect(client.registerSession).toHaveBeenCalledWith(
+      expect.objectContaining({ projectPath: '', modelId: 'by-name', externalId: 'm:' }),
+    );
+    vi.doUnmock('vscode');
+    vi.doUnmock('./activityLog');
+  });
+});

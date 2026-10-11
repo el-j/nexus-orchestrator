@@ -23,6 +23,11 @@ function relativeTime(date: Date): string {
   return `${Math.floor(minutes / 60)}h ago`;
 }
 
+/** "/a/b/" and "C:\\a\\b\\" compare equal to their un-slashed forms. */
+function trimTrailingSeparators(p: string): string {
+  return p.replace(/[\\/]+$/, '');
+}
+
 // ── Tree node types ──────────────────────────────────────────────────────────
 
 type OrchNode =
@@ -73,7 +78,6 @@ class ActivityItemNode extends vscode.TreeItem {
 class FolderNode extends vscode.TreeItem {
   readonly kind = 'folder' as const;
   constructor(public readonly orch: WorkspaceOrchestration) {
-    const _activeSuffix = orch.activePlan ? ` — ${orch.activePlan.title.slice(0, 30)}` : ' — idle';
     super(orch.folderName, vscode.TreeItemCollapsibleState.Expanded);
     this.description = `${orch.allPlans.length} plans`;
     this.tooltip = orch.folderPath;
@@ -223,6 +227,14 @@ function liveTaskIcon(status: string): vscode.ThemeIcon {
       return new vscode.ThemeIcon('error');
     case 'CANCELLED':
       return new vscode.ThemeIcon('circle-slash');
+    case 'TOO_LARGE':
+      return new vscode.ThemeIcon('file-binary');
+    case 'NO_PROVIDER':
+      return new vscode.ThemeIcon('plug');
+    case 'DRAFT':
+      return new vscode.ThemeIcon('edit');
+    case 'BACKLOG':
+      return new vscode.ThemeIcon('checklist');
     default:
       return new vscode.ThemeIcon('question');
   }
@@ -233,8 +245,6 @@ function liveTaskIcon(status: string): vscode.ThemeIcon {
 export class WorkspaceOrchViewProvider implements vscode.TreeDataProvider<OrchNode> {
   private readonly _onDidChangeTreeData = new vscode.EventEmitter<OrchNode | undefined>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
-  private liveActivities = new Map<string, AIActivity[]>();
-  private brainStatuses = new Map<string, BrainStatus>();
 
   constructor(
     private readonly scanner: WorkspaceScanner,
@@ -243,26 +253,9 @@ export class WorkspaceOrchViewProvider implements vscode.TreeDataProvider<OrchNo
     scanner.onDidChange(() => this._onDidChangeTreeData.fire(undefined));
   }
 
+  /** Re-reads the orchestrator files and redraws; live data is fetched as nodes expand. */
   refresh(): void {
     this.scanner.scan();
-    if (this.client) {
-      const orchs = this.scanner.getOrchestrations();
-      for (const orch of orchs) {
-        this.client
-          .getActivities({ projectPath: orch.folderPath, limit: 10 })
-          .then((acts) => {
-            this.liveActivities.set(orch.folderPath, acts);
-          })
-          .catch(() => {});
-
-        this.client
-          .getBrainStatus(orch.folderPath)
-          .then((status) => {
-            this.brainStatuses.set(orch.folderPath, status);
-          })
-          .catch(() => {});
-      }
-    }
     this._onDidChangeTreeData.fire(undefined);
   }
 
@@ -296,7 +289,6 @@ export class WorkspaceOrchViewProvider implements vscode.TreeDataProvider<OrchNo
             projectPath: folderPath,
             limit: 10,
           });
-          this.liveActivities.set(folderPath, activities);
           if (activities.length > 0) {
             children.push(new LiveActivityGroupNode(activities, folderPath));
           }
@@ -307,9 +299,9 @@ export class WorkspaceOrchViewProvider implements vscode.TreeDataProvider<OrchNo
         // Live daemon tasks for this project
         try {
           const allTasks = await this.client.getAllTasks();
-          const folderNorm = element.orch.folderPath.replace(/\/$/, '');
+          const folderNorm = trimTrailingSeparators(element.orch.folderPath);
           const projectTasks = allTasks.filter(
-            (t) => t.projectPath.replace(/\/$/, '') === folderNorm,
+            (t) => trimTrailingSeparators(t.projectPath) === folderNorm,
           );
 
           // Active tasks first, then up to 5 recent completed/failed
@@ -337,7 +329,6 @@ export class WorkspaceOrchViewProvider implements vscode.TreeDataProvider<OrchNo
       if (this.client) {
         try {
           const bstat = await this.client.getBrainStatus(element.orch.folderPath);
-          this.brainStatuses.set(element.orch.folderPath, bstat);
           children.push(new ProjectBrainNode(bstat, element.orch.folderPath));
         } catch {
           // Daemon offline

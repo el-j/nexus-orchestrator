@@ -9,7 +9,9 @@ export default defineConfig({
       reporter: ['text', 'lcov'],
       // Measure ALL extension source, not a hand-picked subset.
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.test.ts', 'src/**/*.d.ts'],
+      exclude: ['src/**/*.test.ts', 'src/**/*.d.ts', 'src/test/**'],
+      // Ratchet: raise these when coverage rises, never lower them.
+      thresholds: { statements: 99, lines: 99, functions: 98, branches: 97 },
     },
   },
 });
