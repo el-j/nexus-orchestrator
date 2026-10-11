@@ -25,6 +25,8 @@ export default defineConfig({
         'src/wailsjs/**', // generated Wails bindings
         'src/**/*.d.ts',
       ],
+      // Ratchet: raise these when coverage rises, never lower them.
+      thresholds: { statements: 98, lines: 98, functions: 97, branches: 94 },
     },
   },
 });

@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
@@ -7,11 +7,9 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
-      include: [
-        'src/commands/submitTask.ts',
-        'src/statusBar.ts',
-        'src/taskQueueProvider.ts',
-      ],
+      // Measure ALL extension source, not a hand-picked subset.
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.test.ts', 'src/**/*.d.ts'],
     },
   },
-})
+});
