@@ -241,6 +241,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useToast } from 'primevue/usetoast';
 import ProjectBrainCard from '../components/ProjectBrainCard.vue';
 import { useDiscoveredPlans } from '../composables/useDiscoveredPlans';
 import { currentProject } from '../composables/useProjectState';
@@ -436,12 +437,13 @@ function kindBadgeClass(kind: PlanFileKind): string {
 // Status parsing from plan file summary (YAML frontmatter or body-level)
 function parseStatus(plan: DiscoveredPlanFile): string | null {
   if (!plan.summary) return null;
-  // YAML frontmatter: "status: todo"
-  const yamlMatch = plan.summary.match(/\bstatus:\s*([^\n\r]+)/i);
-  if (yamlMatch) return yamlMatch[1].trim().toLowerCase();
-  // Body-level: "**Status:** todo"
+  // Body-level "**Status:** todo" is checked first: the YAML pattern would otherwise
+  // match inside it and capture "** todo".
   const bodyMatch = plan.summary.match(/\*\*Status:\*\*\s*([^\n\r]+)/i);
   if (bodyMatch) return bodyMatch[1].trim().toLowerCase();
+  // YAML frontmatter: "status: todo" at the start of a line
+  const yamlMatch = plan.summary.match(/^\s*status:\s*([^\n\r]+)/im);
+  if (yamlMatch) return yamlMatch[1].trim().toLowerCase();
   return null;
 }
 
@@ -459,14 +461,28 @@ function statusBadgeClass(status: string): string {
 
 // Promote plan task to nexus queue
 const promoting = ref<string | null>(null);
+const toast = useToast();
 
 async function handlePromote(plan: DiscoveredPlanFile) {
   promoting.value = plan.id;
   try {
-    await createDraft({
+    const id = await createDraft({
       projectPath: plan.projectPath,
       instruction: plan.summary ?? `Execute task from ${plan.path}`,
       targetFile: plan.path,
+    });
+    toast.add({
+      severity: 'success',
+      summary: 'Saved as draft',
+      detail: `${basename(plan.path)} → ${id}`,
+      life: 3000,
+    });
+  } catch (e) {
+    toast.add({
+      severity: 'error',
+      summary: 'Promote failed',
+      detail: e instanceof Error ? e.message : String(e),
+      life: 5000,
     });
   } finally {
     promoting.value = null;

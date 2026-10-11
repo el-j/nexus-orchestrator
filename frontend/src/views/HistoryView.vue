@@ -23,13 +23,17 @@
           v-for="badge in summaryBadges"
           :key="badge.status"
           @click="toggleStatusFilter(badge.status)"
-          :aria-pressed="selectedFilter === badge.status"
+          :disabled="!badge.filterable"
+          :aria-pressed="badge.filterable ? selectedFilter === badge.status : undefined"
           :class="[
-            'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all cursor-pointer border',
+            'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all border',
+            badge.filterable ? 'cursor-pointer' : 'cursor-default',
             badge.color,
             selectedFilter === badge.status
               ? 'border-current opacity-100'
-              : 'border-transparent opacity-75 hover:opacity-100',
+              : badge.filterable
+                ? 'border-transparent opacity-75 hover:opacity-100'
+                : 'border-transparent opacity-75',
           ]"
         >
           {{ badge.label }}&nbsp;<span class="font-mono">{{ badge.count }}</span>
@@ -172,8 +176,8 @@ let interval: ReturnType<typeof setInterval> | null = null;
 const { on, off, connected } = useGlobalSSE();
 
 function sseHandler(data: { type: string; [key: string]: unknown }) {
-  if (data.type === 'connected' || data.type === 'log') return;
-  void refresh();
+  // Only task lifecycle events change the history; logs and activity events share the stream.
+  if (data.type.startsWith('task.')) void refresh();
 }
 
 function startPolling() {
@@ -242,6 +246,9 @@ const summaryBadges = computed(() =>
       label,
       color,
       count: statusSummary.value[status as TaskStatus] ?? 0,
+      // This page lists finished tasks only: filtering by Queued/Draft/… would
+      // always produce an empty list, so those badges are informational.
+      filterable: historyStatuses.has(status as TaskStatus),
     })),
 );
 
