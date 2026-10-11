@@ -205,7 +205,7 @@
                 <button
                   v-if="s.status !== 'disconnected'"
                   class="text-xs text-red-400 hover:text-red-300 px-2.5 py-1 rounded-lg border border-red-500/20 hover:border-red-500/40 transition-all"
-                  @click="deregister(s.id)"
+                  @click.stop="deregister(s.id)"
                 >
                   Disconnect
                 </button>
@@ -408,7 +408,6 @@ const sortOptions = [
 // --- Filter ---
 const searchQuery = ref('');
 const sessionStatusFilter = ref<'' | 'active' | 'idle' | 'disconnected'>('');
-const agentStatusFilter = ref<'' | 'running' | 'stopped'>('');
 
 // --- Tabs ---
 const tabs = [
@@ -555,11 +554,6 @@ const filteredSessions = computed(() => {
 
 const filteredAgentRoots = computed(() => {
   let list = sortedAgentRoots.value;
-  if (agentStatusFilter.value === 'running') {
-    list = list.filter((a) => a.isRunning);
-  } else if (agentStatusFilter.value === 'stopped') {
-    list = list.filter((a) => !a.isRunning);
-  }
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase();
     list = list.filter(
