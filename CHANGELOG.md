@@ -298,9 +298,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - HTTP body size cap prevents memory exhaustion from malformed or malicious API requests
 - SQLite `PRAGMA foreign_keys=ON` prevents referential integrity violations; WAL mode reduces write contention
 
-[Unreleased]: https://github.com/el-j/nexusOrchestrator/compare/v0.9.2...HEAD
-[0.9.2]: https://github.com/el-j/nexusOrchestrator/compare/v0.9.1...v0.9.2
-[0.9.1]: https://github.com/el-j/nexusOrchestrator/compare/v0.9.0...v0.9.1
-[0.9.0]: https://github.com/el-j/nexusOrchestrator/compare/v0.8.0...v0.9.0
-[0.8.0]: https://github.com/el-j/nexusOrchestrator/releases/tag/v0.8.0
-[0.2.0]: https://github.com/el-j/nexusOrchestrator/releases/tag/v0.2.0
+[Unreleased]: https://github.com/el-j/nexus-orchestrator/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/el-j/nexus-orchestrator/compare/v0.9.1...v0.9.2
+[0.9.1]: https://github.com/el-j/nexus-orchestrator/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/el-j/nexus-orchestrator/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/el-j/nexus-orchestrator/releases/tag/v0.8.0
+[0.2.0]: https://github.com/el-j/nexus-orchestrator/releases/tag/v0.2.0

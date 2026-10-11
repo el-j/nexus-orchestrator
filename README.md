@@ -1,8 +1,8 @@
 # nexusOrchestrator
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v0.10.0-blue)](https://github.com/el-j/nexusOrchestrator/releases/tag/v0.10.0)
-[![Go Report Card](https://goreportcard.com/badge/github.com/el-j/nexusOrchestrator)](https://goreportcard.com/report/github.com/el-j/nexusOrchestrator)
+[![Release](https://img.shields.io/github/v/release/el-j/nexus-orchestrator?include_prereleases&label=release)](https://github.com/el-j/nexus-orchestrator/releases)
+[![Go Report Card](https://goreportcard.com/badge/github.com/el-j/nexus-orchestrator)](https://goreportcard.com/report/github.com/el-j/nexus-orchestrator)
 
 A universal control plane, context broker, and execution gatekeeper that coordinates AI coding workflows across diverse local models and frontier cloud providers, with per-project SQLite FTS5 brain memory and an extensive 41-tool Model Context Protocol (MCP) server.
 
@@ -100,7 +100,7 @@ CGO_ENABLED=1 go build ./cmd/nexus-daemon/...
 
 ### VS Code Extension
 
-Install `nexus-orchestrator-0.2.0.vsix` from the [releases page](https://github.com/el-j/nexusOrchestrator/releases) or build from source:
+Install `nexus-orchestrator.vsix` from the [releases page](https://github.com/el-j/nexus-orchestrator/releases) or build from source:
 
 ```sh
 cd vscode-extension && npm install && npm run package

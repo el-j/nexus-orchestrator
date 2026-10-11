@@ -254,12 +254,8 @@ curl -s -X POST http://localhost:63987/api/tasks \\
   }' | jq .`;
 
 const codeFirstTaskResponse = `{
-  "id": "a1b2c3d4-...",
-  "projectPath": "/path/to/project",
-  "targetFile": "hello.go",
-  "instruction": "Write a Go function...",
-  "status": "QUEUED",
-  "createdAt": "2025-01-01T00:00:00Z"
+  "task_id": "a1b2c3d4-...",
+  "status": "QUEUED"
 }`;
 
 const codeStatus = `# Get task by ID

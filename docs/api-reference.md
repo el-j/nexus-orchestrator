@@ -1,21 +1,4 @@
----
-layout: default
-title: API Reference
-nav_order: 3
----
-
 # API Reference
-
-{: .no_toc }
-
-## Table of contents
-
-{: .no_toc .text-delta }
-
-1. TOC
-   {:toc}
-
----
 
 ## HTTP REST API
 
@@ -663,19 +646,20 @@ Base URL: `http://localhost:63988`
 | `update_provider_config` | Update an existing LLM provider configuration by ID              | `id`, `kind?`, `name?`, `base_url?`, `api_key?`, `enabled?` |
 | `remove_provider_config` | Delete a persisted provider configuration and deregister adapter | `id`                                                        |
 
-#### Brain / Knowledge (9)
+#### Brain / Knowledge (10)
 
-| Tool                  | Description                                                                     | Parameters                              |
-| --------------------- | ------------------------------------------------------------------------------- | --------------------------------------- |
-| `get_brain_status`    | Retrieve indexing status and entry count of project knowledge brain             | `projectPath`                           |
-| `ingest_knowledge`    | Parse and ingest a markdown file (e.g. CLAUDE.md) into project knowledge base   | `projectPath`, `filePath`               |
-| `get_project_context` | Obtain base macro context representation of the project bounded by token budget | `projectPath`, `maxTokens?`             |
-| `get_focused_context` | Query bounded context sections specific to a reasoning question                 | `projectPath`, `question`, `maxTokens?` |
-| `search_knowledge`    | Search project intelligence via BM25 matching                                   | `projectPath`, `query`, `limit?`        |
-| `init_project`        | Auto-ingest CLAUDE.md and initialize a project's knowledge base in one step     | `projectPath`                           |
-| `list_knowledge`      | List all knowledge documents stored for a project, optionally filtered by kind  | `projectPath`, `kind?`                  |
-| `delete_knowledge`    | Delete a knowledge document by ID from the project repository                   | `projectPath`, `id`                     |
-| `get_file_map`        | Retrieve cached file path map knowledge document for a project                  | `projectPath`                           |
+| Tool                     | Description                                                                                                                   | Parameters                              |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| `get_brain_status`       | Retrieve indexing status and entry count of project knowledge brain                                                           | `projectPath`                           |
+| `ingest_knowledge`       | Parse and ingest a markdown file (e.g. CLAUDE.md) into project knowledge base                                                 | `projectPath`, `filePath`               |
+| `get_project_context`    | Obtain base macro context representation of the project bounded by token budget                                               | `projectPath`, `maxTokens?`             |
+| `get_focused_context`    | Query bounded context sections specific to a reasoning question                                                               | `projectPath`, `question`, `maxTokens?` |
+| `search_knowledge`       | Search project intelligence via BM25 matching                                                                                 | `projectPath`, `query`, `limit?`        |
+| `init_project`           | Auto-ingest CLAUDE.md and initialize a project's knowledge base in one step                                                   | `projectPath`                           |
+| `list_knowledge`         | List all knowledge documents stored for a project, optionally filtered by kind                                                | `projectPath`, `kind?`                  |
+| `delete_knowledge`       | Delete a knowledge document by ID from the project repository                                                                 | `projectPath`, `id`                     |
+| `get_file_map`           | Retrieve cached file path map knowledge document for a project                                                                | `projectPath`                           |
+| `get_onboarding_context` | Token-budgeted (< 800 tokens) onboarding summary for agent bootstrap: stack, invariants, test commands, active plan and tasks | `projectPath`, `maxTokens?`             |
 
 #### Discovery & System (6)
 

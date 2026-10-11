@@ -532,6 +532,11 @@ const tools = [
   },
   {
     category: 'Brain / Knowledge',
+    name: 'get_onboarding_context',
+    desc: 'Get a token-budgeted (< 800 tokens) onboarding summary for agent bootstrap: stack, invariants, test commands, active plan and tasks',
+  },
+  {
+    category: 'Brain / Knowledge',
     name: 'get_focused_context',
     desc: 'Get task-specific micro context (Learning, Definitions, Gotchas) bounded by a token budget',
   },

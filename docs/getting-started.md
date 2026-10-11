@@ -30,8 +30,8 @@ nav_order: 4
 
 ```sh
 # Clone the repository
-git clone https://github.com/el-j/nexusOrchestrator.git
-cd nexusOrchestrator
+git clone https://github.com/el-j/nexus-orchestrator.git
+cd nexus-orchestrator
 
 # Build all binaries
 CGO_ENABLED=1 go build ./...
@@ -223,6 +223,6 @@ claiming tasks** to load relevant project knowledge into their context window.
 
 ## Next Steps
 
-- [API Reference](/nexusOrchestrator/api-reference) — Full HTTP, Context Brain, and MCP endpoint docs
-- [MCP Integration](/nexusOrchestrator/mcp-integration) — Connect with Claude Desktop
-- [Architecture](/nexusOrchestrator/architecture) — Understand the hexagonal design
+- [API Reference](/api-reference) — Full HTTP, Context Brain, and MCP endpoint docs
+- [MCP Integration](/mcp-integration) — Connect with Claude Desktop
+- [Architecture](/architecture) — Understand the hexagonal design

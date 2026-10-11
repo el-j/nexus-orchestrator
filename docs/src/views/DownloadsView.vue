@@ -160,7 +160,7 @@
       </div>
       <p class="text-xs text-slate-600 mt-4 reveal">
         Or install from the command line:
-        <code class="text-slate-400">code --install-extension nexus-orchestrator-vscode.vsix</code>
+        <code class="text-slate-400">code --install-extension nexus-orchestrator.vsix</code>
       </p>
     </section>
 
@@ -391,7 +391,7 @@ const baseURL = computed(() => {
   return `https://github.com/${REPO}/releases/latest/download`;
 });
 
-const vsixURL = computed(() => `${baseURL.value}/nexus-orchestrator-vscode.vsix`);
+const vsixURL = computed(() => `${baseURL.value}/nexus-orchestrator.vsix`);
 
 const DESKTOP_ASSETS = [
   {

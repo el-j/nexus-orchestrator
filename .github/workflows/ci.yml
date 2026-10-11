@@ -14,7 +14,6 @@ on:
       - 'alpha/**'
       - 'beta/**'
     paths-ignore:
-      - 'docs/**'
       - '*.md'
       - '.claude/**'
 
@@ -187,6 +186,31 @@ jobs:
       - name: Run frontend smoke coverage
         working-directory: frontend
         run: npm run test:coverage
+
+  docs-test:
+    name: Docs Site Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: docs/package-lock.json
+
+      - name: Install dependencies
+        working-directory: docs
+        run: npm ci
+
+      - name: Run docs site tests with coverage gate
+        working-directory: docs
+        run: npm run test:coverage
+
+      - name: Build docs site
+        working-directory: docs
+        run: npm run build
 
   build-vscode:
     name: Build VS Code Extension
