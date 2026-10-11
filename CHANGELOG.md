@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Agentic tasks: `agentic` / `maxAgentTurns` on a task let the model read and write project files over several turns and re-verify before finishing; exposed on REST, MCP, `nexus-cli`, `nexus-submit` and the UI
+- Routing parity: `providerName`, `providerHint`, `modelId`, `role`, `priority` and `tags` are accepted by `submit_task` / `create_draft` and the CLIs; GitHub Copilot and LM Studio are classified correctly for role routing
+- Real-daemon end-to-end suite (`go test -tags e2e ./internal/e2e/`): builds the shipped binaries and drives REST, every MCP tool, the stdio proxy, both CLIs, restart persistence, shutdown and port conflicts
+- Playwright `real-daemon` project (daemon plus a fake Ollama), VS Code extension-host tests (`npm run test:host`), a Wails desktop smoke job and a GitHub Action end-to-end job
+- Mutation-testing harness (gremlins, Stryker) with a weekly workflow, `scripts/check-tsdoc.mjs` and revive `exported` doc-comment gates, and `scripts/check-file-size.sh` (500-line cap)
+
+### Changed
+
+- Repository ports (`TaskRepository`, `SessionRepository`, `ModelCapabilityRepository`) take a `context.Context`; `repo_sqlite` uses the `*Context` database calls and the `noctx` exclusion is gone
+- Oversized source files split along their seams (engine, orchestrator, SQLite repository, scanners, brain service, extension client, several views)
+- The GitHub Action's `command` input defaults to `auto` instead of `execute`
+- Coverage ratchets: Go 96%, extension 100%, frontend 98/99/98/96
+
+### Fixed
+
+- The daemon kept running (and printed its ready banner) when the REST or MCP port was already in use; it now exits non-zero
+- The Action failed on the first run in any project because `execute` requires a completed plan
+- Views and composables that unmounted before their first fetch finished left a poller running for the rest of the session
+- `PromoteTask` was declared as returning nothing in the desktop binding while Go returns the promote result
+- The "Deterministic Daemon E2E" and Playwright CI jobs could not fail (a skipped script, `continue-on-error`); both now run for real
+
 ## [0.10.0] — 2026-03-14
 
 ### Added

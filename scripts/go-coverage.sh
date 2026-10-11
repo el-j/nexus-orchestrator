@@ -2,7 +2,7 @@
 # Merged Go statement coverage across every package, with a minimum gate.
 #
 #   scripts/go-coverage.sh            # report only
-#   MIN_COVERAGE=95 scripts/go-coverage.sh   # fail below 95%
+#   MIN_COVERAGE=96 scripts/go-coverage.sh   # fail below 95%
 #
 # Each package's tests also exercise code in other packages (-coverpkg), and a
 # block counts as covered when ANY test binary executed it. Excluded from the
