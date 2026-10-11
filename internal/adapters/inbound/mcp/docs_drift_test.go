@@ -92,7 +92,7 @@ func TestAPIReferenceGroupCountsAddUpToTheCatalog(t *testing.T) {
 func TestDocsQuotingAToolCountMatchTheCatalog(t *testing.T) {
 	want := len(toolList())
 	pattern := regexp.MustCompile(`\b(\d+) (?:MCP )?tools\b`)
-	for _, doc := range []string{"README.md", "docs/index.md", "docs/getting-started.md", "docs/mcp-integration.md", "docs/architecture.md"} {
+	for _, doc := range []string{"README.md", "docs/src/views/HomeView.vue", "docs/getting-started.md", "docs/mcp-integration.md", "docs/architecture.md"} {
 		for _, m := range pattern.FindAllStringSubmatch(readDoc(t, doc), -1) {
 			if n, _ := strconv.Atoi(m[1]); n != want {
 				t.Errorf("%s says %q but the catalog has %d tools", doc, m[0], want)
