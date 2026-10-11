@@ -6,7 +6,7 @@ export interface ActionInputs {
   readonly projectPath: string;
   readonly targetFile: string;
   readonly contextFiles: string[];
-  readonly command: string; // validated to 'execute' | 'plan' at startup
+  readonly command: string; // validated to 'execute' | 'plan' | 'auto' at startup
   // Routing
   readonly model: string;
   readonly provider: string;

@@ -287,7 +287,7 @@ describe('index: task request assembly', () => {
       contextFiles: ['x.go', 'y.go'],
       modelId: 'qwen',
       providerHint: 'ollama',
-      command: 'execute',
+      command: 'auto',
     });
   });
 
@@ -389,7 +389,7 @@ describe('index: agent identity', () => {
 });
 
 describe('index: input validation', () => {
-  it.each(['EXECUTE', 'run', 'auto'])(
+  it.each(['EXECUTE', 'run', 'AUTO'])(
     'rejects command "%s" before doing any work',
     async (command) => {
       setInputs({ instruction: 'work', command, start_daemon: 'true' });
@@ -397,6 +397,16 @@ describe('index: input validation', () => {
       expect(core._failures[0]).toContain(`Invalid command "${command}"`);
       expect(mockInstallDaemon).not.toHaveBeenCalled();
       expect(mockSubmitTask).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['plan', 'execute', 'auto'])(
+    'passes the "%s" command through to the daemon',
+    async (command) => {
+      setInputs({ instruction: 'work', command });
+      primeSuccess();
+      await runIndex();
+      expect(submittedRequest()).toMatchObject({ command });
     },
   );
 

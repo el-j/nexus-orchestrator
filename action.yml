@@ -49,10 +49,11 @@ inputs:
 
   command:
     description: >
-      Task command type: "plan" (orchestration / documentation) or
-      "execute" (code implementation). Default: execute.
+      Task command type: "plan" (orchestration / documentation), "execute"
+      (code implementation; the daemon refuses it until the project has a
+      completed plan task) or "auto" (the daemon decides). Default: auto.
     required: false
-    default: 'execute'
+    default: 'auto'
 
   # Routing
   model:

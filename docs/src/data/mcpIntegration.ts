@@ -345,8 +345,8 @@ export const actionInputs = [
   },
   {
     name: 'command',
-    default: 'execute',
-    desc: '"plan" (orchestration) or "execute" (code generation)',
+    default: 'auto',
+    desc: '"plan" (orchestration), "execute" (code generation, needs a prior completed plan) or "auto"',
   },
   {
     name: 'openai_api_key',

@@ -26,7 +26,7 @@ function getInputs(): ActionInputs {
             .map((f) => f.trim())
             .filter(Boolean)
         : [],
-    command: core.getInput('command').trim() || 'execute',
+    command: core.getInput('command').trim() || 'auto',
     model: core.getInput('model').trim(),
     provider: core.getInput('provider').trim(),
     agent: core.getInput('agent').trim(),
@@ -57,8 +57,8 @@ function maskSecrets(inputs: ActionInputs): void {
 
 /** Rejects inputs the daemon would silently misinterpret. */
 function validateInputs(inputs: ActionInputs): void {
-  if (inputs.command !== 'execute' && inputs.command !== 'plan') {
-    throw new Error(`Invalid command "${inputs.command}": expected "execute" or "plan".`);
+  if (inputs.command !== 'execute' && inputs.command !== 'plan' && inputs.command !== 'auto') {
+    throw new Error(`Invalid command "${inputs.command}": expected "plan", "execute" or "auto".`);
   }
   if (!Number.isInteger(inputs.timeoutSeconds) || inputs.timeoutSeconds <= 0) {
     throw new Error(`Invalid timeout_seconds: expected a positive whole number of seconds.`);
