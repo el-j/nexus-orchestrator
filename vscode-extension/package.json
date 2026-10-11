@@ -201,6 +201,12 @@
           "default": "http://127.0.0.1:63987",
           "description": "URL of the nexusOrchestrator daemon"
         },
+        "nexus.apiToken": {
+          "type": "string",
+          "default": "",
+          "description": "Bearer token for a daemon started with NEXUS_API_TOKEN. Leave empty when the daemon has no token. If empty, the NEXUS_API_TOKEN environment variable of the editor is used.",
+          "scope": "machine"
+        },
         "nexus.defaultProvider": {
           "type": "string",
           "default": "",

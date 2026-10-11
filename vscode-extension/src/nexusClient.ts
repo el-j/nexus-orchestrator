@@ -10,13 +10,7 @@ import { z } from 'zod';
 // ---- Domain types (mirror internal/core/domain/task.go) ----
 
 export type TaskStatus =
-  | 'QUEUED'
-  | 'PROCESSING'
-  | 'COMPLETED'
-  | 'FAILED'
-  | 'CANCELLED'
-  | 'TOO_LARGE'
-  | 'NO_PROVIDER';
+  'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'TOO_LARGE' | 'NO_PROVIDER';
 
 export type CommandType = 'plan' | 'execute' | 'auto' | '';
 
@@ -292,10 +286,19 @@ const ProviderConfigSchema = z
 
 // ---- Client ----
 
+/** Default per-request timeout; a hung daemon must not hang the editor. */
+const REQUEST_TIMEOUT_MS = 15_000;
+
 export class NexusClient {
+  /**
+   * @param baseUrl REST API base URL, e.g. http://127.0.0.1:63987
+   * @param mcpPort port of the companion MCP server
+   * @param token   bearer token when the daemon runs with NEXUS_API_TOKEN set
+   */
   constructor(
     private baseUrl: string,
     private mcpPort: number = 63988,
+    private token: string = '',
   ) {}
 
   /** Expose the configured MCP port. */
@@ -303,9 +306,25 @@ export class NexusClient {
     return this.mcpPort;
   }
 
+  /** The REST API base URL this client talks to. */
+  getBaseUrl(): string {
+    return this.baseUrl;
+  }
+
   /**
-   * Probe each port with HEAD /health and return the first responding port.
-   * Deduplicates the list; user-supplied port is probed first.
+   * Re-point this client in place. Components capture the client once at
+   * activation, so a settings change must update the shared instance rather
+   * than create a new one that only some of them would see.
+   */
+  configure(baseUrl: string, mcpPort: number, token = ''): void {
+    this.baseUrl = baseUrl;
+    this.mcpPort = mcpPort;
+    this.token = token;
+  }
+
+  /**
+   * Probe each REST port with GET /api/health and return the first responding port.
+   * Deduplicates the list; the first candidate is probed first.
    */
   async tryConnect(ports: number[]): Promise<number> {
     const seen = new Set<number>();
@@ -314,11 +333,8 @@ export class NexusClient {
       if (seen.has(port)) continue;
       seen.add(port);
       try {
-        const probeUrl = `${url.protocol}//${url.hostname}:${port}/health`;
-        const resp = await fetch(probeUrl, {
-          method: 'HEAD',
-          signal: AbortSignal.timeout(1500),
-        });
+        const probeUrl = `${url.protocol}//${url.hostname}:${port}/api/health`;
+        const resp = await fetch(probeUrl, { signal: AbortSignal.timeout(1500) });
         if (resp.ok) return port;
       } catch {
         // port not responding — try next
@@ -357,13 +373,8 @@ export class NexusClient {
    */
   async cancelTask(id: string): Promise<void> {
     const url = `${this.baseUrl}/api/tasks/${encodeURIComponent(id)}`;
-    const resp = await fetch(url, { method: 'DELETE' });
-    if (!resp.ok) {
-      const body = await resp.text().catch(() => '');
-      throw new Error(
-        `nexus: cancel task ${id}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`,
-      );
-    }
+    const resp = await this.send(url, { method: 'DELETE' });
+    if (!resp.ok) throw await this.failure(`cancel task ${id}`, resp);
   }
 
   /** Return all registered LLM providers and their liveness status. */
@@ -379,26 +390,16 @@ export class NexusClient {
   /** Deregister an AI session by ID. */
   async deregisterSession(id: string): Promise<void> {
     const url = `${this.baseUrl}/api/ai-sessions/${encodeURIComponent(id)}`;
-    const resp = await fetch(url, { method: 'DELETE' });
-    if (!resp.ok) {
-      const body = await resp.text().catch(() => '');
-      throw new Error(
-        `nexus: deregister session ${id}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`,
-      );
-    }
+    const resp = await this.send(url, { method: 'DELETE' });
+    if (!resp.ok) throw await this.failure(`deregister session ${id}`, resp);
   }
 
   /** Send a heartbeat for an existing session to refresh its last-activity timestamp. */
   async heartbeatSession(id: string): Promise<void> {
     const url = `${this.baseUrl}/api/ai-sessions/${encodeURIComponent(id)}/heartbeat`;
-    const resp = await fetch(url, { method: 'POST' });
-    if (!resp.ok && resp.status !== 404) {
-      // 404 means the session was cleaned up — caller should re-register.
-      const body = await resp.text().catch(() => '');
-      throw new Error(
-        `nexus: heartbeat session ${id}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`,
-      );
-    }
+    const resp = await this.send(url, { method: 'POST' });
+    // 404 means the session was cleaned up — the caller should re-register.
+    if (!resp.ok && resp.status !== 404) throw await this.failure(`heartbeat session ${id}`, resp);
   }
 
   /** Return all registered AI sessions. */
@@ -457,7 +458,7 @@ export class NexusClient {
     if (options?.type) params.set('type', options.type);
     if (options?.limit) params.set('limit', String(options.limit));
     const url = `${this.baseUrl}/api/activities${params.size ? '?' + params.toString() : ''}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
+    const res = await this.send(url, { signal: AbortSignal.timeout(3000) });
     if (!res.ok) return [];
     return res.json() as Promise<AIActivity[]>;
   }
@@ -476,7 +477,7 @@ export class NexusClient {
    */
   async health(): Promise<boolean> {
     try {
-      const resp = await fetch(`${this.baseUrl}/api/health`);
+      const resp = await this.send(`${this.baseUrl}/api/health`);
       if (!resp.ok) {
         return false;
       }
@@ -535,7 +536,7 @@ export class NexusClient {
    * Search project intelligence via BM25 matching.
    */
   async searchKnowledge(projectPath: string, query: string, limit = 5): Promise<ContextSection[]> {
-    const params = new URLSearchParams({ projectPath, query, limit: String(limit) });
+    const params = new URLSearchParams({ projectPath, q: query, limit: String(limit) });
     const data = await this.get<{ results: ContextSection[] }>(`/api/brain/search?${params}`);
     return data.results ?? [];
   }
@@ -576,6 +577,46 @@ export class NexusClient {
 
   // ---- Private helpers ----
 
+  /** fetch() with the bearer token and a timeout, so no call can hang forever. */
+  private async send(
+    url: string,
+    init: RequestInit = {},
+    timeoutMs: number = REQUEST_TIMEOUT_MS,
+  ): Promise<Response> {
+    const headers: Record<string, string> = {
+      ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+      ...(init.headers as Record<string, string> | undefined),
+    };
+    try {
+      return await fetch(url, {
+        ...init,
+        headers,
+        signal: init.signal ?? AbortSignal.timeout(timeoutMs),
+      });
+    } catch (err) {
+      if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+        throw new NexusClientError(
+          `nexus: no response from ${url} within ${timeoutMs / 1000}s`,
+          err,
+        );
+      }
+      throw err;
+    }
+  }
+
+  /** Builds the error for a non-2xx response, using the daemon's {"error": "..."} message. */
+  private async failure(what: string, resp: Response): Promise<Error> {
+    const raw = (await resp.text().catch(() => '')).trim();
+    let detail = raw;
+    try {
+      const parsed = JSON.parse(raw) as { error?: unknown };
+      if (typeof parsed.error === 'string' && parsed.error) detail = parsed.error;
+    } catch {
+      /* not JSON: keep the raw text */
+    }
+    return new Error(`nexus: ${what}: HTTP ${resp.status}${detail ? ` — ${detail}` : ''}`);
+  }
+
   private parseResponse<T>(schema: z.ZodSchema<T>, data: unknown): T {
     const result = schema.safeParse(data);
     if (!result.success) {
@@ -588,49 +629,35 @@ export class NexusClient {
   }
 
   private async get<T>(path: string, schema?: z.ZodSchema<T>): Promise<T> {
-    const resp = await fetch(`${this.baseUrl}${path}`);
-    if (!resp.ok) {
-      const body = await resp.text().catch(() => '');
-      throw new Error(`nexus: GET ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`);
-    }
+    const resp = await this.send(`${this.baseUrl}${path}`);
+    if (!resp.ok) throw await this.failure(`GET ${path}`, resp);
     const data: unknown = await resp.json();
     return schema ? this.parseResponse(schema, data) : (data as T);
   }
 
   private async post<T>(path: string, payload: unknown, schema?: z.ZodSchema<T>): Promise<T> {
-    const resp = await fetch(`${this.baseUrl}${path}`, {
+    const resp = await this.send(`${this.baseUrl}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!resp.ok) {
-      const body = await resp.text().catch(() => '');
-      throw new Error(`nexus: POST ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`);
-    }
+    if (!resp.ok) throw await this.failure(`POST ${path}`, resp);
     const data: unknown = await resp.json();
     return schema ? this.parseResponse(schema, data) : (data as T);
   }
 
   private async delete(path: string): Promise<void> {
-    const resp = await fetch(`${this.baseUrl}${path}`, { method: 'DELETE' });
-    if (!resp.ok) {
-      const body = await resp.text().catch(() => '');
-      throw new Error(
-        `nexus: DELETE ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`,
-      );
-    }
+    const resp = await this.send(`${this.baseUrl}${path}`, { method: 'DELETE' });
+    if (!resp.ok) throw await this.failure(`DELETE ${path}`, resp);
   }
 
   private async put<T>(path: string, payload: unknown, schema?: z.ZodSchema<T>): Promise<T> {
-    const resp = await fetch(`${this.baseUrl}${path}`, {
+    const resp = await this.send(`${this.baseUrl}${path}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!resp.ok) {
-      const body = await resp.text().catch(() => '');
-      throw new Error(`nexus: PUT ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`);
-    }
+    if (!resp.ok) throw await this.failure(`PUT ${path}`, resp);
     const data: unknown = await resp.json();
     return schema ? this.parseResponse(schema, data) : (data as T);
   }

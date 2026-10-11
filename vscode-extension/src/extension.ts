@@ -47,22 +47,42 @@ function mcpPort(): number {
   return vscode.workspace.getConfiguration('nexus').get<number>('mcpPort') ?? 63988;
 }
 
-/** Builds a new NexusClient from current settings, optionally running port sweep. */
-async function buildClient(): Promise<NexusClient> {
+/** Bearer token for a daemon started with NEXUS_API_TOKEN: the setting, else the environment. */
+function apiToken(): string {
+  return (
+    vscode.workspace.getConfiguration('nexus').get<string>('apiToken') ||
+    process.env['NEXUS_API_TOKEN'] ||
+    ''
+  );
+}
+
+/**
+ * Points the shared client at the configured daemon. When that daemon does not
+ * answer and the port sweep is enabled, probes the usual REST ports and adopts the
+ * first that does. The client is updated in place so every component sees it.
+ */
+export async function reconfigureClient(c: NexusClient): Promise<boolean> {
   const url = daemonUrl();
-  const port = mcpPort();
+  const mcp = mcpPort();
+  const token = apiToken();
+  c.configure(url, mcp, token);
+  if (await c.health()) return true;
+
   const sweep =
     vscode.workspace.getConfiguration('nexus').get<boolean>('enableMCPPortSweep') ?? true;
-  const c = new NexusClient(url, port);
-  if (sweep) {
-    const candidates = [...new Set([port, 63988, 63987, 63989, 63990, 63986])];
-    try {
-      await c.tryConnect(candidates);
-    } catch {
-      // no port responded — proceed with configured url
+  if (!sweep) return false;
+  try {
+    const parsed = new URL(url);
+    const configured = Number(parsed.port) || 63987;
+    const found = await c.tryConnect([...new Set([configured, 63987, 63986, 63989, 63990])]);
+    if (found !== configured) {
+      parsed.port = String(found);
+      c.configure(parsed.origin, mcp, token);
     }
+    return true;
+  } catch {
+    return false; // nothing answered — keep the configured URL
   }
-  return c;
 }
 
 /** Returns the shared NexusStatusBar instance (available after activation). */
@@ -74,17 +94,14 @@ export function getStatusBar(): NexusStatusBar {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  client = new NexusClient(daemonUrl(), mcpPort());
-  // Fire-and-forget port sweep on activation
-  void buildClient()
-    .then((c) => {
-      client = c;
-      statusBar?.dispose();
-      statusBar = new NexusStatusBar(client);
-      context.subscriptions.push(statusBar.startPolling(30000));
-    })
+  client = new NexusClient(daemonUrl(), mcpPort(), apiToken());
+  statusBar = new NexusStatusBar(client);
+  context.subscriptions.push(statusBar.startPolling(30000)); // matches backend health cache TTL (30 s)
+  // Fire-and-forget: adopt a daemon on another port if the configured one is down.
+  void reconfigureClient(client)
+    .then(() => statusBar?.update())
     .catch(() => {
-      /* ignore — client already set above */
+      /* the status bar already shows the daemon as unreachable */
     });
   context.subscriptions.push(getNexusActivityChannel());
 
@@ -112,25 +129,16 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
 
-  // ── Status bar ──────────────────────────────────────────────────────────────
-  statusBar = new NexusStatusBar(client);
-  context.subscriptions.push(statusBar.startPolling(30000)); // matches backend health cache TTL (30 s)
-
-  // Re-create the client and refresh status bar whenever the daemon URL or MCP port changes.
-  // Dispose the old status bar first to prevent accumulating pollers.
+  // Re-point the shared client whenever the connection settings change.
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (
         e.affectsConfiguration('nexus.daemonUrl') ||
         e.affectsConfiguration('nexus.mcpPort') ||
+        e.affectsConfiguration('nexus.apiToken') ||
         e.affectsConfiguration('nexus.enableMCPPortSweep')
       ) {
-        void buildClient().then((c) => {
-          client = c;
-          statusBar?.dispose();
-          statusBar = new NexusStatusBar(client);
-          context.subscriptions.push(statusBar.startPolling(30000));
-        });
+        void reconfigureClient(getClient()).then(() => statusBar?.update());
       }
     }),
   );
@@ -139,11 +147,15 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('nexus.reconnect', async () => {
       try {
-        client = await buildClient();
-        statusBar?.dispose();
-        statusBar = new NexusStatusBar(client);
-        context.subscriptions.push(statusBar.startPolling(30000));
-        vscode.window.showInformationMessage('Nexus: reconnected to daemon');
+        const ok = await reconfigureClient(getClient());
+        await statusBar?.update();
+        if (ok) {
+          vscode.window.showInformationMessage(`Nexus: connected to ${getClient().getBaseUrl()}`);
+        } else {
+          vscode.window.showErrorMessage(
+            `Nexus: no daemon answered at ${daemonUrl()} — is nexus-daemon running?`,
+          );
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         vscode.window.showErrorMessage(`Nexus: reconnect failed — ${msg}`);
