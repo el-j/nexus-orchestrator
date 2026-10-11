@@ -3,6 +3,7 @@ package services_test
 import (
 	"context"
 	"errors"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -181,7 +182,14 @@ func TestDeregisterAndHeartbeat_BroadcastAndRefresh(t *testing.T) {
 	}
 }
 
-func TestTerminateAISession_SignalsOrKillsProcess(t *testing.T) {
+// runningAgent is what the scanner reports for a live agent process.
+func runningAgent(pid int) domain.DiscoveredAgent {
+	return domain.DiscoveredAgent{ID: "agent", Name: "Claude CLI", PID: pid, IsRunning: true, LastSeen: time.Now()}
+}
+
+// A genuine helper process that the scanner reported is signalled for real, both
+// politely and by force.
+func TestTerminateAISession_SignalsOrKillsADiscoveredProcess(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("signal semantics differ on Windows")
 	}
@@ -194,6 +202,7 @@ func TestTerminateAISession_SignalsOrKillsProcess(t *testing.T) {
 		go func() { exited <- cmd.Wait() }()
 
 		orch, repo, b := newSessionOrch(t)
+		orch.SetDiscoveredAgentRepo(&stubAgentStore{list: []domain.DiscoveredAgent{runningAgent(cmd.Process.Pid)}})
 		if err := repo.memAISessionRepo.SaveAISession(bg, domain.AISession{
 			ID: "s", Status: domain.SessionStatusActive, PID: cmd.Process.Pid,
 		}); err != nil {
@@ -214,7 +223,91 @@ func TestTerminateAISession_SignalsOrKillsProcess(t *testing.T) {
 	}
 }
 
-// stubAgentScanner / stubAgentStore / stubPlanRepo are minimal scripted doubles.
+// A session's PID is a claim made by whoever registered it. Terminate must still mark
+// the session disconnected, but never signal a process Nexus did not find itself.
+func TestTerminateAISession_RefusesToSignalUnverifiedProcesses(t *testing.T) {
+	now := time.Now()
+	cases := []struct {
+		name   string
+		pid    int
+		agents []domain.DiscoveredAgent
+		scan   error
+	}{
+		{"init", 1, []domain.DiscoveredAgent{runningAgent(1)}, nil},
+		{"the daemon itself", os.Getpid(), []domain.DiscoveredAgent{runningAgent(os.Getpid())}, nil},
+		{"the daemon's parent", os.Getppid(), []domain.DiscoveredAgent{runningAgent(os.Getppid())}, nil},
+		{"a pid nobody discovered", 424242, []domain.DiscoveredAgent{runningAgent(1234)}, nil},
+		{"an agent that is not running", 4321, []domain.DiscoveredAgent{{ID: "a", PID: 4321, IsRunning: false, LastSeen: now}}, nil},
+		{"an agent not seen recently (PID may be recycled)", 4321, []domain.DiscoveredAgent{{ID: "a", PID: 4321, IsRunning: true, LastSeen: now.Add(-time.Hour)}}, nil},
+		{"no agents known at all", 4321, nil, nil},
+		{"the agent list cannot be read", 4321, nil, errInjected},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			orch, repo, _ := newSessionOrch(t)
+			orch.SetDiscoveredAgentRepo(&stubAgentStore{list: tc.agents, listErr: tc.scan})
+			var signalled []int
+			orch.SetSignalFunc(func(pid int, _ bool) error { signalled = append(signalled, pid); return nil })
+			if err := repo.memAISessionRepo.SaveAISession(bg, domain.AISession{ID: "s", Status: domain.SessionStatusActive, PID: tc.pid}); err != nil {
+				t.Fatal(err)
+			}
+			for _, force := range []bool{false, true} {
+				if err := orch.TerminateAISession(bg, "s", force); err != nil {
+					t.Fatalf("terminate must still succeed (force=%v): %v", force, err)
+				}
+			}
+			if len(signalled) != 0 {
+				t.Fatalf("pid %d must not be signalled, got %v", tc.pid, signalled)
+			}
+			if got, _ := repo.GetAISessionByID(bg, "s"); got.Status != domain.SessionStatusDisconnected {
+				t.Errorf("the session must still be marked disconnected, status = %s", got.Status)
+			}
+		})
+	}
+}
+
+func TestTerminateAISession_SignalsOnlyTheVerifiedPID(t *testing.T) {
+	orch, repo, _ := newSessionOrch(t)
+	orch.SetDiscoveredAgentRepo(&stubAgentStore{list: []domain.DiscoveredAgent{runningAgent(7777), runningAgent(8888)}})
+	type call struct {
+		pid   int
+		force bool
+	}
+	var calls []call
+	orch.SetSignalFunc(func(pid int, force bool) error { calls = append(calls, call{pid, force}); return nil })
+	_ = repo.memAISessionRepo.SaveAISession(bg, domain.AISession{ID: "s", Status: domain.SessionStatusActive, PID: 7777})
+	if err := orch.TerminateAISession(bg, "s", false); err != nil {
+		t.Fatal(err)
+	}
+	_ = repo.memAISessionRepo.SaveAISession(bg, domain.AISession{ID: "s", Status: domain.SessionStatusActive, PID: 7777})
+	if err := orch.TerminateAISession(bg, "s", true); err != nil {
+		t.Fatal(err)
+	}
+	if len(calls) != 2 || calls[0] != (call{7777, false}) || calls[1] != (call{7777, true}) {
+		t.Fatalf("calls = %+v", calls)
+	}
+}
+
+func TestTerminateAISession_ASignalFailureIsLoggedNotReturned(t *testing.T) {
+	orch, repo, _ := newSessionOrch(t)
+	orch.SetDiscoveredAgentRepo(&stubAgentStore{list: []domain.DiscoveredAgent{runningAgent(7777)}})
+	orch.SetSignalFunc(func(int, bool) error { return errInjected })
+	_ = repo.memAISessionRepo.SaveAISession(bg, domain.AISession{ID: "s", Status: domain.SessionStatusActive, PID: 7777})
+	if err := orch.TerminateAISession(bg, "s", true); err != nil {
+		t.Fatalf("an already-dead process must not fail the terminate: %v", err)
+	}
+}
+
+// A session without a PID needs no scan and no signal.
+func TestTerminateAISession_NoPIDMeansNoSignal(t *testing.T) {
+	orch, repo, _ := newSessionOrch(t)
+	orch.SetSignalFunc(func(int, bool) error { t.Error("no signal expected"); return nil })
+	_ = repo.memAISessionRepo.SaveAISession(bg, domain.AISession{ID: "s", Status: domain.SessionStatusActive})
+	if err := orch.TerminateAISession(bg, "s", true); err != nil {
+		t.Fatal(err)
+	}
+}
+
 type stubAgentScanner struct {
 	mu        sync.Mutex
 	agents    []domain.DiscoveredAgent

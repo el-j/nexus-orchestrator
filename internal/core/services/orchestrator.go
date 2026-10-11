@@ -108,6 +108,7 @@ type OrchestratorService struct {
 	commandRunner      ports.CommandRunner
 	lastAgentScan      time.Time
 	lastAgentScanMu    sync.Mutex
+	signalFn           func(pid int, force bool) error // test seam; nil = real os signals
 	maxRetries         int
 	maxResponseTokens  int
 	cleanupInterval    time.Duration

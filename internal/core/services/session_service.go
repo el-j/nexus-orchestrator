@@ -131,15 +131,13 @@ func (o *OrchestratorService) TerminateAISession(ctx context.Context, id string,
 	}
 
 	if sess.PID > 0 {
-		proc, err := os.FindProcess(sess.PID)
-		if err == nil {
-			if force {
-				_ = proc.Kill()
-			} else {
-				// On Unix systems, you'd send SIGTERM.
-				// Since os.Interrupt works cross-platform mostly:
-				_ = proc.Signal(os.Interrupt)
-			}
+		// The PID was supplied by whoever registered the session, so it is only a claim.
+		// Signalling it blindly would let any API caller kill any process the daemon's
+		// user may kill; it is honoured only for processes Nexus itself found running.
+		if reason := o.unsafeToSignal(ctx, sess.PID); reason != "" {
+			log.Printf("orchestrator: terminate ai session %s: not signalling pid %d: %s", id, sess.PID, reason)
+		} else if err := o.signalProcess(sess.PID, force); err != nil {
+			log.Printf("orchestrator: terminate ai session %s: signal pid %d: %v", id, sess.PID, err)
 		}
 	}
 
@@ -158,6 +156,49 @@ func (o *OrchestratorService) TerminateAISession(ctx context.Context, id string,
 	}
 
 	return nil
+}
+
+// agentFreshness is how recently the scanner must have seen an agent process for
+// its PID to be trusted (a recycled PID could otherwise point at an unrelated process).
+const agentFreshness = 2 * time.Minute
+
+// unsafeToSignal returns why pid must not be signalled, or "" when it is safe: it
+// must not be the daemon, its parent or init, and must belong to an agent process
+// the scanner reported as running recently.
+func (o *OrchestratorService) unsafeToSignal(ctx context.Context, pid int) string {
+	switch {
+	case pid <= 1:
+		return "reserved pid"
+	case pid == os.Getpid():
+		return "that is the daemon itself"
+	case pid == os.Getppid():
+		return "that is the daemon's parent process"
+	}
+	agents, err := o.GetDiscoveredAgents(ctx)
+	if err != nil {
+		return "could not list discovered agents: " + err.Error()
+	}
+	for _, a := range agents {
+		if a.PID == pid && a.IsRunning && time.Since(a.LastSeen) <= agentFreshness {
+			return ""
+		}
+	}
+	return "it is not a running agent process discovered by Nexus"
+}
+
+// signalProcess interrupts (or, with force, kills) a single process.
+func (o *OrchestratorService) signalProcess(pid int, force bool) error {
+	if o.signalFn != nil {
+		return o.signalFn(pid, force)
+	}
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return err
+	}
+	if force {
+		return proc.Kill()
+	}
+	return proc.Signal(os.Interrupt)
 }
 
 // HeartbeatAISession refreshes the last-activity timestamp on an active session.

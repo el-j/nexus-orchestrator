@@ -25,3 +25,7 @@ func (s *ActivityService) MarkSeen(agent, project string, at time.Time) {
 	defer s.mu.Unlock()
 	s.lastSeen[agent+"\x00"+project] = at
 }
+
+// SetSignalFunc replaces the real process signalling so tests can observe, or
+// assert the absence of, signals without touching real processes.
+func (o *OrchestratorService) SetSignalFunc(fn func(pid int, force bool) error) { o.signalFn = fn }
