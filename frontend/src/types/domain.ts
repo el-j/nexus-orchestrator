@@ -29,6 +29,9 @@ export interface Task {
   durationMs?: number;
   priority?: number;
   tags?: string[];
+  role?: string;
+  agentic?: boolean;
+  maxAgentTurns?: number;
 }
 
 export interface TaskInput {
@@ -41,6 +44,8 @@ export interface TaskInput {
   command?: CommandType;
   priority?: number;
   tags?: string[];
+  agentic?: boolean;
+  maxAgentTurns?: number;
 }
 
 export interface ProviderInfo {

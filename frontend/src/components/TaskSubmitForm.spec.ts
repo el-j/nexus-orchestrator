@@ -120,7 +120,19 @@ describe('TaskSubmitForm — submit', () => {
       contextFiles: [],
       priority: 1,
       tags: ['urgent'],
+      agentic: false,
     });
+    w.unmount();
+  });
+
+  it('submits an agentic task when the box is ticked, then clears it', async () => {
+    const w = mountForm();
+    await instruction(w).setValue('Refactor');
+    await w.find('[data-testid="agentic"]').setValue(true);
+    await submit(w);
+    await flushPromises();
+    expect(api.submitTask).toHaveBeenCalledWith(expect.objectContaining({ agentic: true }));
+    expect((w.find('[data-testid="agentic"]').element as HTMLInputElement).checked).toBe(false);
     w.unmount();
   });
 

@@ -24,6 +24,8 @@ func (s *Server) toolSubmitTask(args json.RawMessage) (callToolResult, error) {
 		Role                string   `json:"role"`
 		Priority            int      `json:"priority"`
 		Tags                []string `json:"tags"`
+		Agentic             bool     `json:"agentic"`
+		MaxAgentTurns       int      `json:"maxAgentTurns"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: submit_task: invalid arguments: %w", err)
@@ -42,6 +44,8 @@ func (s *Server) toolSubmitTask(args json.RawMessage) (callToolResult, error) {
 		Role:                p.Role,
 		Priority:            p.Priority,
 		Tags:                p.Tags,
+		Agentic:             p.Agentic,
+		MaxAgentTurns:       p.MaxAgentTurns,
 	}
 	id, err := s.orch.SubmitTask(t)
 	if err != nil {
@@ -268,6 +272,8 @@ func taskToolDefs() []toolDef {
 					"command":             {Type: "string", Description: "Task type: plan, execute, or auto (default: auto)."},
 					"verificationCommand": {Type: "string", Description: "Optional command (e.g. 'go test ./...', 'npm test') to verify output and trigger self-healing if it fails."},
 					"maxCorrectionTurns":  {Type: "integer", Description: "Max self-healing attempts if verification fails (default: 2)."},
+					"agentic":             {Type: "boolean", Description: "Run as a multi-turn tool loop: the model reads/writes project files and re-verifies before finishing (optional)."},
+					"maxAgentTurns":       {Type: "integer", Description: "Upper bound on model turns for an agentic task (default 8, max 25)."},
 					"providerName":        {Type: "string", Description: "Exact provider name to lock routing to (optional)."},
 					"providerHint":        {Type: "string", Description: "Preferred provider when several serve the model (optional)."},
 					"modelId":             {Type: "string", Description: "Model that must process the task (optional)."},

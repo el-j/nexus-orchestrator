@@ -103,6 +103,9 @@ func (o *OrchestratorService) processNext() bool {
 		return true
 	}
 
+	if task.Agentic {
+		return o.runAgentLoop(run, task, chain, prompt)
+	}
 	return o.executeWithFallbackChain(run, task, chain, prompt, sessionHistory)
 }
 

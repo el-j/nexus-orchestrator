@@ -59,6 +59,8 @@ func run(args []string, stdout, stderr io.Writer, pollEvery time.Duration) int {
 		role     = fs.String("role", "", "routing tier hint: architect, techlead, coder, tester or linter")
 		priority = fs.Int("priority", 0, "priority 1=high, 2=medium, 3=low (0 = server default)")
 		tags     = fs.String("tags", "", "comma-separated labels")
+		agentic  = fs.Bool("agentic", false, "let the model read/write project files over several turns and re-verify before finishing")
+		maxTurns = fs.Int("max-agent-turns", 0, "upper bound on model turns for --agentic (0 = daemon default)")
 		showVer  = fs.Bool("version", false, "print version information and exit")
 	)
 	if err := fs.Parse(args); err != nil {
@@ -86,6 +88,12 @@ func run(args []string, stdout, stderr io.Writer, pollEvery time.Duration) int {
 	}
 
 	ApplyRouting(body, *provider, *hint, *model, *role, *priority, *tags)
+	if *agentic {
+		body["agentic"] = true
+		if *maxTurns > 0 {
+			body["maxAgentTurns"] = *maxTurns
+		}
+	}
 
 	taskID, status, err := SubmitTask(context.Background(), *addr, body)
 	if err != nil {
