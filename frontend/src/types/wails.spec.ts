@@ -138,7 +138,8 @@ const cases: Case[] = [
     name: 'promoteTask',
     args: ['t1'],
     binding: 'PromoteTask',
-    http: { method: 'POST', path: '/api/tasks/t1/promote', status: 204 },
+    http: { method: 'POST', path: '/api/tasks/t1/promote', reply: { promoted: true } },
+    result: { promoted: true },
   },
   {
     name: 'updateTask',
