@@ -1,6 +1,7 @@
 package repo_sqlite
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -24,7 +25,7 @@ func NewModelCapabilityRepo(r *Repository) *ModelCapabilityRepo {
 }
 
 // Save inserts or updates a model capability profile (upsert by model_id).
-func (m *ModelCapabilityRepo) Save(p domain.ModelCapabilityProfile) error {
+func (m *ModelCapabilityRepo) Save(ctx context.Context, p domain.ModelCapabilityProfile) error {
 	now := time.Now()
 	createdAt := p.CreatedAt
 	if createdAt.IsZero() {
@@ -36,7 +37,7 @@ func (m *ModelCapabilityRepo) Save(p domain.ModelCapabilityProfile) error {
 		builtIn = 1
 	}
 
-	_, err := m.db.Exec(
+	_, err := m.db.ExecContext(ctx,
 		`INSERT INTO model_capabilities (model_id, context_window, recommended_max_output, notes, built_in, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(model_id) DO UPDATE SET
@@ -55,8 +56,8 @@ func (m *ModelCapabilityRepo) Save(p domain.ModelCapabilityProfile) error {
 }
 
 // GetByModelID returns the model capability profile with the given model ID, or domain.ErrNotFound.
-func (m *ModelCapabilityRepo) GetByModelID(modelID string) (domain.ModelCapabilityProfile, error) {
-	row := m.db.QueryRow(
+func (m *ModelCapabilityRepo) GetByModelID(ctx context.Context, modelID string) (domain.ModelCapabilityProfile, error) {
+	row := m.db.QueryRowContext(ctx,
 		`SELECT model_id, context_window, recommended_max_output, notes, built_in, created_at, updated_at
 		 FROM model_capabilities WHERE model_id = ?`, modelID,
 	)
@@ -71,8 +72,8 @@ func (m *ModelCapabilityRepo) GetByModelID(modelID string) (domain.ModelCapabili
 }
 
 // GetAll returns all model capability profiles ordered by model_id.
-func (m *ModelCapabilityRepo) GetAll() ([]domain.ModelCapabilityProfile, error) {
-	rows, err := m.db.Query(
+func (m *ModelCapabilityRepo) GetAll(ctx context.Context) ([]domain.ModelCapabilityProfile, error) {
+	rows, err := m.db.QueryContext(ctx,
 		`SELECT model_id, context_window, recommended_max_output, notes, built_in, created_at, updated_at
 		 FROM model_capabilities ORDER BY model_id`,
 	)
@@ -97,8 +98,8 @@ func (m *ModelCapabilityRepo) GetAll() ([]domain.ModelCapabilityProfile, error) 
 
 // Delete removes the model capability profile with the given model ID.
 // Returns domain.ErrNotFound when no row with that ID exists.
-func (m *ModelCapabilityRepo) Delete(modelID string) error {
-	res, err := m.db.Exec(`DELETE FROM model_capabilities WHERE model_id = ?`, modelID)
+func (m *ModelCapabilityRepo) Delete(ctx context.Context, modelID string) error {
+	res, err := m.db.ExecContext(ctx, `DELETE FROM model_capabilities WHERE model_id = ?`, modelID)
 	if err != nil {
 		return fmt.Errorf("sqlite: delete model capability: %w", err)
 	}

@@ -50,18 +50,18 @@ func (f *faultyRepo) set(name string, on bool) {
 	f.fail[name] = on
 }
 
-func (f *faultyRepo) Save(t domain.Task) error {
+func (f *faultyRepo) Save(_ context.Context, t domain.Task) error {
 	if f.failing("Save") {
 		return errInjected
 	}
-	return f.memRepo.Save(t)
+	return f.memRepo.Save(context.Background(), t)
 }
 
-func (f *faultyRepo) GetByID(id string) (domain.Task, error) {
+func (f *faultyRepo) GetByID(_ context.Context, id string) (domain.Task, error) {
 	if f.failing("GetByID") {
 		return domain.Task{}, errInjected
 	}
-	return f.memRepo.GetByID(id)
+	return f.memRepo.GetByID(context.Background(), id)
 }
 
 func (f *faultyRepo) GetStaleProcessing(ctx context.Context, d time.Duration) ([]domain.Task, error) {
@@ -78,53 +78,53 @@ func (f *faultyRepo) GetStaleProcessing(ctx context.Context, d time.Duration) ([
 	return f.memRepo.GetStaleProcessing(ctx, d)
 }
 
-func (f *faultyRepo) GetPending() ([]domain.Task, error) {
+func (f *faultyRepo) GetPending(context.Context) ([]domain.Task, error) {
 	if f.failing("GetPending") {
 		return nil, errInjected
 	}
-	return f.memRepo.GetPending()
+	return f.memRepo.GetPending(context.Background())
 }
 
-func (f *faultyRepo) GetAll() ([]domain.Task, error) {
+func (f *faultyRepo) GetAll(context.Context) ([]domain.Task, error) {
 	if f.failing("GetAll") {
 		return nil, errInjected
 	}
-	return f.memRepo.GetAll()
+	return f.memRepo.GetAll(context.Background())
 }
 
-func (f *faultyRepo) GetByProjectPathAndStatus(p string, s ...domain.TaskStatus) ([]domain.Task, error) {
+func (f *faultyRepo) GetByProjectPathAndStatus(_ context.Context, p string, s ...domain.TaskStatus) ([]domain.Task, error) {
 	if f.failing("GetByProjectPathAndStatus") {
 		return nil, errInjected
 	}
-	return f.memRepo.GetByProjectPathAndStatus(p, s...)
+	return f.memRepo.GetByProjectPathAndStatus(context.Background(), p, s...)
 }
 
-func (f *faultyRepo) Update(t domain.Task) error {
+func (f *faultyRepo) Update(_ context.Context, t domain.Task) error {
 	if f.failing("Update") {
 		return errInjected
 	}
-	return f.memRepo.Update(t)
+	return f.memRepo.Update(context.Background(), t)
 }
 
-func (f *faultyRepo) UpdateStatus(id string, s domain.TaskStatus) error {
+func (f *faultyRepo) UpdateStatus(_ context.Context, id string, s domain.TaskStatus) error {
 	if f.failing("UpdateStatus") {
 		return errInjected
 	}
-	return f.memRepo.UpdateStatus(id, s)
+	return f.memRepo.UpdateStatus(context.Background(), id, s)
 }
 
-func (f *faultyRepo) UpdateLogs(id, logs string) error {
+func (f *faultyRepo) UpdateLogs(_ context.Context, id, logs string) error {
 	if f.failing("UpdateLogs") {
 		return errInjected
 	}
-	return f.memRepo.UpdateLogs(id, logs)
+	return f.memRepo.UpdateLogs(context.Background(), id, logs)
 }
 
-func (f *faultyRepo) UpdateStatusIfCurrent(id string, from, to domain.TaskStatus) (bool, error) {
+func (f *faultyRepo) UpdateStatusIfCurrent(_ context.Context, id string, from, to domain.TaskStatus) (bool, error) {
 	if f.failing("UpdateStatusIfCurrent") {
 		return false, errInjected
 	}
-	return f.memRepo.UpdateStatusIfCurrent(id, from, to)
+	return f.memRepo.UpdateStatusIfCurrent(context.Background(), id, from, to)
 }
 
 // newFaultyOrch builds an orchestrator with no background workers over a
@@ -148,7 +148,7 @@ func newFaultyOrchWith(t *testing.T, discovery *services.DiscoveryService, fail 
 
 func seedTask(t *testing.T, r *faultyRepo, id string, status domain.TaskStatus) {
 	t.Helper()
-	if err := r.memRepo.Save(domain.Task{
+	if err := r.memRepo.Save(context.Background(), domain.Task{
 		ID: id, ProjectPath: "/proj", Instruction: "i", Status: status,
 		CreatedAt: time.Now(), UpdatedAt: time.Now(),
 	}); err != nil {
@@ -165,18 +165,18 @@ type countingFailRepo struct {
 	calls  int
 }
 
-func (c *countingFailRepo) UpdateStatusIfCurrent(id string, from, to domain.TaskStatus) (bool, error) {
+func (c *countingFailRepo) UpdateStatusIfCurrent(_ context.Context, id string, from, to domain.TaskStatus) (bool, error) {
 	c.calls++
 	if c.calls == c.failAt {
 		return false, errInjected
 	}
-	return c.faultyRepo.UpdateStatusIfCurrent(id, from, to)
+	return c.faultyRepo.UpdateStatusIfCurrent(context.Background(), id, from, to)
 }
 
 // raceRepo reports that every conditional update lost the race.
 type raceRepo struct{ *faultyRepo }
 
-func (r *raceRepo) UpdateStatusIfCurrent(string, domain.TaskStatus, domain.TaskStatus) (bool, error) {
+func (r *raceRepo) UpdateStatusIfCurrent(context.Context, string, domain.TaskStatus, domain.TaskStatus) (bool, error) {
 	return false, nil
 }
 

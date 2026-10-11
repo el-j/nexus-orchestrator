@@ -29,7 +29,7 @@ func NewKnowledgeRepo(r *Repository) *KnowledgeRepo {
 }
 
 func migrateKnowledge(db *sql.DB) error {
-	_, err := db.Exec(`
+	_, err := db.ExecContext(context.Background(), `
 		CREATE TABLE IF NOT EXISTS project_knowledge (
 			id             TEXT    PRIMARY KEY,
 			project_path   TEXT    NOT NULL,

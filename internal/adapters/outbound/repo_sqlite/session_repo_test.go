@@ -1,6 +1,7 @@
 package repo_sqlite_test
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 	"time"
@@ -24,7 +25,7 @@ func TestSessionRepo_GetByProjectPath_NotFound(t *testing.T) {
 	r := newTestRepoForSession(t)
 	sr := repo_sqlite.NewSessionRepo(r)
 
-	_, err := sr.GetByProjectPath("/nonexistent/path")
+	_, err := sr.GetByProjectPath(context.Background(), "/nonexistent/path")
 	if err == nil {
 		t.Fatal("expected error for missing session, got nil")
 	}
@@ -35,11 +36,11 @@ func TestSessionRepo_AppendMessage_CreatesSession(t *testing.T) {
 	sr := repo_sqlite.NewSessionRepo(r)
 
 	msg := domain.Message{Role: domain.RoleUser, Content: "hello", CreatedAt: time.Now()}
-	if err := sr.AppendMessage("/proj/foo", msg); err != nil {
+	if err := sr.AppendMessage(context.Background(), "/proj/foo", msg); err != nil {
 		t.Fatalf("AppendMessage: %v", err)
 	}
 
-	sess, err := sr.GetByProjectPath("/proj/foo")
+	sess, err := sr.GetByProjectPath(context.Background(), "/proj/foo")
 	if err != nil {
 		t.Fatalf("GetByProjectPath: %v", err)
 	}
@@ -62,12 +63,12 @@ func TestSessionRepo_AppendMessage_AccumulatesMessages(t *testing.T) {
 		{Role: domain.RoleUser, Content: "msg2", CreatedAt: time.Now()},
 	}
 	for _, m := range messages {
-		if err := sr.AppendMessage(path, m); err != nil {
+		if err := sr.AppendMessage(context.Background(), path, m); err != nil {
 			t.Fatalf("AppendMessage: %v", err)
 		}
 	}
 
-	sess, err := sr.GetByProjectPath(path)
+	sess, err := sr.GetByProjectPath(context.Background(), path)
 	if err != nil {
 		t.Fatalf("GetByProjectPath: %v", err)
 	}
@@ -85,18 +86,18 @@ func TestSessionRepo_IsolatesByProjectPath(t *testing.T) {
 	r := newTestRepoForSession(t)
 	sr := repo_sqlite.NewSessionRepo(r)
 
-	if err := sr.AppendMessage("/proj/alpha", domain.Message{Role: domain.RoleUser, Content: "alpha-msg", CreatedAt: time.Now()}); err != nil {
+	if err := sr.AppendMessage(context.Background(), "/proj/alpha", domain.Message{Role: domain.RoleUser, Content: "alpha-msg", CreatedAt: time.Now()}); err != nil {
 		t.Fatalf("AppendMessage alpha: %v", err)
 	}
-	if err := sr.AppendMessage("/proj/beta", domain.Message{Role: domain.RoleUser, Content: "beta-msg", CreatedAt: time.Now()}); err != nil {
+	if err := sr.AppendMessage(context.Background(), "/proj/beta", domain.Message{Role: domain.RoleUser, Content: "beta-msg", CreatedAt: time.Now()}); err != nil {
 		t.Fatalf("AppendMessage beta: %v", err)
 	}
 
-	alpha, err := sr.GetByProjectPath("/proj/alpha")
+	alpha, err := sr.GetByProjectPath(context.Background(), "/proj/alpha")
 	if err != nil {
 		t.Fatalf("GetByProjectPath alpha: %v", err)
 	}
-	beta, err := sr.GetByProjectPath("/proj/beta")
+	beta, err := sr.GetByProjectPath(context.Background(), "/proj/beta")
 	if err != nil {
 		t.Fatalf("GetByProjectPath beta: %v", err)
 	}
@@ -123,11 +124,11 @@ func TestSessionRepo_Save_RoundTrip(t *testing.T) {
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	if err := sr.Save(sess); err != nil {
+	if err := sr.Save(context.Background(), sess); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 
-	got, err := sr.GetByProjectPath("/proj/roundtrip")
+	got, err := sr.GetByProjectPath(context.Background(), "/proj/roundtrip")
 	if err != nil {
 		t.Fatalf("GetByProjectPath: %v", err)
 	}

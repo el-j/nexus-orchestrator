@@ -399,7 +399,7 @@ func (o *OrchestratorService) validateQueueAdmission(task domain.Task) error {
 		queueCap = 50
 	}
 
-	pending, err := o.repo.GetPending()
+	pending, err := o.repo.GetPending(o.dbCtx())
 	if err != nil {
 		return fmt.Errorf("orchestrator: queue task: check queue cap: %w", err)
 	}
@@ -408,7 +408,7 @@ func (o *OrchestratorService) validateQueueAdmission(task domain.Task) error {
 	}
 
 	if task.Command == domain.CommandExecute {
-		existing, err := o.repo.GetByProjectPath(task.ProjectPath)
+		existing, err := o.repo.GetByProjectPath(o.dbCtx(), task.ProjectPath)
 		if err != nil {
 			return fmt.Errorf("orchestrator: queue task: %w", err)
 		}
@@ -431,7 +431,7 @@ func (o *OrchestratorService) validateQueueAdmission(task domain.Task) error {
 // previous service instance crashed. Called from NewOrchestrator before the
 // worker goroutine starts, so no locking is needed on o.queue.
 func (o *OrchestratorService) recoverStuckTasks() {
-	pending, err := o.repo.GetPending()
+	pending, err := o.repo.GetPending(o.dbCtx())
 	if err != nil {
 		log.Printf("orchestrator: startup recovery: get pending: %v", err)
 		return
@@ -443,7 +443,7 @@ func (o *OrchestratorService) recoverStuckTasks() {
 			hasQueued = true
 		}
 		if t.Status == domain.StatusProcessing {
-			ok, err := o.repo.UpdateStatusIfCurrent(t.ID, domain.StatusProcessing, domain.StatusQueued)
+			ok, err := o.repo.UpdateStatusIfCurrent(o.dbCtx(), t.ID, domain.StatusProcessing, domain.StatusQueued)
 			if err != nil {
 				log.Printf("orchestrator: startup recovery: re-queue task %s: %v", t.ID, err)
 				continue
@@ -473,7 +473,7 @@ func (o *OrchestratorService) requeueForRetry(task domain.Task) bool {
 	task.RetryCount++
 	task.Status = domain.StatusQueued
 	task.UpdatedAt = time.Now()
-	if err := o.repo.Update(task); err != nil {
+	if err := o.repo.Update(o.dbCtx(), task); err != nil {
 		log.Printf("orchestrator: requeue task %s: update: %v", task.ID, err)
 		return false
 	}
@@ -593,7 +593,7 @@ func (o *OrchestratorService) runTaskWatchdog() {
 				log.Printf("orchestrator: task watchdog: task %s stuck in PROCESSING, failing", t.ID)
 				t.Status = domain.StatusFailed
 				t.Logs += "\n\n[System] Task timed out while PROCESSING. Marked as FAILED by watchdog."
-				if err := o.repo.Update(t); err != nil {
+				if err := o.repo.Update(o.dbCtx(), t); err != nil {
 					log.Printf("orchestrator: task watchdog: update task %s fail: %v", t.ID, err)
 					continue
 				}
@@ -603,4 +603,12 @@ func (o *OrchestratorService) runTaskWatchdog() {
 			}
 		}
 	}
+}
+
+// dbCtx is the context for repository calls made outside a caller-supplied
+// one. It keeps the service's values but not its cancellation: a status
+// transition that has begun (for example resetting an interrupted task to
+// QUEUED while Stop is cancelling baseCtx) must still reach the database.
+func (o *OrchestratorService) dbCtx() context.Context {
+	return context.WithoutCancel(o.baseCtx)
 }

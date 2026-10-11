@@ -460,7 +460,7 @@ func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath
 	fmt.Fprintf(&sb, "- **Active Plan:** %s\n", activePlan)
 
 	if b.taskRepo != nil {
-		tasks, _ := b.taskRepo.GetByProjectPath(clean)
+		tasks, _ := b.taskRepo.GetByProjectPath(ctx, clean)
 		var queued, processing, completed, failed int
 		var activeTaskDesc string
 		for _, t := range tasks {

@@ -26,7 +26,7 @@ func TestStartupRecovery(t *testing.T) {
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
-	if err := repo.Save(stuckTask); err != nil {
+	if err := repo.Save(context.Background(), stuckTask); err != nil {
 		t.Fatalf("setup: save stuck task: %v", err)
 	}
 
@@ -41,12 +41,12 @@ func TestStartupRecovery(t *testing.T) {
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		time.Sleep(200 * time.Millisecond)
-		saved, _ := repo.GetByID(stuckTask.ID)
+		saved, _ := repo.GetByID(context.Background(), stuckTask.ID)
 		if saved.Status == domain.StatusCompleted {
 			return // success
 		}
 	}
-	saved, _ := repo.GetByID(stuckTask.ID)
+	saved, _ := repo.GetByID(context.Background(), stuckTask.ID)
 	t.Errorf("task did not reach COMPLETED after startup recovery; final status: %s", saved.Status)
 }
 
@@ -66,7 +66,7 @@ func TestPathNormalization(t *testing.T) {
 		t.Fatalf("SubmitTask: %v", err)
 	}
 
-	saved, err := repo.GetByID(id)
+	saved, err := repo.GetByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestQueueCap(t *testing.T) {
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
 		}
-		if err := repo.Save(qt); err != nil {
+		if err := repo.Save(context.Background(), qt); err != nil {
 			t.Fatalf("seed task %d: %v", i, err)
 		}
 	}
@@ -127,7 +127,7 @@ func TestCancelTask_CancelsPersistedQueuedTask(t *testing.T) {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err := repo.Save(queuedTask); err != nil {
+	if err := repo.Save(context.Background(), queuedTask); err != nil {
 		t.Fatalf("setup: save queued task: %v", err)
 	}
 
@@ -135,7 +135,7 @@ func TestCancelTask_CancelsPersistedQueuedTask(t *testing.T) {
 		t.Fatalf("CancelTask: %v", err)
 	}
 
-	saved, err := repo.GetByID(queuedTask.ID)
+	saved, err := repo.GetByID(context.Background(), queuedTask.ID)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -155,7 +155,7 @@ func TestStartupRecoverySignalsExistingQueuedTask(t *testing.T) {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err := repo.Save(queuedTask); err != nil {
+	if err := repo.Save(context.Background(), queuedTask); err != nil {
 		t.Fatalf("setup: save queued task: %v", err)
 	}
 
@@ -167,12 +167,12 @@ func TestStartupRecoverySignalsExistingQueuedTask(t *testing.T) {
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		time.Sleep(200 * time.Millisecond)
-		saved, _ := repo.GetByID(queuedTask.ID)
+		saved, _ := repo.GetByID(context.Background(), queuedTask.ID)
 		if saved.Status == domain.StatusCompleted {
 			return
 		}
 	}
-	saved, _ := repo.GetByID(queuedTask.ID)
+	saved, _ := repo.GetByID(context.Background(), queuedTask.ID)
 	t.Fatalf("task did not reach COMPLETED from persisted queued state; final status: %s", saved.Status)
 }
 
@@ -195,7 +195,7 @@ func TestRetryLimit(t *testing.T) {
 	deadline := time.Now().Add(20 * time.Second)
 	for time.Now().Before(deadline) {
 		time.Sleep(300 * time.Millisecond)
-		saved, _ := repo.GetByID(id)
+		saved, _ := repo.GetByID(context.Background(), id)
 		if saved.Status == domain.StatusFailed {
 			const wantRetries = 3 // maxRetries in services package
 			if saved.RetryCount != wantRetries {
@@ -205,7 +205,7 @@ func TestRetryLimit(t *testing.T) {
 			return // success
 		}
 	}
-	saved, _ := repo.GetByID(id)
+	saved, _ := repo.GetByID(context.Background(), id)
 	t.Errorf("task did not reach StatusFailed within timeout; final status=%s RetryCount=%d",
 		saved.Status, saved.RetryCount)
 }
@@ -225,7 +225,7 @@ func TestCancelTask_NoProviderState_Succeeds(t *testing.T) {
 	}
 
 	// Manually place the task in NO_PROVIDER state via repo
-	if err := repo.UpdateStatus(id, domain.StatusNoProvider); err != nil {
+	if err := repo.UpdateStatus(context.Background(), id, domain.StatusNoProvider); err != nil {
 		t.Fatalf("UpdateStatus: %v", err)
 	}
 
@@ -233,7 +233,7 @@ func TestCancelTask_NoProviderState_Succeeds(t *testing.T) {
 		t.Fatalf("CancelTask on NO_PROVIDER task: %v", err)
 	}
 
-	saved, err := repo.GetByID(id)
+	saved, err := repo.GetByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -260,7 +260,7 @@ func TestCancelTask_DraftState_Succeeds(t *testing.T) {
 		t.Fatalf("CancelTask on DRAFT task: %v", err)
 	}
 
-	saved, err := repo.GetByID(id)
+	saved, err := repo.GetByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -284,7 +284,7 @@ func TestCancelTask_BacklogState_Succeeds(t *testing.T) {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err := repo.Save(task); err != nil {
+	if err := repo.Save(context.Background(), task); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 
@@ -292,7 +292,7 @@ func TestCancelTask_BacklogState_Succeeds(t *testing.T) {
 		t.Fatalf("CancelTask on BACKLOG task: %v", err)
 	}
 
-	saved, err := repo.GetByID(task.ID)
+	saved, err := repo.GetByID(context.Background(), task.ID)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -326,7 +326,7 @@ func TestPromoteTask_NoProvider_ReturnsWarning(t *testing.T) {
 		t.Error("Warning: expected non-empty warning when no provider available, got empty")
 	}
 
-	saved, err := repo.GetByID(id)
+	saved, err := repo.GetByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -378,19 +378,19 @@ func TestWatchdog_StaleProcessingTaskFailed(t *testing.T) {
 		CreatedAt:   time.Now().Add(-10 * time.Minute),
 		UpdatedAt:   time.Now().Add(-10 * time.Minute), // older than 5-minute threshold
 	}
-	if err := repo.Save(staleTask); err != nil {
+	if err := repo.Save(context.Background(), staleTask); err != nil {
 		t.Fatalf("seed stale task: %v", err)
 	}
 
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		time.Sleep(150 * time.Millisecond)
-		saved, _ := repo.GetByID(staleTask.ID)
+		saved, _ := repo.GetByID(context.Background(), staleTask.ID)
 		if saved.Status == domain.StatusFailed {
 			return // success
 		}
 	}
-	saved, _ := repo.GetByID(staleTask.ID)
+	saved, _ := repo.GetByID(context.Background(), staleTask.ID)
 	t.Errorf("stale task not FAILED by watchdog; final status: %s", saved.Status)
 }
 
@@ -415,14 +415,14 @@ func TestWatchdog_FreshProcessingTaskUntouched(t *testing.T) {
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(), // brand new → not stale
 	}
-	if err := repo.Save(freshTask); err != nil {
+	if err := repo.Save(context.Background(), freshTask); err != nil {
 		t.Fatalf("seed fresh task: %v", err)
 	}
 
 	// Wait long enough for 3+ watchdog cycles.
 	time.Sleep(700 * time.Millisecond)
 
-	saved, _ := repo.GetByID(freshTask.ID)
+	saved, _ := repo.GetByID(context.Background(), freshTask.ID)
 	if saved.Status != domain.StatusProcessing {
 		t.Errorf("fresh task should remain PROCESSING; got %s", saved.Status)
 	}

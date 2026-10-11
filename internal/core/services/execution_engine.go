@@ -62,7 +62,7 @@ func (o *OrchestratorService) emit(taskID string, status domain.TaskStatus) {
 }
 
 func (o *OrchestratorService) processNext() bool {
-	task, err := o.repo.ClaimNextQueued()
+	task, err := o.repo.ClaimNextQueued(o.dbCtx())
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			return false
@@ -75,7 +75,7 @@ func (o *OrchestratorService) processNext() bool {
 	defer o.endRun(task.ID)
 	// A cancel can land between the claim and the registration above, when there is
 	// no run to abort yet; honour it here instead of overwriting CANCELLED later.
-	if cur, err := o.repo.GetByID(task.ID); err == nil && cur.Status == domain.StatusCancelled {
+	if cur, err := o.repo.GetByID(o.dbCtx(), task.ID); err == nil && cur.Status == domain.StatusCancelled {
 		return true
 	}
 
@@ -86,10 +86,10 @@ func (o *OrchestratorService) processNext() bool {
 			logMsg = err.Error()
 		}
 		log.Printf("orchestrator: no provider for task %s (role=%q, model=%q): %s", task.ID, task.Role, task.ModelID, logMsg)
-		if err2 := o.repo.UpdateLogs(task.ID, logMsg); err2 != nil {
+		if err2 := o.repo.UpdateLogs(o.dbCtx(), task.ID, logMsg); err2 != nil {
 			log.Printf("orchestrator: update logs for task %s: %v", task.ID, err2)
 		}
-		if err2 := o.repo.UpdateStatus(task.ID, domain.StatusNoProvider); err2 != nil {
+		if err2 := o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusNoProvider); err2 != nil {
 			log.Printf("orchestrator: update status for task %s: %v", task.ID, err2)
 		}
 		o.emit(task.ID, domain.StatusNoProvider)
@@ -152,14 +152,14 @@ func (o *OrchestratorService) finishInterrupted(task domain.Task, run *runHandle
 	if run.userCancelled.Load() {
 		log.Printf("orchestrator: task %s cancelled while running", task.ID)
 		o.appendTaskLog(task.ID, "cancelled by user while running")
-		if err := o.repo.UpdateStatus(task.ID, domain.StatusCancelled); err != nil {
+		if err := o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusCancelled); err != nil {
 			log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
 		}
 		o.emit(task.ID, domain.StatusCancelled)
 		return
 	}
 	log.Printf("orchestrator: task %s interrupted by shutdown; re-queued", task.ID)
-	if ok, err := o.repo.UpdateStatusIfCurrent(task.ID, domain.StatusProcessing, domain.StatusQueued); err != nil {
+	if ok, err := o.repo.UpdateStatusIfCurrent(o.dbCtx(), task.ID, domain.StatusProcessing, domain.StatusQueued); err != nil {
 		log.Printf("orchestrator: re-queue task %s: %v", task.ID, err)
 	} else if ok {
 		o.emit(task.ID, domain.StatusQueued)
@@ -336,10 +336,10 @@ func (o *OrchestratorService) prepareChatPrompt(task domain.Task) (string, []dom
 		if err != nil {
 			logEntry := fmt.Sprintf("failed reading context files: %v", err)
 			log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
-			if err2 := o.repo.UpdateLogs(task.ID, logEntry); err2 != nil {
+			if err2 := o.repo.UpdateLogs(o.dbCtx(), task.ID, logEntry); err2 != nil {
 				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err2)
 			}
-			if err2 := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err2 != nil {
+			if err2 := o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusFailed); err2 != nil {
 				log.Printf("orchestrator: update status for task %s: %v", task.ID, err2)
 			}
 			o.emit(task.ID, domain.StatusFailed)
@@ -351,14 +351,14 @@ func (o *OrchestratorService) prepareChatPrompt(task domain.Task) (string, []dom
 
 	var sessionHistory []domain.Message
 	if o.sessionRepo != nil {
-		sess, err := o.sessionRepo.GetByProjectPath(task.ProjectPath)
+		sess, err := o.sessionRepo.GetByProjectPath(o.dbCtx(), task.ProjectPath)
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			logEntry := fmt.Sprintf("failed loading session history: %v", err)
 			log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
-			if err2 := o.repo.UpdateLogs(task.ID, logEntry); err2 != nil {
+			if err2 := o.repo.UpdateLogs(o.dbCtx(), task.ID, logEntry); err2 != nil {
 				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err2)
 			}
-			if err2 := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err2 != nil {
+			if err2 := o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusFailed); err2 != nil {
 				log.Printf("orchestrator: update status for task %s: %v", task.ID, err2)
 			}
 			o.emit(task.ID, domain.StatusFailed)
@@ -383,10 +383,10 @@ func (o *OrchestratorService) tryGenerate(ctx context.Context, llm ports.LLMClie
 // appendTaskLog appends a new log line to existing task logs without overwriting history.
 func (o *OrchestratorService) appendTaskLog(taskID string, newEntry string) {
 	entry := newEntry
-	if existing, err := o.repo.GetByID(taskID); err == nil && existing.Logs != "" {
+	if existing, err := o.repo.GetByID(o.dbCtx(), taskID); err == nil && existing.Logs != "" {
 		entry = existing.Logs + "\n" + newEntry
 	}
-	if err := o.repo.UpdateLogs(taskID, entry); err != nil {
+	if err := o.repo.UpdateLogs(o.dbCtx(), taskID, entry); err != nil {
 		log.Printf("orchestrator: update logs for task %s: %v", taskID, err)
 	}
 }
@@ -444,10 +444,10 @@ func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task doma
 		if o.sessionRepo != nil {
 			userMsg := domain.Message{Role: domain.RoleUser, Content: prompt, CreatedAt: time.Now()}
 			assistantMsg := domain.Message{Role: domain.RoleAssistant, Content: code, CreatedAt: time.Now()}
-			if err := o.sessionRepo.AppendMessage(task.ProjectPath, userMsg); err != nil {
+			if err := o.sessionRepo.AppendMessage(o.dbCtx(), task.ProjectPath, userMsg); err != nil {
 				log.Printf("orchestrator: append user message for task %s: %v", task.ID, err)
 			}
-			if err := o.sessionRepo.AppendMessage(task.ProjectPath, assistantMsg); err != nil {
+			if err := o.sessionRepo.AppendMessage(o.dbCtx(), task.ProjectPath, assistantMsg); err != nil {
 				log.Printf("orchestrator: append assistant message for task %s: %v", task.ID, err)
 			}
 		}
@@ -459,8 +459,8 @@ func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task doma
 	// All providers failed
 	if allTooLarge && errors.Is(lastErr, errContextTooLarge) {
 		logEntry := "context too large: all candidate providers exceeded context limits"
-		_ = o.repo.UpdateLogs(task.ID, logEntry)
-		_ = o.repo.UpdateStatus(task.ID, domain.StatusTooLarge)
+		_ = o.repo.UpdateLogs(o.dbCtx(), task.ID, logEntry)
+		_ = o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusTooLarge)
 		o.emit(task.ID, domain.StatusTooLarge)
 		return true
 	}
@@ -470,8 +470,8 @@ func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task doma
 	}
 
 	failLog := fmt.Sprintf("all candidate providers failed: %s (last error: %v)", strings.Join(tried, ", "), lastErr)
-	_ = o.repo.UpdateLogs(task.ID, failLog)
-	if err := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err != nil {
+	_ = o.repo.UpdateLogs(o.dbCtx(), task.ID, failLog)
+	if err := o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusFailed); err != nil {
 		log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
 	}
 	o.emit(task.ID, domain.StatusFailed)
@@ -497,10 +497,10 @@ func (o *OrchestratorService) executeGeneration(run *runHandle, task domain.Task
 			if o.requeueForRetry(task) {
 				return "", err
 			}
-			if err2 := o.repo.UpdateLogs(task.ID, logEntry); err2 != nil {
+			if err2 := o.repo.UpdateLogs(o.dbCtx(), task.ID, logEntry); err2 != nil {
 				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err2)
 			}
-			if err2 := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err2 != nil {
+			if err2 := o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusFailed); err2 != nil {
 				log.Printf("orchestrator: update status for task %s: %v", task.ID, err2)
 			}
 			o.emit(task.ID, domain.StatusFailed)
@@ -508,10 +508,10 @@ func (o *OrchestratorService) executeGeneration(run *runHandle, task domain.Task
 		}
 		// Only persist messages after a successful response.
 		assistantMsg := domain.Message{Role: domain.RoleAssistant, Content: code, CreatedAt: time.Now()}
-		if err := o.sessionRepo.AppendMessage(task.ProjectPath, userMsg); err != nil {
+		if err := o.sessionRepo.AppendMessage(o.dbCtx(), task.ProjectPath, userMsg); err != nil {
 			log.Printf("orchestrator: append user message for task %s: %v", task.ID, err)
 		}
-		if err := o.sessionRepo.AppendMessage(task.ProjectPath, assistantMsg); err != nil {
+		if err := o.sessionRepo.AppendMessage(o.dbCtx(), task.ProjectPath, assistantMsg); err != nil {
 			log.Printf("orchestrator: append assistant message for task %s: %v", task.ID, err)
 		}
 		return code, nil
@@ -528,10 +528,10 @@ func (o *OrchestratorService) executeGeneration(run *runHandle, task domain.Task
 		if o.requeueForRetry(task) {
 			return "", err
 		}
-		if err2 := o.repo.UpdateLogs(task.ID, logEntry); err2 != nil {
+		if err2 := o.repo.UpdateLogs(o.dbCtx(), task.ID, logEntry); err2 != nil {
 			log.Printf("orchestrator: update logs for task %s: %v", task.ID, err2)
 		}
-		if err2 := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err2 != nil {
+		if err2 := o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusFailed); err2 != nil {
 			log.Printf("orchestrator: update status for task %s: %v", task.ID, err2)
 		}
 		o.emit(task.ID, domain.StatusFailed)
@@ -554,10 +554,10 @@ func (o *OrchestratorService) writeAndVerifyTaskOutput(run *runHandle, task doma
 		if err := o.fileWriter.WriteCodeToFile(task.ProjectPath, task.TargetFile, extractCode(code)); err != nil {
 			logEntry := fmt.Sprintf("failed writing output via %s: %v", providerName, err)
 			log.Printf("orchestrator: write file for task %s: %v", task.ID, err)
-			if err2 := o.repo.UpdateLogs(task.ID, logEntry); err2 != nil {
+			if err2 := o.repo.UpdateLogs(o.dbCtx(), task.ID, logEntry); err2 != nil {
 				log.Printf("orchestrator: update logs for task %s: %v", task.ID, err2)
 			}
-			if err2 := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err2 != nil {
+			if err2 := o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusFailed); err2 != nil {
 				log.Printf("orchestrator: update status for task %s: %v", task.ID, err2)
 			}
 			o.emit(task.ID, domain.StatusFailed)
@@ -569,7 +569,7 @@ func (o *OrchestratorService) writeAndVerifyTaskOutput(run *runHandle, task doma
 	if strings.TrimSpace(task.VerificationCommand) == "" || o.commandRunner == nil {
 		logEntry := fmt.Sprintf("completed via %s at %s", providerName, time.Now().UTC().Format(time.RFC3339))
 		o.appendTaskLog(task.ID, logEntry)
-		if err := o.repo.UpdateStatus(task.ID, domain.StatusCompleted); err != nil {
+		if err := o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusCompleted); err != nil {
 			log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
 		}
 		o.emit(task.ID, domain.StatusCompleted)
@@ -591,9 +591,9 @@ func (o *OrchestratorService) writeAndVerifyTaskOutput(run *runHandle, task doma
 	if runErr == nil {
 		// Verification passed on first attempt
 		logEntry := fmt.Sprintf("verification passed (%s) — completed via %s at %s", task.VerificationCommand, providerName, time.Now().UTC().Format(time.RFC3339))
-		_ = o.repo.Update(task)
+		_ = o.repo.Update(o.dbCtx(), task)
 		o.appendTaskLog(task.ID, logEntry)
-		if err := o.repo.UpdateStatus(task.ID, domain.StatusCompleted); err != nil {
+		if err := o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusCompleted); err != nil {
 			log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
 		}
 		o.emit(task.ID, domain.StatusCompleted)
@@ -624,7 +624,7 @@ func (o *OrchestratorService) writeAndVerifyTaskOutput(run *runHandle, task doma
 				if err := o.fileWriter.WriteCodeToFile(task.ProjectPath, task.TargetFile, extractCode(correctedCode)); err != nil {
 					logEntry := fmt.Sprintf("failed writing corrected output via %s: %v", providerName, err)
 					o.appendTaskLog(task.ID, logEntry)
-					_ = o.repo.UpdateStatus(task.ID, domain.StatusFailed)
+					_ = o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusFailed)
 					o.emit(task.ID, domain.StatusFailed)
 					return
 				}
@@ -638,9 +638,9 @@ func (o *OrchestratorService) writeAndVerifyTaskOutput(run *runHandle, task doma
 			}
 			if runErr == nil {
 				logEntry := fmt.Sprintf("verification passed on correction turn %d/%d (%s) — completed via %s at %s", turn, maxTurns, task.VerificationCommand, providerName, time.Now().UTC().Format(time.RFC3339))
-				_ = o.repo.Update(task)
+				_ = o.repo.Update(o.dbCtx(), task)
 				o.appendTaskLog(task.ID, logEntry)
-				_ = o.repo.UpdateStatus(task.ID, domain.StatusCompleted)
+				_ = o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusCompleted)
 				o.emit(task.ID, domain.StatusCompleted)
 				log.Printf("orchestrator: task %s verification passed on correction turn %d via %s", task.ID, turn, providerName)
 				return
@@ -651,9 +651,9 @@ func (o *OrchestratorService) writeAndVerifyTaskOutput(run *runHandle, task doma
 	// Verification failed and correction turns exhausted
 	logEntry := fmt.Sprintf("verification failed after %d correction turns (%s): %v\nOutput:\n%s", maxTurns, task.VerificationCommand, runErr, output)
 	log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
-	_ = o.repo.Update(task)
+	_ = o.repo.Update(o.dbCtx(), task)
 	o.appendTaskLog(task.ID, logEntry)
-	_ = o.repo.UpdateStatus(task.ID, domain.StatusFailed)
+	_ = o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusFailed)
 	o.emit(task.ID, domain.StatusFailed)
 }
 

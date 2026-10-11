@@ -52,11 +52,11 @@ func TestRepository_Save_And_GetByID(t *testing.T) {
 		Logs:         "initial log",
 	}
 
-	if err := repo.Save(task); err != nil {
+	if err := repo.Save(context.Background(), task); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 
-	got, err := repo.GetByID("task-1")
+	got, err := repo.GetByID(context.Background(), "task-1")
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestRepository_GetByID_NotFound(t *testing.T) {
 	repo := newTestRepo(t)
 	defer repo.Close()
 
-	_, err := repo.GetByID("nonexistent-id")
+	_, err := repo.GetByID(context.Background(), "nonexistent-id")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -123,12 +123,12 @@ func TestRepository_GetPending_ReturnsQueuedAndProcessing(t *testing.T) {
 	}
 
 	for _, task := range tasks {
-		if err := repo.Save(task); err != nil {
+		if err := repo.Save(context.Background(), task); err != nil {
 			t.Fatalf("Save %q: %v", task.ID, err)
 		}
 	}
 
-	pending, err := repo.GetPending()
+	pending, err := repo.GetPending(context.Background())
 	if err != nil {
 		t.Fatalf("GetPending: %v", err)
 	}
@@ -155,7 +155,7 @@ func TestRepository_GetPending_Empty(t *testing.T) {
 	repo := newTestRepo(t)
 	defer repo.Close()
 
-	pending, err := repo.GetPending()
+	pending, err := repo.GetPending(context.Background())
 	if err != nil {
 		t.Fatalf("GetPending on empty db: %v", err)
 	}
@@ -174,12 +174,12 @@ func TestRepository_ClaimNextQueued_ClaimsOldestQueuedAndMarksProcessing(t *test
 	processing := newTask("already-processing", domain.StatusProcessing, base.Add(2*time.Minute))
 
 	for _, task := range []domain.Task{queuedNewest, processing, queuedOldest} {
-		if err := repo.Save(task); err != nil {
+		if err := repo.Save(context.Background(), task); err != nil {
 			t.Fatalf("Save %s: %v", task.ID, err)
 		}
 	}
 
-	claimed, err := repo.ClaimNextQueued()
+	claimed, err := repo.ClaimNextQueued(context.Background())
 	if err != nil {
 		t.Fatalf("ClaimNextQueued: %v", err)
 	}
@@ -190,7 +190,7 @@ func TestRepository_ClaimNextQueued_ClaimsOldestQueuedAndMarksProcessing(t *test
 		t.Fatalf("claimed status: want %s, got %s", domain.StatusProcessing, claimed.Status)
 	}
 
-	saved, err := repo.GetByID(queuedOldest.ID)
+	saved, err := repo.GetByID(context.Background(), queuedOldest.ID)
 	if err != nil {
 		t.Fatalf("GetByID claimed task: %v", err)
 	}
@@ -203,7 +203,7 @@ func TestRepository_ClaimNextQueued_ReturnsErrNotFoundWhenEmpty(t *testing.T) {
 	repo := newTestRepo(t)
 	defer repo.Close()
 
-	_, err := repo.ClaimNextQueued()
+	_, err := repo.ClaimNextQueued(context.Background())
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -217,11 +217,11 @@ func TestRepository_UpdateStatusIfCurrent(t *testing.T) {
 	defer repo.Close()
 
 	task := newTask("conditional-status", domain.StatusQueued, time.Now())
-	if err := repo.Save(task); err != nil {
+	if err := repo.Save(context.Background(), task); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 
-	ok, err := repo.UpdateStatusIfCurrent(task.ID, domain.StatusQueued, domain.StatusCancelled)
+	ok, err := repo.UpdateStatusIfCurrent(context.Background(), task.ID, domain.StatusQueued, domain.StatusCancelled)
 	if err != nil {
 		t.Fatalf("UpdateStatusIfCurrent: %v", err)
 	}
@@ -229,7 +229,7 @@ func TestRepository_UpdateStatusIfCurrent(t *testing.T) {
 		t.Fatal("expected transition to succeed")
 	}
 
-	ok, err = repo.UpdateStatusIfCurrent(task.ID, domain.StatusQueued, domain.StatusCompleted)
+	ok, err = repo.UpdateStatusIfCurrent(context.Background(), task.ID, domain.StatusQueued, domain.StatusCompleted)
 	if err != nil {
 		t.Fatalf("UpdateStatusIfCurrent second transition: %v", err)
 	}
@@ -237,7 +237,7 @@ func TestRepository_UpdateStatusIfCurrent(t *testing.T) {
 		t.Fatal("expected second transition to fail because status no longer matches")
 	}
 
-	saved, err := repo.GetByID(task.ID)
+	saved, err := repo.GetByID(context.Background(), task.ID)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -251,15 +251,15 @@ func TestRepository_UpdateStatus(t *testing.T) {
 	defer repo.Close()
 
 	task := newTask("task-upd-status", domain.StatusQueued, time.Now())
-	if err := repo.Save(task); err != nil {
+	if err := repo.Save(context.Background(), task); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 
-	if err := repo.UpdateStatus("task-upd-status", domain.StatusCompleted); err != nil {
+	if err := repo.UpdateStatus(context.Background(), "task-upd-status", domain.StatusCompleted); err != nil {
 		t.Fatalf("UpdateStatus: %v", err)
 	}
 
-	got, err := repo.GetByID("task-upd-status")
+	got, err := repo.GetByID(context.Background(), "task-upd-status")
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -273,16 +273,16 @@ func TestRepository_UpdateLogs(t *testing.T) {
 	defer repo.Close()
 
 	task := newTask("task-upd-logs", domain.StatusQueued, time.Now())
-	if err := repo.Save(task); err != nil {
+	if err := repo.Save(context.Background(), task); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 
 	wantLogs := "step 1 done\nstep 2 done\n"
-	if err := repo.UpdateLogs("task-upd-logs", wantLogs); err != nil {
+	if err := repo.UpdateLogs(context.Background(), "task-upd-logs", wantLogs); err != nil {
 		t.Fatalf("UpdateLogs: %v", err)
 	}
 
-	got, err := repo.GetByID("task-upd-logs")
+	got, err := repo.GetByID(context.Background(), "task-upd-logs")
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -307,11 +307,11 @@ func TestRepository_Save_ContextFiles_NilSlice(t *testing.T) {
 		Logs:         "",
 	}
 
-	if err := repo.Save(task); err != nil {
+	if err := repo.Save(context.Background(), task); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 
-	got, err := repo.GetByID("task-nil-ctx")
+	got, err := repo.GetByID(context.Background(), "task-nil-ctx")
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -326,11 +326,11 @@ func TestRepository_Save_DuplicateID(t *testing.T) {
 
 	task := newTask("dup-id", domain.StatusQueued, time.Now())
 
-	if err := repo.Save(task); err != nil {
+	if err := repo.Save(context.Background(), task); err != nil {
 		t.Fatalf("first Save: %v", err)
 	}
 
-	err := repo.Save(task)
+	err := repo.Save(context.Background(), task)
 	if err == nil {
 		t.Fatal("expected error on duplicate Save, got nil")
 	}
@@ -340,7 +340,7 @@ func TestRepository_UpdateStatus_NotFound(t *testing.T) {
 	repo := newTestRepo(t)
 	defer repo.Close()
 
-	err := repo.UpdateStatus("nonexistent-id", domain.StatusCompleted)
+	err := repo.UpdateStatus(context.Background(), "nonexistent-id", domain.StatusCompleted)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -353,7 +353,7 @@ func TestRepository_UpdateLogs_NotFound(t *testing.T) {
 	repo := newTestRepo(t)
 	defer repo.Close()
 
-	err := repo.UpdateLogs("nonexistent-id", "some logs")
+	err := repo.UpdateLogs(context.Background(), "nonexistent-id", "some logs")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -373,12 +373,12 @@ func TestRepository_GetByProjectPath(t *testing.T) {
 		{ID: "pp-3", ProjectPath: "/proj/beta", TargetFile: "c.go", Instruction: "three", Status: domain.StatusQueued, CreatedAt: now, UpdatedAt: now},
 	}
 	for _, task := range tasks {
-		if err := repo.Save(task); err != nil {
+		if err := repo.Save(context.Background(), task); err != nil {
 			t.Fatalf("Save %q: %v", task.ID, err)
 		}
 	}
 
-	got, err := repo.GetByProjectPath("/proj/alpha")
+	got, err := repo.GetByProjectPath(context.Background(), "/proj/alpha")
 	if err != nil {
 		t.Fatalf("GetByProjectPath: %v", err)
 	}
@@ -398,7 +398,7 @@ func TestRepository_GetByProjectPath_Empty(t *testing.T) {
 	repo := newTestRepo(t)
 	defer repo.Close()
 
-	got, err := repo.GetByProjectPath("/proj/nonexistent")
+	got, err := repo.GetByProjectPath(context.Background(), "/proj/nonexistent")
 	if err != nil {
 		t.Fatalf("GetByProjectPath: %v", err)
 	}
@@ -422,11 +422,11 @@ func TestRepository_Save_CommandField_RoundTrip(t *testing.T) {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err := repo.Save(task); err != nil {
+	if err := repo.Save(context.Background(), task); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 
-	got, err := repo.GetByID("cmd-1")
+	got, err := repo.GetByID(context.Background(), "cmd-1")
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -450,11 +450,11 @@ func TestRepository_Save_EmptyCommand_RoundTrip(t *testing.T) {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err := repo.Save(task); err != nil {
+	if err := repo.Save(context.Background(), task); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 
-	got, err := repo.GetByID("cmd-empty")
+	got, err := repo.GetByID(context.Background(), "cmd-empty")
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -476,12 +476,12 @@ func TestGetByProjectPathAndStatus_FiltersCorrectly(t *testing.T) {
 		{ID: "s-queued", ProjectPath: "/proj/filter", Instruction: "queued", Status: domain.StatusQueued, Priority: 2, CreatedAt: now.Add(2 * time.Second), UpdatedAt: now.Add(2 * time.Second)},
 	}
 	for _, task := range tasks {
-		if err := repo.Save(task); err != nil {
+		if err := repo.Save(context.Background(), task); err != nil {
 			t.Fatalf("Save %q: %v", task.ID, err)
 		}
 	}
 
-	got, err := repo.GetByProjectPathAndStatus("/proj/filter", domain.StatusDraft, domain.StatusBacklog)
+	got, err := repo.GetByProjectPathAndStatus(context.Background(), "/proj/filter", domain.StatusDraft, domain.StatusBacklog)
 	if err != nil {
 		t.Fatalf("GetByProjectPathAndStatus: %v", err)
 	}
@@ -520,7 +520,7 @@ func TestUpdate_PersistsAllFields(t *testing.T) {
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}
-	if err := repo.Save(orig); err != nil {
+	if err := repo.Save(context.Background(), orig); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 
@@ -530,11 +530,11 @@ func TestUpdate_PersistsAllFields(t *testing.T) {
 	orig.Priority = 1
 	orig.Tags = []string{"alpha", "beta"}
 	orig.Status = domain.StatusBacklog
-	if err := repo.Update(orig); err != nil {
+	if err := repo.Update(context.Background(), orig); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
 
-	got, err := repo.GetByID("upd-task")
+	got, err := repo.GetByID(context.Background(), "upd-task")
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -562,7 +562,7 @@ func TestUpdate_ReturnsErrNotFound_ForUnknownID(t *testing.T) {
 	repo := newTestRepo(t)
 	defer repo.Close()
 
-	err := repo.Update(domain.Task{
+	err := repo.Update(context.Background(), domain.Task{
 		ID:          "ghost-id",
 		Instruction: "something",
 	})
@@ -600,10 +600,10 @@ func TestGetStaleProcessing_ReturnsOnlyStale(t *testing.T) {
 		UpdatedAt:   now.Add(-1 * time.Minute),
 	}
 
-	if err := repo.Save(staleTask); err != nil {
+	if err := repo.Save(context.Background(), staleTask); err != nil {
 		t.Fatalf("Save staleTask: %v", err)
 	}
-	if err := repo.Save(freshTask); err != nil {
+	if err := repo.Save(context.Background(), freshTask); err != nil {
 		t.Fatalf("Save freshTask: %v", err)
 	}
 
@@ -674,12 +674,12 @@ func TestGetTasksBySessionID_ReturnsOnlyMatching(t *testing.T) {
 	}
 
 	for _, task := range tasks {
-		if err := repo.Save(task); err != nil {
+		if err := repo.Save(context.Background(), task); err != nil {
 			t.Fatalf("Save %q: %v", task.ID, err)
 		}
 	}
 
-	got, err := repo.GetTasksBySessionID("session-A")
+	got, err := repo.GetTasksBySessionID(context.Background(), "session-A")
 	if err != nil {
 		t.Fatalf("GetTasksBySessionID: %v", err)
 	}
@@ -704,7 +704,7 @@ func TestGetTasksBySessionID_Empty(t *testing.T) {
 	repo := newTestRepo(t)
 	defer repo.Close()
 
-	got, err := repo.GetTasksBySessionID("no-such-session")
+	got, err := repo.GetTasksBySessionID(context.Background(), "no-such-session")
 	if err != nil {
 		t.Fatalf("GetTasksBySessionID: %v", err)
 	}
@@ -728,11 +728,11 @@ func TestTagsRoundtrip(t *testing.T) {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err := repo.Save(task); err != nil {
+	if err := repo.Save(context.Background(), task); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 
-	got, err := repo.GetByID("tags-task")
+	got, err := repo.GetByID(context.Background(), "tags-task")
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -764,11 +764,11 @@ func TestRepository_TaskVerificationFields(t *testing.T) {
 		UpdatedAt:           now,
 	}
 
-	if err := repo.Save(task); err != nil {
+	if err := repo.Save(context.Background(), task); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 
-	got, err := repo.GetByID("verify-task-1")
+	got, err := repo.GetByID(context.Background(), "verify-task-1")
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -786,11 +786,11 @@ func TestRepository_TaskVerificationFields(t *testing.T) {
 	// Test Update
 	got.VerificationOutput = "PASS"
 	got.Status = domain.StatusCompleted
-	if err := repo.Update(got); err != nil {
+	if err := repo.Update(context.Background(), got); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
 
-	updated, err := repo.GetByID("verify-task-1")
+	updated, err := repo.GetByID(context.Background(), "verify-task-1")
 	if err != nil {
 		t.Fatalf("GetByID after update: %v", err)
 	}

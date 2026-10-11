@@ -1,6 +1,7 @@
 package services_test
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -16,7 +17,7 @@ func TestTaskQueries_ScopeByProject(t *testing.T) {
 		{ID: "b", ProjectPath: "/p1", Status: domain.StatusCompleted},
 		{ID: "c", ProjectPath: "/p2", Status: domain.StatusProcessing},
 	} {
-		if err := repo.memRepo.Save(tk); err != nil {
+		if err := repo.memRepo.Save(context.Background(), tk); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -44,7 +45,7 @@ func TestCancelTask_AllCancellableStatesAndErrors(t *testing.T) {
 		if err := orch.CancelTask("t"); err != nil {
 			t.Fatalf("cancel from %s: %v", from, err)
 		}
-		if got, _ := repo.GetByID("t"); got.Status != domain.StatusCancelled {
+		if got, _ := repo.GetByID(context.Background(), "t"); got.Status != domain.StatusCancelled {
 			t.Errorf("from %s: status = %s", from, got.Status)
 		}
 	}
@@ -130,7 +131,7 @@ func TestPromoteTask_ErrorsAndProviderWarning(t *testing.T) {
 	if err != nil || !res.Promoted || !strings.Contains(res.Warning, "no active provider") {
 		t.Fatalf("unnamed provider: %+v %v", res, err)
 	}
-	if err := repo.memRepo.Save(domain.Task{ID: "d2", ProjectPath: "/proj", Instruction: "i",
+	if err := repo.memRepo.Save(context.Background(), domain.Task{ID: "d2", ProjectPath: "/proj", Instruction: "i",
 		Status: domain.StatusBacklog, ProviderName: "missing"}); err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +161,7 @@ func TestPromoteTask_NoWarningWhenProviderIsLive(t *testing.T) {
 	if res, err := orch.PromoteTask("d3"); err != nil || !res.Promoted || res.Warning != "" {
 		t.Errorf("unnamed: %+v %v", res, err)
 	}
-	if err := repo.memRepo.Save(domain.Task{ID: "d4", ProjectPath: "/proj", Instruction: "i",
+	if err := repo.memRepo.Save(context.Background(), domain.Task{ID: "d4", ProjectPath: "/proj", Instruction: "i",
 		Status: domain.StatusDraft, ProviderName: "live"}); err != nil {
 		t.Fatal(err)
 	}

@@ -135,10 +135,10 @@ func TestModelCapabilityRepo_CRUD(t *testing.T) {
 	p := domain.ModelCapabilityProfile{
 		ModelID: "m-1", ContextWindow: 8192, RecommendedMaxOutput: 1024, Notes: "n", BuiltIn: true,
 	}
-	if err := repo.Save(p); err != nil {
+	if err := repo.Save(context.Background(), p); err != nil {
 		t.Fatal(err)
 	}
-	got, err := repo.GetByModelID("m-1")
+	got, err := repo.GetByModelID(context.Background(), "m-1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,45 +153,45 @@ func TestModelCapabilityRepo_CRUD(t *testing.T) {
 	p.ContextWindow = 16384
 	p.BuiltIn = false
 	p.CreatedAt = time.Now().Add(-time.Hour)
-	if err := repo.Save(p); err != nil {
+	if err := repo.Save(context.Background(), p); err != nil {
 		t.Fatal(err)
 	}
-	got, _ = repo.GetByModelID("m-1")
+	got, _ = repo.GetByModelID(context.Background(), "m-1")
 	if got.ContextWindow != 16384 || got.BuiltIn {
 		t.Errorf("upsert not applied: %+v", got)
 	}
 
-	if err := repo.Save(domain.ModelCapabilityProfile{ModelID: "a-0", ContextWindow: 1}); err != nil {
+	if err := repo.Save(context.Background(), domain.ModelCapabilityProfile{ModelID: "a-0", ContextWindow: 1}); err != nil {
 		t.Fatal(err)
 	}
-	all, err := repo.GetAll()
+	all, err := repo.GetAll(context.Background())
 	if err != nil || len(all) != 2 || all[0].ModelID != "a-0" {
 		t.Fatalf("GetAll: %v %v", all, err)
 	}
 
-	if err := repo.Delete("m-1"); err != nil {
+	if err := repo.Delete(context.Background(), "m-1"); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.Delete("m-1"); !errors.Is(err, domain.ErrNotFound) {
+	if err := repo.Delete(context.Background(), "m-1"); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("second delete: want ErrNotFound, got %v", err)
 	}
-	if _, err := repo.GetByModelID("m-1"); !errors.Is(err, domain.ErrNotFound) {
+	if _, err := repo.GetByModelID(context.Background(), "m-1"); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("get missing: want ErrNotFound, got %v", err)
 	}
 }
 
 func TestModelCapabilityRepo_ErrorsOnClosedDB(t *testing.T) {
 	repo := repo_sqlite.NewModelCapabilityRepo(closedRepo(t))
-	if err := repo.Save(domain.ModelCapabilityProfile{ModelID: "x"}); err == nil {
+	if err := repo.Save(context.Background(), domain.ModelCapabilityProfile{ModelID: "x"}); err == nil {
 		t.Error("Save: expected error")
 	}
-	if _, err := repo.GetByModelID("x"); err == nil || errors.Is(err, domain.ErrNotFound) {
+	if _, err := repo.GetByModelID(context.Background(), "x"); err == nil || errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("GetByModelID: expected non-NotFound error, got %v", err)
 	}
-	if _, err := repo.GetAll(); err == nil {
+	if _, err := repo.GetAll(context.Background()); err == nil {
 		t.Error("GetAll: expected error")
 	}
-	if err := repo.Delete("x"); err == nil || errors.Is(err, domain.ErrNotFound) {
+	if err := repo.Delete(context.Background(), "x"); err == nil || errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("Delete: expected non-NotFound error, got %v", err)
 	}
 }
@@ -339,14 +339,14 @@ func TestModelCapabilityRepo_ParsesSQLiteCurrentTimestampFormat(t *testing.T) {
 	r := newTestRepo(t)
 	defer r.Close()
 	repo := repo_sqlite.NewModelCapabilityRepo(r)
-	if err := repo.Save(domain.ModelCapabilityProfile{ModelID: "m"}); err != nil {
+	if err := repo.Save(context.Background(), domain.ModelCapabilityProfile{ModelID: "m"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := r.DB().Exec(
 		`UPDATE model_capabilities SET created_at = '2024-05-06 07:08:09', updated_at = 'garbage'`); err != nil {
 		t.Fatal(err)
 	}
-	got, err := repo.GetByModelID("m")
+	got, err := repo.GetByModelID(context.Background(), "m")
 	if err != nil {
 		t.Fatal(err)
 	}

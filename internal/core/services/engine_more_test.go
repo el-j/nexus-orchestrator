@@ -14,7 +14,7 @@ import (
 func TestSelfHealing_ChatPathUsesHistoryAndPersistsEveryExchange(t *testing.T) {
 	llm := &scriptLLM{name: "p", alive: true, replies: []string{"v1", "v2 fixed"}}
 	sess := newMemSessionRepo()
-	_ = sess.Save(domain.Session{ProjectPath: "/proj", Messages: []domain.Message{{Role: domain.RoleUser, Content: "earlier"}}})
+	_ = sess.Save(context.Background(), domain.Session{ProjectPath: "/proj", Messages: []domain.Message{{Role: domain.RoleUser, Content: "earlier"}}})
 	runner := &scriptedRunner{results: []runResult{{"fail", errors.New("exit 1")}, {"PASS", nil}}}
 	e := newEngine(t, &contextWriter{}, sess, runner, llm)
 	id := e.queue(domain.Task{Instruction: "chat-heal", TargetFile: "a.go", VerificationCommand: "t"})
@@ -27,7 +27,7 @@ func TestSelfHealing_ChatPathUsesHistoryAndPersistsEveryExchange(t *testing.T) {
 		t.Errorf("correction chat must carry prior history and a full correction prompt: %+v", h)
 	}
 	// earlier + (user, assistant) for the task + (user, assistant) for the correction.
-	if saved, _ := sess.GetByProjectPath("/proj"); len(saved.Messages) != 5 {
+	if saved, _ := sess.GetByProjectPath(context.Background(), "/proj"); len(saved.Messages) != 5 {
 		t.Errorf("session has %d messages, want 5", len(saved.Messages))
 	}
 }
@@ -156,7 +156,9 @@ func TestSubmitAndPromote_RepositoryAndAdmissionErrors(t *testing.T) {
 
 type projectFailRepo struct{ *faultyRepo }
 
-func (p *projectFailRepo) GetByProjectPath(string) ([]domain.Task, error) { return nil, errInjected }
+func (p *projectFailRepo) GetByProjectPath(context.Context, string) ([]domain.Task, error) {
+	return nil, errInjected
+}
 
 func TestClaimTask_RefetchFailureAndAppendRoutedFailure(t *testing.T) {
 	// Second GetByID (after the status flip) fails.
@@ -188,12 +190,12 @@ type secondGetFailsRepo struct {
 	gets int
 }
 
-func (r *secondGetFailsRepo) GetByID(id string) (domain.Task, error) {
+func (r *secondGetFailsRepo) GetByID(_ context.Context, id string) (domain.Task, error) {
 	r.gets++
 	if r.gets >= 2 {
 		return domain.Task{}, errInjected
 	}
-	return r.faultyRepo.GetByID(id)
+	return r.faultyRepo.GetByID(context.Background(), id)
 }
 
 type appendFailAIRepo struct{ *memAISessionRepo }

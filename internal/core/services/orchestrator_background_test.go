@@ -41,10 +41,10 @@ func TestWatchdog_FailsStaleProcessingTaskAndBroadcastsOnce(t *testing.T) {
 	defer orch.Stop()
 
 	eventually(t, "watchdog to fail the stuck task", func() bool {
-		got, err := repo.memRepo.GetByID("stuck")
+		got, err := repo.memRepo.GetByID(context.Background(), "stuck")
 		return err == nil && got.Status == domain.StatusFailed
 	})
-	got, _ := repo.memRepo.GetByID("stuck")
+	got, _ := repo.memRepo.GetByID(context.Background(), "stuck")
 	if want := "Marked as FAILED by watchdog"; !contains(got.Logs, want) || !contains(got.Logs, "started") {
 		t.Errorf("logs should keep history and add the watchdog note, got %q", got.Logs)
 	}
@@ -86,7 +86,7 @@ func TestWatchdog_SurvivesRepositoryErrors(t *testing.T) {
 	repo.set("Update", false)
 	repo.setStale(domain.Task{ID: "t2", Status: domain.StatusProcessing})
 	eventually(t, "watchdog to recover after errors", func() bool {
-		got, err := repo.memRepo.GetByID("t2")
+		got, err := repo.memRepo.GetByID(context.Background(), "t2")
 		return err == nil && got.Status == domain.StatusFailed
 	})
 	orch.Stop()
@@ -168,7 +168,7 @@ func TestRecoverStuckTasks_RequeuesProcessingTasksOnStartup(t *testing.T) {
 	seedTask(t, repo, "already-queued", domain.StatusQueued)
 	orch := services.NewOrchestrator(services.NewDiscoveryService(), repo, &noopWriter{}, nil, services.WithDisableBackgroundWorkers())
 	defer orch.Stop()
-	if got, _ := repo.GetByID("was-processing"); got.Status != domain.StatusQueued {
+	if got, _ := repo.GetByID(context.Background(), "was-processing"); got.Status != domain.StatusQueued {
 		t.Errorf("status = %s, want QUEUED", got.Status)
 	}
 
@@ -178,7 +178,7 @@ func TestRecoverStuckTasks_RequeuesProcessingTasksOnStartup(t *testing.T) {
 	bad2 := newFaultyRepo("UpdateStatusIfCurrent")
 	seedTask(t, bad2, "p", domain.StatusProcessing)
 	services.NewOrchestrator(services.NewDiscoveryService(), bad2, &noopWriter{}, nil, services.WithDisableBackgroundWorkers()).Stop()
-	if got, _ := bad2.GetByID("p"); got.Status != domain.StatusProcessing {
+	if got, _ := bad2.GetByID(context.Background(), "p"); got.Status != domain.StatusProcessing {
 		t.Errorf("failed re-queue must leave the task untouched, got %s", got.Status)
 	}
 }

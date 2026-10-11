@@ -39,24 +39,24 @@ type LLMClient interface {
 
 // TaskRepository is the port for persisting and querying Tasks.
 type TaskRepository interface {
-	Save(t domain.Task) error
-	GetByID(id string) (domain.Task, error)
-	GetPending() ([]domain.Task, error)
-	ClaimNextQueued() (domain.Task, error)
+	Save(ctx context.Context, t domain.Task) error
+	GetByID(ctx context.Context, id string) (domain.Task, error)
+	GetPending(ctx context.Context) ([]domain.Task, error)
+	ClaimNextQueued(ctx context.Context) (domain.Task, error)
 	// GetByProjectPath returns all tasks for the given project path.
-	GetByProjectPath(projectPath string) ([]domain.Task, error)
-	UpdateStatus(id string, status domain.TaskStatus) error
-	UpdateStatusIfCurrent(id string, from, to domain.TaskStatus) (bool, error)
+	GetByProjectPath(ctx context.Context, projectPath string) ([]domain.Task, error)
+	UpdateStatus(ctx context.Context, id string, status domain.TaskStatus) error
+	UpdateStatusIfCurrent(ctx context.Context, id string, from, to domain.TaskStatus) (bool, error)
 	// UpdateLogs replaces the Logs field on the task identified by id.
-	UpdateLogs(id, logs string) error
+	UpdateLogs(ctx context.Context, id, logs string) error
 	// GetAll returns every task, ordered by creation time descending.
-	GetAll() ([]domain.Task, error)
+	GetAll(ctx context.Context) ([]domain.Task, error)
 	// GetByProjectPathAndStatus returns tasks for a project filtered by one or more statuses.
-	GetByProjectPathAndStatus(projectPath string, statuses ...domain.TaskStatus) ([]domain.Task, error)
+	GetByProjectPathAndStatus(ctx context.Context, projectPath string, statuses ...domain.TaskStatus) ([]domain.Task, error)
 	// Update persists changes to an existing task's mutable fields.
-	Update(t domain.Task) error
+	Update(ctx context.Context, t domain.Task) error
 	// GetTasksBySessionID returns all tasks claimed by the given AI session.
-	GetTasksBySessionID(sessionID string) ([]domain.Task, error)
+	GetTasksBySessionID(ctx context.Context, sessionID string) ([]domain.Task, error)
 	// GetStaleProcessing returns tasks in PROCESSING state longer than threshold.
 	GetStaleProcessing(ctx context.Context, threshold time.Duration) ([]domain.Task, error)
 }
@@ -94,12 +94,12 @@ type ProviderInfo struct {
 // SessionRepository is the port for persisting per-project conversation history.
 // ProjectPath (filepath.Clean'd) is the isolation key.
 type SessionRepository interface {
-	Save(s domain.Session) error
+	Save(ctx context.Context, s domain.Session) error
 	// GetByProjectPath returns the session for the given project, or domain.ErrNotFound.
-	GetByProjectPath(projectPath string) (domain.Session, error)
+	GetByProjectPath(ctx context.Context, projectPath string) (domain.Session, error)
 	// AppendMessage adds a message to the session for projectPath.
 	// If no session exists for that path, one is created automatically.
-	AppendMessage(projectPath string, msg domain.Message) error
+	AppendMessage(ctx context.Context, projectPath string, msg domain.Message) error
 }
 
 // RuntimeConfigRepository persists runtime-managed configuration.
@@ -317,8 +317,8 @@ type ActivityBroadcaster interface {
 // ModelCapabilityRepository is the outbound port for persisting and querying
 // model capability profiles. Built-in profiles can be overridden by user-defined records.
 type ModelCapabilityRepository interface {
-	Save(p domain.ModelCapabilityProfile) error
-	GetByModelID(modelID string) (domain.ModelCapabilityProfile, error)
-	Delete(modelID string) error
-	GetAll() ([]domain.ModelCapabilityProfile, error)
+	Save(ctx context.Context, p domain.ModelCapabilityProfile) error
+	GetByModelID(ctx context.Context, modelID string) (domain.ModelCapabilityProfile, error)
+	Delete(ctx context.Context, modelID string) error
+	GetAll(ctx context.Context) ([]domain.ModelCapabilityProfile, error)
 }
