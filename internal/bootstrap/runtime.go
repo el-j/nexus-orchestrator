@@ -88,6 +88,9 @@ type Runtime struct {
 	cancel    context.CancelFunc
 	wg        sync.WaitGroup
 	closeOnce sync.Once
+	// failed carries the first error from a server that stopped on its own (for
+	// example a port that is already taken), so the caller can exit non-zero.
+	failed chan error
 }
 
 // Start opens the database, wires every service and starts the REST API, the
@@ -102,7 +105,7 @@ func Start(ctx context.Context, cfg Config, logHub *httpapi.LogHub) (*Runtime, e
 		return nil, fmt.Errorf("open database: %w", err)
 	}
 
-	rt := &Runtime{Config: cfg, repo: repo}
+	rt := &Runtime{Config: cfg, repo: repo, failed: make(chan error, 2)}
 	runCtx, cancel := context.WithCancel(ctx)
 	rt.cancel = cancel
 
@@ -174,11 +177,13 @@ func Start(ctx context.Context, cfg Config, logHub *httpapi.LogHub) (*Runtime, e
 			MCPAddr:  cfg.MCPAddr,
 		}); err != nil {
 			log.Printf("httpapi: %v", err)
+			rt.fail(fmt.Errorf("http api: %w", err))
 		}
 	})
 	rt.goRun(func() {
 		if err := mcp.StartMCPServer(runCtx, orch, rt.Brain, cfg.MCPAddr); err != nil {
 			log.Printf("mcp: %v", err)
+			rt.fail(fmt.Errorf("mcp server: %w", err))
 		}
 	})
 	rt.goRun(func() { rt.scanLoop(runCtx) })
@@ -186,6 +191,19 @@ func Start(ctx context.Context, cfg Config, logHub *httpapi.LogHub) (*Runtime, e
 }
 
 func (r *Runtime) goRun(fn func()) { r.wg.Go(fn) }
+
+// fail records the first server failure; later ones are dropped.
+func (r *Runtime) fail(err error) {
+	select {
+	case r.failed <- err:
+	default:
+	}
+}
+
+// Failed delivers the error of a server that stopped without being asked to
+// (the REST API or MCP listener could not bind or died). It never fires for a
+// normal shutdown.
+func (r *Runtime) Failed() <-chan error { return r.failed }
 
 // scanLoop performs an immediate provider scan, then repeats it every
 // Config.ScanInterval until ctx is cancelled.

@@ -276,6 +276,8 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-go-
 
-      - name: Run daemon E2E smoke
+      # Builds the shipped binaries and drives a real daemon process (REST, all MCP
+      # tools, the stdio proxy, both CLIs, restart persistence, shutdown, port clash).
+      - name: Run real-daemon E2E
         shell: bash
-        run: ./scripts/e2e-smoke.sh
+        run: CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" CGO_LDFLAGS="-lm" go test -tags e2e -count=1 -timeout 10m -v ./internal/e2e/

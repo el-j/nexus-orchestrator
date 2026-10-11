@@ -48,8 +48,9 @@ func runMain() int {
 
 // run starts the shared runtime (services, REST API, MCP server, scanners) and
 // blocks until ctx is cancelled, then shuts everything down gracefully. It
-// returns an error only when startup cannot proceed (for example, the database
-// cannot be opened); runtime server errors are logged. Output for humans (the
+// returns an error when startup cannot proceed (for example, the database
+// cannot be opened) or when the REST or MCP server stops on its own (for
+// example, its port is taken). Output for humans (the
 // ready banner and shutdown notice) is written to out.
 func run(ctx context.Context, cfg bootstrap.Config, logHub *httpapi.LogHub, out io.Writer) error {
 	log.Printf("nexus-daemon %s (%s %s) starting...", version, commit, buildDate)
@@ -65,9 +66,13 @@ func run(ctx context.Context, cfg bootstrap.Config, logHub *httpapi.LogHub, out 
 		fmt.Fprint(out, formatBanner(version, rt.Config.ListenAddr, rt.Config.MCPAddr))
 	}()
 
-	<-ctx.Done()
-	fmt.Fprintln(out, "nexusOrchestrator daemon shutting down.")
-	return nil
+	select {
+	case <-ctx.Done():
+		fmt.Fprintln(out, "nexusOrchestrator daemon shutting down.")
+		return nil
+	case err := <-rt.Failed():
+		return fmt.Errorf("server stopped: %w", err)
+	}
 }
 
 // formatBanner builds the human- and AI-readable startup banner box.
