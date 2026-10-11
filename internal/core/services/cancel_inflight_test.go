@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"nexus-orchestrator/internal/core/domain"
+	"nexus-orchestrator/internal/core/ports"
 )
 
 // blockingLLM models a slow provider: Chat/GenerateCode block until the caller's
@@ -224,4 +225,96 @@ func (s *switchLLM) Chat(ctx context.Context, h []domain.Message) (string, error
 		return "first draft", nil
 	}
 	return s.blockingLLM.Chat(ctx, h)
+}
+
+// blockingRunner is a verification command that runs until its context ends.
+type blockingRunner struct {
+	started chan struct{}
+	once    sync.Once
+}
+
+func (b *blockingRunner) Run(ctx context.Context, _, _ string) (string, error) {
+	b.once.Do(func() { close(b.started) })
+	<-ctx.Done()
+	return "", ctx.Err()
+}
+
+func TestCancelTask_AbortsWhateverStageTheTaskIsIn(t *testing.T) {
+	code := "```go\npackage a\n```"
+	finishCall := tool(`{"tool":"verify"}`)
+	for name, tc := range map[string]struct {
+		task    domain.Task
+		runner  bool
+		startOn func(llm *blockingLLM, r *blockingRunner) <-chan struct{}
+	}{
+		"agent model call": {
+			task:    agentTask(func(t *domain.Task) { t.Instruction = "m" }),
+			startOn: func(l *blockingLLM, _ *blockingRunner) <-chan struct{} { return l.started },
+		},
+		"agent verify tool": {
+			task:    agentTask(func(t *domain.Task) { t.Instruction = "v"; t.VerificationCommand = "t" }),
+			runner:  true,
+			startOn: func(_ *blockingLLM, r *blockingRunner) <-chan struct{} { return r.started },
+		},
+		"first verification": {
+			task:    domain.Task{Instruction: "p", TargetFile: "a.go", VerificationCommand: "t"},
+			runner:  true,
+			startOn: func(_ *blockingLLM, r *blockingRunner) <-chan struct{} { return r.started },
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			runner := &blockingRunner{started: make(chan struct{})}
+			var llm ports.LLMClient
+			var blocking *blockingLLM
+			if tc.runner {
+				llm = &scriptLLM{name: "p", alive: true, limit: 100000, replies: []string{code, finishCall}}
+				if tc.task.Agentic {
+					llm = &scriptLLM{name: "p", alive: true, limit: 100000, replies: []string{finishCall}}
+				}
+				blocking = newBlockingLLM()
+			} else {
+				blocking = newBlockingLLM()
+				blocking.limit = 100000
+				llm = blocking
+			}
+			var e *engineFixture
+			if tc.runner {
+				e = newEngine(t, &contextWriter{}, nil, runner, llm)
+			} else {
+				e = newEngine(t, &contextWriter{}, nil, nil, llm)
+			}
+			id := e.queue(tc.task)
+			done := runInBackground(e)
+			waitFor(t, tc.startOn(blocking, runner), "the stage to start")
+			if err := e.orch.CancelTask(id); err != nil {
+				t.Fatal(err)
+			}
+			waitFor(t, done, "the worker to settle")
+			if got := e.status(id).Status; got != domain.StatusCancelled {
+				t.Errorf("status = %s, want CANCELLED", got)
+			}
+		})
+	}
+}
+
+// A daemon shutdown (not a user cancel) puts the task back in the queue, and a
+// failing re-queue write is only logged.
+func TestStop_RequeuesAnInterruptedTaskEvenWhenTheWriteFails(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		llm := newBlockingLLM()
+		e := newEngine(t, &contextWriter{}, nil, nil, llm)
+		id := e.queue(domain.Task{Instruction: "slow", TargetFile: "a.go"})
+		e.repo.set("UpdateStatusIfCurrent", fail)
+		done := runInBackground(e)
+		waitFor(t, llm.started, "the provider call to start")
+		e.orch.Stop()
+		waitFor(t, done, "the worker to settle")
+		want := domain.StatusQueued
+		if fail {
+			want = domain.StatusProcessing
+		}
+		if got := e.status(id).Status; got != want {
+			t.Errorf("fail=%v: status = %s, want %s", fail, got, want)
+		}
+	}
 }

@@ -151,9 +151,6 @@ func (a *agentRun) execute(run *runHandle, c agentCall) (obs string, done bool) 
 		if c.Path == "" {
 			return "read_file: path is required", false
 		}
-		if a.o.fileWriter == nil {
-			return "read_file: file access is not available", false
-		}
 		text, err := a.o.fileWriter.ReadContextFiles(a.task.ProjectPath, []string{c.Path})
 		if err != nil {
 			return "read_file failed: " + err.Error(), false
@@ -162,9 +159,6 @@ func (a *agentRun) execute(run *runHandle, c agentCall) (obs string, done bool) 
 	case "write_file":
 		if c.Path == "" {
 			return "write_file: path is required", false
-		}
-		if a.o.fileWriter == nil {
-			return "write_file: file access is not available", false
 		}
 		if err := a.o.fileWriter.WriteCodeToFile(a.task.ProjectPath, c.Path, c.Content); err != nil {
 			return "write_file failed: " + err.Error(), false
