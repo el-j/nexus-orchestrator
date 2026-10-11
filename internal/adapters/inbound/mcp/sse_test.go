@@ -3,8 +3,10 @@ package mcp_test
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -554,5 +556,96 @@ func TestSSE_ConnectionSurvivesLongIdle(t *testing.T) {
 		case <-timeout:
 			t.Fatal("timed out: SSE connection did not survive idle period")
 		}
+	}
+}
+
+// brokenStream is a ResponseWriter that can flush but fails its writes after
+// okWrites successful ones.
+type brokenStream struct {
+	header   http.Header
+	okWrites int
+	flushes  int
+}
+
+func (b *brokenStream) Header() http.Header {
+	if b.header == nil {
+		b.header = http.Header{}
+	}
+	return b.header
+}
+func (b *brokenStream) WriteHeader(int) {}
+func (b *brokenStream) Flush()          { b.flushes++ }
+func (b *brokenStream) Write(p []byte) (int, error) {
+	if b.okWrites <= 0 {
+		return 0, errors.New("broken pipe")
+	}
+	b.okWrites--
+	return len(p), nil
+}
+
+// plainWriter has no Flush method, so it cannot carry an event stream.
+type plainWriter struct {
+	header http.Header
+	code   int
+}
+
+func (p *plainWriter) Header() http.Header {
+	if p.header == nil {
+		p.header = http.Header{}
+	}
+	return p.header
+}
+func (p *plainWriter) Write(b []byte) (int, error) { return len(b), nil }
+func (p *plainWriter) WriteHeader(code int)        { p.code = code }
+
+func TestSSE_ConnectNeedsAStreamingWriter(t *testing.T) {
+	w := &plainWriter{}
+	mcp.NewMcpServer(&mockOrch{}, nil).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/sse", nil))
+	if w.code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want 500", w.code)
+	}
+}
+
+func TestSSE_ConnectEndsWhenTheEndpointEventCannotBeSent(t *testing.T) {
+	w := &brokenStream{okWrites: 0}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		mcp.NewMcpServer(&mockOrch{}, nil).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/sse", nil))
+	}()
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("the handler kept the connection after a failed write")
+	}
+}
+
+func TestSSE_ConnectEndsWhenAKeepalivePingFails(t *testing.T) {
+	orig := *mcp.SseKeepaliveInterval
+	*mcp.SseKeepaliveInterval = 10 * time.Millisecond
+	t.Cleanup(func() { *mcp.SseKeepaliveInterval = orig })
+
+	w := &brokenStream{okWrites: 1} // the endpoint event succeeds, the first ping does not
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		mcp.NewMcpServer(&mockOrch{}, nil).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/sse", nil))
+	}()
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("the handler kept the connection after a failed ping")
+	}
+}
+
+func TestMessages_RejectsANonPost(t *testing.T) {
+	srv := newServer(t, &mockOrch{})
+	resp, err := http.Get(srv.URL + "/messages?sessionId=x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("status = %d, want 405", resp.StatusCode)
 	}
 }

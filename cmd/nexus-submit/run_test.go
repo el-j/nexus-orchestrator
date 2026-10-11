@@ -3,11 +3,13 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -212,4 +214,61 @@ func waitCtx(d time.Duration) context.Context {
 	ctx, cancel := context.WithTimeout(context.Background(), d)
 	time.AfterFunc(d, cancel) // release the timer even if the test never reads ctx
 	return ctx
+}
+
+func TestRun_AgenticFlagsReachTheDaemon(t *testing.T) {
+	var got map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		w.WriteHeader(http.StatusCreated)
+		fmt.Fprint(w, `{"task_id":"T-1","status":"QUEUED"}`)
+	}))
+	defer srv.Close()
+	code, _, _ := runCLI("--task-file", taskFile(t), "--addr", srv.URL, "--agentic", "--max-agent-turns", "6")
+	if code != exitOK || got["agentic"] != true || got["maxAgentTurns"] != float64(6) {
+		t.Fatalf("code=%d body=%v", code, got)
+	}
+	got = nil
+	runCLI("--task-file", taskFile(t), "--addr", srv.URL, "--agentic")
+	if _, set := got["maxAgentTurns"]; got["agentic"] != true || set {
+		t.Errorf("without --max-agent-turns the daemon default applies: %v", got)
+	}
+}
+
+func TestRequests_RejectAnAddressThatIsNotAURL(t *testing.T) {
+	const bad = "http://host\x7f"
+	if _, _, err := SubmitTask(context.Background(), bad, map[string]interface{}{}); err == nil || !strings.Contains(err.Error(), "build request") {
+		t.Errorf("submit: %v", err)
+	}
+	var out, errb bytes.Buffer
+	if code := waitForCompletion(waitCtx(time.Second), &out, &errb, bad, "T", time.Millisecond); code != exitFailure || !strings.Contains(errb.String(), "error:") {
+		t.Errorf("wait: code=%d stderr=%q", code, errb.String())
+	}
+}
+
+func TestBuildRequestBody_ReportsAnUnreadableWorkingDirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("a removed working directory is still readable on Windows")
+	}
+	old, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(old) }()
+	gone := filepath.Join(t.TempDir(), "gone")
+	if err := os.Mkdir(gone, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(gone); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(gone); err != nil {
+		t.Skipf("cannot remove the working directory here: %v", err)
+	}
+	if _, err := os.Getwd(); err == nil {
+		t.Skip("this platform still resolves a removed working directory")
+	}
+	if _, err := BuildRequestBody(filepath.Join(old, "run_test.go"), "", "", "", "", 0); err == nil || !strings.Contains(err.Error(), "get cwd") {
+		t.Errorf("err = %v", err)
+	}
 }
