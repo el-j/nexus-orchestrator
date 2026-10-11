@@ -197,8 +197,8 @@ func TestPlanScan_TolerantOfUnreadableEntries(t *testing.T) {
 	if _, err := scanDir(filepath.Join(root, "missing"), "", map[string]bool{}); err == nil {
 		t.Error("scanDir on a missing dir must report the error")
 	}
-	if recs, err := scanRecursiveInstructionFiles(filepath.Join(root, "missing"), "", map[string]bool{}, 3); err != nil || recs != nil {
-		t.Errorf("missing base: %v %v", recs, err)
+	if recs := scanRecursiveInstructionFiles(filepath.Join(root, "missing"), "", map[string]bool{}, 3); recs != nil {
+		t.Errorf("missing base: %v", recs)
 	}
 	// Files already seen are not reported twice.
 	seen := map[string]bool{filepath.Join(root, "TASKS.md"): true}

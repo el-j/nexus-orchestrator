@@ -46,23 +46,17 @@ func (s *Scanner) ScanPlanFiles(_ context.Context, rootPaths []string) ([]domain
 			filepath.Join(absRoot, ".github"),
 		}
 		for _, base := range recursiveRoots {
-			found, err := scanRecursiveInstructionFiles(base, home, seen, 3)
-			if err != nil {
-				continue
-			}
-			results = append(results, found...)
+			results = append(results, scanRecursiveInstructionFiles(base, home, seen, 3)...)
 		}
 	}
 	return results, nil
 }
 
-func scanRecursiveInstructionFiles(base, home string, seen map[string]bool, maxDepth int) ([]domain.DiscoveredPlanFile, error) {
-	if _, err := os.Stat(base); err != nil {
-		return nil, nil
-	}
-
+// scanRecursiveInstructionFiles collects *.instructions.md and *.prompt.md files up to
+// maxDepth levels below base. Unreadable entries are skipped, so it cannot fail.
+func scanRecursiveInstructionFiles(base, home string, seen map[string]bool, maxDepth int) []domain.DiscoveredPlanFile {
 	var results []domain.DiscoveredPlanFile
-	err := filepath.WalkDir(base, func(path string, d os.DirEntry, walkErr error) error {
+	_ = filepath.WalkDir(base, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return nil
 		}
@@ -70,10 +64,7 @@ func scanRecursiveInstructionFiles(base, home string, seen map[string]bool, maxD
 			return nil
 		}
 
-		rel, err := filepath.Rel(base, path)
-		if err != nil {
-			return nil
-		}
+		rel, _ := filepath.Rel(base, path) // path is below base, so this cannot fail
 		depth := strings.Count(rel, string(filepath.Separator))
 
 		if d.IsDir() {
@@ -108,10 +99,7 @@ func scanRecursiveInstructionFiles(base, home string, seen map[string]bool, maxD
 		results = append(results, pf)
 		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
-	return results, nil
+	return results
 }
 
 // scanDir inspects dir for all recognised plan-file patterns.
