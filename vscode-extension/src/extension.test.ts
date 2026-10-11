@@ -37,6 +37,7 @@ const h = vi.hoisted(() => {
       showLog: vi.fn(),
     },
     env: process.env['NEXUS_API_TOKEN'],
+    failStatusUpdate: false,
   };
 });
 
@@ -97,7 +98,9 @@ vi.mock('./nexusClient', () => {
 });
 vi.mock('./statusBar', () => ({
   NexusStatusBar: class {
-    update = vi.fn().mockResolvedValue(undefined);
+    update = vi.fn(() =>
+      h.failStatusUpdate ? Promise.reject(new Error('status bar failed')) : Promise.resolve(),
+    );
     dispose = vi.fn();
     startPolling = vi.fn(() => ({ dispose: vi.fn() }));
     constructor() {
@@ -312,6 +315,17 @@ describe('activate', () => {
     vi.resetModules();
     const fresh = await import('./extension');
     expect(fresh.deactivate()).toBeUndefined(); // never activated
+  });
+});
+
+describe('activation', () => {
+  it('does not fail when the first status-bar refresh after reconfiguring rejects', async () => {
+    h.failStatusUpdate = true;
+    try {
+      await expect(activateExtension()).resolves.toBeDefined();
+    } finally {
+      h.failStatusUpdate = false;
+    }
   });
 });
 

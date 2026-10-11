@@ -182,6 +182,14 @@ describe('submitTask — prompts', () => {
     expect(client.submitTask).not.toHaveBeenCalled();
   });
 
+  it('shows a dash for the target when the task has no target file', async () => {
+    ui.state.activeEditor = undefined;
+    ui.showInputBox.mockResolvedValueOnce('Plan only').mockResolvedValueOnce('');
+    await run();
+    expect(ui.showInformationMessage.mock.calls[0][0]).toContain('Target: —;');
+    expect(client.submitTask).toHaveBeenCalledWith(expect.objectContaining({ targetFile: '' }));
+  });
+
   it('asks for confirmation with the target, context count and route', async () => {
     await run();
     expect(ui.showInformationMessage.mock.calls[0][0]).toContain(

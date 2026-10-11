@@ -363,6 +363,28 @@ describe('SessionMonitor: registration retries, model changes and shutdown', () 
     await vi.advanceTimersByTimeAsync(0);
   });
 
+  it('skips a retry when a session was registered while it waited', async () => {
+    selectChatModelsMock.mockResolvedValueOnce([]).mockResolvedValue([{ id: 'm' }]);
+    const client = buildClient();
+    const { SessionMonitor } = await import('./sessionMonitor');
+    const monitor = new SessionMonitor(client, buildContext());
+    const started = monitor.start();
+    await vi.advanceTimersByTimeAsync(0);
+    await (monitor as unknown as { detectAndRegister(): Promise<void> }).detectAndRegister();
+    expect(client.registerSession).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(2_000);
+    await started;
+    expect(client.registerSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('registers with an empty model id when the model has neither an id nor a name', async () => {
+    selectChatModelsMock.mockResolvedValue([{}]);
+    const client = buildClient();
+    const { SessionMonitor } = await import('./sessionMonitor');
+    await new SessionMonitor(client, buildContext()).start();
+    expect(client.registerSession).toHaveBeenCalledWith(expect.objectContaining({ modelId: '' }));
+  });
+
   it('works when the language-model API is not available at all', async () => {
     vscodeState.folders = undefined;
     vscodeState.hasLm = false;

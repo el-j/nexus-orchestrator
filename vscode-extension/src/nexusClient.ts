@@ -422,7 +422,7 @@ export class NexusClient {
     if (!resp.ok) throw await this.failure(`DELETE ${path}`, resp);
   }
 
-  private async put<T>(path: string, payload: unknown, schema?: z.ZodSchema<T>): Promise<T> {
+  private async put<T>(path: string, payload: unknown, schema: z.ZodSchema<T>): Promise<T> {
     const resp = await this.send(`${this.baseUrl}${path}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -430,6 +430,6 @@ export class NexusClient {
     });
     if (!resp.ok) throw await this.failure(`PUT ${path}`, resp);
     const data: unknown = await resp.json();
-    return schema ? this.parseResponse(schema, data) : (data as T);
+    return this.parseResponse(schema, data);
   }
 }

@@ -116,6 +116,11 @@ describe('parsing orchestrator.json', () => {
     expect(o.allPlans[0]).toEqual({ id: '', title: '', status: 'unknown', tasks: [] });
   });
 
+  it('defaults a referenced task that has no status', () => {
+    const [o] = scan(doc({ plans: { p: { id: 'p', tasks: ['t'] } }, tasks: { t: { id: 't' } } }));
+    expect(o.allPlans[0].tasks).toEqual([{ id: 't', title: 't', status: 'unknown', role: '' }]);
+  });
+
   it('accepts a file that only has tasks', () => {
     const [o] = scan(doc({ tasks: { t: { id: 't' } } }));
     expect(o.allPlans).toEqual([]);
