@@ -288,3 +288,53 @@ func TestAgentLoop_FilesAreUnavailableWithoutAWriter(t *testing.T) {
 		t.Errorf("observation = %q", obs)
 	}
 }
+
+func TestAgentLoop_EditFileReplacesTheOneOccurrence(t *testing.T) {
+	fs := newMemFS(map[string]string{"a.go": "package a\nvar x = 1\nvar y = 1\n"})
+	llm := &scriptLLM{name: "Anthropic", alive: true, limit: 100000, replies: []string{
+		tool(`{"tool":"edit_file","path":"a.go","old":"var x = 1","new":"var x = 2"}`),
+		tool(`{"tool":"edit_file","path":"a.go","old":"nope","new":"z"}`) + "\n" +
+			tool(`{"tool":"edit_file","path":"missing.go","old":"a","new":"b"}`) + "\n" +
+			tool(`{"tool":"edit_file","path":"a.go"}`),
+		tool(`{"tool":"finish","summary":"done"}`),
+	}}
+	e := newEngine(t, fs, nil, nil, llm)
+	e.runOne(e.queue(agentTask(nil)), domain.StatusCompleted)
+
+	if got := fs.files["a.go"]; got != "package a\nvar x = 2\nvar y = 1\n" {
+		t.Errorf("a.go = %q", got)
+	}
+	h := llm.histories[2]
+	obs := h[len(h)-1].Content
+	for _, want := range []string{"not found", "no such file", "path and old are required"} {
+		if !strings.Contains(obs, want) {
+			t.Errorf("observation missing %q: %q", want, obs)
+		}
+	}
+}
+
+func TestAgentLoop_EditFileRefusesAnAmbiguousMatchAndNeedsAWriter(t *testing.T) {
+	fs := newMemFS(map[string]string{"a.go": "x x"})
+	llm := &scriptLLM{name: "Anthropic", alive: true, limit: 100000, replies: []string{
+		tool(`{"tool":"edit_file","path":"a.go","old":"x","new":"y"}`),
+		tool(`{"tool":"finish","summary":"done"}`),
+	}}
+	e := newEngine(t, fs, nil, nil, llm)
+	e.runOne(e.queue(agentTask(nil)), domain.StatusCompleted)
+	if fs.files["a.go"] != "x x" {
+		t.Errorf("ambiguous edit must not write: %q", fs.files["a.go"])
+	}
+	if h := llm.histories[1]; !strings.Contains(h[len(h)-1].Content, "occurs 2 times") {
+		t.Errorf("observation = %q", h[len(h)-1].Content)
+	}
+}
+
+func TestAgentLoop_EditFileReportsWriteFailures(t *testing.T) {
+	llm := &scriptLLM{name: "Anthropic", alive: true, limit: 100000, replies: []string{
+		tool(`{"tool":"edit_file","path":"a.go","old":"x","new":"y"}`), tool(`{"tool":"finish"}`)}}
+	e := newEngine(t, &contextWriter{ctx: "// --- a.go ---\nx\n", writeErr: errors.New("disk full")}, nil, nil, llm)
+	e.runOne(e.queue(agentTask(nil)), domain.StatusCompleted)
+	if h := llm.histories[1]; !strings.Contains(h[len(h)-1].Content, "edit_file failed: disk full") {
+		t.Errorf("observation = %q", h[len(h)-1].Content)
+	}
+}

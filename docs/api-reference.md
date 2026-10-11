@@ -89,12 +89,13 @@ With `"agentic": true` the model no longer answers once and has the answer writt
 `targetFile`. Instead it works over several turns, replying each time with fenced
 ` ```nexus-tool ` blocks holding one JSON call each, and the daemon answers with the results:
 
-| Tool         | Arguments         | Effect                                                            |
-| ------------ | ----------------- | ----------------------------------------------------------------- |
-| `read_file`  | `path`            | Returns the file (truncated to 16 KiB)                            |
-| `write_file` | `path`, `content` | Creates or replaces a whole file                                  |
-| `verify`     | none              | Runs the task's `verificationCommand`                             |
-| `finish`     | `summary`         | Ends the task; refused while the verification command still fails |
+| Tool         | Arguments            | Effect                                                                                                |
+| ------------ | -------------------- | ----------------------------------------------------------------------------------------------------- |
+| `read_file`  | `path`               | Returns the file (truncated to 16 KiB)                                                                |
+| `write_file` | `path`, `content`    | Creates or replaces a whole file                                                                      |
+| `edit_file`  | `path`, `old`, `new` | Replaces the single exact occurrence of `old`; refused when `old` is missing or occurs more than once |
+| `verify`     | none                 | Runs the task's `verificationCommand`                                                                 |
+| `finish`     | `summary`            | Ends the task; refused while the verification command still fails                                     |
 
 Safety: all file access is confined to `projectPath` (absolute paths, `..` and symlinks
 that leave the project are rejected, and the model is told so). There is no tool that runs
@@ -609,6 +610,64 @@ Get file path map for a project, optionally filtered to a focus area.
 ```
 
 ---
+
+### Backlog and planning
+
+| Route                                 | Purpose                                                                 |
+| ------------------------------------- | ----------------------------------------------------------------------- |
+| `GET /api/tasks/all`                  | Every task, drafts and cancelled ones included. Optional `projectPath`. |
+| `POST /api/tasks/draft`               | Create a backlog draft that does not enter the execution queue.         |
+| `GET /api/tasks/backlog?projectPath=` | Drafts and backlog items for a project, by priority.                    |
+| `POST /api/tasks/{id}/promote`        | Move a draft into the active queue.                                     |
+| `PUT /api/tasks/{id}`                 | Update a task's instruction, priority, provider, tags or status.        |
+
+### Provider discovery and configuration
+
+| Route                                 | Purpose                                                                                                               |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/providers/discovered`       | Local and cloud backends found by the last scan.                                                                      |
+| `POST /api/providers/discovered/scan` | Run a fresh scan.                                                                                                     |
+| `POST /api/providers/promote/{id}`    | Turn a discovered provider into an active backend.                                                                    |
+| `GET /api/providers/config`           | Stored provider configurations.                                                                                       |
+| `POST /api/providers/config`          | Add a provider configuration (kind `lmstudio`, `ollama`, `openaicompat`, `anthropic`, `gemini`, `localai` or `vllm`). |
+| `PUT /api/providers/config/{id}`      | Update a configuration.                                                                                               |
+| `DELETE /api/providers/config/{id}`   | Remove a configuration.                                                                                               |
+
+### Task coordination (for AI agents)
+
+Agents that pull work from the queue instead of submitting it use these routes.
+Each takes the agent's `sessionId` (see _AI sessions_ below).
+
+| Route                            | Purpose                                                                                             |
+| -------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `POST /api/tasks/{id}/claim`     | Claim a queued task. Body `{"sessionId"}`. `404` when the task or session is unknown.               |
+| `PUT /api/tasks/{id}/status`     | Report the outcome. Body `{"sessionId","status","logs"}` where `status` is `COMPLETED` or `FAILED`. |
+| `POST /api/tasks/{id}/heartbeat` | Keep a claimed task alive. Body `{"sessionId"}` (`session_id` is accepted for older clients).       |
+
+### AI sessions
+
+| Route                                  | Purpose                                                                                                                            |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/ai-sessions`                | Register an agent session (name, role, model, project).                                                                            |
+| `GET /api/ai-sessions`                 | List registered sessions.                                                                                                          |
+| `DELETE /api/ai-sessions`              | Purge sessions that are disconnected; returns `{"deleted": n}`.                                                                    |
+| `GET /api/ai-sessions/discovered`      | Agents found on this machine (Claude, Cursor, Copilot, ...) that are not registered yet.                                           |
+| `DELETE /api/ai-sessions/{id}`         | Deregister a session.                                                                                                              |
+| `POST /api/ai-sessions/{id}/heartbeat` | Keep a session alive; sessions silent for five minutes are marked disconnected.                                                    |
+| `POST /api/ai-sessions/{id}/terminate` | Disconnect a session and stop its agent process when Nexus discovered it. Body `{"force": true}` sends SIGKILL instead of SIGTERM. |
+| `GET /api/ai-sessions/{id}/tasks`      | Tasks assigned to a session.                                                                                                       |
+| `POST /api/ai-sessions/{id}/delegate`  | Hand a session's work over to Nexus.                                                                                               |
+
+### Logs, activity and plans
+
+| Route                                          | Purpose                                                                              |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `GET /api/logs`                                | Recent daemon log lines (the same stream the SSE endpoint carries).                  |
+| `GET /api/activities`                          | Agent activity records. Query `agent`, `since` (RFC 3339) and `limit`.               |
+| `GET /api/activities/timeline`                 | Activity grouped over time; `since` defaults to the last 24 hours.                   |
+| `GET /api/plans/discovered?projectPath=`       | Plan files (`PLAN-*.md`, `TASKS.md`, ...) discovered in a project.                   |
+| `POST /api/plans/discovered/scan?projectPath=` | Rescan and return the discovered plan files.                                         |
+| `GET /api/brain/onboarding?projectPath=`       | A compact orientation for an agent joining the project; `maxTokens` limits its size. |
 
 ### Dashboard
 
