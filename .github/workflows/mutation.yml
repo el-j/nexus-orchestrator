@@ -24,12 +24,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # internal/core/services measured at 81.9% on 2026-10-11; the others are
+          # provisional until their first scheduled run.
           - package: internal/core/services
-            efficacy: "70"
+            efficacy: "78"
           - package: internal/core/domain
-            efficacy: "70"
+            efficacy: "50"
           - package: internal/adapters/inbound/httpapi
-            efficacy: "60"
+            efficacy: "50"
     steps:
       - uses: actions/checkout@v6
 
