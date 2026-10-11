@@ -1,12 +1,19 @@
 name: Mutation testing
 
-# Mutation runs are slow (minutes to tens of minutes), so they run weekly and on
-# demand instead of on every push. Each job fails below its score gate; the
-# gates are ratchets - raise them as the surviving mutants get killed.
+# The Go packages take up to half an hour, so they run weekly and on demand. The
+# TypeScript projects take a few minutes and also run on pull requests that touch
+# them. Each job fails below its score gate; the gates are ratchets - raise them
+# as the surviving mutants get killed.
 on:
   schedule:
     - cron: "0 3 * * 1"
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "frontend/**"
+      - "vscode-extension/**"
+      - "github-action/**"
+      - ".github/workflows/mutation.yml"
 
 permissions:
   contents: read
@@ -18,20 +25,21 @@ concurrency:
 jobs:
   go:
     name: Go (gremlins) ${{ matrix.package }}
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         include:
-          # internal/core/services measured at 81.9% on 2026-10-11; the others are
-          # provisional until their first scheduled run.
+          # First measured on GitHub on 2026-10-11 (run 38174416615): services 82.2%,
+          # domain 100% (6 mutants), httpapi 83.2%. Gates sit a few points below.
           - package: internal/core/services
-            efficacy: "78"
+            efficacy: "80"
           - package: internal/core/domain
-            efficacy: "50"
+            efficacy: "90"
           - package: internal/adapters/inbound/httpapi
-            efficacy: "50"
+            efficacy: "80"
     steps:
       - uses: actions/checkout@v6
 
