@@ -1,3 +1,9 @@
+<!--
+  Right-hand drawer with the recent activity and token total of one agent, and a link to its
+  timeline in Live Activity.
+  Props: agentName, modelVisible (open state; bound with v-model:modelVisible).
+  Emits: update:modelVisible(open).
+-->
 <template>
   <Teleport to="body">
     <Transition name="drawer">

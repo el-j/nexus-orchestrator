@@ -1,3 +1,6 @@
+<!--
+  Home page: what Nexus Orchestrator is, its main capabilities and the terminal demo.
+-->
 <template>
   <div>
     <!-- ── HERO ──────────────────────────────────────────── -->

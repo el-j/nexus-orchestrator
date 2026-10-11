@@ -1,3 +1,7 @@
+<!--
+  Live Activity: the real-time agent activity feed grouped into sessions, with agent, project
+  and type filters and deep links from other views (?agent=, ?project=).
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <header

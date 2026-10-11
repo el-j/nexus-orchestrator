@@ -1,5 +1,5 @@
-import type { RouteRecordRaw } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import type { RouteRecordRaw } from 'vue-router';
+import HomeView from '../views/HomeView.vue';
 
 // This file exports the route definitions array rather than a router instance.
 // Previously it exported `export default router` (a `createRouter(...)` result),
@@ -38,4 +38,4 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('../views/McpIntegrationView.vue'),
     meta: { title: 'MCP Integration — nexus-orchestrator' },
   },
-]
+];

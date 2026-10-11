@@ -1,3 +1,6 @@
+<!--
+  Getting Started page: install, start the daemon, connect an agent and submit a first task.
+-->
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-12">

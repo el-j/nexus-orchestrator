@@ -1,3 +1,7 @@
+<!--
+  Agents: registered AI sessions and the AI tools discovered on this machine (with their
+  sub-agents), plus the activity tab. Sort, filter and search; sessions can be deregistered or purged.
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->

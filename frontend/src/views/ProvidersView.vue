@@ -1,3 +1,7 @@
+<!--
+  Providers: registered backends (status, models, search and filter), discovered backends and
+  the saved provider configurations (add, edit, remove, promote a discovered one).
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->

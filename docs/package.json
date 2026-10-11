@@ -8,6 +8,7 @@
     "build": "vite-ssg build",
     "preview": "vite preview",
     "type-check": "vue-tsc --noEmit",
+    "check:docs": "node ../scripts/check-tsdoc.mjs src",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
   },

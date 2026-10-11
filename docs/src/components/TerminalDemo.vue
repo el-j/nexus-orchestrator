@@ -1,3 +1,6 @@
+<!--
+  Animated terminal on the home page that shows a task being submitted and completed.
+-->
 <template>
   <div
     class="rounded-xl border border-white/10 bg-[#0a0a10] overflow-hidden shadow-2xl shadow-violet-500/10"

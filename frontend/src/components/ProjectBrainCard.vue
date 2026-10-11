@@ -1,3 +1,8 @@
+<!--
+  Card showing the knowledge-base ("brain") status of one project, with actions to initialise it,
+  sync its plan file and upload files to ingest.
+  Props: projectPath, nexusFile (the project's plan file, when one was discovered).
+-->
 <template>
   <div class="mb-5 rounded-xl border border-violet-500/30 bg-violet-500/[0.04] p-3 text-white">
     <div class="flex items-start gap-3">

@@ -8,6 +8,7 @@ export interface TocItem {
   depth: 2 | 3;
 }
 
+/** Result of rendering a markdown page: the HTML and its table of contents. */
 export interface RenderedMarkdown {
   html: string;
   toc: TocItem[];

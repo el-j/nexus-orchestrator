@@ -1,3 +1,8 @@
+<!--
+  Full-screen fallback shown when a component throws.
+  Props: error (shown to the user).
+  Emits: retry() when the user asks to try rendering again.
+-->
 <template>
   <div
     class="error-fallback flex flex-col items-center justify-center h-screen p-8 text-center bg-[#050508]"

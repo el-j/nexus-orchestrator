@@ -1,3 +1,7 @@
+<!--
+  Plans: plan and task files found in the projects (NEXUS.md, TASK-n.md, CLAUDE.md, ...), grouped by
+  project and parent plan, with the brain card per project and a Promote button for todo tasks.
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->

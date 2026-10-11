@@ -1,3 +1,8 @@
+<!--
+  Right-hand drawer with every field of a task, its logs and a Cancel/Interrupt action.
+  Props: task (null renders only the header), modelValue (open state).
+  Emits: update:modelValue(open), cancelled(id) after a successful cancel, close().
+-->
 <template>
   <Drawer v-model:visible="visible" position="right" class="!bg-[#0d0d14] !w-full sm:!w-[480px]">
     <template #header>

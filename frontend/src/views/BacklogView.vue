@@ -1,3 +1,7 @@
+<!--
+  Backlog: draft and backlog tasks for the selected project. Refreshes on task events, or by
+  polling every 2 seconds while the event stream is down.
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->

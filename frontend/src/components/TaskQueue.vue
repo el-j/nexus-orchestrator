@@ -1,3 +1,8 @@
+<!--
+  Table of queued and active tasks.
+  Props: tasks (rows to show), loading (show skeleton rows).
+  Emits: select(task) when a row is clicked, cancel(id) for the row's cancel button.
+-->
 <template>
   <div class="flex-1 overflow-auto">
     <!-- Loading skeleton -->

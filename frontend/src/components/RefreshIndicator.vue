@@ -1,3 +1,7 @@
+<!--
+  Small "updated Ns ago" label that ticks every second.
+  Props: lastRefreshed (Date of the last successful refresh, or null before the first one).
+-->
 <template>
   <span class="text-[10px] text-slate-600 tabular-nums">
     {{ label }}

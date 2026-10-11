@@ -201,4 +201,65 @@ describe('beta channel', () => {
     await mountDownloads();
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('treats incomplete Mac hints as "architecture unknown"', async () => {
+    const noWebGL = () =>
+      vi
+        .spyOn(document, 'createElement')
+        .mockImplementation(((tag: string) =>
+          tag === 'canvas'
+            ? ({ getContext: () => null } as unknown as HTMLCanvasElement)
+            : document.createElementNS(
+                'http://www.w3.org/1999/xhtml',
+                tag,
+              )) as typeof document.createElement);
+    for (const userAgentData of [
+      { getHighEntropyValues: async () => ({}) },
+      { getHighEntropyValues: async () => ({ architecture: 'x86' }) },
+      { architecture: 'x86' },
+    ]) {
+      nav('MacIntel', 'Mozilla/5.0 (Macintosh)', { userAgentData });
+      noWebGL();
+      expect((await mountDownloads()).text()).toContain('architecture unknown');
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('reads the renderer from the experimental WebGL context and ignores other GPUs', async () => {
+    nav('MacIntel', 'Mozilla/5.0 (Macintosh)');
+    const gl = {
+      getExtension: () => ({ UNMASKED_RENDERER_WEBGL: 1 }),
+      getParameter: () => 'NVIDIA GeForce',
+    };
+    vi.spyOn(document, 'createElement').mockImplementation(((tag: string) =>
+      tag === 'canvas'
+        ? ({
+            getContext: (kind: string) => (kind === 'webgl' ? null : gl),
+          } as unknown as HTMLCanvasElement)
+        : document.createElementNS(
+            'http://www.w3.org/1999/xhtml',
+            tag,
+          )) as typeof document.createElement);
+    expect((await mountDownloads()).text()).toContain('architecture unknown');
+    vi.restoreAllMocks();
+  });
+
+  it('copes with a browser that reports no platform at all', async () => {
+    nav('', '');
+    expect((await mountDownloads()).text()).toContain('Unknown');
+  });
+
+  it('cannot tell the architecture when the renderer string is empty', async () => {
+    nav('MacIntel', 'Mozilla/5.0 (Macintosh)');
+    const gl = { getExtension: () => ({ UNMASKED_RENDERER_WEBGL: 1 }), getParameter: () => '' };
+    vi.spyOn(document, 'createElement').mockImplementation(((tag: string) =>
+      tag === 'canvas'
+        ? ({ getContext: () => gl } as unknown as HTMLCanvasElement)
+        : document.createElementNS(
+            'http://www.w3.org/1999/xhtml',
+            tag,
+          )) as typeof document.createElement);
+    expect((await mountDownloads()).text()).toContain('architecture unknown');
+    vi.restoreAllMocks();
+  });
 });

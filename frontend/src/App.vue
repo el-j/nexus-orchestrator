@@ -1,3 +1,8 @@
+<!--
+  Application shell: sidebar, routed view, log panel, toasts and confirm dialog.
+  Opens the shared realtime event stream once and replaces the shell with ErrorFallback when a
+  child component throws; Retry clears the error.
+-->
 <template>
   <ErrorFallback v-if="appError" :error="appError" @retry="appError = null" />
   <template v-else>

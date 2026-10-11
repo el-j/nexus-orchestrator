@@ -1,3 +1,7 @@
+<!--
+  Sidebar dropdown that scopes every view to one project (or all projects).
+  Reads and writes the shared project filter; takes no props.
+-->
 <template>
   <div class="px-3 py-2 border-b border-white/5">
     <label class="text-xs text-slate-500 uppercase tracking-wider mb-1 hidden lg:block"

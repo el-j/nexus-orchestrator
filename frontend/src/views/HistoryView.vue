@@ -1,3 +1,7 @@
+<!--
+  Task History: finished tasks (completed, failed, cancelled) with status filters and a summary.
+  Refreshes on task events, or by polling while the event stream is down.
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->

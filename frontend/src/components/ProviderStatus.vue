@@ -1,3 +1,8 @@
+<!--
+  Cards for the registered LLM providers: reachability, active model and the models each one
+  has loaded (from live agent activity), plus the discovered-providers panel.
+  Props: providers, refresh (re-poll callback), hideDiscovered, modelStates.
+-->
 <template>
   <div class="flex flex-col gap-1">
     <!-- Live provider status -->

@@ -1,3 +1,7 @@
+<!--
+  Mission Control: the overview page. Status bar (agents, queue, providers), active work, recent
+  history, provider health, connected sessions and the task submit form.
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- STATUS BAR -->

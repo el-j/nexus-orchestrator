@@ -1,3 +1,7 @@
+<!--
+  Projects: the last 24 hours of agent activity grouped by project, polled every 15 seconds.
+  Clicking a project opens Live Activity filtered to it.
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->

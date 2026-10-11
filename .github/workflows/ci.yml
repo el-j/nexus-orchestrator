@@ -211,6 +211,10 @@ jobs:
         working-directory: docs
         run: npm ci
 
+      - name: Exported declarations and components are documented
+        working-directory: docs
+        run: npm run check:docs
+
       - name: Run docs site tests with coverage gate
         working-directory: docs
         run: npm run test:coverage

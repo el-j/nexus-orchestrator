@@ -1,3 +1,7 @@
+<!--
+  Settings: server addresses (REST and MCP), queue capacity and the API and MCP access tokens
+  (generate, rotate, disable; a new token is shown once).
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->

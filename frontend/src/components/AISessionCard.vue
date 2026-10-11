@@ -1,3 +1,9 @@
+<!--
+  Card for one registered AI agent session: status, project, model, last message and the
+  tasks routed to it (loaded when the card is opened and refreshed while open).
+  Props: session.
+  Emits: delegate(session) when the user hands the session's work to Nexus.
+-->
 <template>
   <div
     class="rounded-xl border bg-white/[0.03] p-4 transition-all border-l-4"

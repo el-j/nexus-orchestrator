@@ -1,3 +1,7 @@
+<!--
+  System Discovery: the LLM backends found by the last scan, with a Scan Now button; promoting one
+  opens Providers with the add form pre-filled.
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->

@@ -1,3 +1,7 @@
+<!--
+  Coloured pill for a task status (QUEUED, PROCESSING, COMPLETED, FAILED, ...).
+  Props: status.
+-->
 <template>
   <span
     :class="[

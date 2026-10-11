@@ -38,6 +38,7 @@ export const DESKTOP_ASSETS = [
   },
 ];
 
+/** Command-line release archives offered per platform (daemon, CLI, MCP stdio proxy). */
 export const CLI_ASSETS = [
   {
     icon: '🍎',
@@ -81,6 +82,7 @@ export const CLI_ASSETS = [
   },
 ];
 
+/** System requirements listed per operating system. */
 export const requirements = [
   {
     icon: '🍎',
@@ -120,6 +122,7 @@ export const requirements = [
   },
 ];
 
+/** The packages contained in each release download, with what each one is for. */
 export const packages = [
   {
     icon: '🖥️',

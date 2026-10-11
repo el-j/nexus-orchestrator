@@ -1,3 +1,8 @@
+<!--
+  One row of the activity feed: icon by activity type, agent, summary, relative time, token
+  counts and the project the agent worked in.
+  Props: activity.
+-->
 <template>
   <div
     class="rounded-lg border-l-4 bg-white/2 px-3 py-2 flex flex-col gap-0.5"

@@ -1,3 +1,8 @@
+<!--
+  Collapsible form to submit a task, save it as a draft or add it to the backlog. Covers project,
+  target file, instruction, command, provider/model routing, priority, tags and agentic mode.
+  Emits: submitted(id) after a task has been accepted by the daemon.
+-->
 <template>
   <div class="border-t border-white/5 bg-[#0a0a10] p-4">
     <form @submit.prevent="handleSubmit" class="flex flex-col gap-3">

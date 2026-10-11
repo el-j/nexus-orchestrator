@@ -5,10 +5,10 @@
  * render nothing when no route matches the fragment id).
  */
 export function scrollToId(id: string): void {
-  const el = document.getElementById(id)
+  const el = document.getElementById(id);
   if (!el) {
-    console.warn(`[scrollToId] element #${id} not found`)
-    return
+    console.warn(`[scrollToId] element #${id} not found`);
+    return;
   }
-  el.scrollIntoView({ behavior: 'smooth' })
+  el.scrollIntoView({ behavior: 'smooth' });
 }
