@@ -240,6 +240,18 @@
 </template>
 
 <script setup lang="ts">
+import {
+  kindLabel,
+  extractParentPlan,
+  basename,
+  truncate,
+  formatDate,
+  kindColors,
+  kindBadgeClass,
+  parseStatus,
+  statusBadgeColors,
+  statusBadgeClass,
+} from '../utils/plans';
 import { computed, ref, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import ProjectBrainCard from '../components/ProjectBrainCard.vue';
@@ -303,19 +315,6 @@ function toggleFilter(kind: PlanFileKind) {
   activeFilters.value = new Set(activeFilters.value);
 }
 
-function kindLabel(kind: PlanFileKind): string {
-  const labels: Record<PlanFileKind, string> = {
-    nexus: 'Nexus',
-    'claude-task': 'Tasks',
-    claude: 'Instructions',
-    cursor: 'Cursor',
-    'mcp-config': 'Config',
-    crewai: 'CrewAI',
-    markdown: 'Markdown',
-  };
-  return labels[kind] ?? kind;
-}
-
 const availableKinds = computed<PlanFileKind[]>(() => {
   const kinds = new Set<PlanFileKind>();
   for (const plan of plans.value) kinds.add(plan.kind);
@@ -329,12 +328,6 @@ const availableKinds = computed<PlanFileKind[]>(() => {
     ...[...kinds].filter((k) => k === 'markdown'),
   ];
 });
-
-function extractParentPlan(file: DiscoveredPlanFile): string | null {
-  const m = file.summary?.match(/\*\*Plan:\*\*\s*(PLAN-\d+)/);
-  if (m) return m[1];
-  return null;
-}
 
 const projectGroups = computed(() => {
   const map: Record<
@@ -399,65 +392,6 @@ const filteredProjectGroups = computed(() => {
   }
   return filtered;
 });
-
-function basename(path: string): string {
-  return path.split('/').pop() ?? path;
-}
-
-function truncate(text: string, max: number): string {
-  return text.length > max ? text.slice(0, max) + '…' : text;
-}
-
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  } catch {
-    return iso;
-  }
-}
-
-const kindColors: Record<PlanFileKind, string> = {
-  nexus: 'bg-indigo-500/20 text-indigo-300',
-  markdown: 'bg-emerald-500/20 text-emerald-300',
-  cursor: 'bg-blue-500/20 text-blue-300',
-  claude: 'bg-orange-500/20 text-orange-300',
-  'mcp-config': 'bg-purple-500/20 text-purple-300',
-  crewai: 'bg-pink-500/20 text-pink-300',
-  'claude-task': 'bg-amber-500/20 text-amber-300',
-};
-
-function kindBadgeClass(kind: PlanFileKind): string {
-  return kindColors[kind] ?? 'bg-white/5 text-slate-400';
-}
-
-// Status parsing from plan file summary (YAML frontmatter or body-level)
-function parseStatus(plan: DiscoveredPlanFile): string | null {
-  if (!plan.summary) return null;
-  // Body-level "**Status:** todo" is checked first: the YAML pattern would otherwise
-  // match inside it and capture "** todo".
-  const bodyMatch = plan.summary.match(/\*\*Status:\*\*\s*([^\n\r]+)/i);
-  if (bodyMatch) return bodyMatch[1].trim().toLowerCase();
-  // YAML frontmatter: "status: todo" at the start of a line
-  const yamlMatch = plan.summary.match(/^\s*status:\s*([^\n\r]+)/im);
-  if (yamlMatch) return yamlMatch[1].trim().toLowerCase();
-  return null;
-}
-
-const statusBadgeColors: Record<string, string> = {
-  todo: 'bg-yellow-500/20 text-yellow-300',
-  'in-progress': 'bg-blue-500/20 text-blue-300',
-  done: 'bg-emerald-500/20 text-emerald-300',
-  completed: 'bg-emerald-500/20 text-emerald-300',
-  blocked: 'bg-red-500/20 text-red-300',
-};
-
-function statusBadgeClass(status: string): string {
-  return statusBadgeColors[status] ?? 'bg-white/5 text-slate-400';
-}
 
 // Promote plan task to nexus queue
 const promoting = ref<string | null>(null);

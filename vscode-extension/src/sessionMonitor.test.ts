@@ -4,6 +4,11 @@ import type { NexusClient } from './nexusClient';
 const selectChatModelsMock = vi.fn();
 const onDidChangeChatModelsMock = vi.fn();
 const workspaceFolders = [{ uri: { fsPath: '/workspace' } }];
+// Tests flip these to simulate a bare workspace or a VS Code without the language-model API.
+const vscodeState: { folders: typeof workspaceFolders | undefined; hasLm: boolean } = {
+  folders: workspaceFolders,
+  hasLm: true,
+};
 const logNexusActivityMock = vi.fn();
 
 const outputChannel = {
@@ -16,14 +21,20 @@ vi.mock('vscode', () => ({
     machineId: 'machine-1',
   },
   workspace: {
-    workspaceFolders,
-  },
-  lm: {
-    selectChatModels: (...args: unknown[]) => selectChatModelsMock(...args),
-    onDidChangeChatModels: (cb: () => void) => {
-      onDidChangeChatModelsMock(cb);
-      return { dispose: vi.fn() };
+    get workspaceFolders() {
+      return vscodeState.folders;
     },
+  },
+  get lm() {
+    return vscodeState.hasLm
+      ? {
+          selectChatModels: (...args: unknown[]) => selectChatModelsMock(...args),
+          onDidChangeChatModels: (cb: () => void) => {
+            onDidChangeChatModelsMock(cb);
+            return { dispose: vi.fn() };
+          },
+        }
+      : undefined;
   },
 }));
 
@@ -56,6 +67,8 @@ describe('SessionMonitor', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    vscodeState.folders = workspaceFolders;
+    vscodeState.hasLm = true;
     vi.useFakeTimers();
     selectChatModelsMock.mockResolvedValue([{ id: 'copilot-model' }]);
   });
@@ -176,6 +189,8 @@ describe('SessionMonitor: session purged by the daemon', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    vscodeState.folders = workspaceFolders;
+    vscodeState.hasLm = true;
     vi.useFakeTimers();
     selectChatModelsMock.mockResolvedValue([{ id: 'copilot-model' }]);
   });
@@ -226,6 +241,8 @@ describe('SessionMonitor: registration retries, model changes and shutdown', () 
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    vscodeState.folders = workspaceFolders;
+    vscodeState.hasLm = true;
     vi.useFakeTimers();
   });
   afterEach(() => vi.useRealTimers());
@@ -347,16 +364,8 @@ describe('SessionMonitor: registration retries, model changes and shutdown', () 
   });
 
   it('works when the language-model API is not available at all', async () => {
-    vi.doMock('vscode', () => ({
-      env: { machineId: 'm' },
-      workspace: { workspaceFolders: undefined },
-      lm: undefined,
-    }));
-    vi.doMock('./activityLog', () => ({
-      getNexusActivityChannel: () => outputChannel,
-      logNexusActivity: logNexusActivityMock,
-    }));
-    vi.resetModules();
+    vscodeState.folders = undefined;
+    vscodeState.hasLm = false;
     const { SessionMonitor } = await import('./sessionMonitor');
     const client = buildClient();
     const monitor = new SessionMonitor(client, buildContext());
@@ -365,31 +374,16 @@ describe('SessionMonitor: registration retries, model changes and shutdown', () 
     await started;
     expect(client.registerSession).not.toHaveBeenCalled();
     await monitor.stop();
-    vi.doUnmock('vscode');
-    vi.doUnmock('./activityLog');
   });
 
   it('registers with an empty path and no model id when the workspace and model are bare', async () => {
-    vi.doMock('vscode', () => ({
-      env: { machineId: 'm' },
-      workspace: { workspaceFolders: undefined },
-      lm: {
-        selectChatModels: async () => [{ name: 'by-name' }, {}],
-        onDidChangeChatModels: () => ({ dispose: vi.fn() }),
-      },
-    }));
-    vi.doMock('./activityLog', () => ({
-      getNexusActivityChannel: () => outputChannel,
-      logNexusActivity: logNexusActivityMock,
-    }));
-    vi.resetModules();
+    vscodeState.folders = undefined;
+    selectChatModelsMock.mockResolvedValue([{ name: 'by-name' }, {}]);
     const { SessionMonitor } = await import('./sessionMonitor');
     const client = buildClient();
     await new SessionMonitor(client, buildContext()).start();
     expect(client.registerSession).toHaveBeenCalledWith(
-      expect.objectContaining({ projectPath: '', modelId: 'by-name', externalId: 'm:' }),
+      expect.objectContaining({ projectPath: '', modelId: 'by-name', externalId: 'machine-1:' }),
     );
-    vi.doUnmock('vscode');
-    vi.doUnmock('./activityLog');
   });
 });

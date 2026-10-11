@@ -6,218 +6,35 @@
  */
 
 import { z } from 'zod';
+import type {
+  AISession,
+  Provider,
+  ProviderConfig,
+  Task,
+  TaskStatus,
+  CommandType,
+  SubmitTaskRequest,
+  DiscoveredAgent,
+  AIActivity,
+  DelegateResponse,
+  RegisterSessionRequest,
+  BrainStatus,
+  ContextSection,
+  ProjectKnowledge,
+  ContextResponse,
+  KnowledgeResult,
+  CreateTaskResponse,
+  HealthResponse,
+} from './nexusTypes';
+import {
+  TaskStatusSchema,
+  TaskSchema,
+  AISessionSchema,
+  ProviderSchema,
+  ProviderConfigSchema,
+} from './nexusSchemas';
 
-// ---- Domain types (mirror internal/core/domain/task.go) ----
-
-export type TaskStatus =
-  | 'QUEUED'
-  | 'PROCESSING'
-  | 'COMPLETED'
-  | 'FAILED'
-  | 'CANCELLED'
-  | 'TOO_LARGE'
-  | 'NO_PROVIDER'
-  | 'DRAFT'
-  | 'BACKLOG';
-
-/** Task command: plan, execute or auto-routed. */
-export type CommandType = 'plan' | 'execute' | 'auto' | '';
-
-/** A task as returned by the daemon REST API. */
-export interface Task {
-  id: string;
-  projectPath: string;
-  targetFile: string;
-  instruction: string;
-  contextFiles: string[];
-  modelId?: string;
-  providerHint?: string;
-  command?: CommandType;
-  status: TaskStatus;
-  createdAt: string;
-  updatedAt: string;
-  logs?: string;
-  aiSessionId?: string;
-}
-
-// ---- Provider type (mirrors ports.ProviderInfo) ----
-
-export interface Provider {
-  name: string;
-  active: boolean;
-  kind?: string;
-  activeModel?: string;
-  models?: string[];
-  baseURL?: string;
-  details?: string;
-  error?: string;
-  contextLimit?: number;
-}
-
-// ---- Request types ----
-
-export interface SubmitTaskRequest {
-  instruction: string;
-  projectPath: string;
-  targetFile?: string;
-  providerHint?: string;
-  modelId?: string;
-  command?: CommandType;
-  contextFiles?: string[];
-}
-
-// ---- AI Session types ----
-
-export interface AISession {
-  id: string;
-  agentName: string;
-  source: string;
-  status: string;
-  lastActivity: string;
-  projectPath?: string;
-  delegatedToNexus?: boolean;
-  delegationTimestamp?: string;
-  agentCapabilities?: string[];
-  detectionMethod?: string;
-}
-
-/** An agent found on the machine by the daemon's system scanner. */
-export interface DiscoveredAgent {
-  id: string;
-  kind: string;
-  name: string;
-  detectionMethod: string;
-  processName?: string;
-  cliPath?: string;
-  configPath?: string;
-  mcpEndpoint?: string;
-  isRunning: boolean;
-  lastSeen: string;
-}
-
-// ---- AI Activity types ----
-
-export interface AIActivity {
-  id: string;
-  sessionId?: string;
-  agentName: string;
-  activityType: 'message' | 'tool_use' | 'thinking' | 'file_edit' | 'generation';
-  summary: string;
-  projectPath?: string;
-  model?: string;
-  tokensIn?: number;
-  tokensOut?: number;
-  timestamp: string;
-  metadata?: Record<string, string>;
-}
-
-/** The daemon's answer to a delegation: instruction text and session id. */
-export interface DelegateResponse {
-  instruction: string;
-  sessionId: string;
-}
-
-/** Body for registering an AI session with the daemon. */
-export interface RegisterSessionRequest {
-  agentName: string;
-  source: 'vscode' | 'mcp' | 'http';
-  projectPath?: string;
-  externalId?: string;
-  modelId?: string;
-}
-
-// ---- Brain Context types ----
-
-export interface BrainStatus {
-  projectPath: string;
-  initialized: boolean;
-  entryCount: number;
-  kindCounts: Record<string, number>;
-  totalTokens: number;
-  lastUpdated?: string;
-}
-
-/** Parameters for a project context request. */
-export interface ContextQuery {
-  projectPath: string;
-  question?: string;
-  maxTokens?: number;
-}
-
-/** One ranked section of project knowledge in a context response. */
-export interface ContextSection {
-  title?: string;
-  topic: string;
-  kind: string;
-  content: string;
-  tokens: number;
-  source: string;
-}
-
-/** A stored knowledge entry for a project. */
-export interface ProjectKnowledge {
-  id: string;
-  projectPath: string;
-  kind: string;
-  topic: string;
-  content: string;
-  tokenCount: number;
-  relevanceScore: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-/** Token-budgeted project context returned by the Context Brain. */
-export interface ContextResponse {
-  projectPath: string;
-  sections: ContextSection[];
-  /** File paths the context suggests opening next. */
-  suggestedFiles?: string[];
-  /** Tokens used by `sections`. */
-  tokensUsed: number;
-  /** The budget the sections were assembled within. */
-  tokenBudget: number;
-  truncated: boolean;
-}
-
-/** One hit of a knowledge search. */
-export interface KnowledgeResult {
-  id: string;
-  projectPath: string;
-  kind: string;
-  topic: string;
-  content: string;
-  source: string;
-  tokens: number;
-  relevance: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// ---- Internal response shape from POST /api/tasks ----
-
-interface CreateTaskResponse {
-  task_id: string;
-  status: string;
-}
-
-// ---- Health response ----
-
-interface HealthResponse {
-  status: string;
-  service: string;
-}
-
-// ---- Provider config (mirrors daemon ProviderConfig) ----
-
-export interface ProviderConfig {
-  id: string;
-  name: string;
-  kind: string;
-  baseURL?: string;
-  model?: string;
-  enabled: boolean;
-}
+export * from './nexusTypes';
 
 // ---- Validation error ----
 
@@ -230,84 +47,6 @@ export class NexusClientError extends Error {
     this.name = 'NexusClientError';
   }
 }
-
-// ---- Zod schemas for runtime validation of critical API responses ----
-
-const TaskStatusSchema = z.enum([
-  'QUEUED',
-  'PROCESSING',
-  'COMPLETED',
-  'FAILED',
-  'CANCELLED',
-  'TOO_LARGE',
-  'NO_PROVIDER',
-  'DRAFT',
-  'BACKLOG',
-]);
-
-const TaskSchema = z
-  .object({
-    id: z.string(),
-    projectPath: z.string(),
-    targetFile: z.string(),
-    instruction: z.string(),
-    contextFiles: z
-      .array(z.string())
-      .nullish()
-      .transform((v) => v ?? []),
-    modelId: z.string().optional(),
-    providerHint: z.string().optional(),
-    command: z.enum(['plan', 'execute', 'auto', '']).optional(),
-    status: TaskStatusSchema,
-    createdAt: z.string(),
-    updatedAt: z.string(),
-    logs: z.string().optional(),
-    aiSessionId: z.string().optional(),
-    claimedBy: z.string().optional(),
-    claimedAt: z.string().optional(),
-    retryCount: z.number().optional(),
-  })
-  .passthrough();
-
-const AISessionSchema = z
-  .object({
-    id: z.string(),
-    agentName: z.string(),
-    source: z.string(),
-    status: z.string(),
-    lastActivity: z.string(),
-    projectPath: z.string().optional(),
-    delegatedToNexus: z.boolean().optional(),
-    delegationTimestamp: z.string().optional(),
-    agentCapabilities: z.array(z.string()).optional(),
-    detectionMethod: z.string().optional(),
-  })
-  .passthrough();
-
-const ProviderSchema = z
-  .object({
-    name: z.string(),
-    active: z.boolean(),
-    kind: z.string().optional(),
-    activeModel: z.string().optional(),
-    models: z.array(z.string()).optional(),
-    baseURL: z.string().optional(),
-    details: z.string().optional(),
-    error: z.string().optional(),
-    contextLimit: z.number().optional(),
-  })
-  .passthrough();
-
-const ProviderConfigSchema = z
-  .object({
-    id: z.string(),
-    name: z.string(),
-    kind: z.string(),
-    baseURL: z.string().optional(),
-    model: z.string().optional(),
-    enabled: z.boolean(),
-  })
-  .passthrough();
 
 // ---- Client ----
 

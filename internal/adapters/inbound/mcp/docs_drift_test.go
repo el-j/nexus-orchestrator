@@ -104,14 +104,12 @@ func TestDocsQuotingAToolCountMatchTheCatalog(t *testing.T) {
 // The docs site's MCP page keeps its own list of tools; it must name exactly the
 // tools the server offers (it was missing get_onboarding_context).
 func TestMCPIntegrationPageListsExactlyTheRealTools(t *testing.T) {
-	page := readDoc(t, "docs/src/views/McpIntegrationView.vue")
-	start := strings.Index(page, "const tools = [")
-	end := strings.Index(page, "const examples = [")
-	if start < 0 || end < start {
-		t.Fatal("could not find the tools array in McpIntegrationView.vue")
+	page := readDoc(t, "docs/src/data/mcpTools.ts")
+	if !strings.Contains(page, "export const tools = [") {
+		t.Fatal("could not find the tools array in docs/src/data/mcpTools.ts")
 	}
 	listed := map[string]bool{}
-	for _, m := range regexp.MustCompile(`name:\s*'([a-z_]+)'`).FindAllStringSubmatch(page[start:end], -1) {
+	for _, m := range regexp.MustCompile(`name:\s*'([a-z_]+)'`).FindAllStringSubmatch(page, -1) {
 		listed[m[1]] = true
 	}
 	real := catalogNames()
