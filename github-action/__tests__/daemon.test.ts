@@ -53,6 +53,17 @@ describe('waitForHealth', () => {
     );
   });
 
+  it('reports "?" when the response has no status code', async () => {
+    mockHttpGet.mockImplementation((_url, _opts, cb) => {
+      const res = { resume: jest.fn() } as unknown as http.IncomingMessage;
+      if (cb) (cb as (r: http.IncomingMessage) => void)(res);
+      return { on: (_e: string, _h: unknown) => ({}) } as unknown as http.ClientRequest;
+    });
+    await expect(waitForHealth('http://127.0.0.1:63987/api/health', 100)).rejects.toThrow(
+      'did not become healthy',
+    );
+  });
+
   it('rejects when server returns non-200 status', async () => {
     respondWith(503);
     await expect(waitForHealth('http://127.0.0.1:63987/api/health', 200)).rejects.toThrow(
@@ -273,15 +284,22 @@ describe('startDaemon: failure handling', () => {
   });
 
   it('drops env entries whose value is undefined', async () => {
-    respondWith(200);
-    mockSpawn.mockReturnValue({ pid: 79, unref: jest.fn() } as unknown as ReturnType<
-      typeof childProcess.spawn
-    >);
-    const { dir, logFile } = makeTmpDir();
-    await startDaemon({ ...baseOpts, dbPath: path.join(dir, 'nexus.db'), logFile });
-    const env = (mockSpawn.mock.calls[0][2] as { env: Record<string, string> }).env;
-    expect(Object.values(env).every((v) => typeof v === 'string')).toBe(true);
-    fs.rmSync(dir, { recursive: true });
+    const realEnv = process.env;
+    process.env = { ...realEnv, NEXUS_TEST_UNSET: undefined } as unknown as NodeJS.ProcessEnv;
+    try {
+      respondWith(200);
+      mockSpawn.mockReturnValue({ pid: 79, unref: jest.fn() } as unknown as ReturnType<
+        typeof childProcess.spawn
+      >);
+      const { dir, logFile } = makeTmpDir();
+      await startDaemon({ ...baseOpts, dbPath: path.join(dir, 'nexus.db'), logFile });
+      const env = (mockSpawn.mock.calls[0][2] as { env: Record<string, string> }).env;
+      expect(Object.values(env).every((v) => typeof v === 'string')).toBe(true);
+      expect('NEXUS_TEST_UNSET' in env).toBe(false);
+      fs.rmSync(dir, { recursive: true });
+    } finally {
+      process.env = realEnv;
+    }
   });
 });
 

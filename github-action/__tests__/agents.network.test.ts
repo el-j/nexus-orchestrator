@@ -21,6 +21,7 @@ interface Reply {
   error?: Error;
   timeout?: boolean;
   resEvent?: 'error';
+  noStatus?: boolean;
 }
 type Route = Reply | ((url: string, opts: https.RequestOptions) => Reply);
 
@@ -51,11 +52,11 @@ function install(): void {
           return;
         }
         const res = new EventEmitter() as EventEmitter & {
-          statusCode?: number;
+          statusCode?: number | undefined;
           headers: Record<string, string>;
           resume: jest.Mock;
         };
-        res.statusCode = reply.status ?? 200;
+        res.statusCode = reply.noStatus ? undefined : (reply.status ?? 200);
         res.headers = reply.headers ?? {};
         res.resume = jest.fn();
         cb(res);
@@ -93,6 +94,11 @@ describe('httpsGet', () => {
     await expect(httpsGet('https://x/404')).rejects.toThrow('HTTP 404 for https://x/404');
     routes = [{ match: /./, reply: { status: 0 } }];
     await expect(httpsGet('https://x/none')).rejects.toThrow('HTTP ? for');
+  });
+
+  it('treats a response without any status as a failure', async () => {
+    routes = [{ match: /./, reply: { noStatus: true } }];
+    await expect(httpsGet('https://x/a')).rejects.toThrow('HTTP ? for');
   });
 
   it('follows absolute and relative redirects', async () => {
@@ -311,14 +317,16 @@ describe('resolveAgents', () => {
 
   it('falls through from a failed fast path to the scan', async () => {
     routes = [
+      // design/design-x.md does not exist (404), so the category indexes are scanned
       {
-        match: /contents\/design/,
+        match: /contents\/engineering/,
         reply: { body: JSON.stringify([{ name: 'design-x.md', type: 'file' }]) },
       },
-      { match: /design\/design-x\.md/, reply: { body: agentMd('DX') } },
+      { match: /engineering\/design-x\.md/, reply: { body: agentMd('DX') } },
     ];
     const [a] = await resolveAgents(['design-x']);
     expect(a.name).toBe('DX');
+    expect(a.category).toBe('engineering');
   });
 
   it('resolves several agents in order', async () => {

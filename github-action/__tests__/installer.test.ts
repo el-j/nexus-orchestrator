@@ -6,8 +6,8 @@ import * as os from 'os';
 import { resolveDownloadUrl, installDaemon } from '../src/installer.js';
 
 const mockDownloadTool = tc.downloadTool as jest.MockedFunction<typeof tc.downloadTool>;
-const mockExtractTar   = tc.extractTar   as jest.MockedFunction<typeof tc.extractTar>;
-const mockExtractZip   = tc.extractZip   as jest.MockedFunction<typeof tc.extractZip>;
+const mockExtractTar = tc.extractTar as jest.MockedFunction<typeof tc.extractTar>;
+const mockExtractZip = tc.extractZip as jest.MockedFunction<typeof tc.extractZip>;
 
 // ── resolveDownloadUrl ─────────────────────────────────────────────────────
 
@@ -31,6 +31,19 @@ describe('resolveDownloadUrl', () => {
     const osName =
       rawPlatform === 'darwin' ? 'darwin' : rawPlatform === 'win32' ? 'windows' : 'linux';
     expect(url).toContain(`nexus-orchestrator-${osName}-${rawArch}`);
+  });
+
+  it.each([
+    ['arm64', '-arm64'],
+    ['x64', '-amd64'],
+  ])('picks the right archive on %s machines', (arch, suffix) => {
+    const origArch = Object.getOwnPropertyDescriptor(process, 'arch');
+    Object.defineProperty(process, 'arch', { value: arch, configurable: true });
+    try {
+      expect(resolveDownloadUrl('latest')).toContain(suffix);
+    } finally {
+      if (origArch) Object.defineProperty(process, 'arch', origArch);
+    }
   });
 
   it('uses .zip extension on Windows', () => {

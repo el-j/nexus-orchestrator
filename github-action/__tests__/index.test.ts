@@ -506,3 +506,26 @@ describe('index: terminal statuses', () => {
     expect(mockPrintDaemonLog).toHaveBeenCalledWith('/tmp/x.log');
   });
 });
+
+describe('index: defaults for blank inputs', () => {
+  it('falls back to the public defaults when optional inputs are blank', async () => {
+    setInputs({
+      instruction: 'x',
+      agent_ref: '',
+      daemon_url: '',
+      nexus_version: '',
+      start_daemon: 'true',
+      agents: 'backend',
+    });
+    const handle = makeHandle();
+    mockInstallDaemon.mockResolvedValue('/bin/nexus');
+    mockStartDaemon.mockResolvedValue(handle);
+    mockSubmitTask.mockResolvedValue({ task_id: 't1', status: 'QUEUED' });
+    mockWaitForTask.mockResolvedValue({ id: 't1', status: 'COMPLETED', logs: '' });
+    await runIndex();
+    expect(mockInstallDaemon).toHaveBeenCalledWith('latest');
+    expect(mockResolveAgents).toHaveBeenCalledWith(expect.anything(), 'main');
+    const { NexusClient } = require('../src/submit.js') as { NexusClient: jest.Mock };
+    expect(NexusClient).toHaveBeenCalledWith('http://127.0.0.1:63987');
+  });
+});
