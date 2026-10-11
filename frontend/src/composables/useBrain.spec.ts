@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useBrain } from './useBrain';
+import { useBrain, MAX_UPLOAD_BYTES } from './useBrain';
 import type { ProjectKnowledge } from '../types/domain';
 
 const api = vi.hoisted(() => ({
   getBrainStatus: vi.fn(),
   initProject: vi.fn(),
   ingestKnowledge: vi.fn(),
+  ingestContent: vi.fn(),
   listKnowledge: vi.fn(),
   deleteKnowledge: vi.fn(),
   searchKnowledge: vi.fn(),
@@ -159,5 +160,47 @@ describe('useBrain', () => {
     expect(b.error.value).toBe('x');
     await b.fetchStatus();
     expect(b.error.value).toBeNull();
+  });
+
+  describe('ingestUpload', () => {
+    const file = (name: string, size = 10, text = `body of ${name}`) => ({
+      name,
+      size,
+      text: async () => text,
+    });
+
+    it('sends the file content (browsers expose no path), refreshes status and returns the count', async () => {
+      api.ingestContent.mockResolvedValue(3);
+      api.getBrainStatus.mockResolvedValue({ initialized: true });
+      const b = useBrain('/p');
+      expect(await b.ingestUpload(file('notes.md'))).toBe(3);
+      expect(api.ingestContent).toHaveBeenCalledWith('/p', 'notes.md', 'body of notes.md');
+      expect(api.getBrainStatus).toHaveBeenCalledTimes(1);
+      expect(b.error.value).toBeNull();
+    });
+
+    it('refuses a file over 1 MiB without reading or sending it', async () => {
+      const text = vi.fn();
+      const b = useBrain('/p');
+      expect(await b.ingestUpload({ name: 'huge.md', size: MAX_UPLOAD_BYTES + 1, text })).toBe(0);
+      expect(b.error.value).toBe('huge.md is larger than 1 MiB');
+      expect(text).not.toHaveBeenCalled();
+      expect(api.ingestContent).not.toHaveBeenCalled();
+    });
+
+    it('accepts a file of exactly 1 MiB', async () => {
+      api.ingestContent.mockResolvedValue(1);
+      api.getBrainStatus.mockResolvedValue({});
+      expect(await useBrain('/p').ingestUpload(file('edge.md', MAX_UPLOAD_BYTES))).toBe(1);
+    });
+
+    it('records the daemon error (Error and non-Error) and returns 0', async () => {
+      api.ingestContent.mockRejectedValueOnce(new Error('413')).mockRejectedValueOnce('plain');
+      const b = useBrain('/p');
+      expect(await b.ingestUpload(file('a.md'))).toBe(0);
+      expect(b.error.value).toBe('413');
+      expect(await b.ingestUpload(file('a.md'))).toBe(0);
+      expect(b.error.value).toBe('plain');
+    });
   });
 });

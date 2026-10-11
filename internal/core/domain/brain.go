@@ -72,3 +72,7 @@ type BrainStatus struct {
 	TotalTokens int            `json:"totalTokens"`
 	LastUpdated time.Time      `json:"lastUpdated,omitempty"`
 }
+
+// MaxIngestBytes caps the size of one document the brain will ingest, whether it
+// is read from disk or uploaded (1 MiB).
+const MaxIngestBytes = 1 << 20

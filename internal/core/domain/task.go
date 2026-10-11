@@ -20,6 +20,10 @@ var ErrQueueFull = errors.New("queue is full")
 // or a credentials location).
 var ErrPathNotAllowed = errors.New("path not allowed")
 
+// ErrInputTooLarge is returned when caller-supplied content exceeds what the
+// daemon accepts (for example markdown uploaded for the project brain).
+var ErrInputTooLarge = errors.New("input too large")
+
 // ErrNoPlan is returned when an execute task is submitted but no prior plan exists for the project.
 var ErrNoPlan = errors.New("no plan exists; planning required before execution")
 

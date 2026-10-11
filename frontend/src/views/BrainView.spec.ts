@@ -14,6 +14,7 @@ interface Fake {
   fetchStatus: ReturnType<typeof vi.fn>;
   init: ReturnType<typeof vi.fn>;
   ingest: ReturnType<typeof vi.fn>;
+  ingestUpload: ReturnType<typeof vi.fn>;
   listEntries: ReturnType<typeof vi.fn>;
   deleteEntry: ReturnType<typeof vi.fn>;
   search: ReturnType<typeof vi.fn>;
@@ -40,6 +41,7 @@ vi.mock('../composables/useBrain', async () => {
         fetchStatus: vi.fn().mockResolvedValue(undefined),
         init: vi.fn().mockResolvedValue(undefined),
         ingest: vi.fn().mockResolvedValue(2),
+        ingestUpload: vi.fn().mockResolvedValue(2),
         listEntries: vi.fn().mockResolvedValue(undefined),
         deleteEntry: vi.fn().mockResolvedValue(undefined),
         search: vi.fn().mockResolvedValue(undefined),
@@ -313,7 +315,7 @@ describe('BrainView — ingest tab', () => {
   it('ingests every file and reports the total', async () => {
     const w = await open();
     await pick(w, ['a.md', 'b.md']);
-    expect(last().ingest).toHaveBeenCalledTimes(2);
+    expect(last().ingestUpload).toHaveBeenCalledTimes(2);
     expect(w.text()).toContain('Ingested 4 sections from 2 files.');
   });
 
@@ -327,6 +329,6 @@ describe('BrainView — ingest tab', () => {
     const w = await mountView();
     await tab(w, 'Ingest').trigger('click');
     await pick(w, ['a.md']);
-    expect(last().ingest).not.toHaveBeenCalled();
+    expect(last().ingestUpload).not.toHaveBeenCalled();
   });
 });

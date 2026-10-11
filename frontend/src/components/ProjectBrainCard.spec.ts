@@ -6,6 +6,7 @@ import type { BrainStatus, DiscoveredPlanFile } from '../types/domain';
 const api = vi.hoisted(() => ({
   getBrainStatus: vi.fn(),
   ingestKnowledge: vi.fn(),
+  ingestContent: vi.fn(),
   initProject: vi.fn(),
 }));
 vi.mock('../types/wails', () => api);
@@ -191,7 +192,7 @@ describe('ProjectBrainCard — sync and ingest', () => {
   async function pick(w: Awaited<ReturnType<typeof mountCard>>, names: string[]) {
     const input = w.find('input[type="file"]');
     Object.defineProperty(input.element, 'files', {
-      value: names.map((name) => ({ name })),
+      value: names.map((name) => ({ name, size: 10, text: async () => `body of ${name}` })),
       configurable: true,
     });
     await input.trigger('change');
@@ -199,15 +200,17 @@ describe('ProjectBrainCard — sync and ingest', () => {
   }
 
   it('ingests every selected file and totals the sections', async () => {
-    api.ingestKnowledge.mockResolvedValueOnce(2).mockResolvedValueOnce(3);
+    api.ingestContent.mockResolvedValueOnce(2).mockResolvedValueOnce(3);
     const w = await mountCard();
     await pick(w, ['a.md', 'b.md']);
-    expect(api.ingestKnowledge).toHaveBeenCalledTimes(2);
+    expect(api.ingestContent).toHaveBeenCalledTimes(2);
+    // the file's content is sent (a browser File has no path), not just its name
+    expect(api.ingestContent).toHaveBeenCalledWith('/p', 'a.md', 'body of a.md');
     expect(w.text()).toContain('Ingested 5 sections from 2 files.');
   });
 
   it('singularises one file and lists the ones that failed', async () => {
-    api.ingestKnowledge.mockResolvedValueOnce(4).mockRejectedValueOnce(new Error('x'));
+    api.ingestContent.mockResolvedValueOnce(4).mockRejectedValueOnce(new Error('x'));
     const w = await mountCard();
     await pick(w, ['a.md', 'bad.md']);
     expect(w.text()).toContain('Ingested 4 sections from 1 file.');
@@ -217,6 +220,19 @@ describe('ProjectBrainCard — sync and ingest', () => {
   it('ignores an empty selection', async () => {
     const w = await mountCard();
     await pick(w, []);
-    expect(api.ingestKnowledge).not.toHaveBeenCalled();
+    expect(api.ingestContent).not.toHaveBeenCalled();
+  });
+
+  it('refuses files above 1 MiB without sending them', async () => {
+    const w = await mountCard();
+    const input = w.find('input[type="file"]');
+    Object.defineProperty(input.element, 'files', {
+      value: [{ name: 'huge.md', size: 1024 * 1024 + 1, text: async () => 'x' }],
+      configurable: true,
+    });
+    await input.trigger('change');
+    await flushPromises();
+    expect(api.ingestContent).not.toHaveBeenCalled();
+    expect(w.text()).toContain('Failed: huge.md');
   });
 });

@@ -132,7 +132,8 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
 import type { DiscoveredPlanFile, BrainStatus } from '../types/domain';
-import { getBrainStatus, ingestKnowledge, initProject } from '../types/wails';
+import { getBrainStatus, ingestKnowledge, ingestContent, initProject } from '../types/wails';
+import { MAX_UPLOAD_BYTES } from '../composables/useBrain';
 
 const props = defineProps<{
   projectPath: string;
@@ -215,7 +216,9 @@ async function onFilesSelected(e: Event) {
   for (let i = 0; i < files.length; i++) {
     ingestProgress.value = `${i + 1}/${files.length}`;
     try {
-      const count = await ingestKnowledge(props.projectPath, files[i].name);
+      // A browser File has no path the daemon could read, so its content is sent.
+      if (files[i].size > MAX_UPLOAD_BYTES) throw new Error('larger than 1 MiB');
+      const count = await ingestContent(props.projectPath, files[i].name, await files[i].text());
       totalSections += count;
     } catch (err) {
       errors.push(files[i].name);

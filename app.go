@@ -266,6 +266,22 @@ func (a *App) IngestKnowledge(projectPath, filePath string) (int, error) {
 	return a.brainSvc.IngestFromFile(context.Background(), projectPath, filePath)
 }
 
+// IngestContent adds markdown supplied by the UI (the contents of a file picked
+// in the window, which has no readable path) to the project's brain. name is only
+// used as a label for the source.
+func (a *App) IngestContent(projectPath, name, content string) (int, error) {
+	if a.brainSvc == nil {
+		return 0, fmt.Errorf("brain service not available")
+	}
+	ci, ok := a.brainSvc.(interface {
+		IngestContent(ctx context.Context, projectPath, name, content string) (int, error)
+	})
+	if !ok {
+		return 0, fmt.Errorf("brain service cannot ingest uploaded content")
+	}
+	return ci.IngestContent(context.Background(), projectPath, name, content)
+}
+
 // GetBrainStatus retrieves the state of the project knowledge store.
 func (a *App) GetBrainStatus(projectPath string) (domain.BrainStatus, error) {
 	if a.brainSvc == nil {

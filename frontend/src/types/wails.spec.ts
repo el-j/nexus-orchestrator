@@ -423,6 +423,29 @@ describe('ingestKnowledge', () => {
   });
 });
 
+describe('ingestContent', () => {
+  it('posts the file content and name (a browser File has no path), returning the section count', async () => {
+    fetchMock.mockImplementation(() => reply(200, { ingestedSections: 5 }));
+    expect(await api.ingestContent('/p', 'notes.md', '## A\nbody')).toBe(5);
+    expect(lastCall()).toMatchObject({
+      method: 'POST',
+      path: '/api/brain/ingest-content',
+      body: { projectPath: '/p', name: 'notes.md', content: '## A\nbody' },
+    });
+  });
+
+  it('uses the desktop binding inside Wails', async () => {
+    const spy = wails('IngestContent', 2);
+    expect(await api.ingestContent('/p', 'n', 'c')).toBe(2);
+    expect(spy).toHaveBeenCalledWith('/p', 'n', 'c');
+  });
+
+  it('surfaces the daemon error (e.g. 413 content too large)', async () => {
+    fetchMock.mockImplementation(() => reply(413, { error: 'content is too large' }));
+    await expect(api.ingestContent('/p', 'n', 'c')).rejects.toThrow('content is too large');
+  });
+});
+
 describe('searchKnowledge', () => {
   it('unwraps the {"results": [...]} envelope', async () => {
     fetchMock.mockImplementation(() => reply(200, { results: [{ heading: 'h' }] }));

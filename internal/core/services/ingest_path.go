@@ -9,8 +9,8 @@ import (
 	"nexus-orchestrator/internal/core/domain"
 )
 
-// MaxIngestBytes caps the size of a file the brain will read (1 MiB).
-const MaxIngestBytes = 1 << 20
+// MaxIngestBytes caps the size of a file the brain will read (see domain.MaxIngestBytes).
+const MaxIngestBytes = domain.MaxIngestBytes
 
 // IngestAllowedDirsEnv names an optional list of extra directories (separated
 // like PATH) that ingestion may read from in addition to the project itself, for

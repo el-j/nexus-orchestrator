@@ -312,7 +312,7 @@ async function onFilesSelected(e: Event) {
   let totalSections = 0;
   for (let i = 0; i < files.length; i++) {
     ingestProgress.value = `Ingesting ${i + 1}/${files.length}: ${files[i].name}…`;
-    const count = await brain.value.ingest(files[i].name);
+    const count = await brain.value.ingestUpload(files[i]);
     totalSections += count;
   }
   ingesting.value = false;

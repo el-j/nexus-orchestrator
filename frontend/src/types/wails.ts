@@ -52,6 +52,7 @@ declare global {
           GetRuntimeConfig(): Promise<RuntimeConfig>;
           UpdateRuntimeConfig(update: RuntimeConfigUpdate): Promise<RuntimeConfig>;
           IngestKnowledge(projectPath: string, filePath: string): Promise<number>;
+          IngestContent(projectPath: string, name: string, content: string): Promise<number>;
           GetBrainStatus(projectPath: string): Promise<BrainStatus>;
           GetProjectContext(projectPath: string, maxTokens: number): Promise<ContextResponse>;
           GetFocusedContext(
@@ -269,6 +270,24 @@ export async function ingestKnowledge(projectPath: string, filePath: string): Pr
   const data = await request<{ ingestedSections: number }>('POST', '/api/brain/ingest', {
     projectPath,
     filePath,
+  });
+  return data.ingestedSections;
+}
+
+/**
+ * Ingests markdown the user picked in the UI. A browser File has no path the daemon
+ * could read, so its content travels in the request instead.
+ */
+export async function ingestContent(
+  projectPath: string,
+  name: string,
+  content: string,
+): Promise<number> {
+  if (isWails()) return window.go!.main!.App!.IngestContent(projectPath, name, content);
+  const data = await request<{ ingestedSections: number }>('POST', '/api/brain/ingest-content', {
+    projectPath,
+    name,
+    content,
   });
   return data.ingestedSections;
 }

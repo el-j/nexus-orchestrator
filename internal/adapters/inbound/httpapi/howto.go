@@ -158,7 +158,8 @@ func buildHowToDoc(baseURL string) howToDoc {
 			{"POST", "/api/tasks/draft", "Create a backlog draft task"},
 			{"GET", "/api/tasks/backlog", "List all backlog drafts"},
 			// Brain (Project Context Intelligence)
-			{"POST", "/api/brain/ingest", "Ingest a markdown file into a project's knowledge base"},
+			{"POST", "/api/brain/ingest", "Ingest a markdown file (inside the project) into a project's knowledge base"},
+			{"POST", "/api/brain/ingest-content", "Ingest markdown sent in the request body (for UIs without file paths)"},
 			{"GET", "/api/brain/status", "Get the knowledge repository status for a project"},
 			{"POST", "/api/brain/context", "Get macro context for a project bounded by maxTokens"},
 			{"POST", "/api/brain/focused-context", "Get specific context for a project based on a question"},

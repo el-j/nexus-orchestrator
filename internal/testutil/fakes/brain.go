@@ -42,6 +42,9 @@ func (f *Brain) IngestKnowledge(_ context.Context, k domain.ProjectKnowledge) (d
 func (f *Brain) IngestFromFile(context.Context, string, string) (int, error) {
 	return 2, f.op("IngestFromFile")
 }
+func (f *Brain) IngestContent(context.Context, string, string, string) (int, error) {
+	return 2, f.op("IngestContent")
+}
 func (f *Brain) SearchKnowledge(context.Context, string, string, int) ([]domain.ContextSection, error) {
 	return []domain.ContextSection{{Topic: "t"}}, f.op("SearchKnowledge")
 }

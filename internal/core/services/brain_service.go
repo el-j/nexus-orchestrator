@@ -225,7 +225,30 @@ func (b *BrainServiceImpl) IngestFromFile(ctx context.Context, projectPath, file
 	if err != nil {
 		return 0, fmt.Errorf("brain_service: ingest from file: %w", err)
 	}
-	src := "file:" + filepath.Base(real)
+	return b.ingestMarkdown(ctx, projectPath, "file:"+filepath.Base(real), data)
+}
+
+// IngestContent ingests markdown supplied by the caller (for example the contents
+// of a file picked in a browser, which has no path the daemon could read). name is
+// only a label for the source; content is parsed exactly like a CLAUDE.md file.
+// Nothing is read from disk, so there is no path to confine; the size is capped at
+// MaxIngestBytes and larger content wraps domain.ErrInputTooLarge.
+func (b *BrainServiceImpl) IngestContent(ctx context.Context, projectPath, name, content string) (int, error) {
+	if strings.TrimSpace(projectPath) == "" {
+		return 0, fmt.Errorf("brain_service: ingest content: projectPath is required")
+	}
+	if len(content) > MaxIngestBytes {
+		return 0, fmt.Errorf("brain_service: ingest content: %w: content is larger than %d bytes", domain.ErrInputTooLarge, MaxIngestBytes)
+	}
+	label := filepath.Base(strings.ReplaceAll(strings.TrimSpace(name), "\\", "/"))
+	if label == "" || label == "." || label == "/" {
+		label = "upload"
+	}
+	return b.ingestMarkdown(ctx, projectPath, "upload:"+label, []byte(content))
+}
+
+// ingestMarkdown splits a CLAUDE.md-style document into sections and stores each.
+func (b *BrainServiceImpl) ingestMarkdown(ctx context.Context, projectPath, src string, data []byte) (int, error) {
 	// Split on "## " to get sections; the first element is preamble before the first ##.
 	// A leading "\n" makes a file that starts directly with "## Heading" split into
 	// an empty preamble plus a normal first section, instead of the heading being

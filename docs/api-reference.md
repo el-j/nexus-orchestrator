@@ -354,6 +354,36 @@ when the file does not exist, `400` when `projectPath` or `filePath` is missing.
 
 ---
 
+### Ingest Uploaded Content
+
+```
+POST /api/brain/ingest-content
+```
+
+Ingests markdown sent in the request instead of read from disk. This is what the dashboard and the desktop
+app use for "Ingest File…": a browser file has no path the daemon could read, so its content is uploaded.
+Nothing is read from the daemon's filesystem, so no path rules apply; the size limit does.
+
+**Request Body:**
+
+```json
+{
+  "projectPath": "/path/to/project",
+  "name": "notes.md",
+  "content": "# Notes\n\n## Architecture\n..."
+}
+```
+
+`name` is only a label (stored as the source `upload:notes.md`; any directory part is dropped). `content`
+is parsed like a `CLAUDE.md`: each `## ` section becomes a knowledge entry.
+
+**Response:** `200 OK` with `{"ingestedSections": 3}`.
+
+**Errors:** `400` when `projectPath` or `content` is missing, `413` when `content` is larger than 1 MiB, `501`
+when the running brain service cannot ingest uploads.
+
+---
+
 ### Get Brain Status
 
 ```

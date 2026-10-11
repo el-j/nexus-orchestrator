@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -48,6 +49,61 @@ func (s *Server) handleIngestKnowledge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	writeJSON(w, http.StatusOK, map[string]int{"ingestedSections": count})
+}
+
+// contentIngester is implemented by brain services that can ingest markdown sent
+// in the request instead of read from disk. It is optional so the BrainService
+// port, and every implementation of it, stays unchanged.
+type contentIngester interface {
+	IngestContent(ctx context.Context, projectPath, name, content string) (int, error)
+}
+
+// handleIngestContent ingests markdown supplied in the request body. Browsers
+// cannot give the daemon a file path, so the UI posts the file's content instead.
+func (s *Server) handleIngestContent(w http.ResponseWriter, r *http.Request) {
+	if s.brain == nil {
+		writeJSONError(w, "brain service not configured", http.StatusServiceUnavailable)
+		return
+	}
+	ci, ok := s.brain.(contentIngester)
+	if !ok {
+		writeJSONError(w, "this brain service cannot ingest uploaded content", http.StatusNotImplemented)
+		return
+	}
+
+	// MaxBytesReader stops a huge upload before it is buffered; JSON escaping can
+	// roughly double the size, hence the headroom over the content limit.
+	r.Body = http.MaxBytesReader(w, r.Body, 2*domain.MaxIngestBytes+4096)
+	var req struct {
+		ProjectPath string `json:"projectPath"`
+		Name        string `json:"name"`
+		Content     string `json:"content"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		var tooBig *http.MaxBytesError
+		if errors.As(err, &tooBig) {
+			writeJSONError(w, "content is too large", http.StatusRequestEntityTooLarge)
+			return
+		}
+		writeJSONError(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+	if req.ProjectPath == "" || req.Content == "" {
+		writeJSONError(w, "projectPath and content are required", http.StatusBadRequest)
+		return
+	}
+
+	count, err := ci.IngestContent(r.Context(), req.ProjectPath, req.Name, req.Content)
+	if err != nil {
+		if errors.Is(err, domain.ErrInputTooLarge) {
+			writeJSONError(w, "content is too large", http.StatusRequestEntityTooLarge)
+			return
+		}
+		log.Printf("httpapi: ingest content %q: %v", req.Name, err)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]int{"ingestedSections": count})
 }
 

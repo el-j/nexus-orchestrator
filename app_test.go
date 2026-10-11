@@ -13,6 +13,7 @@ import (
 	"nexus-orchestrator/internal/adapters/outbound/repo_sqlite"
 	"nexus-orchestrator/internal/bootstrap"
 	"nexus-orchestrator/internal/core/domain"
+	"nexus-orchestrator/internal/core/ports"
 	"nexus-orchestrator/internal/core/services"
 	"nexus-orchestrator/internal/testutil/fakes"
 )
@@ -167,6 +168,15 @@ func TestApp_BrainBindings(t *testing.T) {
 	if n, err := app.IngestKnowledge("/p", "/f.md"); err != nil || n != 2 {
 		t.Errorf("IngestKnowledge: %d %v", n, err)
 	}
+	if n, err := app.IngestContent("/p", "notes.md", "## A\nsome body text that is long enough"); err != nil || n != 2 {
+		t.Errorf("IngestContent: %d %v", n, err)
+	}
+	// A brain service without upload support is reported, not a panic.
+	var plain struct{ ports.BrainService }
+	plain.BrainService = b
+	if _, err := NewApp(fakes.NewOrchestrator(), "x").withBrainService(plain).IngestContent("/p", "n", "c"); err == nil {
+		t.Error("a brain service that cannot ingest content must be reported")
+	}
 	if s, err := app.GetBrainStatus("/p"); err != nil || !s.Initialized {
 		t.Errorf("GetBrainStatus: %+v %v", s, err)
 	}
@@ -196,6 +206,7 @@ func TestApp_BrainBindings(t *testing.T) {
 	none := NewApp(fakes.NewOrchestrator(), "x")
 	calls := map[string]func() error{
 		"IngestKnowledge":     func() error { _, e := none.IngestKnowledge("p", "f"); return e },
+		"IngestContent":       func() error { _, e := none.IngestContent("p", "n", "c"); return e },
 		"GetBrainStatus":      func() error { _, e := none.GetBrainStatus("p"); return e },
 		"GetProjectContext":   func() error { _, e := none.GetProjectContext("p", 1); return e },
 		"GetFocusedContext":   func() error { _, e := none.GetFocusedContext("p", "q", 1); return e },

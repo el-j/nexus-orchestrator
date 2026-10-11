@@ -2,6 +2,7 @@ package services_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -374,5 +375,54 @@ func TestGetOnboardingContext_TruncationNeverSplitsMultibyteCharacters(t *testin
 		if !utf8.ValidString(out) {
 			t.Fatalf("budget %d produced invalid UTF-8", tokens)
 		}
+	}
+}
+
+func TestIngestContent_ParsesUploadedMarkdownLikeAFile(t *testing.T) {
+	repo := &mockKnowledgeRepo{}
+	b := services.NewBrainService(repo, nil)
+	body := "# Title\nA sufficiently long preamble paragraph here.\n## Architecture\nThis body is comfortably longer than twenty characters.\n## Pitfalls\nAnother body that is comfortably longer than twenty characters.\n"
+	n, err := b.IngestContent(bg, "/any/project", "notes.md", body)
+	if err != nil || n != 3 {
+		t.Fatalf("n=%d err=%v", n, err)
+	}
+	for _, e := range repo.entries {
+		if e.Source != "upload:notes.md" || e.ProjectPath != "/any/project" {
+			t.Errorf("entry %+v", e)
+		}
+	}
+}
+
+func TestIngestContent_LabelsTheSourceSafely(t *testing.T) {
+	for name, want := range map[string]string{
+		"../../etc/passwd":     "upload:passwd",
+		`C:\Users\me\notes.md`: "upload:notes.md",
+		"  spaced.md  ":        "upload:spaced.md",
+		"":                     "upload:upload",
+		"/":                    "upload:upload",
+		".":                    "upload:upload",
+	} {
+		repo := &mockKnowledgeRepo{}
+		b := services.NewBrainService(repo, nil)
+		if _, err := b.IngestContent(bg, "/p", name, goodMD); err != nil {
+			t.Fatalf("%q: %v", name, err)
+		}
+		if len(repo.entries) == 0 || repo.entries[0].Source != want {
+			t.Errorf("name %q -> source %v, want %q", name, repo.entries, want)
+		}
+	}
+}
+
+func TestIngestContent_RejectsMissingProjectAndOversizedContent(t *testing.T) {
+	b := services.NewBrainService(&mockKnowledgeRepo{}, nil)
+	if _, err := b.IngestContent(bg, "  ", "n", goodMD); err == nil {
+		t.Error("an empty project must be rejected")
+	}
+	_, err := b.IngestContent(bg, "/p", "n", strings.Repeat("x", services.MaxIngestBytes+1))
+	if !errors.Is(err, domain.ErrInputTooLarge) {
+		t.Errorf("want ErrInputTooLarge, got %v", err)
+	}
+	if _, err := b.IngestContent(bg, "/p", "n", strings.Repeat("y", services.MaxIngestBytes)); errors.Is(err, domain.ErrInputTooLarge) {
+		t.Error("content of exactly the limit is allowed")
 	}
 }
