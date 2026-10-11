@@ -27,21 +27,15 @@ func NewAISessionRepo(r *Repository) *AISessionRepo {
 
 // SaveAISession inserts or replaces an AI session record.
 func (a *AISessionRepo) SaveAISession(ctx context.Context, s domain.AISession) error {
-	idsJSON, err := json.Marshal(s.RoutedTaskIDs)
-	if err != nil {
-		return fmt.Errorf("repo_sqlite: save ai session: marshal routed task ids: %w", err)
-	}
+	idsJSON := marshal(s.RoutedTaskIDs)
 
 	var delegationTS sql.NullString
 	if s.DelegationTimestamp != nil {
 		delegationTS = sql.NullString{String: s.DelegationTimestamp.Format(time.RFC3339), Valid: true}
 	}
-	capJSON, capErr := json.Marshal(s.AgentCapabilities)
-	if capErr != nil || len(capJSON) == 0 {
-		capJSON = []byte("[]")
-	}
+	capJSON := marshal(s.AgentCapabilities)
 
-	_, err = a.db.ExecContext(ctx,
+	_, err := a.db.ExecContext(ctx,
 		`INSERT OR REPLACE INTO ai_sessions
 		 (id, source, external_id, agent_name, project_path, status, last_activity, routed_task_ids, created_at, updated_at, delegated_to_nexus, delegation_timestamp, agent_capabilities, detection_method, model_id, current_activity, message_count, tokens_used, last_message)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -130,10 +124,7 @@ func (a *AISessionRepo) UpdateAISessionStatus(ctx context.Context, id string, st
 	if err != nil {
 		return fmt.Errorf("repo_sqlite: update ai session status: %w", err)
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("repo_sqlite: update ai session status: rows affected: %w", err)
-	}
+	n := affected(res)
 	if n == 0 {
 		return fmt.Errorf("repo_sqlite: update ai session status: %w", domain.ErrNotFound)
 	}
@@ -179,10 +170,7 @@ func (a *AISessionRepo) AppendRoutedTaskID(ctx context.Context, sessionID string
 	}
 	ids = append(ids, taskID)
 
-	updatedJSON, err := json.Marshal(ids)
-	if err != nil {
-		return fmt.Errorf("repo_sqlite: append routed task id: marshal: %w", err)
-	}
+	updatedJSON := marshal(ids)
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err = tx.ExecContext(ctx,
@@ -209,29 +197,25 @@ func (a *AISessionRepo) PurgeDisconnected(ctx context.Context, olderThan time.Du
 	if err != nil {
 		return 0, fmt.Errorf("repo_sqlite: purge disconnected: %w", err)
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return 0, fmt.Errorf("repo_sqlite: purge disconnected: rows affected: %w", err)
-	}
+	n := affected(res)
 	return int(n), nil
 }
 
 func scanAISession(s scanner) (domain.AISession, error) {
 	var sess domain.AISession
 	var sourceStr, statusStr string
-	var lastActivityStr, createdAtStr, updatedAtStr string
 	var routedTaskIDsJSON string
 	var delegatedToNexusInt int
-	var delegationTSStr sql.NullString
+	var delegationTS sql.NullTime
 	var capabilitiesJSON string
 	var detectionMethod string
 	var modelID string
 
 	if err := s.Scan(
 		&sess.ID, &sourceStr, &sess.ExternalID, &sess.AgentName, &sess.ProjectPath,
-		&statusStr, &lastActivityStr, &routedTaskIDsJSON,
-		&createdAtStr, &updatedAtStr,
-		&delegatedToNexusInt, &delegationTSStr, &capabilitiesJSON, &detectionMethod, &modelID,
+		&statusStr, &sess.LastActivity, &routedTaskIDsJSON,
+		&sess.CreatedAt, &sess.UpdatedAt,
+		&delegatedToNexusInt, &delegationTS, &capabilitiesJSON, &detectionMethod, &modelID,
 		&sess.CurrentActivity, &sess.MessageCount, &sess.TokensUsed, &sess.LastMessage,
 	); err != nil {
 		return domain.AISession{}, err
@@ -243,25 +227,9 @@ func scanAISession(s scanner) (domain.AISession, error) {
 	sess.DetectionMethod = detectionMethod
 	sess.ModelID = modelID
 
-	if delegationTSStr.Valid && delegationTSStr.String != "" {
-		t, err := time.Parse(time.RFC3339, delegationTSStr.String)
-		if err == nil {
-			sess.DelegationTimestamp = &t
-		}
-	}
-
-	var parseErr error
-	sess.LastActivity, parseErr = time.Parse(time.RFC3339, lastActivityStr)
-	if parseErr != nil {
-		return domain.AISession{}, fmt.Errorf("scan ai session: parse last_activity: %w", parseErr)
-	}
-	sess.CreatedAt, parseErr = time.Parse(time.RFC3339, createdAtStr)
-	if parseErr != nil {
-		return domain.AISession{}, fmt.Errorf("scan ai session: parse created_at: %w", parseErr)
-	}
-	sess.UpdatedAt, parseErr = time.Parse(time.RFC3339, updatedAtStr)
-	if parseErr != nil {
-		return domain.AISession{}, fmt.Errorf("scan ai session: parse updated_at: %w", parseErr)
+	// The driver decodes DATETIME columns; a value it cannot read comes back as the zero time.
+	if delegationTS.Valid && !delegationTS.Time.IsZero() {
+		sess.DelegationTimestamp = &delegationTS.Time
 	}
 
 	if err := json.Unmarshal([]byte(routedTaskIDsJSON), &sess.RoutedTaskIDs); err != nil {

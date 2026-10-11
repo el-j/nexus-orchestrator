@@ -103,10 +103,7 @@ func (m *ModelCapabilityRepo) Delete(ctx context.Context, modelID string) error 
 	if err != nil {
 		return fmt.Errorf("sqlite: delete model capability: %w", err)
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("sqlite: delete model capability rows affected: %w", err)
-	}
+	n := affected(res)
 	if n == 0 {
 		return fmt.Errorf("sqlite: delete model capability: %w", domain.ErrNotFound)
 	}
