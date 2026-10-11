@@ -4,27 +4,31 @@ on:
   push:
     branches:
       - main
-      - 'feature/**'
+      - develop
+      - "feature/**"
   pull_request:
     branches:
       - main
+      - develop
 
-# NOTE: These tests require a running nexus-daemon. In CI they run in smoke-only
-# mode against mocked API responses (no real daemon). Tests that require a live
-# daemon are skipped via PLAYWRIGHT_SKIP_DAEMON=true / PLAYWRIGHT_CI=true.
+# Two Playwright projects (frontend/playwright.config.ts):
+#   chromium     - structure checks with every /api call mocked; needs only the Vite dev server.
+#   real-daemon  - the built nexus-daemon plus a fake Ollama, no mocks: provider discovery,
+#                  submit -> execute -> file written, backlog promote, every view, brain search.
+# Neither job tolerates failure.
 
 jobs:
-  e2e:
-    name: Playwright E2E (smoke, Chromium)
+  mocked:
+    name: Playwright (mocked API)
     runs-on: ubuntu-latest
-
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
@@ -35,23 +39,62 @@ jobs:
         working-directory: frontend
         run: npx playwright install chromium --with-deps
 
-      # Requires running daemon — skipped in CI preview; smoke only against mock.
-      # Tests check page structure with API calls mocked via Playwright route interception.
-      # Tests tagged [slow] or requiring real daemon data are skipped via env flags.
-      - name: Run E2E smoke tests
+      - name: Run mocked specs
         working-directory: frontend
-        env:
-          PLAYWRIGHT_CI: 'true'
-          PLAYWRIGHT_SKIP_DAEMON: 'true'
-          # Frontend dev server must be started externally for real runs.
-          # In CI we skip tests requiring a live server; this step validates config only.
-        run: npm run test:e2e -- --reporter=html,github
-        continue-on-error: true
+        run: npx playwright test --project=chromium
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-mocked
+          path: frontend/playwright-report/
+          retention-days: 14
+
+  real-daemon:
+    name: Playwright (real daemon)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Ensure embedded frontend path exists
+        run: |
+          mkdir -p build/frontend build/bin
+          test -f build/frontend/.gitkeep || touch build/frontend/.gitkeep
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.26"
+          check-latest: true
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build the daemon
+        run: CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" CGO_LDFLAGS="-lm" go build -o build/bin/nexus-daemon-e2e ./cmd/nexus-daemon
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright browsers (Chromium only)
+        working-directory: frontend
+        run: npx playwright install chromium --with-deps
+
+      - name: Run real-daemon specs
+        working-directory: frontend
+        env:
+          NEXUS_REAL_DAEMON: "1"
+        run: npx playwright test --project=real-daemon
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-real-daemon
           path: frontend/playwright-report/
           retention-days: 14

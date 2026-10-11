@@ -106,13 +106,16 @@ watch(connected, (isConnected) => {
   }
 });
 
+let disposed = false; // set on unmount so a refresh that finishes late starts nothing
 onMounted(async () => {
   await refresh();
+  if (disposed) return;
   on('*', sseHandler);
   syncPolling(connected.value);
 });
 
 onUnmounted(() => {
+  disposed = true;
   off('*', sseHandler);
   stopPolling();
 });

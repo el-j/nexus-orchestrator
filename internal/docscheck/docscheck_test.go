@@ -112,7 +112,8 @@ func TestDownloadsPageNamesTheFilesTheReleaseWorkflowPublishes(t *testing.T) {
 	if len(facts.oses) == 0 || len(facts.arches) == 0 || len(facts.desktop) == 0 || facts.vsix == "" {
 		t.Fatalf("could not read the release naming from publish.yml: %+v", facts)
 	}
-	page := read(t, "docs/src/views/DownloadsView.vue")
+	// The page is its template plus the static asset tables it imports.
+	page := read(t, "docs/src/views/DownloadsView.vue") + read(t, "docs/src/data/downloads.ts")
 
 	files := regexp.MustCompile(`file:\s*'([^']+)'`).FindAllStringSubmatch(page, -1)
 	if len(files) == 0 {

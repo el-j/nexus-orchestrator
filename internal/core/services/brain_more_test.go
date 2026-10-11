@@ -314,7 +314,7 @@ func TestGetOnboardingContext_StackPlanAndTaskSummary(t *testing.T) {
 
 	tasks := newMemRepo()
 	for i, st := range []domain.TaskStatus{domain.StatusQueued, domain.StatusProcessing, domain.StatusProcessing, domain.StatusCompleted, domain.StatusFailed} {
-		_ = tasks.Save(domain.Task{ID: string(rune('a' + i)), ProjectPath: dir, Instruction: "work", Status: st})
+		_ = tasks.Save(context.Background(), domain.Task{ID: string(rune('a' + i)), ProjectPath: dir, Instruction: "work", Status: st})
 	}
 	repo := &mockKnowledgeRepo{}
 	var many []domain.ProjectKnowledge

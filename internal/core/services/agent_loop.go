@@ -133,10 +133,10 @@ func (a *agentRun) verify(run *runHandle) (string, bool) {
 // persist saves the task's verification output without clobbering the log lines
 // appended since the task was claimed.
 func (a *agentRun) persist() {
-	if cur, err := a.o.repo.GetByID(a.task.ID); err == nil {
+	if cur, err := a.o.repo.GetByID(a.o.dbCtx(), a.task.ID); err == nil {
 		a.task.Logs = cur.Logs
 	}
-	_ = a.o.repo.Update(a.task)
+	_ = a.o.repo.Update(a.o.dbCtx(), a.task)
 }
 
 // execute performs one call and returns its observation and whether the model
@@ -200,7 +200,7 @@ func (o *OrchestratorService) runAgentLoop(run *runHandle, task domain.Task, cha
 	fail := func(reason string) bool {
 		a.persist()
 		o.appendTaskLog(task.ID, reason)
-		if err := o.repo.UpdateStatus(task.ID, domain.StatusFailed); err != nil {
+		if err := o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusFailed); err != nil {
 			log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
 		}
 		o.emit(task.ID, domain.StatusFailed)
@@ -222,7 +222,7 @@ func (o *OrchestratorService) runAgentLoop(run *runHandle, task domain.Task, cha
 					continue
 				}
 				o.appendTaskLog(task.ID, fmt.Sprintf("agent turn %d: transcript exceeds the context window of %s", turn, llm.ProviderName()))
-				_ = o.repo.UpdateStatus(task.ID, domain.StatusTooLarge)
+				_ = o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusTooLarge)
 				o.emit(task.ID, domain.StatusTooLarge)
 				return true
 			}
@@ -265,7 +265,7 @@ func (o *OrchestratorService) runAgentLoop(run *runHandle, task domain.Task, cha
 				a.persist()
 				o.appendTaskLog(task.ID, fmt.Sprintf("%s — completed via %s after %d turn(s), %d file(s) written at %s",
 					obs, chain[provider].ProviderName(), turn, len(a.written), time.Now().UTC().Format(time.RFC3339)))
-				if err := o.repo.UpdateStatus(task.ID, domain.StatusCompleted); err != nil {
+				if err := o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusCompleted); err != nil {
 					log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
 				}
 				o.emit(task.ID, domain.StatusCompleted)

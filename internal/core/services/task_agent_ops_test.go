@@ -1,6 +1,7 @@
 package services_test
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -39,7 +40,7 @@ func TestClaimTask_ErrorBranches(t *testing.T) {
 		if _, err := orch.ClaimTask(bg, "t", "s"); err == nil || !strings.Contains(err.Error(), "does not match task project") {
 			t.Errorf("got %v", err)
 		}
-		if got, _ := repo.GetByID("t"); got.Status != domain.StatusQueued {
+		if got, _ := repo.GetByID(context.Background(), "t"); got.Status != domain.StatusQueued {
 			t.Errorf("rejected claim must not mutate the task, status=%s", got.Status)
 		}
 	})
@@ -93,7 +94,7 @@ func TestUpdateTaskStatus_Branches(t *testing.T) {
 		orch, repo, _ := newFaultyOrch(t)
 		b := &capturingBroadcaster{}
 		orch.SetBroadcaster(b)
-		if err := repo.memRepo.Save(domain.Task{ID: "t", ProjectPath: "/proj", Status: status, AISessionID: "s"}); err != nil {
+		if err := repo.memRepo.Save(context.Background(), domain.Task{ID: "t", ProjectPath: "/proj", Status: status, AISessionID: "s"}); err != nil {
 			t.Fatal(err)
 		}
 		return orch, repo, b
@@ -105,7 +106,7 @@ func TestUpdateTaskStatus_Branches(t *testing.T) {
 		if err != nil || got.Status != domain.StatusCompleted || got.Logs != "all good" {
 			t.Fatalf("%+v %v", got, err)
 		}
-		if stored, _ := repo.GetByID("t"); stored.Logs != "all good" {
+		if stored, _ := repo.GetByID(context.Background(), "t"); stored.Logs != "all good" {
 			t.Errorf("logs not persisted: %+v", stored)
 		}
 		if len(b.events) != 1 || b.events[0].Type != ports.EventTaskCompleted || b.events[0].Status != domain.StatusCompleted {
@@ -171,7 +172,7 @@ func TestUpdateTaskStatus_Branches(t *testing.T) {
 
 func TestHeartbeatTask_Branches(t *testing.T) {
 	orch, repo, _ := newFaultyOrch(t)
-	if err := repo.memRepo.Save(domain.Task{ID: "t", Status: domain.StatusProcessing, AISessionID: "s"}); err != nil {
+	if err := repo.memRepo.Save(context.Background(), domain.Task{ID: "t", Status: domain.StatusProcessing, AISessionID: "s"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := orch.HeartbeatTask(bg, "t", "s"); err != nil {
@@ -200,7 +201,7 @@ func TestHeartbeatTask_Branches(t *testing.T) {
 
 func TestHeartbeatTask_StatusChangedUnderneath(t *testing.T) {
 	inner := newFaultyRepo()
-	if err := inner.memRepo.Save(domain.Task{ID: "t", Status: domain.StatusProcessing, AISessionID: "s"}); err != nil {
+	if err := inner.memRepo.Save(context.Background(), domain.Task{ID: "t", Status: domain.StatusProcessing, AISessionID: "s"}); err != nil {
 		t.Fatal(err)
 	}
 	orch := newOrchOver(t, &raceRepo{faultyRepo: inner})

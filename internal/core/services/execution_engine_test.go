@@ -29,12 +29,12 @@ func waitStatus(t *testing.T, repo *memRepo, id string, want domain.TaskStatus, 
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		time.Sleep(100 * time.Millisecond)
-		saved, _ := repo.GetByID(id)
+		saved, _ := repo.GetByID(context.Background(), id)
 		if saved.Status == want {
 			return saved
 		}
 	}
-	saved, _ := repo.GetByID(id)
+	saved, _ := repo.GetByID(context.Background(), id)
 	t.Fatalf("task %s: want status %s, got %s after %s", id, want, saved.Status, timeout)
 	return saved
 }

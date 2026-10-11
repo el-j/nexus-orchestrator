@@ -317,7 +317,7 @@ func TestMCPIntegration_ClaimAndComplete(t *testing.T) {
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
-	if err := ts.repo.Save(task); err != nil {
+	if err := ts.repo.Save(context.Background(), task); err != nil {
 		t.Fatalf("seed task: %v", err)
 	}
 
@@ -358,7 +358,7 @@ func TestMCPIntegration_ClaimAndComplete(t *testing.T) {
 	}
 
 	// Verify DB
-	saved, err := ts.repo.GetByID(task.ID)
+	saved, err := ts.repo.GetByID(context.Background(), task.ID)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -382,7 +382,7 @@ func TestMCPIntegration_ExclusiveOwnership(t *testing.T) {
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
-	if err := ts.repo.Save(task); err != nil {
+	if err := ts.repo.Save(context.Background(), task); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 
@@ -405,7 +405,7 @@ func TestMCPIntegration_ExclusiveOwnership(t *testing.T) {
 	}
 
 	// Status must still be PROCESSING (owned by sess1).
-	saved, _ := ts.repo.GetByID(task.ID)
+	saved, _ := ts.repo.GetByID(context.Background(), task.ID)
 	if saved.Status != domain.StatusProcessing {
 		t.Errorf("status after second claim attempt: want PROCESSING, got %s", saved.Status)
 	}
@@ -426,7 +426,7 @@ func TestMCPIntegration_WrongSessionUpdate(t *testing.T) {
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
-	if err := ts.repo.Save(task); err != nil {
+	if err := ts.repo.Save(context.Background(), task); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 
@@ -451,7 +451,7 @@ func TestMCPIntegration_WrongSessionUpdate(t *testing.T) {
 	}
 
 	// Status must still be PROCESSING.
-	saved, _ := ts.repo.GetByID(task.ID)
+	saved, _ := ts.repo.GetByID(context.Background(), task.ID)
 	if saved.Status != domain.StatusProcessing {
 		t.Errorf("status after rejected update: want PROCESSING, got %s", saved.Status)
 	}

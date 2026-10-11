@@ -34,7 +34,7 @@ func New(dbPath string) (*Repository, error) {
 		"PRAGMA busy_timeout=5000",
 		"PRAGMA foreign_keys=ON",
 	} {
-		if _, err := db.Exec(pragma); err != nil {
+		if _, err := db.ExecContext(context.Background(), pragma); err != nil {
 			return nil, fmt.Errorf("sqlite: %s: %w", pragma, err)
 		}
 	}
@@ -46,178 +46,10 @@ func New(dbPath string) (*Repository, error) {
 	return &Repository{db: db}, nil
 }
 
-func migrate(db *sql.DB) error {
-	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS tasks (
-			id            TEXT    PRIMARY KEY,
-			project_path  TEXT    NOT NULL,
-			target_file   TEXT    NOT NULL,
-			instruction   TEXT    NOT NULL,
-			context_files TEXT    NOT NULL DEFAULT '[]',
-			status        TEXT    NOT NULL DEFAULT 'QUEUED',
-			created_at    INTEGER NOT NULL,
-			updated_at    INTEGER NOT NULL,
-			logs          TEXT    NOT NULL DEFAULT ''
-		);
-		CREATE TABLE IF NOT EXISTS sessions (
-			id           TEXT    PRIMARY KEY,
-			project_path TEXT    NOT NULL UNIQUE,
-			messages     TEXT    NOT NULL DEFAULT '[]',
-			created_at   INTEGER NOT NULL,
-			updated_at   INTEGER NOT NULL
-		);
-		CREATE TABLE IF NOT EXISTS provider_configs (
-			id            TEXT    PRIMARY KEY,
-			name          TEXT    NOT NULL,
-			kind          TEXT    NOT NULL,
-			base_url      TEXT    NOT NULL DEFAULT '',
-			api_key       TEXT    NOT NULL DEFAULT '',
-			model         TEXT    NOT NULL DEFAULT '',
-			enabled       INTEGER NOT NULL DEFAULT 1,
-			created_at    INTEGER NOT NULL,
-			updated_at    INTEGER NOT NULL
-		);
-		CREATE TABLE IF NOT EXISTS ai_sessions (
-			id               TEXT PRIMARY KEY,
-			source           TEXT NOT NULL,
-			external_id      TEXT NOT NULL DEFAULT '',
-			agent_name       TEXT NOT NULL,
-			project_path     TEXT NOT NULL DEFAULT '',
-			status           TEXT NOT NULL DEFAULT 'active',
-			last_activity    DATETIME NOT NULL,
-			routed_task_ids  TEXT NOT NULL DEFAULT '[]',
-			created_at       DATETIME NOT NULL,
-			updated_at       DATETIME NOT NULL
-		);
-		CREATE TABLE IF NOT EXISTS discovered_agents (
-			id               TEXT PRIMARY KEY,
-			kind             TEXT NOT NULL,
-			name             TEXT NOT NULL,
-			detection_method TEXT NOT NULL DEFAULT '',
-			process_name     TEXT NOT NULL DEFAULT '',
-			cli_path         TEXT NOT NULL DEFAULT '',
-			config_path      TEXT NOT NULL DEFAULT '',
-			mcp_endpoint     TEXT NOT NULL DEFAULT '',
-			is_running       INTEGER NOT NULL DEFAULT 0,
-			last_seen        DATETIME NOT NULL
-		);
-		CREATE INDEX IF NOT EXISTS idx_discovered_agents_kind ON discovered_agents(kind);
-	`)
-	if err != nil {
-		return fmt.Errorf("sqlite: migrate: %w", err)
-	}
-	_, err = db.Exec(`
-		CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
-		CREATE INDEX IF NOT EXISTS idx_tasks_project_path ON tasks(project_path);
-	`)
-	if err != nil {
-		return fmt.Errorf("sqlite: migrate: %w", err)
-	}
-	// Additive column migrations — safe to re-run; errors are ignored if columns already exist.
-	for _, col := range []struct{ name, def string }{
-		{"model_id", "TEXT NOT NULL DEFAULT ''"},
-		{"provider_hint", "TEXT NOT NULL DEFAULT ''"},
-		{"command", "TEXT NOT NULL DEFAULT ''"},
-		{"provider_name", "TEXT NOT NULL DEFAULT ''"},
-		{"priority", "INTEGER NOT NULL DEFAULT 2"},
-		{"tags", "TEXT NOT NULL DEFAULT '[]'"},
-		{"retry_count", "INTEGER NOT NULL DEFAULT 0"},
-		{"ai_session_id", "TEXT NOT NULL DEFAULT ''"},
-		{"verification_command", "TEXT NOT NULL DEFAULT ''"},
-		{"max_correction_turns", "INTEGER NOT NULL DEFAULT 0"},
-		{"verification_output", "TEXT NOT NULL DEFAULT ''"},
-		{"role", "TEXT NOT NULL DEFAULT ''"},
-		{"agentic", "INTEGER NOT NULL DEFAULT 0"},
-		{"max_agent_turns", "INTEGER NOT NULL DEFAULT 0"},
-	} {
-		_, _ = db.Exec(fmt.Sprintf("ALTER TABLE tasks ADD COLUMN %s %s", col.name, col.def))
-	}
-	for _, col := range []struct{ table, name, def string }{
-		{"ai_sessions", "delegated_to_nexus", "INTEGER NOT NULL DEFAULT 0"},
-		{"ai_sessions", "delegation_timestamp", "DATETIME"},
-		{"ai_sessions", "agent_capabilities", "TEXT NOT NULL DEFAULT '[]'"},
-		{"ai_sessions", "detection_method", "TEXT NOT NULL DEFAULT ''"},
-		{"ai_sessions", "model_id", "TEXT NOT NULL DEFAULT ''"},
-		{"ai_sessions", "current_activity", "TEXT NOT NULL DEFAULT ''"},
-		{"ai_sessions", "message_count", "INTEGER NOT NULL DEFAULT 0"},
-		{"ai_sessions", "tokens_used", "INTEGER NOT NULL DEFAULT 0"},
-		{"ai_sessions", "last_message", "TEXT NOT NULL DEFAULT ''"},
-	} {
-		_, _ = db.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", col.table, col.name, col.def))
-	}
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS discovered_plan_files (
-			id            TEXT    PRIMARY KEY,
-			path          TEXT    NOT NULL UNIQUE,
-			kind          TEXT    NOT NULL,
-			format        TEXT    NOT NULL,
-			project_path  TEXT    NOT NULL,
-			summary       TEXT,
-			last_modified INTEGER NOT NULL,
-			is_active     INTEGER NOT NULL DEFAULT 0,
-			updated_at    INTEGER NOT NULL
-		);
-		CREATE INDEX IF NOT EXISTS idx_discovered_plan_files_project_path ON discovered_plan_files(project_path);
-	`)
-	if err != nil {
-		return fmt.Errorf("sqlite: migrate discovered_plan_files: %w", err)
-	}
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS ai_activities (
-			id            TEXT PRIMARY KEY,
-			session_id    TEXT NOT NULL DEFAULT '',
-			agent_name    TEXT NOT NULL,
-			activity_type TEXT NOT NULL,
-			summary       TEXT NOT NULL DEFAULT '',
-			project_path  TEXT NOT NULL DEFAULT '',
-			model         TEXT NOT NULL DEFAULT '',
-			tokens_in     INTEGER NOT NULL DEFAULT 0,
-			tokens_out    INTEGER NOT NULL DEFAULT 0,
-			timestamp     DATETIME NOT NULL,
-			metadata      TEXT NOT NULL DEFAULT '{}'
-		);
-		CREATE INDEX IF NOT EXISTS idx_ai_activities_timestamp ON ai_activities(timestamp);
-		CREATE INDEX IF NOT EXISTS idx_ai_activities_agent ON ai_activities(agent_name);
-		CREATE INDEX IF NOT EXISTS idx_ai_activities_project ON ai_activities(project_path);
-	`)
-	if err != nil {
-		return fmt.Errorf("sqlite: migrate ai_activities: %w", err)
-	}
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS model_capabilities (
-			model_id               TEXT    PRIMARY KEY,
-			context_window         INTEGER NOT NULL DEFAULT 0,
-			recommended_max_output INTEGER NOT NULL DEFAULT 0,
-			notes                  TEXT    NOT NULL DEFAULT '',
-			built_in               INTEGER NOT NULL DEFAULT 0,
-			created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-		)
-	`)
-	if err != nil {
-		return fmt.Errorf("sqlite: migrate model_capabilities: %w", err)
-	}
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS runtime_config (
-			id         INTEGER PRIMARY KEY CHECK(id = 1),
-			json       TEXT    NOT NULL DEFAULT '{}',
-			updated_at INTEGER NOT NULL
-		);
-		INSERT OR IGNORE INTO runtime_config (id, updated_at) VALUES (1, CAST(strftime('%s','now') AS INTEGER) * 1000);
-	`)
-	if err != nil {
-		return fmt.Errorf("sqlite: migrate runtime_config: %w", err)
-	}
-	if err := migrateKnowledge(db); err != nil {
-		return err
-	}
-	return nil
-}
-
 const taskColumns = `id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id, verification_command, max_correction_turns, verification_output, role, agentic, max_agent_turns`
 
 // Save inserts a new Task record.
-func (r *Repository) Save(t domain.Task) error {
+func (r *Repository) Save(ctx context.Context, t domain.Task) error {
 	t.ProjectPath = filepath.Clean(t.ProjectPath)
 	ctxJSON, err := json.Marshal(t.ContextFiles)
 	if err != nil {
@@ -229,7 +61,7 @@ func (r *Repository) Save(t domain.Task) error {
 			tagsJSON = b
 		}
 	}
-	_, err = r.db.Exec(
+	_, err = r.db.ExecContext(ctx,
 		`INSERT INTO tasks (`+taskColumns+`)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		t.ID, t.ProjectPath, t.TargetFile, t.Instruction,
@@ -248,8 +80,8 @@ func (r *Repository) Save(t domain.Task) error {
 
 // GetByID retrieves a single task by its ID.
 // Returns domain.ErrNotFound when no row matches.
-func (r *Repository) GetByID(id string) (domain.Task, error) {
-	row := r.db.QueryRow(`SELECT `+taskColumns+` FROM tasks WHERE id = ?`, id)
+func (r *Repository) GetByID(ctx context.Context, id string) (domain.Task, error) {
+	row := r.db.QueryRowContext(ctx, `SELECT `+taskColumns+` FROM tasks WHERE id = ?`, id)
 	t, err := scanTask(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Task{}, fmt.Errorf("sqlite: get task: %w", domain.ErrNotFound)
@@ -258,9 +90,9 @@ func (r *Repository) GetByID(id string) (domain.Task, error) {
 }
 
 // GetPending returns all tasks in QUEUED or PROCESSING state.
-func (r *Repository) GetPending() ([]domain.Task, error) {
-	rows, err := r.db.Query(
-		`SELECT ` + taskColumns + ` FROM tasks WHERE status IN ('QUEUED','PROCESSING') ORDER BY created_at ASC`,
+func (r *Repository) GetPending(ctx context.Context) ([]domain.Task, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT `+taskColumns+` FROM tasks WHERE status IN ('QUEUED','PROCESSING') ORDER BY created_at ASC`,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: query pending: %w", err)
@@ -279,8 +111,8 @@ func (r *Repository) GetPending() ([]domain.Task, error) {
 }
 
 // ClaimNextQueued atomically claims the oldest queued task and marks it PROCESSING.
-func (r *Repository) ClaimNextQueued() (domain.Task, error) {
-	tx, err := r.db.Begin()
+func (r *Repository) ClaimNextQueued(ctx context.Context) (domain.Task, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("sqlite: begin claim next queued: %w", err)
 	}
@@ -288,8 +120,8 @@ func (r *Repository) ClaimNextQueued() (domain.Task, error) {
 		_ = tx.Rollback()
 	}()
 
-	row := tx.QueryRow(
-		`SELECT ` + taskColumns + ` FROM tasks WHERE status = 'QUEUED' ORDER BY created_at ASC LIMIT 1`,
+	row := tx.QueryRowContext(ctx,
+		`SELECT `+taskColumns+` FROM tasks WHERE status = 'QUEUED' ORDER BY created_at ASC LIMIT 1`,
 	)
 	task, err := scanTask(row)
 	if err != nil {
@@ -299,7 +131,7 @@ func (r *Repository) ClaimNextQueued() (domain.Task, error) {
 		return domain.Task{}, fmt.Errorf("sqlite: claim next queued: %w", err)
 	}
 
-	res, err := tx.Exec(
+	res, err := tx.ExecContext(ctx,
 		`UPDATE tasks SET status = ?, updated_at = ? WHERE id = ? AND status = 'QUEUED'`,
 		string(domain.StatusProcessing), time.Now().UnixMilli(), task.ID,
 	)
@@ -322,8 +154,8 @@ func (r *Repository) ClaimNextQueued() (domain.Task, error) {
 }
 
 // UpdateStatus changes the status of a task identified by id.
-func (r *Repository) UpdateStatus(id string, status domain.TaskStatus) error {
-	res, err := r.db.Exec(
+func (r *Repository) UpdateStatus(ctx context.Context, id string, status domain.TaskStatus) error {
+	res, err := r.db.ExecContext(ctx,
 		`UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?`,
 		string(status), time.Now().UnixMilli(), id,
 	)
@@ -341,8 +173,8 @@ func (r *Repository) UpdateStatus(id string, status domain.TaskStatus) error {
 }
 
 // UpdateStatusIfCurrent changes the status only when the current status matches from.
-func (r *Repository) UpdateStatusIfCurrent(id string, from, to domain.TaskStatus) (bool, error) {
-	res, err := r.db.Exec(
+func (r *Repository) UpdateStatusIfCurrent(ctx context.Context, id string, from, to domain.TaskStatus) (bool, error) {
+	res, err := r.db.ExecContext(ctx,
 		`UPDATE tasks SET status = ?, updated_at = ? WHERE id = ? AND status = ?`,
 		string(to), time.Now().UnixMilli(), id, string(from),
 	)
@@ -357,8 +189,8 @@ func (r *Repository) UpdateStatusIfCurrent(id string, from, to domain.TaskStatus
 }
 
 // UpdateLogs replaces the logs field for the task identified by id.
-func (r *Repository) UpdateLogs(id, logs string) error {
-	res, err := r.db.Exec(
+func (r *Repository) UpdateLogs(ctx context.Context, id, logs string) error {
+	res, err := r.db.ExecContext(ctx,
 		`UPDATE tasks SET logs = ?, updated_at = ? WHERE id = ?`,
 		logs, time.Now().UnixMilli(), id,
 	)
@@ -376,9 +208,9 @@ func (r *Repository) UpdateLogs(id, logs string) error {
 }
 
 // GetAll returns every task, ordered by creation time descending.
-func (r *Repository) GetAll() ([]domain.Task, error) {
-	rows, err := r.db.Query(
-		`SELECT ` + taskColumns + ` FROM tasks ORDER BY created_at DESC`,
+func (r *Repository) GetAll(ctx context.Context) ([]domain.Task, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT `+taskColumns+` FROM tasks ORDER BY created_at DESC`,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: query all tasks: %w", err)
@@ -397,9 +229,9 @@ func (r *Repository) GetAll() ([]domain.Task, error) {
 }
 
 // GetByProjectPath returns all tasks for the given project path, ordered by creation time descending.
-func (r *Repository) GetByProjectPath(projectPath string) ([]domain.Task, error) {
+func (r *Repository) GetByProjectPath(ctx context.Context, projectPath string) ([]domain.Task, error) {
 	projectPath = filepath.Clean(projectPath)
-	rows, err := r.db.Query(
+	rows, err := r.db.QueryContext(ctx,
 		`SELECT `+taskColumns+` FROM tasks WHERE project_path = ? ORDER BY created_at DESC`,
 		projectPath,
 	)
@@ -421,7 +253,7 @@ func (r *Repository) GetByProjectPath(projectPath string) ([]domain.Task, error)
 
 // GetByProjectPathAndStatus returns tasks for a project filtered by one or more statuses,
 // ordered by priority ASC then created_at ASC. Returns an empty slice (not an error) if none match.
-func (r *Repository) GetByProjectPathAndStatus(projectPath string, statuses ...domain.TaskStatus) ([]domain.Task, error) {
+func (r *Repository) GetByProjectPathAndStatus(ctx context.Context, projectPath string, statuses ...domain.TaskStatus) ([]domain.Task, error) {
 	if len(statuses) == 0 {
 		return []domain.Task{}, nil
 	}
@@ -438,7 +270,7 @@ func (r *Repository) GetByProjectPathAndStatus(projectPath string, statuses ...d
 		`SELECT `+taskColumns+` FROM tasks WHERE project_path = ? AND status IN (%s) ORDER BY priority ASC, created_at ASC`,
 		strings.Join(placeholders, ","),
 	)
-	rows, err := r.db.Query(query, args...)
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: query by project path and status: %w", err)
 	}
@@ -456,7 +288,7 @@ func (r *Repository) GetByProjectPathAndStatus(projectPath string, statuses ...d
 
 // Update persists changes to an existing task's mutable fields.
 // Returns domain.ErrNotFound if no row with t.ID exists.
-func (r *Repository) Update(t domain.Task) error {
+func (r *Repository) Update(ctx context.Context, t domain.Task) error {
 	t.UpdatedAt = time.Now()
 	tagsJSON := []byte("[]")
 	if len(t.Tags) > 0 {
@@ -464,7 +296,7 @@ func (r *Repository) Update(t domain.Task) error {
 			tagsJSON = b
 		}
 	}
-	res, err := r.db.Exec(
+	res, err := r.db.ExecContext(ctx,
 		`UPDATE tasks SET instruction=?, target_file=?, provider_name=?, priority=?, tags=?, status=?, retry_count=?, ai_session_id=?, verification_command=?, max_correction_turns=?, verification_output=?, updated_at=? WHERE id=?`,
 		t.Instruction, t.TargetFile, t.ProviderName, t.Priority, string(tagsJSON), string(t.Status), t.RetryCount, t.AISessionID, t.VerificationCommand, t.MaxCorrectionTurns, t.VerificationOutput, t.UpdatedAt.UnixMilli(), t.ID,
 	)
@@ -485,8 +317,8 @@ func (r *Repository) Update(t domain.Task) error {
 func (r *Repository) Close() error { return r.db.Close() }
 
 // GetTasksBySessionID returns all tasks claimed by the given AI session, ordered by creation time descending.
-func (r *Repository) GetTasksBySessionID(sessionID string) ([]domain.Task, error) {
-	rows, err := r.db.Query(
+func (r *Repository) GetTasksBySessionID(ctx context.Context, sessionID string) ([]domain.Task, error) {
+	rows, err := r.db.QueryContext(ctx,
 		`SELECT `+taskColumns+` FROM tasks WHERE ai_session_id = ? ORDER BY created_at DESC`,
 		sessionID,
 	)

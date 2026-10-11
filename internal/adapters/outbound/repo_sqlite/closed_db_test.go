@@ -27,25 +27,30 @@ func TestAllRepos_ReturnErrorsWhenDatabaseIsClosed(t *testing.T) {
 	providers := repo_sqlite.NewProviderConfigRepo(r)
 
 	calls := map[string]func() error{
-		"Repository.Save":         func() error { return r.Save(task) },
-		"Repository.GetByID":      func() error { _, err := r.GetByID("t"); return err },
-		"Repository.GetPending":   func() error { _, err := r.GetPending(); return err },
-		"Repository.ClaimNext":    func() error { _, err := r.ClaimNextQueued(); return err },
-		"Repository.UpdateStatus": func() error { return r.UpdateStatus("t", domain.StatusFailed) },
+		"Repository.Save":         func() error { return r.Save(context.Background(), task) },
+		"Repository.GetByID":      func() error { _, err := r.GetByID(context.Background(), "t"); return err },
+		"Repository.GetPending":   func() error { _, err := r.GetPending(context.Background()); return err },
+		"Repository.ClaimNext":    func() error { _, err := r.ClaimNextQueued(context.Background()); return err },
+		"Repository.UpdateStatus": func() error { return r.UpdateStatus(context.Background(), "t", domain.StatusFailed) },
 		"Repository.UpdateIfCur": func() error {
-			_, err := r.UpdateStatusIfCurrent("t", domain.StatusQueued, domain.StatusFailed)
+			_, err := r.UpdateStatusIfCurrent(context.Background(), "t", domain.StatusQueued, domain.StatusFailed)
 			return err
 		},
-		"Repository.UpdateLogs":   func() error { return r.UpdateLogs("t", "x") },
-		"Repository.GetAll":       func() error { _, err := r.GetAll(); return err },
-		"Repository.ByProject":    func() error { _, err := r.GetByProjectPath("/p"); return err },
-		"Repository.ByProjStatus": func() error { _, err := r.GetByProjectPathAndStatus("/p", domain.StatusQueued); return err },
-		"Repository.Update":       func() error { return r.Update(task) },
-		"Repository.BySessionID":  func() error { _, err := r.GetTasksBySessionID("s"); return err },
-		"Repository.StaleProc":    func() error { _, err := r.GetStaleProcessing(ctx, time.Hour); return err },
-		"SessionRepo.Save":        func() error { return sessions.Save(domain.Session{ProjectPath: "/p"}) },
-		"SessionRepo.Get":         func() error { _, err := sessions.GetByProjectPath("/p"); return err },
-		"SessionRepo.Append":      func() error { return sessions.AppendMessage("/p", domain.Message{Role: domain.RoleUser}) },
+		"Repository.UpdateLogs": func() error { return r.UpdateLogs(context.Background(), "t", "x") },
+		"Repository.GetAll":     func() error { _, err := r.GetAll(context.Background()); return err },
+		"Repository.ByProject":  func() error { _, err := r.GetByProjectPath(context.Background(), "/p"); return err },
+		"Repository.ByProjStatus": func() error {
+			_, err := r.GetByProjectPathAndStatus(context.Background(), "/p", domain.StatusQueued)
+			return err
+		},
+		"Repository.Update":      func() error { return r.Update(context.Background(), task) },
+		"Repository.BySessionID": func() error { _, err := r.GetTasksBySessionID(context.Background(), "s"); return err },
+		"Repository.StaleProc":   func() error { _, err := r.GetStaleProcessing(ctx, time.Hour); return err },
+		"SessionRepo.Save":       func() error { return sessions.Save(context.Background(), domain.Session{ProjectPath: "/p"}) },
+		"SessionRepo.Get":        func() error { _, err := sessions.GetByProjectPath(context.Background(), "/p"); return err },
+		"SessionRepo.Append": func() error {
+			return sessions.AppendMessage(context.Background(), "/p", domain.Message{Role: domain.RoleUser})
+		},
 		"AISession.Save":          func() error { return ai.SaveAISession(ctx, domain.AISession{ID: "a"}) },
 		"AISession.GetByID":       func() error { _, err := ai.GetAISessionByID(ctx, "a"); return err },
 		"AISession.GetByExt":      func() error { _, err := ai.GetAISessionByExternalID(ctx, "e"); return err },

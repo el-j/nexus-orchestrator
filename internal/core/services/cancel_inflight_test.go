@@ -140,7 +140,7 @@ func TestStop_AbortsInFlightGenerationPromptlyAndRequeuesTheTask(t *testing.T) {
 
 func TestCancelTask_PROCESSINGTaskNotRunByThisEngineIsCancelledDirectly(t *testing.T) {
 	e := newEngine(t, &contextWriter{}, nil, nil)
-	if err := e.repo.memRepo.Save(domain.Task{ID: "ext", ProjectPath: "/p", Instruction: "x", Status: domain.StatusProcessing}); err != nil {
+	if err := e.repo.memRepo.Save(context.Background(), domain.Task{ID: "ext", ProjectPath: "/p", Instruction: "x", Status: domain.StatusProcessing}); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.orch.CancelTask("ext"); err != nil {
@@ -156,7 +156,7 @@ func TestCancelTask_PROCESSINGTaskNotRunByThisEngineIsCancelledDirectly(t *testi
 
 func TestCancelTask_ErrorsAreStillReportedForFinishedAndUnknownTasks(t *testing.T) {
 	e := newEngine(t, &contextWriter{}, nil, nil)
-	_ = e.repo.memRepo.Save(domain.Task{ID: "done", ProjectPath: "/p", Instruction: "x", Status: domain.StatusCompleted})
+	_ = e.repo.memRepo.Save(context.Background(), domain.Task{ID: "done", ProjectPath: "/p", Instruction: "x", Status: domain.StatusCompleted})
 	if err := e.orch.CancelTask("done"); err == nil {
 		t.Error("cancelling a COMPLETED task must fail")
 	}

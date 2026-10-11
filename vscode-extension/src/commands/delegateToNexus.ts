@@ -38,7 +38,7 @@ export async function delegateToNexusCommand(
   client: NexusClient,
   sessionOrItem?: AISessionItem | AISession,
 ): Promise<void> {
-  let session: AISession | undefined;
+  let session: AISession;
 
   if (sessionOrItem instanceof AISessionItem) {
     session = sessionOrItem.session;
@@ -65,8 +65,6 @@ export async function delegateToNexusCommand(
     if (!picked) return;
     session = picked.session;
   }
-
-  if (!session) return;
 
   let instruction: string;
   try {

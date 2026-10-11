@@ -34,7 +34,7 @@ declare global {
           TriggerScan(): Promise<void>;
           CreateDraft(task: Partial<Task>): Promise<string>;
           GetBacklog(projectPath: string): Promise<Task[]>;
-          PromoteTask(id: string): Promise<void>;
+          PromoteTask(id: string): Promise<PromoteResult>;
           UpdateTask(id: string, updates: Partial<Task>): Promise<Task>;
           ListAISessions(): Promise<AISession[]>;
           RegisterAISession(session: AISession): Promise<AISession>;
@@ -193,10 +193,16 @@ export async function getBacklog(projectPath: string): Promise<Task[]> {
   return (await request<Task[] | null>('GET', `/api/tasks/backlog${query}`)) ?? [];
 }
 
+/** Outcome of promoting a draft: `promoted` is false (with a `warning`) when it stayed in the backlog. */
+export interface PromoteResult {
+  promoted: boolean;
+  warning?: string;
+}
+
 /** Moves a draft into the execution queue. */
-export async function promoteTask(id: string): Promise<void> {
+export async function promoteTask(id: string): Promise<PromoteResult> {
   if (isWails()) return window.go!.main!.App!.PromoteTask(id);
-  await request('POST', `/api/tasks/${q(id)}/promote`);
+  return request<PromoteResult>('POST', `/api/tasks/${q(id)}/promote`);
 }
 
 /** Patches the mutable fields of a task. */

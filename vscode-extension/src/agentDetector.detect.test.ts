@@ -156,6 +156,18 @@ describe('installed extensions', () => {
   });
 });
 
+describe('a failing strategy', () => {
+  it('does not hide what the other strategies found', async () => {
+    h.installed.add('continue.continue');
+    const d = await detector();
+    vi.spyOn(
+      d as unknown as { detectFromTerminals(): Promise<unknown[]> },
+      'detectFromTerminals',
+    ).mockRejectedValue(new Error('terminals unavailable'));
+    expect(await names(d)).toContain('Continue');
+  });
+});
+
 describe('filesystem detection', () => {
   it('detects Claude CLI only when settings.json holds an apiKey', async () => {
     h.files.set(CLAUDE_SETTINGS, JSON.stringify({ apiKey: 'sk-secret' }));

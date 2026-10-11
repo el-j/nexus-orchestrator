@@ -369,14 +369,7 @@ export class WorkspaceOrchViewProvider implements vscode.TreeDataProvider<OrchNo
       return element.activities.map((a) => new ActivityItemNode(a));
     }
 
-    if (element.kind === 'activityItem') {
-      return [];
-    }
-
-    if (element.kind === 'projectBrain') {
-      return [];
-    }
-
+    // activity items and the project-brain node are leaves.
     return [];
   }
 }

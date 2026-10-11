@@ -39,10 +39,13 @@ export async function showProvidersCommand(client: NexusClient): Promise<void> {
 
   const items: ProviderPickItem[] = providers.map((p) => ({
     label: p.name,
-    description:
-      [p.active ? '● active' : '○ inactive', p.kind ? `kind: ${p.kind}` : undefined, p.baseURL]
-        .filter(Boolean)
-        .join(' · ') || undefined,
+    description: [
+      p.active ? '● active' : '○ inactive',
+      p.kind ? `kind: ${p.kind}` : undefined,
+      p.baseURL,
+    ]
+      .filter(Boolean)
+      .join(' · '),
     detail:
       [
         p.details,

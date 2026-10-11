@@ -108,7 +108,7 @@ func (e *engineFixture) queue(task domain.Task) string {
 	}
 	task.ID = "t-" + task.Instruction
 	task.Status = domain.StatusQueued
-	if err := e.repo.memRepo.Save(task); err != nil {
+	if err := e.repo.memRepo.Save(context.Background(), task); err != nil {
 		e.t.Fatal(err)
 	}
 	return task.ID
@@ -116,7 +116,7 @@ func (e *engineFixture) queue(task domain.Task) string {
 
 func (e *engineFixture) status(id string) domain.Task {
 	e.t.Helper()
-	got, err := e.repo.memRepo.GetByID(id)
+	got, err := e.repo.memRepo.GetByID(context.Background(), id)
 	if err != nil {
 		e.t.Fatal(err)
 	}
@@ -150,7 +150,9 @@ func TestProcessNext_EmptyQueueAndClaimErrors(t *testing.T) {
 
 type claimFailRepo struct{ *faultyRepo }
 
-func (c *claimFailRepo) ClaimNextQueued() (domain.Task, error) { return domain.Task{}, errInjected }
+func (c *claimFailRepo) ClaimNextQueued(context.Context) (domain.Task, error) {
+	return domain.Task{}, errInjected
+}
 
 func TestProcessNext_NoProviderMarksTaskNoProvider(t *testing.T) {
 	e := newEngine(t, &noopWriter{}, nil, nil) // no providers at all
@@ -165,7 +167,7 @@ func TestPrepareChatPrompt_ContextFilesAndSessionHistory(t *testing.T) {
 	llm := &scriptLLM{name: "p", alive: true}
 	w := &contextWriter{ctx: "// file: a.go\npackage a"}
 	sess := newMemSessionRepo()
-	_ = sess.Save(domain.Session{ProjectPath: "/proj", Messages: []domain.Message{{Role: domain.RoleUser, Content: "earlier"}}})
+	_ = sess.Save(context.Background(), domain.Session{ProjectPath: "/proj", Messages: []domain.Message{{Role: domain.RoleUser, Content: "earlier"}}})
 	e := newEngine(t, w, sess, nil, llm)
 	id := e.queue(domain.Task{Instruction: "do", ContextFiles: []string{"a.go"}, TargetFile: "out.go"})
 	e.runOne(id, domain.StatusCompleted)
@@ -180,7 +182,7 @@ func TestPrepareChatPrompt_ContextFilesAndSessionHistory(t *testing.T) {
 		t.Errorf("output not written: %v", w.writes)
 	}
 	// The exchange is persisted to the session.
-	if saved, _ := sess.GetByProjectPath("/proj"); len(saved.Messages) != 3 {
+	if saved, _ := sess.GetByProjectPath(context.Background(), "/proj"); len(saved.Messages) != 3 {
 		t.Errorf("session should hold history + user + assistant, got %d messages", len(saved.Messages))
 	}
 }
@@ -215,11 +217,13 @@ func TestPrepareChatPrompt_FailuresFailTheTaskBeforeCallingTheModel(t *testing.T
 
 type failingSessionRepo struct{ err error }
 
-func (f *failingSessionRepo) Save(domain.Session) error { return f.err }
-func (f *failingSessionRepo) GetByProjectPath(string) (domain.Session, error) {
+func (f *failingSessionRepo) Save(context.Context, domain.Session) error { return f.err }
+func (f *failingSessionRepo) GetByProjectPath(context.Context, string) (domain.Session, error) {
 	return domain.Session{}, f.err
 }
-func (f *failingSessionRepo) AppendMessage(string, domain.Message) error { return f.err }
+func (f *failingSessionRepo) AppendMessage(context.Context, string, domain.Message) error {
+	return f.err
+}
 
 func TestFallbackChain_FailsOverAndRecordsNote(t *testing.T) {
 	primary := &scriptLLM{name: "anthropic-main", alive: true, errs: []error{errors.New("rate limited")}}

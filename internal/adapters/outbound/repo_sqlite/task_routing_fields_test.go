@@ -1,6 +1,7 @@
 package repo_sqlite_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -16,17 +17,17 @@ func TestTaskRoleAndAgenticSettingsRoundTrip(t *testing.T) {
 	task.Role = "architect"
 	task.Agentic = true
 	task.MaxAgentTurns = 7
-	if err := r.Save(task); err != nil {
+	if err := r.Save(context.Background(), task); err != nil {
 		t.Fatal(err)
 	}
-	got, err := r.GetByID("t-role")
+	got, err := r.GetByID(context.Background(), "t-role")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got.Role != "architect" || !got.Agentic || got.MaxAgentTurns != 7 {
 		t.Errorf("round trip lost fields: role=%q agentic=%v turns=%d", got.Role, got.Agentic, got.MaxAgentTurns)
 	}
-	claimed, err := r.ClaimNextQueued()
+	claimed, err := r.ClaimNextQueued(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}

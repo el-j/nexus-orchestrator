@@ -167,3 +167,50 @@ func TestStart_FailsWhenTheDatabaseCannotBeOpened(t *testing.T) {
 		t.Errorf("got %v %v", rt, err)
 	}
 }
+
+// A listener that cannot bind must surface through Failed, not just a log line.
+func TestStart_ReportsAServerThatCannotBind(t *testing.T) {
+	isolate(t)
+	taken, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer taken.Close()
+	cfg := bootstrap.Config{
+		DBPath: filepath.Join(t.TempDir(), "busy.db"), ListenAddr: taken.Addr().String(), MCPAddr: freeAddr(t),
+		ScanInterval: time.Hour,
+	}
+	rt, err := bootstrap.Start(context.Background(), cfg, httpapi.NewLogHubWithWriter(io.Discard))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rt.Close()
+
+	select {
+	case err := <-rt.Failed():
+		if err == nil || !strings.Contains(err.Error(), "http api") {
+			t.Errorf("Failed() = %v, want an http api error", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("a busy port was not reported")
+	}
+}
+
+// Failed stays quiet through a normal shutdown, and only the first failure is kept.
+func TestStart_FailedIsQuietOnNormalShutdown(t *testing.T) {
+	isolate(t)
+	cfg := bootstrap.Config{
+		DBPath: filepath.Join(t.TempDir(), "quiet.db"), ListenAddr: freeAddr(t), MCPAddr: freeAddr(t),
+		ScanInterval: time.Hour,
+	}
+	rt, err := bootstrap.Start(context.Background(), cfg, httpapi.NewLogHubWithWriter(io.Discard))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rt.Close()
+	select {
+	case err := <-rt.Failed():
+		t.Errorf("unexpected failure after a clean close: %v", err)
+	default:
+	}
+}

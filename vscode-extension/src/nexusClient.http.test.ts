@@ -129,6 +129,13 @@ describe('requests', () => {
     fetchMock.mockImplementation(() => json({ error: 5 }, 400));
     await expect(client.getTasks()).rejects.toThrow('{"error":5}');
   });
+
+  it('still reports the status when the error body cannot be read', async () => {
+    const unreadable = new Response('x', { status: 503 });
+    vi.spyOn(unreadable, 'text').mockRejectedValue(new Error('stream broke'));
+    fetchMock.mockResolvedValue(unreadable);
+    await expect(client.getTasks()).rejects.toThrow(/HTTP 503$/);
+  });
 });
 
 describe('connection probing', () => {

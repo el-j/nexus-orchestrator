@@ -128,12 +128,6 @@ linters:
       - path: "internal/adapters/inbound/mcp/tools.*\\.go"
         linters:
           - unparam
-      # The repository ports (ports.TaskRepository, SessionRepository, ...) carry no
-      # context.Context, so the SQLite adapters have none to pass to database/sql.
-      # Tracked separately; every network call elsewhere is context-bound.
-      - path: "internal/adapters/outbound/repo_sqlite/"
-        linters:
-          - noctx
       # Test helpers legitimately take parameters that every caller passes the
       # same value for, and tests are not a security boundary.
       # Test doubles implement the production ports; their methods are documented there.

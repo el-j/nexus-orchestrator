@@ -251,7 +251,8 @@
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "test:mutation": "stryker run",
-    "check:docs": "node ../scripts/check-tsdoc.mjs src"
+    "check:docs": "node ../scripts/check-tsdoc.mjs src",
+    "test:host": "npm run build && node host-test/run.mjs"
   },
   "devDependencies": {
     "@stryker-mutator/core": "^9.6.1",
@@ -260,8 +261,10 @@
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.85.0",
     "@vitest/coverage-v8": "^4.1.0",
+    "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.4.0",
     "esbuild": "^0.27.0",
+    "mocha": "^12.0.3",
     "typescript": "^5.3.0",
     "vitest": "^4.1.0"
   },

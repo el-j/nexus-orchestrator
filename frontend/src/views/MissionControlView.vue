@@ -333,7 +333,7 @@ const historyFilters: { label: string; value: HistoryFilterValue }[] = [
 ];
 const historyFilter = ref<HistoryFilterValue>('ALL');
 
-let historyInterval: ReturnType<typeof setInterval> | null = null;
+let historyInterval: ReturnType<typeof setInterval> | undefined;
 const historyStatuses = new Set(['COMPLETED', 'FAILED', 'CANCELLED']);
 
 async function refreshHistory() {
@@ -356,7 +356,7 @@ onMounted(() => {
   historyInterval = setInterval(refreshHistory, 30_000);
 });
 onUnmounted(() => {
-  if (historyInterval) clearInterval(historyInterval);
+  clearInterval(historyInterval);
 });
 
 // --- Status bar counts ---

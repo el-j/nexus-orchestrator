@@ -15,11 +15,11 @@ func TestRepository_GetAll_NewestFirst(t *testing.T) {
 	defer r.Close()
 	now := time.Now()
 	for i, id := range []string{"old", "mid", "new"} {
-		if err := r.Save(newTask(id, domain.StatusQueued, now.Add(time.Duration(i)*time.Second))); err != nil {
+		if err := r.Save(context.Background(), newTask(id, domain.StatusQueued, now.Add(time.Duration(i)*time.Second))); err != nil {
 			t.Fatal(err)
 		}
 	}
-	all, err := r.GetAll()
+	all, err := r.GetAll(context.Background())
 	if err != nil || len(all) != 3 || all[0].ID != "new" || all[2].ID != "old" {
 		t.Fatalf("GetAll: %v %v", all, err)
 	}
@@ -29,18 +29,18 @@ func TestRepository_ClaimNextQueued_OldestFirstThenEmpty(t *testing.T) {
 	r := newTestRepo(t)
 	defer r.Close()
 	now := time.Now()
-	_ = r.Save(newTask("second", domain.StatusQueued, now.Add(time.Second)))
-	_ = r.Save(newTask("first", domain.StatusQueued, now))
+	_ = r.Save(context.Background(), newTask("second", domain.StatusQueued, now.Add(time.Second)))
+	_ = r.Save(context.Background(), newTask("first", domain.StatusQueued, now))
 
-	got, err := r.ClaimNextQueued()
+	got, err := r.ClaimNextQueued(context.Background())
 	if err != nil || got.ID != "first" || got.Status != domain.StatusProcessing {
 		t.Fatalf("claim 1: %+v %v", got, err)
 	}
-	got, err = r.ClaimNextQueued()
+	got, err = r.ClaimNextQueued(context.Background())
 	if err != nil || got.ID != "second" {
 		t.Fatalf("claim 2: %+v %v", got, err)
 	}
-	if _, err = r.ClaimNextQueued(); !errors.Is(err, domain.ErrNotFound) {
+	if _, err = r.ClaimNextQueued(context.Background()); !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("claim on empty queue: want ErrNotFound, got %v", err)
 	}
 }
@@ -48,13 +48,13 @@ func TestRepository_ClaimNextQueued_OldestFirstThenEmpty(t *testing.T) {
 func TestRepository_UpdateStatusIfCurrent_Preconditions(t *testing.T) {
 	r := newTestRepo(t)
 	defer r.Close()
-	_ = r.Save(newTask("t", domain.StatusQueued, time.Now()))
+	_ = r.Save(context.Background(), newTask("t", domain.StatusQueued, time.Now()))
 
-	ok, err := r.UpdateStatusIfCurrent("t", domain.StatusProcessing, domain.StatusFailed)
+	ok, err := r.UpdateStatusIfCurrent(context.Background(), "t", domain.StatusProcessing, domain.StatusFailed)
 	if err != nil || ok {
 		t.Fatalf("mismatched precondition must not update: ok=%v err=%v", ok, err)
 	}
-	ok, err = r.UpdateStatusIfCurrent("t", domain.StatusQueued, domain.StatusProcessing)
+	ok, err = r.UpdateStatusIfCurrent(context.Background(), "t", domain.StatusQueued, domain.StatusProcessing)
 	if err != nil || !ok {
 		t.Fatalf("matching precondition must update: ok=%v err=%v", ok, err)
 	}
@@ -69,7 +69,7 @@ func TestRepository_GetStaleProcessingAndSessionLookup(t *testing.T) {
 	stale.AISessionID = "sess-1"
 	fresh := newTask("fresh", domain.StatusProcessing, time.Now())
 	for _, tk := range []domain.Task{stale, fresh} {
-		if err := r.Save(tk); err != nil {
+		if err := r.Save(context.Background(), tk); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -77,7 +77,7 @@ func TestRepository_GetStaleProcessingAndSessionLookup(t *testing.T) {
 	if err != nil || len(got) != 1 || got[0].ID != "stale" {
 		t.Fatalf("stale: %v %v", got, err)
 	}
-	bySess, err := r.GetTasksBySessionID("sess-1")
+	bySess, err := r.GetTasksBySessionID(context.Background(), "sess-1")
 	if err != nil || len(bySess) != 1 || bySess[0].ID != "stale" {
 		t.Fatalf("by session: %v %v", bySess, err)
 	}
@@ -86,13 +86,13 @@ func TestRepository_GetStaleProcessingAndSessionLookup(t *testing.T) {
 func TestRepository_CorruptRowsSurfaceErrorsOrAreTolerated(t *testing.T) {
 	r := newTestRepo(t)
 	defer r.Close()
-	_ = r.Save(newTask("bad", domain.StatusQueued, time.Now()))
+	_ = r.Save(context.Background(), newTask("bad", domain.StatusQueued, time.Now()))
 
 	// Corrupt tags are tolerated (logged, not fatal).
 	if _, err := r.DB().Exec(`UPDATE tasks SET tags = '{not json'`); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := r.GetByID("bad"); err != nil || got.Tags != nil {
+	if got, err := r.GetByID(context.Background(), "bad"); err != nil || got.Tags != nil {
 		t.Fatalf("corrupt tags should be ignored: %+v %v", got, err)
 	}
 
@@ -101,12 +101,15 @@ func TestRepository_CorruptRowsSurfaceErrorsOrAreTolerated(t *testing.T) {
 		t.Fatal(err)
 	}
 	reads := map[string]func() error{
-		"GetByID":      func() error { _, err := r.GetByID("bad"); return err },
-		"GetAll":       func() error { _, err := r.GetAll(); return err },
-		"GetPending":   func() error { _, err := r.GetPending(); return err },
-		"ByProject":    func() error { _, err := r.GetByProjectPath("/projects/foo"); return err },
-		"ByProjStatus": func() error { _, err := r.GetByProjectPathAndStatus("/projects/foo", domain.StatusQueued); return err },
-		"ClaimNext":    func() error { _, err := r.ClaimNextQueued(); return err },
+		"GetByID":    func() error { _, err := r.GetByID(context.Background(), "bad"); return err },
+		"GetAll":     func() error { _, err := r.GetAll(context.Background()); return err },
+		"GetPending": func() error { _, err := r.GetPending(context.Background()); return err },
+		"ByProject":  func() error { _, err := r.GetByProjectPath(context.Background(), "/projects/foo"); return err },
+		"ByProjStatus": func() error {
+			_, err := r.GetByProjectPathAndStatus(context.Background(), "/projects/foo", domain.StatusQueued)
+			return err
+		},
+		"ClaimNext": func() error { _, err := r.ClaimNextQueued(context.Background()); return err },
 	}
 	for name, read := range reads {
 		if err := read(); err == nil {
@@ -118,7 +121,7 @@ func TestRepository_CorruptRowsSurfaceErrorsOrAreTolerated(t *testing.T) {
 func TestRepository_GetByProjectPathAndStatus_NoStatusesIsEmpty(t *testing.T) {
 	r := newTestRepo(t)
 	defer r.Close()
-	got, err := r.GetByProjectPathAndStatus("/projects/foo")
+	got, err := r.GetByProjectPathAndStatus(context.Background(), "/projects/foo")
 	if err != nil || len(got) != 0 {
 		t.Fatalf("got %v %v", got, err)
 	}

@@ -169,3 +169,30 @@ func TestRunMain_ReturnsOneWhenStartupFails(t *testing.T) {
 		t.Errorf("exit code %d, want 1", code)
 	}
 }
+
+func TestRun_ExitsWithAnErrorWhenAServerCannotBind(t *testing.T) {
+	isolate(t)
+	taken, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer taken.Close()
+	cfg := bootstrap.Config{
+		DBPath:       filepath.Join(t.TempDir(), "d.db"),
+		ListenAddr:   taken.Addr().String(),
+		MCPAddr:      freeAddr(t),
+		ScanInterval: time.Hour,
+	}
+	done := make(chan error, 1)
+	go func() {
+		done <- run(context.Background(), cfg, httpapi.NewLogHubWithWriter(io.Discard), io.Discard)
+	}()
+	select {
+	case err := <-done:
+		if err == nil || !strings.Contains(err.Error(), "server stopped") {
+			t.Fatalf("run() = %v, want a 'server stopped' error", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("run kept going with a dead server")
+	}
+}

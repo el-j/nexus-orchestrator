@@ -75,6 +75,16 @@ describe('AISessionsTreeProvider', () => {
     expect((await p.getChildren()).map((i) => i.session.id)).toEqual(['a-new', 'a-old', 'i', 'd']);
   });
 
+  it('copes with a missing lastActivity on either side of the comparison', async () => {
+    for (const order of [
+      [s({ id: 'x', lastActivity: undefined as unknown as string }), s({ id: 'y' })],
+      [s({ id: 'y' }), s({ id: 'x', lastActivity: undefined as unknown as string })],
+    ]) {
+      const p = new AISessionsTreeProvider(client(order));
+      expect((await p.getChildren()).map((i) => i.session.id)).toEqual(['y', 'x']);
+    }
+  });
+
   it('copes with a missing lastActivity when sorting', async () => {
     const p = new AISessionsTreeProvider(
       client([s({ id: 'x', lastActivity: undefined as unknown as string }), s({ id: 'y' })]),

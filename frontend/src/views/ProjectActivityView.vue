@@ -124,7 +124,8 @@ interface ProjectGroup {
 const allActivities = ref<AIActivity[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
-let pollInterval: ReturnType<typeof setInterval> | null = null;
+let pollInterval: ReturnType<typeof setInterval> | undefined;
+let disposed = false; // set on unmount so a fetch that finishes late starts no polling
 
 async function fetchActivities() {
   try {
@@ -195,11 +196,12 @@ onMounted(async () => {
     await fetchActivities();
   } finally {
     loading.value = false;
-    pollInterval = setInterval(fetchActivities, 15_000);
+    if (!disposed) pollInterval = setInterval(fetchActivities, 15_000);
   }
 });
 
 onUnmounted(() => {
-  if (pollInterval) clearInterval(pollInterval);
+  disposed = true;
+  clearInterval(pollInterval);
 });
 </script>
