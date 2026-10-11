@@ -11,7 +11,7 @@ test.describe('Backlog', () => {
     // Navigate to Backlog via sidebar
     await page
       .locator('aside nav')
-      .getByRole('button', { name: /^backlog$/i })
+      .getByRole('button', { name: /backlog/i })
       .click();
 
     // Backlog view h1 must appear — confirms view switched and rendered without error

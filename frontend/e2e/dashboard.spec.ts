@@ -19,7 +19,7 @@ test.describe('Dashboard', () => {
 
     // The default view nav item ("Task Queue") must be present
     // Sidebar labels are visible at ≥1024 px; Playwright default viewport is 1280x720
-    await expect(sidebar.getByRole('button', { name: /task queue/i })).toBeVisible();
+    await expect(sidebar.getByRole('button', { name: /mission control/i })).toBeVisible();
 
     // Settings nav item is always rendered alongside dashboard
     await expect(sidebar.getByRole('button', { name: /settings/i })).toBeVisible();
