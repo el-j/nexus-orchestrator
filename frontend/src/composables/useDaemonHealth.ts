@@ -9,7 +9,7 @@ const FAILURE_THRESHOLD = 3;
 export function useDaemonHealth() {
   const connected = ref(false);
   const lastChecked = ref<Date | null>(null);
-  let timer: ReturnType<typeof setInterval> | null = null;
+  let timer: ReturnType<typeof setInterval> | undefined;
   let consecutiveFailures = 0;
 
   async function ping() {
@@ -46,7 +46,7 @@ export function useDaemonHealth() {
   });
 
   onUnmounted(() => {
-    if (timer) clearInterval(timer);
+    clearInterval(timer);
   });
 
   return { connected, lastChecked };

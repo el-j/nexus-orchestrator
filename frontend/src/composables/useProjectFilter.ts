@@ -7,7 +7,7 @@ import { getAllTasks } from '../types/wails';
 export function useProjectFilter() {
   const { tasks } = useTasks();
   const allHistoryPaths = ref<string[]>([]);
-  let historyInterval: ReturnType<typeof setInterval> | null = null;
+  let historyInterval: ReturnType<typeof setInterval> | undefined;
 
   async function fetchHistoryPaths() {
     try {
@@ -24,7 +24,7 @@ export function useProjectFilter() {
   });
 
   onUnmounted(() => {
-    if (historyInterval) clearInterval(historyInterval);
+    clearInterval(historyInterval);
   });
 
   const projectList = computed<string[]>(() => {

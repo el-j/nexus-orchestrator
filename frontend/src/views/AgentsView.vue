@@ -347,7 +347,7 @@ const tabs = [
 const activeTab = ref('sessions');
 
 const agents = ref<DiscoveredAgent[]>([]);
-let discoveredInterval: ReturnType<typeof setInterval> | null = null;
+let discoveredInterval: ReturnType<typeof setInterval> | undefined;
 
 const activeCount = computed(() => sessions.value.filter((s) => s.status === 'active').length);
 
@@ -465,13 +465,16 @@ function shortWorkingDir(dir: string): string {
   return dir.split('/').filter(Boolean).slice(-2).join('/');
 }
 
+let agentsDisposed = false; // set on unmount so a load that finishes late starts no polling
 onMounted(async () => {
   await loadAgents();
+  if (agentsDisposed) return;
   discoveredInterval = setInterval(loadAgents, 30_000);
 });
 
 onUnmounted(() => {
-  if (discoveredInterval) clearInterval(discoveredInterval);
+  agentsDisposed = true;
+  clearInterval(discoveredInterval);
 });
 
 const selectedAgent = ref('');

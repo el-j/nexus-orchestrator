@@ -23,7 +23,7 @@ export function extractParentPlan(file: DiscoveredPlanFile): string | null {
 
 /** Last path segment. */
 export function basename(path: string): string {
-  return path.split('/').pop() ?? path;
+  return path.slice(path.lastIndexOf('/') + 1);
 }
 
 /** Shortens text to `max` characters, adding an ellipsis. */

@@ -10,7 +10,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 const props = defineProps<{ lastRefreshed: Date | null }>();
 
 const now = ref(Date.now());
-let timer: ReturnType<typeof setInterval> | null = null;
+let timer: ReturnType<typeof setInterval> | undefined;
 
 onMounted(() => {
   timer = setInterval(() => {
@@ -18,7 +18,7 @@ onMounted(() => {
   }, 5000);
 });
 onUnmounted(() => {
-  if (timer) clearInterval(timer);
+  clearInterval(timer);
 });
 
 const label = computed(() => {

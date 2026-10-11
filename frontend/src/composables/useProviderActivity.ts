@@ -13,7 +13,7 @@ export interface ProviderModelState {
 export function useProviderActivity() {
   const providerStates = ref<ProviderModelState[]>([]);
   const error = ref<string | null>(null);
-  let interval: ReturnType<typeof setInterval> | null = null;
+  let interval: ReturnType<typeof setInterval> | undefined;
 
   async function refresh() {
     try {
@@ -58,7 +58,7 @@ export function useProviderActivity() {
     interval = setInterval(() => void refresh(), 15_000);
   });
   onUnmounted(() => {
-    if (interval) clearInterval(interval);
+    clearInterval(interval);
   });
 
   return { providerStates, error, refresh };
