@@ -22,6 +22,10 @@ function statusEmoji(status: TaskStatus): string {
       return '📏';
     case 'NO_PROVIDER':
       return '🔌';
+    case 'DRAFT':
+      return '📝';
+    case 'BACKLOG':
+      return '📋';
     default:
       return '❓';
   }
@@ -43,6 +47,10 @@ function statusIcon(status: TaskStatus): vscode.ThemeIcon {
       return new vscode.ThemeIcon('file-binary');
     case 'NO_PROVIDER':
       return new vscode.ThemeIcon('plug');
+    case 'DRAFT':
+      return new vscode.ThemeIcon('edit');
+    case 'BACKLOG':
+      return new vscode.ThemeIcon('checklist');
     default:
       return new vscode.ThemeIcon('question');
   }

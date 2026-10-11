@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { NexusClient, AISession } from './nexusClient';
 
 export class AISessionItem extends vscode.TreeItem {
@@ -15,8 +14,9 @@ export class AISessionItem extends vscode.TreeItem {
 function buildDescription(s: AISession): string {
   let desc = `[${s.source}]`;
   if (s.projectPath) {
-    const parts = s.projectPath.split(path.sep).filter(Boolean);
-    const short = parts.slice(-2).join(path.sep);
+    // The daemon may report either separator style regardless of the editor's OS.
+    const parts = s.projectPath.split(/[\\/]/).filter(Boolean);
+    const short = parts.slice(-2).join('/');
     desc += ` ${short}`;
   }
   return desc;
@@ -49,7 +49,9 @@ function buildTooltip(s: AISession): vscode.MarkdownString {
   return new vscode.MarkdownString(lines.join('\n\n'));
 }
 
-export class AISessionsTreeProvider implements vscode.TreeDataProvider<AISessionItem>, vscode.Disposable {
+export class AISessionsTreeProvider
+  implements vscode.TreeDataProvider<AISessionItem>, vscode.Disposable
+{
   private readonly _onDidChangeTreeData = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData: vscode.Event<void> = this._onDidChangeTreeData.event;
 
@@ -91,14 +93,13 @@ export class AISessionsTreeProvider implements vscode.TreeDataProvider<AISession
     }
 
     const sorted = [...this.sessions].sort((a, b) => {
-      const order = (s: AISession) =>
-        s.status === 'active' ? 0 : s.status === 'idle' ? 1 : 2;
+      const order = (s: AISession) => (s.status === 'active' ? 0 : s.status === 'idle' ? 1 : 2);
       const ord = order(a) - order(b);
       if (ord !== 0) return ord;
       // within same status, most recent first
       return (b.lastActivity ?? '').localeCompare(a.lastActivity ?? '');
     });
 
-    return sorted.map(s => new AISessionItem(s));
+    return sorted.map((s) => new AISessionItem(s));
   }
 }

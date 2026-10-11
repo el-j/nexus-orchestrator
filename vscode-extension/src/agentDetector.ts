@@ -37,6 +37,7 @@ export class AgentDetector implements vscode.Disposable {
   private intervalHandle: ReturnType<typeof setInterval> | undefined;
   private sessionMap = new Map<string, string>(); // externalId → sessionId
   private isDisposed = false;
+  private ticking = false;
   private machineId: string;
 
   constructor(
@@ -89,7 +90,10 @@ export class AgentDetector implements vscode.Disposable {
   }
 
   private async tick(): Promise<void> {
-    if (this.isDisposed) return;
+    // A slow daemon can make a tick outlast the 30s interval; overlapping ticks would
+    // both see an agent as unregistered and register it twice.
+    if (this.isDisposed || this.ticking) return;
+    this.ticking = true;
     try {
       const detected = await this.detectAll();
       const currentIds = new Set(detected.map((a) => a.externalId));
@@ -117,7 +121,10 @@ export class AgentDetector implements vscode.Disposable {
       for (const [externalId, sessionId] of this.sessionMap) {
         if (currentIds.has(externalId)) {
           try {
-            await this.client.heartbeatSession(sessionId);
+            // false = the daemon forgot this session; drop it so the next tick registers it again.
+            if ((await this.client.heartbeatSession(sessionId)) === false) {
+              this.sessionMap.delete(externalId);
+            }
           } catch (_) {
             /* silent */
           }
@@ -139,6 +146,8 @@ export class AgentDetector implements vscode.Disposable {
       this._onDidChange.fire();
     } catch (_) {
       /* silent */
+    } finally {
+      this.ticking = false;
     }
   }
 

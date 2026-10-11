@@ -253,12 +253,12 @@ describe('providers and sessions', () => {
     );
   });
 
-  it('heartbeats, tolerating a 404 (session was cleaned up) but not other errors', async () => {
+  it('heartbeats: true when alive, false when the daemon forgot the session, throws otherwise', async () => {
     fetchMock.mockImplementation(() => empty(200));
-    await client.heartbeatSession('s1');
+    await expect(client.heartbeatSession('s1')).resolves.toBe(true);
     expect(last().url).toBe(`${BASE}/api/ai-sessions/s1/heartbeat`);
     fetchMock.mockImplementation(() => text('', 404));
-    await expect(client.heartbeatSession('s1')).resolves.toBeUndefined();
+    await expect(client.heartbeatSession('s1')).resolves.toBe(false);
     fetchMock.mockImplementation(() => json({ error: 'boom' }, 500));
     await expect(client.heartbeatSession('s1')).rejects.toThrow(
       'heartbeat session s1: HTTP 500 — boom',

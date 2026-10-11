@@ -119,21 +119,23 @@ export class SessionMonitor {
       return;
     }
     try {
-      await this.client.heartbeatSession(this.sessionId);
-    } catch (error) {
-      // If the session no longer exists on the server (e.g. cleaned up after
-      // being idle), fall back to a full re-registration.
-      logNexusActivity('copilot', `heartbeat failed (${error}); re-registering`);
-      if (this.isReregistering) {
+      if ((await this.client.heartbeatSession(this.sessionId)) !== false) {
         return;
       }
-      this.isReregistering = true;
-      this.sessionId = undefined;
-      try {
-        await this.detectAndRegister();
-      } finally {
-        this.isReregistering = false;
-      }
+      // The daemon no longer knows this session (purged or restarted): register again.
+      logNexusActivity('copilot', 'session no longer known to the daemon; re-registering');
+    } catch (error) {
+      logNexusActivity('copilot', `heartbeat failed (${error}); re-registering`);
+    }
+    if (this.isReregistering) {
+      return;
+    }
+    this.isReregistering = true;
+    this.sessionId = undefined;
+    try {
+      await this.detectAndRegister();
+    } finally {
+      this.isReregistering = false;
     }
   }
 

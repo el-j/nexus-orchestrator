@@ -10,7 +10,15 @@ import { z } from 'zod';
 // ---- Domain types (mirror internal/core/domain/task.go) ----
 
 export type TaskStatus =
-  'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'TOO_LARGE' | 'NO_PROVIDER';
+  | 'QUEUED'
+  | 'PROCESSING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'TOO_LARGE'
+  | 'NO_PROVIDER'
+  | 'DRAFT'
+  | 'BACKLOG';
 
 export type CommandType = 'plan' | 'execute' | 'auto' | '';
 
@@ -218,6 +226,8 @@ const TaskStatusSchema = z.enum([
   'CANCELLED',
   'TOO_LARGE',
   'NO_PROVIDER',
+  'DRAFT',
+  'BACKLOG',
 ]);
 
 const TaskSchema = z
@@ -394,12 +404,18 @@ export class NexusClient {
     if (!resp.ok) throw await this.failure(`deregister session ${id}`, resp);
   }
 
-  /** Send a heartbeat for an existing session to refresh its last-activity timestamp. */
-  async heartbeatSession(id: string): Promise<void> {
+  /**
+   * Send a heartbeat for an existing session to refresh its last-activity timestamp.
+   * Resolves true when the session is alive, false when the daemon no longer knows it
+   * (404: it was purged or the daemon restarted), in which case the caller must
+   * register again. Rejects on any other failure.
+   */
+  async heartbeatSession(id: string): Promise<boolean> {
     const url = `${this.baseUrl}/api/ai-sessions/${encodeURIComponent(id)}/heartbeat`;
     const resp = await this.send(url, { method: 'POST' });
-    // 404 means the session was cleaned up — the caller should re-register.
-    if (!resp.ok && resp.status !== 404) throw await this.failure(`heartbeat session ${id}`, resp);
+    if (resp.status === 404) return false;
+    if (!resp.ok) throw await this.failure(`heartbeat session ${id}`, resp);
+    return true;
   }
 
   /** Return all registered AI sessions. */

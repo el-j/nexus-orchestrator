@@ -171,3 +171,53 @@ describe('SessionMonitor', () => {
     expect(claimTask).not.toHaveBeenCalled();
   });
 });
+
+describe('SessionMonitor: session purged by the daemon', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    selectChatModelsMock.mockResolvedValue([{ id: 'copilot-model' }]);
+  });
+
+  it('registers again when the heartbeat says the daemon no longer knows the session', async () => {
+    const client = buildClient({
+      heartbeatSession: vi.fn().mockResolvedValue(false),
+      registerSession: vi
+        .fn()
+        .mockResolvedValueOnce({ id: 'old' })
+        .mockResolvedValue({ id: 'new' }),
+    });
+    const { SessionMonitor } = await import('./sessionMonitor');
+    const monitor = new SessionMonitor(client, buildContext());
+    await monitor.start();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(client.registerSession).toHaveBeenCalledTimes(2);
+    expect(logNexusActivityMock).toHaveBeenCalledWith(
+      'copilot',
+      expect.stringContaining('no longer known'),
+    );
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(client.heartbeatSession).toHaveBeenLastCalledWith('new');
+  });
+
+  it('does not start a second re-registration while one is running', async () => {
+    let release!: () => void;
+    const client = buildClient({
+      heartbeatSession: vi.fn().mockResolvedValue(false),
+      registerSession: vi
+        .fn()
+        .mockResolvedValueOnce({ id: 'old' })
+        .mockImplementationOnce(() => new Promise((r) => (release = () => r({ id: 'new' })))),
+    });
+    const { SessionMonitor } = await import('./sessionMonitor');
+    const monitor = new SessionMonitor(client, buildContext());
+    await monitor.start();
+    await vi.advanceTimersByTimeAsync(60_000); // starts re-registering and hangs
+    (monitor as unknown as { sessionId: string }).sessionId = 'old'; // as if a concurrent tick saw an id
+    await (monitor as unknown as { heartbeat(): Promise<void> }).heartbeat();
+    expect(client.registerSession).toHaveBeenCalledTimes(2);
+    release();
+    await vi.advanceTimersByTimeAsync(0);
+  });
+});
