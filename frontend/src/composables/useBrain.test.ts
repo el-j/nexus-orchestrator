@@ -84,7 +84,8 @@ describe('useBrain', () => {
     const mockResponse = {
       projectPath: '/test/repo',
       sections: [],
-      totalTokens: 0,
+      tokensUsed: 0,
+      tokenBudget: 400,
       truncated: false,
     };
     vi.mocked(wails.getProjectContext).mockResolvedValue(mockResponse);

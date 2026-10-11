@@ -428,8 +428,10 @@ Aggregates the top-level macro context for LLM system prompts.
 ```json
 {
   "projectPath": "/path/to/project",
-  "sections": [...],
-  "totalTokens": 380,
+  "sections": [{ "kind": "architecture", "topic": "Layers", "content": "...", "tokens": 120 }],
+  "suggestedFiles": ["internal/core/services/orchestrator.go"],
+  "tokensUsed": 380,
+  "tokenBudget": 400,
   "truncated": false
 }
 ```
@@ -447,14 +449,14 @@ Performs BM25 search against the SQLite FTS5 index.
 **Response:** `200 OK`
 
 ```json
-[
-  {
-    "title": "Authentication Provider",
-    "content": "...",
-    "source": "auth.md"
-  }
-]
+{
+  "results": [
+    { "kind": "architecture", "topic": "Authentication Provider", "content": "...", "tokens": 85 }
+  ]
+}
 ```
+
+`limit` is the maximum number of results (default 5).
 
 ---
 
@@ -488,7 +490,8 @@ Get focused context for a project based on a specific question. Returns context 
 {
   "projectPath": "/path/to/project",
   "sections": [...],
-  "totalTokens": 390,
+  "tokensUsed": 390,
+  "tokenBudget": 400,
   "truncated": false
 }
 ```

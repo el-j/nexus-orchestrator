@@ -162,7 +162,12 @@ export interface ProjectKnowledge {
 export interface ContextResponse {
   projectPath: string;
   sections: ContextSection[];
-  totalTokens: number;
+  /** File paths the context suggests opening next. */
+  suggestedFiles?: string[];
+  /** Tokens used by `sections`. */
+  tokensUsed: number;
+  /** The budget the sections were assembled within. */
+  tokenBudget: number;
   truncated: boolean;
 }
 
