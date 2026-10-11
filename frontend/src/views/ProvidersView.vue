@@ -463,9 +463,13 @@ const groupedAgents = computed(() => {
 
 const agents = ref<DiscoveredAgent[]>([]);
 async function loadAgents() {
-  const base = await resolveServerUrl();
-  const res = await fetch(`${base}/api/ai-sessions/discovered`);
-  if (res.ok) agents.value = await res.json();
+  try {
+    const base = await resolveServerUrl();
+    const res = await fetch(`${base}/api/ai-sessions/discovered`);
+    if (res.ok) agents.value = ((await res.json()) as DiscoveredAgent[] | null) ?? [];
+  } catch {
+    /* the tools list is informational; keep what we have while the daemon is unreachable */
+  }
 }
 onMounted(() => {
   loadAgents();
@@ -553,7 +557,9 @@ function closeForm() {
 }
 
 async function handleSave(cfg: Partial<ProviderConfig>) {
-  if (editingConfig.value) {
+  // A pre-filled form for a not-yet-saved provider (promote / deep link) has id ''
+  // and must be created, not updated.
+  if (editingConfig.value?.id) {
     await updateProviderConfig({ ...editingConfig.value, ...cfg } as ProviderConfig);
   } else {
     await addProviderConfig(cfg);
