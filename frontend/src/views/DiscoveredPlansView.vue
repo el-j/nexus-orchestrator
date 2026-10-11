@@ -240,18 +240,6 @@
 </template>
 
 <script setup lang="ts">
-import {
-  kindLabel,
-  extractParentPlan,
-  basename,
-  truncate,
-  formatDate,
-  kindColors,
-  kindBadgeClass,
-  parseStatus,
-  statusBadgeColors,
-  statusBadgeClass,
-} from '../utils/plans';
 import { computed, ref, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import ProjectBrainCard from '../components/ProjectBrainCard.vue';
@@ -259,6 +247,16 @@ import { useDiscoveredPlans } from '../composables/useDiscoveredPlans';
 import { currentProject } from '../composables/useProjectState';
 import { createDraft } from '../types/wails';
 import type { PlanFileKind, DiscoveredPlanFile } from '../types/domain';
+import {
+  kindLabel,
+  extractParentPlan,
+  basename,
+  truncate,
+  formatDate,
+  kindBadgeClass,
+  parseStatus,
+  statusBadgeClass,
+} from '../utils/plans';
 
 const { plans, loading, error, scan } = useDiscoveredPlans(currentProject);
 
