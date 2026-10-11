@@ -153,7 +153,7 @@ cmd/ is commands
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	count, err := b.IngestFromFile(ctx, "/proj", filePath)
+	count, err := b.IngestFromFile(ctx, tempDir, filePath)
 	if err != nil {
 		t.Fatalf("IngestFromFile: %v", err)
 	}
@@ -269,7 +269,7 @@ func TestBrainService_IngestFromFile_FileNotFound(t *testing.T) {
 	b := services.NewBrainService(repo, nil)
 	ctx := context.Background()
 
-	_, err := b.IngestFromFile(ctx, "/proj", "/nonexistent/path/file.md")
+	_, err := b.IngestFromFile(ctx, t.TempDir(), "missing.md")
 	if err == nil {
 		t.Error("Expected error for non-existent file, got nil")
 	}

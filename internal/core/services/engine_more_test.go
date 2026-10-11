@@ -258,7 +258,7 @@ func TestIngestFromFile_SectionHeadingWithoutBodyAtEOF(t *testing.T) {
 	repo := &mockKnowledgeRepo{}
 	b := services.NewBrainService(repo, nil)
 	md := writeMD(t, "# T\nA sufficiently long preamble paragraph here.\n## Dangling heading") // no trailing newline
-	if n, err := b.IngestFromFile(bg, "/p", md); err != nil || n != 1 {
+	if n, err := ingestMD(b, md); err != nil || n != 1 {
 		t.Errorf("n=%d err=%v", n, err)
 	}
 }

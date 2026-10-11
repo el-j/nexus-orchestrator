@@ -297,6 +297,18 @@ Parses and ingests a markdown file into the project context brain.
 }
 ```
 
+`filePath` is resolved relative to `projectPath` when it is not absolute. Because the daemon reads the file
+on the caller's behalf, the request is confined (the same rules apply to the MCP `ingest` tool, the CLI, and
+the desktop app):
+
+- the file, **after resolving symlinks**, must be inside `projectPath` (a symlink that points out is refused);
+- it must be a regular file of at most **1 MiB**;
+- anything below `.ssh`, `.gnupg`, `.aws`, `.kube`, `.azure`, `.docker` or `.git`, and files named `.env*`,
+  `.netrc`, `.npmrc`, `id_rsa` or `id_ed25519` are refused even inside the project;
+- `projectPath` must be an existing directory other than the filesystem root;
+- to ingest shared templates that live elsewhere, list their directories in `NEXUS_INGEST_ALLOWED_DIRS`
+  (separated like `PATH`).
+
 **Response:** `200 OK`
 
 ```json
@@ -304,6 +316,9 @@ Parses and ingests a markdown file into the project context brain.
   "ingestedSections": 5
 }
 ```
+
+**Errors:** `403` when the path is refused (`{"error": "path not allowed: … is outside the project"}`), `404`
+when the file does not exist, `400` when `projectPath` or `filePath` is missing.
 
 ---
 
@@ -695,6 +710,7 @@ A task moves through these states:
 | `NEXUS_MCP_TOKEN`           | —                            | Require `Authorization: Bearer` on the MCP API  |
 | `NEXUS_ALLOWED_ORIGINS`     | —                            | Extra browser origins allowed (comma-separated) |
 | `NEXUS_ALLOWED_HOSTS`       | —                            | Extra `Host` names allowed on loopback binds    |
+| `NEXUS_INGEST_ALLOWED_DIRS` | —                            | Extra directories brain ingestion may read from |
 | `NEXUS_SCAN_INTERVAL`       | `30s`                        | Provider re-scan interval (must be > 0)         |
 | `NEXUS_ADDR`                | `http://127.0.0.1:63987`     | Daemon URL used by `nexus` and `nexus-submit`   |
 | `NEXUS_MCP_URL`             | `http://127.0.0.1:63988/mcp` | MCP endpoint used by `nexus-mcp-stdio`          |

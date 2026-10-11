@@ -15,6 +15,11 @@ var ErrNotFound = errors.New("task not found")
 // should back off and retry.
 var ErrQueueFull = errors.New("queue is full")
 
+// ErrPathNotAllowed is returned when a client-supplied file path is outside what
+// the daemon may read on its behalf (outside the project, a special file, too large,
+// or a credentials location).
+var ErrPathNotAllowed = errors.New("path not allowed")
+
 // ErrNoPlan is returned when an execute task is submitted but no prior plan exists for the project.
 var ErrNoPlan = errors.New("no plan exists; planning required before execution")
 

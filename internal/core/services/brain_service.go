@@ -212,12 +212,20 @@ func (b *BrainServiceImpl) IngestKnowledge(ctx context.Context, k domain.Project
 }
 
 // IngestFromFile parses a CLAUDE.md-style markdown file and ingests each ## section.
+//
+// filePath is client-supplied, so it is confined: relative paths are taken from
+// projectPath and the resolved file must lie inside it (see resolveIngestPath).
+// Violations wrap domain.ErrPathNotAllowed.
 func (b *BrainServiceImpl) IngestFromFile(ctx context.Context, projectPath, filePath string) (int, error) {
-	data, err := os.ReadFile(filePath)
+	real, err := resolveIngestPath(projectPath, filePath)
+	if err != nil {
+		return 0, err
+	}
+	data, err := os.ReadFile(real)
 	if err != nil {
 		return 0, fmt.Errorf("brain_service: ingest from file: %w", err)
 	}
-	src := "file:" + filepath.Base(filePath)
+	src := "file:" + filepath.Base(real)
 	// Split on "## " to get sections; the first element is preamble before the first ##.
 	// A leading "\n" makes a file that starts directly with "## Heading" split into
 	// an empty preamble plus a normal first section, instead of the heading being

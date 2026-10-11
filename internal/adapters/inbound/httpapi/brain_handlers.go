@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -34,7 +36,15 @@ func (s *Server) handleIngestKnowledge(w http.ResponseWriter, r *http.Request) {
 
 	count, err := s.brain.IngestFromFile(r.Context(), req.ProjectPath, req.FilePath)
 	if err != nil {
-		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		switch {
+		case errors.Is(err, domain.ErrPathNotAllowed):
+			writeJSONError(w, err.Error(), http.StatusForbidden)
+		case errors.Is(err, os.ErrNotExist):
+			writeJSONError(w, "file not found", http.StatusNotFound)
+		default:
+			log.Printf("httpapi: ingest %q: %v", req.FilePath, err)
+			writeJSONError(w, "internal server error", http.StatusInternalServerError)
+		}
 		return
 	}
 

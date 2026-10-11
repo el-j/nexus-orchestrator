@@ -46,6 +46,14 @@ func (f *failingKnowledgeRepo) SearchFTS(ctx context.Context, p, q string, n int
 	return f.mockKnowledgeRepo.SearchFTS(ctx, p, q, n)
 }
 
+// ingestMD ingests md with its own directory acting as the project, which is the only
+// shape the path-confinement policy accepts.
+func ingestMD(b interface {
+	IngestFromFile(context.Context, string, string) (int, error)
+}, md string) (int, error) {
+	return b.IngestFromFile(bg, filepath.Dir(md), md)
+}
+
 func writeMD(t *testing.T, body string) string {
 	t.Helper()
 	p := filepath.Join(t.TempDir(), "CLAUDE.md")
@@ -68,7 +76,7 @@ func TestIngestFromFile_FileStartingWithSectionHeadingKeepsItsHeading(t *testing
 	b := services.NewBrainService(repo, nil)
 	md := writeMD(t, "## Architecture\nThe system uses a hexagonal layout with ports.\n\n## Conventions\nAlways wrap errors with context using fmt.Errorf.\n")
 
-	n, err := b.IngestFromFile(bg, "/proj", md)
+	n, err := ingestMD(b, md)
 	if err != nil || n != 2 {
 		t.Fatalf("n=%d err=%v", n, err)
 	}
@@ -90,7 +98,7 @@ func TestIngestFromFile_PreambleSectionsAndShortContent(t *testing.T) {
 		"## Glossary\nTerm one means this and term two means that\n"+
 		"## Tiny\nshort\n"+
 		"## NoBody\n")
-	n, err := b.IngestFromFile(bg, "/proj", md)
+	n, err := ingestMD(b, md)
 	if err != nil || n != 4 {
 		t.Fatalf("n=%d err=%v (sections under 20 chars and body-less headings are skipped)", n, err)
 	}
@@ -111,10 +119,10 @@ func TestIngestFromFile_PreambleSectionsAndShortContent(t *testing.T) {
 func TestIngestFromFile_TitleOnlyOrTrivialPreambleIsSkipped(t *testing.T) {
 	repo := &mockKnowledgeRepo{}
 	b := services.NewBrainService(repo, nil)
-	if n, err := b.IngestFromFile(bg, "/p", writeMD(t, "# Only a title\n")); err != nil || n != 0 {
+	if n, err := ingestMD(b, writeMD(t, "# Only a title\n")); err != nil || n != 0 {
 		t.Errorf("title only: n=%d err=%v", n, err)
 	}
-	if n, err := b.IngestFromFile(bg, "/p", writeMD(t, "# T\ntiny\n")); err != nil || n != 0 {
+	if n, err := ingestMD(b, writeMD(t, "# T\ntiny\n")); err != nil || n != 0 {
 		t.Errorf("trivial preamble: n=%d err=%v", n, err)
 	}
 }
@@ -123,7 +131,7 @@ func TestIngestFromFile_StorageFailures(t *testing.T) {
 	failing := &failingKnowledgeRepo{fail: map[string]bool{"Save": true}}
 	b := services.NewBrainService(failing, nil)
 	md := writeMD(t, "# T\nA sufficiently long preamble paragraph here.\n## A\nSection content that is long enough to keep.\n")
-	if n, err := b.IngestFromFile(bg, "/p", md); err == nil || n != 0 || !strings.Contains(err.Error(), "all 2 sections failed") {
+	if n, err := ingestMD(b, md); err == nil || n != 0 || !strings.Contains(err.Error(), "all 2 sections failed") {
 		t.Errorf("every save failing must be an error: n=%d err=%v", n, err)
 	}
 }
@@ -140,7 +148,7 @@ func TestClassifySection_ViaIngestedKinds(t *testing.T) {
 	for h := range headings {
 		body += "## " + h + "\nThis body is comfortably longer than twenty characters.\n"
 	}
-	if _, err := b.IngestFromFile(bg, "/p", writeMD(t, body)); err != nil {
+	if _, err := ingestMD(b, writeMD(t, body)); err != nil {
 		t.Fatal(err)
 	}
 	got := topics(repo.entries)
@@ -271,7 +279,7 @@ func TestInitProject_ExplicitPathAndErrors(t *testing.T) {
 	repo := &mockKnowledgeRepo{status: domain.BrainStatus{ProjectPath: "/p", EntryCount: 1}}
 	b := services.NewBrainService(repo, nil)
 	md := writeMD(t, "# T\nA sufficiently long preamble paragraph here.\n")
-	st, err := b.InitProject(bg, t.TempDir(), md)
+	st, err := b.InitProject(bg, filepath.Dir(md), md)
 	if err != nil || st.EntryCount != 1 || len(repo.entries) != 1 {
 		t.Errorf("explicit path: %+v %v", st, err)
 	}
