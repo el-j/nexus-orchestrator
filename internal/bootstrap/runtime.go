@@ -168,7 +168,11 @@ func Start(ctx context.Context, cfg Config, logHub *httpapi.LogHub) (*Runtime, e
 	}
 
 	rt.goRun(func() {
-		if err := httpapi.StartServerFull(runCtx, orch, rt.Brain, cfg.ListenAddr, rt.Activity, logHub); err != nil {
+		if err := httpapi.StartServerWith(runCtx, orch, rt.Brain, cfg.ListenAddr, httpapi.Extras{
+			Activity: rt.Activity,
+			LogHub:   logHub,
+			MCPAddr:  cfg.MCPAddr,
+		}); err != nil {
 			log.Printf("httpapi: %v", err)
 		}
 	})

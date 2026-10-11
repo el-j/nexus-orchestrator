@@ -37,6 +37,17 @@ By default the daemon trusts local callers. Three layers protect it:
   `localhost` or an IP literal, which defeats DNS-rebinding. Add host names with `NEXUS_ALLOWED_HOSTS`. A
   daemon deliberately bound to all interfaces (containers, LAN) skips the Host check - set `NEXUS_API_TOKEN` there.
 
+### Discovery
+
+```
+GET /.well-known/nexus.json
+```
+
+A public beacon (no token needed) that tells a tool or agent where everything is: `api.base_url`, `api.howto`,
+`api.health`, `api.events`, and `mcp.endpoint`, the full URL of the MCP server on its separate port. The MCP
+endpoint is built from `NEXUS_MCP_ADDR`; when that address has no host (`:63988`, `0.0.0.0:63988`) the host
+you used to reach the REST API is reused. `mcp.endpoint` is omitted when the daemon does not know the address.
+
 Error bodies are always `{"error": "<message>"}`. Server faults (`5xx`) never include internal details.
 
 ### Submit Task

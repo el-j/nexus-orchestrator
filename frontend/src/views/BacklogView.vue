@@ -56,8 +56,8 @@ let interval: ReturnType<typeof setInterval> | null = null;
 const { on, off, connected } = useGlobalSSE();
 
 function sseHandler(data: { type: string; [key: string]: unknown }) {
-  if (data.type === 'connected' || data.type === 'log') return;
-  void refresh();
+  // Only task lifecycle events change the backlog; logs and activity share the stream.
+  if (data.type.startsWith('task.')) void refresh();
 }
 
 function startPolling() {

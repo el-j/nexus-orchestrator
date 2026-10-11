@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 )
 
@@ -64,7 +65,30 @@ type nexusDiscoveryAPI struct {
 type nexusDiscoveryMCP struct {
 	Protocol string `json:"protocol"`
 	Version  string `json:"version"`
+	// Endpoint is the full URL of the MCP server, present when the daemon knows its address.
+	Endpoint string `json:"endpoint,omitempty"`
 	Note     string `json:"note"`
+}
+
+// mcpEndpoint turns the MCP listen address into a URL clients can use. A listen
+// address without a host (":63988", "0.0.0.0:63988") is reached through the same
+// host the caller used to reach the REST API. It returns "" when unknown.
+func mcpEndpoint(scheme, requestHost, mcpAddr string) string {
+	if mcpAddr == "" {
+		return ""
+	}
+	host, port, err := net.SplitHostPort(mcpAddr)
+	if err != nil {
+		return ""
+	}
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		h, _, splitErr := net.SplitHostPort(requestHost)
+		if splitErr != nil {
+			h = requestHost
+		}
+		host = h
+	}
+	return scheme + "://" + net.JoinHostPort(host, port) + "/mcp"
 }
 
 // buildHowToDoc constructs the full integration guide using the request's base URL
@@ -249,6 +273,7 @@ func (s *Server) handleWellKnownNexus(w http.ResponseWriter, r *http.Request) {
 		MCP: nexusDiscoveryMCP{
 			Protocol: "json-rpc-2.0",
 			Version:  "2024-11-05",
+			Endpoint: mcpEndpoint(scheme, r.Host, s.mcpAddr),
 			Note:     "MCP server runs on a separate port — default :63988. Use NEXUS_MCP_ADDR to override.",
 		},
 		Capabilities: []string{

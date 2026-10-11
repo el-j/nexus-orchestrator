@@ -32,6 +32,7 @@ type Server struct {
 	activitySvc activityQuerier
 	brain       ports.BrainService
 	guard       *httpguard.Policy
+	mcpAddr     string // listen address of the companion MCP server, advertised in discovery
 }
 
 // NewServer constructs a Server. hub may be nil to disable SSE.
@@ -43,6 +44,13 @@ func NewServer(orch ports.Orchestrator, brain ports.BrainService, hub *Hub) *Ser
 // the handler still rejects foreign browser origins but does not check Host.
 func (s *Server) WithGuard(g *httpguard.Policy) *Server {
 	s.guard = g
+	return s
+}
+
+// WithMCPAddr records the listen address of the companion MCP server so the
+// discovery document can advertise where it actually is.
+func (s *Server) WithMCPAddr(addr string) *Server {
+	s.mcpAddr = addr
 	return s
 }
 
@@ -294,6 +302,24 @@ type activityBroadcasterSetter interface {
 // StartServerFull is like StartServer but also wires an activity service for
 // the activity observatory endpoints and SSE broadcasting of activity events.
 func StartServerFull(ctx context.Context, orch ports.Orchestrator, brain ports.BrainService, addr string, actSvc activityQuerier, logHub ...*LogHub) error {
+	extras := Extras{Activity: actSvc}
+	if len(logHub) > 0 {
+		extras.LogHub = logHub[0]
+	}
+	return StartServerWith(ctx, orch, brain, addr, extras)
+}
+
+// Extras are the optional collaborators of StartServerWith.
+type Extras struct {
+	Activity activityQuerier // activity timeline service; nil disables /api/activities
+	LogHub   *LogHub         // log capture for /api/logs; nil disables it
+	MCPAddr  string          // companion MCP server address, advertised by /.well-known/nexus.json
+}
+
+// StartServerWith starts the REST API with every optional collaborator in
+// Extras. It blocks until ctx is cancelled.
+func StartServerWith(ctx context.Context, orch ports.Orchestrator, brain ports.BrainService, addr string, extras Extras) error {
+	actSvc, logHub := extras.Activity, extras.LogHub
 	hub := NewHub()
 	if bs, ok := orch.(broadcasterSetter); ok {
 		bs.SetBroadcaster(hub)
@@ -303,9 +329,9 @@ func StartServerFull(ctx context.Context, orch ports.Orchestrator, brain ports.B
 			abs.SetBroadcaster(hub)
 		}
 	}
-	s := NewServer(orch, brain, hub).WithGuard(httpguard.New(addr))
-	if len(logHub) > 0 && logHub[0] != nil {
-		s.WithLogHub(logHub[0])
+	s := NewServer(orch, brain, hub).WithGuard(httpguard.New(addr)).WithMCPAddr(extras.MCPAddr)
+	if logHub != nil {
+		s.WithLogHub(logHub)
 	}
 	if actSvc != nil {
 		s.WithActivityService(actSvc)

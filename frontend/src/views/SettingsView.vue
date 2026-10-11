@@ -342,7 +342,13 @@ onMounted(async () => {
   try {
     const base = await resolveServerUrl();
     resolvedApiUrl.value = base;
+    // Best guess for daemons that predate mcp.endpoint in the discovery document.
     resolvedMcpUrl.value = base.replace(':63987', ':63988') + '/mcp';
+    const res = await fetch(`${base}/.well-known/nexus.json`);
+    if (res.ok) {
+      const doc = (await res.json()) as { mcp?: { endpoint?: string } };
+      if (doc.mcp?.endpoint) resolvedMcpUrl.value = doc.mcp.endpoint;
+    }
   } catch {
     /* keep defaults */
   }
