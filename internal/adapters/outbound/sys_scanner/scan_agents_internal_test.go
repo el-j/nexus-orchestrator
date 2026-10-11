@@ -25,13 +25,14 @@ func TestScanAgents_MergesProbesAndLinksSubAgents(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(home, ".config", "claude"), 0o750); err != nil {
 		t.Fatal(err)
 	}
-	// A project session with a parent and a sidechain (sub-agent) session.
-	proj := base64.StdEncoding.EncodeToString([]byte("/work/proj"))
-	writeFile(t, filepath.Join(home, ".claude", "projects", proj, "parent.jsonl"),
-		`{"agentId":"parent-1","model":"opus","cwd":"/work/proj"}`+"\n")
-	otherProj := base64.StdEncoding.EncodeToString([]byte("/work/other"))
-	writeFile(t, filepath.Join(home, ".claude", "projects", otherProj, "child.jsonl"),
-		`{"agentId":"child-1","isSidechain":true,"parentUuid":"claude-cli-`+proj+`"}`+"\n")
+	// A project with one main session and one sub-agent, in Claude Code's real layout.
+	proj := "-work-proj"
+	writeFile(t, filepath.Join(home, ".claude", "projects", proj, "sess-1.jsonl"),
+		`{"sessionId":"sess-1","cwd":"/work/proj","type":"assistant","message":{"model":"opus"}}`+"\n")
+	writeFile(t, filepath.Join(home, ".claude", "projects", proj, "sess-1", "subagents", "agent-child1.jsonl"),
+		`{"parentUuid":null,"isSidechain":true,"agentId":"child1","sessionId":"sess-1","cwd":"/work/proj"}`+"\n")
+	otherProj := "child-of-parent" // only used as the child's expected ID below
+	_ = otherProj
 
 	got, err := newTestScanner().ScanAgents(context.Background())
 	if err != nil {
@@ -49,13 +50,12 @@ func TestScanAgents_MergesProbesAndLinksSubAgents(t *testing.T) {
 		t.Errorf("desktop agent must merge config + process evidence: %+v", desktop)
 	}
 	parent := byID["claude-cli-"+proj]
-	child := byID["claude-cli-"+otherProj]
+	child := byID["claude-agent-child1"]
 	if parent.ID == "" || child.ID == "" {
 		t.Fatalf("session agents missing: %v", keys(byID))
 	}
-	if child.ParentAgentID != "claude-cli-"+proj {
-		// The sub-agent parent reference is the raw parentUuid; link only when it names a known agent.
-		t.Logf("child parent = %q", child.ParentAgentID)
+	if child.ParentAgentID != parent.ID {
+		t.Errorf("child must be linked to its project agent, parent = %q", child.ParentAgentID)
 	}
 	if len(parent.SubAgentIDs) != 1 || parent.SubAgentIDs[0] != child.ID {
 		t.Errorf("parent must list its sub-agent: %+v", parent.SubAgentIDs)
@@ -129,7 +129,8 @@ func TestParseClaudeSessionFile_Limits(t *testing.T) {
 	if a := parseClaudeSessionFile(filepath.Join(dir, "missing.jsonl"), 10); a != nil {
 		t.Errorf("missing file: %+v", a)
 	}
-	writeFile(t, p, `{"agentId":"x","isSidechain":true}`+"\n") // sidechain without parent: no parent link
+	// A message's parentUuid never names a parent agent, so it must not become one.
+	writeFile(t, p, `{"agentId":"x","isSidechain":true,"parentUuid":"some-message-uuid"}`+"\n")
 	if a := parseClaudeSessionFile(p, 10); a == nil || a.ParentAgentID != "" {
 		t.Errorf("%+v", a)
 	}
