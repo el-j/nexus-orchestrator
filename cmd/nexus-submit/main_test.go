@@ -110,3 +110,21 @@ func TestGetEnv(t *testing.T) {
 		t.Errorf("expected default, got %s", got)
 	}
 }
+
+func TestApplyRouting(t *testing.T) {
+	body := map[string]interface{}{}
+	ApplyRouting(body, "", "", "", "", 0, "")
+	if len(body) != 0 {
+		t.Fatalf("unset flags must not be sent, got %v", body)
+	}
+	ApplyRouting(body, "GitHub Copilot", "Ollama", "gpt-4o", "architect", 1, " a, ,b ")
+	want := map[string]interface{}{
+		"providerName": "GitHub Copilot", "providerHint": "Ollama", "modelId": "gpt-4o",
+		"role": "architect", "priority": 1, "tags": []string{"a", "b"},
+	}
+	got, _ := json.Marshal(body)
+	exp, _ := json.Marshal(want)
+	if string(got) != string(exp) {
+		t.Errorf("body = %s, want %s", got, exp)
+	}
+}

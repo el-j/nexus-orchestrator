@@ -189,6 +189,7 @@ func isFrontierProvider(p ports.LLMClient) bool {
 	return strings.Contains(name, "anthropic") ||
 		strings.Contains(name, "gemini") ||
 		strings.Contains(name, "openai") ||
+		strings.Contains(name, "copilot") ||
 		strings.Contains(name, "claude")
 }
 
@@ -197,6 +198,7 @@ func isLocalProvider(p ports.LLMClient) bool {
 	name := strings.ToLower(p.ProviderName())
 	return strings.Contains(name, "ollama") ||
 		strings.Contains(name, "lmstudio") ||
+		strings.Contains(name, "lm studio") ||
 		strings.Contains(name, "localai") ||
 		strings.Contains(name, "vllm") ||
 		strings.Contains(name, "local")

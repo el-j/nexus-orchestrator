@@ -98,6 +98,29 @@ describe('ProviderConfigForm', () => {
     w.unmount();
   });
 
+  it('offers GitHub Copilot as an openaicompat preset and recognises it when editing', async () => {
+    const { w, onSave } = mountForm();
+    await w.find('[data-testid="provider-type"]').setValue('copilot');
+    expect((inputs(w)[URL].element as HTMLInputElement).value).toBe(
+      'https://api.githubcopilot.com',
+    );
+    await inputs(w)[NAME].setValue('GitHub Copilot');
+    await w.find('form').trigger('submit');
+    await flushPromises();
+    expect(onSave.mock.calls[0][0]).toMatchObject({
+      kind: 'openaicompat',
+      baseUrl: 'https://api.githubcopilot.com',
+    });
+    w.unmount();
+    const b = mountForm(
+      existing({ kind: 'openaicompat', baseUrl: 'https://api.githubcopilot.com' }),
+    );
+    expect((b.w.find('[data-testid="provider-type"]').element as HTMLSelectElement).value).toBe(
+      'copilot',
+    );
+    b.w.unmount();
+  });
+
   it('keeps native kinds such as gemini unchanged', async () => {
     const { w, onSave } = mountForm();
     await w.find('[data-testid="provider-type"]').setValue('gemini');

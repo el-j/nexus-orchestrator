@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"time"
+
+	"nexus-orchestrator/internal/core/domain"
 )
 
 // ProcessNext runs exactly one iteration of the worker loop (claim the next
@@ -29,3 +31,14 @@ func (s *ActivityService) MarkSeen(agent, project string, at time.Time) {
 // SetSignalFunc replaces the real process signalling so tests can observe, or
 // assert the absence of, signals without touching real processes.
 func (o *OrchestratorService) SetSignalFunc(fn func(pid int, force bool) error) { o.signalFn = fn }
+
+// ResolveChain exposes provider ordering: the names of the providers a task
+// would be tried against, in order.
+func (o *OrchestratorService) ResolveChain(task domain.Task) ([]string, error) {
+	chain, err := o.resolveProviderWithFallback(context.Background(), task)
+	var names []string
+	for _, c := range chain {
+		names = append(names, c.ProviderName())
+	}
+	return names, err
+}

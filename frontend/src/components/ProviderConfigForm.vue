@@ -29,6 +29,7 @@
             <option value="openai">OpenAI</option>
             <option value="anthropic">Anthropic</option>
             <option value="gemini">Google Gemini</option>
+            <option value="copilot">GitHub Copilot</option>
             <option value="openaicompat">Custom (OpenAI-compatible)</option>
           </select>
         </div>
@@ -132,19 +133,22 @@ const props = defineProps<{
 }>();
 
 // The Type dropdown is a UI *preset*, not the stored provider kind: the daemon
-// has no "openai" kind, OpenAI is an openaicompat provider with OpenAI's URL.
+// has no "openai" or "copilot" kind: both are openaicompat providers with their own URL.
 const BASE_URL_PRESETS: Record<string, string> = {
   lmstudio: 'http://127.0.0.1:1234/v1',
   ollama: 'http://127.0.0.1:11434',
   openai: 'https://api.openai.com/v1',
   anthropic: 'https://api.anthropic.com',
   gemini: 'https://generativelanguage.googleapis.com',
+  copilot: 'https://api.githubcopilot.com',
   openaicompat: '',
 };
 
 /** Maps a UI preset to the provider kind the daemon understands. */
 function kindForPreset(preset: string): ProviderConfig['kind'] {
-  return (preset === 'openai' ? 'openaicompat' : preset) as ProviderConfig['kind'];
+  return (
+    preset === 'openai' || preset === 'copilot' ? 'openaicompat' : preset
+  ) as ProviderConfig['kind'];
 }
 
 /** Picks the preset that describes an existing config (so editing shows "OpenAI", not "Custom"). */
@@ -152,6 +156,8 @@ function presetForConfig(cfg: Partial<ProviderConfig> | null): string {
   if (!cfg?.kind) return 'lmstudio';
   if (cfg.kind === 'openaicompat' && (cfg.baseUrl ?? '').startsWith(BASE_URL_PRESETS.openai))
     return 'openai';
+  if (cfg.kind === 'openaicompat' && (cfg.baseUrl ?? '').startsWith(BASE_URL_PRESETS.copilot))
+    return 'copilot';
   return cfg.kind;
 }
 

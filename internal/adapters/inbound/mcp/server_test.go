@@ -30,6 +30,7 @@ type mockOrch struct {
 	providers  []ports.ProviderInfo
 	provErr    error
 
+	draftTask      domain.Task // captures the most recent CreateDraft argument
 	createDraftID  string
 	createDraftErr error
 	backlogTasks   []domain.Task
@@ -92,7 +93,8 @@ func (m *mockOrch) TriggerScan(_ context.Context) ([]domain.DiscoveredProvider, 
 	return m.triggerScanResult, m.triggerScanErr
 }
 func (m *mockOrch) PromoteProvider(_ context.Context, _ string) error { return m.promoteProviderErr }
-func (m *mockOrch) CreateDraft(_ domain.Task) (string, error) {
+func (m *mockOrch) CreateDraft(t domain.Task) (string, error) {
+	m.draftTask = t
 	return m.createDraftID, m.createDraftErr
 }
 func (m *mockOrch) GetBacklog(_ string) ([]domain.Task, error) { return m.backlogTasks, m.backlogErr }
