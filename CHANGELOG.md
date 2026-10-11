@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Repository ports (`TaskRepository`, `SessionRepository`, `ModelCapabilityRepository`) take a `context.Context`; `repo_sqlite` uses the `*Context` database calls and the `noctx` exclusion is gone
 - Oversized source files split along their seams (engine, orchestrator, SQLite repository, scanners, brain service, extension client, several views)
 - The GitHub Action's `command` input defaults to `auto` instead of `execute`
-- Coverage ratchets: Go 96%, extension 100%, frontend 98/99/98/96
+- Coverage ratchets: Go 95%, extension 100%, frontend 98/99/98/96
 
 ### Fixed
 

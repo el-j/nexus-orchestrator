@@ -108,17 +108,11 @@ inputs:
     description: >
       Raw agent system prompt prepended to the instruction.
       Takes precedence over agent / agents / agent_category when set.
-      Use this to chain with el-j/agency-agents manually:
-
-        - uses: el-j/agency-agents@main
-          id: ag
-          with:
-            agent: backend-architect
-
-        - uses: el-j/nexus-orchestrator@v1
-          with:
-            system_prompt: ${{ steps.ag.outputs.system_prompt }}
-            instruction: 'Refactor auth to use JWT'
+      To chain with el-j/agency-agents manually, run that action first (give the
+      step an id, e.g. "ag") and pass its system_prompt output here via the
+      steps.ag.outputs.system_prompt expression. (An expression cannot be written
+      out in this description: GitHub would try to evaluate it and refuse to load
+      the action.)
     required: false
     default: ''
 
