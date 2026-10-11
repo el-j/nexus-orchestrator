@@ -4,6 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { NexusClient } from './nexusClient';
 
+/** An AI agent extension found in this VS Code window. */
 export interface DetectedAgent {
   agentName: string;
   source: 'vscode-discovered';
@@ -30,6 +31,7 @@ const knownAIExtensions: Record<string, { name: string; capabilities: string[] }
   'github.copilot-chat': { name: 'GitHub Copilot Chat', capabilities: ['chat'] },
 };
 
+/** Detects AI agent extensions in the window and registers them with the daemon as sessions. */
 export class AgentDetector implements vscode.Disposable {
   private readonly _onDidChange = new vscode.EventEmitter<void>();
   readonly onDidChange: vscode.Event<void> = this._onDidChange.event;

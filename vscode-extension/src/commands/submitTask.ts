@@ -449,6 +449,7 @@ async function runSubmissionFlow(
   );
 }
 
+/** Command: submit a task prefilled from the active editor's file and selection. */
 export async function sendCurrentContextCommand(
   client: NexusClient,
   daemonUrl: string,
@@ -456,6 +457,7 @@ export async function sendCurrentContextCommand(
   await runSubmissionFlow(client, daemonUrl, 'current-context');
 }
 
+/** Command: submit a task from an instruction typed or picked in the window. */
 export async function submitTaskCommand(client: NexusClient, daemonUrl: string): Promise<void> {
   await runSubmissionFlow(client, daemonUrl, 'manual');
 }

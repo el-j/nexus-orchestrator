@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -124,7 +125,7 @@ func TestApplyRouting(t *testing.T) {
 	}
 	got, _ := json.Marshal(body)
 	exp, _ := json.Marshal(want)
-	if string(got) != string(exp) {
+	if !bytes.Equal(got, exp) {
 		t.Errorf("body = %s, want %s", got, exp)
 	}
 }

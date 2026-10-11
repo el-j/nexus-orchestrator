@@ -3,6 +3,7 @@ import type { Ref } from 'vue';
 import type { DiscoveredPlanFile } from '../types/domain';
 import { resolveServerUrl } from './useServerUrl';
 
+/** Plan files discovered on the machine, with a promote action that queues them. */
 export function useDiscoveredPlans(projectPath: Ref<string | null>) {
   const plans = ref<DiscoveredPlanFile[]>([]);
   const loading = ref(false);

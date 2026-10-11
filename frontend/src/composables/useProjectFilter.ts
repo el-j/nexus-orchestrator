@@ -3,6 +3,7 @@ import { useTasks } from './useTasks';
 import { currentProject, setProject } from './useProjectState';
 import { getAllTasks } from '../types/wails';
 
+/** Project filter shared across views: the selected project plus the project paths known from live tasks and history. */
 export function useProjectFilter() {
   const { tasks } = useTasks();
   const allHistoryPaths = ref<string[]>([]);

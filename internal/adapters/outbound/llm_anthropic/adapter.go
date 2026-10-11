@@ -53,9 +53,14 @@ var claudeContextLimits = map[string]int{
 	"claude-3-5-haiku-20241022":  200000,
 }
 
+// ProviderName returns the human-readable provider name shown in the UI and used for routing.
 func (a *Adapter) ProviderName() string { return "Anthropic" }
-func (a *Adapter) ActiveModel() string  { return a.model }
-func (a *Adapter) BaseURL() string      { return a.baseURL }
+
+// ActiveModel returns the model this adapter sends requests to.
+func (a *Adapter) ActiveModel() string { return a.model }
+
+// BaseURL returns the API endpoint this adapter talks to.
+func (a *Adapter) BaseURL() string { return a.baseURL }
 
 // ContextLimit returns the context window size for the configured Claude model.
 // Defaults to 200000 for unknown models (all modern Claude models support 200K).

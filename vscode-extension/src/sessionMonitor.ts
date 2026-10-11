@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import { NexusClient } from './nexusClient';
 import { getNexusActivityChannel, logNexusActivity } from './activityLog';
 
+/** Registers this window as an AI session and keeps it alive with heartbeats, re-registering if the daemon forgot it. */
 export class SessionMonitor {
   private sessionId: string | undefined;
   private isReregistering = false;

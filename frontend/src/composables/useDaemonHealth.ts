@@ -5,6 +5,7 @@ const POLL_INTERVAL_MS = 10_000;
 const FETCH_TIMEOUT_MS = 3_000;
 const FAILURE_THRESHOLD = 3;
 
+/** Polls the daemon health endpoint and exposes whether it is reachable. */
 export function useDaemonHealth() {
   const connected = ref(false);
   const lastChecked = ref<Date | null>(null);

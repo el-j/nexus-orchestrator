@@ -3,6 +3,7 @@ import * as core from '@actions/core';
 
 const AGENCY_BASE = 'https://raw.githubusercontent.com/el-j/agency-agents';
 
+/** Agent categories the Action can install from the community agent catalogue. */
 export const AGENT_CATEGORIES = [
   'design',
   'engineering',
@@ -17,8 +18,10 @@ export const AGENT_CATEGORIES = [
   'specialized',
 ] as const;
 
+/** One of {@link AGENT_CATEGORIES}. */
 export type AgentCategory = (typeof AGENT_CATEGORIES)[number];
 
+/** Identifies a catalogue agent: its category and file name. */
 export interface AgentIdentity {
   readonly name: string;
   readonly slug: string;

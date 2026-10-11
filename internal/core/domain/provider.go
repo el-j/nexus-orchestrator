@@ -8,6 +8,7 @@ import (
 // ProviderKind identifies the adapter family for a cloud LLM provider.
 type ProviderKind string
 
+// The built-in ProviderKind values, the kinds a provider config can have.
 const (
 	ProviderKindLMStudio     ProviderKind = "lmstudio"
 	ProviderKindOllama       ProviderKind = "ollama"
@@ -81,6 +82,7 @@ type ProviderConfig struct {
 // DiscoveryMethod describes how a provider was found on the local system.
 type DiscoveryMethod string
 
+// The DiscoveryMethod values: how a provider was found.
 const (
 	DiscoveryMethodPort    DiscoveryMethod = "port"
 	DiscoveryMethodCLI     DiscoveryMethod = "cli"
@@ -90,6 +92,7 @@ const (
 // DiscoveryStatus describes the level of detection for a discovered provider.
 type DiscoveryStatus string
 
+// The DiscoveryStatus values: how far a discovered provider got.
 const (
 	DiscoveryStatusReachable DiscoveryStatus = "reachable"
 	DiscoveryStatusInstalled DiscoveryStatus = "installed"

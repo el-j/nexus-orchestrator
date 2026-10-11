@@ -10,6 +10,7 @@ import {
 import { currentProject } from './useProjectState';
 import { useGlobalSSE } from './useGlobalSSE';
 
+/** Task queue and history, refreshed on task.* SSE events. */
 export function useTasks() {
   const tasks = ref<Task[]>([]);
   const loading = ref(false);

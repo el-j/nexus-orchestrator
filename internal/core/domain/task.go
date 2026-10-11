@@ -35,6 +35,7 @@ var ErrSubsystemNotConfigured = errors.New("plan scanning subsystem not configur
 // TaskStatus represents the lifecycle state of a Task.
 type TaskStatus string
 
+// The TaskStatus lifecycle values (see docs/api-reference.md, Task Lifecycle).
 const (
 	StatusQueued     TaskStatus = "QUEUED"
 	StatusProcessing TaskStatus = "PROCESSING"

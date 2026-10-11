@@ -3,6 +3,7 @@ import type { AIActivity, ActivityType } from '../types/domain';
 import { resolveServerUrl } from './useServerUrl';
 import { useGlobalSSE } from './useGlobalSSE';
 
+/** Reactive live activity feed of AI agents, merged from the SSE stream. */
 export function useActivities(options?: {
   agentFilter?: string;
   projectFilter?: string;

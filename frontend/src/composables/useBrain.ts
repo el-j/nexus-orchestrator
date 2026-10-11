@@ -16,6 +16,7 @@ import {
 /** Largest document the daemon accepts for ingestion (1 MiB). */
 export const MAX_UPLOAD_BYTES = 1024 * 1024;
 
+/** State and actions for the Context Brain: status, entries, ingestion, search and context. */
 export function useBrain(projectPath: string) {
   const status = ref<BrainStatus | null>(null);
   const entries = ref<ProjectKnowledge[]>([]);

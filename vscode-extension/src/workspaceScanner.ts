@@ -37,6 +37,7 @@ export interface WorkspaceOrchestration {
   lastModified: Date;
 }
 
+/** Scans workspace folders for Nexus plans (.claude/orchestrator.json) and task files. */
 export class WorkspaceScanner implements vscode.Disposable {
   private readonly _onDidChange = new vscode.EventEmitter<void>();
   readonly onDidChange = this._onDidChange.event;

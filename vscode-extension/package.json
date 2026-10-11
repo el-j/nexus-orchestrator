@@ -249,9 +249,14 @@
     "package": "vsce package --no-dependencies",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:mutation": "stryker run",
+    "check:docs": "node ../scripts/check-tsdoc.mjs src"
   },
   "devDependencies": {
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/typescript-checker": "^9.6.1",
+    "@stryker-mutator/vitest-runner": "^9.6.1",
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.85.0",
     "@vitest/coverage-v8": "^4.1.0",

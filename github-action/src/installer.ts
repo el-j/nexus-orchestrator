@@ -8,8 +8,7 @@ const GITHUB_RELEASES = 'https://github.com/el-j/nexus-orchestrator/releases';
 /** Detect current OS + arch → archive name segment */
 function platformSegment(): { os: string; arch: string; ext: string } {
   const raw = process.platform;
-  const os =
-    raw === 'darwin' ? 'darwin' : raw === 'win32' ? 'windows' : 'linux';
+  const os = raw === 'darwin' ? 'darwin' : raw === 'win32' ? 'windows' : 'linux';
   const ext = os === 'windows' ? 'zip' : 'tar.gz';
 
   const rawArch = process.arch;
@@ -48,9 +47,7 @@ export async function installDaemon(version: string): Promise<string> {
   const binPath = path.join(extractDir, binName);
 
   if (!fs.existsSync(binPath)) {
-    throw new Error(
-      `nexus-daemon binary not found in extracted archive at ${binPath}`
-    );
+    throw new Error(`nexus-daemon binary not found in extracted archive at ${binPath}`);
   }
 
   if (process.platform !== 'win32') {

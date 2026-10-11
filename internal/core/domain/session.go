@@ -5,6 +5,7 @@ import "time"
 // MessageRole identifies the speaker in a conversation turn.
 type MessageRole string
 
+// The MessageRole values of a chat message.
 const (
 	RoleUser      MessageRole = "user"
 	RoleAssistant MessageRole = "assistant"

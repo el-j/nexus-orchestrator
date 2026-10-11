@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { NexusClient, AISession } from './nexusClient';
 
+/** Tree item for one AI session in the "AI Sessions" view. */
 export class AISessionItem extends vscode.TreeItem {
   constructor(public readonly session: AISession) {
     super(session.agentName, vscode.TreeItemCollapsibleState.None);
@@ -49,6 +50,7 @@ function buildTooltip(s: AISession): vscode.MarkdownString {
   return new vscode.MarkdownString(lines.join('\n\n'));
 }
 
+/** Tree data provider listing the daemon's AI sessions, polled periodically. */
 export class AISessionsTreeProvider
   implements vscode.TreeDataProvider<AISessionItem>, vscode.Disposable
 {

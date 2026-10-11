@@ -1,6 +1,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { resolveServerUrl } from './useServerUrl';
 
+/** Recent activity of one provider: the models seen and whether it was active in the last 30 s. */
 export interface ProviderModelState {
   provider: string; // "lm-studio" | "ollama" | "antigravity"
   models: string[]; // loaded model IDs
@@ -8,6 +9,7 @@ export interface ProviderModelState {
   active: boolean; // true if last seen < 30s ago
 }
 
+/** Polls recent generation activity and derives which providers and models were seen lately. */
 export function useProviderActivity() {
   const providerStates = ref<ProviderModelState[]>([]);
   const error = ref<string | null>(null);

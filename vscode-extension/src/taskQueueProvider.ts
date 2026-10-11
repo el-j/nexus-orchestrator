@@ -60,6 +60,7 @@ function truncate(s: string, max: number): string {
   return s.length > max ? s.slice(0, max) + '…' : s;
 }
 
+/** Tree item for one task in the queue view. */
 export class TaskItem extends vscode.TreeItem {
   constructor(public readonly task: Task) {
     const emoji = statusEmoji(task.status);
@@ -109,6 +110,7 @@ class DaemonOfflineItem extends vscode.TreeItem {
   }
 }
 
+/** Tree data provider listing queued and recent tasks. */
 export class TaskQueueProvider implements vscode.TreeDataProvider<TaskItem | DaemonOfflineItem> {
   private readonly _onDidChangeTreeData = new vscode.EventEmitter<
     TaskItem | DaemonOfflineItem | undefined | void

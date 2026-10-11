@@ -20,8 +20,10 @@ export type TaskStatus =
   | 'DRAFT'
   | 'BACKLOG';
 
+/** Task command: plan, execute or auto-routed. */
 export type CommandType = 'plan' | 'execute' | 'auto' | '';
 
+/** A task as returned by the daemon REST API. */
 export interface Task {
   id: string;
   projectPath: string;
@@ -79,6 +81,7 @@ export interface AISession {
   detectionMethod?: string;
 }
 
+/** An agent found on the machine by the daemon's system scanner. */
 export interface DiscoveredAgent {
   id: string;
   kind: string;
@@ -108,11 +111,13 @@ export interface AIActivity {
   metadata?: Record<string, string>;
 }
 
+/** The daemon's answer to a delegation: instruction text and session id. */
 export interface DelegateResponse {
   instruction: string;
   sessionId: string;
 }
 
+/** Body for registering an AI session with the daemon. */
 export interface RegisterSessionRequest {
   agentName: string;
   source: 'vscode' | 'mcp' | 'http';
@@ -132,12 +137,14 @@ export interface BrainStatus {
   lastUpdated?: string;
 }
 
+/** Parameters for a project context request. */
 export interface ContextQuery {
   projectPath: string;
   question?: string;
   maxTokens?: number;
 }
 
+/** One ranked section of project knowledge in a context response. */
 export interface ContextSection {
   title?: string;
   topic: string;
@@ -147,6 +154,7 @@ export interface ContextSection {
   source: string;
 }
 
+/** A stored knowledge entry for a project. */
 export interface ProjectKnowledge {
   id: string;
   projectPath: string;
@@ -159,6 +167,7 @@ export interface ProjectKnowledge {
   updatedAt: string;
 }
 
+/** Token-budgeted project context returned by the Context Brain. */
 export interface ContextResponse {
   projectPath: string;
   sections: ContextSection[];
@@ -171,6 +180,7 @@ export interface ContextResponse {
   truncated: boolean;
 }
 
+/** One hit of a knowledge search. */
 export interface KnowledgeResult {
   id: string;
   projectPath: string;
@@ -304,6 +314,7 @@ const ProviderConfigSchema = z
 /** Default per-request timeout; a hung daemon must not hang the editor. */
 const REQUEST_TIMEOUT_MS = 15_000;
 
+/** HTTP client for the daemon REST API (bearer token, 15 s timeout, typed errors). */
 export class NexusClient {
   /**
    * @param baseUrl REST API base URL, e.g. http://127.0.0.1:63987

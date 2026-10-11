@@ -5,6 +5,7 @@ import "time"
 // ActivityType categorises a single AI agent action for display purposes.
 type ActivityType string
 
+// ActivityType values classify one entry of an agent's activity stream.
 const (
 	ActivityTypeMessage    ActivityType = "message"
 	ActivityTypeToolUse    ActivityType = "tool_use"

@@ -33,6 +33,7 @@ function delegationDir(requested: string | undefined): string | undefined {
   return folders[0];
 }
 
+/** Command: hand the current file or selection to Nexus as an instruction file for another agent. */
 export async function delegateToNexusCommand(
   client: NexusClient,
   sessionOrItem?: AISessionItem | AISession,
