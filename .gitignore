@@ -33,7 +33,11 @@ vendor/
 .DS_Store
 Thumbs.db
 
-github-action/dist
+# The Action runs from its committed ncc bundle (action.yml: main), so index.js and
+# its licenses must be tracked. Everything else tsc/ncc emits (.d.ts, maps) is not.
+github-action/dist/*
+!github-action/dist/index.js
+!github-action/dist/licenses.txt
 # Root dev tooling (husky, lint-staged, prettier — installed at repo root)
 node_modules/
 package-lock.json

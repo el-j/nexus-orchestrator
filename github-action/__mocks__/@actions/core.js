@@ -6,26 +6,59 @@ const outputs = {};
 const failures = [];
 const warnings = [];
 const infos = [];
+const secrets = [];
 
-function getInput(name) { return process.env[`INPUT_${name.toUpperCase().replace(/ /g, '_')}`] || ''; }
-function setOutput(name, value) { outputs[name] = value; }
-function setFailed(message) { failures.push(message); }
-function warning(message) { warnings.push(message); }
-function info(message) { infos.push(message); }
-function startGroup(name) { void name; }
+function getInput(name) {
+  return process.env[`INPUT_${name.toUpperCase().replace(/ /g, '_')}`] || '';
+}
+function setOutput(name, value) {
+  outputs[name] = value;
+}
+function setFailed(message) {
+  failures.push(message);
+}
+function warning(message) {
+  warnings.push(message);
+}
+function info(message) {
+  infos.push(message);
+}
+function setSecret(value) {
+  secrets.push(value);
+}
+function startGroup(name) {
+  void name;
+}
 function endGroup() {}
-function debug(message) { void message; }
-function error(message) { void message; }
-function exportVariable(name, val) { process.env[name] = val; }
-function addPath(p) { void p; }
-function saveState(name, value) { void name; void value; }
-function getState(name) { void name; return ''; }
-function isDebug() { return false; }
+function debug(message) {
+  void message;
+}
+function error(message) {
+  void message;
+}
+function exportVariable(name, val) {
+  process.env[name] = val;
+}
+function addPath(p) {
+  void p;
+}
+function saveState(name, value) {
+  void name;
+  void value;
+}
+function getState(name) {
+  void name;
+  return '';
+}
+function isDebug() {
+  return false;
+}
 
 module.exports = {
   getInput,
   setOutput,
   setFailed,
+  setSecret,
   warning,
   info,
   startGroup,
@@ -42,4 +75,5 @@ module.exports = {
   _failures: failures,
   _warnings: warnings,
   _infos: infos,
+  _secrets: secrets,
 };

@@ -52,8 +52,8 @@ jobs:
         # to package.json, add a "lint" script and this step will start enforcing it.
         run: npm run lint --if-present
 
-      - name: Unit tests
-        run: npm test
+      - name: Unit tests with coverage gate
+        run: npm run test:coverage
 
   build-check:
     name: Verify dist is up to date
@@ -81,13 +81,13 @@ jobs:
         run: npm run build
 
       - name: Check dist is unchanged
-        # Working directory is github-action/, so use dist/index.js (not github-action/dist/index.js)
-        # The -- separator tells git this is a path, not a revision
+        # `git status` (not `git diff`) so an untracked or missing bundle also fails:
+        # action.yml runs github-action/dist/index.js, so it must be committed.
         run: |
-          if ! git diff --quiet -- dist/index.js; then
-            echo "::error::github-action/dist/index.js is out of date."
-            echo "Run 'cd github-action && npm run build' and commit the result."
-            git diff --stat -- dist/index.js
+          if [ -n "$(git status --porcelain -- dist/index.js dist/licenses.txt)" ] || ! git ls-files --error-unmatch dist/index.js >/dev/null 2>&1; then
+            echo "::error::github-action/dist is missing or out of date."
+            echo "Run 'cd github-action && npm ci && npm run build' and commit dist/index.js and dist/licenses.txt."
+            git status --short -- dist
             exit 1
           fi
-          echo "dist/index.js is up to date ✓"
+          echo "dist/index.js is committed and up to date ✓"

@@ -65,69 +65,68 @@ export function parseFrontmatter(raw: string): {
   return { data, body: lines.slice(closingIdx + 1).join('\n') };
 }
 
-/** HTTP GET — returns response body as string */
-export function httpsGet(url: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    https
-      .get(url, { timeout: 10_000 }, (res) => {
-        if (res.statusCode === 301 || res.statusCode === 302) {
-          const loc = res.headers.location;
-          if (loc != null && loc.length > 0) {
-            resolve(httpsGet(loc));
-            return;
-          }
-        }
-        if (res.statusCode !== 200) {
-          reject(new Error(`HTTP ${res.statusCode ?? '?'} for ${url}`));
-          return;
-        }
-        const chunks: Uint8Array[] = [];
-        res.on('data', (c: Uint8Array) => chunks.push(c));
-        res.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
-        res.on('error', reject);
-      })
-      .on('error', reject)
-      .on('timeout', () => reject(new Error(`Request timed out: ${url}`)));
-  });
-}
-
 interface FetchResult {
   statusCode: number;
   contentType: string;
   retryAfter: string | undefined;
+  rateLimitRemaining: string | undefined;
   body: string;
 }
 
-/** Internal: GET with full status/header access. Follows one level of redirects. */
-function httpsGetFull(url: string): Promise<FetchResult> {
+const MAX_REDIRECTS = 5;
+const REDIRECT_CODES = new Set([301, 302, 307, 308]);
+
+/**
+ * GET with full status/header access. Follows up to MAX_REDIRECTS redirects
+ * (relative Locations included), never forwards request headers to another host
+ * (they may carry a token), and destroys the socket on timeout.
+ */
+function request(
+  url: string,
+  headers: Record<string, string> = {},
+  redirectsLeft = MAX_REDIRECTS,
+): Promise<FetchResult> {
   return new Promise((resolve, reject) => {
-    https
-      .get(url, { timeout: 10_000 }, (res) => {
-        if (res.statusCode === 301 || res.statusCode === 302) {
-          const loc = res.headers.location;
-          if (loc != null && loc.length > 0) {
-            resolve(httpsGetFull(loc));
-            return;
-          }
+    const req = https.get(url, { timeout: 10_000, headers }, (res) => {
+      const statusCode = res.statusCode ?? 0;
+      const loc = res.headers.location;
+      if (REDIRECT_CODES.has(statusCode) && loc != null && loc.length > 0) {
+        res.resume();
+        if (redirectsLeft <= 0) {
+          reject(new Error(`Too many redirects for ${url}`));
+          return;
         }
-        const statusCode = res.statusCode ?? 0;
-        const contentType = (res.headers['content-type'] as string | undefined) ?? '';
-        const retryAfter = res.headers['retry-after'] as string | undefined;
-        const chunks: Uint8Array[] = [];
-        res.on('data', (c: Uint8Array) => chunks.push(c));
-        res.on('end', () =>
-          resolve({
-            statusCode,
-            contentType,
-            retryAfter,
-            body: Buffer.concat(chunks).toString('utf-8'),
-          }),
-        );
-        res.on('error', reject);
-      })
-      .on('error', reject)
-      .on('timeout', () => reject(new Error(`Request timed out: ${url}`)));
+        const next = new URL(loc, url);
+        const sameHost = next.host === new URL(url).host;
+        resolve(request(next.toString(), sameHost ? headers : {}, redirectsLeft - 1));
+        return;
+      }
+      const chunks: Uint8Array[] = [];
+      res.on('data', (c: Uint8Array) => chunks.push(c));
+      res.on('end', () =>
+        resolve({
+          statusCode,
+          contentType: (res.headers['content-type'] as string | undefined) ?? '',
+          retryAfter: res.headers['retry-after'] as string | undefined,
+          rateLimitRemaining: res.headers['x-ratelimit-remaining'] as string | undefined,
+          body: Buffer.concat(chunks).toString('utf-8'),
+        }),
+      );
+      res.on('error', reject);
+    });
+    req.on('error', reject);
+    // The 'timeout' event only reports inactivity; the socket must be destroyed explicitly.
+    req.on('timeout', () => req.destroy(new Error(`Request timed out: ${url}`)));
   });
+}
+
+/** HTTP GET — returns response body as string; rejects on any non-200 status */
+export async function httpsGet(url: string): Promise<string> {
+  const res = await request(url);
+  if (res.statusCode !== 200) {
+    throw new Error(`HTTP ${res.statusCode === 0 ? '?' : res.statusCode} for ${url}`);
+  }
+  return res.body;
 }
 
 /** Fetch a single agent markdown file and parse it */
@@ -163,18 +162,32 @@ export async function fetchAgent(
  */
 export async function fetchCategoryIndex(category: string, ref = 'main'): Promise<string[]> {
   const url = `https://api.github.com/repos/el-j/agency-agents/contents/${category}?ref=${ref}`;
+  // api.github.com rejects requests without a User-Agent (403), and unauthenticated
+  // callers share a 60 requests/hour limit, so use the workflow token when present.
+  const headers: Record<string, string> = {
+    'User-Agent': 'nexus-orchestrator-action',
+    Accept: 'application/vnd.github+json',
+  };
+  const token = process.env['GITHUB_TOKEN'];
+  if (token != null && token.length > 0) headers['Authorization'] = `Bearer ${token}`;
+
   let result: FetchResult;
   try {
-    result = await httpsGetFull(url);
+    result = await request(url, headers);
   } catch {
     return [];
   }
 
-  const { statusCode, contentType, retryAfter, body } = result;
+  const { statusCode, contentType, retryAfter, rateLimitRemaining, body } = result;
 
-  // GitHub returns HTML when the API rate limit is exceeded (no Accept header)
+  // GitHub returns HTML when the API rate limit is exceeded without an Accept header
   if (contentType.startsWith('text/html')) {
     core.warning('GitHub API rate limit hit — agent discovery skipped');
+    return [];
+  }
+
+  if (statusCode === 403 && rateLimitRemaining === '0') {
+    core.warning('GitHub API rate limit exhausted (403) — set GITHUB_TOKEN to raise the limit');
     return [];
   }
 

@@ -6,7 +6,7 @@ export interface ActionInputs {
   readonly projectPath: string;
   readonly targetFile: string;
   readonly contextFiles: string[];
-  readonly command: 'execute' | 'plan';
+  readonly command: string; // validated to 'execute' | 'plan' at startup
   // Routing
   readonly model: string;
   readonly provider: string;
@@ -14,8 +14,8 @@ export interface ActionInputs {
   readonly agent: string;
   readonly agents: string;
   readonly agentCategory: string;
-  readonly agentRef: string;            // git ref for el-j/agency-agents (default: "main")
-  readonly systemPrompt: string;        // manual system prompt override
+  readonly agentRef: string; // git ref for el-j/agency-agents (default: "main")
+  readonly systemPrompt: string; // manual system prompt override
   // Daemon
   readonly daemonUrl: string;
   readonly startDaemon: boolean;
@@ -41,12 +41,7 @@ export interface NexusTask {
 }
 
 export type TaskStatus =
-  | 'QUEUED'
-  | 'PROCESSING'
-  | 'COMPLETED'
-  | 'FAILED'
-  | 'CANCELLED'
-  | 'TOO_LARGE';
+  'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'TOO_LARGE' | 'NO_PROVIDER';
 
 export const TERMINAL_STATUSES = new Set<TaskStatus>([
   'COMPLETED',
