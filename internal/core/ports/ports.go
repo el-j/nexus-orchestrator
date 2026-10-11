@@ -14,24 +14,27 @@ import (
 
 // LLMClient is the port for any language model backend (LM Studio, Ollama, etc.).
 type LLMClient interface {
-	Ping() bool
+	// Ping reports whether the provider is reachable. Cancelling ctx aborts the probe.
+	Ping(ctx context.Context) bool
 	ProviderName() string
 	// ActiveModel returns the model ID currently loaded or configured on this
 	// provider.  Returns empty string when unknown.
 	ActiveModel() string
 	// BaseURL returns the configured endpoint URL for this provider.
 	BaseURL() string
-	GetAvailableModels() ([]string, error)
+	GetAvailableModels(ctx context.Context) ([]string, error)
 	// ContextLimit returns the maximum number of input tokens the currently
 	// loaded model can accept.  Returns 0 if unknown; when 0, no pre-flight
 	// token check is performed.
-	ContextLimit() int
+	ContextLimit(ctx context.Context) int
 	// GenerateCode sends a single prompt and returns generated text.
 	// Prefer Chat for multi-turn session-aware generation.
-	GenerateCode(prompt string) (string, error)
+	// Cancelling ctx aborts the in-flight request.
+	GenerateCode(ctx context.Context, prompt string) (string, error)
 	// Chat sends a full conversation history and returns the assistant reply.
 	// Used by OrchestratorService for per-project session isolation.
-	Chat(messages []domain.Message) (string, error)
+	// Cancelling ctx aborts the in-flight request.
+	Chat(ctx context.Context, messages []domain.Message) (string, error)
 }
 
 // TaskRepository is the port for persisting and querying Tasks.

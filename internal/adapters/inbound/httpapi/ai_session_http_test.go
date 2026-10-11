@@ -19,14 +19,18 @@ import (
 // AI session tests do not submit tasks, so no LLM method is actually invoked.
 type aiSessionTestLLM struct{}
 
-func (m *aiSessionTestLLM) Ping() bool                              { return true }
-func (m *aiSessionTestLLM) ProviderName() string                    { return "test" }
-func (m *aiSessionTestLLM) ActiveModel() string                     { return "test-model" }
-func (m *aiSessionTestLLM) BaseURL() string                         { return "" }
-func (m *aiSessionTestLLM) GetAvailableModels() ([]string, error)   { return []string{"test-model"}, nil }
-func (m *aiSessionTestLLM) ContextLimit() int                       { return 0 }
-func (m *aiSessionTestLLM) GenerateCode(_ string) (string, error)   { return "", nil }
-func (m *aiSessionTestLLM) Chat(_ []domain.Message) (string, error) { return "", nil }
+func (m *aiSessionTestLLM) Ping(_ context.Context) bool { return true }
+func (m *aiSessionTestLLM) ProviderName() string        { return "test" }
+func (m *aiSessionTestLLM) ActiveModel() string         { return "test-model" }
+func (m *aiSessionTestLLM) BaseURL() string             { return "" }
+func (m *aiSessionTestLLM) GetAvailableModels(_ context.Context) ([]string, error) {
+	return []string{"test-model"}, nil
+}
+func (m *aiSessionTestLLM) ContextLimit(_ context.Context) int                       { return 0 }
+func (m *aiSessionTestLLM) GenerateCode(_ context.Context, _ string) (string, error) { return "", nil }
+func (m *aiSessionTestLLM) Chat(_ context.Context, _ []domain.Message) (string, error) {
+	return "", nil
+}
 
 // newAISessionStack wires a real OrchestratorService with in-memory SQLite and
 // returns an httptest.Server exposing the full httpapi.Server handler tree.

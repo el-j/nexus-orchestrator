@@ -186,7 +186,9 @@ func TestListProviderConfigs_Branches(t *testing.T) {
 // erroringModelsLLM returns an error from GetAvailableModels.
 type erroringModelsLLM struct{ mockLLMClient }
 
-func (e *erroringModelsLLM) GetAvailableModels() ([]string, error) { return nil, errInjected }
+func (e *erroringModelsLLM) GetAvailableModels(_ context.Context) ([]string, error) {
+	return nil, errInjected
+}
 
 func TestGetProviderModels_PropagatesAdapterError(t *testing.T) {
 	disc := services.NewDiscoveryService(&erroringModelsLLM{mockLLMClient{alive: true, name: "broken"}})

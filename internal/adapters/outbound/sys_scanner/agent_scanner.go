@@ -181,7 +181,8 @@ func probeMCPPortList(ctx context.Context, ports []int) []domain.DiscoveredAgent
 
 	for _, port := range ports {
 		addr := fmt.Sprintf("127.0.0.1:%d", port)
-		conn, err := net.DialTimeout("tcp", addr, 500*time.Millisecond)
+		dialer := net.Dialer{Timeout: 500 * time.Millisecond}
+		conn, err := dialer.DialContext(ctx, "tcp", addr)
 		if err != nil {
 			continue
 		}

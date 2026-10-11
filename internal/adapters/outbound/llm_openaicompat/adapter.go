@@ -4,6 +4,7 @@ package llm_openaicompat
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -52,7 +53,7 @@ func (a *Adapter) BaseURL() string      { return a.baseURL }
 
 // ContextLimit returns 131072 (128K) when a model is configured, 0 otherwise.
 // 128K is a conservative default for modern OpenAI-compatible endpoints.
-func (a *Adapter) ContextLimit() int {
+func (a *Adapter) ContextLimit(_ context.Context) int {
 	if a.model == "" {
 		return 0
 	}
@@ -60,8 +61,8 @@ func (a *Adapter) ContextLimit() int {
 }
 
 // Ping checks whether the provider is reachable by hitting the /models endpoint.
-func (a *Adapter) Ping() bool {
-	req, err := http.NewRequest(http.MethodGet, a.baseURL+"/models", nil)
+func (a *Adapter) Ping(ctx context.Context) bool {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, a.baseURL+"/models", nil)
 	if err != nil {
 		return false
 	}
@@ -77,7 +78,7 @@ func (a *Adapter) Ping() bool {
 // GetAvailableModels returns model IDs from the provider's /models list.
 // Results are cached for modelsTTL (default 5 minutes). A failed call is never
 // cached — the next call will retry the API.
-func (a *Adapter) GetAvailableModels() ([]string, error) {
+func (a *Adapter) GetAvailableModels(ctx context.Context) ([]string, error) {
 	a.modelsMu.Lock()
 	if !a.modelsCachedAt.IsZero() && time.Since(a.modelsCachedAt) < a.modelsTTL {
 		cached := a.cachedModels
@@ -87,7 +88,7 @@ func (a *Adapter) GetAvailableModels() ([]string, error) {
 	a.modelsMu.Unlock()
 
 	// Fetch from API (no lock held during network request).
-	req, err := http.NewRequest(http.MethodGet, a.baseURL+"/models", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, a.baseURL+"/models", nil)
 	if err != nil {
 		return nil, fmt.Errorf("%s: build models request: %w", a.name, err)
 	}
@@ -123,8 +124,8 @@ func (a *Adapter) GetAvailableModels() ([]string, error) {
 }
 
 // GenerateCode sends a single prompt as a user message and returns the response.
-func (a *Adapter) GenerateCode(prompt string) (string, error) {
-	return a.chat([]map[string]string{{"role": "user", "content": prompt}})
+func (a *Adapter) GenerateCode(ctx context.Context, prompt string) (string, error) {
+	return a.chat(ctx, []map[string]string{{"role": "user", "content": prompt}})
 }
 
 // messagesToMaps converts a slice of domain.Message to the map representation
@@ -139,8 +140,8 @@ func messagesToMaps(msgs []domain.Message) []map[string]string {
 
 // Chat converts the multi-turn conversation history into an OpenAI chat completion
 // request and returns the assistant reply.
-func (a *Adapter) Chat(messages []domain.Message) (string, error) {
-	return a.chat(messagesToMaps(messages))
+func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, error) {
+	return a.chat(ctx, messagesToMaps(messages))
 }
 
 // chatCompletionRequest is the request body for OpenAI-compatible /chat/completions.
@@ -150,7 +151,7 @@ type chatCompletionRequest struct {
 	Temperature float64             `json:"temperature"`
 }
 
-func (a *Adapter) chat(messages []map[string]string) (string, error) {
+func (a *Adapter) chat(ctx context.Context, messages []map[string]string) (string, error) {
 	reqBody, err := json.Marshal(chatCompletionRequest{
 		Model:       a.model,
 		Messages:    messages,
@@ -159,7 +160,7 @@ func (a *Adapter) chat(messages []map[string]string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%s: marshal request: %w", a.name, err)
 	}
-	req, err := http.NewRequest(http.MethodPost, a.baseURL+"/chat/completions", bytes.NewReader(reqBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.baseURL+"/chat/completions", bytes.NewReader(reqBody))
 	if err != nil {
 		return "", fmt.Errorf("%s: build request: %w", a.name, err)
 	}

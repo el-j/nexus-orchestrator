@@ -4,6 +4,7 @@ package llm_lmstudio
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -52,6 +53,27 @@ func NewLMStudioAdapter(baseURL string) *Adapter {
 	}
 }
 
+// infoTimeout bounds the metadata lookups behind ActiveModel(), which has no
+// context of its own; generation uses the much longer httpClient timeout.
+const infoTimeout = 5 * time.Second
+
+// do sends a request bound to ctx, so cancelling ctx aborts it. A non-nil body is
+// sent as JSON.
+func (a *Adapter) do(ctx context.Context, method, url string, body []byte) (*http.Response, error) {
+	var rdr io.Reader
+	if body != nil {
+		rdr = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, url, rdr)
+	if err != nil {
+		return nil, err
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	return a.httpClient.Do(req)
+}
+
 // ProviderName identifies this adapter.
 func (a *Adapter) ProviderName() string { return "LM Studio" }
 
@@ -62,14 +84,14 @@ func (a *Adapter) BaseURL() string { return a.baseURL }
 // them from LM Studio at most once per infoTTL (and, while LM Studio cannot be
 // reached, retrying at most once per infoRetry). Both are zero values when
 // unknown; a failed refresh keeps the last known values.
-func (a *Adapter) modelInfo() (model string, contextLimit int) {
+func (a *Adapter) modelInfo(ctx context.Context) (model string, contextLimit int) {
 	a.infoMu.Lock()
 	defer a.infoMu.Unlock()
 	now := time.Now()
 	fresh := a.activeModel != "" && now.Sub(a.infoAt) < infoTTL
 	if !fresh && now.Sub(a.infoTried) >= infoRetry {
 		a.infoTried = now
-		if m, limit, ok := a.fetchModelInfo(); ok {
+		if m, limit, ok := a.fetchModelInfo(ctx); ok {
 			a.activeModel, a.contextLimit, a.infoAt = m, limit, now
 		}
 	}
@@ -80,8 +102,8 @@ func (a *Adapter) modelInfo() (model string, contextLimit int) {
 // and its context length. It falls back to the first ID of the OpenAI-compatible
 // /models list when the native endpoint is unavailable. ok is false when no
 // model identifier could be determined.
-func (a *Adapter) fetchModelInfo() (model string, contextLimit int, ok bool) {
-	resp, err := a.httpClient.Get(a.nativeBase + "/api/v0/model")
+func (a *Adapter) fetchModelInfo(ctx context.Context) (model string, contextLimit int, ok bool) {
+	resp, err := a.do(ctx, http.MethodGet, a.nativeBase+"/api/v0/model", nil)
 	if err == nil {
 		defer resp.Body.Close()
 		var result struct {
@@ -97,7 +119,7 @@ func (a *Adapter) fetchModelInfo() (model string, contextLimit int, ok bool) {
 			}
 		}
 	}
-	models, err2 := a.GetAvailableModels()
+	models, err2 := a.GetAvailableModels(ctx)
 	if err2 == nil && len(models) > 0 {
 		return models[0], contextLimit, true
 	}
@@ -109,14 +131,16 @@ func (a *Adapter) fetchModelInfo() (model string, contextLimit int, ok bool) {
 // the OpenAI-compat /models list if the native endpoint is not available.
 // Returns empty string when LM Studio is not reachable.
 func (a *Adapter) ActiveModel() string {
-	m, _ := a.modelInfo()
+	ctx, cancel := context.WithTimeout(context.Background(), infoTimeout)
+	defer cancel()
+	m, _ := a.modelInfo(ctx)
 	return m
 }
 
 // activeModelOrDefault returns the currently active model ID, or "local-model" as
 // the safe LM Studio default when the model ID cannot be determined.
-func (a *Adapter) activeModelOrDefault() string {
-	if m := a.ActiveModel(); m != "" {
+func (a *Adapter) activeModelOrDefault(ctx context.Context) string {
+	if m, _ := a.modelInfo(ctx); m != "" {
 		return m
 	}
 	return "local-model"
@@ -125,14 +149,14 @@ func (a *Adapter) activeModelOrDefault() string {
 // ContextLimit returns the context-window size of the currently loaded model.
 // It queries the native LM Studio /api/v0/model endpoint which includes
 // contextLength; falls back to 0 when unavailable.
-func (a *Adapter) ContextLimit() int {
-	_, limit := a.modelInfo()
+func (a *Adapter) ContextLimit(ctx context.Context) int {
+	_, limit := a.modelInfo(ctx)
 	return limit
 }
 
 // Ping checks whether LM Studio is reachable by hitting the /models endpoint.
-func (a *Adapter) Ping() bool {
-	resp, err := a.httpClient.Get(a.baseURL + "/models")
+func (a *Adapter) Ping(ctx context.Context) bool {
+	resp, err := a.do(ctx, http.MethodGet, a.baseURL+"/models", nil)
 	if err != nil {
 		return false
 	}
@@ -141,8 +165,8 @@ func (a *Adapter) Ping() bool {
 }
 
 // GetAvailableModels returns the list of model IDs loaded in LM Studio.
-func (a *Adapter) GetAvailableModels() ([]string, error) {
-	resp, err := a.httpClient.Get(a.baseURL + "/models")
+func (a *Adapter) GetAvailableModels(ctx context.Context) ([]string, error) {
+	resp, err := a.do(ctx, http.MethodGet, a.baseURL+"/models", nil)
 	if err != nil {
 		return nil, fmt.Errorf("lmstudio: list models: %w", err)
 	}
@@ -177,9 +201,9 @@ type chatCompletionRequest struct {
 
 // GenerateCode sends a chat completion request to LM Studio and returns the
 // generated text.
-func (a *Adapter) GenerateCode(prompt string) (string, error) {
+func (a *Adapter) GenerateCode(ctx context.Context, prompt string) (string, error) {
 	reqBody, err := json.Marshal(chatCompletionRequest{
-		Model:       a.activeModelOrDefault(),
+		Model:       a.activeModelOrDefault(ctx),
 		Messages:    []map[string]string{{"role": "user", "content": prompt}},
 		Temperature: 0.2,
 	})
@@ -187,11 +211,7 @@ func (a *Adapter) GenerateCode(prompt string) (string, error) {
 		return "", fmt.Errorf("lmstudio: marshal request: %w", err)
 	}
 
-	resp, err := a.httpClient.Post(
-		a.baseURL+"/chat/completions",
-		"application/json",
-		bytes.NewReader(reqBody),
-	)
+	resp, err := a.do(ctx, http.MethodPost, a.baseURL+"/chat/completions", reqBody)
 	if err != nil {
 		return "", fmt.Errorf("lmstudio: request: %w", err)
 	}
@@ -229,9 +249,9 @@ func messagesToMaps(msgs []domain.Message) []map[string]string {
 
 // Chat sends a multi-turn conversation history to LM Studio and returns the
 // assistant reply. This is the preferred method for session-isolated generation.
-func (a *Adapter) Chat(messages []domain.Message) (string, error) {
+func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, error) {
 	reqBody, err := json.Marshal(chatCompletionRequest{
-		Model:       a.activeModelOrDefault(),
+		Model:       a.activeModelOrDefault(ctx),
 		Messages:    messagesToMaps(messages),
 		Temperature: 0.2,
 	})
@@ -239,11 +259,7 @@ func (a *Adapter) Chat(messages []domain.Message) (string, error) {
 		return "", fmt.Errorf("lmstudio: marshal chat request: %w", err)
 	}
 
-	resp, err := a.httpClient.Post(
-		a.baseURL+"/chat/completions",
-		"application/json",
-		bytes.NewReader(reqBody),
-	)
+	resp, err := a.do(ctx, http.MethodPost, a.baseURL+"/chat/completions", reqBody)
 	if err != nil {
 		return "", fmt.Errorf("lmstudio: chat request: %w", err)
 	}

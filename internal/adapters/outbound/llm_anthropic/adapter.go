@@ -3,6 +3,7 @@ package llm_anthropic
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -58,7 +59,7 @@ func (a *Adapter) BaseURL() string      { return a.baseURL }
 
 // ContextLimit returns the context window size for the configured Claude model.
 // Defaults to 200000 for unknown models (all modern Claude models support 200K).
-func (a *Adapter) ContextLimit() int {
+func (a *Adapter) ContextLimit(_ context.Context) int {
 	if limit, ok := claudeContextLimits[a.model]; ok {
 		return limit
 	}
@@ -66,8 +67,8 @@ func (a *Adapter) ContextLimit() int {
 }
 
 // Ping checks Anthropic API reachability via the /v1/models endpoint.
-func (a *Adapter) Ping() bool {
-	req, err := a.newRequest(http.MethodGet, a.baseURL+"/v1/models", nil)
+func (a *Adapter) Ping(ctx context.Context) bool {
+	req, err := a.newRequest(ctx, http.MethodGet, a.baseURL+"/v1/models", nil)
 	if err != nil {
 		return false
 	}
@@ -80,8 +81,8 @@ func (a *Adapter) Ping() bool {
 }
 
 // GetAvailableModels queries Anthropic's /v1/models endpoint for available models.
-func (a *Adapter) GetAvailableModels() ([]string, error) {
-	req, err := a.newRequest(http.MethodGet, a.baseURL+"/v1/models", nil)
+func (a *Adapter) GetAvailableModels(ctx context.Context) ([]string, error) {
+	req, err := a.newRequest(ctx, http.MethodGet, a.baseURL+"/v1/models", nil)
 	if err != nil {
 		return nil, fmt.Errorf("anthropic: build models request: %w", err)
 	}
@@ -109,15 +110,15 @@ func (a *Adapter) GetAvailableModels() ([]string, error) {
 }
 
 // GenerateCode sends a single prompt as a user message to Claude.
-func (a *Adapter) GenerateCode(prompt string) (string, error) {
-	return a.sendMessages("", []anthropicMessage{{Role: "user", Content: prompt}})
+func (a *Adapter) GenerateCode(ctx context.Context, prompt string) (string, error) {
+	return a.sendMessages(ctx, "", []anthropicMessage{{Role: "user", Content: prompt}})
 }
 
 // Chat converts the multi-turn conversation history into Anthropic format.
 // Consecutive same-role messages are merged (Anthropic requires alternating turns).
-func (a *Adapter) Chat(messages []domain.Message) (string, error) {
+func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, error) {
 	system, turns := toAnthropicMessages(messages)
-	return a.sendMessages(system, turns)
+	return a.sendMessages(ctx, system, turns)
 }
 
 type anthropicMessage struct {
@@ -163,7 +164,7 @@ type anthropicRequest struct {
 	Messages  []anthropicMessage `json:"messages"`
 }
 
-func (a *Adapter) sendMessages(system string, messages []anthropicMessage) (string, error) {
+func (a *Adapter) sendMessages(ctx context.Context, system string, messages []anthropicMessage) (string, error) {
 	if len(messages) == 0 {
 		return "", fmt.Errorf("anthropic: no user message to send")
 	}
@@ -176,7 +177,7 @@ func (a *Adapter) sendMessages(system string, messages []anthropicMessage) (stri
 	if err != nil {
 		return "", fmt.Errorf("anthropic: marshal request: %w", err)
 	}
-	req, err := a.newRequest(http.MethodPost, a.baseURL+"/v1/messages", bytes.NewReader(reqBody))
+	req, err := a.newRequest(ctx, http.MethodPost, a.baseURL+"/v1/messages", bytes.NewReader(reqBody))
 	if err != nil {
 		return "", fmt.Errorf("anthropic: build request: %w", err)
 	}
@@ -225,8 +226,8 @@ func errorDetail(body io.Reader) string {
 	return ": " + e.Error.Message
 }
 
-func (a *Adapter) newRequest(method, url string, body io.Reader) (*http.Request, error) {
-	req, err := http.NewRequest(method, url, body)
+func (a *Adapter) newRequest(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return nil, err
 	}

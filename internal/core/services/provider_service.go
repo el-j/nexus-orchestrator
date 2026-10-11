@@ -49,7 +49,9 @@ func (o *OrchestratorService) GetProviderModels(providerName string) ([]string, 
 	if !ok {
 		return nil, fmt.Errorf("orchestrator: get provider models: %w", domain.ErrNotFound)
 	}
-	models, err := client.GetAvailableModels()
+	ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
+	defer cancel()
+	models, err := client.GetAvailableModels(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("orchestrator: get provider models: %w", err)
 	}

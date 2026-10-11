@@ -71,7 +71,15 @@ func (o *OrchestratorService) processNext() bool {
 		return false
 	}
 
-	chain, err := o.resolveProviderWithFallback(task)
+	run := o.beginRun(task.ID)
+	defer o.endRun(task.ID)
+	// A cancel can land between the claim and the registration above, when there is
+	// no run to abort yet; honour it here instead of overwriting CANCELLED later.
+	if cur, err := o.repo.GetByID(task.ID); err == nil && cur.Status == domain.StatusCancelled {
+		return true
+	}
+
+	chain, err := o.resolveProviderWithFallback(run.ctx, task)
 	if err != nil || len(chain) == 0 {
 		logMsg := "no provider available"
 		if err != nil {
@@ -95,7 +103,64 @@ func (o *OrchestratorService) processNext() bool {
 		return true
 	}
 
-	return o.executeWithFallbackChain(task, chain, prompt, sessionHistory)
+	return o.executeWithFallbackChain(run, task, chain, prompt, sessionHistory)
+}
+
+// beginRun registers a task as running so CancelTask can abort it. Its context is
+// a child of the service's base context, so Stop aborts it as well.
+func (o *OrchestratorService) beginRun(taskID string) *runHandle {
+	ctx, cancel := context.WithCancel(o.baseCtx)
+	h := &runHandle{ctx: ctx, cancel: cancel}
+	o.runMu.Lock()
+	o.running[taskID] = h
+	o.runMu.Unlock()
+	return h
+}
+
+// endRun releases the resources of a finished run.
+func (o *OrchestratorService) endRun(taskID string) {
+	o.runMu.Lock()
+	h := o.running[taskID]
+	delete(o.running, taskID)
+	o.runMu.Unlock()
+	if h != nil {
+		h.cancel()
+	}
+}
+
+// abortRun asks the engine to stop generating for taskID on behalf of a user.
+// It reports whether this engine was running the task.
+func (o *OrchestratorService) abortRun(taskID string) bool {
+	o.runMu.Lock()
+	h := o.running[taskID]
+	o.runMu.Unlock()
+	if h == nil {
+		return false
+	}
+	h.userCancelled.Store(true)
+	h.cancel()
+	return true
+}
+
+// finishInterrupted settles a task whose run was aborted. A task the user
+// cancelled becomes CANCELLED; one interrupted by shutdown goes back to the queue
+// so the next start picks it up (it was not the task's fault).
+func (o *OrchestratorService) finishInterrupted(task domain.Task, run *runHandle) {
+	if run.userCancelled.Load() {
+		log.Printf("orchestrator: task %s cancelled while running", task.ID)
+		o.appendTaskLog(task.ID, "cancelled by user while running")
+		if err := o.repo.UpdateStatus(task.ID, domain.StatusCancelled); err != nil {
+			log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
+		}
+		o.emit(task.ID, domain.StatusCancelled)
+		return
+	}
+	log.Printf("orchestrator: task %s interrupted by shutdown; re-queued", task.ID)
+	if ok, err := o.repo.UpdateStatusIfCurrent(task.ID, domain.StatusProcessing, domain.StatusQueued); err != nil {
+		log.Printf("orchestrator: re-queue task %s: %v", task.ID, err)
+	} else if ok {
+		o.emit(task.ID, domain.StatusQueued)
+	}
 }
 
 // isFrontierRole returns true for complex reasoning, architectural, and planning roles.
@@ -139,7 +204,7 @@ func isLocalProvider(p ports.LLMClient) bool {
 
 // resolveProviderWithFallback returns an ordered chain of available LLM providers
 // based on task requirements, role-driven routing hints, and health status.
-func (o *OrchestratorService) resolveProviderWithFallback(task domain.Task) ([]ports.LLMClient, error) {
+func (o *OrchestratorService) resolveProviderWithFallback(ctx context.Context, task domain.Task) ([]ports.LLMClient, error) {
 	if o.discovery == nil {
 		return nil, errors.New("discovery service not configured")
 	}
@@ -152,7 +217,7 @@ func (o *OrchestratorService) resolveProviderWithFallback(task domain.Task) ([]p
 		}
 		chain := []ports.LLMClient{client}
 		for _, c := range o.discovery.GetAllClients() {
-			if !strings.EqualFold(c.ProviderName(), client.ProviderName()) && c.Ping() {
+			if !strings.EqualFold(c.ProviderName(), client.ProviderName()) && c.Ping(ctx) {
 				chain = append(chain, c)
 			}
 		}
@@ -177,11 +242,11 @@ func (o *OrchestratorService) resolveProviderWithFallback(task domain.Task) ([]p
 	// Filter down to alive providers that can serve the task
 	var alive []ports.LLMClient
 	for _, c := range all {
-		if c.Ping() {
+		if c.Ping(ctx) {
 			if task.ModelID != "" {
 				if strings.EqualFold(c.ActiveModel(), task.ModelID) {
 					alive = append(alive, c)
-				} else if models, err := c.GetAvailableModels(); err == nil {
+				} else if models, err := c.GetAvailableModels(ctx); err == nil {
 					for _, m := range models {
 						if strings.EqualFold(m, task.ModelID) {
 							alive = append(alive, c)
@@ -301,13 +366,13 @@ func (o *OrchestratorService) prepareChatPrompt(task domain.Task) (string, []dom
 }
 
 // tryGenerate dispatches to Chat (when sessionRepo is set) or GenerateCode for a single attempt.
-func (o *OrchestratorService) tryGenerate(llm ports.LLMClient, prompt string, sessionHistory []domain.Message) (string, error) {
+func (o *OrchestratorService) tryGenerate(ctx context.Context, llm ports.LLMClient, prompt string, sessionHistory []domain.Message) (string, error) {
 	if o.sessionRepo != nil {
 		userMsg := domain.Message{Role: domain.RoleUser, Content: prompt, CreatedAt: time.Now()}
 		history := append(append([]domain.Message(nil), sessionHistory...), userMsg)
-		return nonEmpty(llm.Chat(history))
+		return nonEmpty(llm.Chat(ctx, history))
 	}
-	return nonEmpty(llm.GenerateCode(prompt))
+	return nonEmpty(llm.GenerateCode(ctx, prompt))
 }
 
 // appendTaskLog appends a new log line to existing task logs without overwriting history.
@@ -323,13 +388,17 @@ func (o *OrchestratorService) appendTaskLog(taskID string, newEntry string) {
 
 // executeWithFallbackChain attempts generation across an ordered chain of providers.
 // On transient error or rate limit, it falls back to the next provider in the chain.
-func (o *OrchestratorService) executeWithFallbackChain(task domain.Task, chain []ports.LLMClient, prompt string, sessionHistory []domain.Message) bool {
+func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task domain.Task, chain []ports.LLMClient, prompt string, sessionHistory []domain.Message) bool {
 	var lastErr error
 	var tried []string
 	allTooLarge := true
 
 	for i, llm := range chain {
-		if limit := llm.ContextLimit(); limit > 0 {
+		if run.ctx.Err() != nil {
+			o.finishInterrupted(task, run)
+			return true
+		}
+		if limit := llm.ContextLimit(run.ctx); limit > 0 {
 			estHistory := make([]domain.Message, len(sessionHistory)+1)
 			copy(estHistory, sessionHistory)
 			estHistory[len(sessionHistory)] = domain.Message{Role: domain.RoleUser, Content: prompt}
@@ -345,7 +414,12 @@ func (o *OrchestratorService) executeWithFallbackChain(task domain.Task, chain [
 		}
 		allTooLarge = false
 
-		code, err := o.tryGenerate(llm, prompt, sessionHistory)
+		code, err := o.tryGenerate(run.ctx, llm, prompt, sessionHistory)
+		if run.ctx.Err() != nil {
+			// Cancelled mid-generation: whatever came back (error or not) is discarded.
+			o.finishInterrupted(task, run)
+			return true
+		}
 		if err != nil {
 			lastErr = err
 			tried = append(tried, llm.ProviderName())
@@ -373,7 +447,7 @@ func (o *OrchestratorService) executeWithFallbackChain(task domain.Task, chain [
 			}
 		}
 
-		o.writeAndVerifyTaskOutput(task, code, llm, sessionHistory)
+		o.writeAndVerifyTaskOutput(run, task, code, llm, sessionHistory)
 		return true
 	}
 
@@ -402,12 +476,16 @@ func (o *OrchestratorService) executeWithFallbackChain(task domain.Task, chain [
 // executeGeneration dispatches to Chat (when sessionRepo is set) or GenerateCode,
 // with retry on transient failures. On fatal failure it persists StatusFailed.
 // On success with a sessionRepo it appends the user and assistant messages to the session.
-func (o *OrchestratorService) executeGeneration(task domain.Task, llm ports.LLMClient, prompt string, sessionHistory []domain.Message) (string, error) {
+func (o *OrchestratorService) executeGeneration(run *runHandle, task domain.Task, llm ports.LLMClient, prompt string, sessionHistory []domain.Message) (string, error) {
 	if o.sessionRepo != nil {
 		// Build the chat history using the already-loaded session (no second DB call).
 		userMsg := domain.Message{Role: domain.RoleUser, Content: prompt, CreatedAt: time.Now()}
 		history := append(append([]domain.Message(nil), sessionHistory...), userMsg)
-		code, err := nonEmpty(llm.Chat(history))
+		code, err := nonEmpty(llm.Chat(run.ctx, history))
+		if run.ctx.Err() != nil {
+			o.finishInterrupted(task, run)
+			return "", run.ctx.Err()
+		}
 		if err != nil {
 			logEntry := fmt.Sprintf("failed via %s: %v", llm.ProviderName(), err)
 			log.Printf("orchestrator: chat for task %s: %v", task.ID, err)
@@ -434,7 +512,11 @@ func (o *OrchestratorService) executeGeneration(task domain.Task, llm ports.LLMC
 		return code, nil
 	}
 
-	code, err := nonEmpty(llm.GenerateCode(prompt))
+	code, err := nonEmpty(llm.GenerateCode(run.ctx, prompt))
+	if run.ctx.Err() != nil {
+		o.finishInterrupted(task, run)
+		return "", run.ctx.Err()
+	}
 	if err != nil {
 		logEntry := fmt.Sprintf("failed via %s: %v", llm.ProviderName(), err)
 		log.Printf("orchestrator: generate code for task %s: %v", task.ID, err)
@@ -455,7 +537,7 @@ func (o *OrchestratorService) executeGeneration(task domain.Task, llm ports.LLMC
 
 // writeAndVerifyTaskOutput writes the generated code to disk, runs verification commands if configured,
 // and initiates a self-healing correction loop if verification fails.
-func (o *OrchestratorService) writeAndVerifyTaskOutput(task domain.Task, code string, llm ports.LLMClient, sessionHistory []domain.Message) {
+func (o *OrchestratorService) writeAndVerifyTaskOutput(run *runHandle, task domain.Task, code string, llm ports.LLMClient, sessionHistory []domain.Message) {
 	providerName := "unknown"
 	if llm != nil {
 		providerName = llm.ProviderName()
@@ -491,11 +573,15 @@ func (o *OrchestratorService) writeAndVerifyTaskOutput(task domain.Task, code st
 	}
 
 	// Run verification command
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(run.ctx, 2*time.Minute)
 	defer cancel()
 
 	output, runErr := o.commandRunner.Run(ctx, task.ProjectPath, task.VerificationCommand)
 	task.VerificationOutput = output
+	if run.ctx.Err() != nil {
+		o.finishInterrupted(task, run)
+		return
+	}
 
 	if runErr == nil {
 		// Verification passed on first attempt
@@ -522,7 +608,7 @@ func (o *OrchestratorService) writeAndVerifyTaskOutput(task domain.Task, code st
 			log.Printf("orchestrator: task %s: verification failed on turn %d/%d (%v), attempting self-healing correction", task.ID, turn, maxTurns, runErr)
 			feedbackPrompt := correctionPrompt(task, latest, output)
 
-			correctedCode, genErr := o.executeGeneration(task, llm, feedbackPrompt, sessionHistory)
+			correctedCode, genErr := o.executeGeneration(run, task, llm, feedbackPrompt, sessionHistory)
 			if genErr != nil {
 				log.Printf("orchestrator: task %s: self-healing generation turn %d failed: %v", task.ID, turn, genErr)
 				return
@@ -541,6 +627,10 @@ func (o *OrchestratorService) writeAndVerifyTaskOutput(task domain.Task, code st
 
 			output, runErr = o.commandRunner.Run(ctx, task.ProjectPath, task.VerificationCommand)
 			task.VerificationOutput = output
+			if run.ctx.Err() != nil {
+				o.finishInterrupted(task, run)
+				return
+			}
 			if runErr == nil {
 				logEntry := fmt.Sprintf("verification passed on correction turn %d/%d (%s) — completed via %s at %s", turn, maxTurns, task.VerificationCommand, providerName, time.Now().UTC().Format(time.RFC3339))
 				_ = o.repo.Update(task)

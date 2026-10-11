@@ -1,6 +1,7 @@
 package llm_ollama
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -46,7 +47,7 @@ func TestContextLimit_ReadsTheArchitectureSpecificKey(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			srv := showServer(t, tc.info, nil)
-			if got := NewOllamaAdapter(srv.URL, "m").ContextLimit(); got != tc.want {
+			if got := NewOllamaAdapter(srv.URL, "m").ContextLimit(context.Background()); got != tc.want {
 				t.Errorf("ContextLimit = %d, want %d", got, tc.want)
 			}
 		})
@@ -75,23 +76,23 @@ func TestContextLimit_CachesSuccessAndRetriesFailuresSoon(t *testing.T) {
 	defer srv.Close()
 	a := NewOllamaAdapter(srv.URL, "m")
 
-	if got := a.ContextLimit(); got != 0 {
+	if got := a.ContextLimit(context.Background()); got != 0 {
 		t.Fatalf("down: %d", got)
 	}
 	before := hits.Load()
-	a.ContextLimit() // inside the retry window: no new request
+	a.ContextLimit(context.Background()) // inside the retry window: no new request
 	if hits.Load() != before {
 		t.Error("failed lookups must be throttled")
 	}
 	up.Store(true)
 	time.Sleep(40 * time.Millisecond)
-	if got := a.ContextLimit(); got != 4096 {
+	if got := a.ContextLimit(context.Background()); got != 4096 {
 		t.Fatalf("after recovery the limit must be read, got %d", got)
 	}
 	// Success is cached: further calls do not hit the server.
 	n := hits.Load()
 	for i := 0; i < 5; i++ {
-		a.ContextLimit()
+		a.ContextLimit(context.Background())
 	}
 	if hits.Load() != n {
 		t.Error("a successful value must be cached within the TTL")
@@ -99,7 +100,7 @@ func TestContextLimit_CachesSuccessAndRetriesFailuresSoon(t *testing.T) {
 	// ... but it is refreshed once the TTL expires (the model may have changed).
 	infoTTL = time.Millisecond
 	time.Sleep(40 * time.Millisecond) // past both the TTL and the retry throttle
-	a.ContextLimit()
+	a.ContextLimit(context.Background())
 	if hits.Load() == n {
 		t.Error("the cache must expire")
 	}
@@ -111,12 +112,12 @@ func TestContextLimit_ToleratesBadResponses(t *testing.T) {
 		"bad json": func(w http.ResponseWriter, _ *http.Request) { fmt.Fprint(w, "nope") },
 	} {
 		srv := httptest.NewServer(h)
-		if got := NewOllamaAdapter(srv.URL, "m").ContextLimit(); got != 0 {
+		if got := NewOllamaAdapter(srv.URL, "m").ContextLimit(context.Background()); got != 0 {
 			t.Errorf("%s: %d", name, got)
 		}
 		srv.Close()
 	}
-	if got := NewOllamaAdapter("http://127.0.0.1:1", "m").ContextLimit(); got != 0 {
+	if got := NewOllamaAdapter("http://127.0.0.1:1", "m").ContextLimit(context.Background()); got != 0 {
 		t.Errorf("unreachable: %d", got)
 	}
 }
@@ -133,49 +134,49 @@ func TestAccessorsAndErrorPaths(t *testing.T) {
 	bad := status(500)
 	defer bad.Close()
 	b := NewOllamaAdapter(bad.URL, "m")
-	if _, err := b.GetAvailableModels(); err == nil {
+	if _, err := b.GetAvailableModels(context.Background()); err == nil {
 		t.Error("models 500")
 	}
-	if _, err := b.GenerateCode("p"); err == nil {
+	if _, err := b.GenerateCode(context.Background(), "p"); err == nil {
 		t.Error("generate 500")
 	}
-	if _, err := b.Chat([]domain.Message{{Role: domain.RoleUser, Content: "x"}}); err == nil {
+	if _, err := b.Chat(context.Background(), []domain.Message{{Role: domain.RoleUser, Content: "x"}}); err == nil {
 		t.Error("chat 500")
 	}
-	if b.Ping() {
+	if b.Ping(context.Background()) {
 		t.Error("ping must fail on 500")
 	}
 
 	garbage := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { fmt.Fprint(w, "not json") }))
 	defer garbage.Close()
 	g := NewOllamaAdapter(garbage.URL, "m")
-	if _, err := g.GetAvailableModels(); err == nil {
+	if _, err := g.GetAvailableModels(context.Background()); err == nil {
 		t.Error("models decode")
 	}
-	if _, err := g.GenerateCode("p"); err == nil {
+	if _, err := g.GenerateCode(context.Background(), "p"); err == nil {
 		t.Error("generate decode")
 	}
-	if _, err := g.Chat(nil); err == nil {
+	if _, err := g.Chat(context.Background(), nil); err == nil {
 		t.Error("chat decode")
 	}
 
 	dead := NewOllamaAdapter("http://127.0.0.1:1", "m")
-	if _, err := dead.GetAvailableModels(); err == nil {
+	if _, err := dead.GetAvailableModels(context.Background()); err == nil {
 		t.Error("models transport")
 	}
-	if _, err := dead.GenerateCode("p"); err == nil {
+	if _, err := dead.GenerateCode(context.Background(), "p"); err == nil {
 		t.Error("generate transport")
 	}
-	if _, err := dead.Chat(nil); err == nil {
+	if _, err := dead.Chat(context.Background(), nil); err == nil {
 		t.Error("chat transport")
 	}
-	if dead.Ping() {
+	if dead.Ping(context.Background()) {
 		t.Error("ping transport")
 	}
 
 	empty := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { fmt.Fprint(w, `{"response":""}`) }))
 	defer empty.Close()
-	if _, err := NewOllamaAdapter(empty.URL, "m").GenerateCode("p"); err == nil {
+	if _, err := NewOllamaAdapter(empty.URL, "m").GenerateCode(context.Background(), "p"); err == nil {
 		t.Error("an empty generate response must be an error")
 	}
 }

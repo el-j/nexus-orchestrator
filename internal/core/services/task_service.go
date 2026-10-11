@@ -120,6 +120,21 @@ func (o *OrchestratorService) CancelTask(id string) error {
 		o.emit(id, domain.StatusCancelled)
 		return nil
 	}
+	// A task this engine is executing: abort its in-flight generation. The worker
+	// settles it as CANCELLED (see finishInterrupted), so there is nothing to write here.
+	if o.abortRun(id) {
+		return nil
+	}
+	// PROCESSING but not executed by this engine, e.g. claimed by an external agent
+	// session: it cannot be interrupted, so the task is just taken off the board.
+	ok, err = o.repo.UpdateStatusIfCurrent(id, domain.StatusProcessing, domain.StatusCancelled)
+	if err != nil {
+		return fmt.Errorf("orchestrator: cancel task: %w", err)
+	}
+	if ok {
+		o.emit(id, domain.StatusCancelled)
+		return nil
+	}
 	task, err := o.repo.GetByID(id)
 	if err != nil {
 		return fmt.Errorf("orchestrator: cancel task: %w", err)

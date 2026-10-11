@@ -1,6 +1,7 @@
 package llm_anthropic
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -44,7 +45,7 @@ func TestChat_SendsSystemPromptAndAValidTurnSequence(t *testing.T) {
 	srv := captureServer(t, &got, okReply)
 	a := newTestAdapter(t, srv.URL, "claude-sonnet-4-5")
 
-	_, err := a.Chat([]domain.Message{
+	_, err := a.Chat(context.Background(), []domain.Message{
 		{Role: domain.RoleSystem, Content: "Be terse."},
 		{Role: domain.RoleAssistant, Content: "orphaned assistant turn"}, // may not come first
 		{Role: domain.RoleSystem, Content: "Answer in Go."},
@@ -73,7 +74,7 @@ func TestChat_WithoutAnyUserTurnFailsBeforeCallingTheAPI(t *testing.T) {
 	var got captured
 	srv := captureServer(t, &got, okReply)
 	a := newTestAdapter(t, srv.URL, "m")
-	if _, err := a.Chat([]domain.Message{{Role: domain.RoleSystem, Content: "only system"}}); err == nil {
+	if _, err := a.Chat(context.Background(), []domain.Message{{Role: domain.RoleSystem, Content: "only system"}}); err == nil {
 		t.Error("a conversation with no user turn must be rejected locally")
 	}
 	if got.Model != "" {
@@ -98,7 +99,7 @@ func TestAPIErrorsCarryAnthropicsExplanation(t *testing.T) {
 			fmt.Fprint(w, tc.body)
 		}))
 		a := newTestAdapter(t, srv.URL, "m")
-		_, err := a.GenerateCode("p")
+		_, err := a.GenerateCode(context.Background(), "p")
 		srv.Close()
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Errorf("status %d: %v, want mention of %q", tc.status, err, tc.want)
@@ -114,7 +115,7 @@ func TestAccessorsContextLimitAndOtherPaths(t *testing.T) {
 	if a.ProviderName() != "Anthropic" || a.ActiveModel() != "claude-3-opus-20240229" || a.BaseURL() == "" {
 		t.Error("accessors")
 	}
-	if a.ContextLimit() != 200000 || NewAdapter("k", "some-future-model").ContextLimit() != 200000 {
+	if a.ContextLimit(context.Background()) != 200000 || NewAdapter("k", "some-future-model").ContextLimit(context.Background()) != 200000 {
 		t.Error("context limit")
 	}
 
@@ -125,38 +126,38 @@ func TestAccessorsContextLimitAndOtherPaths(t *testing.T) {
 	} {
 		srv := httptest.NewServer(h)
 		b := newTestAdapter(t, srv.URL, "m")
-		if _, err := b.GenerateCode("p"); err == nil {
+		if _, err := b.GenerateCode(context.Background(), "p"); err == nil {
 			t.Errorf("%s: GenerateCode must fail", name)
 		}
 		if name != "no text" {
-			if _, err := b.GetAvailableModels(); err == nil {
+			if _, err := b.GetAvailableModels(context.Background()); err == nil {
 				t.Errorf("%s: GetAvailableModels must fail", name)
 			}
 		}
-		if name == "500" && b.Ping() {
+		if name == "500" && b.Ping(context.Background()) {
 			t.Error("Ping must be false on 500")
 		}
 		srv.Close()
 	}
 	dead := newTestAdapter(t, "http://127.0.0.1:1", "m")
-	if dead.Ping() {
+	if dead.Ping(context.Background()) {
 		t.Error("ping transport")
 	}
-	if _, err := dead.GetAvailableModels(); err == nil {
+	if _, err := dead.GetAvailableModels(context.Background()); err == nil {
 		t.Error("models transport")
 	}
-	if _, err := dead.GenerateCode("p"); err == nil {
+	if _, err := dead.GenerateCode(context.Background(), "p"); err == nil {
 		t.Error("generate transport")
 	}
 	// Invalid base URL fails while building the request.
 	bad := newTestAdapter(t, "http://bad host", "m")
-	if bad.Ping() {
+	if bad.Ping(context.Background()) {
 		t.Error("ping bad url")
 	}
-	if _, err := bad.GetAvailableModels(); err == nil {
+	if _, err := bad.GetAvailableModels(context.Background()); err == nil {
 		t.Error("models bad url")
 	}
-	if _, err := bad.GenerateCode("p"); err == nil {
+	if _, err := bad.GenerateCode(context.Background(), "p"); err == nil {
 		t.Error("generate bad url")
 	}
 }

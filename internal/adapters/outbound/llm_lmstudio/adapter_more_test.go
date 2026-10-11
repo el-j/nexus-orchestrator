@@ -1,6 +1,7 @@
 package llm_lmstudio
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -57,14 +58,14 @@ func TestModelInfo_FollowsModelSwapsInsteadOfPinningTheFirstOne(t *testing.T) {
 	fast(t)
 	srv, st := lmServer(t)
 	a := NewLMStudioAdapter(srv.URL + "/v1")
-	if a.ActiveModel() != "model-a" || a.ContextLimit() != 4096 {
-		t.Fatalf("initial: %q %d", a.ActiveModel(), a.ContextLimit())
+	if a.ActiveModel() != "model-a" || a.ContextLimit(context.Background()) != 4096 {
+		t.Fatalf("initial: %q %d", a.ActiveModel(), a.ContextLimit(context.Background()))
 	}
 	st.model.Store("model-b")
 	st.ctx.Store(32768)
 	time.Sleep(30 * time.Millisecond)
-	if a.ActiveModel() != "model-b" || a.ContextLimit() != 32768 {
-		t.Errorf("after a swap: %q %d", a.ActiveModel(), a.ContextLimit())
+	if a.ActiveModel() != "model-b" || a.ContextLimit(context.Background()) != 32768 {
+		t.Errorf("after a swap: %q %d", a.ActiveModel(), a.ContextLimit(context.Background()))
 	}
 }
 
@@ -80,13 +81,13 @@ func TestModelInfo_RecoversWhenLMStudioWasDownAtFirstCall(t *testing.T) {
 	}))
 	defer srv.Close()
 	a := NewLMStudioAdapter(srv.URL + "/v1")
-	if a.ActiveModel() != "" || a.activeModelOrDefault() != "local-model" || a.ContextLimit() != 0 {
+	if a.ActiveModel() != "" || a.activeModelOrDefault(context.Background()) != "local-model" || a.ContextLimit(context.Background()) != 0 {
 		t.Fatal("down: unknown model, safe defaults")
 	}
 	up.Store(true)
 	time.Sleep(30 * time.Millisecond)
-	if a.ActiveModel() != "late-model" || a.ContextLimit() != 2048 {
-		t.Errorf("must recover once LM Studio is up: %q %d", a.ActiveModel(), a.ContextLimit())
+	if a.ActiveModel() != "late-model" || a.ContextLimit(context.Background()) != 2048 {
+		t.Errorf("must recover once LM Studio is up: %q %d", a.ActiveModel(), a.ContextLimit(context.Background()))
 	}
 }
 
@@ -122,33 +123,33 @@ func TestAccessorsAndErrorPaths(t *testing.T) {
 	} {
 		bad := httptest.NewServer(h)
 		b := NewLMStudioAdapter(bad.URL + "/v1")
-		if _, err := b.GenerateCode("p"); err == nil {
+		if _, err := b.GenerateCode(context.Background(), "p"); err == nil {
 			t.Errorf("%s: GenerateCode must fail", name)
 		}
-		if _, err := b.Chat([]domain.Message{{Role: domain.RoleUser, Content: "x"}}); err == nil {
+		if _, err := b.Chat(context.Background(), []domain.Message{{Role: domain.RoleUser, Content: "x"}}); err == nil {
 			t.Errorf("%s: Chat must fail", name)
 		}
 		if name != "no choices" {
-			if _, err := b.GetAvailableModels(); err == nil {
+			if _, err := b.GetAvailableModels(context.Background()); err == nil {
 				t.Errorf("%s: GetAvailableModels must fail", name)
 			}
 		}
 		bad.Close()
 	}
 	dead := NewLMStudioAdapter("http://127.0.0.1:1/v1")
-	if _, err := dead.GenerateCode("p"); err == nil {
+	if _, err := dead.GenerateCode(context.Background(), "p"); err == nil {
 		t.Error("transport generate")
 	}
-	if _, err := dead.Chat(nil); err == nil {
+	if _, err := dead.Chat(context.Background(), nil); err == nil {
 		t.Error("transport chat")
 	}
-	if _, err := dead.GetAvailableModels(); err == nil {
+	if _, err := dead.GetAvailableModels(context.Background()); err == nil {
 		t.Error("transport models")
 	}
-	if dead.Ping() {
+	if dead.Ping(context.Background()) {
 		t.Error("transport ping")
 	}
-	if !NewLMStudioAdapter(srv.URL + "/v1").Ping() {
+	if !NewLMStudioAdapter(srv.URL + "/v1").Ping(context.Background()) {
 		t.Error("ping against a live server")
 	}
 }

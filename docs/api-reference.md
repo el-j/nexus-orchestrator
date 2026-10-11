@@ -144,9 +144,18 @@ Retrieve a single task by ID.
 DELETE /api/tasks/{id}
 ```
 
-Cancel a queued task before it is processed.
+Cancel a task. Which states can be cancelled:
 
-**Response:** `204 No Content` on success, `404 Not Found` if task doesn't exist or already processed.
+| Task status                                     | What happens                                                                                                                                                                                 |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `QUEUED`, `DRAFT`, `BACKLOG`, `NO_PROVIDER`     | Moved to `CANCELLED` immediately.                                                                                                                                                            |
+| `PROCESSING` (running in this daemon)           | The in-flight provider request is **aborted**; the task becomes `CANCELLED` a moment later (watch the `task.cancelled` event). It is not retried and does not fall back to another provider. |
+| `PROCESSING` (claimed by an external agent)     | Taken off the board as `CANCELLED`; the external agent cannot be interrupted.                                                                                                                |
+| `COMPLETED`, `FAILED`, `CANCELLED`, `TOO_LARGE` | Not cancellable.                                                                                                                                                                             |
+
+When the daemon shuts down, a task that was running goes back to `QUEUED` (it is not marked failed).
+
+**Response:** `204 No Content` on success, `404 Not Found` if the task doesn't exist, `409 Conflict` if its status cannot be cancelled.
 
 ---
 

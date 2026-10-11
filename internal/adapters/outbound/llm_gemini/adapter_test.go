@@ -1,6 +1,7 @@
 package llm_gemini_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -22,16 +23,16 @@ func TestAdapter_ProviderNameAndMetadata(t *testing.T) {
 	if a.ActiveModel() != "gemini-2.5-flash" {
 		t.Errorf("expected 'gemini-2.5-flash', got %q", a.ActiveModel())
 	}
-	if a.ContextLimit() != 1048576 {
-		t.Errorf("expected 1048576, got %d", a.ContextLimit())
+	if a.ContextLimit(context.Background()) != 1048576 {
+		t.Errorf("expected 1048576, got %d", a.ContextLimit(context.Background()))
 	}
 
 	aDefault := llm_gemini.NewAdapter("test-key", "")
 	if aDefault.ActiveModel() != "gemini-2.5-pro" {
 		t.Errorf("expected default 'gemini-2.5-pro', got %q", aDefault.ActiveModel())
 	}
-	if aDefault.ContextLimit() != 2097152 {
-		t.Errorf("expected 2097152, got %d", aDefault.ContextLimit())
+	if aDefault.ContextLimit(context.Background()) != 2097152 {
+		t.Errorf("expected 2097152, got %d", aDefault.ContextLimit(context.Background()))
 	}
 }
 
@@ -47,12 +48,12 @@ func TestAdapter_Ping(t *testing.T) {
 	defer ts.Close()
 
 	aValid := llm_gemini.NewAdapter("valid-key", "gemini-2.5-pro", ts.URL)
-	if !aValid.Ping() {
+	if !aValid.Ping(context.Background()) {
 		t.Error("expected ping to succeed")
 	}
 
 	aInvalid := llm_gemini.NewAdapter("wrong-key", "gemini-2.5-pro", ts.URL)
-	if aInvalid.Ping() {
+	if aInvalid.Ping(context.Background()) {
 		t.Error("expected ping to fail on unauthorized")
 	}
 }
@@ -80,7 +81,7 @@ func TestAdapter_GetAvailableModels(t *testing.T) {
 	defer ts.Close()
 
 	a := llm_gemini.NewAdapter("key", "gemini-2.5-pro", ts.URL)
-	models, err := a.GetAvailableModels()
+	models, err := a.GetAvailableModels(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -120,7 +121,7 @@ func TestAdapter_GenerateCode(t *testing.T) {
 	defer ts.Close()
 
 	a := llm_gemini.NewAdapter("key", "gemini-2.5-pro", ts.URL)
-	code, err := a.GenerateCode("Write a hello function in Go")
+	code, err := a.GenerateCode(context.Background(), "Write a hello function in Go")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -161,7 +162,7 @@ func TestAdapter_Chat_WithSystemInstructionAndTurns(t *testing.T) {
 		{Role: domain.RoleUser, Content: "Now execute refactoring"},
 	}
 
-	reply, err := a.Chat(messages)
+	reply, err := a.Chat(context.Background(), messages)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -198,7 +199,7 @@ func TestAdapter_Chat_Errors(t *testing.T) {
 		defer ts.Close()
 
 		a := llm_gemini.NewAdapter("key", "gemini-2.5-pro", ts.URL)
-		_, err := a.Chat([]domain.Message{{Role: domain.RoleUser, Content: "hi"}})
+		_, err := a.Chat(context.Background(), []domain.Message{{Role: domain.RoleUser, Content: "hi"}})
 		if err == nil || err.Error() != "gemini: rate limited (429)" {
 			t.Errorf("expected rate limit error, got: %v", err)
 		}
@@ -212,7 +213,7 @@ func TestAdapter_Chat_Errors(t *testing.T) {
 		defer ts.Close()
 
 		a := llm_gemini.NewAdapter("key", "gemini-2.5-pro", ts.URL)
-		_, err := a.Chat([]domain.Message{{Role: domain.RoleUser, Content: "hi"}})
+		_, err := a.Chat(context.Background(), []domain.Message{{Role: domain.RoleUser, Content: "hi"}})
 		if err == nil {
 			t.Error("expected error on 500, got nil")
 		}
@@ -225,7 +226,7 @@ func TestAdapter_Chat_Errors(t *testing.T) {
 		defer ts.Close()
 
 		a := llm_gemini.NewAdapter("key", "gemini-2.5-pro", ts.URL)
-		_, err := a.Chat([]domain.Message{{Role: domain.RoleUser, Content: "hi"}})
+		_, err := a.Chat(context.Background(), []domain.Message{{Role: domain.RoleUser, Content: "hi"}})
 		if err == nil {
 			t.Error("expected error on empty candidates, got nil")
 		}

@@ -70,17 +70,17 @@ type countingLLM struct {
 	calls   atomic.Int64
 }
 
-func (c *countingLLM) Ping() bool                            { return c.alive }
-func (c *countingLLM) ProviderName() string                  { return c.name }
-func (c *countingLLM) ActiveModel() string                   { return "" }
-func (c *countingLLM) BaseURL() string                       { return "" }
-func (c *countingLLM) GetAvailableModels() ([]string, error) { return nil, nil }
-func (c *countingLLM) ContextLimit() int                     { return 0 }
-func (c *countingLLM) GenerateCode(_ string) (string, error) {
+func (c *countingLLM) Ping(_ context.Context) bool                            { return c.alive }
+func (c *countingLLM) ProviderName() string                                   { return c.name }
+func (c *countingLLM) ActiveModel() string                                    { return "" }
+func (c *countingLLM) BaseURL() string                                        { return "" }
+func (c *countingLLM) GetAvailableModels(_ context.Context) ([]string, error) { return nil, nil }
+func (c *countingLLM) ContextLimit(_ context.Context) int                     { return 0 }
+func (c *countingLLM) GenerateCode(_ context.Context, _ string) (string, error) {
 	c.calls.Add(1)
 	return c.code, c.codeErr
 }
-func (c *countingLLM) Chat(_ []domain.Message) (string, error) {
+func (c *countingLLM) Chat(_ context.Context, _ []domain.Message) (string, error) {
 	c.calls.Add(1)
 	return c.code, c.codeErr
 }

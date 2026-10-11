@@ -3,6 +3,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -46,7 +47,7 @@ func run(args []string, stdout, stderr io.Writer, pollEvery time.Duration) int {
 		taskFile = fs.String("task-file", "", "path to .claude/tasks/TASK-NNN.md (required)")
 		project  = fs.String("project", "", "project root path (default: $PWD)")
 		target   = fs.String("target", "", "relative target file path for LLM output (e.g. internal/foo/bar.go)")
-		context  = fs.String("context", "", "comma-separated relative file paths to include as context")
+		ctxFiles = fs.String("context", "", "comma-separated relative file paths to include as context")
 		addr     = fs.String("addr", getEnv("NEXUS_ADDR", "http://127.0.0.1:63987"), "daemon base URL")
 		wait     = fs.Bool("wait", false, "poll until task completes and print result")
 		timeout  = fs.Duration("timeout", 5*time.Minute, "max wait time when --wait is set")
@@ -72,13 +73,13 @@ func run(args []string, stdout, stderr io.Writer, pollEvery time.Duration) int {
 		return exitFailure
 	}
 
-	body, err := BuildRequestBody(*taskFile, *project, *target, *context, *verify, *turns)
+	body, err := BuildRequestBody(*taskFile, *project, *target, *ctxFiles, *verify, *turns)
 	if err != nil {
 		fmt.Fprintln(stderr, "error:", err)
 		return exitFailure
 	}
 
-	taskID, status, err := SubmitTask(*addr, body)
+	taskID, status, err := SubmitTask(context.Background(), *addr, body)
 	if err != nil {
 		fmt.Fprintln(stderr, "error:", err)
 		return exitFailure
@@ -89,7 +90,10 @@ func run(args []string, stdout, stderr io.Writer, pollEvery time.Duration) int {
 	fmt.Fprintf(stdout, "ui:    %s/ui\n", *addr)
 
 	if *wait {
-		return waitForCompletion(stdout, stderr, *addr, taskID, *timeout, pollEvery)
+		// --timeout bounds the whole wait, including a poll request still in flight.
+		ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+		defer cancel()
+		return waitForCompletion(ctx, stdout, stderr, *addr, taskID, pollEvery)
 	}
 	return exitOK
 }
@@ -132,13 +136,19 @@ func BuildRequestBody(taskFilePath, projectPath, targetFile, contextFilesStr, ve
 }
 
 // SubmitTask POSTs a task payload to the daemon and returns the task ID and initial status.
-func SubmitTask(addr string, body map[string]interface{}) (string, string, error) {
+// Cancelling ctx aborts the request.
+func SubmitTask(ctx context.Context, addr string, body map[string]interface{}) (string, string, error) {
 	reqJSON, err := json.Marshal(body)
 	if err != nil {
 		return "", "", fmt.Errorf("marshal request: %w", err)
 	}
 
-	resp, err := httpClient.Post(addr+"/api/tasks", "application/json", bytes.NewReader(reqJSON))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, addr+"/api/tasks", bytes.NewReader(reqJSON))
+	if err != nil {
+		return "", "", fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return "", "", fmt.Errorf("POST /api/tasks: %w", err)
 	}
@@ -160,14 +170,26 @@ func SubmitTask(addr string, body map[string]interface{}) (string, string, error
 }
 
 // waitForCompletion polls the task every pollEvery until it reaches a terminal
-// state or timeout elapses, and returns the exit code describing the outcome.
-func waitForCompletion(stdout, stderr io.Writer, addr, taskID string, timeout, pollEvery time.Duration) int {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		time.Sleep(pollEvery)
-		resp, err := httpClient.Get(addr + "/api/tasks/" + taskID)
+// state or ctx is done (its deadline is the --timeout), and returns the exit code
+// describing the outcome.
+func waitForCompletion(ctx context.Context, stdout, stderr io.Writer, addr, taskID string, pollEvery time.Duration) int {
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Fprintln(stderr, "error: timed out waiting for task completion")
+			return exitFailure
+		case <-time.After(pollEvery):
+		}
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, addr+"/api/tasks/"+taskID, nil)
 		if err != nil {
-			fmt.Fprintln(stderr, "poll error:", err)
+			fmt.Fprintln(stderr, "error:", err)
+			return exitFailure
+		}
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			if ctx.Err() == nil {
+				fmt.Fprintln(stderr, "poll error:", err)
+			}
 			continue
 		}
 		var t struct {
@@ -200,8 +222,6 @@ func waitForCompletion(stdout, stderr io.Writer, addr, taskID string, timeout, p
 			return exitNoProvider
 		}
 	}
-	fmt.Fprintln(stderr, "error: timed out waiting for task completion")
-	return exitFailure
 }
 
 func getEnv(key, fallback string) string {

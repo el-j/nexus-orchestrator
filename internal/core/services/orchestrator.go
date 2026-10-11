@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"encoding/base64"
@@ -79,6 +80,13 @@ func WithCommandRunner(runner ports.CommandRunner) Option {
 	return func(s *OrchestratorService) { s.commandRunner = runner }
 }
 
+// runHandle lets CancelTask and Stop abort the generation of a task in flight.
+type runHandle struct {
+	ctx           context.Context
+	cancel        context.CancelFunc
+	userCancelled atomic.Bool // true when CancelTask (not shutdown) caused the abort
+}
+
 // OrchestratorService implements ports.Orchestrator and drives the worker loop.
 type OrchestratorService struct {
 	mu          sync.Mutex
@@ -109,6 +117,10 @@ type OrchestratorService struct {
 	lastAgentScan      time.Time
 	lastAgentScanMu    sync.Mutex
 	signalFn           func(pid int, force bool) error // test seam; nil = real os signals
+	baseCtx            context.Context                 // cancelled by Stop: aborts every in-flight generation
+	baseCancel         context.CancelFunc
+	runMu              sync.Mutex
+	running            map[string]*runHandle // tasks being executed by this engine, by task ID
 	maxRetries         int
 	maxResponseTokens  int
 	cleanupInterval    time.Duration
@@ -153,7 +165,9 @@ func NewOrchestrator(
 		cleanupInterval:   2 * time.Minute,
 		staleThreshold:    5 * time.Minute,
 		daemonAddr:        "http://127.0.0.1:63987",
+		running:           make(map[string]*runHandle),
 	}
+	svc.baseCtx, svc.baseCancel = context.WithCancel(context.Background())
 	for _, opt := range opts {
 		opt(svc)
 	}
@@ -176,6 +190,9 @@ func (o *OrchestratorService) Stop() {
 		o.mu.Lock()
 		o.stopped = true
 		o.mu.Unlock()
+		// Abort in-flight generations first: without this Stop would wait out a
+		// provider request that can legitimately run for minutes.
+		o.baseCancel()
 		close(o.stopCh)
 	})
 	o.workerWg.Wait()

@@ -28,12 +28,12 @@ type scriptLLM struct {
 	calls     int
 }
 
-func (s *scriptLLM) Ping() bool           { return s.alive }
-func (s *scriptLLM) ProviderName() string { return s.name }
-func (s *scriptLLM) ActiveModel() string  { return s.model }
-func (s *scriptLLM) BaseURL() string      { return "" }
-func (s *scriptLLM) ContextLimit() int    { return s.limit }
-func (s *scriptLLM) GetAvailableModels() ([]string, error) {
+func (s *scriptLLM) Ping(_ context.Context) bool        { return s.alive }
+func (s *scriptLLM) ProviderName() string               { return s.name }
+func (s *scriptLLM) ActiveModel() string                { return s.model }
+func (s *scriptLLM) BaseURL() string                    { return "" }
+func (s *scriptLLM) ContextLimit(_ context.Context) int { return s.limit }
+func (s *scriptLLM) GetAvailableModels(_ context.Context) ([]string, error) {
 	return s.models, s.modelErr
 }
 
@@ -60,8 +60,8 @@ func (s *scriptLLM) next(prompt string, hist []domain.Message) (string, error) {
 	return s.replies[i], nil
 }
 
-func (s *scriptLLM) GenerateCode(p string) (string, error) { return s.next(p, nil) }
-func (s *scriptLLM) Chat(h []domain.Message) (string, error) {
+func (s *scriptLLM) GenerateCode(_ context.Context, p string) (string, error) { return s.next(p, nil) }
+func (s *scriptLLM) Chat(_ context.Context, h []domain.Message) (string, error) {
 	return s.next(h[len(h)-1].Content, h)
 }
 

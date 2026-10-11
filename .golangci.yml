@@ -23,6 +23,7 @@ linters:
     - bodyclose
     - misspell
     - gosec
+    - noctx
 
   settings:
     errcheck:
@@ -128,12 +129,19 @@ linters:
       - path: "internal/adapters/inbound/mcp/tools.*\\.go"
         linters:
           - unparam
+      # The repository ports (ports.TaskRepository, SessionRepository, ...) carry no
+      # context.Context, so the SQLite adapters have none to pass to database/sql.
+      # Tracked separately; every network call elsewhere is context-bound.
+      - path: "internal/adapters/outbound/repo_sqlite/"
+        linters:
+          - noctx
       # Test helpers legitimately take parameters that every caller passes the
       # same value for, and tests are not a security boundary.
       - path: "_test\\.go"
         linters:
           - unparam
           - gosec
+          - noctx
       # Test HTTP handlers legitimately ignore json.Encoder.Encode errors
       - path: "_test\\.go"
         linters:

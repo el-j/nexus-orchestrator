@@ -1,6 +1,7 @@
 package llm_openaicompat
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -29,7 +30,7 @@ func TestAPIErrorsCarryTheServersExplanation(t *testing.T) {
 			fmt.Fprint(w, tc.body)
 		}))
 		a := NewAdapter("OpenAI", srv.URL, "sk-x", "gpt")
-		_, err := a.GenerateCode("p")
+		_, err := a.GenerateCode(context.Background(), "p")
 		srv.Close()
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Errorf("status %d: %v", tc.status, err)
@@ -51,10 +52,10 @@ func TestRequestShapeAuthAndOtherPaths(t *testing.T) {
 	}))
 	defer srv.Close()
 	a := NewAdapter("Custom", srv.URL, "sk-secret", "my-model")
-	if a.ProviderName() != "Custom" || a.ActiveModel() != "my-model" || a.BaseURL() != srv.URL || a.ContextLimit() < 0 {
+	if a.ProviderName() != "Custom" || a.ActiveModel() != "my-model" || a.BaseURL() != srv.URL || a.ContextLimit(context.Background()) < 0 {
 		t.Error("accessors")
 	}
-	if _, err := a.Chat([]domain.Message{{Role: domain.RoleUser, Content: "hi"}}); err != nil {
+	if _, err := a.Chat(context.Background(), []domain.Message{{Role: domain.RoleUser, Content: "hi"}}); err != nil {
 		t.Fatal(err)
 	}
 	if auth != "Bearer sk-secret" || path != "/chat/completions" || body["model"] != "my-model" {
@@ -62,7 +63,7 @@ func TestRequestShapeAuthAndOtherPaths(t *testing.T) {
 	}
 	// No key: no Authorization header at all.
 	keyless := NewAdapter("Local", srv.URL, "", "m")
-	_, _ = keyless.GenerateCode("p")
+	_, _ = keyless.GenerateCode(context.Background(), "p")
 	if auth != "" {
 		t.Errorf("keyless adapter sent %q", auth)
 	}
@@ -72,30 +73,30 @@ func TestRequestShapeAuthAndOtherPaths(t *testing.T) {
 		"no choices": func(w http.ResponseWriter, _ *http.Request) { fmt.Fprint(w, `{"choices":[]}`) },
 	} {
 		s := httptest.NewServer(h)
-		if _, err := NewAdapter("X", s.URL, "", "m").GenerateCode("p"); err == nil {
+		if _, err := NewAdapter("X", s.URL, "", "m").GenerateCode(context.Background(), "p"); err == nil {
 			t.Errorf("%s must fail", name)
 		}
 		s.Close()
 	}
 	dead := NewAdapter("X", "http://127.0.0.1:1", "", "m")
-	if _, err := dead.GenerateCode("p"); err == nil {
+	if _, err := dead.GenerateCode(context.Background(), "p"); err == nil {
 		t.Error("transport")
 	}
-	if _, err := dead.GetAvailableModels(); err == nil {
+	if _, err := dead.GetAvailableModels(context.Background()); err == nil {
 		t.Error("models transport")
 	}
-	if dead.Ping() {
+	if dead.Ping(context.Background()) {
 		t.Error("ping transport")
 	}
-	if _, err := NewAdapter("X", "http://bad host", "", "m").GenerateCode("p"); err == nil {
+	if _, err := NewAdapter("X", "http://bad host", "", "m").GenerateCode(context.Background(), "p"); err == nil {
 		t.Error("bad url")
 	}
 	bad := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { http.Error(w, "x", 500) }))
 	defer bad.Close()
-	if NewAdapter("X", bad.URL, "", "m").Ping() {
+	if NewAdapter("X", bad.URL, "", "m").Ping(context.Background()) {
 		t.Error("ping must be false on 500")
 	}
-	if _, err := NewAdapter("X", bad.URL, "", "m").GetAvailableModels(); err == nil {
+	if _, err := NewAdapter("X", bad.URL, "", "m").GetAvailableModels(context.Background()); err == nil {
 		t.Error("models 500")
 	}
 }

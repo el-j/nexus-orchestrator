@@ -1,6 +1,7 @@
 package llm_gemini_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -13,10 +14,10 @@ import (
 
 func TestGemini_AccessorsAndBaseURLHandling(t *testing.T) {
 	a := llm_gemini.NewAdapter("k", "gemini-1.0-pro", "http://example.test/")
-	if a.BaseURL() != "http://example.test" || a.ContextLimit() != 32768 {
-		t.Errorf("baseURL=%q limit=%d", a.BaseURL(), a.ContextLimit())
+	if a.BaseURL() != "http://example.test" || a.ContextLimit(context.Background()) != 32768 {
+		t.Errorf("baseURL=%q limit=%d", a.BaseURL(), a.ContextLimit(context.Background()))
 	}
-	if got := llm_gemini.NewAdapter("k", "brand-new-model").ContextLimit(); got != 1048576 {
+	if got := llm_gemini.NewAdapter("k", "brand-new-model").ContextLimit(context.Background()); got != 1048576 {
 		t.Errorf("unknown models default to 1M, got %d", got)
 	}
 	if got := llm_gemini.NewAdapter("k", "m", "   ").BaseURL(); got == "" || strings.TrimSpace(got) == "" {
@@ -36,17 +37,17 @@ func TestGemini_ErrorPathsAndAuthHeader(t *testing.T) {
 	}))
 	defer ok.Close()
 	a := llm_gemini.NewAdapter("secret-key", "m", ok.URL)
-	if !a.Ping() || keyHeader != "secret-key" {
+	if !a.Ping(context.Background()) || keyHeader != "secret-key" {
 		t.Errorf("ping/auth: header=%q", keyHeader)
 	}
-	if models, err := a.GetAvailableModels(); err != nil || len(models) == 0 {
+	if models, err := a.GetAvailableModels(context.Background()); err != nil || len(models) == 0 {
 		t.Errorf("a list with no generateContent models falls back to a default list: %v %v", models, err)
 	}
-	if got, err := a.GenerateCode("p"); err != nil || got != "hi there" {
+	if got, err := a.GenerateCode(context.Background(), "p"); err != nil || got != "hi there" {
 		t.Errorf("parts must be concatenated: %q %v", got, err)
 	}
 	keyless := llm_gemini.NewAdapter("", "m", ok.URL)
-	_ = keyless.Ping()
+	_ = keyless.Ping(context.Background())
 	if keyHeader != "" {
 		t.Errorf("no key, no header; got %q", keyHeader)
 	}
@@ -59,37 +60,37 @@ func TestGemini_ErrorPathsAndAuthHeader(t *testing.T) {
 	} {
 		s := httptest.NewServer(h)
 		b := llm_gemini.NewAdapter("k", "m", s.URL)
-		if _, err := b.Chat([]domain.Message{{Role: domain.RoleUser, Content: "x"}}); err == nil {
+		if _, err := b.Chat(context.Background(), []domain.Message{{Role: domain.RoleUser, Content: "x"}}); err == nil {
 			t.Errorf("%s: Chat must fail", name)
 		}
 		if name == "500" || name == "garbage" {
-			if _, err := b.GetAvailableModels(); err == nil {
+			if _, err := b.GetAvailableModels(context.Background()); err == nil {
 				t.Errorf("%s: models must fail", name)
 			}
 		}
-		if name == "500" && b.Ping() {
+		if name == "500" && b.Ping(context.Background()) {
 			t.Error("ping 500")
 		}
 		s.Close()
 	}
 	dead := llm_gemini.NewAdapter("k", "m", "http://127.0.0.1:1")
-	if dead.Ping() {
+	if dead.Ping(context.Background()) {
 		t.Error("ping transport")
 	}
-	if _, err := dead.GetAvailableModels(); err == nil {
+	if _, err := dead.GetAvailableModels(context.Background()); err == nil {
 		t.Error("models transport")
 	}
-	if _, err := dead.GenerateCode("p"); err == nil {
+	if _, err := dead.GenerateCode(context.Background(), "p"); err == nil {
 		t.Error("chat transport")
 	}
 	bad := llm_gemini.NewAdapter("k", "m", "http://bad host")
-	if bad.Ping() {
+	if bad.Ping(context.Background()) {
 		t.Error("ping bad url")
 	}
-	if _, err := bad.GetAvailableModels(); err == nil {
+	if _, err := bad.GetAvailableModels(context.Background()); err == nil {
 		t.Error("models bad url")
 	}
-	if _, err := bad.GenerateCode("p"); err == nil {
+	if _, err := bad.GenerateCode(context.Background(), "p"); err == nil {
 		t.Error("chat bad url")
 	}
 }

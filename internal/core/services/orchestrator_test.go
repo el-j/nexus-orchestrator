@@ -373,12 +373,12 @@ type chatTrackingLLM struct {
 	lastMsgs   []domain.Message
 }
 
-func (c *chatTrackingLLM) Chat(msgs []domain.Message) (string, error) {
+func (c *chatTrackingLLM) Chat(_ context.Context, msgs []domain.Message) (string, error) {
 	c.mu.Lock()
 	c.chatCalled++
 	c.lastMsgs = msgs
 	c.mu.Unlock()
-	return c.mockLLMClient.Chat(msgs)
+	return c.mockLLMClient.Chat(context.Background(), msgs)
 }
 
 // --- Session isolation tests -------------------------------------------------

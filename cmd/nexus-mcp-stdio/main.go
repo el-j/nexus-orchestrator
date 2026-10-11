@@ -14,6 +14,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -59,7 +60,8 @@ func proxy(in io.Reader, out, errOut io.Writer, mcpURL, mcpToken string) error {
 			continue
 		}
 
-		req, err := http.NewRequest(http.MethodPost, mcpURL, bytes.NewReader(line))
+		// Each forward is bounded by client.Timeout; there is no wider operation to cancel.
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, mcpURL, bytes.NewReader(line))
 		if err != nil {
 			fmt.Fprintf(errOut, "nexus-mcp-stdio: new request error: %v\n", err)
 			writeErrTo(out, "proxy request error")

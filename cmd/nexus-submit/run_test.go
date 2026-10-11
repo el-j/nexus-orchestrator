@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -160,7 +161,7 @@ func TestRun_WaitTimesOut(t *testing.T) {
 
 func TestWaitForCompletion_ReportsPollErrorsThenTimesOut(t *testing.T) {
 	var out, errb bytes.Buffer
-	code := waitForCompletion(&out, &errb, "http://127.0.0.1:1", "T", 30*time.Millisecond, time.Millisecond)
+	code := waitForCompletion(waitCtx(30*time.Millisecond), &out, &errb, "http://127.0.0.1:1", "T", time.Millisecond)
 	if code != exitFailure || !strings.Contains(errb.String(), "poll error") {
 		t.Fatalf("code=%d stderr=%q", code, errb.String())
 	}
@@ -171,7 +172,7 @@ func TestSubmitTask_ErrorBranches(t *testing.T) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer status.Close()
-	if _, _, err := SubmitTask(status.URL, map[string]interface{}{"a": 1}); err == nil || !strings.Contains(err.Error(), "HTTP 500") {
+	if _, _, err := SubmitTask(context.Background(), status.URL, map[string]interface{}{"a": 1}); err == nil || !strings.Contains(err.Error(), "HTTP 500") {
 		t.Errorf("non-201: got %v", err)
 	}
 
@@ -180,11 +181,11 @@ func TestSubmitTask_ErrorBranches(t *testing.T) {
 		fmt.Fprint(w, "not json")
 	}))
 	defer badJSON.Close()
-	if _, _, err := SubmitTask(badJSON.URL, map[string]interface{}{}); err == nil || !strings.Contains(err.Error(), "decode response") {
+	if _, _, err := SubmitTask(context.Background(), badJSON.URL, map[string]interface{}{}); err == nil || !strings.Contains(err.Error(), "decode response") {
 		t.Errorf("bad json: got %v", err)
 	}
 
-	if _, _, err := SubmitTask("http://127.0.0.1:1", map[string]interface{}{"ch": make(chan int)}); err == nil || !strings.Contains(err.Error(), "marshal request") {
+	if _, _, err := SubmitTask(context.Background(), "http://127.0.0.1:1", map[string]interface{}{"ch": make(chan int)}); err == nil || !strings.Contains(err.Error(), "marshal request") {
 		t.Errorf("unmarshalable body: got %v", err)
 	}
 }
@@ -204,4 +205,11 @@ func TestBuildRequestBody_DefaultsProjectToCwdAndSkipsEmptyContext(t *testing.T)
 	if _, ok := body["verificationCommand"]; ok {
 		t.Error("verificationCommand must be omitted when --verify is empty")
 	}
+}
+
+// waitCtx returns a context that expires after d, standing in for --timeout.
+func waitCtx(d time.Duration) context.Context {
+	ctx, cancel := context.WithTimeout(context.Background(), d)
+	time.AfterFunc(d, cancel) // release the timer even if the test never reads ctx
+	return ctx
 }

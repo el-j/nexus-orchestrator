@@ -4,6 +4,7 @@ package llm_ollama
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -61,9 +62,26 @@ func (a *Adapter) ActiveModel() string { return a.model }
 // BaseURL returns the configured endpoint URL for this adapter.
 func (a *Adapter) BaseURL() string { return a.baseURL }
 
+// do sends a request bound to ctx, so cancelling ctx aborts it. A non-nil body is
+// sent as JSON.
+func (a *Adapter) do(ctx context.Context, client *http.Client, method, path string, body []byte) (*http.Response, error) {
+	var rdr io.Reader
+	if body != nil {
+		rdr = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, a.baseURL+path, rdr)
+	if err != nil {
+		return nil, err
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	return client.Do(req)
+}
+
 // Ping checks whether Ollama is reachable.
-func (a *Adapter) Ping() bool {
-	resp, err := a.httpClient.Get(a.baseURL + "/api/tags")
+func (a *Adapter) Ping(ctx context.Context) bool {
+	resp, err := a.do(ctx, a.httpClient, http.MethodGet, "/api/tags", nil)
 	if err != nil {
 		return false
 	}
@@ -72,8 +90,8 @@ func (a *Adapter) Ping() bool {
 }
 
 // GetAvailableModels returns the list of model names pulled into Ollama.
-func (a *Adapter) GetAvailableModels() ([]string, error) {
-	resp, err := a.httpClient.Get(a.baseURL + "/api/tags")
+func (a *Adapter) GetAvailableModels(ctx context.Context) ([]string, error) {
+	resp, err := a.do(ctx, a.httpClient, http.MethodGet, "/api/tags", nil)
 	if err != nil {
 		return nil, fmt.Errorf("ollama: list models: %w", err)
 	}
@@ -114,7 +132,7 @@ type ollamaChatRequest struct {
 }
 
 // GenerateCode sends a chat completion request to Ollama and returns the generated text.
-func (a *Adapter) GenerateCode(prompt string) (string, error) {
+func (a *Adapter) GenerateCode(ctx context.Context, prompt string) (string, error) {
 	reqBody, err := json.Marshal(generateRequest{
 		Model:  a.model,
 		Prompt: prompt,
@@ -124,11 +142,7 @@ func (a *Adapter) GenerateCode(prompt string) (string, error) {
 		return "", fmt.Errorf("ollama: marshal request: %w", err)
 	}
 
-	resp, err := a.httpClient.Post(
-		a.baseURL+"/api/generate",
-		"application/json",
-		bytes.NewReader(reqBody),
-	)
+	resp, err := a.do(ctx, a.httpClient, http.MethodPost, "/api/generate", reqBody)
 	if err != nil {
 		return "", fmt.Errorf("ollama: request: %w", err)
 	}
@@ -155,7 +169,7 @@ func (a *Adapter) GenerateCode(prompt string) (string, error) {
 // caller skips its pre-flight check). A successful value is cached for infoTTL;
 // failures are retried at most every infoRetry, so a transient outage at the
 // first call does not disable the check for the life of the process.
-func (a *Adapter) ContextLimit() int {
+func (a *Adapter) ContextLimit(ctx context.Context) int {
 	a.infoMu.Lock()
 	defer a.infoMu.Unlock()
 	now := time.Now()
@@ -166,7 +180,7 @@ func (a *Adapter) ContextLimit() int {
 		return a.contextLimit
 	}
 	a.infoTried = now
-	if n := a.fetchContextLimit(); n > 0 {
+	if n := a.fetchContextLimit(ctx); n > 0 {
 		a.contextLimit = n
 		a.infoAt = now
 	}
@@ -177,13 +191,13 @@ func (a *Adapter) ContextLimit() int {
 // key after the model architecture ("llama.context_length",
 // "qwen2.context_length", "gemma3.context_length", ...), so the architecture
 // from "general.architecture" is tried first, then any "*.context_length" key.
-func (a *Adapter) fetchContextLimit() int {
+func (a *Adapter) fetchContextLimit(ctx context.Context) int {
 	body, err := json.Marshal(map[string]string{"name": a.model})
 	if err != nil {
 		return 0
 	}
 	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Post(a.baseURL+"/api/show", "application/json", bytes.NewReader(body))
+	resp, err := a.do(ctx, client, http.MethodPost, "/api/show", body)
 	if err != nil {
 		return 0
 	}
@@ -243,7 +257,7 @@ func messagesToMaps(msgs []domain.Message) []map[string]string {
 
 // Chat sends a multi-turn conversation history to Ollama using the /api/chat
 // endpoint and returns the assistant reply.
-func (a *Adapter) Chat(messages []domain.Message) (string, error) {
+func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, error) {
 	reqBody, err := json.Marshal(ollamaChatRequest{
 		Model:    a.model,
 		Messages: messagesToMaps(messages),
@@ -253,11 +267,7 @@ func (a *Adapter) Chat(messages []domain.Message) (string, error) {
 		return "", fmt.Errorf("ollama: marshal chat request: %w", err)
 	}
 
-	resp, err := a.httpClient.Post(
-		a.baseURL+"/api/chat",
-		"application/json",
-		bytes.NewReader(reqBody),
-	)
+	resp, err := a.do(ctx, a.httpClient, http.MethodPost, "/api/chat", reqBody)
 	if err != nil {
 		return "", fmt.Errorf("ollama: chat request: %w", err)
 	}

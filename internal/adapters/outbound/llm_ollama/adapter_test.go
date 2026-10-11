@@ -1,6 +1,7 @@
 package llm_ollama
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -53,7 +54,7 @@ func TestOllama_Ping_Success(t *testing.T) {
 	defer srv.Close()
 
 	a := NewOllamaAdapter(srv.URL, "llama3")
-	if !a.Ping() {
+	if !a.Ping(context.Background()) {
 		t.Fatal("Ping() returned false; expected true")
 	}
 }
@@ -64,7 +65,7 @@ func TestOllama_Ping_ConnectionRefused(t *testing.T) {
 	dead.Close()
 
 	a := NewOllamaAdapter(url, "llama3")
-	if a.Ping() {
+	if a.Ping(context.Background()) {
 		t.Fatal("Ping() returned true; expected false (connection refused)")
 	}
 }
@@ -76,7 +77,7 @@ func TestOllama_Ping_NonOKStatus(t *testing.T) {
 	defer srv.Close()
 
 	a := NewOllamaAdapter(srv.URL, "llama3")
-	if a.Ping() {
+	if a.Ping(context.Background()) {
 		t.Fatal("Ping() returned true on 503; expected false")
 	}
 }
@@ -86,7 +87,7 @@ func TestOllama_GetAvailableModels(t *testing.T) {
 	defer srv.Close()
 
 	a := NewOllamaAdapter(srv.URL, "llama3")
-	models, err := a.GetAvailableModels()
+	models, err := a.GetAvailableModels(context.Background())
 	if err != nil {
 		t.Fatalf("GetAvailableModels() error: %v", err)
 	}
@@ -105,7 +106,7 @@ func TestOllama_GetAvailableModels_ServerError(t *testing.T) {
 	defer srv.Close()
 
 	a := NewOllamaAdapter(srv.URL, "llama3")
-	_, err := a.GetAvailableModels()
+	_, err := a.GetAvailableModels(context.Background())
 	if err == nil {
 		t.Fatal("expected error from GetAvailableModels() on 500 response")
 	}
@@ -116,7 +117,7 @@ func TestOllama_GenerateCode(t *testing.T) {
 	defer srv.Close()
 
 	a := NewOllamaAdapter(srv.URL, "llama3")
-	result, err := a.GenerateCode("write hello world")
+	result, err := a.GenerateCode(context.Background(), "write hello world")
 	if err != nil {
 		t.Fatalf("GenerateCode() error: %v", err)
 	}
@@ -143,7 +144,7 @@ func TestOllama_GenerateCode_SendsModelAndPrompt(t *testing.T) {
 	defer srv.Close()
 
 	a := NewOllamaAdapter(srv.URL, "llama3")
-	_, err := a.GenerateCode("test prompt")
+	_, err := a.GenerateCode(context.Background(), "test prompt")
 	if err != nil {
 		t.Fatalf("GenerateCode() error: %v", err)
 	}
@@ -165,7 +166,7 @@ func TestOllama_GenerateCode_ServerError(t *testing.T) {
 	defer srv.Close()
 
 	a := NewOllamaAdapter(srv.URL, "llama3")
-	_, err := a.GenerateCode("prompt")
+	_, err := a.GenerateCode(context.Background(), "prompt")
 	if err == nil {
 		t.Fatal("expected error from GenerateCode() on 500 response")
 	}
@@ -176,7 +177,7 @@ func TestOllama_Chat(t *testing.T) {
 	defer srv.Close()
 
 	a := NewOllamaAdapter(srv.URL, "llama3")
-	result, err := a.Chat([]domain.Message{
+	result, err := a.Chat(context.Background(), []domain.Message{
 		{Role: domain.RoleUser, Content: "hello"},
 		{Role: domain.RoleAssistant, Content: "hi there"},
 		{Role: domain.RoleUser, Content: "write code"},
@@ -209,7 +210,7 @@ func TestOllama_Chat_ForwardsMessages(t *testing.T) {
 	defer srv.Close()
 
 	a := NewOllamaAdapter(srv.URL, "llama3")
-	_, err := a.Chat([]domain.Message{
+	_, err := a.Chat(context.Background(), []domain.Message{
 		{Role: domain.RoleUser, Content: "turn 1"},
 		{Role: domain.RoleAssistant, Content: "reply 1"},
 		{Role: domain.RoleUser, Content: "turn 2"},
