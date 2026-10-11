@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Repository ports (`TaskRepository`, `SessionRepository`, `ModelCapabilityRepository`) take a `context.Context`; `repo_sqlite` uses the `*Context` database calls and the `noctx` exclusion is gone
 - Oversized source files split along their seams (engine, orchestrator, SQLite repository, scanners, brain service, extension client, several views)
 - The GitHub Action's `command` input defaults to `auto` instead of `execute`
-- Coverage ratchets: frontend, docs site, GitHub Action and extension are at 100% on every metric and gated there; Go merged coverage is 97% locally with the gate at 95%
+- Coverage ratchets: frontend, docs site, GitHub Action and extension are at 100% on every metric and gated there; Go merged coverage is 97% (96.9% in CI) with the gate at 96%
 
 ### Fixed
 
