@@ -17,8 +17,7 @@ const Fine = { template: '<div data-testid="view">ok</div>' };
 const stubs = {
   AppSidebar: { template: '<nav data-testid="sidebar" />' },
   LogPanel: { template: '<footer data-testid="logs" />' },
-  Toast: { template: '<div data-testid="toast" />' },
-  ConfirmDialog: { template: '<div data-testid="confirm" />' },
+  UiToaster: { template: '<div data-testid="toast" />' },
   ErrorFallback: {
     props: ['error'],
     emits: ['retry'],
@@ -41,9 +40,9 @@ describe('App', () => {
     expect(sse.connect).toHaveBeenCalledTimes(1);
   });
 
-  it('renders the shell: sidebar, routed view, log panel, toasts and confirm dialog', () => {
+  it('renders the shell: sidebar, routed view, log panel, toasts', () => {
     const w = mountApp(Fine);
-    for (const id of ['sidebar', 'view', 'logs', 'toast', 'confirm']) {
+    for (const id of ['sidebar', 'view', 'logs', 'toast']) {
       expect(w.find(`[data-testid="${id}"]`).exists(), id).toBe(true);
     }
     expect(w.find('[data-testid="fallback"]').exists()).toBe(false);

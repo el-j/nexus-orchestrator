@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Removed PrimeVue, `@primevue/themes` and `primeicons` from the frontend and the docs site (epic #64). Both now use internal primitives (`UiIcon`, `UiButton`, `UiSkeleton`, `UiSelect`, `UiDrawer`, `UiToaster`/`useToast`, `UiTabs`) with design tokens, a focus trap, reduced-motion support and an SVG icon set; see `docs/ui-foundation.md`. Bundles shrank by 42-50 % (frontend JS 190 -> 95 KiB gz, docs JS 167 -> 97 KiB gz) and CI now enforces bundle budgets (`scripts/check-bundle-budget.mjs`) and bans a UI kit (`scripts/check-no-ui-kit.mjs`).
+- Astro feasibility study (`docs/astro-feasibility.md`): no-go for the frontend, no-go with checkpoints for the docs.
+- Playwright regression matrix for keyboard, focus, ARIA and motion (`frontend/e2e/ui-foundation.spec.ts`).
+
 - Repository ports (`TaskRepository`, `SessionRepository`, `ModelCapabilityRepository`) take a `context.Context`; `repo_sqlite` uses the `*Context` database calls and the `noctx` exclusion is gone
 - Oversized source files split along their seams (engine, orchestrator, SQLite repository, scanners, brain service, extension client, several views)
 - The GitHub Action's `command` input defaults to `auto` instead of `execute`

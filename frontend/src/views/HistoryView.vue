@@ -97,7 +97,7 @@
       <div
         class="w-16 h-16 rounded-2xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center mb-4"
       >
-        <i class="pi pi-clock text-2xl text-violet-400"></i>
+        <UiIcon name="clock" class="text-2xl text-violet-400" />
       </div>
       <h3 class="font-semibold text-white mb-2">No task history yet.</h3>
       <p class="text-sm text-slate-500 max-w-xs">
@@ -162,6 +162,7 @@
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import type { Task, TaskStatus } from '../types/domain';
 import { currentProject } from '../composables/useProjectState';

@@ -1,16 +1,17 @@
 import type { RouteRecordRaw } from 'vue-router';
+import type { IconName } from '../ui/icons';
 
 /** A route entry of the app shell: path, title and view. */
 export type AppRoute = RouteRecordRaw & {
   label?: string;
-  icon?: string;
+  icon?: IconName;
   /** Show this route as a sidebar nav item */
   nav?: boolean;
 };
 
 const routes: AppRoute[] = [
   {
-    icon: 'pi-home',
+    icon: 'home',
     name: 'mission-control',
     path: '/',
     label: 'Mission Control',
@@ -18,7 +19,7 @@ const routes: AppRoute[] = [
     component: () => import('../views/MissionControlView.vue'),
   },
   {
-    icon: 'pi-users',
+    icon: 'users',
     name: 'agents',
     path: '/agents',
     label: 'Agents',
@@ -26,7 +27,7 @@ const routes: AppRoute[] = [
     component: () => import('../views/AgentsView.vue'),
   },
   {
-    icon: 'pi-server',
+    icon: 'server',
     name: 'providers',
     path: '/providers',
     label: 'Providers',
@@ -34,7 +35,7 @@ const routes: AppRoute[] = [
     component: () => import('../views/ProvidersView.vue'),
   },
   {
-    icon: 'pi-folder',
+    icon: 'folder',
     name: 'projects',
     path: '/projects',
     label: 'Projects',
@@ -48,7 +49,7 @@ const routes: AppRoute[] = [
     component: () => import('../views/LiveActivityView.vue'),
   },
   {
-    icon: 'pi-file',
+    icon: 'file',
     name: 'plans',
     path: '/plans',
     label: 'Plans',
@@ -56,7 +57,7 @@ const routes: AppRoute[] = [
     component: () => import('../views/DiscoveredPlansView.vue'),
   },
   {
-    icon: 'pi-clock',
+    icon: 'clock',
     name: 'history',
     path: '/history',
     label: 'History',
@@ -64,7 +65,7 @@ const routes: AppRoute[] = [
     component: () => import('../views/HistoryView.vue'),
   },
   {
-    icon: 'pi-list',
+    icon: 'list',
     name: 'backlog',
     path: '/backlog',
     label: 'Backlog',
@@ -72,7 +73,7 @@ const routes: AppRoute[] = [
     component: () => import('../views/BacklogView.vue'),
   },
   {
-    icon: 'pi-database',
+    icon: 'database',
     name: 'brain',
     path: '/brain',
     label: 'Brain',
@@ -80,7 +81,7 @@ const routes: AppRoute[] = [
     component: () => import('../views/BrainView.vue'),
   },
   {
-    icon: 'pi-cog',
+    icon: 'cog',
     name: 'settings',
     path: '/settings',
     label: 'Settings',

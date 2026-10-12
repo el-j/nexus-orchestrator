@@ -5,11 +5,11 @@ import type { Task } from '../types/domain';
 
 const api = vi.hoisted(() => ({ cancelTask: vi.fn(), toastAdd: vi.fn() }));
 vi.mock('../types/wails', () => ({ cancelTask: api.cancelTask }));
-vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: api.toastAdd }) }));
+vi.mock('../composables/useToast', () => ({ useToast: () => ({ add: api.toastAdd }) }));
 
 const DrawerStub = {
-  props: ['visible'],
-  emits: ['update:visible'],
+  props: ['modelValue'],
+  emits: ['update:modelValue'],
   template: '<div data-testid="drawer"><slot name="header" /><slot /></div>',
 };
 const ButtonStub = {
@@ -34,7 +34,7 @@ const task = (o: Partial<Task> = {}): Task =>
 const mountDrawer = (t: Task | null) =>
   mount(TaskDetailDrawer, {
     props: { task: t, modelValue: true },
-    global: { stubs: { Drawer: DrawerStub, Button: ButtonStub } },
+    global: { stubs: { UiDrawer: DrawerStub, UiButton: ButtonStub } },
   });
 
 beforeEach(() => {
@@ -119,7 +119,7 @@ describe('TaskDetailDrawer', () => {
 
   it('propagates visibility changes from the drawer', () => {
     const w = mountDrawer(task());
-    w.findComponent(DrawerStub).vm.$emit('update:visible', false);
+    w.findComponent(DrawerStub).vm.$emit('update:modelValue', false);
     expect(w.emitted('update:modelValue')![0]).toEqual([false]);
   });
 });

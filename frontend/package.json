@@ -16,9 +16,6 @@
     "check:docs": "node ../scripts/check-tsdoc.mjs src"
   },
   "dependencies": {
-    "@primevue/themes": "^4.5.4",
-    "primeicons": "^8.0.2",
-    "primevue": "^5.0.2",
     "vue": "^3.5.43",
     "vue-router": "^5.4.0"
   },

@@ -23,7 +23,7 @@ vi.mock('../composables/useProjectState', async () => {
   return { currentProject: ref(null) };
 });
 vi.mock('../types/wails', () => ({ createDraft: h.createDraft }));
-vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: h.toastAdd }) }));
+vi.mock('../composables/useToast', () => ({ useToast: () => ({ add: h.toastAdd }) }));
 
 const Brain = {
   name: 'ProjectBrainCard',

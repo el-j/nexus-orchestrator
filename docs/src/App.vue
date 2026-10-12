@@ -8,7 +8,6 @@
       <RouterView />
     </main>
     <AppFooter />
-    <Toast position="bottom-right" />
   </div>
 </template>
 
@@ -17,7 +16,6 @@ import { RouterView, useRoute } from 'vue-router';
 import { onMounted, watch, nextTick } from 'vue';
 import AppNav from './components/AppNav.vue';
 import AppFooter from './components/AppFooter.vue';
-import Toast from 'primevue/toast';
 
 const route = useRoute();
 

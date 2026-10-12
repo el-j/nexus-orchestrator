@@ -49,8 +49,8 @@ vi.mock('../types/wails', () => ({
   submitTask: vi.fn(),
 }));
 
-// Mock PrimeVue useToast
-vi.mock('primevue/usetoast', () => ({
+// Mock the toast service
+vi.mock('../composables/useToast', () => ({
   useToast: () => ({ add: vi.fn() }),
 }));
 
@@ -73,7 +73,7 @@ describe('MissionControlView', () => {
     const wrapper = shallowMount(MissionControlView, {
       global: {
         stubs: {
-          Skeleton: true,
+          UiSkeleton: true,
           TaskStatusBadge: true,
           TaskDetailDrawer: true,
           TaskSubmitForm: true,
@@ -87,7 +87,7 @@ describe('MissionControlView', () => {
     const wrapper = shallowMount(MissionControlView, {
       global: {
         stubs: {
-          Skeleton: true,
+          UiSkeleton: true,
           TaskStatusBadge: true,
           TaskDetailDrawer: true,
           TaskSubmitForm: true,
@@ -103,7 +103,7 @@ describe('MissionControlView', () => {
     const wrapper = shallowMount(MissionControlView, {
       global: {
         stubs: {
-          Skeleton: true,
+          UiSkeleton: true,
           TaskStatusBadge: true,
           TaskDetailDrawer: true,
           TaskSubmitForm: true,
@@ -119,7 +119,7 @@ describe('MissionControlView', () => {
     const wrapper = shallowMount(MissionControlView, {
       global: {
         stubs: {
-          Skeleton: true,
+          UiSkeleton: true,
           TaskStatusBadge: true,
           TaskDetailDrawer: true,
           TaskSubmitForm: true,
@@ -135,7 +135,7 @@ describe('MissionControlView', () => {
     const wrapper = shallowMount(MissionControlView, {
       global: {
         stubs: {
-          Skeleton: true,
+          UiSkeleton: true,
           TaskStatusBadge: true,
           TaskDetailDrawer: true,
           TaskSubmitForm: true,
@@ -150,7 +150,7 @@ describe('MissionControlView', () => {
     const wrapper = shallowMount(MissionControlView, {
       global: {
         stubs: {
-          Skeleton: true,
+          UiSkeleton: true,
           TaskStatusBadge: true,
           TaskDetailDrawer: true,
           TaskSubmitForm: true,
@@ -165,7 +165,7 @@ describe('MissionControlView', () => {
     const wrapper = shallowMount(MissionControlView, {
       global: {
         stubs: {
-          Skeleton: true,
+          UiSkeleton: true,
           TaskStatusBadge: true,
           TaskDetailDrawer: true,
           TaskSubmitForm: true,
@@ -179,7 +179,7 @@ describe('MissionControlView', () => {
     const wrapper = shallowMount(MissionControlView, {
       global: {
         stubs: {
-          Skeleton: true,
+          UiSkeleton: true,
           TaskStatusBadge: true,
           TaskDetailDrawer: true,
           TaskSubmitForm: true,
@@ -206,7 +206,7 @@ describe('MissionControlView — interactions', () => {
   const STUBS = {
     global: {
       stubs: {
-        Skeleton: true,
+        UiSkeleton: true,
         TaskStatusBadge: true,
         TaskDetailDrawer: true,
         TaskSubmitForm: true,

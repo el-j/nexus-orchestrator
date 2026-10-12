@@ -16,51 +16,52 @@
           class="p-1 rounded text-slate-500 hover:text-slate-300 transition-colors"
           :aria-label="expanded ? 'Collapse form' : 'Expand form'"
         >
-          <i :class="`pi ${expanded ? 'pi-chevron-down' : 'pi-chevron-up'} text-xs`"></i>
+          <UiIcon :name="expanded ? 'chevron-down' : 'chevron-up'" class="text-xs" />
         </button>
       </div>
 
       <div v-show="expanded" class="space-y-3">
-        <Textarea
+        <textarea
           v-model="form.Instruction"
           placeholder="What should the AI do? e.g. 'Add error handling to the HTTP handler'"
-          :rows="2"
-          class="w-full text-sm resize-none"
-          :invalid="submitted && !form.Instruction.trim()"
-        />
+          aria-label="Instruction"
+          rows="2"
+          class="ui-field text-sm resize-none"
+          :aria-invalid="submitted && !form.Instruction.trim() ? 'true' : undefined"
+        ></textarea>
         <small v-if="submitted && !form.Instruction.trim()" class="text-red-400 text-xs">
           Instruction is required.
         </small>
 
         <!-- Project + Target file -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <InputText
+          <input
             v-model="form.ProjectPath"
             placeholder="Project path (absolute)"
-            class="text-xs"
+            aria-label="Project path (absolute)"
+            class="ui-field text-xs"
           />
-          <InputText
+          <input
             v-model="form.TargetFile"
             placeholder="Target file (e.g. handler.go)"
-            class="text-xs"
+            aria-label="Target file (e.g. handler.go)"
+            class="ui-field text-xs"
           />
         </div>
 
         <!-- Command + Priority -->
         <div class="grid grid-cols-2 gap-2">
-          <Select
+          <UiSelect
             v-model="form.Command"
             :options="commandOptions"
-            option-label="label"
-            option-value="value"
+            label="Command"
             placeholder="Command"
             class="text-xs"
           />
-          <Select
+          <UiSelect
             v-model="form.Priority"
             :options="priorityOptions"
-            option-label="label"
-            option-value="value"
+            label="Priority"
             placeholder="Priority"
             class="text-xs"
           />
@@ -68,19 +69,17 @@
 
         <!-- Provider + Model -->
         <div class="grid grid-cols-2 gap-2">
-          <Select
+          <UiSelect
             v-model="form.ProviderName"
             :options="providerOptions"
-            option-label="label"
-            option-value="value"
+            label="Provider"
             placeholder="Auto (best available)"
             class="text-xs"
           />
-          <Select
+          <UiSelect
             v-model="form.ModelID"
             :options="modelOptions"
-            option-label="label"
-            option-value="value"
+            label="Model"
             placeholder="Default model"
             :disabled="!form.ProviderName"
             class="text-xs"
@@ -106,10 +105,11 @@
 
         <!-- Tags -->
         <div>
-          <InputText
+          <input
             v-model="tagInput"
             placeholder="Add tag… (Enter or ,)"
-            class="w-full text-xs"
+            aria-label="Add tag… (Enter or ,)"
+            class="ui-field w-full text-xs"
             @keydown.enter.prevent="addTag"
             @keydown="onTagKeydown"
           />
@@ -134,7 +134,7 @@
 
         <!-- Actions: Clear + Split submit button -->
         <div class="flex justify-end gap-2">
-          <Button
+          <UiButton
             type="button"
             label="Clear"
             severity="secondary"
@@ -144,12 +144,12 @@
           />
           <!-- Split button: Primary + dropdown toggle -->
           <div class="relative flex" ref="splitRef">
-            <Button
+            <UiButton
               type="submit"
               :label="submitting ? 'Submitting…' : 'Submit to Queue'"
               :loading="submitting"
               size="small"
-              icon="pi pi-send"
+              icon="send"
               class="!rounded-r-none"
             />
             <button
@@ -160,7 +160,7 @@
               aria-label="More submit options"
               :aria-expanded="splitOpen"
             >
-              <i class="pi pi-chevron-down text-[10px]"></i>
+              <UiIcon name="chevron-down" class="text-[10px]" />
             </button>
             <!-- Dropdown -->
             <Transition name="split-menu">
@@ -176,7 +176,7 @@
                   @click="handleSaveDraft"
                   class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-white/5 flex items-center gap-2 transition-colors"
                 >
-                  <i class="pi pi-file-edit text-slate-400"></i>
+                  <UiIcon name="file-edit" class="text-slate-400" />
                   Save as Draft
                 </button>
                 <button
@@ -185,7 +185,7 @@
                   @click="handleSaveBacklog"
                   class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-white/5 flex items-center gap-2 transition-colors"
                 >
-                  <i class="pi pi-list text-slate-400"></i>
+                  <UiIcon name="list" class="text-slate-400" />
                   Add to Backlog
                 </button>
               </div>
@@ -198,12 +198,11 @@
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
-import Button from 'primevue/button';
-import InputText from 'primevue/inputtext';
-import Textarea from 'primevue/textarea';
-import Select from 'primevue/select';
-import { useToast } from 'primevue/usetoast';
+import UiButton from '../ui/UiButton.vue';
+import UiSelect from '../ui/UiSelect.vue';
+import { useToast } from '../composables/useToast';
 import { submitTask, createDraft } from '../types/wails';
 import { useProviders } from '../composables/useProviders';
 

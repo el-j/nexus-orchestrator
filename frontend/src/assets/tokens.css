@@ -1,0 +1,90 @@
+/*
+  Design tokens. Surfaces, text, accent, status colours, radii, elevation and motion are defined once
+  here; the UI primitives in src/ui read them. The product ships a dark theme; a light theme is
+  available with <html data-theme="light">.
+*/
+:root {
+  color-scheme: dark;
+
+  /* colour */
+  --ui-surface: #0d0d14;
+  --ui-surface-raised: #13131f;
+  --ui-border: rgb(255 255 255 / 0.1);
+  --ui-text: #f0f0f8;
+  --ui-text-muted: #94a3b8;
+  --ui-accent: #7c3aed;
+  --ui-accent-soft: #a78bfa;
+  --ui-focus: #a78bfa;
+  --ui-danger: #f87171;
+
+  /* spacing, shape, type */
+  --ui-space-1: 0.25rem;
+  --ui-space-2: 0.5rem;
+  --ui-space-3: 0.75rem;
+  --ui-space-4: 1rem;
+  --ui-radius: 0.375rem;
+  --ui-radius-lg: 0.75rem;
+  --ui-font-size-sm: 0.75rem;
+  --ui-font-size-md: 0.875rem;
+
+  /* elevation */
+  --ui-shadow: 0 10px 30px rgb(0 0 0 / 0.5);
+
+  /* motion */
+  --ui-duration: 0.2s;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --ui-surface: #ffffff;
+  --ui-surface-raised: #f4f4f8;
+  --ui-border: rgb(15 23 42 / 0.15);
+  --ui-text: #0f172a;
+  --ui-text-muted: #475569;
+  --ui-focus: #6d28d9;
+  --ui-danger: #dc2626;
+  --ui-shadow: 0 10px 30px rgb(15 23 42 / 0.15);
+}
+
+/* Form controls: native input / textarea / select share one look. */
+.ui-field {
+  width: 100%;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface-raised);
+  color: var(--ui-text);
+  padding: var(--ui-space-2) var(--ui-space-3);
+  font-size: var(--ui-font-size-sm);
+  transition: border-color var(--ui-duration);
+}
+.ui-field::placeholder {
+  color: var(--ui-text-muted);
+}
+.ui-field:hover:not(:disabled) {
+  border-color: var(--ui-accent-soft);
+}
+.ui-field:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ui-field[aria-invalid='true'] {
+  border-color: var(--ui-danger);
+}
+
+/* Keyboard focus is always visible. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
+/* Motion policy: honour the OS "reduce motion" setting. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

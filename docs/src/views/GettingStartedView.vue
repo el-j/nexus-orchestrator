@@ -30,7 +30,7 @@
           <div
             class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-sm text-violet-300 mb-4"
           >
-            <i class="pi pi-book text-xs"></i>
+            <UiIcon name="book" class="text-xs" />
             Step-by-step guide
           </div>
           <h1 class="text-4xl font-black mb-4">
@@ -156,7 +156,7 @@
                 :key="feature"
                 class="flex items-start gap-2 text-sm text-slate-400"
               >
-                <i class="pi pi-check-circle text-emerald-500 text-xs mt-0.5 flex-shrink-0"></i>
+                <UiIcon name="check-circle" class="text-emerald-500 text-xs mt-0.5 flex-shrink-0" />
                 {{ feature }}
               </li>
             </ul>
@@ -199,6 +199,7 @@
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { RouterLink } from 'vue-router';
 import CodeBlock from '../components/CodeBlock.vue';
 import { scrollToId } from '../utils/scroll';

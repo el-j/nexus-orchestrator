@@ -37,13 +37,13 @@ describe('ProjectSelector', () => {
     const select = w.find('select');
     expect((select.element as HTMLSelectElement).value).toBe('/work/alpha');
     expect(select.attributes('title')).toBe('/work/alpha');
-    expect(w.find('.pi-filter').attributes('title')).toBe('alpha');
+    expect(w.find('[data-icon=\"filter\"]').attributes('title')).toBe('alpha');
   });
 
   it('shows "All Projects" as the tooltip when nothing is selected', () => {
     const w = mountSelector(null, []);
     expect(w.find('select').attributes('title')).toBe('All Projects');
-    expect(w.find('.pi-filter').attributes('title')).toBe('All Projects');
+    expect(w.find('[data-icon=\"filter\"]').attributes('title')).toBe('All Projects');
   });
 
   it('sets the chosen project, and null for "All Projects"', async () => {

@@ -1,8 +1,4 @@
 import { ViteSSG } from 'vite-ssg';
-import PrimeVue from 'primevue/config';
-import Aura from '@primevue/themes/aura';
-import ToastService from 'primevue/toastservice';
-import 'primeicons/primeicons.css';
 import './assets/main.css';
 import App from './App.vue';
 import { routes } from './router';
@@ -16,19 +12,7 @@ import { routes } from './router';
 export const createApp = ViteSSG(
   App,
   { routes, base: import.meta.env.BASE_URL },
-  ({ app, router, isClient }) => {
-    app.use(PrimeVue, {
-      theme: {
-        preset: Aura,
-        options: {
-          prefix: 'p',
-          darkModeSelector: '.dark',
-          cssLayer: false,
-        },
-      },
-    });
-    app.use(ToastService);
-
+  ({ router, isClient }) => {
     // Update document title on navigation — client-only because document is
     // not available during server-side pre-rendering.
     if (isClient) {

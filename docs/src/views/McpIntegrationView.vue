@@ -31,7 +31,7 @@
           <div
             class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-sm text-violet-300 mb-4"
           >
-            <i class="pi pi-link text-xs"></i>
+            <UiIcon name="link" class="text-xs" />
             JSON-RPC 2.0 · MCP 2024-11-05
           </div>
           <h1 class="text-4xl font-black mb-4">
@@ -74,37 +74,31 @@
           </p>
 
           <!-- OS Tabs -->
-          <Tabs value="0">
-            <TabList>
-              <Tab value="0">🍎 macOS</Tab>
-              <Tab value="1">🪟 Windows</Tab>
-            </TabList>
-            <TabPanels>
-              <TabPanel value="0">
-                <div class="rounded-xl border border-white/8 bg-[#0d0d14] p-4 mb-3">
-                  <p class="text-xs text-slate-500 mb-2">Config file path:</p>
-                  <code class="text-sm text-violet-300"
-                    >~/Library/Application Support/Claude/claude_desktop_config.json</code
-                  >
-                </div>
-                <CodeBlock language="json" :code="claudeConfig" />
-              </TabPanel>
-              <TabPanel value="1">
-                <div class="rounded-xl border border-white/8 bg-[#0d0d14] p-4 mb-3">
-                  <p class="text-xs text-slate-500 mb-2">Config file path:</p>
-                  <code class="text-sm text-violet-300"
-                    >%APPDATA%\Claude\claude_desktop_config.json</code
-                  >
-                </div>
-                <CodeBlock language="json" :code="claudeConfig" />
-              </TabPanel>
-            </TabPanels>
-          </Tabs>
+          <UiTabs :tabs="['🍎 macOS', '🪟 Windows']" label="Operating system">
+            <template #panel-0>
+              <div class="rounded-xl border border-white/8 bg-[#0d0d14] p-4 mb-3">
+                <p class="text-xs text-slate-500 mb-2">Config file path:</p>
+                <code class="text-sm text-violet-300"
+                  >~/Library/Application Support/Claude/claude_desktop_config.json</code
+                >
+              </div>
+              <CodeBlock language="json" :code="claudeConfig" />
+            </template>
+            <template #panel-1>
+              <div class="rounded-xl border border-white/8 bg-[#0d0d14] p-4 mb-3">
+                <p class="text-xs text-slate-500 mb-2">Config file path:</p>
+                <code class="text-sm text-violet-300"
+                  >%APPDATA%\Claude\claude_desktop_config.json</code
+                >
+              </div>
+              <CodeBlock language="json" :code="claudeConfig" />
+            </template>
+          </UiTabs>
 
           <div
             class="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-start gap-3"
           >
-            <i class="pi pi-info-circle text-amber-400 text-sm mt-0.5 flex-shrink-0"></i>
+            <UiIcon name="info-circle" class="text-amber-400 text-sm mt-0.5 flex-shrink-0" />
             <p class="text-sm text-amber-300">
               Restart Claude Desktop after editing the configuration. The nexus-orchestrator tools
               will appear in Claude's tool palette. Make sure the nexus-daemon is running before
@@ -137,7 +131,7 @@
           <div
             class="mt-4 rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 flex items-start gap-3"
           >
-            <i class="pi pi-info-circle text-blue-400 text-sm mt-0.5 flex-shrink-0"></i>
+            <UiIcon name="info-circle" class="text-blue-400 text-sm mt-0.5 flex-shrink-0" />
             <p class="text-sm text-blue-300">
               Use <code class="text-slate-200">"type": "http"</code> (Streamable HTTP),
               <strong>not</strong> <code class="text-slate-200">"type": "sse"</code>. The SSE
@@ -259,7 +253,7 @@
           <div
             class="rounded-xl border border-red-500/20 bg-red-500/5 p-4 flex items-start gap-3 mb-4"
           >
-            <i class="pi pi-exclamation-triangle text-red-400 text-sm mt-0.5 flex-shrink-0"></i>
+            <UiIcon name="exclamation-triangle" class="text-red-400 text-sm mt-0.5 flex-shrink-0" />
             <p class="text-sm text-red-300">
               <strong>Connection refused:</strong> Make sure the nexus-daemon is running and the MCP
               port (default 63988) is not blocked by a firewall.
@@ -268,7 +262,7 @@
           <div
             class="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 flex items-start gap-3 mb-6"
           >
-            <i class="pi pi-info-circle text-blue-400 text-sm mt-0.5 flex-shrink-0"></i>
+            <UiIcon name="info-circle" class="text-blue-400 text-sm mt-0.5 flex-shrink-0" />
             <p class="text-sm text-blue-300">
               <strong>No tools appearing:</strong> Verify the URL in
               <code>claude_desktop_config.json</code> ends with <code>/mcp</code> (not just the
@@ -369,11 +363,8 @@
 </template>
 
 <script setup lang="ts">
-import Tabs from 'primevue/tabs';
-import TabList from 'primevue/tablist';
-import Tab from 'primevue/tab';
-import TabPanels from 'primevue/tabpanels';
-import TabPanel from 'primevue/tabpanel';
+import UiIcon from '../ui/UiIcon.vue';
+import UiTabs from '../ui/UiTabs.vue';
 import CodeBlock from '../components/CodeBlock.vue';
 import { scrollToId } from '../utils/scroll';
 

@@ -7,7 +7,7 @@
     v-if="isBeta"
     class="fixed top-0 left-0 right-0 z-[60] flex items-center justify-center gap-3 px-4 py-1.5 text-xs font-medium bg-amber-500/10 border-b border-amber-500/30 text-amber-300"
   >
-    <i class="pi pi-exclamation-triangle text-amber-400"></i>
+    <UiIcon name="exclamation-triangle" class="text-amber-400" />
     You're viewing <strong class="text-amber-200">beta / develop</strong> docs — features may
     change.
     <a :href="stableUrl" class="underline underline-offset-2 hover:text-white transition-colors"
@@ -48,7 +48,7 @@
             class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs border border-amber-500/30 rounded-md text-amber-400 hover:border-amber-400 hover:text-amber-300 transition-all"
             title="Switch to beta docs"
           >
-            <i class="pi pi-code text-xs"></i>
+            <UiIcon name="code" class="text-xs" />
             beta
           </a>
           <a
@@ -57,7 +57,7 @@
             class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs border border-violet-500/30 rounded-md text-violet-400 hover:border-violet-400 hover:text-violet-300 transition-all"
             title="Switch to stable docs"
           >
-            <i class="pi pi-check-circle text-xs"></i>
+            <UiIcon name="check-circle" class="text-xs" />
             stable
           </a>
           <a
@@ -66,7 +66,7 @@
             rel="noopener"
             class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm border border-white/10 rounded-lg text-slate-300 hover:border-violet-500/50 hover:text-white transition-all"
           >
-            <i class="pi pi-github text-xs"></i>
+            <UiIcon name="github" class="text-xs" />
             GitHub
           </a>
           <RouterLink
@@ -81,14 +81,14 @@
             class="lg:hidden p-2 text-slate-400 hover:text-white"
             aria-label="Open menu"
           >
-            <i class="pi pi-bars"></i>
+            <UiIcon name="bars" />
           </button>
         </div>
       </div>
     </div>
 
     <!-- Mobile drawer -->
-    <Drawer v-model:visible="mobileOpen" position="right" style="width: 18rem; background: #0d0d14">
+    <UiDrawer v-model="mobileOpen" label="Navigation menu">
       <template #header>
         <span class="text-white font-bold"
           >nexus-<span class="gradient-text">orchestrator</span></span
@@ -106,16 +106,17 @@
           {{ link.label }}
         </RouterLink>
       </nav>
-    </Drawer>
+    </UiDrawer>
   </nav>
   <!-- Spacer: taller when beta banner is visible -->
   <div :class="isBeta ? 'h-24' : 'h-16'"></div>
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { ref } from 'vue';
 import { RouterLink } from 'vue-router';
-import Drawer from 'primevue/drawer';
+import UiDrawer from '../ui/UiDrawer.vue';
 
 const mobileOpen = ref(false);
 

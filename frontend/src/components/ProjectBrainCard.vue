@@ -97,7 +97,7 @@
           :disabled="ingesting"
           class="px-2 py-1 bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 text-xs rounded border border-amber-500/50 transition-all flex items-center gap-1"
         >
-          <i v-if="ingesting" class="pi pi-spin pi-spinner text-[10px]"></i>
+          <UiIcon v-if="ingesting" name="spinner" class="animate-spin text-[10px]" />
           <span>{{ ingesting ? 'Initializing…' : 'Initialize Brain' }}</span>
         </button>
 
@@ -117,7 +117,7 @@
             :disabled="ingesting"
             class="px-2 py-1 bg-violet-500/20 hover:bg-violet-500/40 text-violet-300 text-xs rounded border border-violet-500/50 transition-all flex items-center justify-center gap-1 min-w-[70px]"
           >
-            <i v-if="ingesting" class="pi pi-spin pi-spinner text-[10px]"></i>
+            <UiIcon v-if="ingesting" name="spinner" class="animate-spin text-[10px]" />
             <span>{{ ingesting ? ingestProgress || 'Syncing…' : 'Sync Brain' }}</span>
           </button>
           <button
@@ -135,6 +135,7 @@
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { ref, onMounted, watch } from 'vue';
 import type { DiscoveredPlanFile, BrainStatus } from '../types/domain';
 import { getBrainStatus, ingestKnowledge, ingestContent, initProject } from '../types/wails';

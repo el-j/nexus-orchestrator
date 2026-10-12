@@ -20,7 +20,7 @@
         :disabled="scanning"
         class="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:border-cyan-500/40 transition-all disabled:opacity-50 flex items-center gap-1.5"
       >
-        <i :class="['pi pi-sync text-xs', scanning && 'animate-spin']"></i>
+        <UiIcon name="sync" :class="['text-xs', scanning && 'animate-spin']" />
         {{ scanning ? 'Scanning…' : 'Scan Now' }}
       </button>
     </header>
@@ -39,6 +39,7 @@
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { useRouter } from 'vue-router';
 import { useDiscovery } from '../composables/useDiscovery';
 import DiscoveredProvidersPanel from '../components/DiscoveredProvidersPanel.vue';

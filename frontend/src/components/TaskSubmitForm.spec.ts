@@ -9,7 +9,7 @@ const api = vi.hoisted(() => ({
   toastAdd: vi.fn(),
 }));
 vi.mock('../types/wails', () => ({ submitTask: api.submitTask, createDraft: api.createDraft }));
-vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: api.toastAdd }) }));
+vi.mock('../composables/useToast', () => ({ useToast: () => ({ add: api.toastAdd }) }));
 vi.mock('../composables/useProviders', () => ({
   useProviders: () => ({
     providers: ref([
@@ -19,43 +19,19 @@ vi.mock('../composables/useProviders', () => ({
   }),
 }));
 
-// Minimal v-model-capable stand-ins for the PrimeVue inputs.
-const textInput = (tag: 'input' | 'textarea') => ({
-  props: ['modelValue', 'placeholder'],
-  emits: ['update:modelValue'],
-  template: `<${tag} :value="modelValue" :placeholder="placeholder" @input="$emit('update:modelValue', $event.target.value)" />`,
-});
-const SelectStub = {
-  props: ['modelValue', 'options', 'placeholder', 'disabled'],
-  emits: ['update:modelValue'],
-  template: `<select :data-ph="placeholder" :disabled="disabled" :value="modelValue" @change="$emit('update:modelValue', options.find(o => String(o.value) === $event.target.value).value)">
-    <option v-for="o in options" :key="o.value" :value="o.value">{{ o.label }}</option></select>`,
-};
-const ButtonStub = {
-  props: ['label', 'type', 'loading'],
-  emits: ['click'],
-  template:
-    '<button :type="type" :data-loading="loading" @click="$emit(\'click\')">{{ label }}</button>',
-};
-
 function mountForm() {
-  return mount(TaskSubmitForm, {
-    attachTo: document.body,
-    global: {
-      stubs: {
-        Textarea: textInput('textarea'),
-        InputText: textInput('input'),
-        Select: SelectStub,
-        Button: ButtonStub,
-      },
-    },
-  });
+  return mount(TaskSubmitForm, { attachTo: document.body });
 }
 type W = ReturnType<typeof mountForm>;
 
 const instruction = (w: W) => w.find('textarea');
 const field = (w: W, ph: string) => w.find(`input[placeholder^="${ph}"]`);
-const select = (w: W, ph: string) => w.find(`select[data-ph^="${ph}"]`);
+const select = (w: W, label: string) => w.find(`select[aria-label="${label}"]`);
+const pick = (w: W, label: string, option: string) => {
+  const sel = select(w, label);
+  const opt = sel.findAll('option').find((o) => o.text().includes(option))!;
+  return sel.setValue((opt.element as HTMLOptionElement).value);
+};
 const submit = (w: W) => w.find('form').trigger('submit');
 const menuItem = (w: W, text: string) =>
   w.findAll('[role="menuitem"]').find((b) => b.text().includes(text))!;
@@ -102,8 +78,8 @@ describe('TaskSubmitForm — submit', () => {
     await instruction(w).setValue('  Add retries  ');
     await field(w, 'Project path').setValue('/p');
     await field(w, 'Target file').setValue('h.go');
-    await select(w, 'Command').setValue('plan');
-    await select(w, 'Priority').setValue(1);
+    await pick(w, 'Command', 'Plan');
+    await pick(w, 'Priority', 'High');
     const tag = field(w, 'Add tag');
     await tag.setValue('urgent');
     await tag.trigger('keydown.enter');
@@ -191,17 +167,17 @@ describe('TaskSubmitForm — submit', () => {
 describe('TaskSubmitForm — provider and model', () => {
   it('lists detected providers and loads the chosen provider’s models', async () => {
     const w = mountForm();
-    const model = () => select(w, 'Default model');
+    const model = () => select(w, 'Model');
     expect(model().attributes('disabled')).toBeDefined();
-    expect(select(w, 'Auto').text()).toContain('Ollama');
+    expect(select(w, 'Provider').text()).toContain('Ollama');
 
-    await select(w, 'Auto').setValue('Ollama');
+    await pick(w, 'Provider', 'Ollama');
     expect(model().attributes('disabled')).toBeUndefined();
     expect(model().text()).toContain('llama3');
     expect(model().text()).toContain('qwen');
 
     await instruction(w).setValue('x');
-    await model().setValue('qwen');
+    await pick(w, 'Model', 'qwen');
     await submit(w);
     await flushPromises();
     expect(api.submitTask).toHaveBeenCalledWith(
@@ -212,8 +188,8 @@ describe('TaskSubmitForm — provider and model', () => {
 
   it('offers only the default model for a provider that reports none', async () => {
     const w = mountForm();
-    await select(w, 'Auto').setValue('LM Studio');
-    expect(select(w, 'Default model').findAll('option')).toHaveLength(1);
+    await pick(w, 'Provider', 'LM Studio');
+    expect(select(w, 'Model').findAll('option')).toHaveLength(1);
     w.unmount();
   });
 });

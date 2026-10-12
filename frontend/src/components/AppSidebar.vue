@@ -32,7 +32,7 @@
             : 'text-slate-500 hover:text-slate-300 hover:bg-white/5',
         ]"
       >
-        <i :class="`pi ${item.icon} text-base`"></i>
+        <UiIcon :name="item.icon!" class="text-base" />
         <span class="hidden lg:block font-medium">{{ item.label }}</span>
       </button>
     </nav>
@@ -59,6 +59,7 @@
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import ProjectSelector from './ProjectSelector.vue';
