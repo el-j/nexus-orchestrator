@@ -57,7 +57,7 @@
                 to="/downloads"
                 class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm transition-all glow-purple hover:scale-105"
               >
-                <i class="pi pi-download text-xs"></i>
+                <UiIcon name="download" class="text-xs" />
                 Download free
               </RouterLink>
               <a
@@ -66,30 +66,30 @@
                 rel="noopener"
                 class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/10 hover:border-violet-500/40 text-slate-300 hover:text-white font-semibold text-sm transition-all"
               >
-                <i class="pi pi-github text-xs"></i>
+                <UiIcon name="github" class="text-xs" />
                 View on GitHub
               </a>
               <RouterLink
                 to="/getting-started"
                 class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-slate-400 hover:text-violet-400 font-semibold text-sm transition-all"
               >
-                Get Started <i class="pi pi-arrow-right text-xs"></i>
+                Get Started <UiIcon name="arrow-right" class="text-xs" />
               </RouterLink>
             </div>
 
             <!-- Trust badges -->
             <div class="flex flex-wrap gap-4 text-xs text-slate-500">
               <span class="flex items-center gap-1"
-                ><i class="pi pi-check-circle text-emerald-500"></i> Open Source</span
+                ><UiIcon name="check-circle" class="text-emerald-500" /> Open Source</span
               >
               <span class="flex items-center gap-1"
-                ><i class="pi pi-check-circle text-emerald-500"></i> Zero telemetry</span
+                ><UiIcon name="check-circle" class="text-emerald-500" /> Zero telemetry</span
               >
               <span class="flex items-center gap-1"
-                ><i class="pi pi-check-circle text-emerald-500"></i> Local-first</span
+                ><UiIcon name="check-circle" class="text-emerald-500" /> Local-first</span
               >
               <span class="flex items-center gap-1"
-                ><i class="pi pi-check-circle text-emerald-500"></i> MIT License</span
+                ><UiIcon name="check-circle" class="text-emerald-500" /> MIT License</span
               >
             </div>
           </div>
@@ -190,29 +190,22 @@
             to="/getting-started"
             class="inline-flex items-center gap-2 mt-8 text-sm text-violet-400 hover:text-violet-300 transition-colors font-semibold"
           >
-            Full installation guide <i class="pi pi-arrow-right text-xs"></i>
+            Full installation guide <UiIcon name="arrow-right" class="text-xs" />
           </RouterLink>
         </div>
 
         <div class="reveal space-y-3">
-          <Tabs value="0">
-            <TabList>
-              <Tab value="0">Build &amp; Start</Tab>
-              <Tab value="1">Submit Task</Tab>
-              <Tab value="2">MCP (JSON-RPC)</Tab>
-            </TabList>
-            <TabPanels>
-              <TabPanel value="0">
-                <CodeBlock language="bash" :code="codeStart" />
-              </TabPanel>
-              <TabPanel value="1">
-                <CodeBlock language="bash" :code="codeSubmit" />
-              </TabPanel>
-              <TabPanel value="2">
-                <CodeBlock language="json" :code="codeMcp" />
-              </TabPanel>
-            </TabPanels>
-          </Tabs>
+          <UiTabs :tabs="['Build & Start', 'Submit Task', 'MCP (JSON-RPC)']" label="Quick start">
+            <template #panel-0>
+              <CodeBlock language="bash" :code="codeStart" />
+            </template>
+            <template #panel-1>
+              <CodeBlock language="bash" :code="codeSubmit" />
+            </template>
+            <template #panel-2>
+              <CodeBlock language="json" :code="codeMcp" />
+            </template>
+          </UiTabs>
         </div>
       </div>
     </section>
@@ -234,7 +227,7 @@
               to="/architecture"
               class="inline-flex items-center gap-2 text-sm text-violet-400 hover:text-violet-300 font-semibold transition-colors"
             >
-              Explore the architecture <i class="pi pi-arrow-right text-xs"></i>
+              Explore the architecture <UiIcon name="arrow-right" class="text-xs" />
             </RouterLink>
           </div>
           <div
@@ -271,7 +264,7 @@
             rel="noopener"
             class="px-6 py-3 rounded-xl border border-white/10 hover:border-violet-500/40 text-slate-300 hover:text-white font-bold text-sm transition-all"
           >
-            <i class="pi pi-github"></i> View on GitHub
+            <UiIcon name="github" /> View on GitHub
           </a>
         </div>
       </div>
@@ -280,12 +273,9 @@
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { RouterLink } from 'vue-router';
-import Tabs from 'primevue/tabs';
-import TabList from 'primevue/tablist';
-import Tab from 'primevue/tab';
-import TabPanels from 'primevue/tabpanels';
-import TabPanel from 'primevue/tabpanel';
+import UiTabs from '../ui/UiTabs.vue';
 import TerminalDemo from '../components/TerminalDemo.vue';
 import CodeBlock from '../components/CodeBlock.vue';
 

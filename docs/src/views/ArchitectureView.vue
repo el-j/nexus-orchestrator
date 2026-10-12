@@ -30,7 +30,7 @@
           <div
             class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-sm text-violet-300 mb-4"
           >
-            <i class="pi pi-sitemap text-xs"></i>
+            <UiIcon name="sitemap" class="text-xs" />
             Ports &amp; Adapters
           </div>
           <h1 class="text-4xl font-black mb-4"><span class="gradient-text">Architecture</span></h1>
@@ -260,7 +260,7 @@ inbound adapters → core services → ports ← outbound adapters</pre>
               :key="point"
               class="flex items-start gap-3 rounded-xl border border-white/5 bg-[#0d0d14] p-4"
             >
-              <i class="pi pi-check-circle text-emerald-500 text-sm mt-0.5 flex-shrink-0"></i>
+              <UiIcon name="check-circle" class="text-emerald-500 text-sm mt-0.5 flex-shrink-0" />
               <p class="text-sm text-slate-400" v-html="point"></p>
             </div>
           </div>
@@ -271,6 +271,7 @@ inbound adapters → core services → ports ← outbound adapters</pre>
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import CodeBlock from '../components/CodeBlock.vue';
 import { scrollToId } from '../utils/scroll';
 

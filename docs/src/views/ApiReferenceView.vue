@@ -32,7 +32,7 @@
           <div
             class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-sm text-violet-300 mb-4"
           >
-            <i class="pi pi-server text-xs"></i>
+            <UiIcon name="server" class="text-xs" />
             HTTP REST + MCP
           </div>
           <h1 class="text-4xl font-black mb-4"><span class="gradient-text">API Reference</span></h1>
@@ -69,6 +69,7 @@
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { renderMarkdown } from '../utils/markdown';
 import { scrollToId } from '../utils/scroll';
 import apiReference from '../../api-reference.md?raw';

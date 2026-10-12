@@ -44,7 +44,7 @@
           Built with Go 🔷 + Wails · MIT License · © {{ year }} nexus-orchestrator contributors
         </p>
         <a href="https://github.com/el-j/nexus-orchestrator">
-          <i class="pi pi-github"></i> View on GitHub
+          <UiIcon name="github" /> View on GitHub
         </a>
       </div>
     </div>
@@ -52,6 +52,7 @@
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { RouterLink } from 'vue-router';
 
 const year = new Date().getFullYear();

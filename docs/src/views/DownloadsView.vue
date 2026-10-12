@@ -9,7 +9,7 @@
       <div
         class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-sm text-violet-300 mb-6"
       >
-        <i class="pi pi-download text-xs"></i>
+        <UiIcon name="download" class="text-xs" />
         Latest release always available on GitHub
       </div>
       <h1 class="text-4xl sm:text-5xl font-black mb-4">
@@ -23,21 +23,21 @@
           v-if="tagLoading"
           class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/5 text-sm text-amber-400"
         >
-          <i class="pi pi-spin pi-spinner text-xs"></i>
+          <UiIcon name="spinner" class="animate-spin text-xs" />
           Resolving latest beta release…
         </span>
         <span
           v-else-if="latestTag"
           class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 text-sm font-mono text-amber-300"
         >
-          <i class="pi pi-tag text-xs"></i>
+          <UiIcon name="tag" class="text-xs" />
           {{ latestTag }}
         </span>
         <span
           v-else
           class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-700 bg-slate-800/50 text-sm text-slate-400"
         >
-          <i class="pi pi-exclamation-circle text-xs"></i>
+          <UiIcon name="exclamation-circle" class="text-xs" />
           No beta release yet — links point to latest stable
         </span>
       </div>
@@ -89,7 +89,7 @@
             :href="card.url"
             class="inline-flex items-center justify-center gap-1.5 w-full py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors"
           >
-            <i class="pi pi-download text-xs"></i>
+            <UiIcon name="download" class="text-xs" />
             {{ card.ext }}
           </a>
         </div>
@@ -124,7 +124,7 @@
             :href="card.url"
             class="inline-flex items-center justify-center gap-1 w-full py-1.5 rounded-lg border border-violet-500/40 text-violet-300 hover:bg-violet-600/10 text-xs font-semibold transition-colors"
           >
-            <i class="pi pi-download text-xs"></i>
+            <UiIcon name="download" class="text-xs" />
             {{ card.ext }}
           </a>
         </div>
@@ -157,7 +157,7 @@
             :href="vsixURL"
             class="inline-flex items-center justify-center gap-1.5 w-full py-2 rounded-lg border border-cyan-500/40 text-cyan-300 hover:bg-cyan-600/10 text-sm font-semibold transition-colors"
           >
-            <i class="pi pi-download text-xs"></i>
+            <UiIcon name="download" class="text-xs" />
             .vsix
           </a>
         </div>
@@ -240,7 +240,7 @@
               :key="item"
               class="text-xs text-slate-500 flex items-start gap-1.5"
             >
-              <i class="pi pi-check text-violet-500 text-xs mt-0.5 flex-shrink-0"></i>
+              <UiIcon name="check" class="text-violet-500 text-xs mt-0.5 flex-shrink-0" />
               <span v-html="item"></span>
             </li>
           </ul>
@@ -270,7 +270,7 @@
               :key="item"
               class="text-sm text-slate-400 flex items-start gap-2"
             >
-              <i class="pi pi-check-circle text-emerald-500 text-xs mt-0.5 flex-shrink-0"></i>
+              <UiIcon name="check-circle" class="text-emerald-500 text-xs mt-0.5 flex-shrink-0" />
               <span v-html="item"></span>
             </li>
           </ul>
@@ -284,7 +284,7 @@
         to="/getting-started"
         class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold transition-all mr-3"
       >
-        Getting Started Guide <i class="pi pi-arrow-right text-xs"></i>
+        Getting Started Guide <UiIcon name="arrow-right" class="text-xs" />
       </RouterLink>
       <a
         href="https://github.com/el-j/nexus-orchestrator"
@@ -292,13 +292,14 @@
         rel="noopener"
         class="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/10 hover:border-violet-500/40 text-slate-300 hover:text-white font-bold transition-all"
       >
-        <i class="pi pi-github"></i> View Source on GitHub
+        <UiIcon name="github" /> View Source on GitHub
       </a>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { ref, computed, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
 import CodeBlock from '../components/CodeBlock.vue';

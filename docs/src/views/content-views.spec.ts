@@ -10,16 +10,6 @@ import McpIntegrationView from './McpIntegrationView.vue';
 const scrollToId = vi.hoisted(() => vi.fn());
 vi.mock('../utils/scroll', () => ({ scrollToId }));
 
-// PrimeVue tabs need the PrimeVue plugin; the content is what matters here.
-const slot = (tag = 'div') => ({ template: `<${tag}><slot /></${tag}>` });
-const stubs = {
-  Tabs: slot(),
-  TabList: slot(),
-  Tab: slot('button'),
-  TabPanels: slot(),
-  TabPanel: slot(),
-};
-
 const pages = [
   { name: 'HomeView', view: HomeView, h1: /./ },
   { name: 'ArchitectureView', view: ArchitectureView, h1: /Architecture/ },
@@ -30,7 +20,7 @@ const pages = [
 async function mountPage(view: object): Promise<VueWrapper> {
   const router = memoryRouter();
   await router.isReady();
-  return mount(view, { global: { plugins: [router], stubs } });
+  return mount(view, { global: { plugins: [router] } });
 }
 
 beforeEach(() => scrollToId.mockReset());

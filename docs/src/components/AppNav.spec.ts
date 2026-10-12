@@ -3,16 +3,16 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { memoryRouter } from '../test/router';
 
 const DrawerStub = {
-  props: ['visible'],
-  emits: ['update:visible'],
-  template: '<aside v-if="visible" data-testid="drawer"><slot name="header" /><slot /></aside>',
+  props: ['modelValue'],
+  emits: ['update:modelValue'],
+  template: '<aside v-if="modelValue" data-testid="drawer"><slot name="header" /><slot /></aside>',
 };
 
 async function mountNav() {
   const router = memoryRouter();
   await router.isReady();
   const { default: AppNav } = await import('./AppNav.vue');
-  return mount(AppNav, { global: { plugins: [router], stubs: { Drawer: DrawerStub } } });
+  return mount(AppNav, { global: { plugins: [router], stubs: { UiDrawer: DrawerStub } } });
 }
 
 afterEach(() => {
@@ -53,7 +53,7 @@ describe('AppNav (stable channel)', () => {
   it('closes the drawer when it asks to be dismissed', async () => {
     const w = await mountNav();
     await w.get('button[aria-label="Open menu"]').trigger('click');
-    w.findComponent(DrawerStub).vm.$emit('update:visible', false);
+    w.findComponent(DrawerStub).vm.$emit('update:modelValue', false);
     await flushPromises();
     expect(w.find('[data-testid="drawer"]').exists()).toBe(false);
   });
