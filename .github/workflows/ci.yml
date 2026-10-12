@@ -190,9 +190,18 @@ jobs:
         working-directory: frontend
         run: npm run check:docs
 
+      - name: No third-party UI kit
+        run: node scripts/check-no-ui-kit.mjs frontend docs
+
       - name: Run frontend smoke coverage
         working-directory: frontend
         run: npm run test:coverage
+
+      - name: Build frontend and enforce the bundle budget
+        working-directory: frontend
+        run: |
+          npm run build
+          node ../scripts/check-bundle-budget.mjs ../build/frontend 110 13
 
   docs-test:
     name: Docs Site Tests
@@ -219,9 +228,11 @@ jobs:
         working-directory: docs
         run: npm run test:coverage
 
-      - name: Build docs site
+      - name: Build docs site and enforce the bundle budget
         working-directory: docs
-        run: npm run build
+        run: |
+          npm run build
+          node ../scripts/check-bundle-budget.mjs ../build/docs 112 10
 
   build-vscode:
     name: Build VS Code Extension
