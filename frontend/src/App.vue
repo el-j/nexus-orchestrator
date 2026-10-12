@@ -1,5 +1,5 @@
 <!--
-  Application shell: sidebar, routed view, log panel, toasts and confirm dialog.
+  Application shell: sidebar, routed view, log panel, toasts.
   Opens the shared realtime event stream once and replaces the shell with ErrorFallback when a
   child component throws; Retry clears the error.
 -->
@@ -14,8 +14,7 @@
         </main>
         <LogPanel />
       </div>
-      <Toast position="bottom-right" />
-      <ConfirmDialog />
+      <UiToaster />
     </div>
   </template>
 </template>
@@ -24,8 +23,7 @@
 import { ref, onErrorCaptured } from 'vue';
 import { RouterView } from 'vue-router';
 import { useGlobalSSE } from './composables/useGlobalSSE';
-import Toast from 'primevue/toast';
-import ConfirmDialog from 'primevue/confirmdialog';
+import UiToaster from './ui/UiToaster.vue';
 import AppSidebar from './components/AppSidebar.vue';
 import LogPanel from './components/LogPanel.vue';
 import ErrorFallback from './components/ErrorFallback.vue';

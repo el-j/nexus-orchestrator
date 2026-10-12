@@ -4,7 +4,7 @@
   Emits: update:modelValue(open), cancelled(id) after a successful cancel, close().
 -->
 <template>
-  <Drawer v-model:visible="visible" position="right" class="!bg-[#0d0d14] !w-full sm:!w-[480px]">
+  <UiDrawer v-model="visible" label="Task details">
     <template #header>
       <div class="flex items-center gap-3">
         <TaskStatusBadge v-if="task" :status="task.status" />
@@ -79,9 +79,9 @@
       </div>
 
       <div v-if="task.status === 'QUEUED'" class="pt-2">
-        <Button
+        <UiButton
           label="Cancel Task"
-          icon="pi pi-times"
+          icon="times"
           severity="danger"
           outlined
           size="small"
@@ -91,9 +91,9 @@
       </div>
 
       <div v-if="task.status === 'PROCESSING'" class="pt-2 flex flex-col gap-2">
-        <Button
+        <UiButton
           label="Interrupt"
-          icon="pi pi-stop"
+          icon="stop"
           size="small"
           title="Force cancel a running task"
           :loading="cancelling"
@@ -104,14 +104,14 @@
         <p v-if="cancelError" class="text-xs text-red-400">{{ cancelError }}</p>
       </div>
     </div>
-  </Drawer>
+  </UiDrawer>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import Drawer from 'primevue/drawer';
-import Button from 'primevue/button';
-import { useToast } from 'primevue/usetoast';
+import UiDrawer from '../ui/UiDrawer.vue';
+import UiButton from '../ui/UiButton.vue';
+import { useToast } from '../composables/useToast';
 import { cancelTask } from '../types/wails';
 import type { Task } from '../types/domain';
 import TaskStatusBadge from './TaskStatusBadge.vue';

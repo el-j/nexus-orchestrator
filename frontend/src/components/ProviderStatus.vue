@@ -152,7 +152,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue';
-import { useToast } from 'primevue/usetoast';
+import { useToast } from '../composables/useToast';
 import type { ProviderInfo, ProviderConfig } from '../types/domain';
 import type { ProviderModelState } from '../composables/useProviderActivity';
 import {

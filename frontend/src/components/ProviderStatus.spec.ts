@@ -16,7 +16,7 @@ vi.mock('../types/wails', () => ({
   updateProviderConfig: wails.updateProviderConfig,
   removeProviderConfig: wails.removeProviderConfig,
 }));
-vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: wails.toastAdd }) }));
+vi.mock('../composables/useToast', () => ({ useToast: () => ({ add: wails.toastAdd }) }));
 
 const FormStub = {
   name: 'ProviderConfigForm',

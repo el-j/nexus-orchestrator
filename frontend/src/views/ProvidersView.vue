@@ -160,12 +160,10 @@
           @click="configExpanded = !configExpanded"
           class="flex items-center gap-2 mb-3 group"
         >
-          <i
-            :class="[
-              'pi text-xs text-slate-500',
-              configExpanded ? 'pi-chevron-down' : 'pi-chevron-right',
-            ]"
-          ></i>
+          <UiIcon
+            :name="configExpanded ? 'chevron-down' : 'chevron-right'"
+            class="text-xs text-slate-500"
+          />
           <h2
             class="text-xs font-semibold text-slate-500 uppercase tracking-wider group-hover:text-slate-400"
           >
@@ -257,6 +255,7 @@
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { ref, computed, onMounted, reactive } from 'vue';
 import { useRoute } from 'vue-router';
 import { useProviders } from '../composables/useProviders';

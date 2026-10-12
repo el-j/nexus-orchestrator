@@ -1,3 +1,4 @@
+import { ICONS } from '../ui/icons';
 import { describe, it, expect } from 'vitest';
 import { createRouter, createMemoryHistory } from 'vue-router';
 import routes from './routes';
@@ -15,7 +16,7 @@ describe('routes', () => {
     expect(nav.length).toBeGreaterThanOrEqual(9);
     for (const r of nav) {
       expect(r.label, String(r.name)).toBeTruthy();
-      expect(r.icon, String(r.name)).toMatch(/^pi-/);
+      expect(Object.keys(ICONS), String(r.name)).toContain(r.icon);
     }
   });
 

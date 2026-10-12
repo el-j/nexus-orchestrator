@@ -12,12 +12,6 @@ vi.mock('vue', async (orig) => {
   const actual = await orig<typeof import('vue')>();
   return { ...actual, createApp: h.createApp };
 });
-vi.mock('primevue/config', () => ({ default: { name: 'PrimeVue' } }));
-vi.mock('@primevue/themes/aura', () => ({ default: { name: 'Aura' } }));
-vi.mock('primevue/toastservice', () => ({ default: { name: 'Toast' } }));
-vi.mock('primevue/confirmationservice', () => ({ default: { name: 'Confirm' } }));
-vi.mock('primevue/tooltip', () => ({ default: { name: 'Tooltip' } }));
-vi.mock('primeicons/primeicons.css', () => ({}));
 vi.mock('./assets/main.css', () => ({}));
 vi.mock('./App.vue', () => ({ default: { name: 'App' } }));
 vi.mock('./router/index', () => ({ default: { name: 'router' } }));
@@ -35,20 +29,11 @@ beforeEach(() => {
 });
 
 describe('main', () => {
-  it('installs PrimeVue (Aura, dark selector), services, the router and the tooltip, then mounts #app', async () => {
+  it('installs the router and mounts #app', async () => {
     await import('./main');
     expect(h.createApp).toHaveBeenCalledWith({ name: 'App' });
-    const [[primevue, opts]] = h.use.mock.calls;
-    expect(primevue).toEqual({ name: 'PrimeVue' });
-    expect(opts.theme.preset).toEqual({ name: 'Aura' });
-    expect(opts.theme.options).toMatchObject({ darkModeSelector: '.dark', cssLayer: false });
-    expect(h.use.mock.calls.map((c) => c[0])).toEqual([
-      { name: 'PrimeVue' },
-      { name: 'Toast' },
-      { name: 'Confirm' },
-      { name: 'router' },
-    ]);
-    expect(h.directive).toHaveBeenCalledWith('tooltip', { name: 'Tooltip' });
+    expect(h.use.mock.calls.map((c) => c[0])).toEqual([{ name: 'router' }]);
+    expect(h.directive).not.toHaveBeenCalled();
     expect(h.mount).toHaveBeenCalledWith('#app');
   });
 

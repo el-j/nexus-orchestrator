@@ -9,7 +9,7 @@ const { promoteTask, cancelTask, toastAdd } = vi.hoisted(() => ({
   toastAdd: vi.fn(),
 }));
 vi.mock('../composables/useTasks', () => ({ useTasks: () => ({ promoteTask, cancelTask }) }));
-vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: toastAdd }) }));
+vi.mock('../composables/useToast', () => ({ useToast: () => ({ add: toastAdd }) }));
 
 const ButtonStub = {
   props: ['label', 'loading', 'disabled'],
@@ -29,7 +29,7 @@ const item = (o: Partial<Task> = {}): Task =>
   }) as Task;
 
 const mountList = (items: Task[]) =>
-  mount(BacklogList, { props: { items }, global: { stubs: { Button: ButtonStub } } });
+  mount(BacklogList, { props: { items }, global: { stubs: { UiButton: ButtonStub } } });
 
 describe('BacklogList', () => {
   beforeEach(() => {

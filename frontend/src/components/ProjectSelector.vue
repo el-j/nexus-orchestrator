@@ -21,15 +21,17 @@
     </select>
     <!-- Collapsed icon for narrow sidebar -->
     <div class="lg:hidden flex justify-center">
-      <i
-        class="pi pi-filter text-slate-500 text-sm"
+      <UiIcon
+        name="filter"
+        class="text-slate-500 text-sm"
         :title="currentProject ? baseName(currentProject) : 'All Projects'"
-      ></i>
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { useProjectFilter } from '../composables/useProjectFilter';
 
 const { currentProject, projectList, setProject } = useProjectFilter();

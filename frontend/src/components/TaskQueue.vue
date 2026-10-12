@@ -7,7 +7,7 @@
   <div class="flex-1 overflow-auto">
     <!-- Loading skeleton -->
     <div v-if="loading" class="p-6 space-y-3">
-      <Skeleton v-for="i in 3" :key="i" height="52px" class="rounded-lg" />
+      <UiSkeleton v-for="i in 3" :key="i" height="52px" class="rounded-lg" />
     </div>
 
     <!-- Empty state -->
@@ -18,7 +18,7 @@
       <div
         class="w-16 h-16 rounded-2xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center mb-4"
       >
-        <i class="pi pi-inbox text-2xl text-violet-400"></i>
+        <UiIcon name="inbox" class="text-2xl text-violet-400" />
       </div>
       <h3 class="font-semibold text-white mb-2">Queue is empty</h3>
       <p class="text-sm text-slate-500 max-w-xs">
@@ -46,16 +46,17 @@
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
               <span class="text-xs text-slate-600">{{ formatTime(task.createdAt) }}</span>
-              <Button
+              <UiButton
                 v-if="task.status === 'QUEUED'"
                 @click.stop="$emit('cancel', task.id)"
-                icon="pi pi-times"
+                icon="times"
                 severity="danger"
                 text
                 rounded
                 size="small"
-                v-tooltip.left="'Cancel task'"
-                class="opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Cancel task"
+                aria-label="Cancel task"
+                class="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
               />
             </div>
           </div>
@@ -73,8 +74,9 @@
 </template>
 
 <script setup lang="ts">
-import Skeleton from 'primevue/skeleton';
-import Button from 'primevue/button';
+import UiIcon from '../ui/UiIcon.vue';
+import UiSkeleton from '../ui/UiSkeleton.vue';
+import UiButton from '../ui/UiButton.vue';
 import type { Task } from '../types/domain';
 import TaskStatusBadge from './TaskStatusBadge.vue';
 

@@ -33,7 +33,7 @@ vi.mock('../composables/useAISessions', () => ({
   useAISessions: () => ({ sessions: ref(h.s.sessions), loading: ref(h.s.sessionsLoading) }),
 }));
 vi.mock('../types/wails', () => ({ getAllTasks: h.getAllTasks }));
-vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: h.toastAdd }) }));
+vi.mock('../composables/useToast', () => ({ useToast: () => ({ add: h.toastAdd }) }));
 
 const NOW = new Date('2026-06-01T12:00:00Z').getTime();
 let n = 0;
@@ -76,7 +76,12 @@ const mounted: Array<{ unmount: () => void }> = [];
 async function mountView() {
   const w = mount(MissionControlView, {
     global: {
-      stubs: { TaskDetailDrawer: Drawer, TaskSubmitForm: Form, TaskStatusBadge: Badge, Skeleton },
+      stubs: {
+        TaskDetailDrawer: Drawer,
+        TaskSubmitForm: Form,
+        TaskStatusBadge: Badge,
+        UiSkeleton: Skeleton,
+      },
     },
   });
   mounted.push(w);

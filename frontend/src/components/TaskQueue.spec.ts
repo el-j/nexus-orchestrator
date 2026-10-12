@@ -30,7 +30,7 @@ const mountQueue = (props: { tasks: Task[]; loading: boolean }) =>
   mount(TaskQueue, {
     props,
     global: {
-      stubs: { Skeleton: { template: '<div class="skeleton"></div>' }, Button: ButtonStub },
+      stubs: { UiSkeleton: { template: '<div class="skeleton"></div>' }, UiButton: ButtonStub },
       directives: { tooltip: {} },
     },
   });

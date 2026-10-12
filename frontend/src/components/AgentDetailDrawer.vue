@@ -32,7 +32,7 @@
               @click="close"
               aria-label="Close"
             >
-              <i class="pi pi-times text-sm"></i>
+              <UiIcon name="times" class="text-sm" />
             </button>
           </header>
 
@@ -133,6 +133,7 @@
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type { AIActivity } from '../types/domain';

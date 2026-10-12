@@ -29,7 +29,7 @@
           :disabled="loading"
           @click="scan"
         >
-          <i :class="['pi pi-search text-xs mr-1', loading && 'animate-spin']"></i>
+          <UiIcon name="search" :class="['text-xs mr-1', loading && 'animate-spin']" />
           {{ loading ? 'Scanning…' : 'Scan Now' }}
         </button>
       </div>
@@ -244,8 +244,9 @@
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { computed, ref, watch } from 'vue';
-import { useToast } from 'primevue/usetoast';
+import { useToast } from '../composables/useToast';
 import ProjectBrainCard from '../components/ProjectBrainCard.vue';
 import { useDiscoveredPlans } from '../composables/useDiscoveredPlans';
 import { currentProject } from '../composables/useProjectState';
