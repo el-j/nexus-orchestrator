@@ -147,4 +147,12 @@ describe('AgentDetailDrawer', () => {
     expect(w.emitted('update:modelVisible')![0]).toEqual([false]);
     expect(h.push).toHaveBeenCalledWith({ name: 'live-activity', query: { agent: 'copilot' } });
   });
+
+  it('shows a spinner while loading and counts activities without token data as zero', async () => {
+    h.loading.value = true;
+    expect(mountDrawer().find('.animate-spin').exists()).toBe(true);
+    h.loading.value = false;
+    h.rows.value = [act({ tokensIn: undefined, tokensOut: undefined }), act()];
+    expect(mountDrawer().text()).toContain('15');
+  });
 });

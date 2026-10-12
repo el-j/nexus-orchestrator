@@ -1,3 +1,8 @@
+<!--
+  Section of Providers that lists AI coding tools found on this machine (Claude, Copilot, Cursor,
+  ...) grouped by kind, with search and a running/installed/detected filter.
+  Props: sortMode ('active' lists running tools first, 'name' sorts alphabetically).
+-->
 <template>
   <section class="mt-8">
     <div class="flex items-center justify-between mb-3">

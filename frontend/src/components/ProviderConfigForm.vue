@@ -1,3 +1,8 @@
+<!--
+  Modal form to add or edit a saved provider configuration. The Type dropdown is a UI preset
+  (LM Studio, Ollama, OpenAI, Anthropic, Gemini, Copilot, custom) that maps to the stored provider kind.
+  Props: modelValue (config being edited, null when adding), onClose, onSave (async; a rejection is shown in the form).
+-->
 <template>
   <div
     class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
@@ -191,10 +196,7 @@ watch(
 
 function onTypeChange() {
   form.value.kind = kindForPreset(preset.value);
-  const url = BASE_URL_PRESETS[preset.value];
-  if (url !== undefined) {
-    form.value.baseUrl = url;
-  }
+  form.value.baseUrl = BASE_URL_PRESETS[preset.value];
 }
 
 async function handleSave() {

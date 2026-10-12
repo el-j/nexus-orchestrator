@@ -9,18 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Agentic `edit_file` tool: replaces the single exact occurrence of a text in a project file (refused when it is missing or ambiguous), so small changes no longer need the whole file rewritten
+- Cross-surface parity matrix (`internal/docscheck/surface_matrix_test.go`): every capability must exist on REST, MCP, CLI, the desktop bindings, the frontend and the VS Code extension, or say why not; CI fails otherwise
+- `docs/api-reference.md` documents every REST route, guarded by a test; architecture guide covers the execution engine, provider routing and the surface matrix
+- `npm run check:docs` now also covers the docs site and requires a description comment on every Vue component
 - Agentic tasks: `agentic` / `maxAgentTurns` on a task let the model read and write project files over several turns and re-verify before finishing; exposed on REST, MCP, `nexus-cli`, `nexus-submit` and the UI
 - Routing parity: `providerName`, `providerHint`, `modelId`, `role`, `priority` and `tags` are accepted by `submit_task` / `create_draft` and the CLIs; GitHub Copilot and LM Studio are classified correctly for role routing
 - Real-daemon end-to-end suite (`go test -tags e2e ./internal/e2e/`): builds the shipped binaries and drives REST, every MCP tool, the stdio proxy, both CLIs, restart persistence, shutdown and port conflicts
 - Playwright `real-daemon` project (daemon plus a fake Ollama), VS Code extension-host tests (`npm run test:host`), a Wails desktop smoke job and a GitHub Action end-to-end job
-- Mutation-testing harness (gremlins, Stryker) with a weekly workflow, `scripts/check-tsdoc.mjs` and revive `exported` doc-comment gates, and `scripts/check-file-size.sh` (500-line cap)
+- Local-only mutation testing (Stryker via `npm run test:mutation`; deliberately not run in CI to save workflow minutes); `scripts/check-tsdoc.mjs` and revive `exported` doc-comment gates, and `scripts/check-file-size.sh` (500-line cap)
 
 ### Changed
 
 - Repository ports (`TaskRepository`, `SessionRepository`, `ModelCapabilityRepository`) take a `context.Context`; `repo_sqlite` uses the `*Context` database calls and the `noctx` exclusion is gone
 - Oversized source files split along their seams (engine, orchestrator, SQLite repository, scanners, brain service, extension client, several views)
 - The GitHub Action's `command` input defaults to `auto` instead of `execute`
-- Coverage ratchets: Go 95%, extension 100%, frontend 98/99/98/96
+- Coverage ratchets: frontend, docs site, GitHub Action and extension are at 100% on every metric and gated there; Go merged coverage is 97% (96.9% in CI) with the gate at 96%
 
 ### Fixed
 

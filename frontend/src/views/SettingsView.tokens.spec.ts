@@ -277,4 +277,55 @@ describe('SettingsView — tokens', () => {
     await flush();
     expect(w.text()).not.toContain('✓ Copied');
   });
+
+  it('copies a fresh token twice in a row, restarting the confirmation timer', async () => {
+    h.update.mockResolvedValue(cfg({ apiToken: 'secret-1' }));
+    const w = await mountView();
+    await btn(w, 'Generate Token').trigger('click');
+    await flush();
+    const copy = () =>
+      w
+        .find('.border-emerald-500\\/20')
+        .findAll('button')
+        .find((b) => b.text().includes('Cop'))!;
+    await copy().trigger('click');
+    await flush();
+    await copy().trigger('click');
+    await flush();
+    expect(clipboard.writeText).toHaveBeenCalledTimes(2);
+  });
+
+  it('runs a double-clicked rotate only once', async () => {
+    let done!: (c: unknown) => void;
+    h.update.mockReturnValue(new Promise((r) => (done = r)));
+    const w = await mountView();
+    const generate = btn(w, 'Generate Token').element as HTMLButtonElement;
+    generate.click();
+    generate.click(); // the DOM has not re-rendered as disabled yet
+    expect(h.update).toHaveBeenCalledTimes(1);
+    done(cfg());
+    await flush();
+  });
+
+  it('ignores a disable confirmed after a rotate started behind the dialog', async () => {
+    h.get.mockResolvedValue(cfg({ apiToken: 'x', apiTokenEnabled: true, mcpTokenEnabled: false }));
+    let done!: (c: unknown) => void;
+    h.update.mockReturnValue(new Promise((r) => (done = r)));
+    const w = await mountView();
+    await btn(w, 'Disable').trigger('click'); // opens the dialog
+    await btn(w, 'Generate Token').trigger('click'); // the other endpoint starts a rotate
+    w.findComponent(Dialog).vm.$emit('confirm');
+    await flush();
+    expect(h.update).toHaveBeenCalledTimes(1);
+    done(cfg());
+    await flush();
+  });
+
+  it('labels the MCP rotate button while that rotate runs', async () => {
+    h.get.mockResolvedValue(cfg({ mcpTokenEnabled: true }));
+    h.update.mockReturnValue(new Promise(() => {}));
+    const w = await mountView();
+    await btn(w, 'Rotate').trigger('click');
+    expect(w.text()).toContain('Working…');
+  });
 });

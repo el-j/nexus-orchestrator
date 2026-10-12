@@ -37,7 +37,7 @@ describe('NexusClient', () => {
       expect(res.status).toBe('QUEUED');
       expect(mockPostJson).toHaveBeenCalledWith(
         'http://127.0.0.1:63987/api/tasks',
-        expect.objectContaining({ instruction: 'Do the thing' })
+        expect.objectContaining({ instruction: 'Do the thing' }),
       );
     });
 
@@ -48,16 +48,23 @@ describe('NexusClient', () => {
         headers: {},
       });
 
-      await expect(
-        client.submitTask({ projectPath: '/p', instruction: 'x' })
-      ).rejects.toThrow('HTTP 500');
+      await expect(client.submitTask({ projectPath: '/p', instruction: 'x' })).rejects.toThrow(
+        'HTTP 500',
+      );
+    });
+
+    it('reports "?" when the response has no status code', async () => {
+      mockPostJson.mockResolvedValue({ result: null, headers: {} });
+      await expect(client.submitTask({ projectPath: '/p', instruction: 'x' })).rejects.toThrow(
+        'HTTP ?',
+      );
     });
 
     it('throws on null result', async () => {
       mockPostJson.mockResolvedValue({ statusCode: 201, result: null, headers: {} });
-      await expect(
-        client.submitTask({ projectPath: '/p', instruction: 'x' })
-      ).rejects.toThrow('Empty response');
+      await expect(client.submitTask({ projectPath: '/p', instruction: 'x' })).rejects.toThrow(
+        'Empty response',
+      );
     });
   });
 
@@ -65,7 +72,14 @@ describe('NexusClient', () => {
     it('returns task data on success', async () => {
       mockGetJson.mockResolvedValue({
         statusCode: 200,
-        result: { id: 'abc-123', status: 'COMPLETED', logs: 'done', projectPath: '/p', targetFile: '', instruction: 'x' },
+        result: {
+          id: 'abc-123',
+          status: 'COMPLETED',
+          logs: 'done',
+          projectPath: '/p',
+          targetFile: '',
+          instruction: 'x',
+        },
         headers: {},
       });
 
@@ -84,7 +98,14 @@ describe('NexusClient', () => {
     it('returns immediately on terminal status', async () => {
       mockGetJson.mockResolvedValue({
         statusCode: 200,
-        result: { id: 't1', status: 'COMPLETED', logs: 'ok', projectPath: '/p', targetFile: '', instruction: 'x' },
+        result: {
+          id: 't1',
+          status: 'COMPLETED',
+          logs: 'ok',
+          projectPath: '/p',
+          targetFile: '',
+          instruction: 'x',
+        },
         headers: {},
       });
 
@@ -95,9 +116,42 @@ describe('NexusClient', () => {
 
     it('polls until terminal status', async () => {
       mockGetJson
-        .mockResolvedValueOnce({ statusCode: 200, result: { id: 't2', status: 'QUEUED', logs: '', projectPath: '', targetFile: '', instruction: '' }, headers: {} })
-        .mockResolvedValueOnce({ statusCode: 200, result: { id: 't2', status: 'PROCESSING', logs: '', projectPath: '', targetFile: '', instruction: '' }, headers: {} })
-        .mockResolvedValueOnce({ statusCode: 200, result: { id: 't2', status: 'COMPLETED', logs: 'done', projectPath: '', targetFile: '', instruction: '' }, headers: {} });
+        .mockResolvedValueOnce({
+          statusCode: 200,
+          result: {
+            id: 't2',
+            status: 'QUEUED',
+            logs: '',
+            projectPath: '',
+            targetFile: '',
+            instruction: '',
+          },
+          headers: {},
+        })
+        .mockResolvedValueOnce({
+          statusCode: 200,
+          result: {
+            id: 't2',
+            status: 'PROCESSING',
+            logs: '',
+            projectPath: '',
+            targetFile: '',
+            instruction: '',
+          },
+          headers: {},
+        })
+        .mockResolvedValueOnce({
+          statusCode: 200,
+          result: {
+            id: 't2',
+            status: 'COMPLETED',
+            logs: 'done',
+            projectPath: '',
+            targetFile: '',
+            instruction: '',
+          },
+          headers: {},
+        });
 
       jest.useFakeTimers();
       const waitPromise = client.waitForTask('t2', 60_000);
@@ -114,7 +168,14 @@ describe('NexusClient', () => {
     it('throws on timeout', async () => {
       mockGetJson.mockResolvedValue({
         statusCode: 200,
-        result: { id: 'slow', status: 'QUEUED', logs: '', projectPath: '', targetFile: '', instruction: '' },
+        result: {
+          id: 'slow',
+          status: 'QUEUED',
+          logs: '',
+          projectPath: '',
+          targetFile: '',
+          instruction: '',
+        },
         headers: {},
       });
 

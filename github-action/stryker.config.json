@@ -7,5 +7,5 @@
   "jsonReporter": { "fileName": "reports/mutation/mutation.json" },
   "coverageAnalysis": "perTest",
   "concurrency": 4,
-  "thresholds": { "high": 80, "low": 60, "break": 70 }
+  "thresholds": { "high": 80, "low": 60, "break": 75 }
 }

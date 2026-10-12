@@ -51,17 +51,9 @@ const taskColumns = `id, project_path, target_file, instruction, context_files, 
 // Save inserts a new Task record.
 func (r *Repository) Save(ctx context.Context, t domain.Task) error {
 	t.ProjectPath = filepath.Clean(t.ProjectPath)
-	ctxJSON, err := json.Marshal(t.ContextFiles)
-	if err != nil {
-		return fmt.Errorf("sqlite: marshal context files: %w", err)
-	}
-	tagsJSON := []byte("[]")
-	if len(t.Tags) > 0 {
-		if b, mErr := json.Marshal(t.Tags); mErr == nil {
-			tagsJSON = b
-		}
-	}
-	_, err = r.db.ExecContext(ctx,
+	ctxJSON := marshal(t.ContextFiles)
+	tagsJSON := marshalTags(t.Tags)
+	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO tasks (`+taskColumns+`)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		t.ID, t.ProjectPath, t.TargetFile, t.Instruction,
@@ -138,10 +130,7 @@ func (r *Repository) ClaimNextQueued(ctx context.Context) (domain.Task, error) {
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("sqlite: claim next queued: %w", err)
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("sqlite: claim next queued rows affected: %w", err)
-	}
+	n := affected(res)
 	if n == 0 {
 		return domain.Task{}, fmt.Errorf("sqlite: claim next queued: %w", domain.ErrNotFound)
 	}
@@ -162,10 +151,7 @@ func (r *Repository) UpdateStatus(ctx context.Context, id string, status domain.
 	if err != nil {
 		return fmt.Errorf("sqlite: update status: %w", err)
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("sqlite: rows affected: %w", err)
-	}
+	n := affected(res)
 	if n == 0 {
 		return fmt.Errorf("sqlite: update status: %w", domain.ErrNotFound)
 	}
@@ -181,10 +167,7 @@ func (r *Repository) UpdateStatusIfCurrent(ctx context.Context, id string, from,
 	if err != nil {
 		return false, fmt.Errorf("sqlite: update status if current: %w", err)
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return false, fmt.Errorf("sqlite: update status if current rows affected: %w", err)
-	}
+	n := affected(res)
 	return n == 1, nil
 }
 
@@ -197,10 +180,7 @@ func (r *Repository) UpdateLogs(ctx context.Context, id, logs string) error {
 	if err != nil {
 		return fmt.Errorf("sqlite: update logs: %w", err)
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("sqlite: rows affected: %w", err)
-	}
+	n := affected(res)
 	if n == 0 {
 		return fmt.Errorf("sqlite: update logs: %w", domain.ErrNotFound)
 	}
@@ -303,10 +283,7 @@ func (r *Repository) Update(ctx context.Context, t domain.Task) error {
 	if err != nil {
 		return fmt.Errorf("sqlite: update task: %w", err)
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("sqlite: rows affected: %w", err)
-	}
+	n := affected(res)
 	if n == 0 {
 		return fmt.Errorf("sqlite: update task: %w", domain.ErrNotFound)
 	}

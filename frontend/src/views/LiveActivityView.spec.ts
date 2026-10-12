@@ -245,4 +245,12 @@ describe('LiveActivityView — session groups', () => {
     h.rows.value = [act({ agentName: name })];
     expect(mountView().find('.mb-4.rounded-xl span.font-semibold').classes()).toContain(cls);
   });
+
+  it('takes the model from a later activity when the first one has none', () => {
+    h.rows.value = [
+      act({ sessionId: 's1', model: undefined, timestamp: new Date(NOW - 20_000).toISOString() }),
+      act({ sessionId: 's1', model: 'haiku', timestamp: new Date(NOW - 10_000).toISOString() }),
+    ];
+    expect(mountView().text()).toContain('haiku');
+  });
 });

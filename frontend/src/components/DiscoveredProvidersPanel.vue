@@ -1,3 +1,9 @@
+<!--
+  Panel listing LLM backends found by the last discovery scan, with a Scan button and a Promote
+  button that turns a discovered backend into a configured one.
+  Props: providers, loading, scanning.
+  Emits: promote(provider), scan().
+-->
 <template>
   <div class="flex flex-col gap-4">
     <!-- Header -->

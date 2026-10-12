@@ -15,6 +15,7 @@ export const toc = [
   { id: 'github-actions', label: 'GitHub Actions' },
 ];
 
+/** Claude Desktop / Claude Code MCP server entry that points at the local daemon. */
 export const claudeConfig = `{
   "mcpServers": {
     "nexus-orchestrator": {
@@ -23,6 +24,7 @@ export const claudeConfig = `{
   }
 }`;
 
+/** Worked JSON-RPC request/response pairs for the task tools. */
 export const examples = [
   {
     title: 'Submit a Task',
@@ -105,6 +107,7 @@ export const examples = [
   },
 ];
 
+/** VS Code `mcp.json` entry that points at the local daemon. */
 export const vsCodeConfig = `{
   "servers": {
     "Nexus Orchestrator": {
@@ -114,6 +117,7 @@ export const vsCodeConfig = `{
   }
 }`;
 
+/** Worked JSON-RPC request/response pairs for the brain (knowledge base) tools. */
 export const brainExamples = [
   {
     title: 'Check Brain Status',
@@ -203,6 +207,7 @@ export const brainExamples = [
   },
 ];
 
+/** Protocol facts shown in the "Protocol" table. */
 export const protocolDetails = [
   { label: 'Protocol', value: 'JSON-RPC 2.0' },
   { label: 'Version', value: '2024-11-05' },
@@ -210,6 +215,7 @@ export const protocolDetails = [
   { label: 'Default Port', value: '63988' },
 ];
 
+/** Common connection problems with their fixes. */
 export const troubleshootingRows = [
   {
     issue: 'Connection refused',
@@ -231,6 +237,7 @@ export const troubleshootingRows = [
   },
 ];
 
+/** Example workflow: run one task with the GitHub Action. */
 export const ghActionBasic = `# .github/workflows/ai-task.yml
 name: AI Code Generation
 
@@ -259,6 +266,7 @@ jobs:
       - name: Show result
         run: echo "\${{ steps.nexus.outputs.logs }}"`;
 
+/** Example workflow: run a task as a named agent persona. */
 export const ghActionAgents = `# Single agent — identity loaded automatically from el-j/agency-agents
 jobs:
   generate:
@@ -285,6 +293,7 @@ jobs:
           git commit -m "feat: AI-generated auth middleware" || echo "nothing to commit"
           git push`;
 
+/** Example workflow: load several agent personas and orchestrate them as a team. */
 export const ghActionSwarm = `# Swarm — load all engineering agents and orchestrate as a team
 jobs:
   swarm:
@@ -302,6 +311,7 @@ jobs:
           openai_api_key: \${{ secrets.OPENAI_API_KEY }}
           openai_model: gpt-4o`;
 
+/** Inputs of the GitHub Action with their defaults and descriptions. */
 export const actionInputs = [
   {
     name: 'instruction',

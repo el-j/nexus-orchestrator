@@ -1,3 +1,8 @@
+<!--
+  Card showing the knowledge-base ("brain") status of one project, with actions to initialise it,
+  sync its plan file and upload files to ingest.
+  Props: projectPath, nexusFile (the project's plan file, when one was discovered).
+-->
 <template>
   <div class="mb-5 rounded-xl border border-violet-500/30 bg-violet-500/[0.04] p-3 text-white">
     <div class="flex items-start gap-3">
@@ -160,15 +165,11 @@ async function fetchStatus() {
 }
 
 function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  } catch {
-    return iso;
-  }
+  return new Date(iso).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 async function handleInit() {
@@ -187,14 +188,15 @@ async function handleInit() {
 }
 
 async function handleSyncNexusFile() {
-  if (!props.nexusFile) return;
+  // The Sync button only renders for a plan file.
+  const nexusFile = props.nexusFile!;
   ingesting.value = true;
   ingestProgress.value = 'Syncing…';
   ingestResult.value = '';
   ingestError.value = '';
   try {
-    const count = await ingestKnowledge(props.projectPath, props.nexusFile.path);
-    ingestResult.value = `Ingested ${count} sections from ${props.nexusFile.path.split('/').pop()}.`;
+    const count = await ingestKnowledge(props.projectPath, nexusFile.path);
+    ingestResult.value = `Ingested ${count} sections from ${nexusFile.path.split('/').pop()}.`;
     await fetchStatus();
   } catch (err) {
     ingestError.value = err instanceof Error ? err.message : String(err);
@@ -230,7 +232,7 @@ async function onFilesSelected(e: Event) {
   if (errors.length > 0) {
     ingestError.value = `Failed: ${errors.join(', ')}`;
   }
-  if (fileInputRef.value) fileInputRef.value.value = '';
+  fileInputRef.value!.value = '';
   await fetchStatus();
 }
 

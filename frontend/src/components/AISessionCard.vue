@@ -1,3 +1,9 @@
+<!--
+  Card for one registered AI agent session: status, project, model, last message and the
+  tasks routed to it (loaded when the card is opened and refreshed while open).
+  Props: session.
+  Emits: delegate(session) when the user hands the session's work to Nexus.
+-->
 <template>
   <div
     class="rounded-xl border bg-white/[0.03] p-4 transition-all border-l-4"
@@ -138,8 +144,8 @@ const cardBorderColour = computed((): string => {
 });
 
 const shortPath = computed((): string => {
-  if (!props.session.projectPath) return '';
-  const parts = props.session.projectPath.replace(/\\/g, '/').split('/').filter(Boolean);
+  // Only rendered when a project path is set (see the v-if on the row).
+  const parts = props.session.projectPath!.replace(/\\/g, '/').split('/').filter(Boolean);
   return parts.slice(-2).join('/');
 });
 

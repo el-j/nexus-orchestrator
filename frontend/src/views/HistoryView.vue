@@ -1,3 +1,7 @@
+<!--
+  Task History: finished tasks (completed, failed, cancelled) with status filters and a summary.
+  Refreshes on task events, or by polling while the event stream is down.
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->
@@ -181,7 +185,7 @@ function sseHandler(data: { type: string; [key: string]: unknown }) {
 }
 
 function startPolling() {
-  if (interval) return;
+  stopPolling();
   interval = setInterval(() => {
     void refresh();
   }, 2000);
@@ -240,7 +244,6 @@ const statusSummary = computed<Partial<Record<TaskStatus, number>>>(() => {
 
 const summaryBadges = computed(() =>
   Object.entries(statusColorMap)
-    .filter(([status]) => (statusSummary.value[status as TaskStatus] ?? 0) > 0)
     .map(([status, { color, label }]) => ({
       status: status as TaskStatus,
       label,
@@ -249,7 +252,8 @@ const summaryBadges = computed(() =>
       // This page lists finished tasks only: filtering by Queued/Draft/… would
       // always produce an empty list, so those badges are informational.
       filterable: historyStatuses.has(status as TaskStatus),
-    })),
+    }))
+    .filter((badge) => badge.count > 0),
 );
 
 const historyTasks = computed(() =>

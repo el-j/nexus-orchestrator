@@ -103,4 +103,32 @@ describe('DiscoveredToolsSection', () => {
     const byActive = await mountWith(list, 'active');
     expect(byActive.findAll('.font-medium.text-xs')[0].text()).toBe('Zed');
   });
+
+  it('sorts and searches agents that report no display name by their kind', async () => {
+    const list = [
+      agent({ id: '1', kind: 'zed', name: undefined, isRunning: true }),
+      agent({ id: '2', kind: 'amp', name: undefined }),
+      agent({ id: '3', kind: 'cline', name: 'Cline', isRunning: true }),
+    ];
+    for (const mode of ['active', 'name'] as const) {
+      const w = await mountWith(list, mode);
+      expect(w.text()).toContain('amp');
+    }
+    const w = await mountWith(list);
+    await w.find('input').setValue('amp');
+    expect(w.text()).toContain('amp');
+    expect(w.text()).not.toContain('Cline');
+  });
+
+  it('lists kinds with a running agent before the others, then alphabetically', async () => {
+    const w = await mountWith([
+      agent({ id: '1', kind: 'aaa', name: 'Alphatool', isRunning: false }),
+      agent({ id: '2', kind: 'bbb', name: 'Bravotool', isRunning: true }),
+      agent({ id: '3', kind: 'ccc', name: 'Charlietool', isRunning: false }),
+      agent({ id: '4', kind: 'ddd', name: 'Deltatool', isRunning: true }),
+    ]);
+    const t = w.text();
+    expect(t.indexOf('Bravotool')).toBeLessThan(t.indexOf('Alphatool'));
+    expect(t.indexOf('Deltatool')).toBeLessThan(t.indexOf('Charlietool'));
+  });
 });

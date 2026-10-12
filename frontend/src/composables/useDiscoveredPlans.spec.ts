@@ -128,4 +128,12 @@ describe('useDiscoveredPlans', () => {
     await vi.advanceTimersByTimeAsync(120_000);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('reports a non-Error failure of a scan as text', async () => {
+    fetchMock.mockImplementation(() => Promise.reject('offline'));
+    const { result } = withSetup(() => useDiscoveredPlans(ref(null)));
+    await flush();
+    await result.scan();
+    expect(result.error.value).toBe('offline');
+  });
 });

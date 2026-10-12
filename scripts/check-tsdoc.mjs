@@ -5,8 +5,8 @@
 //
 // Covers exported functions, classes, interfaces, type aliases, enums and
 // top-level const/let declarations in .ts files. Tests, specs, declaration
-// files and generated bindings (wailsjs) are skipped. Vue SFCs are checked for a
-// leading HTML/JS comment describing the component by check-vue-docs below.
+// files and generated bindings (wailsjs) are skipped. Every Vue single-file
+// component must open with an HTML comment describing it (and its props/emits).
 import { createRequire } from 'node:module';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -30,13 +30,19 @@ function* walk(dir) {
     const p = join(dir, name);
     if (statSync(p).isDirectory()) {
       if (name !== 'node_modules') yield* walk(p);
-    } else if (p.endsWith('.ts') && !skip(p)) yield p;
+    } else if ((p.endsWith('.ts') || p.endsWith('.vue')) && !skip(p)) yield p;
   }
 }
 
 const missing = [];
 for (const root of roots) {
   for (const file of walk(root)) {
+    if (file.endsWith('.vue')) {
+      if (!readFileSync(file, 'utf8').trimStart().startsWith('<!--')) {
+        missing.push(`${file}:1 (component without a leading <!-- description -->)`);
+      }
+      continue;
+    }
     const sf = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
     for (const node of sf.statements) {
       const exported = node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);

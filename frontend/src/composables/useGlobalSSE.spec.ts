@@ -221,4 +221,26 @@ describe('useGlobalSSE', () => {
     await vi.advanceTimersByTimeAsync(60_000);
     expect(FakeES.all).toHaveLength(2);
   });
+
+  it('delivers a frame nobody subscribed to by type only to wildcard handlers', async () => {
+    const sse = await fresh();
+    const star = vi.fn();
+    sse.on('*', star);
+    void sse.connect();
+    await tick();
+    FakeES.all[0].message(JSON.stringify({ type: 'unheard.of' }));
+    expect(star).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels a pending reconnect when a late open arrives', async () => {
+    const sse = await fresh();
+    void sse.connect();
+    await tick();
+    const first = FakeES.all[0];
+    first.onerror!();
+    first.onopen!(); // the old source reports open before the timer fires
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(FakeES.all).toHaveLength(1);
+    expect(sse.connected.value).toBe(true);
+  });
 });

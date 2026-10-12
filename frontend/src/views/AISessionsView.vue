@@ -1,3 +1,7 @@
+<!--
+  AI Sessions: every registered agent session with its status and tasks; a session can be
+  deregistered from here.
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->

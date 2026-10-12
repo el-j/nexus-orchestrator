@@ -166,7 +166,7 @@ func (r *KnowledgeRepo) DeleteKnowledge(ctx context.Context, id string) error {
 	if err != nil {
 		return fmt.Errorf("knowledge_repo: delete: %w", err)
 	}
-	n, _ := res.RowsAffected()
+	n := affected(res)
 	if n == 0 {
 		return fmt.Errorf("knowledge_repo: delete: %w", domain.ErrNotFound)
 	}

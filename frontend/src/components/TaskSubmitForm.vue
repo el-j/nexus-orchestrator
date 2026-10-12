@@ -1,3 +1,8 @@
+<!--
+  Collapsible form to submit a task, save it as a draft or add it to the backlog. Covers project,
+  target file, instruction, command, provider/model routing, priority, tags and agentic mode.
+  Emits: submitted(id) after a task has been accepted by the daemon.
+-->
 <template>
   <div class="border-t border-white/5 bg-[#0a0a10] p-4">
     <form @submit.prevent="handleSubmit" class="flex flex-col gap-3">
@@ -200,7 +205,6 @@ import Textarea from 'primevue/textarea';
 import Select from 'primevue/select';
 import { useToast } from 'primevue/usetoast';
 import { submitTask, createDraft } from '../types/wails';
-import type { Task } from '../types/domain';
 import { useProviders } from '../composables/useProviders';
 
 const emit = defineEmits<{ submitted: [id: string] }>();
@@ -302,7 +306,7 @@ function removeTag(index: number) {
 
 // --- Payload builder ---
 
-function buildTaskPayload(): Partial<Task> {
+function buildTaskPayload() {
   return {
     projectPath: form.ProjectPath,
     targetFile: form.TargetFile,
@@ -327,12 +331,12 @@ async function handleSubmit() {
   try {
     const p = buildTaskPayload();
     const id = await submitTask({
-      projectPath: p.projectPath ?? '',
-      targetFile: p.targetFile ?? '',
-      instruction: p.instruction ?? '',
+      projectPath: p.projectPath,
+      targetFile: p.targetFile,
+      instruction: p.instruction,
       command: p.command,
-      providerHint: p.providerHint ?? '',
-      modelId: p.modelId ?? '',
+      providerHint: p.providerHint,
+      modelId: p.modelId,
       contextFiles: [],
       priority: p.priority,
       tags: p.tags,

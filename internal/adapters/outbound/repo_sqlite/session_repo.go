@@ -27,11 +27,8 @@ func NewSessionRepo(r *Repository) *SessionRepo {
 
 // Save persists a Session (insert or replace by project_path).
 func (s *SessionRepo) Save(ctx context.Context, sess domain.Session) error {
-	msgsJSON, err := json.Marshal(sess.Messages)
-	if err != nil {
-		return fmt.Errorf("sqlite: marshal session messages: %w", err)
-	}
-	_, err = s.db.ExecContext(ctx,
+	msgsJSON := marshal(sess.Messages)
+	_, err := s.db.ExecContext(ctx,
 		`INSERT INTO sessions (id, project_path, messages, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?)
 		 ON CONFLICT(project_path) DO UPDATE SET
@@ -91,10 +88,7 @@ func (s *SessionRepo) AppendMessage(ctx context.Context, projectPath string, msg
 	sess.Messages = append(sess.Messages, msg)
 	sess.UpdatedAt = time.Now()
 
-	msgsJSON, err := json.Marshal(sess.Messages)
-	if err != nil {
-		return fmt.Errorf("sqlite: marshal messages: %w", err)
-	}
+	msgsJSON := marshal(sess.Messages)
 	_, err = tx.ExecContext(ctx,
 		`INSERT INTO sessions (id, project_path, messages, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?)

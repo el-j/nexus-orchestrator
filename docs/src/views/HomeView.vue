@@ -1,3 +1,6 @@
+<!--
+  Home page: what Nexus Orchestrator is, its main capabilities and the terminal demo.
+-->
 <template>
   <div>
     <!-- ── HERO ──────────────────────────────────────────── -->
@@ -34,7 +37,7 @@
               class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-sm text-violet-300 mb-6"
             >
               <span class="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse"></span>
-              Open Source · MIT · Go 1.26+
+              Open Source · MIT · Go 1.27+
             </div>
 
             <h1 class="text-4xl sm:text-5xl xl:text-6xl font-black leading-tight mb-6">

@@ -1,3 +1,8 @@
+<!--
+  List of backlog and draft tasks, each with Promote (move into the queue) and Dismiss (cancel).
+  Props: items.
+  Emits: promoted(id), dismissed(id).
+-->
 <template>
   <!-- Empty state -->
   <div

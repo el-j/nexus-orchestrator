@@ -1,3 +1,7 @@
+<!--
+  Backlog: draft and backlog tasks for the selected project. Refreshes on task events, or by
+  polling every 2 seconds while the event stream is down.
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->
@@ -61,7 +65,7 @@ function sseHandler(data: { type: string; [key: string]: unknown }) {
 }
 
 function startPolling() {
-  if (interval) return;
+  stopPolling();
   interval = setInterval(() => {
     void refresh();
   }, 2000);

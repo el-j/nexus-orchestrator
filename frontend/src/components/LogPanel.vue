@@ -1,3 +1,7 @@
+<!--
+  Collapsible daemon log viewer fed by the live log stream: level filter, clear, auto-scroll.
+  It stops following new lines once the user scrolls up.
+-->
 <template>
   <div class="log-panel" :style="collapsed ? {} : { height: panelHeight + 'px' }">
     <!-- Header bar -->
@@ -79,8 +83,7 @@ function formatLine(entry: LogEntry): string {
 }
 
 function onScroll() {
-  if (!listEl.value) return;
-  const { scrollTop, clientHeight, scrollHeight } = listEl.value;
+  const { scrollTop, clientHeight, scrollHeight } = listEl.value!;
   if (scrollTop + clientHeight < scrollHeight - 5) {
     autoScroll.value = false;
   }

@@ -1,3 +1,7 @@
+<!--
+  Activity tab of the Agents view: a filterable feed (agent, type, project) of what connected
+  agents have been doing.
+-->
 <template>
   <div>
     <!-- Filters -->

@@ -106,7 +106,7 @@ async function mountView(
 ) {
   h.state.providers = o.providers ?? [];
   h.route.query = o.query ?? {};
-  h.api.listProviderConfigs.mockResolvedValue(o.configs ?? []);
+  h.api.listProviderConfigs.mockResolvedValue(o.configs === undefined ? [] : o.configs);
   fetchMock.mockImplementation(() =>
     Promise.resolve(
       new Response(JSON.stringify(o.agents === undefined ? [] : o.agents), {
@@ -451,5 +451,17 @@ describe('ProvidersView — promote and deep links create, not update (regressio
 
   it('does not open a form without the query', async () => {
     expect((await mountView()).findComponent(Form).exists()).toBe(false);
+  });
+
+  it('searches providers that report no URL and tolerates a null config list', async () => {
+    const w = await mountView({
+      providers: [prov({ name: 'NoUrl', baseURL: undefined })],
+      configs: null as unknown as ProviderConfig[],
+    });
+    await w.find('input[placeholder="Search providers…"]').setValue('nourl');
+    expect(cards(w)).toHaveLength(1);
+    await w.find('input[placeholder="Search providers…"]').setValue('zzz');
+    expect(cards(w)).toHaveLength(0);
+    expect(w.text()).toContain('(0 saved)');
   });
 });

@@ -40,6 +40,10 @@ VERSION_FLAGS := -X 'main.version=$(VERSION)' \
                  -X 'main.commit=$(GIT_COMMIT)' \
                  -X 'main.buildDate=$(BUILD_DATE)'
 
+# Run golangci-lint via the same Go toolchain as go.mod to avoid version skew.
+GO_TOOLCHAIN_VERSION := go1.27.0
+GOLANGCI_LINT := GOTOOLCHAIN=$(GO_TOOLCHAIN_VERSION) go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+
 # Build tags that enable the mattn/go-sqlite3 driver
 BUILD_FLAGS := -trimpath
 LDFLAGS     := -s -w $(VERSION_FLAGS)
@@ -281,14 +285,7 @@ vet:
 	go vet ./...
 
 lint:
-	@if command -v golangci-lint >/dev/null 2>&1; then \
-		LINT_VER=$$(golangci-lint version 2>&1 | grep -oE 'v[0-9]+' | head -1); \
-		if [ "$$LINT_VER" = "v1" ]; then \
-			echo "  ⚠  golangci-lint v1 found but config requires v2 — upgrading…"; \
-			go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest; \
-		fi; \
-	fi
-	golangci-lint run ./...
+	$(GOLANGCI_LINT) run ./...
 
 # ---------------------------------------------------------------------------
 # Code quality — format, fix, lint everything in one go
@@ -301,18 +298,7 @@ nice-go:
 	@echo "── Go: vet ──"
 	@go vet ./...
 	@echo "── Go: lint + auto-fix ──"
-	@if command -v golangci-lint >/dev/null 2>&1; then \
-		LINT_VER=$$(golangci-lint version 2>&1 | grep -oE 'v[0-9]+' | head -1); \
-		if [ "$$LINT_VER" = "v1" ]; then \
-			echo "  ⚠  golangci-lint v1 found but config requires v2 — upgrading…"; \
-			go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest; \
-		fi; \
-		golangci-lint run --fix ./...; \
-	else \
-		echo "  ⚠  golangci-lint not installed — installing v2…"; \
-		go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest; \
-		golangci-lint run --fix ./...; \
-	fi
+	@$(GOLANGCI_LINT) run --fix ./...
 	@echo "── Go: clean ✓ ──"
 
 # Frontend: type-check
@@ -354,7 +340,7 @@ upgrade-latest:
 	    (cd "$$dir" && npx -y npm-check-updates && npx -y npm-check-updates -u --doctor); \
 	  fi; \
 	done
-	@echo "── Upgrading Go modules to latest 1.26+ ──"
+	@echo "── Upgrading Go modules to latest 1.27+ ──"
 	@if [ -f go.mod ]; then \
 	  go get -u=patch ./...; \
 	  go get -u ./...; \

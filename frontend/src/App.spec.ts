@@ -69,4 +69,18 @@ describe('App', () => {
     await w.vm.$nextTick();
     expect(w.find('[data-testid="fallback"]').text()).toContain('plain string');
   });
+
+  it('clears the error when the fallback asks to retry', async () => {
+    let attempts = 0;
+    const Flaky = defineComponent({
+      setup() {
+        if (attempts++ === 0) throw new Error('first render fails');
+      },
+      render: () => h('div', { 'data-testid': 'view' }, 'ok'),
+    });
+    const w = mount(App, { global: { stubs: { ...stubs, RouterView: Flaky } } });
+    await w.vm.$nextTick();
+    await w.find('[data-testid="fallback"]').trigger('click');
+    expect(w.find('[data-testid="sidebar"]').exists()).toBe(true);
+  });
 });

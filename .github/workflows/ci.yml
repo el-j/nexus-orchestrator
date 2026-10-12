@@ -62,7 +62,7 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.26"
+          go-version: "1.27"
           check-latest: true
 
       - uses: actions/cache@v5
@@ -88,7 +88,7 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.26"
+          go-version: "1.27"
           check-latest: true
 
       - name: Check gofmt
@@ -126,7 +126,7 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.26"
+          go-version: "1.27"
           check-latest: true
 
       - uses: actions/cache@v5
@@ -139,7 +139,7 @@ jobs:
         run: CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" CGO_LDFLAGS="-lm" go test -race -count=1 ./...
 
       - name: Go coverage gate (merged, ratchet)
-        run: MIN_COVERAGE=95 ./scripts/go-coverage.sh
+        run: MIN_COVERAGE=96 ./scripts/go-coverage.sh
 
   build:
     name: Build
@@ -150,7 +150,7 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.26"
+          go-version: "1.27"
           check-latest: true
 
       - uses: actions/cache@v5
@@ -174,7 +174,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
@@ -203,13 +203,17 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: docs/package-lock.json
 
       - name: Install dependencies
         working-directory: docs
         run: npm ci
+
+      - name: Exported declarations and components are documented
+        working-directory: docs
+        run: npm run check:docs
 
       - name: Run docs site tests with coverage gate
         working-directory: docs
@@ -228,7 +232,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: vscode-extension/package-lock.json
 
@@ -267,7 +271,7 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.26"
+          go-version: "1.27"
           check-latest: true
 
       - uses: actions/cache@v5
@@ -292,12 +296,12 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.26"
+          go-version: "1.27"
           check-latest: true
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
@@ -307,7 +311,7 @@ jobs:
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev pkg-config xvfb
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
 
       - name: Build the desktop app
         env:

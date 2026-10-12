@@ -1,9 +1,4 @@
-import {
-  slugify,
-  parseFrontmatter,
-  buildSwarmPrompt,
-  AGENT_CATEGORIES,
-} from '../src/agents';
+import { slugify, parseFrontmatter, buildSwarmPrompt, AGENT_CATEGORIES } from '../src/agents';
 import type { AgentIdentity } from '../src/agents';
 
 describe('slugify', () => {
@@ -11,9 +6,7 @@ describe('slugify', () => {
     expect(slugify('Backend Architect')).toBe('backend-architect');
   });
   it('handles already-slugified input', () => {
-    expect(slugify('engineering-frontend-developer')).toBe(
-      'engineering-frontend-developer'
-    );
+    expect(slugify('engineering-frontend-developer')).toBe('engineering-frontend-developer');
   });
   it('strips leading/trailing hyphens', () => {
     expect(slugify('  hello world  ')).toBe('hello-world');

@@ -1,3 +1,6 @@
+<!--
+  Top navigation bar with the page links, the GitHub link and, on beta builds, the pre-release banner.
+-->
 <template>
   <!-- Beta channel banner -->
   <div

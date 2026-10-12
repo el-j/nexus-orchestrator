@@ -1,6 +1,7 @@
 {
   "name": "nexusorchestrator-frontend",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -16,25 +17,25 @@
   },
   "dependencies": {
     "@primevue/themes": "^4.5.4",
-    "primeicons": "^7.0.0",
-    "primevue": "^4.5.4",
-    "vue": "^3.5.30",
-    "vue-router": "^5.0.4"
+    "primeicons": "^8.0.2",
+    "primevue": "^5.0.2",
+    "vue": "^3.5.43",
+    "vue-router": "^5.4.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.52.0",
-    "@stryker-mutator/core": "^9.6.1",
-    "@stryker-mutator/vitest-runner": "^9.6.1",
-    "@tailwindcss/vite": "^4.2.1",
-    "@types/node": "^20.19.43",
-    "@vitejs/plugin-vue": "^6.0.4",
-    "@vitest/coverage-v8": "^4.1.0",
-    "@vue/test-utils": "^2.4.6",
-    "jsdom": "^28.1.0",
-    "tailwindcss": "^4.2.1",
-    "typescript": "^5.8.3",
-    "vite": "^7.3.1",
-    "vitest": "^4.1.0",
-    "vue-tsc": "^2.2.10"
+    "@playwright/test": "^1.64.0",
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.6.5",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "@vitest/coverage-v8": "^5.0.3",
+    "@vue/test-utils": "^2.5.1",
+    "jsdom": "^30.1.2",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.3",
+    "vue-tsc": "^3.3.13"
   }
 }

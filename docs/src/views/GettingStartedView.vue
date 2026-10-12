@@ -1,3 +1,6 @@
+<!--
+  Getting Started page: install, start the daemon, connect an agent and submit a first task.
+-->
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-12">
@@ -46,7 +49,7 @@
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div class="rounded-xl border border-white/8 bg-[#0d0d14] p-4">
               <div class="text-lg mb-2">🔷</div>
-              <div class="font-bold text-white text-sm mb-1">Go 1.26+</div>
+              <div class="font-bold text-white text-sm mb-1">Go 1.27+</div>
               <div class="text-xs text-slate-500">
                 With CGO_ENABLED=1 and a C compiler (gcc/clang)
               </div>

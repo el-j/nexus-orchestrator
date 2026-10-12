@@ -27,6 +27,7 @@ import (
 //
 //	read_file   {path}            read a file inside the project
 //	write_file  {path, content}   create or replace a file inside the project
+//	edit_file   {path, old, new}  replace the one occurrence of old with new
 //	verify      {}                run the task's verification command
 //	finish      {summary}         declare the task done (re-verified if configured)
 //
@@ -55,6 +56,8 @@ type agentCall struct {
 	Tool    string `json:"tool"`
 	Path    string `json:"path"`
 	Content string `json:"content"`
+	Old     string `json:"old"`
+	New     string `json:"new"`
 	Summary string `json:"summary"`
 }
 
@@ -64,6 +67,7 @@ func agentSystemPrompt(task domain.Task, canVerify bool) string {
 	sb.WriteString("Act by replying with fenced blocks, each holding one JSON tool call:\n\n")
 	sb.WriteString("```nexus-tool\n{\"tool\":\"read_file\",\"path\":\"relative/path\"}\n```\n\n")
 	sb.WriteString("Tools: read_file {path}; write_file {path, content} (whole file); ")
+	sb.WriteString("edit_file {path, old, new} (replaces the single exact occurrence of old; prefer it for small changes); ")
 	if canVerify {
 		sb.WriteString("verify {} runs the project's verification command; ")
 	}
@@ -147,9 +151,6 @@ func (a *agentRun) execute(run *runHandle, c agentCall) (obs string, done bool) 
 		if c.Path == "" {
 			return "read_file: path is required", false
 		}
-		if a.o.fileWriter == nil {
-			return "read_file: file access is not available", false
-		}
 		text, err := a.o.fileWriter.ReadContextFiles(a.task.ProjectPath, []string{c.Path})
 		if err != nil {
 			return "read_file failed: " + err.Error(), false
@@ -159,14 +160,13 @@ func (a *agentRun) execute(run *runHandle, c agentCall) (obs string, done bool) 
 		if c.Path == "" {
 			return "write_file: path is required", false
 		}
-		if a.o.fileWriter == nil {
-			return "write_file: file access is not available", false
-		}
 		if err := a.o.fileWriter.WriteCodeToFile(a.task.ProjectPath, c.Path, c.Content); err != nil {
 			return "write_file failed: " + err.Error(), false
 		}
 		a.written = append(a.written, c.Path)
 		return fmt.Sprintf("wrote %s (%d bytes)", c.Path, len(c.Content)), false
+	case "edit_file":
+		return a.edit(c), false
 	case "verify":
 		if !a.canVerify() {
 			return "verify: this task has no verification command", false
@@ -182,7 +182,7 @@ func (a *agentRun) execute(run *runHandle, c agentCall) (obs string, done bool) 
 		}
 		return "finished: " + c.Summary, true
 	default:
-		return fmt.Sprintf("unknown tool %q (use read_file, write_file, verify or finish)", c.Tool), false
+		return fmt.Sprintf("unknown tool %q (use read_file, write_file, edit_file, verify or finish)", c.Tool), false
 	}
 }
 
@@ -276,4 +276,32 @@ func (o *OrchestratorService) runAgentLoop(run *runHandle, task domain.Task, cha
 		msgs = append(msgs, domain.Message{Role: domain.RoleUser, Content: strings.Join(results, "\n\n")})
 	}
 	return fail(fmt.Sprintf("agent stopped after %d turns without finishing", limit))
+}
+
+// edit replaces the single occurrence of c.Old in c.Path with c.New. Zero or
+// several matches are refused so a vague edit never lands in the wrong place.
+func (a *agentRun) edit(c agentCall) string {
+	if c.Path == "" || c.Old == "" {
+		return "edit_file: path and old are required"
+	}
+	text, err := a.o.fileWriter.ReadContextFiles(a.task.ProjectPath, []string{c.Path})
+	if err != nil {
+		return "edit_file failed: " + err.Error()
+	}
+	// ReadContextFiles frames the content with a header line and a trailing newline.
+	if rest, ok := strings.CutPrefix(text, "// --- "+c.Path+" ---\n"); ok {
+		text = strings.TrimSuffix(rest, "\n")
+	}
+	switch n := strings.Count(text, c.Old); {
+	case n == 0:
+		return "edit_file: old text not found in " + c.Path
+	case n > 1:
+		return fmt.Sprintf("edit_file: old text occurs %d times in %s; include more context so it is unique", n, c.Path)
+	}
+	updated := strings.Replace(text, c.Old, c.New, 1)
+	if err := a.o.fileWriter.WriteCodeToFile(a.task.ProjectPath, c.Path, updated); err != nil {
+		return "edit_file failed: " + err.Error()
+	}
+	a.written = append(a.written, c.Path)
+	return fmt.Sprintf("edited %s (%d bytes)", c.Path, len(updated))
 }

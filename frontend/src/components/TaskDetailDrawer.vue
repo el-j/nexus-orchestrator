@@ -1,3 +1,8 @@
+<!--
+  Right-hand drawer with every field of a task, its logs and a Cancel/Interrupt action.
+  Props: task (null renders only the header), modelValue (open state).
+  Emits: update:modelValue(open), cancelled(id) after a successful cancel, close().
+-->
 <template>
   <Drawer v-model:visible="visible" position="right" class="!bg-[#0d0d14] !w-full sm:!w-[480px]">
     <template #header>
@@ -19,7 +24,6 @@
           <span class="font-mono text-xs text-violet-400 uppercase">{{
             task.command || 'auto'
           }}</span>
-
         </div>
         <div class="flex justify-between items-center">
           <span class="text-slate-500 text-xs">Created</span>
@@ -71,8 +75,7 @@
         <p class="text-xs text-slate-500 mb-2 uppercase tracking-wider font-semibold">Output</p>
         <pre
           class="text-xs text-emerald-300/80 bg-[#0a0a10] border border-white/5 rounded-lg p-3 overflow-auto max-h-64 whitespace-pre-wrap font-mono leading-relaxed"
-          >{{ task.logs }}</pre
-        >
+          >{{ task.logs }}</pre>
       </div>
 
       <div v-if="task.status === 'QUEUED'" class="pt-2">
@@ -131,13 +134,14 @@ const cancelling = ref(false);
 const cancelError = ref<string | null>(null);
 
 async function handleCancel() {
-  if (!props.task) return;
+  // Both buttons only render while a task is shown, so the task is always present.
+  const id = props.task!.id;
   cancelling.value = true;
   cancelError.value = null;
   try {
-    await cancelTask(props.task.id);
+    await cancelTask(id);
     toast.add({ severity: 'success', summary: 'Task cancelled', life: 2000 });
-    emit('cancelled', props.task.id);
+    emit('cancelled', id);
     emit('close');
     visible.value = false;
   } catch (e) {

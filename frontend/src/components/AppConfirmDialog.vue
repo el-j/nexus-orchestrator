@@ -1,3 +1,8 @@
+<!--
+  Modal confirmation dialog (Escape cancels).
+  Props: open, title, message, confirmLabel, cancelLabel, danger (red confirm button).
+  Emits: confirm(), cancel().
+-->
 <template>
   <Teleport to="body">
     <Transition name="fade">

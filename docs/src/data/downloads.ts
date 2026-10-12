@@ -38,6 +38,7 @@ export const DESKTOP_ASSETS = [
   },
 ];
 
+/** Command-line release archives offered per platform (daemon, CLI, MCP stdio proxy). */
 export const CLI_ASSETS = [
   {
     icon: '🍎',
@@ -81,6 +82,7 @@ export const CLI_ASSETS = [
   },
 ];
 
+/** System requirements listed per operating system. */
 export const requirements = [
   {
     icon: '🍎',
@@ -113,13 +115,14 @@ export const requirements = [
     icon: '🔧',
     title: 'Build from Source',
     items: [
-      'Go 1.26+ with <code class="text-slate-300">CGO_ENABLED=1</code>',
+      'Go 1.27+ with <code class="text-slate-300">CGO_ENABLED=1</code>',
       'C compiler (gcc / clang) for sqlite3',
       '<a href="https://wails.io/" class="text-violet-400">Wails v2</a> for Desktop builds',
     ],
   },
 ];
 
+/** The packages contained in each release download, with what each one is for. */
 export const packages = [
   {
     icon: '🖥️',

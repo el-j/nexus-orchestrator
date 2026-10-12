@@ -1,3 +1,6 @@
+<!--
+  Project Brain: initialise, ingest into, search and browse the selected project's knowledge base.
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->

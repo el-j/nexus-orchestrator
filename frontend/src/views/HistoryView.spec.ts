@@ -339,4 +339,31 @@ describe('HistoryView — live updates', () => {
     const w = await mountView();
     expect(() => w.unmount()).not.toThrow();
   });
+
+  it('subscribes to nothing when unmounted before the first load finishes', async () => {
+    respond([]);
+    const w = mount(HistoryView, {
+      global: {
+        stubs: { TaskDetailDrawer: Drawer, TaskStatusBadge: Badge, RefreshIndicator: Indicator },
+      },
+    });
+    w.unmount();
+    await flush();
+    expect(h.on).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the whole path when it ends with a slash', async () => {
+    const w = await mountView([task({ projectPath: '/', targetFile: '/' })]);
+    expect(w.text()).toContain('/');
+  });
+
+  it('closes the detail drawer when it asks to', async () => {
+    const w = await mountView([task()]);
+    await rows(w)[0].trigger('click');
+    const drawer = w.findComponent(Drawer);
+    expect(drawer.props('modelValue')).toBe(true);
+    drawer.vm.$emit('update:modelValue', false);
+    await nextTick();
+    expect(drawer.props('modelValue')).toBe(false);
+  });
 });

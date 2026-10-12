@@ -1,3 +1,7 @@
+<!--
+  Agents: registered AI sessions and the AI tools discovered on this machine (with their
+  sub-agents), plus the activity tab. Sort, filter and search; sessions can be deregistered or purged.
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->
@@ -366,10 +370,8 @@ const sortedSessions = computed(() => {
       return list.sort(
         (a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime(),
       );
-    case 'name':
-      return list.sort((a, b) => a.agentName.localeCompare(b.agentName));
     default:
-      return list;
+      return list.sort((a, b) => a.agentName.localeCompare(b.agentName));
   }
 });
 
@@ -405,10 +407,8 @@ const sortedAgentRoots = computed(() => {
       );
     case 'recent':
       return list.sort((a, b) => new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime());
-    case 'name':
-      return list.sort((a, b) => a.name.localeCompare(b.name));
     default:
-      return list;
+      return list.sort((a, b) => a.name.localeCompare(b.name));
   }
 });
 

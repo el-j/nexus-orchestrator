@@ -126,6 +126,14 @@ describe('ProviderStatus — live providers', () => {
       active,
     });
 
+    it('matches activity whose provider name contains the listed provider name', async () => {
+      const w = await mountStatus({
+        providers: [info({ name: 'Open' })],
+        modelStates: [state('openai-compat', ['gpt'])],
+      });
+      expect(w.text()).toContain('gpt loaded');
+    });
+
     it('matches lm-studio activity to an LM Studio provider', async () => {
       const w = await mountStatus({
         providers: [info()],

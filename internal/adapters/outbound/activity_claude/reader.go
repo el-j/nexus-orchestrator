@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -121,17 +122,8 @@ func (r *ClaudeJSONLReader) readNewLines(path string, offset int64, since time.T
 	if fi, statErr := f.Stat(); statErr == nil && fi.Size() < offset {
 		offset = 0
 	}
-	if offset > 0 {
-		if _, seekErr := f.Seek(offset, io.SeekStart); seekErr != nil {
-			// File may have been truncated and rewritten; restart from beginning.
-			offset = 0
-			if _, seekErr2 := f.Seek(0, io.SeekStart); seekErr2 != nil {
-				return nil, 0, fmt.Errorf("activity_claude: seek: %w", seekErr2)
-			}
-		}
-	}
-
-	data, err := io.ReadAll(f)
+	// Reading from an explicit offset needs no Seek, so there is no seek failure to handle.
+	data, err := io.ReadAll(io.NewSectionReader(f, offset, math.MaxInt64-offset))
 	if err != nil {
 		return nil, offset, fmt.Errorf("activity_claude: read: %w", err)
 	}

@@ -1,3 +1,6 @@
+<!--
+  Navigation sidebar: routes, project selector and the daemon health indicator.
+-->
 <template>
   <aside class="w-14 lg:w-56 flex flex-col bg-[#0d0d14] border-r border-white/5 flex-shrink-0">
     <!-- Logo -->

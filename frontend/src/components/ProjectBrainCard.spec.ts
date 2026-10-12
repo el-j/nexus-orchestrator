@@ -235,4 +235,22 @@ describe('ProjectBrainCard — sync and ingest', () => {
     expect(api.ingestContent).not.toHaveBeenCalled();
     expect(w.text()).toContain('Failed: huge.md');
   });
+
+  it('reports a non-Error sync failure as text', async () => {
+    api.ingestKnowledge.mockRejectedValue('plain failure');
+    const w = await mountCard({ nexusFile: planFile() });
+    await button(w, 'Sync Brain')!.trigger('click');
+    await flushPromises();
+    expect(w.text()).toContain('plain failure');
+  });
+
+  it('dismisses the ingest result', async () => {
+    api.ingestKnowledge.mockResolvedValue(2);
+    const w = await mountCard({ nexusFile: planFile() });
+    await button(w, 'Sync Brain')!.trigger('click');
+    await flushPromises();
+    expect(w.text()).toContain('Ingested 2 sections');
+    await button(w, '✕')!.trigger('click');
+    expect(w.text()).not.toContain('Ingested 2 sections');
+  });
 });

@@ -64,7 +64,7 @@ const session = (o: Partial<AISession> = {}): AISession =>
 const Drawer = {
   name: 'TaskDetailDrawer',
   props: ['modelValue', 'task'],
-  emits: ['cancelled'],
+  emits: ['cancelled', 'update:modelValue'],
   template: '<div class="drawer" />',
 };
 const Form = { name: 'TaskSubmitForm', emits: ['submitted'], template: '<div class="form" />' };
@@ -360,5 +360,52 @@ describe('MissionControlView — agents and providers', () => {
     expect(t).toContain('http://127.0.0.1:1234');
     expect(t).toContain('2m ago');
     expect(t).toContain('3');
+  });
+});
+
+describe('MissionControlView — edge data', () => {
+  it('words one failure in the singular and a missing model as "no model"', async () => {
+    h.s.providers = [prov({ activeModel: '', consecutiveFails: 1 })];
+    const t = (await mountView()).text().replace(/\s+/g, ' ');
+    expect(t).toContain('1 fail');
+    expect(t).not.toContain('1 fails');
+    expect(t).toContain('no model');
+  });
+
+  it('puts a task with an unknown status last and names a root project path', async () => {
+    h.s.tasks = [
+      task({ status: 'MYSTERY' as Task['status'], instruction: 'odd' }),
+      task({ instruction: 'normal' }),
+    ];
+    h.s.sessions = [session({ projectPath: '/' })];
+    const w = await mountView();
+    const t = w.text();
+    expect(t.indexOf('normal')).toBeLessThan(t.indexOf('odd'));
+  });
+
+  it('lists a finished task once even when it is also in the queue', async () => {
+    const dup = task({ id: 'same', instruction: 'only once', status: 'COMPLETED' });
+    const extra = [
+      task({ instruction: 'unknown', status: 'ODD' as Task['status'] }),
+      task({ instruction: 'unknown2', status: 'ODD2' as Task['status'] }),
+    ];
+    h.s.tasks = [dup, ...extra];
+    h.getAllTasks.mockResolvedValue([]);
+    const without = (await mountView()).text().split('only once').length;
+    h.getAllTasks.mockResolvedValue([dup]);
+    const withDup = (await mountView()).text().split('only once').length;
+    // once in the work list (not twice, despite being in the history too) and once in the history
+    expect(without).toBe(2);
+    expect(withDup).toBe(3);
+  });
+
+  it('closes the detail drawer when it asks to', async () => {
+    h.s.tasks = [task()];
+    const w = await mountView();
+    await w.find('tbody tr').trigger('click');
+    const drawer = w.findComponent(Drawer);
+    drawer.vm.$emit('update:modelValue', false);
+    await w.vm.$nextTick();
+    expect(drawer.props('modelValue')).toBe(false);
   });
 });

@@ -50,6 +50,14 @@ describe('AppNav (stable channel)', () => {
     expect(w.findAll('a').some((a) => a.text() === 'Download')).toBe(true);
   });
 
+  it('closes the drawer when it asks to be dismissed', async () => {
+    const w = await mountNav();
+    await w.get('button[aria-label="Open menu"]').trigger('click');
+    w.findComponent(DrawerStub).vm.$emit('update:visible', false);
+    await flushPromises();
+    expect(w.find('[data-testid="drawer"]').exists()).toBe(false);
+  });
+
   it('opens the mobile drawer from the menu button and closes it after navigating', async () => {
     const w = await mountNav();
     expect(w.find('[data-testid="drawer"]').exists()).toBe(false);

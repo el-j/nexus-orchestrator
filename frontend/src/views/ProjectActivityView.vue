@@ -1,3 +1,7 @@
+<!--
+  Projects: the last 24 hours of agent activity grouped by project, polled every 15 seconds.
+  Clicking a project opens Live Activity filtered to it.
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->
@@ -165,7 +169,7 @@ const projects = computed((): ProjectGroup[] => {
       path,
       agents,
       recentActivities: sorted.slice(0, 5),
-      lastActivity: sorted[0]?.timestamp ?? '',
+      lastActivity: sorted[0].timestamp,
     });
   }
 

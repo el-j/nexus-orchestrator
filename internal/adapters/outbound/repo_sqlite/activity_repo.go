@@ -27,11 +27,8 @@ func NewActivityRepo(r *Repository) *ActivityRepo {
 
 // SaveActivity inserts an AIActivity record, ignoring duplicates by ID.
 func (a *ActivityRepo) SaveActivity(ctx context.Context, act domain.AIActivity) error {
-	metaJSON, err := json.Marshal(act.Metadata)
-	if err != nil {
-		return fmt.Errorf("repo_sqlite: marshal activity metadata: %w", err)
-	}
-	_, err = a.db.ExecContext(ctx,
+	metaJSON := marshal(act.Metadata)
+	_, err := a.db.ExecContext(ctx,
 		`INSERT OR IGNORE INTO ai_activities
 		 (id, session_id, agent_name, activity_type, summary, project_path, model, tokens_in, tokens_out, timestamp, metadata)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -125,9 +122,6 @@ func (a *ActivityRepo) PurgeOlderThan(ctx context.Context, cutoff time.Time) (in
 	if err != nil {
 		return 0, fmt.Errorf("repo_sqlite: purge activities: %w", err)
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return 0, fmt.Errorf("repo_sqlite: rows affected after purge: %w", err)
-	}
+	n := affected(res)
 	return n, nil
 }

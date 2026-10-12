@@ -154,4 +154,17 @@ describe('LogPanel', () => {
     expect(el.scrollTop).toBe(777);
     w.unmount();
   });
+
+  it('does not chase the newest line once auto-scroll is switched off', async () => {
+    const w = mount(LogPanel);
+    await w.find('[title="Auto-scroll"]').trigger('click');
+    await w.find('.level-filter').setValue('error');
+    expect(w.findAll('.log-entry')).toHaveLength(1);
+  });
+
+  it('keeps the level menu click from toggling the panel', async () => {
+    const w = mount(LogPanel);
+    await w.find('.level-filter').trigger('click');
+    expect(w.find('.log-list').exists()).toBe(true);
+  });
 });

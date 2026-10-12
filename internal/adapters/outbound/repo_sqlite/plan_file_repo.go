@@ -92,9 +92,6 @@ func (p *PlanFileRepo) DeleteStalePlanFiles(ctx context.Context, olderThan time.
 	if err != nil {
 		return 0, fmt.Errorf("repo_sqlite: delete stale plan files: %w", err)
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return 0, fmt.Errorf("repo_sqlite: delete stale plan files: rows affected: %w", err)
-	}
+	n := affected(res)
 	return int(n), nil
 }

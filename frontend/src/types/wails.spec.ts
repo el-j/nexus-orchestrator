@@ -346,6 +346,12 @@ describe('createDraft', () => {
     fetchMock.mockImplementation(() => reply(201, { id: 'D-1', status: 'DRAFT' }));
     expect(await api.createDraft({ instruction: 'x' })).toBe('D-1');
   });
+
+  it('uses the binding inside Wails', async () => {
+    const spy = wails('CreateDraft', 'D-2');
+    expect(await api.createDraft({ instruction: 'y' })).toBe('D-2');
+    expect(spy).toHaveBeenCalledWith({ instruction: 'y' });
+  });
 });
 
 describe('getBacklog', () => {

@@ -171,17 +171,13 @@ describe('DiscoveredPlansView — promote', () => {
     );
   });
 
-  it('falls back to a generic instruction when there is no summary text', async () => {
-    const t = task(1);
-    t.summary = undefined as unknown as string;
-    const w = await mountView([t, task(2)]);
-    // only the task with a parsable todo status shows Promote
-    await w
-      .findAll('button')
-      .find((b) => b.text() === 'Promote')!
-      .trigger('click');
+  it('promotes the task summary as the draft instruction', async () => {
+    const w = await mountView([task(1)]);
+    await btn(w, 'Promote').trigger('click');
     await flushPromises();
-    expect(h.createDraft).toHaveBeenCalled();
+    expect(h.createDraft).toHaveBeenCalledWith(
+      expect.objectContaining({ instruction: expect.stringContaining('**Status:** todo') }),
+    );
   });
 
   it('reports a failed promote instead of throwing', async () => {
@@ -278,5 +274,45 @@ describe('DiscoveredPlansView — filters and collapse', () => {
     expect(body()).toContain('display: none');
     await w.find('section > button').trigger('click');
     expect(body()).not.toContain('display: none');
+  });
+});
+
+describe('DiscoveredPlansView — ordering', () => {
+  it('orders task files by number, newest first, and files without a number last', async () => {
+    const w = await mountView([
+      task(2),
+      task(10),
+      plan({
+        kind: 'claude-task',
+        path: '/work/app/.claude/tasks/notes.md',
+        summary: '**Plan:** PLAN-1\n**Status:** todo',
+      }),
+      plan({
+        kind: 'claude-task',
+        path: '/work/app/.claude/tasks/more.md',
+        summary: '**Plan:** PLAN-1\n**Status:** todo',
+      }),
+    ]);
+    const t = w.text();
+    expect(t.indexOf('TASK-10')).toBeLessThan(t.indexOf('TASK-2'));
+    expect(t.indexOf('TASK-2')).toBeLessThan(t.indexOf('notes.md'));
+  });
+
+  it('marks an active task file with a green dot', async () => {
+    const w = await mountView([task(1, { isActive: true })]);
+    expect(w.find('.bg-emerald-400').exists()).toBe(true);
+  });
+
+  describe('DiscoveredPlansView — grouping edge cases', () => {
+    it('lists ungrouped tasks after the numbered plans and tolerates a missing summary', async () => {
+      const w = await mountView([
+        plan({ kind: 'claude-task', path: '/work/app/.claude/tasks/TASK-1.md', summary: '' }),
+        task(2),
+        task(3, { summary: '**Plan:** PLAN-7\n**Status:** todo' }),
+      ]);
+      const t = w.text();
+      expect(t.indexOf('PLAN-7')).toBeLessThan(t.indexOf('PLAN-1'));
+      expect(t).toContain('TASK-1');
+    });
   });
 });
