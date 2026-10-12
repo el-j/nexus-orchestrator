@@ -431,7 +431,7 @@ jobs:
       - name: Install Wails CLI
         shell: bash
         run: |
-          go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
 
       - name: Build desktop app
         shell: bash
