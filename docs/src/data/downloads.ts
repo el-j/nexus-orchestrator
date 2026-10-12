@@ -115,7 +115,7 @@ export const requirements = [
     icon: '🔧',
     title: 'Build from Source',
     items: [
-      'Go 1.26+ with <code class="text-slate-300">CGO_ENABLED=1</code>',
+      'Go 1.27+ with <code class="text-slate-300">CGO_ENABLED=1</code>',
       'C compiler (gcc / clang) for sqlite3',
       '<a href="https://wails.io/" class="text-violet-400">Wails v2</a> for Desktop builds',
     ],

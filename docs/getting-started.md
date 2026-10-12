@@ -19,7 +19,7 @@ nav_order: 4
 
 ## Prerequisites
 
-- **Go 1.26+** with CGO support (`CGO_ENABLED=1`)
+- **Go 1.27+** with CGO support (`CGO_ENABLED=1`)
 - **C compiler** — `gcc` or `clang` (required by `go-sqlite3`)
 - **At least one LLM provider**:
   - [LM Studio](https://lmstudio.ai/) running on `127.0.0.1:1234`, or

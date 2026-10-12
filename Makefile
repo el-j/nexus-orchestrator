@@ -354,7 +354,7 @@ upgrade-latest:
 	    (cd "$$dir" && npx -y npm-check-updates && npx -y npm-check-updates -u --doctor); \
 	  fi; \
 	done
-	@echo "── Upgrading Go modules to latest 1.26+ ──"
+	@echo "── Upgrading Go modules to latest 1.27+ ──"
 	@if [ -f go.mod ]; then \
 	  go get -u=patch ./...; \
 	  go get -u ./...; \
