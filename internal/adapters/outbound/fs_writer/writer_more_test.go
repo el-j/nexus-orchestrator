@@ -129,3 +129,23 @@ func TestWriteFailureSurfaces(t *testing.T) {
 		t.Error("writing onto a directory must fail")
 	}
 }
+
+func TestWriteCodeToFile_FailsWhenTheProjectDoesNotExist(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "gone")
+	if err := fs_writer.New().WriteCodeToFile(missing, "a.go", "x"); err == nil {
+		t.Fatal("expected an error for a project root that does not exist")
+	}
+}
+
+func TestWriteCodeToFile_FailsOnASymlinkLoop(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Symlink(filepath.Join(root, "b"), filepath.Join(root, "a")); err != nil {
+		t.Skip("symlinks unavailable:", err)
+	}
+	if err := os.Symlink(filepath.Join(root, "a"), filepath.Join(root, "b")); err != nil {
+		t.Fatal(err)
+	}
+	if err := fs_writer.New().WriteCodeToFile(root, "a/x.go", "x"); err == nil {
+		t.Fatal("expected an error for a symlink loop")
+	}
+}

@@ -61,7 +61,7 @@ UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
         build-linux-amd64 build-linux-arm64 \
         build-darwin-amd64 build-darwin-arm64 \
         build-windows-amd64 \
-        build-frontend build-vscode build-dev dev dev-daemon check-air \
+        mutation build-frontend build-vscode build-dev dev dev-daemon check-air \
         version version-sync release-alpha release-beta release-rc release \
         docker-build docker-push docker-run \
         nice nice-go nice-frontend
@@ -280,6 +280,10 @@ test-cover:
 	CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" go test -race -count=1 -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report → coverage.html"
+
+# Local-only (never in CI: too many workflow minutes). See docs/mutation-testing.md.
+mutation:
+	./scripts/mutation.sh
 
 vet:
 	go vet ./...

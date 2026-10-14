@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Routing parity: `providerName`, `providerHint`, `modelId`, `role`, `priority` and `tags` are accepted by `submit_task` / `create_draft` and the CLIs; GitHub Copilot and LM Studio are classified correctly for role routing
 - Real-daemon end-to-end suite (`go test -tags e2e ./internal/e2e/`): builds the shipped binaries and drives REST, every MCP tool, the stdio proxy, both CLIs, restart persistence, shutdown and port conflicts
 - Playwright `real-daemon` project (daemon plus a fake Ollama), VS Code extension-host tests (`npm run test:host`), a Wails desktop smoke job and a GitHub Action end-to-end job
-- Local-only mutation testing (Stryker via `npm run test:mutation`; deliberately not run in CI to save workflow minutes); `scripts/check-tsdoc.mjs` and revive `exported` doc-comment gates, and `scripts/check-file-size.sh` (500-line cap)
+- Local-only mutation testing for Go (gremlins) and TypeScript (Stryker) via `make mutation` / `scripts/mutation.sh`, documented in `docs/mutation-testing.md`; deliberately not run in CI to save workflow minutes; `scripts/check-tsdoc.mjs` and revive `exported` doc-comment gates, and `scripts/check-file-size.sh` (500-line cap)
 
 ### Changed
 
