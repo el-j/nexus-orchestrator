@@ -207,6 +207,19 @@
           "description": "Bearer token for a daemon started with NEXUS_API_TOKEN. Leave empty when the daemon has no token. If empty, the NEXUS_API_TOKEN environment variable of the editor is used.",
           "scope": "machine"
         },
+        "nexus.lmBridge.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Let the Nexus daemon use the chat models this editor offers (GitHub Copilot and any other extension that registers one). Each model is registered as a provider named vscode-<vendor>-<model> and its requests are billed to the signed-in subscription. VS Code asks for your consent on first use."
+        },
+        "nexus.lmBridge.vendors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Only share models from these vendors (for example [\"copilot\"]). Empty shares every vendor the editor offers."
+        },
         "nexus.defaultProvider": {
           "type": "string",
           "default": "",

@@ -83,3 +83,5 @@ daemon found. Without a provider the queue and the agent-coordination flow still
 | `no such module: fts5` at start-up             | Binary built without `CGO_CFLAGS=-DSQLITE_ENABLE_FTS5`. The Makefile now sets it; rebuild with `make build`. |
 | Queue or knowledge looks empty after a restart | The daemon was started from another folder without `NEXUS_DB_PATH`. Use `make start`.                        |
 | `connection refused` from `nexus-cli`          | Daemon not running: `make start`.                                                                            |
+
+To delegate to the models your editor subscriptions provide (Copilot and others), see [vscode-model-bridge.md](vscode-model-bridge.md).

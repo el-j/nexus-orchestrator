@@ -6,7 +6,8 @@ const h = vi.hoisted(() => {
     commands,
     treeProviders: new Map<string, unknown>(),
     configListener: undefined as
-      undefined | ((e: { affectsConfiguration(k: string): boolean }) => void),
+      | undefined
+      | ((e: { affectsConfiguration(k: string): boolean }) => void),
     config: {} as Record<string, unknown>,
     folders: [{ uri: { fsPath: '/workspace' } }] as Array<{ uri: { fsPath: string } }> | undefined,
     ui: {
@@ -106,6 +107,11 @@ vi.mock('./statusBar', () => ({
     constructor() {
       h.instances.statusBar = this;
     }
+  },
+}));
+vi.mock('./lmShare', () => ({
+  LmShare: class {
+    register = vi.fn();
   },
 }));
 vi.mock('./sessionMonitor', () => ({

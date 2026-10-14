@@ -22,6 +22,7 @@ import { getNexusActivityChannel, showNexusActivityLog } from './activityLog';
 import { AgentDetector } from './agentDetector';
 import { AISessionsTreeProvider, AISessionItem } from './aiSessionsTreeProvider';
 import { delegateToNexusCommand } from './commands/delegateToNexus';
+import { LmShare } from './lmShare';
 
 let client: NexusClient | undefined;
 let statusBar: NexusStatusBar | undefined;
@@ -129,6 +130,9 @@ export function activate(context: vscode.ExtensionContext): void {
       workspaceOrchProvider.refresh();
     }),
   );
+
+  // ── Editor models → daemon providers (opt-in, see lmShare.ts) ──────────────
+  new LmShare(getClient()).register(context);
 
   // Re-point the shared client whenever the connection settings change.
   context.subscriptions.push(
