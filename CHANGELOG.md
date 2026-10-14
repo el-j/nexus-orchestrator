@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Live output in the clients: VS Code channel `Nexus Live Output` (`nexus.liveOutput.enabled`, command `Nexus: Show Live Task Output`) and a "Live output" block in the task detail drawer; an OpenAI-compatible server that ignores `stream: true` is still accepted (one chunk)
 - OpenAI-compatible and Ollama providers stream (`ChatStream`): server-sent events / newline-delimited JSON, a cut-off stream is a failure that falls over to the next provider
 - Live output: the engine publishes a task's reply on the event stream while the model writes it (`task.chunk` with `text` and `seq`, `task.restart` before every attempt: retry, next provider, each agent turn). Optional `ports.ChatStreamer` for providers; others send one chunk. Not stored. See `docs/streaming.md`
 - VS Code model bridge streams: `POST /v1/chat/completions` with `"stream": true` answers with OpenAI `chat.completion.chunk` server-sent events as the editor's model produces text (a failure mid-stream arrives as an error event, a disconnect cancels the model request)

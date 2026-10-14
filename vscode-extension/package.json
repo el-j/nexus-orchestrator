@@ -70,6 +70,10 @@
         "title": "Nexus: Select Provider / Model"
       },
       {
+        "command": "nexus.showLiveOutput",
+        "title": "Nexus: Show Live Task Output"
+      },
+      {
         "command": "nexus.showProviders",
         "title": "Nexus: Show Providers"
       },
@@ -206,6 +210,11 @@
           "default": "",
           "description": "Bearer token for a daemon started with NEXUS_API_TOKEN. Leave empty when the daemon has no token. If empty, the NEXUS_API_TOKEN environment variable of the editor is used.",
           "scope": "machine"
+        },
+        "nexus.liveOutput.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Follow the daemon's event stream and print the text of running tasks in the 'Nexus Live Output' channel while the model writes it."
         },
         "nexus.lmBridge.enabled": {
           "type": "boolean",

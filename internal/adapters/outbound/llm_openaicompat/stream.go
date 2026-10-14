@@ -17,7 +17,8 @@ const maxEventBytes = 4 << 20
 
 // ChatStream is Chat that also hands each piece of the reply to onChunk as it arrives
 // (OpenAI "stream": true, server-sent events). It returns the complete reply. A stream that
-// ends without [DONE] or a finish reason was cut off and is an error.
+// ends without [DONE] or a finish reason was cut off and is an error. A server that ignores
+// "stream" and answers with a plain JSON completion is accepted: the reply arrives as one piece.
 func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onChunk func(string)) (string, error) {
 	reqBody, err := json.Marshal(chatCompletionRequest{
 		Model:       a.model,
@@ -45,6 +46,15 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 	}
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("%s: unexpected status %d%s", a.name, resp.StatusCode, errorDetail(resp.Body))
+	}
+
+	if !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/event-stream") {
+		// The server ignored "stream": true and sent a normal completion: deliver it as one piece.
+		reply, err := a.decodeCompletion(resp.Body)
+		if err == nil {
+			onChunk(reply)
+		}
+		return reply, err
 	}
 
 	var reply strings.Builder

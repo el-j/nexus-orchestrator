@@ -23,6 +23,7 @@ import { AgentDetector } from './agentDetector';
 import { AISessionsTreeProvider, AISessionItem } from './aiSessionsTreeProvider';
 import { delegateToNexusCommand } from './commands/delegateToNexus';
 import { LmShare } from './lmShare';
+import { LiveOutput } from './liveOutput';
 
 let client: NexusClient | undefined;
 let statusBar: NexusStatusBar | undefined;
@@ -133,6 +134,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // ── Editor models → daemon providers (opt-in, see lmShare.ts) ──────────────
   new LmShare(getClient()).register(context);
+  new LiveOutput(getClient()).register(context); // task text while the model writes it
 
   // Re-point the shared client whenever the connection settings change.
   context.subscriptions.push(

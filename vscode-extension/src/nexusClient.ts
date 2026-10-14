@@ -167,6 +167,13 @@ export class NexusClient {
     }
   }
 
+  /** Opens the daemon's server-sent event stream. The caller reads the body and ends it with `signal`. */
+  async openEvents(signal: AbortSignal): Promise<Response> {
+    const resp = await this.send(`${this.baseUrl}/api/events`, { signal });
+    if (!resp.ok) throw await this.failure('GET /api/events', resp);
+    return resp;
+  }
+
   /** Register a new AI session with the daemon. */
   async registerSession(req: RegisterSessionRequest): Promise<AISession> {
     return this.post('/api/ai-sessions', req, AISessionSchema);

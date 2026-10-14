@@ -183,6 +183,11 @@ func (a *Adapter) chat(ctx context.Context, messages []map[string]string) (strin
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("%s: unexpected status %d%s", a.name, resp.StatusCode, errorDetail(resp.Body))
 	}
+	return a.decodeCompletion(resp.Body)
+}
+
+// decodeCompletion reads a non-streamed chat completion and returns the first reply.
+func (a *Adapter) decodeCompletion(body io.Reader) (string, error) {
 	var result struct {
 		Choices []struct {
 			Message struct {
@@ -190,7 +195,7 @@ func (a *Adapter) chat(ctx context.Context, messages []map[string]string) (strin
 			} `json:"message"`
 		} `json:"choices"`
 	}
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
+	if err := json.NewDecoder(io.LimitReader(body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("%s: decode response: %w", a.name, err)
 	}
 	if len(result.Choices) == 0 {

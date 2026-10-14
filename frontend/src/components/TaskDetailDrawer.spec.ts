@@ -3,7 +3,8 @@ import { mount, flushPromises } from '@vue/test-utils';
 import TaskDetailDrawer from './TaskDetailDrawer.vue';
 import type { Task } from '../types/domain';
 
-const api = vi.hoisted(() => ({ cancelTask: vi.fn(), toastAdd: vi.fn() }));
+const api = vi.hoisted(() => ({ cancelTask: vi.fn(), toastAdd: vi.fn(), live: vi.fn() }));
+vi.mock('../composables/useLiveOutput', () => ({ useLiveOutput: () => ({ liveText: api.live }) }));
 vi.mock('../types/wails', () => ({ cancelTask: api.cancelTask }));
 vi.mock('../composables/useToast', () => ({ useToast: () => ({ add: api.toastAdd }) }));
 
@@ -40,6 +41,29 @@ const mountDrawer = (t: Task | null) =>
 beforeEach(() => {
   api.cancelTask.mockReset();
   api.toastAdd.mockReset();
+  api.live.mockReset().mockReturnValue('');
+});
+
+describe('TaskDetailDrawer live output', () => {
+  it('shows the text a running task has produced so far', () => {
+    api.live.mockImplementation((id: string) => (id === 't-1' ? 'writing package main' : ''));
+    const w = mountDrawer(task({ status: 'PROCESSING' }));
+    expect(w.find('[data-testid="live-output"]').text()).toContain('writing package main');
+  });
+
+  it('shows nothing before the first chunk or once the task is not running', () => {
+    expect(
+      mountDrawer(task({ status: 'PROCESSING' }))
+        .find('[data-testid="live-output"]')
+        .exists(),
+    ).toBe(false);
+    api.live.mockReturnValue('stale text');
+    expect(
+      mountDrawer(task({ status: 'COMPLETED' }))
+        .find('[data-testid="live-output"]')
+        .exists(),
+    ).toBe(false);
+  });
 });
 
 describe('TaskDetailDrawer', () => {
