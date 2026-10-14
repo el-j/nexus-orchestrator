@@ -113,9 +113,19 @@ func agentTurnLimit(task domain.Task) int {
 
 // agentRun is the mutable state of one loop.
 type agentRun struct {
-	o       *OrchestratorService
-	task    domain.Task
-	written []string
+	o         *OrchestratorService
+	task      domain.Task
+	policy    domain.ProjectPolicy
+	written   []string
+	wroteTest bool // a test file has been written in this run (tests-first rule)
+}
+
+// noteWrite records a successful write for the final report and the tests-first rule.
+func (a *agentRun) noteWrite(path string) {
+	a.written = append(a.written, path)
+	if domain.ClassifyFile(path) == domain.FileTest {
+		a.wroteTest = true
+	}
 }
 
 func (a *agentRun) canVerify() bool {
@@ -160,10 +170,13 @@ func (a *agentRun) execute(run *runHandle, c agentCall) (obs string, done bool) 
 		if c.Path == "" {
 			return "write_file: path is required", false
 		}
+		if v := policyWriteViolation(a.policy, c.Path, c.Content, a.wroteTest); v != "" {
+			return v, false
+		}
 		if err := a.o.fileWriter.WriteCodeToFile(a.task.ProjectPath, c.Path, c.Content); err != nil {
 			return "write_file failed: " + err.Error(), false
 		}
-		a.written = append(a.written, c.Path)
+		a.noteWrite(c.Path)
 		return fmt.Sprintf("wrote %s (%d bytes)", c.Path, len(c.Content)), false
 	case "edit_file":
 		return a.edit(c), false
@@ -188,8 +201,8 @@ func (a *agentRun) execute(run *runHandle, c agentCall) (obs string, done bool) 
 
 // runAgentLoop drives the loop to a terminal task status. It returns true like
 // the other execution paths (the task was consumed).
-func (o *OrchestratorService) runAgentLoop(run *runHandle, task domain.Task, chain []ports.LLMClient, prompt string) bool {
-	a := &agentRun{o: o, task: task}
+func (o *OrchestratorService) runAgentLoop(run *runHandle, task domain.Task, chain []ports.LLMClient, prompt string, policy domain.ProjectPolicy) bool {
+	a := &agentRun{o: o, task: task, policy: policy}
 	msgs := []domain.Message{
 		{Role: domain.RoleSystem, Content: agentSystemPrompt(task, a.canVerify())},
 		{Role: domain.RoleUser, Content: prompt},
@@ -299,9 +312,12 @@ func (a *agentRun) edit(c agentCall) string {
 		return fmt.Sprintf("edit_file: old text occurs %d times in %s; include more context so it is unique", n, c.Path)
 	}
 	updated := strings.Replace(text, c.Old, c.New, 1)
+	if v := policyWriteViolation(a.policy, c.Path, updated, a.wroteTest); v != "" {
+		return v
+	}
 	if err := a.o.fileWriter.WriteCodeToFile(a.task.ProjectPath, c.Path, updated); err != nil {
 		return "edit_file failed: " + err.Error()
 	}
-	a.written = append(a.written, c.Path)
+	a.noteWrite(c.Path)
 	return fmt.Sprintf("edited %s (%d bytes)", c.Path, len(updated))
 }

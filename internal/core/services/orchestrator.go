@@ -108,6 +108,7 @@ type OrchestratorService struct {
 	agentRepo          discoveredAgentStore
 	planFileRepo       ports.DiscoveredPlanFileRepo
 	commandRunner      ports.CommandRunner
+	brain              ports.BrainService // optional: project briefing for prompts and task memory
 	lastAgentScan      time.Time
 	lastAgentScanMu    sync.Mutex
 	signalFn           func(pid int, force bool) error // test seam; nil = real os signals

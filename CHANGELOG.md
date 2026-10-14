@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Rule-based workflow: `.nexus/policy.json` per project (default `verify` command, `maxFileLines`, `testsFirst`, `remember`, free-text `rules`). The engine puts a token-bounded project briefing and the rules in front of every task, applies the default verification command, refuses agent writes that break the size or tests-first rules, remembers each finished task in the project knowledge (newest 30) and sends only the newest 20 session messages; the onboarding leads with the rules; `init` creates the file once. See `docs/rulebased-workflow.md`
 - Agentic `edit_file` tool: replaces the single exact occurrence of a text in a project file (refused when it is missing or ambiguous), so small changes no longer need the whole file rewritten
 - Cross-surface parity matrix (`internal/docscheck/surface_matrix_test.go`): every capability must exist on REST, MCP, CLI, the desktop bindings, the frontend and the VS Code extension, or say why not; CI fails otherwise
 - `docs/api-reference.md` documents every REST route, guarded by a test; architecture guide covers the execution engine, provider routing and the surface matrix

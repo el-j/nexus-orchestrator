@@ -45,7 +45,7 @@ func (o *OrchestratorService) prepareChatPrompt(task domain.Task) (string, []dom
 			o.emit(task.ID, domain.StatusFailed)
 			return "", nil, fmt.Errorf("orchestrator: load session: %w", err)
 		}
-		sessionHistory = sess.Messages
+		sessionHistory = trimHistory(sess.Messages, MaxHistoryMessages)
 	}
 
 	return prompt, sessionHistory, nil
