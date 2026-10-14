@@ -239,7 +239,7 @@ func (o *OrchestratorService) runAgentLoop(run *runHandle, task domain.Task, cha
 				o.emit(task.ID, domain.StatusTooLarge)
 				return true
 			}
-			out, err := nonEmpty(llm.Chat(run.ctx, msgs))
+			out, err := nonEmpty(o.liveChat(run.ctx, task.ID, llm, msgs))
 			if run.ctx.Err() != nil {
 				o.finishInterrupted(a.task, run)
 				return true

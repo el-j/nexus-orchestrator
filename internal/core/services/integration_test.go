@@ -399,7 +399,8 @@ collect:
 	for {
 		select {
 		case ev := <-events:
-			if ev.TaskID == created.TaskID {
+			// Live-text events interleave with the lifecycle; this test is about the lifecycle.
+			if ev.TaskID == created.TaskID && ev.Type != "task.chunk" && ev.Type != "task.restart" {
 				collected = append(collected, ev.Type)
 			}
 			if len(collected) >= len(wanted) {
