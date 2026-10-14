@@ -29,6 +29,7 @@ remembered (newest 30) and session history is capped to 20 messages; the onboard
 rules. Still open: a real planning gate, a derived file map, enforcing rules on agents that edit
 files outside the orchestrator, and any run against a real model. The scorecard below describes
 the state before this change.
+
 ## Scorecard against your list
 
 | Requirement              | State                       | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                  |

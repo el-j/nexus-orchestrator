@@ -147,6 +147,26 @@ export class NexusClient {
     return this.get('/api/providers', z.array(ProviderSchema));
   }
 
+  /** Register an OpenAI-compatible provider with the running daemon (in memory, not persisted). */
+  async registerProvider(cfg: {
+    name: string;
+    kind: string;
+    baseUrl: string;
+    apiKey: string;
+    model: string;
+  }): Promise<void> {
+    await this.post('/api/providers', { ...cfg, enabled: true });
+  }
+
+  /** Remove a registered provider by name. A provider that is already gone is not an error. */
+  async removeProvider(name: string): Promise<void> {
+    try {
+      await this.delete(`/api/providers/${encodeURIComponent(name)}`);
+    } catch (err) {
+      if (!(err instanceof Error) || !err.message.includes('HTTP 404')) throw err;
+    }
+  }
+
   /** Register a new AI session with the daemon. */
   async registerSession(req: RegisterSessionRequest): Promise<AISession> {
     return this.post('/api/ai-sessions', req, AISessionSchema);
