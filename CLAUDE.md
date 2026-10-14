@@ -15,7 +15,9 @@ Project MCP server `nexus` is declared in `.mcp.json` (http://localhost:63988/mc
    `.claude/orchestrator.json`. Write the plan and its tasks before code; one task = one small change.
 3. Hand code-generation tasks to the orchestrator with `submit_task` (set `verificationCommand`),
    or `create_draft` then `promote_task`. `/execute-via-nexus` pushes a whole plan.
-4. Record what was learned with `ingest_knowledge` (kind `learning`) so the next session starts with it.
+4. The rules for this project are in `.nexus/policy.json` (see `docs/rulebased-workflow.md`); the
+   onboarding states them. The orchestrator enforces them on its own runs and records each finished
+   task, so do not re-derive them. Record other lessons with `ingest_knowledge` (kind `learning`).
 
 ## File map (what is where)
 

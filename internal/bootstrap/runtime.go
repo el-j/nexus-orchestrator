@@ -112,8 +112,9 @@ func Start(ctx context.Context, cfg Config, logHub *httpapi.LogHub) (*Runtime, e
 	// Core services (hexagonal wiring).
 	discoverySvc := services.NewDiscoveryService(BuildProviders()...)
 	sessionRepo := repo_sqlite.NewSessionRepo(repo)
+	brain := services.NewBrainService(repo_sqlite.NewKnowledgeRepo(repo), repo)
 	orch := services.NewOrchestrator(discoverySvc, repo, fs_writer.New(), sessionRepo,
-		services.WithCommandRunner(cmd_runner.New()))
+		services.WithCommandRunner(cmd_runner.New()), services.WithBrain(brain))
 	orch.WithProviderFactory(BuildProviderFromConfig)
 	rt.Orchestrator = orch
 
@@ -129,7 +130,7 @@ func Start(ctx context.Context, cfg Config, logHub *httpapi.LogHub) (*Runtime, e
 	aiSessionRepo := repo_sqlite.NewAISessionRepo(repo)
 	orch.SetAISessionRepo(aiSessionRepo)
 
-	rt.Brain = services.NewBrainService(repo_sqlite.NewKnowledgeRepo(repo), repo)
+	rt.Brain = brain
 
 	// Real-time workspace change invalidation.
 	if w, err := fs_watcher.New(fs_watcher.WithBrain(rt.Brain)); err != nil {

@@ -46,6 +46,9 @@ knowledge, classified as architecture, file map, convention, learning or glossar
 - Add what the agents keep forgetting to that file, then re-run the command. Further knowledge can
   be added by an agent through the `ingest_knowledge` tool.
 
+`make init-project` also writes `.nexus/policy.json` (default verification command, file-size limit,
+tests-first, your rules); commit it and edit it. See [rulebased-workflow.md](rulebased-workflow.md).
+
 ## 4. Work
 
 Agents pull context instead of you pasting it:

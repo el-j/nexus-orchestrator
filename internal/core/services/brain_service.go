@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -232,6 +233,13 @@ func (b *BrainServiceImpl) InitProject(ctx context.Context, projectPath, claudeM
 			return domain.BrainStatus{}, fmt.Errorf("brain_service: init project: %w", err)
 		}
 	}
+	// A project that is introduced to the orchestrator also gets its rule file, once.
+	// Failing to write it (read-only checkout, a file named .nexus) must not fail the init.
+	if created, err := EnsureProjectPolicy(projectPath); err != nil {
+		log.Printf("brain_service: init project %s: policy: %v", projectPath, err)
+	} else if created {
+		log.Printf("brain_service: init project %s: wrote default %s", projectPath, PolicyFile)
+	}
 	return b.repo.GetStatus(ctx, filepath.Clean(projectPath))
 }
 
@@ -257,6 +265,16 @@ func (b *BrainServiceImpl) DeleteKnowledge(ctx context.Context, id string) error
 // GetOnboardingContext returns a concise, token-budgeted Tier 0/1 onboarding summary
 // for an AI agent starting a session on a project.
 func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath string, maxTokens int) (string, error) {
+	return b.buildOnboarding(ctx, projectPath, maxTokens, true)
+}
+
+// GetProjectBrief is GetOnboardingContext without the workflow rules. The engine
+// states the rules itself, in full and once, so the briefing must not repeat them.
+func (b *BrainServiceImpl) GetProjectBrief(ctx context.Context, projectPath string, maxTokens int) (string, error) {
+	return b.buildOnboarding(ctx, projectPath, maxTokens, false)
+}
+
+func (b *BrainServiceImpl) buildOnboarding(ctx context.Context, projectPath string, maxTokens int, withRules bool) (string, error) {
 	if maxTokens <= 0 {
 		maxTokens = 800
 	}
@@ -331,6 +349,17 @@ func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath
 	}
 	sb.WriteString("\n")
 
+	// 2b. Project rules go before everything that can be truncated: a fresh session
+	// must learn them even on a tight budget.
+	policy, hasPolicy, policyErr := LoadProjectPolicy(clean)
+	switch {
+	case policyErr != nil:
+		fmt.Fprintf(&sb, "## Workflow rules\n- The project's policy file is invalid and no rules are applied until it is fixed: %v\n\n", policyErr)
+	case hasPolicy && withRules:
+		sb.WriteString(renderPolicy(policy))
+		sb.WriteString("\n")
+	}
+
 	// 3. Architecture & Invariants
 	archEntries, _ := b.repo.GetByProjectAndKind(ctx, clean, domain.KnowledgeArchitecture)
 	if len(archEntries) > 0 {
@@ -357,7 +386,10 @@ func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath
 		sb.WriteString("\n")
 	}
 
-	// 5. Mandatory Verification Commands
+	// 5. Mandatory Verification Commands (a policy states the real one; guessing would contradict it)
+	if hasPolicy {
+		return b.fitOnboarding(sb.String(), maxTokens), nil
+	}
 	sb.WriteString("## Verification Commands\n")
 	var verifCommands []string
 	if strings.Contains(stackStr, "Go") {
@@ -379,14 +411,15 @@ func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath
 		fmt.Fprintf(&sb, "- `%s`\n", cmd)
 	}
 
-	result := sb.String()
-	tokens := estimateStringTokens(result)
-	if tokens > maxTokens {
-		maxChars := maxTokens * 4
-		if len(result) > maxChars {
+	return b.fitOnboarding(sb.String(), maxTokens), nil
+}
+
+// fitOnboarding cuts text to the token budget, marking the cut.
+func (b *BrainServiceImpl) fitOnboarding(result string, maxTokens int) string {
+	if estimateStringTokens(result) > maxTokens {
+		if maxChars := maxTokens * 4; len(result) > maxChars {
 			result = cutUTF8(result, maxChars) + "\n\n...[Onboarding context truncated to fit token budget]"
 		}
 	}
-
-	return result, nil
+	return result
 }

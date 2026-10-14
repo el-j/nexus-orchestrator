@@ -48,6 +48,7 @@ func statusEventType(s domain.TaskStatus) ports.EventType {
 // It acquires the mutex only to read the broadcaster pointer, then releases it
 // before calling Broadcast so the hub's own lock is never nested under o.mu.
 func (o *OrchestratorService) emit(taskID string, status domain.TaskStatus) {
+	o.recordOutcome(taskID, status)
 	o.mu.Lock()
 	b := o.broadcaster
 	o.mu.Unlock()
@@ -103,8 +104,18 @@ func (o *OrchestratorService) processNext() bool {
 		return true
 	}
 
+	task, policy, prompt, err := o.applyProjectRules(run.ctx, task, chain, prompt)
+	if err != nil {
+		o.appendTaskLog(task.ID, "not started: "+err.Error())
+		if err2 := o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusFailed); err2 != nil {
+			log.Printf("orchestrator: update status for task %s: %v", task.ID, err2)
+		}
+		o.emit(task.ID, domain.StatusFailed)
+		return true
+	}
+
 	if task.Agentic {
-		return o.runAgentLoop(run, task, chain, prompt)
+		return o.runAgentLoop(run, task, chain, prompt, policy)
 	}
 	return o.executeWithFallbackChain(run, task, chain, prompt, sessionHistory)
 }

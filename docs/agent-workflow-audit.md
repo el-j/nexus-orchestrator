@@ -20,6 +20,16 @@ projects. Three gaps decide how far you get:
 2. Nothing records what was done into the knowledge base, so "remember" stops at raw task history.
 3. Quality rules reach an agent only if you hand it a `verificationCommand` for that project.
 
+## Update: rule-based workflow (branch `feature/rulebased-orchestration`)
+
+Gaps 1–3 above were addressed, see [rulebased-workflow.md](rulebased-workflow.md): project briefing
+and rules are put in front of every task; a per-project `.nexus/policy.json` supplies the default
+verification command and enforces file size and tests-first on agentic runs; finished tasks are
+remembered (newest 30) and session history is capped to 20 messages; the onboarding leads with the
+rules. Still open: a real planning gate, a derived file map, enforcing rules on agents that edit
+files outside the orchestrator, and any run against a real model. The scorecard below describes
+the state before this change.
+
 ## Scorecard against your list
 
 | Requirement              | State                       | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                  |
