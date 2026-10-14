@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"nexus-orchestrator/internal/core/domain"
+	"nexus-orchestrator/internal/core/ports"
 )
 
 // ProcessNext runs exactly one iteration of the worker loop (claim the next
@@ -42,3 +43,6 @@ func (o *OrchestratorService) ResolveChain(task domain.Task) ([]string, error) {
 	}
 	return names, err
 }
+
+// PublishForTest sends a stream event the way the engine does, so tests can flood subscribers.
+func (o *OrchestratorService) PublishForTest(ev ports.TaskEvent) { o.publish(ev) }

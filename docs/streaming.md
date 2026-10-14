@@ -23,8 +23,13 @@ on `task.restart` clear the buffer, on `task.chunk` append `text`.
 - **Desktop / web UI**: the task detail drawer shows a "Live output" block while the task is
   processing.
 - **REST**: subscribe to `GET /api/events` yourself.
-- **MCP**: not available yet. MCP tools still return when the task is done; progress notifications
-  are not implemented.
+- **MCP**: the `wait_for_task` tool blocks until the task has finished. Send `_meta.progressToken`
+  in the `tools/call` request and `Accept: text/event-stream`, and the response becomes an event
+  stream: one `notifications/progress` per piece of the reply (`message` is the text, `progress`
+  counts up, a restart sends `↻ new attempt`), then the normal result as the last event. Without
+  the token or the header you get plain JSON when the task ends. A timeout (`timeoutSeconds`,
+  default 300, max 3600) returns the task as it is with `"timedOut": true`; call it again to keep
+  waiting. The legacy `/sse` transport and `nexus-mcp-stdio` return the final result only.
 
 ## Guarantees and limits
 

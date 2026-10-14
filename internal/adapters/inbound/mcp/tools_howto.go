@@ -31,7 +31,7 @@ QUICK START (AI PLANNER)
 QUICK START (AI ORCHESTRATOR)
 1. call submit_task        — queue a task directly for LLM execution
 2. call get_queue          — monitor progress
-3. call get_task           — inspect a specific task
+3. call get_task           — inspect a specific task (or wait_for_task to block until it ends)
 4. call cancel_task        — abort if needed
 5. call get_providers      — see which LLM backends are available
 
@@ -43,6 +43,7 @@ ALL AVAILABLE TOOLS
 - promote_provider   activate a discovered provider
 - submit_task        queue a task for LLM execution
 - get_task           get task status and output
+- wait_for_task      wait until a task ends; streams progress if asked
 - get_queue          list queued/processing tasks
 - get_all_tasks      list every task regardless of status
 - cancel_task        cancel a pending task

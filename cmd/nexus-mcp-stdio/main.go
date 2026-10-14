@@ -47,7 +47,8 @@ func run(in io.Reader, out, errOut io.Writer, getenv func(string) string) int {
 // proxy reads JSON-RPC messages from in, forwards them via HTTP POST to mcpURL,
 // and writes responses to out. Diagnostic logs go to errOut.
 func proxy(in io.Reader, out, errOut io.Writer, mcpURL, mcpToken string) error {
-	client := &http.Client{Timeout: 120 * time.Second}
+	// wait_for_task may legitimately block for up to an hour; the daemon bounds every call itself.
+	client := &http.Client{Timeout: 61 * time.Minute}
 
 	fmt.Fprintf(errOut, "nexus-mcp-stdio: forwarding to %s\n", mcpURL)
 

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- MCP `wait_for_task` (42 tools): blocks until a task has finished and streams the model's reply as `notifications/progress` when the caller sends a progress token and `Accept: text/event-stream`; `OrchestratorService` offers its events to in-process adapters through the optional `ports.TaskEventSource`
 - Anthropic, Gemini and LM Studio providers stream (`ChatStream`, shared `sse` reader), and the single-prompt path without a session store streams too; a cut-off stream is a failure that falls over to the next provider
 - Live output in the clients: VS Code channel `Nexus Live Output` (`nexus.liveOutput.enabled`, command `Nexus: Show Live Task Output`) and a "Live output" block in the task detail drawer; an OpenAI-compatible server that ignores `stream: true` is still accepted (one chunk)
 - OpenAI-compatible and Ollama providers stream (`ChatStream`): server-sent events / newline-delimited JSON, a cut-off stream is a failure that falls over to the next provider

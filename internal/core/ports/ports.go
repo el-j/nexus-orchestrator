@@ -256,6 +256,14 @@ type EventBroadcaster interface {
 	BroadcastAISessionEvent(event domain.AISessionEvent)
 }
 
+// TaskEventSource is optionally implemented by an Orchestrator that lets in-process adapters
+// follow task events (lifecycle, task.chunk, task.restart) as they happen. The channel is
+// buffered and an event is dropped when a subscriber falls behind, so publishing never blocks.
+// cancel removes the subscription and closes the channel; calling it again is harmless.
+type TaskEventSource interface {
+	SubscribeTaskEvents() (events <-chan TaskEvent, cancel func())
+}
+
 // SystemScanner scans the local system for AI providers/agents.
 type SystemScanner interface {
 	Scan(ctx context.Context) ([]domain.DiscoveredProvider, error)

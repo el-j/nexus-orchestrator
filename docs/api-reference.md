@@ -693,12 +693,13 @@ Base URL: `http://localhost:63988`
 
 ### Available Tools
 
-#### Tasks (13)
+#### Tasks (14)
 
 | Tool                   | Description                                                                                                                                                                                                                               | Parameters                                                                                                             |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `submit_task`          | Submit a code-generation task to the orchestrator                                                                                                                                                                                         | `projectPath`, `targetFile`, `instruction`, `contextFiles?`, `command?`, `verificationCommand?`, `maxCorrectionTurns?` |
 | `get_task`             | Get task status and output by ID                                                                                                                                                                                                          | `id`                                                                                                                   |
+| `wait_for_task`        | Block until a task has finished and return it; streams the reply as `notifications/progress` when asked (see below)                                                                                                                       | `id`, `timeoutSeconds`                                                                                                 |
 | `get_queue`            | List all pending (QUEUED or PROCESSING) tasks                                                                                                                                                                                             | —                                                                                                                      |
 | `get_all_tasks`        | Return every task regardless of status                                                                                                                                                                                                    | —                                                                                                                      |
 | `cancel_task`          | Cancel a pending task by ID                                                                                                                                                                                                               | `id`                                                                                                                   |
@@ -710,6 +711,14 @@ Base URL: `http://localhost:63988`
 | `update_task_status`   | Report task completion or failure from executing AI session                                                                                                                                                                               | `task_id`, `session_id`, `status`, `logs?`                                                                             |
 | `heartbeat_task`       | Keep a PROCESSING task alive (prevents watchdog failure)                                                                                                                                                                                  | `task_id`, `session_id`                                                                                                |
 | `terminate_ai_session` | Disconnect a session and stop its agent process (SIGTERM or SIGKILL) — the process is only signalled when Nexus itself discovered it running (never PID ≤ 1, the daemon or its parent); otherwise the session is just marked disconnected | `session_id`, `force?`                                                                                                 |
+
+**Live progress from `wait_for_task`.** Send `_meta.progressToken` in the `tools/call` request and
+`Accept: text/event-stream`: the response then is an event stream. Each piece of the model's reply
+is a `notifications/progress` event (`progress` counts up, `message` holds the text; a retry or the
+next provider sends `↻ new attempt`), and the last event is the normal JSON-RPC result. Without the
+token or the header the reply is plain JSON after the task ended. The stdio proxy and the legacy
+`/sse` transport return the final result only. `timeoutSeconds` defaults to 300 (max 3600); on a
+timeout the task comes back as it is with `"timedOut": true`.
 
 #### AI Sessions (5)
 

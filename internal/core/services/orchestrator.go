@@ -90,7 +90,9 @@ type OrchestratorService struct {
 	sessionRepo ports.SessionRepository
 	runtimeCfg  ports.RuntimeConfigRepository
 	broadcaster ports.EventBroadcaster // optional; nil = no event publishing
-	workCh      chan struct{}          // notified when a task is enqueued; capacity 1
+	tapMu       sync.Mutex             // guards taps
+	taps        map[chan ports.TaskEvent]struct{}
+	workCh      chan struct{} // notified when a task is enqueued; capacity 1
 	stopCh      chan struct{}
 	stopped     bool
 	stopOnce    sync.Once

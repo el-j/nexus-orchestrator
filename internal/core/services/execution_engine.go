@@ -49,13 +49,7 @@ func statusEventType(s domain.TaskStatus) ports.EventType {
 // before calling Broadcast so the hub's own lock is never nested under o.mu.
 func (o *OrchestratorService) emit(taskID string, status domain.TaskStatus) {
 	o.recordOutcome(taskID, status)
-	o.mu.Lock()
-	b := o.broadcaster
-	o.mu.Unlock()
-	if b == nil {
-		return
-	}
-	b.Broadcast(ports.TaskEvent{
+	o.dispatch(ports.TaskEvent{
 		Type:   statusEventType(status),
 		TaskID: taskID,
 		Status: status,
