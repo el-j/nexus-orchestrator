@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "nexus": {
+      "type": "http",
+      "url": "http://localhost:63988/mcp"
+    }
+  }
+}

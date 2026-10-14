@@ -148,7 +148,13 @@ export interface DiscoveredAgent {
 
 /** Which convention a discovered plan file follows. */
 export type PlanFileKind =
-  'nexus' | 'claude-task' | 'markdown' | 'cursor' | 'mcp-config' | 'crewai' | 'claude';
+  | 'nexus'
+  | 'claude-task'
+  | 'markdown'
+  | 'cursor'
+  | 'mcp-config'
+  | 'crewai'
+  | 'claude';
 
 /** A plan file found on disk. */
 export interface DiscoveredPlanFile {
