@@ -23,4 +23,8 @@ on `task.restart` clear the buffer, on `task.chunk` append `text`.
   `seq` tells you so; the finished task still holds the full result.
 - Pieces that arrive within 50 ms of each other are joined into one chunk.
 - A provider that cannot stream sends its whole reply as one chunk after it finishes.
-- Providers that stream: see the list in the changelog; others fall back to one chunk.
+- Providers that stream: OpenAI-compatible endpoints (OpenAI, the VS Code model bridge and other
+  servers speaking `stream: true`) and Ollama. Anthropic, Gemini and LM Studio still send one chunk
+  when the reply is complete.
+- A stream that ends without its terminator (`[DONE]` / `done`) counts as a failure, so the next
+  provider takes over and a `task.restart` precedes its text.

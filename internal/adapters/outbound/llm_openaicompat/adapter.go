@@ -154,6 +154,7 @@ type chatCompletionRequest struct {
 	Model       string              `json:"model"`
 	Messages    []map[string]string `json:"messages"`
 	Temperature float64             `json:"temperature"`
+	Stream      bool                `json:"stream,omitempty"`
 }
 
 func (a *Adapter) chat(ctx context.Context, messages []map[string]string) (string, error) {
