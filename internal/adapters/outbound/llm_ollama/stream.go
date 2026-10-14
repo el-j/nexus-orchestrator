@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -16,7 +17,8 @@ const maxLineBytes = 4 << 20
 
 // ChatStream is Chat that also hands each piece of the reply to onChunk as it arrives
 // (/api/chat with "stream": true). It returns the complete reply. A stream that ends before the
-// "done" line was cut off and is an error.
+// "done" line was cut off and is an error. A server that ignores "stream" and answers with one
+// JSON object is accepted: the reply arrives as one piece.
 func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onChunk func(string)) (string, error) {
 	reqBody, err := json.Marshal(ollamaChatRequest{Model: a.model, Messages: messagesToMaps(messages), Stream: true})
 	if err != nil {
@@ -29,6 +31,20 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("ollama: chat: unexpected status %d", resp.StatusCode)
+	}
+
+	if strings.HasPrefix(resp.Header.Get("Content-Type"), "application/json") {
+		// The server ignored "stream": true and sent one object: deliver it as one piece.
+		var one struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		}
+		if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&one); err != nil {
+			return "", fmt.Errorf("ollama: decode chat response: %w", err)
+		}
+		onChunk(one.Message.Content)
+		return one.Message.Content, nil
 	}
 
 	var reply strings.Builder

@@ -127,3 +127,28 @@ func TestChatStream_CancelStopsAHangingStream(t *testing.T) {
 		t.Fatal("cancel did not stop the stream")
 	}
 }
+
+// An Ollama-compatible server that ignores "stream": true and answers with one JSON object
+// still works: the reply arrives as one piece.
+func TestChatStream_FallsBackToASingleJSONReply(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"message":{"role":"assistant","content":"whole reply"}}`)
+	}))
+	t.Cleanup(srv.Close)
+	pieces, out, err := collect(NewOllamaAdapter(srv.URL, "m"))
+	if err != nil || out != "whole reply" || len(pieces) != 1 {
+		t.Errorf("out=%q pieces=%v err=%v", out, pieces, err)
+	}
+}
+
+func TestChatStream_BrokenSingleJSONReplyIsAnError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{nope`)
+	}))
+	t.Cleanup(srv.Close)
+	if _, _, err := collect(NewOllamaAdapter(srv.URL, "m")); err == nil {
+		t.Error("want an error")
+	}
+}
