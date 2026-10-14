@@ -79,7 +79,7 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 			return fmt.Errorf("anthropic: stream error: %s", e.Error.Message)
 		case "message_stop":
 			finished = true
-			return sse.Stop
+			return sse.ErrStop
 		}
 		return nil
 	})

@@ -49,7 +49,7 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 	err = sse.Read(resp.Body, maxEventBytes, func(ev sse.Event) error {
 		if strings.TrimSpace(ev.Data) == "[DONE]" {
 			finished = true
-			return sse.Stop
+			return sse.ErrStop
 		}
 		var e struct {
 			Choices []struct {

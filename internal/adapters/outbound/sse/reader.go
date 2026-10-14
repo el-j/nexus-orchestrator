@@ -16,12 +16,12 @@ type Event struct {
 	Data string
 }
 
-// Stop, returned by a Read callback, ends the stream early without an error.
-var Stop = errors.New("sse: stop")
+// ErrStop is returned by a Read callback to end the stream early without an error.
+var ErrStop = errors.New("sse: stop")
 
 // Read parses r and calls fn for every event. Lines longer than maxLine bytes are an error.
 // An event whose terminating blank line is missing at the end of the stream is still delivered.
-// Read returns nil when the stream ends or fn returns Stop, and fn's error otherwise.
+// Read returns nil when the stream ends or fn returns ErrStop, and fn's error otherwise.
 func Read(r io.Reader, maxLine int, fn func(Event) error) error {
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, min(64<<10, maxLine)), maxLine)
@@ -37,8 +37,8 @@ func Read(r io.Reader, maxLine int, fn func(Event) error) error {
 		ev := Event{Name: name, Data: strings.Join(data, "\n")}
 		name, data = "", nil
 		err := fn(ev)
-		if errors.Is(err, Stop) {
-			return Stop
+		if errors.Is(err, ErrStop) {
+			return ErrStop
 		}
 		return err
 	}
@@ -63,7 +63,7 @@ func Read(r io.Reader, maxLine int, fn func(Event) error) error {
 }
 
 func stopToNil(err error) error {
-	if errors.Is(err, Stop) {
+	if errors.Is(err, ErrStop) {
 		return nil
 	}
 	return err

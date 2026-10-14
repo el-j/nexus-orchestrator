@@ -41,8 +41,8 @@ func TestReadDeliversAnEventMissingItsBlankLine(t *testing.T) {
 
 func TestReadStopsOnStopAndPropagatesErrors(t *testing.T) {
 	n := 0
-	if err := Read(strings.NewReader("data: 1\n\ndata: 2\n\n"), 1<<20, func(Event) error { n++; return Stop }); err != nil || n != 1 {
-		t.Fatalf("Stop: n=%d err=%v", n, err)
+	if err := Read(strings.NewReader("data: 1\n\ndata: 2\n\n"), 1<<20, func(Event) error { n++; return ErrStop }); err != nil || n != 1 {
+		t.Fatalf("ErrStop: n=%d err=%v", n, err)
 	}
 	boom := errors.New("boom")
 	if err := Read(strings.NewReader("data: 1\n\n"), 1<<20, func(Event) error { return boom }); !errors.Is(err, boom) {
