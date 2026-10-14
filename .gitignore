@@ -15,7 +15,7 @@ build/desktop/
 build/vscode/
 build/docs/
 build/frontend/*
-!build/frontend/.gitkeep
+build
 *.exe
 
 /**/dist/*
