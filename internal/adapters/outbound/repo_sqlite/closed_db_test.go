@@ -115,3 +115,33 @@ func TestNew_FailsOnNonDatabaseFile(t *testing.T) {
 		t.Fatal("expected error for a non-database file")
 	}
 }
+
+// Each migration step reports its own error: pre-seeding an object whose shape or kind clashes
+// with what the step creates makes that step, and only that step, fail.
+func TestNew_FailsWhenAnIndividualMigrationStepConflicts(t *testing.T) {
+	seeds := map[string]string{
+		"discovered_agents":     `CREATE TABLE discovered_agents (x INTEGER)`,
+		"discovered_plan_files": `CREATE TABLE discovered_plan_files (x INTEGER)`,
+		"ai_activities":         `CREATE TABLE ai_activities (x INTEGER)`,
+		"model_capabilities":    `CREATE TABLE t(a); CREATE INDEX model_capabilities ON t(a)`,
+		"runtime_config":        `CREATE TABLE runtime_config (x INTEGER)`,
+		"project_knowledge":     `CREATE TABLE project_knowledge (x INTEGER)`,
+	}
+	for name, seed := range seeds {
+		t.Run(name, func(t *testing.T) {
+			dbPath := filepath.Join(t.TempDir(), "step.db")
+			raw, err := sql.Open("sqlite3", dbPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := raw.Exec(seed); err != nil {
+				t.Fatal(err)
+			}
+			raw.Close()
+
+			if _, err := repo_sqlite.New(dbPath); err == nil {
+				t.Fatalf("expected a migration error for a conflicting %s", name)
+			}
+		})
+	}
+}
