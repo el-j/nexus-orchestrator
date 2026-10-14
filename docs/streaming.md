@@ -35,9 +35,12 @@ on `task.restart` clear the buffer, on `task.chunk` append `text`.
 - Pieces that arrive within 50 ms of each other are joined into one chunk.
 - A provider that cannot stream sends its whole reply as one chunk after it finishes.
 - Providers that stream: OpenAI-compatible endpoints (OpenAI, the VS Code model bridge and other
-  servers speaking `stream: true`) and Ollama. Anthropic, Gemini and LM Studio still send one chunk
-  when the reply is complete.
-- An OpenAI-compatible or Ollama server that ignores `stream: true` and answers with a normal
-  JSON reply still works: its reply arrives as one chunk.
-- A stream that ends without its terminator (`[DONE]` / `done`) counts as a failure, so the next
-  provider takes over and a `task.restart` precedes its text.
+  servers speaking `stream: true`), Ollama, Anthropic (Messages API `stream`), Gemini
+  (`streamGenerateContent?alt=sse`) and LM Studio.
+- A server that ignores the stream request and answers with a normal JSON reply still works: its
+  reply arrives as one chunk.
+- A stream that ends without its terminator (`[DONE]` / `done` / `message_stop` / a Gemini
+  `finishReason`) counts as a failure, so the next provider takes over and a `task.restart`
+  precedes its text.
+- The same holds when no session store is configured (the single-prompt path): a provider that
+  can stream receives the prompt as one user message and streams its reply.
