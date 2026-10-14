@@ -58,6 +58,8 @@ A universal control plane, context broker, and execution gatekeeper that coordin
 
 ## Quick Start
 
+New here? `make` lists everything; [docs/using-nexus.md](docs/using-nexus.md) walks through running one orchestrator for all your projects (`make start`, `make connect`, `make init-project`).
+
 ### macOS (Desktop App)
 
 Download `nexus-orchestrator-desktop-darwin-arm64.zip` (Apple Silicon) or `nexus-orchestrator-desktop-darwin-amd64.zip` (Intel) from [Releases](https://github.com/el-j/nexus-orchestrator/releases/latest).

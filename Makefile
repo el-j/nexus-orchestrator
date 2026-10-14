@@ -2,6 +2,7 @@
 # NexusOrchestrator — Makefile
 # =============================================================================
 # Usage:
+#   make                 show this overview (same as make help)
 #   make build           native CLI + daemon (current OS/arch)
 #   make build-all       cross-compile CLI + daemon for all platforms
 #   make test            run all tests
@@ -54,10 +55,17 @@ LDFLAGS_WIN_GUI := -s -w -H windowsgui $(VERSION_FLAGS)
 LINUX_BUILD_FLAGS := -trimpath -tags netgo,osusergo
 LINUX_LDFLAGS     := -s -w -extldflags='-static' $(VERSION_FLAGS)
 
+# The knowledge repository needs SQLite FTS5; without this flag the daemon builds but dies at
+# start-up with "no such module: fts5". Exported so every go/wails build below picks it up.
+FTS5_CFLAGS := -DSQLITE_ENABLE_FTS5
+export CGO_CFLAGS := $(FTS5_CFLAGS)
+
 # Detect host OS for zig target triple selection
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 
-.PHONY: build build-gui build-gui-windows-amd64 build-all test vet lint clean help \
+.DEFAULT_GOAL := help
+
+.PHONY: help start stop status connect init-project build build-gui build-gui-windows-amd64 build-all test vet lint clean help \
         build-linux-amd64 build-linux-arm64 \
         build-darwin-amd64 build-darwin-arm64 \
         build-windows-amd64 \
@@ -76,6 +84,44 @@ build: vet
 	CGO_ENABLED=1 go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/native/$(BINARY_DAEMON) ./cmd/nexus-daemon/...
 	@echo "Built → $(DIST)/native/"
+
+# ---------------------------------------------------------------------------
+# Use the orchestrator (one daemon for all your projects)
+# ---------------------------------------------------------------------------
+NEXUS_HOME    ?= $(HOME)/.nexus
+NEXUS_API     ?= http://localhost:63987
+NEXUS_MCP     ?= http://localhost:63988/mcp
+
+# Build and run the daemon in the foreground with ONE database for every project.
+# (Without NEXUS_DB_PATH the daemon writes nexus.db into the current directory, so
+# starting it from different folders would give you different, empty queues.)
+start: build
+	@mkdir -p $(NEXUS_HOME)
+	@echo "nexus-daemon → API $(NEXUS_API)  MCP $(NEXUS_MCP)  DB $(NEXUS_HOME)/nexus.db"
+	NEXUS_DB_PATH=$(NEXUS_HOME)/nexus.db $(DIST)/native/$(BINARY_DAEMON)
+
+# Is the daemon up, and which LLM providers does it see?
+status:
+	@curl -fsS $(NEXUS_API)/api/health >/dev/null 2>&1 \
+		&& echo "daemon: running at $(NEXUS_API)" \
+		|| { echo "daemon: NOT running — start it with: make start"; exit 1; }
+	@$(DIST)/native/$(BINARY_CLI) providers 2>/dev/null || true
+
+# Print the commands that register the MCP server once for every project/agent.
+connect:
+	@echo "Claude Code (all projects):"
+	@echo "  claude mcp add --transport http --scope user nexus $(NEXUS_MCP)"
+	@echo ""
+	@echo "Claude Desktop (claude_desktop_config.json):"
+	@echo '  {"mcpServers": {"nexusOrchestrator": {"url": "$(NEXUS_MCP)"}}}'
+	@echo ""
+	@echo "VS Code: install the extension (make build-vscode); it registers the server itself."
+	@echo "Guide: docs/using-nexus.md"
+
+# Teach the orchestrator about a project once: make init-project PROJECT=/path/to/repo
+init-project: build
+	@test -n "$(PROJECT)" || { echo "usage: make init-project PROJECT=/absolute/path/to/repo"; exit 2; }
+	$(DIST)/native/$(BINARY_CLI) brain init --project "$(PROJECT)"
 
 # ---------------------------------------------------------------------------
 # Frontend GUI assets (Vite → build/frontend/) and VS Code extension
@@ -229,13 +275,13 @@ build-darwin-amd64:
 	# macOS cross-arch: pass -arch x86_64 to the native clang via CGO_CFLAGS/CGO_LDFLAGS.
 	# Requires Xcode Command Line Tools (xcrun sdk present). Skips gracefully if SDK absent.
 	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
-		CGO_CFLAGS="-arch x86_64" \
+		CGO_CFLAGS="-arch x86_64 $(FTS5_CFLAGS)" \
 		CGO_LDFLAGS="-arch x86_64" \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/darwin_amd64/$(BINARY_CLI) ./cmd/nexus-cli/... || \
 		(echo "NOTE: build-darwin-amd64 requires Xcode SDK with x86_64 support — skipped."; exit 0)
 	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
-		CGO_CFLAGS="-arch x86_64" \
+		CGO_CFLAGS="-arch x86_64 $(FTS5_CFLAGS)" \
 		CGO_LDFLAGS="-arch x86_64" \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/darwin_amd64/$(BINARY_DAEMON) ./cmd/nexus-daemon/... || \
@@ -291,20 +337,26 @@ lint:
 # Code quality — format, fix, lint everything in one go
 # ---------------------------------------------------------------------------
 
-# Go: auto-format + vet + lint with auto-fix
+# Go: auto-format + vet + lint with auto-fix (only tracked Go dirs; never node_modules)
 nice-go:
 	@echo "── Go: formatting ──"
-	@gofmt -w .
+	@gofmt -w main.go app.go *_test.go cmd internal
 	@echo "── Go: vet ──"
-	@go vet ./...
+	@CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" go vet ./...
 	@echo "── Go: lint + auto-fix ──"
 	@$(GOLANGCI_LINT) run --fix ./...
 	@echo "── Go: clean ✓ ──"
 
-# Frontend: type-check
+# Frontend + docs: real type-check (tsconfig.app.json), TSDoc gate, prettier on sources
 nice-frontend:
 	@echo "── Frontend: type-check ──"
-	@cd frontend && npx vue-tsc --noEmit
+	@cd frontend && npm run --silent typecheck
+	@echo "── Frontend: TSDoc ──"
+	@cd frontend && npm run --silent check:docs
+	@echo "── Docs site: type-check ──"
+	@cd docs && npm run --silent type-check
+	@echo "── Prettier ──"
+	@npx --no-install prettier --write "frontend/src/**/*.{ts,vue,css}" "docs/src/**/*.{ts,vue,css}" >/dev/null
 	@echo "── Frontend: clean ✓ ──"
 
 # Everything: Go + Frontend
@@ -410,6 +462,15 @@ docker-run:
 
 help:
 	@echo ""
+	@echo "nexusOrchestrator — run 'make <target>'"
+	@echo ""
+	@echo "Use it (start here):"
+	@echo "  make start                  Build + run the daemon with one shared DB (~/.nexus/nexus.db)"
+	@echo "  make status                 Is the daemon running? Which providers does it see?"
+	@echo "  make connect                Print how to register it with Claude Code / Desktop / VS Code"
+	@echo "  make init-project PROJECT=/path   Teach it a project (ingests its CLAUDE.md)"
+	@echo "  (full walkthrough: docs/using-nexus.md)"
+	@echo ""
 	@echo "Build:"
 	@echo "  make build                  Native CLI + daemon (current OS/arch)"
 	@echo "  make build-gui              Desktop GUI (Wails, native)"
@@ -434,9 +495,10 @@ help:
 	@echo "  make test-cover             Tests + HTML coverage report"
 	@echo "  make vet                    go vet ./..."
 	@echo "  make lint                   golangci-lint run ./..."
-	@echo "  make nice                   Format + vet + lint (Go + Frontend)"
-	@echo "  make nice-go                Format + vet + lint (Go only)"
-	@echo "  make nice-frontend          Type-check frontend (vue-tsc)"
+	@echo "  make nice                   Fix + check everything (Go and frontend/docs)"
+	@echo "  make nice-go                gofmt + go vet + golangci-lint --fix"
+	@echo "  make nice-frontend          Type-check, TSDoc gate and prettier (frontend + docs)"
+	@echo "  make mutation               Local-only mutation testing (never in CI)"
 	@echo ""
 	@echo "Versioning:"
 	@echo "  make version                Show current version + commit + build date"
