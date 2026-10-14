@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Real-daemon end-to-end suite (`go test -tags e2e ./internal/e2e/`): builds the shipped binaries and drives REST, every MCP tool, the stdio proxy, both CLIs, restart persistence, shutdown and port conflicts
 - Playwright `real-daemon` project (daemon plus a fake Ollama), VS Code extension-host tests (`npm run test:host`), a Wails desktop smoke job and a GitHub Action end-to-end job
 - Local-only mutation testing for Go (gremlins) and TypeScript (Stryker) via `make mutation` / `scripts/mutation.sh`, documented in `docs/mutation-testing.md`; deliberately not run in CI to save workflow minutes; `scripts/check-tsdoc.mjs` and revive `exported` doc-comment gates, and `scripts/check-file-size.sh` (500-line cap)
+- `make dogfood` / `start-bg` / `stop`, root `CLAUDE.md` and `.mcp.json` so sessions in this repository start on the orchestrator, `.nvmrc`, and `docs/agent-workflow-audit.md` (evidence-based review of the agent workflow and its gaps)
 - `make` now prints the target overview (default goal is `help`); new `make start`, `status`, `connect` and `init-project` targets and `docs/using-nexus.md` for running one orchestrator across all projects
 
 ### Changed
@@ -38,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Views and composables that unmounted before their first fetch finished left a poller running for the rest of the session
 - `PromoteTask` was declared as returning nothing in the desktop binding while Go returns the promote result
 - The "Deterministic Daemon E2E" and Playwright CI jobs could not fail (a skipped script, `continue-on-error`); both now run for real
+- `make stop` was a no-op; the zig cross-builds (`build-linux-*`, `build-windows-amd64`) failed to link; `make build-gui` reported success when Wails failed; `make nice` and the frontend builds failed on a fresh checkout or Node 20 with unclear errors
 - Binaries built with `make build` (and every other Makefile build) lacked SQLite FTS5, so `nexus-daemon` exited at start-up with `no such module: fts5`
 - `make nice` type-checked nothing in the frontend (references-only tsconfig) and ran `gofmt -w .` over `node_modules`; it now runs the real frontend and docs type-checks, the TSDoc gate and prettier
 

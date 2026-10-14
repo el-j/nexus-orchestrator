@@ -58,7 +58,8 @@
           </p>
           <div class="rounded-xl border border-white/8 bg-[#0a0a10] p-4 mt-3">
             <pre class="!border-0 !bg-transparent !p-0 text-xs text-violet-300">
-inbound adapters → core services → ports ← outbound adapters</pre>
+inbound adapters → core services → ports ← outbound adapters</pre
+            >
           </div>
         </section>
 
