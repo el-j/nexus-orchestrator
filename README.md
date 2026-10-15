@@ -149,11 +149,11 @@ See [`vscode-extension/README.md`](vscode-extension/README.md) for installation 
 
 ## Environment Variables
 
-| Variable            | Default    | Description               |
-| ------------------- | ---------- | ------------------------- |
-| `NEXUS_DB_PATH`     | `nexus.db` | SQLite database path      |
-| `NEXUS_LISTEN_ADDR` | `:63987`   | HTTP API listen address   |
-| `NEXUS_MCP_ADDR`    | `:63988`   | MCP server listen address |
+| Variable            | Default             | Description               |
+| ------------------- | ------------------- | ------------------------- |
+| `NEXUS_DB_PATH`     | `~/.nexus/nexus.db` | SQLite database path      |
+| `NEXUS_LISTEN_ADDR` | `:63987`            | HTTP API listen address   |
+| `NEXUS_MCP_ADDR`    | `:63988`            | MCP server listen address |
 
 ## Build & Test
 

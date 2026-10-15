@@ -95,6 +95,11 @@ func (p *Policy) OriginAllowed(origin string) bool {
 		return false
 	}
 	host := strings.ToLower(u.Hostname())
+	// The desktop WebView of Wails v2 has the origin wails://wails (macOS, Linux) or
+	// http://wails.localhost (Windows).
+	if host == "wails" {
+		return u.Scheme == "wails"
+	}
 	return host == "localhost" || host == "wails.localhost" || isLoopbackIP(host)
 }
 

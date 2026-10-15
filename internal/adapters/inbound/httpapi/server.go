@@ -89,11 +89,12 @@ func securityHeaders(next http.Handler) http.Handler {
 	})
 }
 
-// corsMiddleware allows requests from the Wails WebView and local browser.
+// corsMiddleware allows requests from the Wails WebView (wails://wails on macOS and Linux,
+// http://wails.localhost on Windows) and the local browser.
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		if origin == "wails://wails.localhost" || strings.HasPrefix(origin, "http://localhost:") {
+		if origin == "wails://wails" || origin == "wails://wails.localhost" || origin == "http://wails.localhost" || strings.HasPrefix(origin, "http://localhost:") {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")

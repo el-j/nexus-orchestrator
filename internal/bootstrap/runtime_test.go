@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -36,8 +37,10 @@ func TestConfigFromEnv(t *testing.T) {
 	for _, k := range []string{"NEXUS_DB_PATH", "NEXUS_LISTEN_ADDR", "NEXUS_MCP_ADDR", "NEXUS_SCAN_INTERVAL"} {
 		t.Setenv(k, "")
 	}
+	isolate(t)
+	t.Chdir(t.TempDir())
 	d := bootstrap.ConfigFromEnv()
-	if d.DBPath != "nexus.db" || d.ListenAddr != "127.0.0.1:63987" || d.MCPAddr != "127.0.0.1:63988" || d.ScanInterval != 30*time.Second {
+	if d.DBPath != bootstrap.DefaultDBPath() || d.ListenAddr != "127.0.0.1:63987" || d.MCPAddr != "127.0.0.1:63988" || d.ScanInterval != 30*time.Second {
 		t.Errorf("defaults: %+v", d)
 	}
 	t.Setenv("NEXUS_DB_PATH", "/tmp/x.db")
@@ -212,5 +215,47 @@ func TestStart_FailedIsQuietOnNormalShutdown(t *testing.T) {
 	case err := <-rt.Failed():
 		t.Errorf("unexpected failure after a clean close: %v", err)
 	default:
+	}
+}
+
+// A desktop app started from Finder has "/" as its working directory, where a relative
+// "nexus.db" cannot be created. The default is one database in the user's home instead, and it
+// is created on demand.
+func TestDefaultDBPath_IsOneSharedFileInTheHomeDirectory(t *testing.T) {
+	isolate(t)
+	t.Setenv("NEXUS_DB_PATH", "")
+	t.Chdir(t.TempDir())
+	home, _ := os.UserHomeDir()
+	want := filepath.Join(home, ".nexus", "nexus.db")
+	if got := bootstrap.DefaultDBPath(); got != want {
+		t.Fatalf("DefaultDBPath = %q, want %q", got, want)
+	}
+	rt, err := bootstrap.Start(context.Background(), bootstrap.Config{ListenAddr: freeAddr(t), MCPAddr: freeAddr(t)}, nil)
+	if err != nil {
+		t.Fatalf("Start with the default database: %v", err)
+	}
+	defer rt.Close()
+	if _, err := os.Stat(want); err != nil {
+		t.Errorf("database not created at the default path: %v", err)
+	}
+}
+
+// Whoever already has a nexus.db in the working directory and no shared one keeps using it.
+func TestDefaultDBPath_KeepsAnExistingDatabaseInTheWorkingDirectory(t *testing.T) {
+	isolate(t)
+	dir := t.TempDir()
+	t.Chdir(dir)
+	if err := os.WriteFile("nexus.db", nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := bootstrap.DefaultDBPath(); got != "nexus.db" {
+		t.Errorf("DefaultDBPath = %q, want the legacy nexus.db", got)
+	}
+	// Once the shared database exists it wins.
+	home, _ := os.UserHomeDir()
+	_ = os.MkdirAll(filepath.Join(home, ".nexus"), 0o700)
+	_ = os.WriteFile(filepath.Join(home, ".nexus", "nexus.db"), nil, 0o600)
+	if got := bootstrap.DefaultDBPath(); got != filepath.Join(home, ".nexus", "nexus.db") {
+		t.Errorf("DefaultDBPath = %q, want the shared database", got)
 	}
 }
