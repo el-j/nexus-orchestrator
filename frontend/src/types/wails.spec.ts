@@ -531,4 +531,15 @@ describe('getServerAddr', () => {
     expect(await api.getServerAddr()).toBe('http://example:9');
     vi.unstubAllEnvs();
   });
+
+  it('uses the page origin when the daemon serves the app (a <base> tag is present)', async () => {
+    const base = document.createElement('base');
+    base.setAttribute('href', '/app/');
+    document.head.appendChild(base);
+    try {
+      expect(await api.getServerAddr()).toBe(window.location.origin);
+    } finally {
+      base.remove();
+    }
+  });
 });
