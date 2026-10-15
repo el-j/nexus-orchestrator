@@ -37,6 +37,8 @@ vi.mock('vscode', () => ({
       onDidDelete: vi.fn(),
       dispose: vi.fn(),
     })),
+    getConfiguration: vi.fn(() => ({ get: (_k: string, d: unknown) => d })),
+    onDidChangeConfiguration: vi.fn(() => ({ dispose: vi.fn() })),
     onDidChangeWorkspaceFolders: vi.fn(() => ({ dispose: vi.fn() })),
   },
 }));

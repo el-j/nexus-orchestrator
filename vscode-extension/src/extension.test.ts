@@ -6,8 +6,7 @@ const h = vi.hoisted(() => {
     commands,
     treeProviders: new Map<string, unknown>(),
     configListener: undefined as
-      | undefined
-      | ((e: { affectsConfiguration(k: string): boolean }) => void),
+      undefined | ((e: { affectsConfiguration(k: string): boolean }) => void),
     config: {} as Record<string, unknown>,
     folders: [{ uri: { fsPath: '/workspace' } }] as Array<{ uri: { fsPath: string } }> | undefined,
     ui: {
@@ -109,6 +108,7 @@ vi.mock('./statusBar', () => ({
     }
   },
 }));
+vi.mock('./planFolders', () => ({ registerPlanFolders: vi.fn() }));
 vi.mock('./liveOutput', () => ({
   LiveOutput: class {
     register = vi.fn();

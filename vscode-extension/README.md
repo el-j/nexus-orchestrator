@@ -65,7 +65,9 @@ them: `.claude/plans/PLAN-*.md` and `.claude/tasks/TASK-*.md` (and the same unde
 `.claude/orchestrator.json` when a tool maintains one. Front matter (`id`, `title`, `status`,
 `planId`, `tasks`) is used when present; otherwise the first heading, a `Status:` line and the first
 `PLAN-n` mentioned. The active plan is the one `orchestrator.json` names, else one marked
-active/in-progress, else the newest unfinished one. The view refreshes when those files change.
+active/in-progress, else the newest unfinished one. The view refreshes when those files change. Plans and tasks in other folders are found when they
+are named `PLAN-n.md` / `TASK-n.md`; for any other layout run **Nexus: Choose Plan and Task Folders**
+(or set `nexus.planFiles.*`). See [docs/plan-files.md](../docs/plan-files.md).
 The daemon's onboarding context reads the same files, so a fresh session learns the active plan
 even without an `orchestrator.json`.
 

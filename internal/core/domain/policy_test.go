@@ -68,3 +68,37 @@ func TestFileKinds(t *testing.T) {
 		}
 	}
 }
+
+func TestPolicy_PlanFilesFoldersMustStayInsideTheProject(t *testing.T) {
+	ok := func(dirs ...string) domain.ProjectPolicy {
+		return domain.ProjectPolicy{PlanFiles: &domain.PlanFilesPolicy{Plans: dirs}}
+	}
+	for _, good := range [][]string{{"docs/plans"}, {"a", "b/c"}, {"./docs/tasks/"}, {`docs\plans`}, nil} {
+		if err := ok(good...).Validate(); err != nil {
+			t.Errorf("%v should be valid: %v", good, err)
+		}
+	}
+	for name, bad := range map[string][]string{
+		"blank":     {" "},
+		"absolute":  {"/etc"},
+		"backslash": {`\share\x`},
+		"drive":     {"C:/plans"},
+		"parent":    {"../outside"},
+		"nested up": {"docs/../../x"},
+		"too long":  {strings.Repeat("a", 300)},
+		"too many":  make([]string, domain.MaxPlanFolders+1),
+	} {
+		if bad != nil && name == "too many" {
+			for i := range bad {
+				bad[i] = "d"
+			}
+		}
+		if err := ok(bad...).Validate(); err == nil {
+			t.Errorf("%s: %v must be refused", name, bad)
+		}
+	}
+	// the same rules apply to task folders
+	if err := (domain.ProjectPolicy{PlanFiles: &domain.PlanFilesPolicy{Tasks: []string{"../x"}}}).Validate(); err == nil {
+		t.Error("a task folder outside the project must be refused")
+	}
+}

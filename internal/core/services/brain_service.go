@@ -334,7 +334,12 @@ func (b *BrainServiceImpl) buildOnboarding(ctx context.Context, projectPath stri
 		}
 	}
 	// Agents that do not keep orchestrator.json up to date still leave plan and task files.
-	planFiles, taskFiles := readPlanFiles(clean)
+	var planCfg *domain.PlanFilesPolicy
+	if pol, ok, _ := LoadProjectPolicy(clean); ok {
+		planCfg = pol.PlanFiles
+	}
+	scan := ScanPlanFiles(clean, planCfg)
+	planFiles, taskFiles := scan.flat()
 	if activePlan == "None" {
 		if p, ok := activePlanFromFiles(planFiles); ok {
 			activePlan = p.ID + " — " + p.Title
@@ -342,7 +347,7 @@ func (b *BrainServiceImpl) buildOnboarding(ctx context.Context, projectPath stri
 	}
 	fmt.Fprintf(&sb, "- **Active Plan:** %s\n", activePlan)
 	if summary := taskFileSummary(taskFiles); summary != "" {
-		fmt.Fprintf(&sb, "- **Plan files:** %s\n", summary)
+		fmt.Fprintf(&sb, "- **Plan files:** %s, read from %s\n", summary, strings.Join(scan.Folders, ", "))
 	}
 
 	if b.taskRepo != nil {

@@ -37,6 +37,49 @@ type ProjectPolicy struct {
 	Remember bool `json:"remember,omitempty"`
 	// Rules are free-text rules shown to the model verbatim.
 	Rules []string `json:"rules,omitempty"`
+	// PlanFiles says where the project keeps its plan and task files; unset, they are found by themselves.
+	PlanFiles *PlanFilesPolicy `json:"planFiles,omitempty"`
+}
+
+// MaxPlanFolders bounds how many folders a policy may name for plans and for tasks each.
+const MaxPlanFolders = 20
+
+// PlanFilesPolicy configures where plan and task markdown files live. Everything is optional.
+// The defaults (.claude and .nexus plans/tasks folders, and any PLAN-n / TASK-n file anywhere in
+// the project) need no configuration; this block adds folders for projects with another layout
+// or switches the search of the whole project off.
+type PlanFilesPolicy struct {
+	// Plans are project-relative folders whose markdown files are plans.
+	Plans []string `json:"plans,omitempty"`
+	// Tasks are project-relative folders whose markdown files are tasks.
+	Tasks []string `json:"tasks,omitempty"`
+	// Discover is true (the default when unset) to also find plan and task files anywhere in the
+	// project; false limits the search to the listed folders, or to the defaults when none are listed.
+	Discover *bool `json:"discover,omitempty"`
+}
+
+// validatePlanFolders checks that every entry is a project-relative path that stays inside the project.
+func validatePlanFolders(kind string, dirs []string) error {
+	if len(dirs) > MaxPlanFolders {
+		return fmt.Errorf("policy: at most %d %s folders are allowed, got %d", MaxPlanFolders, kind, len(dirs))
+	}
+	for _, d := range dirs {
+		clean := strings.Trim(strings.ReplaceAll(strings.TrimSpace(d), "\\", "/"), "/")
+		switch {
+		case clean == "":
+			return fmt.Errorf("policy: a %s folder is blank", kind)
+		case len(clean) > 256:
+			return fmt.Errorf("policy: a %s folder is longer than 256 characters", kind)
+		case strings.HasPrefix(strings.TrimSpace(d), "/") || strings.HasPrefix(strings.TrimSpace(d), "\\") || (len(clean) > 1 && clean[1] == ':'):
+			return fmt.Errorf("policy: %s folder %q must be relative to the project", kind, d)
+		}
+		for _, part := range strings.Split(clean, "/") {
+			if part == ".." {
+				return fmt.Errorf("policy: %s folder %q must stay inside the project", kind, d)
+			}
+		}
+	}
+	return nil
 }
 
 // Validate reports the first problem that would make the policy unsafe or too large to use.
@@ -59,6 +102,14 @@ func (p ProjectPolicy) Validate() error {
 			return fmt.Errorf("policy: rule %d is blank", i+1)
 		case len(r) > MaxPolicyRuleLen:
 			return fmt.Errorf("policy: rule %d is longer than %d characters", i+1, MaxPolicyRuleLen)
+		}
+	}
+	if p.PlanFiles != nil {
+		if err := validatePlanFolders("plan", p.PlanFiles.Plans); err != nil {
+			return err
+		}
+		if err := validatePlanFolders("task", p.PlanFiles.Tasks); err != nil {
+			return err
 		}
 	}
 	return nil

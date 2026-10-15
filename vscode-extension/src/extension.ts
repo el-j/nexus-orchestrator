@@ -24,6 +24,7 @@ import { AISessionsTreeProvider, AISessionItem } from './aiSessionsTreeProvider'
 import { delegateToNexusCommand } from './commands/delegateToNexus';
 import { LmShare } from './lmShare';
 import { LiveOutput } from './liveOutput';
+import { registerPlanFolders } from './planFolders';
 
 let client: NexusClient | undefined;
 let statusBar: NexusStatusBar | undefined;
@@ -131,6 +132,8 @@ export function activate(context: vscode.ExtensionContext): void {
       workspaceOrchProvider.refresh();
     }),
   );
+
+  registerPlanFolders(context, workspaceScanner); // where plans and tasks live, when not the default
 
   // ── Editor models → daemon providers (opt-in, see lmShare.ts) ──────────────
   new LmShare(getClient()).register(context);
