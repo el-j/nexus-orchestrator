@@ -71,12 +71,20 @@
         </div>
       </div>
 
+      <div v-if="task.status === 'PROCESSING' && liveText(task.id)" data-testid="live-output">
+        <p class="text-xs text-slate-500 mb-2 uppercase tracking-wider font-semibold">
+          Live output
+        </p>
+        <pre
+          class="text-xs text-cyan-300/80 bg-[#0a0a10] border border-white/5 rounded-lg p-3 overflow-auto max-h-64 whitespace-pre-wrap font-mono leading-relaxed"
+          >{{ liveText(task.id) }}</pre>
+      </div>
+
       <div v-if="task.logs">
         <p class="text-xs text-slate-500 mb-2 uppercase tracking-wider font-semibold">Output</p>
         <pre
           class="text-xs text-emerald-300/80 bg-[#0a0a10] border border-white/5 rounded-lg p-3 overflow-auto max-h-64 whitespace-pre-wrap font-mono leading-relaxed"
-          >{{ task.logs }}</pre
-        >
+          >{{ task.logs }}</pre>
       </div>
 
       <div v-if="task.status === 'QUEUED'" class="pt-2">
@@ -117,6 +125,7 @@ import { cancelTask } from '../types/wails';
 import type { Task } from '../types/domain';
 import TaskStatusBadge from './TaskStatusBadge.vue';
 import { formatDate } from '../utils/time';
+import { useLiveOutput } from '../composables/useLiveOutput';
 
 const props = defineProps<{ task: Task | null; modelValue: boolean }>();
 const emit = defineEmits<{
@@ -131,6 +140,7 @@ const visible = computed({
 });
 
 const toast = useToast();
+const { liveText } = useLiveOutput();
 const cancelling = ref(false);
 const cancelError = ref<string | null>(null);
 

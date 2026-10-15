@@ -157,3 +157,30 @@ func TestChatStream_AnOversizedEventIsAnError(t *testing.T) {
 		t.Errorf("err = %v", err)
 	}
 }
+
+// A server that ignores "stream": true and answers with a normal JSON completion (older bridges,
+// simple proxies) still works: the whole reply arrives as one piece.
+func TestChatStream_FallsBackToAPlainJSONReply(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"choices":[{"message":{"role":"assistant","content":"whole reply"}}]}`)
+	}))
+	t.Cleanup(srv.Close)
+	pieces, out, err := collect(NewAdapter("p", srv.URL, "", "m"))
+	if err != nil || out != "whole reply" || len(pieces) != 1 || pieces[0] != "whole reply" {
+		t.Errorf("out=%q pieces=%v err=%v", out, pieces, err)
+	}
+}
+
+func TestChatStream_PlainJSONReplyThatIsBrokenOrEmpty(t *testing.T) {
+	for name, body := range map[string]string{"broken": "{nope", "no choices": `{"choices":[]}`} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprint(w, body)
+		}))
+		if _, _, err := collect(NewAdapter("p", srv.URL, "", "m")); err == nil {
+			t.Errorf("%s: want an error", name)
+		}
+		srv.Close()
+	}
+}

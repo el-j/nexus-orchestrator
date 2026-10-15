@@ -69,3 +69,32 @@ describe('NexusClient provider registration', () => {
     await expect(client.removeProvider('x')).rejects.toBe('network down');
   });
 });
+
+describe('NexusClient.openEvents', () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('opens /api/events with the caller signal and returns the response', async () => {
+    const resp = { ok: true, status: 200 } as Response;
+    globalThis.fetch = vi.fn().mockResolvedValue(resp);
+    const signal = new AbortController().signal;
+    expect(await new NexusClient('http://127.0.0.1:1', 2).openEvents(signal)).toBe(resp);
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'http://127.0.0.1:1/api/events',
+      expect.objectContaining({ signal }),
+    );
+  });
+
+  it('fails when the daemon refuses the stream', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      text: async () => '{"error":"unauthorized"}',
+    } as Response);
+    await expect(
+      new NexusClient('http://127.0.0.1:1', 2).openEvents(new AbortController().signal),
+    ).rejects.toThrow('HTTP 401');
+  });
+});

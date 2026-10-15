@@ -109,6 +109,11 @@ vi.mock('./statusBar', () => ({
     }
   },
 }));
+vi.mock('./liveOutput', () => ({
+  LiveOutput: class {
+    register = vi.fn();
+  },
+}));
 vi.mock('./lmShare', () => ({
   LmShare: class {
     register = vi.fn();
