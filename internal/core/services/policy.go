@@ -64,6 +64,7 @@ var baselineRules = []string{
 	"Document every exported/public item in the code.",
 	"Do not change anything the task does not ask for.",
 	"Finish only when the verification command passes.",
+	"Report progress through the Nexus tools (claim_task, update_task_status, ingest_knowledge); never edit the Nexus database or task states by hand.",
 }
 
 // DefaultPolicy returns a starting policy for the stack found in projectPath.

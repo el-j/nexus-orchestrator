@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -213,5 +215,44 @@ func TestBrainCmds_OutputAndErrors(t *testing.T) {
 		if _, err := execute(&mockOrchestrator{}, failing, args...); err == nil || !strings.Contains(err.Error(), "kaboom") {
 			t.Errorf("%v: error not surfaced: %v", args, err)
 		}
+	}
+}
+
+func TestConnectCmd_ReportsWithoutWritingAndWritesOnRequest(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("PATH", "") // no claude, no nexus-mcp-stdio on the PATH
+	cfg := filepath.Join(home, ".cursor", "mcp.json")
+	if err := os.MkdirAll(filepath.Dir(cfg), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfg, []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	run := func(args ...string) string {
+		var out bytes.Buffer
+		root := cli.NewRootCmd(&mockOrchestrator{}, &mockBrainService{})
+		root.SetOut(&out)
+		root.SetErr(&out)
+		root.SetArgs(append([]string{"connect"}, args...))
+		if err := root.Execute(); err != nil {
+			t.Fatalf("connect %v: %v\n%s", args, err, out.String())
+		}
+		return out.String()
+	}
+	if out := run("--agent", "cursor"); !strings.Contains(out, "not connected") {
+		t.Errorf("dry run:\n%s", out)
+	}
+	if b, _ := os.ReadFile(cfg); string(b) != "{}" {
+		t.Errorf("a dry run must not write: %s", b)
+	}
+	t.Setenv("NEXUS_MCP_URL", "http://127.0.0.1:1/mcp")
+	if out := run("--agent", "cursor", "--write"); !strings.Contains(out, "connected") {
+		t.Errorf("write:\n%s", out)
+	}
+	if b, _ := os.ReadFile(cfg); !strings.Contains(string(b), "http://127.0.0.1:1/mcp") {
+		t.Errorf("the endpoint from NEXUS_MCP_URL must be used: %s", b)
 	}
 }

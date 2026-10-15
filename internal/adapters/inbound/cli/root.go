@@ -29,6 +29,7 @@ func NewRootCmd(orch ports.Orchestrator, brain ports.BrainService) *cobra.Comman
 	root.AddCommand(newPromoteCmd(orch))
 	root.AddCommand(newUpdateCmd(orch))
 	root.AddCommand(newBrainCmd(brain))
+	root.AddCommand(newConnectCmd())
 
 	return root
 }
