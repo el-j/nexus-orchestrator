@@ -232,7 +232,8 @@ jobs:
         working-directory: docs
         run: |
           npm run build
-          node ../scripts/check-bundle-budget.mjs ../build/docs 112 10
+          # 120: the Guides section ships seven markdown guides (about 10 KiB gz) as site pages
+          node ../scripts/check-bundle-budget.mjs ../build/docs 120 10
 
   build-vscode:
     name: Build VS Code Extension

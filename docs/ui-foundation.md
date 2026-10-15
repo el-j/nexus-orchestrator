@@ -99,11 +99,13 @@ Measured with `scripts/check-bundle-budget.mjs` (gzip, all `.js` and `.css` in t
 | ------------ | ------------------------- | ---------------- | --------------------- |
 | Frontend JS  | 189.8 KiB                 | 94.9 KiB (-50 %) | 110 KiB               |
 | Frontend CSS | 13.2 KiB                  | 11.3 KiB (-14 %) | 13 KiB                |
-| Docs JS      | 167.0 KiB                 | 97.4 KiB (-42 %) | 112 KiB               |
+| Docs JS      | 167.0 KiB                 | 97.4 KiB (-42 %) | 120 KiB (was 112)     |
 | Docs CSS     | 11.1 KiB                  | 8.4 KiB (-24 %)  | 10 KiB                |
 
 The frontend entry chunk went from 412 kB to 58 kB (minified). The budgets sit about 15 % above the
 measured sizes; CI fails the `Frontend Smoke Coverage` / `Docs Site Tests` job when one is exceeded.
+The docs budget went from 112 to 120 KiB when the Guides section (seven markdown guides rendered as site
+pages, about 10 KiB gzipped, now 113.4 KiB in total) was added; raise it only deliberately.
 Only build size is measured; no runtime (Lighthouse / interaction timing) benchmark exists yet.
 
 ## Guard against regressions
