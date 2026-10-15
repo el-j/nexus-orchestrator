@@ -8,11 +8,12 @@ test.describe('Backlog', () => {
   test('backlog view loads', async ({ page }) => {
     await page.goto('/');
 
-    // Navigate to Backlog via sidebar
+    // Backlog is a tab of the Projects hub
     await page
       .locator('aside nav')
-      .getByRole('button', { name: /backlog/i })
+      .getByRole('button', { name: /projects/i })
       .click();
+    await page.getByTestId('project-tab-backlog').click();
 
     // Backlog view h1 must appear — confirms view switched and rendered without error
     await expect(page.getByRole('heading', { name: /^backlog$/i })).toBeVisible();
