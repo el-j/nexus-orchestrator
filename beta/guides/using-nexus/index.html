@@ -1,0 +1,127 @@
+<!DOCTYPE html><html lang="en" class="dark"><head>
+    <meta charset="utf-8">
+    <link rel="icon" type="image/svg+xml" href="/nexus-orchestrator/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="nexus-orchestrator — run coding tasks on any model (local, API, your Claude and Copilot subscriptions), stream the result, and give every project a memory. MCP server, REST API, full UI, VS Code extension.">
+    <title>nexus-orchestrator — Local AI Task Orchestrator</title>
+    <script type="module" crossorigin="" src="/nexus-orchestrator/beta/assets/app-BalPOK_I.js"></script>
+    <link rel="stylesheet" crossorigin="" href="/nexus-orchestrator/beta/assets/app-BJcAENpL.css">
+  <link rel="modulepreload" crossorigin="" href="/nexus-orchestrator/beta/assets/GuideView-BFsemlZJ.js"><link rel="stylesheet" href="/nexus-orchestrator/beta/assets/GuideView-mAvDHKUW.css"></head>
+  <body>
+    <div id="app" data-server-rendered="true"><div class="min-h-screen bg-[#050508] text-[#f0f0f8]"><!--[--><div class="fixed top-0 left-0 right-0 z-[60] flex items-center justify-center gap-3 px-4 py-1.5 text-xs font-medium bg-amber-500/10 border-b border-amber-500/30 text-amber-300"><svg class="inline-block shrink-0 align-[-0.125em] text-amber-400" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon="exclamation-triangle" aria-hidden="true" focusable="false"><!--[--><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4M12 17h.01"></path><!--]--></svg> You're viewing <strong class="text-amber-200">beta / develop</strong> docs — features may change. <a href="/nexus-orchestrator/" class="underline underline-offset-2 hover:text-white transition-colors">View stable docs →</a></div><nav class="top-8 fixed left-0 right-0 z-50 backdrop-blur-md bg-[#050508]/80 border-b border-white/5"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"><div class="flex items-center justify-between h-16"><a href="/nexus-orchestrator/beta/" class="flex items-center gap-2 text-lg font-bold"><img src="/nexus-orchestrator/beta/favicon.svg" alt="nexusOrchestrator" class="w-8 h-8"><span class="text-white">nexus-</span><span class="gradient-text">orchestrator</span></a><ul class="hidden lg:flex items-center gap-6 text-sm font-medium list-none"><!--[--><li><a href="/nexus-orchestrator/beta/" class="text-slate-400 hover:text-white transition-colors">Home</a></li><li><a href="/nexus-orchestrator/beta/architecture" class="text-slate-400 hover:text-white transition-colors">Architecture</a></li><li><a href="/nexus-orchestrator/beta/downloads" class="text-slate-400 hover:text-white transition-colors">Downloads</a></li><li><a href="/nexus-orchestrator/beta/api-reference" class="text-slate-400 hover:text-white transition-colors">API Reference</a></li><li><a href="/nexus-orchestrator/beta/getting-started" class="text-slate-400 hover:text-white transition-colors">Getting Started</a></li><li><a href="/nexus-orchestrator/beta/guides" class="text-slate-400 hover:text-white transition-colors">Guides</a></li><li><a href="/nexus-orchestrator/beta/mcp-integration" class="text-slate-400 hover:text-white transition-colors">MCP Integration</a></li><!--]--></ul><div class="flex items-center gap-3"><a href="/nexus-orchestrator/" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs border border-violet-500/30 rounded-md text-violet-400 hover:border-violet-400 hover:text-violet-300 transition-all" title="Switch to stable docs"><svg class="inline-block shrink-0 align-[-0.125em] text-xs" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon="check-circle" aria-hidden="true" focusable="false"><!--[--><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"></path><path d="m9 12 2 2 4-4"></path><!--]--></svg> stable </a><a href="https://github.com/el-j/nexus-orchestrator" target="_blank" rel="noopener" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm border border-white/10 rounded-lg text-slate-300 hover:border-violet-500/50 hover:text-white transition-all"><svg class="inline-block shrink-0 align-[-0.125em] text-xs" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon="github" aria-hidden="true" focusable="false"><!--[--><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path><path d="M9 18c-4.51 2-5-2-7-2"></path><!--]--></svg> GitHub </a><a href="/nexus-orchestrator/beta/downloads" class="px-3 py-1.5 text-sm font-semibold rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors"> Download </a><button class="lg:hidden p-2 text-slate-400 hover:text-white" aria-label="Open menu"><svg class="inline-block shrink-0 align-[-0.125em]" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon="bars" aria-hidden="true" focusable="false"><!--[--><path d="M4 6h16M4 12h16M4 18h16"></path><!--]--></svg></button></div></div></div><!--teleport start--><!--teleport end--></nav><div class="h-24"></div><!--]--><main><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16"><div class="grid grid-cols-1 lg:grid-cols-4 gap-12"><aside class="lg:col-span-1"><div class="sticky top-24 space-y-1 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2"><a href="/nexus-orchestrator/beta/guides" class="block text-xs text-violet-400 hover:underline mb-4">← All guides</a><h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-4"> On this page </h4><nav class="space-y-1" aria-label="On this page"><!--[--><a href="#1-start-it-once" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-300 font-semibold mt-3">1. Start it once</a><a href="#2-connect-your-agents-once" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-300 font-semibold mt-3">2. Connect your agents once</a><a href="#3-introduce-each-project-once" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-300 font-semibold mt-3">3. Introduce each project once</a><a href="#4-work" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-300 font-semibold mt-3">4. Work</a><a href="#troubleshooting" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-300 font-semibold mt-3">Troubleshooting</a><!--]--></nav></div></aside><main class="lg:col-span-3"><div class="mb-10"><div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-sm text-violet-300 mb-4"><svg class="inline-block shrink-0 align-[-0.125em] text-xs" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon="book" aria-hidden="true" focusable="false"><!--[--><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path><!--]--></svg> Guide </div><h1 class="text-4xl font-black mb-4"><span class="gradient-text">Using Nexus</span></h1><p class="text-lg text-slate-400">Run one orchestrator for all your projects: start it, connect your agents, introduce a project.</p><p class="mt-4 text-sm text-slate-500"> Rendered from <a class="text-violet-400 hover:underline" href="https://github.com/el-j/nexus-orchestrator/blob/main/docs/using-nexus.md" target="_blank" rel="noopener">docs/using-nexus.md</a> in the repository, so it cannot drift from it. </p></div><article class="md-doc" data-testid="md-doc" data-v-81e56477=""><h1 id="using-nexusorchestrator-across-all-your-projects">Using nexusOrchestrator across all your projects</h1>
+<p>One daemon serves every project and every agent. You set it up once, introduce each project once,
+and from then on agents ask the orchestrator for the project's context instead of you explaining it
+again in every session.</p>
+<h2 id="1-start-it-once">1. Start it once</h2>
+<pre><code class="language-sh">make start      # builds, then runs the daemon with ONE shared database: ~/.nexus/nexus.db
+make status     # in another terminal: is it up, and which LLM providers does it see?
+</code></pre>
+<ul>
+<li>The full UI (Mission Control, agents, providers, plans, history, brain, settings) is at
+<a href="http://localhost:63987/app/">http://localhost:63987/app/</a>; the root redirects there. <code>make start</code> builds it when Node &gt;= 22 is
+active (<code>nvm use</code>); without Node it serves only the light dashboard at <a href="http://localhost:63987/ui">http://localhost:63987/ui</a>
+(queue and providers, nothing about agents or history). <code>make web</code> rebuilds the embedded UI by hand.
+MCP endpoint: <a href="http://localhost:63988/mcp">http://localhost:63988/mcp</a>.</li>
+<li>The same UI is the desktop app (<code>make build-gui</code>); the desktop app starts its own daemon, so do not run
+it next to <code>make start</code>.</li>
+<li>Every way of starting Nexus (<code>make start</code>, a bare <code>nexus-daemon</code>, the desktop app) now uses the
+same database, <code>~/.nexus/nexus.db</code>, unless <code>NEXUS_DB_PATH</code> says otherwise. (An older setup with a
+<code>nexus.db</code> in the current directory keeps using it until <code>~/.nexus/nexus.db</code> exists.)</li>
+<li>Prefer the desktop app or the VS Code extension? They run the same daemon; skip this step.</li>
+</ul>
+<h2 id="2-connect-your-agents-once">2. Connect your agents once</h2>
+<pre><code class="language-sh">make connect                    # shows which agents on this machine can call Nexus (changes nothing)
+nexus-cli connect --write       # adds the nexus MCP server to Antigravity, Cursor and Claude Code
+</code></pre>
+<p>An agent that is not connected cannot use Nexus: it can only edit files and the database around it,
+which Nexus then shows as state it never ran. <a href="/nexus-orchestrator/beta/guides/how-work-reaches-nexus/">how-work-reaches-nexus.md</a>
+explains what each way in does. The VS Code extension connects the editor's own agent (below); Claude Desktop
+uses <code>{"mcpServers": {"nexusOrchestrator": {"url": "http://localhost:63988/mcp"}}}</code>.</p>
+<p><strong>With the VS Code extension installed</strong> the editor's own agent is connected for you: in VS Code (1.101+)
+the extension registers the Nexus server with VS Code's MCP support (Chat → Configure Tools); in
+Antigravity it offers once to add the server to <code>~/.gemini/.../mcp_config.json</code> (setting
+<code>nexus.mcp.autoConnect</code>: <code>ask</code>, <code>always</code>, <code>never</code>; command <em>Nexus: Connect This Editor's Agent</em>).
+Reload the window afterwards.</p>
+<h2 id="3-introduce-each-project-once">3. Introduce each project once</h2>
+<pre><code class="language-sh">make init-project PROJECT=/absolute/path/to/your/repo
+</code></pre>
+<p>This reads the project's <code>CLAUDE.md</code> (or <code>.claude/CLAUDE.md</code>), <code>AGENTS.md</code>, <code>GEMINI.md</code> and Copilot instructions and stores each <code>## Section</code> as
+knowledge, classified as architecture, file map, convention, learning or glossary. Notes:</p>
+<ul>
+<li>Sections with fewer than 20 characters of body are skipped, so a very short <code>CLAUDE.md</code> can
+produce <code>entryCount: 0</code>. Check with <code>nexus-cli brain status --project &lt;path&gt;</code>.</li>
+<li>Add what the agents keep forgetting to that file, then re-run the command. Further knowledge can
+be added by an agent through the <code>ingest_knowledge</code> tool.</li>
+</ul>
+<p><code>make init-project</code> also writes <code>.nexus/policy.json</code> (default verification command, file-size limit,
+tests-first, your rules); commit it and edit it. See <a href="/nexus-orchestrator/beta/guides/rulebased-workflow/">rulebased-workflow.md</a>.</p>
+<h2 id="4-work">4. Work</h2>
+<p>Agents pull context instead of you pasting it:</p>
+<table>
+<thead>
+<tr>
+<th>Need</th>
+<th>MCP tool</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Start-of-session summary for a project</td>
+<td><code>get_onboarding_context</code></td>
+</tr>
+<tr>
+<td>Relevant knowledge for the task at hand</td>
+<td><code>get_focused_context</code>, <code>search_knowledge</code></td>
+</tr>
+<tr>
+<td>Project knowledge within a token budget</td>
+<td><code>get_project_context</code></td>
+</tr>
+<tr>
+<td>Where things live</td>
+<td><code>get_file_map</code></td>
+</tr>
+<tr>
+<td>Instructions for the agent itself</td>
+<td><code>howto</code>, <code>howto_brief</code></td>
+</tr>
+</tbody></table>
+<p>Two ways to run tasks:</p>
+<ul>
+<li><strong>Agents coordinate through the queue.</strong> An agent calls <code>register_session</code>, then <code>claim_task</code>,
+reports with <code>update_task_status</code> and keeps alive with <code>heartbeat_task</code>. Several agents can share
+one queue without taking the same task. <code>delegate_to_nexus</code> hands work to the orchestrator.</li>
+<li><strong>The orchestrator runs the task with a model.</strong> Submit with <code>submit_task</code> (or
+<code>nexus-submit --project . --target path/file.go --task-file task.md --verify "go test ./..."</code>),
+watch it with <code>nexus-cli queue list</code> or the dashboard. Use <code>create_draft</code> and <code>promote_task</code> to
+park ideas in the backlog first.</li>
+</ul>
+<p>Running tasks itself needs at least one LLM provider. LM Studio and Ollama on localhost are found
+automatically; for hosted models set <code>NEXUS_ANTHROPIC_API_KEY</code>, <code>NEXUS_OPENAI_API_KEY</code>,
+<code>NEXUS_GEMINI_API_KEY</code> or <code>NEXUS_GITHUBCOPILOT_TOKEN</code> before <code>make start</code>. <code>make status</code> lists what the
+daemon found. Without a provider the queue and the agent-coordination flow still work.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>no such module: fts5</code> at start-up</td>
+<td>Binary built without <code>CGO_CFLAGS=-DSQLITE_ENABLE_FTS5</code>. The Makefile now sets it; rebuild with <code>make build</code>.</td>
+</tr>
+<tr>
+<td>Queue or knowledge looks empty after a restart</td>
+<td>The daemon was started from another folder without <code>NEXUS_DB_PATH</code>. Use <code>make start</code>.</td>
+</tr>
+<tr>
+<td><code>connection refused</code> from <code>nexus-cli</code></td>
+<td>Daemon not running: <code>make start</code>.</td>
+</tr>
+</tbody></table>
+<p>To delegate to the models your editor subscriptions provide (Copilot and others), see <a href="/nexus-orchestrator/beta/guides/vscode-model-bridge/">vscode-model-bridge.md</a>.</p>
+</article></main></div></div></main><footer class="border-t border-white/5 bg-[#050508] mt-24 py-12"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"><div class="grid grid-cols-1 md:grid-cols-4 gap-8"><div class="md:col-span-1"><div class="text-lg font-bold mb-2"><span class="text-white">nexus-</span><span class="gradient-text">orchestrator</span></div><p class="text-sm text-slate-500"> Local AI task orchestration with multi-provider routing and MCP support. </p></div><!--[--><div class="space-y-3"><h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Docs</h4><ul class="space-y-2 list-none p-0"><!--[--><li><a href="/nexus-orchestrator/beta/getting-started" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Getting Started</a></li><li><a href="/nexus-orchestrator/beta/guides" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Guides</a></li><li><a href="/nexus-orchestrator/beta/architecture" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Architecture</a></li><li><a href="/nexus-orchestrator/beta/api-reference" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">API Reference</a></li><li><a href="/nexus-orchestrator/beta/mcp-integration" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">MCP Integration</a></li><!--]--></ul></div><div class="space-y-3"><h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Download</h4><ul class="space-y-2 list-none p-0"><!--[--><li><a href="/nexus-orchestrator/beta/downloads" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Desktop App</a></li><li><a href="/nexus-orchestrator/beta/downloads" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">CLI + Daemon</a></li><li><a href="https://github.com/el-j/nexus-orchestrator/releases" target="_blank" rel="noopener" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">GitHub Releases</a></li><!--]--></ul></div><div class="space-y-3"><h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Community</h4><ul class="space-y-2 list-none p-0"><!--[--><li><a href="https://github.com/el-j/nexus-orchestrator" target="_blank" rel="noopener" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">GitHub</a></li><li><a href="https://github.com/el-j/nexus-orchestrator/issues" target="_blank" rel="noopener" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Issues</a></li><li><a href="https://github.com/el-j/nexus-orchestrator/releases" target="_blank" rel="noopener" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Releases</a></li><!--]--></ul></div><!--]--></div><div class="mt-10 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4"><p class="text-xs text-slate-600"> Built with Go 🔷 + Wails · MIT License · © 2026 nexus-orchestrator contributors </p><a href="https://github.com/el-j/nexus-orchestrator"><svg class="inline-block shrink-0 align-[-0.125em]" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon="github" aria-hidden="true" focusable="false"><!--[--><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path><path d="M9 18c-4.51 2-5-2-7-2"></path><!--]--></svg> View on GitHub </a></div></div></footer></div></div>
+  
+
+</body></html>
