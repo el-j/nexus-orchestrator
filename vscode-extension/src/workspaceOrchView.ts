@@ -264,7 +264,7 @@ export class WorkspaceOrchViewProvider implements vscode.TreeDataProvider<OrchNo
   }
 
   async getChildren(element?: OrchNode): Promise<OrchNode[]> {
-    // Root: one FolderNode per workspace folder that has an orchestrator.json
+    // Root: one FolderNode per workspace folder that has plans, tasks or an orchestrator.json
     if (!element) {
       const folders = vscode.workspace.workspaceFolders ?? [];
       if (folders.length === 0) {
@@ -272,7 +272,9 @@ export class WorkspaceOrchViewProvider implements vscode.TreeDataProvider<OrchNo
       }
       const orchs = this.scanner.getOrchestrations();
       if (orchs.length === 0) {
-        return [new EmptyNode('No orchestrator.json found in workspace')];
+        return [
+          new EmptyNode('No plans or tasks found in workspace (.claude/plans, .claude/tasks)'),
+        ];
       }
       return orchs.map((o) => new FolderNode(o));
     }

@@ -320,7 +320,17 @@ func (b *BrainServiceImpl) buildOnboarding(ctx context.Context, projectPath stri
 			activePlan = orchConfig.ActivePlanID
 		}
 	}
+	// Agents that do not keep orchestrator.json up to date still leave plan and task files.
+	planFiles, taskFiles := readPlanFiles(clean)
+	if activePlan == "None" {
+		if p, ok := activePlanFromFiles(planFiles); ok {
+			activePlan = p.ID + " — " + p.Title
+		}
+	}
 	fmt.Fprintf(&sb, "- **Active Plan:** %s\n", activePlan)
+	if summary := taskFileSummary(taskFiles); summary != "" {
+		fmt.Fprintf(&sb, "- **Plan files:** %s\n", summary)
+	}
 
 	if b.taskRepo != nil {
 		tasks, _ := b.taskRepo.GetByProjectPath(ctx, clean)
