@@ -207,8 +207,8 @@ func TestDaemonAnswersEveryMCPTool(t *testing.T) {
 		t.Fatalf("tools/list: HTTP %d", code)
 	}
 	tools, _ := resp["result"].(map[string]any)["tools"].([]any)
-	if len(tools) < 41 {
-		t.Fatalf("the daemon advertises %d tools, want at least 41", len(tools))
+	if len(tools) < 42 {
+		t.Fatalf("the daemon advertises %d tools, want at least 42", len(tools))
 	}
 
 	for _, raw := range tools {

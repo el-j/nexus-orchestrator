@@ -12,13 +12,47 @@ import (
 // faster are joined, so a fast model does not flood the event hub; the first piece goes out at once.
 const chunkInterval = 50 * time.Millisecond
 
-// publish sends a stream event if a broadcaster is configured.
-func (o *OrchestratorService) publish(ev ports.TaskEvent) {
+// eventTapBuffer is how many events a subscriber may fall behind before events are dropped.
+const eventTapBuffer = 256
+
+// publish sends a stream event (task.chunk, task.restart) to the broadcaster and to subscribers.
+func (o *OrchestratorService) publish(ev ports.TaskEvent) { o.dispatch(ev) }
+
+// dispatch delivers one event to the broadcaster (if configured) and to every subscriber of
+// SubscribeTaskEvents. Neither blocks: a subscriber that is behind misses the event.
+func (o *OrchestratorService) dispatch(ev ports.TaskEvent) {
 	o.mu.Lock()
 	b := o.broadcaster
 	o.mu.Unlock()
 	if b != nil {
 		b.Broadcast(ev)
+	}
+	o.tapMu.Lock()
+	defer o.tapMu.Unlock()
+	for ch := range o.taps {
+		select {
+		case ch <- ev:
+		default:
+		}
+	}
+}
+
+// SubscribeTaskEvents implements ports.TaskEventSource.
+func (o *OrchestratorService) SubscribeTaskEvents() (<-chan ports.TaskEvent, func()) {
+	ch := make(chan ports.TaskEvent, eventTapBuffer)
+	o.tapMu.Lock()
+	if o.taps == nil {
+		o.taps = make(map[chan ports.TaskEvent]struct{})
+	}
+	o.taps[ch] = struct{}{}
+	o.tapMu.Unlock()
+	return ch, func() {
+		o.tapMu.Lock()
+		defer o.tapMu.Unlock()
+		if _, ok := o.taps[ch]; ok {
+			delete(o.taps, ch)
+			close(ch)
+		}
 	}
 }
 

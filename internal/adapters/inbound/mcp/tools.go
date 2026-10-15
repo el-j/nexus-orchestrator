@@ -17,6 +17,7 @@ import (
 type callToolParams struct {
 	Name      string          `json:"name"`
 	Arguments json.RawMessage `json:"arguments"`
+	Meta      progressMeta    `json:"_meta"`
 }
 
 func (s *Server) handleToolCall(w http.ResponseWriter, r *http.Request, req rpcRequest) {
@@ -41,6 +42,10 @@ func (s *Server) handleToolCall(w http.ResponseWriter, r *http.Request, req rpcR
 		result, err = s.toolGetQueue(p.Arguments)
 	case "get_all_tasks":
 		result, err = s.toolGetAllTasks(p.Arguments)
+	case "wait_for_task":
+		var progress progressFunc
+		progress, w = startProgress(w, r, p.Meta)
+		result, err = s.toolWaitForTask(r.Context(), p.Arguments, progress)
 	case "cancel_task":
 		result, err = s.toolCancelTask(p.Arguments)
 	case "create_draft":
@@ -154,6 +159,7 @@ func textResult(text string) callToolResult {
 func toolList() []toolDef {
 	var list []toolDef
 	list = append(list, taskToolDefs()...)
+	list = append(list, waitToolDefs()...)
 	list = append(list, providerToolDefs()...)
 	list = append(list, sessionToolDefs()...)
 	list = append(list, howtoToolDefs()...)

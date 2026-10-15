@@ -45,6 +45,11 @@ var (
 var matrix = []row{
 	{"submit a task", has(`"/api/tasks"`), has("'submit_task'"), has("/api/tasks"), has("SubmitTask("), has("submitTask"), has("/api/tasks")},
 	{"read a task", has(`"/api/tasks/{id}"`), has("'get_task'"), has("get <task-id>"), has("GetTask("), has("getTask"), noExt},
+	{"wait for a task", has(`"/api/events"`), has("'wait_for_task'"),
+		without("nexus-cli get reads a task; blocking until it ends is for agents calling over MCP"),
+		without("the desktop UI follows tasks through the live event stream instead of blocking"),
+		without("the UI follows tasks through the live event stream (GET /api/events) instead of blocking"),
+		without("the extension follows tasks through the event stream (Live Output) instead of blocking")},
 	{"list the queue", has(`Get("/api/tasks"`), has("'get_queue'"), has(`"list"`), has("GetQueue("), has("getQueue"), has("/api/tasks")},
 	{"list every task", has(`"/api/tasks/all"`), has("'get_all_tasks'"), noCLI, has("GetAllTasks("), has("getAllTasks"), has("/api/tasks/all")},
 	{"cancel a task", has(`Delete("/api/tasks/{id}"`), has("'cancel_task'"), has("cancel <task-id>"), has("CancelTask("), has("cancelTask"), has("cancelTask")},

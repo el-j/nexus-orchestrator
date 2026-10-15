@@ -281,7 +281,6 @@ func (o *OrchestratorService) ClaimTask(ctx context.Context, taskID string, sess
 	o.mu.Lock()
 	repo := o.repo
 	sessionRepo := o.aiSessionRepo
-	b := o.broadcaster
 	o.mu.Unlock()
 
 	if sessionRepo == nil {
@@ -335,13 +334,11 @@ func (o *OrchestratorService) ClaimTask(ctx context.Context, taskID string, sess
 		log.Printf("orchestrator: claim task: append routed task id: %v", err)
 	}
 
-	if b != nil {
-		b.Broadcast(ports.TaskEvent{
-			Type:   ports.EventTaskProcessing,
-			TaskID: taskID,
-			Status: domain.StatusProcessing,
-		})
-	}
+	o.dispatch(ports.TaskEvent{
+		Type:   ports.EventTaskProcessing,
+		TaskID: taskID,
+		Status: domain.StatusProcessing,
+	})
 	return task, nil
 }
 
@@ -350,7 +347,6 @@ func (o *OrchestratorService) ClaimTask(ctx context.Context, taskID string, sess
 func (o *OrchestratorService) UpdateTaskStatus(ctx context.Context, taskID string, sessionID string, status domain.TaskStatus, logs string) (domain.Task, error) {
 	o.mu.Lock()
 	repo := o.repo
-	b := o.broadcaster
 	o.mu.Unlock()
 
 	// Only allow COMPLETED or FAILED from external agents.
@@ -385,19 +381,15 @@ func (o *OrchestratorService) UpdateTaskStatus(ctx context.Context, taskID strin
 	task.Status = status
 	task.Logs = logs
 
-	if b != nil {
-		var evtType ports.EventType
-		if status == domain.StatusCompleted {
-			evtType = ports.EventTaskCompleted
-		} else {
-			evtType = ports.EventTaskFailed
-		}
-		b.Broadcast(ports.TaskEvent{
-			Type:   evtType,
-			TaskID: taskID,
-			Status: status,
-		})
+	evtType := ports.EventTaskFailed
+	if status == domain.StatusCompleted {
+		evtType = ports.EventTaskCompleted
 	}
+	o.dispatch(ports.TaskEvent{
+		Type:   evtType,
+		TaskID: taskID,
+		Status: status,
+	})
 	return task, nil
 }
 

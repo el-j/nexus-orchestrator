@@ -14,6 +14,11 @@ export const tools = [
     name: 'get_task',
     desc: 'Get the current status and output of a task by ID',
   },
+  {
+    category: 'Tasks',
+    name: 'wait_for_task',
+    desc: 'Wait until a task has finished and return it; streams the reply as progress notifications when asked',
+  },
   { category: 'Tasks', name: 'get_queue', desc: 'List all tasks currently in the queue' },
   {
     category: 'Tasks',
