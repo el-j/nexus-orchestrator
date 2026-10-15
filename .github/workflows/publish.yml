@@ -1,17 +1,28 @@
 name: Publish
 
+# Betas are published from develop. Stable releases are made by release-please (release-please.yml),
+# which creates the clean tag vX.Y.Z and then calls this workflow with that tag so the artifacts are
+# built and attached to it. See docs/releasing.md.
 on:
   push:
     branches:
-      - main
       - develop
     paths-ignore:
       - 'docs/**'
       - '*.md'
       - '.claude/**'
-  release:
-    types: [published]
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Existing release tag (vX.Y.Z) to build and attach artifacts to'
+        required: true
+        type: string
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag (vX.Y.Z) to rebuild; leave empty for a beta from this branch'
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -25,40 +36,40 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      semVer: ${{ steps.gitversion.outputs.semVer }}
+      semVer: ${{ steps.check_tag.outputs.semVer }}
       tag: ${{ steps.check_tag.outputs.tag }}
       exists: ${{ steps.check_tag.outputs.exists }}
       prerelease: ${{ steps.check_tag.outputs.prerelease }}
+      stable: ${{ steps.check_tag.outputs.stable }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - uses: gittools/actions/gitversion/setup@v4.3.3
-        with:
-          versionSpec: '6.x'
-
-      - id: gitversion
-        uses: gittools/actions/gitversion/execute@v4.3.3
-        with:
-          configFilePath: GitVersion.yml
-
       - id: check_tag
         shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
-          TAG="v${{ steps.gitversion.outputs.semVer }}"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
+          if [ -n "${INPUT_TAG}" ]; then
+            # A stable release: release-please made the tag; it must be a clean vX.Y.Z.
+            TAG="${INPUT_TAG}"
+            if ! echo "${TAG}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+              echo "::error::${TAG} is not a clean vX.Y.Z version"; exit 1
+            fi
+            SEMVER="${TAG#v}"
+            STABLE=true; PRERELEASE=false; EXISTS=false
           else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
+            # A beta from develop: <next minor>-beta.<commits since the last stable tag>.
+            SEMVER="$(bash scripts/next-version.sh)"
+            TAG="v${SEMVER}"
+            STABLE=false; PRERELEASE=true; EXISTS=false
+            if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then EXISTS=true; fi
           fi
-          # Mark as prerelease when the version contains a label (e.g. -beta.1, -alpha.3)
-          if echo "${TAG}" | grep -qE '\-[a-zA-Z]'; then
-            echo "prerelease=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "prerelease=false" >> "$GITHUB_OUTPUT"
-          fi
+          {
+            echo "semVer=${SEMVER}"; echo "tag=${TAG}"; echo "exists=${EXISTS}"
+            echo "prerelease=${PRERELEASE}"; echo "stable=${STABLE}"
+          } >> "$GITHUB_OUTPUT"
 
   vet:
     needs: version
@@ -674,7 +685,7 @@ jobs:
           TAG="${{ needs.version.outputs.tag }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # Skip if the tag already exists on the remote (e.g. created by the version workflow)
+          # Stable tags are made by release-please; only betas are tagged here
           if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
             echo "Tag ${TAG} already exists on remote — skipping tag creation."
           else
@@ -701,7 +712,8 @@ jobs:
         with:
           tag_name: ${{ needs.version.outputs.tag }}
           prerelease: ${{ needs.version.outputs.prerelease == 'true' }}
-          generate_release_notes: true
+          # release-please owns the notes of a stable release; betas get generated ones
+          generate_release_notes: ${{ needs.version.outputs.stable != 'true' }}
           files: |
             nexus-orchestrator-*.tar.gz
             nexus-orchestrator-*.zip

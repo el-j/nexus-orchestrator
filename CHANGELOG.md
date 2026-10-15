@@ -42,6 +42,7 @@ This release makes Nexus usable day to day: tasks stream while the model writes,
 
 ### Changed
 
+- Releases: stable versions are clean `vX.Y.Z` tags made by release-please; betas are `X.(Y+1).0-beta.N` from develop. GitVersion and `scripts/release.sh` are gone (see [docs/releasing.md](docs/releasing.md))
 - The sidebar of the UI shows five things instead of nine: Mission Control, Agents, Providers, Projects and Settings. Activity, Plans, History, Backlog and Brain are tabs of one Projects hub (`/projects`, `/projects/plans`, ...); the old paths (`/plans`, `/history`, `/backlog`, `/brain`) redirect to their tab
 - Removed PrimeVue, `@primevue/themes` and `primeicons` from the frontend and the docs site (epic #64). Both now use internal primitives (`UiIcon`, `UiButton`, `UiSkeleton`, `UiSelect`, `UiDrawer`, `UiToaster`/`useToast`, `UiTabs`) with design tokens, a focus trap, reduced-motion support and an SVG icon set; see `docs/ui-foundation.md`. Bundles shrank by 42-50 % (frontend JS 190 -> 95 KiB gz, docs JS 167 -> 97 KiB gz) and CI now enforces bundle budgets (`scripts/check-bundle-budget.mjs`) and bans a UI kit (`scripts/check-no-ui-kit.mjs`).
 - Astro feasibility study (`docs/astro-feasibility.md`): no-go for the frontend, no-go with checkpoints for the docs.
@@ -54,6 +55,7 @@ This release makes Nexus usable day to day: tasks stream while the model writes,
 
 ### Fixed
 
+- A flaky test compared a fixed pid with the test process's own pid
 - The UI and the editor showed state that was not true: one repository appeared as several projects and "agents" (a Claude session started in `frontend/`, `src/` or a temp directory became its own project and discovered agent), every non-Copilot language model of the editor (`copilotcli/gpt-5.4`, ...) was listed as an active agent in every window, and tasks an agent had marked processing or done by hand looked like work Nexus was doing. Activities now belong to the repository (nearest `.git`), activity in temp directories is ignored, discovered sessions at sub-folders are removed, the extension no longer reports language models as agents, and a task says who ran it: `ranBy` (read from the engine's log) in the API, "Run by Nexus on X" or "Status set by an agent — Nexus did not run this task" in the task drawer and the editor tooltip
 - Task rows another tool wrote straight into the database (an agent running `sqlite3`: `IN_PROGRESS`, times as text or in seconds) are repaired at daemon start, so the watchdog and the queue queries see them too
 - One hand-edited task row made `GET /api/tasks/all` answer 500 ("converting driver.Value type string to a int64"), so every client, the VS Code extension included, showed the daemon as offline: an agent had run `UPDATE tasks SET status='IN_PROGRESS', updated_at=datetime('now')` on the database. The repository now reads timestamps stored as text (SQLite datetime, ISO 8601, a number in text), reads `IN_PROGRESS`/`DONE`/`ERROR`/... as PROCESSING/COMPLETED/FAILED, and a list skips a row it cannot decode (logged) instead of failing; asking for that task by id still reports it
