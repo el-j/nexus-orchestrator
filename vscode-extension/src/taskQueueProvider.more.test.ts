@@ -20,8 +20,9 @@ const task = (o: Partial<Task> = {}): Task => ({
   updatedAt: '2026-01-01T00:00:00Z',
   ...o,
 });
-const client = (tasks: Task[] | Error) =>
+const client = (tasks: Task[] | Error, alive = false) =>
   ({
+    health: vi.fn(() => Promise.resolve(alive)),
     getAllTasks: vi.fn(() =>
       tasks instanceof Error ? Promise.reject(tasks) : Promise.resolve(tasks),
     ),
@@ -132,6 +133,18 @@ describe('TaskQueueProvider', () => {
     expect(item.contextValue).toBe('nexusDaemonOffline');
     expect((item.iconPath as ThemeIcon).id).toBe('debug-disconnect');
     expect(String(item.tooltip)).toContain('not running');
+  });
+
+  it('says the daemon has an error, not that it is offline, when it answers health but fails the list', async () => {
+    const p = new TaskQueueProvider(client(new Error('HTTP 500 — internal server error'), true));
+    const [item] = await p.getChildren();
+    expect(item.label).toContain('daemon error');
+    expect(item.contextValue).toBe('nexusDaemonError');
+    expect(String(item.tooltip)).toContain('HTTP 500');
+    const p2 = new TaskQueueProvider(client('plain text' as unknown as Error, true));
+    (p2 as unknown as { client: { getAllTasks: () => Promise<never> } }).client.getAllTasks = () =>
+      Promise.reject('plain text');
+    expect(String((await p2.getChildren())[0].tooltip)).toContain('plain text');
   });
 
   it('returns the element itself as the tree item', async () => {

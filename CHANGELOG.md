@@ -46,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- One hand-edited task row made `GET /api/tasks/all` answer 500 ("converting driver.Value type string to a int64"), so every client, the VS Code extension included, showed the daemon as offline: an agent had run `UPDATE tasks SET status='IN_PROGRESS', updated_at=datetime('now')` on the database. The repository now reads timestamps stored as text (SQLite datetime, ISO 8601, a number in text), reads `IN_PROGRESS`/`DONE`/`ERROR`/... as PROCESSING/COMPLETED/FAILED, and a list skips a row it cannot decode (logged) instead of failing; asking for that task by id still reports it
+- The extension's task view said "daemon offline" for any failure; a daemon that answers `/api/health` but fails the list now shows "Nexus daemon error" with the reason
 - `init_project` / `nexus init` only learned from `CLAUDE.md`; it now also reads `AGENTS.md`, `GEMINI.md` and `.github/copilot-instructions.md` when they exist, so a project worked on by another agent is onboarded too
 - The VS Code "Workspace Agents" view said "No orchestrator.json found" for a repository whose agent (here Gemini) wrote plans and tasks as markdown under `.claude/plans` and `.claude/tasks` but no `orchestrator.json`: the view now reads those files (and `.nexus/`), merges them with the JSON when there is one, and picks the active plan; the daemon's onboarding context does the same instead of reporting "Active Plan: None"
 - Registering the same provider again (the VS Code bridge after a restart) replaced nothing and left a stale duplicate; the same name and model now replace each other

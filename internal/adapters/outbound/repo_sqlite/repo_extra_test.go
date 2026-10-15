@@ -96,24 +96,31 @@ func TestRepository_CorruptRowsSurfaceErrorsOrAreTolerated(t *testing.T) {
 		t.Fatalf("corrupt tags should be ignored: %+v %v", got, err)
 	}
 
-	// Corrupt context_files is an error on every read path.
+	// Corrupt context_files is an error when that task is asked for by id (or claimed); a list
+	// skips the row instead, so one damaged task does not hide all the others.
 	if _, err := r.DB().Exec(`UPDATE tasks SET context_files = '{not json'`); err != nil {
 		t.Fatal(err)
 	}
-	reads := map[string]func() error{
-		"GetByID":    func() error { _, err := r.GetByID(context.Background(), "bad"); return err },
-		"GetAll":     func() error { _, err := r.GetAll(context.Background()); return err },
-		"GetPending": func() error { _, err := r.GetPending(context.Background()); return err },
-		"ByProject":  func() error { _, err := r.GetByProjectPath(context.Background(), "/projects/foo"); return err },
-		"ByProjStatus": func() error {
-			_, err := r.GetByProjectPathAndStatus(context.Background(), "/projects/foo", domain.StatusQueued)
-			return err
-		},
+	errs := map[string]func() error{
+		"GetByID":   func() error { _, err := r.GetByID(context.Background(), "bad"); return err },
 		"ClaimNext": func() error { _, err := r.ClaimNextQueued(context.Background()); return err },
 	}
-	for name, read := range reads {
+	for name, read := range errs {
 		if err := read(); err == nil {
 			t.Errorf("%s: expected error for corrupt context_files", name)
+		}
+	}
+	lists := map[string]func() ([]domain.Task, error){
+		"GetAll":     func() ([]domain.Task, error) { return r.GetAll(context.Background()) },
+		"GetPending": func() ([]domain.Task, error) { return r.GetPending(context.Background()) },
+		"ByProject":  func() ([]domain.Task, error) { return r.GetByProjectPath(context.Background(), "/projects/foo") },
+		"ByProjStatus": func() ([]domain.Task, error) {
+			return r.GetByProjectPathAndStatus(context.Background(), "/projects/foo", domain.StatusQueued)
+		},
+	}
+	for name, list := range lists {
+		if got, err := list(); err != nil || len(got) != 0 {
+			t.Errorf("%s: want the damaged row skipped, got %v %v", name, got, err)
 		}
 	}
 }
