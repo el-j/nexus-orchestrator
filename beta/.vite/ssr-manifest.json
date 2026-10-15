@@ -4,7 +4,7 @@
   "\u0000vite/preload-helper.js": [],
   "../../../../../../favicon.svg": [],
   "api-reference.md?raw": [
-    "/nexus-orchestrator/beta/assets/ApiReferenceView-D6mRGzHp.js",
+    "/nexus-orchestrator/beta/assets/ApiReferenceView-CeVrAL5G.js",
     "/nexus-orchestrator/beta/assets/ApiReferenceView-d74tgpJF.css"
   ],
   "index.html": [],
@@ -16,7 +16,7 @@
   "node_modules/@vue/shared/dist/shared.esm-bundler.js": [],
   "node_modules/hookable/dist/index.mjs": [],
   "node_modules/marked/lib/marked.esm.js": [
-    "/nexus-orchestrator/beta/assets/ApiReferenceView-D6mRGzHp.js",
+    "/nexus-orchestrator/beta/assets/ApiReferenceView-CeVrAL5G.js",
     "/nexus-orchestrator/beta/assets/ApiReferenceView-d74tgpJF.css"
   ],
   "node_modules/unhead/dist/client.mjs": [],
@@ -42,13 +42,13 @@
   "src/components/TerminalDemo.vue": [],
   "src/components/TerminalDemo.vue?vue&type=script&setup=true&lang.ts": [],
   "src/data/downloads.ts": [
-    "/nexus-orchestrator/beta/assets/DownloadsView-CntRG4FS.js"
+    "/nexus-orchestrator/beta/assets/DownloadsView-B5kUPYNO.js"
   ],
   "src/data/mcpIntegration.ts": [
-    "/nexus-orchestrator/beta/assets/McpIntegrationView-B90uLsZU.js"
+    "/nexus-orchestrator/beta/assets/McpIntegrationView-CvziGTZn.js"
   ],
   "src/data/mcpTools.ts": [
-    "/nexus-orchestrator/beta/assets/McpIntegrationView-B90uLsZU.js"
+    "/nexus-orchestrator/beta/assets/McpIntegrationView-CvziGTZn.js"
   ],
   "src/main.ts": [],
   "src/router/index.ts": [],
@@ -61,48 +61,48 @@
   "src/ui/UiTabs.vue?vue&type=script&setup=true&lang.ts": [],
   "src/ui/icons.ts": [],
   "src/utils/markdown.ts": [
-    "/nexus-orchestrator/beta/assets/ApiReferenceView-D6mRGzHp.js",
+    "/nexus-orchestrator/beta/assets/ApiReferenceView-CeVrAL5G.js",
     "/nexus-orchestrator/beta/assets/ApiReferenceView-d74tgpJF.css"
   ],
   "src/utils/scroll.ts": [
     "/nexus-orchestrator/beta/assets/scroll-DdeK3J_A.js"
   ],
   "src/views/ApiReferenceView.vue": [
-    "/nexus-orchestrator/beta/assets/ApiReferenceView-D6mRGzHp.js",
+    "/nexus-orchestrator/beta/assets/ApiReferenceView-CeVrAL5G.js",
     "/nexus-orchestrator/beta/assets/ApiReferenceView-d74tgpJF.css"
   ],
   "src/views/ApiReferenceView.vue?vue&type=script&setup=true&lang.ts": [
-    "/nexus-orchestrator/beta/assets/ApiReferenceView-D6mRGzHp.js",
+    "/nexus-orchestrator/beta/assets/ApiReferenceView-CeVrAL5G.js",
     "/nexus-orchestrator/beta/assets/ApiReferenceView-d74tgpJF.css"
   ],
   "src/views/ApiReferenceView.vue?vue&type=style&index=0&scoped=c0bc2868&lang.css": [
-    "/nexus-orchestrator/beta/assets/ApiReferenceView-D6mRGzHp.js",
+    "/nexus-orchestrator/beta/assets/ApiReferenceView-CeVrAL5G.js",
     "/nexus-orchestrator/beta/assets/ApiReferenceView-d74tgpJF.css"
   ],
   "src/views/ArchitectureView.vue": [
-    "/nexus-orchestrator/beta/assets/ArchitectureView-C2-cJPeI.js"
+    "/nexus-orchestrator/beta/assets/ArchitectureView-C1YCHuf7.js"
   ],
   "src/views/ArchitectureView.vue?vue&type=script&setup=true&lang.ts": [
-    "/nexus-orchestrator/beta/assets/ArchitectureView-C2-cJPeI.js"
+    "/nexus-orchestrator/beta/assets/ArchitectureView-C1YCHuf7.js"
   ],
   "src/views/DownloadsView.vue": [
-    "/nexus-orchestrator/beta/assets/DownloadsView-CntRG4FS.js"
+    "/nexus-orchestrator/beta/assets/DownloadsView-B5kUPYNO.js"
   ],
   "src/views/DownloadsView.vue?vue&type=script&setup=true&lang.ts": [
-    "/nexus-orchestrator/beta/assets/DownloadsView-CntRG4FS.js"
+    "/nexus-orchestrator/beta/assets/DownloadsView-B5kUPYNO.js"
   ],
   "src/views/GettingStartedView.vue": [
-    "/nexus-orchestrator/beta/assets/GettingStartedView-Do2SKrb3.js"
+    "/nexus-orchestrator/beta/assets/GettingStartedView-Ds8FidVb.js"
   ],
   "src/views/GettingStartedView.vue?vue&type=script&setup=true&lang.ts": [
-    "/nexus-orchestrator/beta/assets/GettingStartedView-Do2SKrb3.js"
+    "/nexus-orchestrator/beta/assets/GettingStartedView-Ds8FidVb.js"
   ],
   "src/views/HomeView.vue": [],
   "src/views/HomeView.vue?vue&type=script&setup=true&lang.ts": [],
   "src/views/McpIntegrationView.vue": [
-    "/nexus-orchestrator/beta/assets/McpIntegrationView-B90uLsZU.js"
+    "/nexus-orchestrator/beta/assets/McpIntegrationView-CvziGTZn.js"
   ],
   "src/views/McpIntegrationView.vue?vue&type=script&setup=true&lang.ts": [
-    "/nexus-orchestrator/beta/assets/McpIntegrationView-B90uLsZU.js"
+    "/nexus-orchestrator/beta/assets/McpIntegrationView-CvziGTZn.js"
   ]
 }
