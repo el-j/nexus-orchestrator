@@ -2,13 +2,44 @@
     <meta charset="utf-8">
     <link rel="icon" type="image/svg+xml" href="/nexus-orchestrator/favicon.svg">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="nexus-orchestrator — Route AI code-generation tasks to any LLM backend with session memory and MCP support">
+    <meta name="description" content="nexus-orchestrator — run coding tasks on any model (local, API, your Claude and Copilot subscriptions), stream the result, and give every project a memory. MCP server, REST API, full UI, VS Code extension.">
     <title>nexus-orchestrator — Local AI Task Orchestrator</title>
-    <script type="module" crossorigin="" src="/nexus-orchestrator/assets/app-CRSWqaEN.js"></script>
-    <link rel="stylesheet" crossorigin="" href="/nexus-orchestrator/assets/app-CjR2MiIf.css">
-  <link rel="modulepreload" crossorigin="" href="/nexus-orchestrator/assets/ApiReferenceView-DlT4Gr3p.js"></head>
+    <script type="module" crossorigin="" src="/nexus-orchestrator/assets/app-BiSu0XNb.js"></script>
+    <link rel="stylesheet" crossorigin="" href="/nexus-orchestrator/assets/app-BJcAENpL.css">
+  <link rel="modulepreload" crossorigin="" href="/nexus-orchestrator/assets/ApiReferenceView-sd95lOC1.js"><link rel="stylesheet" href="/nexus-orchestrator/assets/ApiReferenceView-d74tgpJF.css"></head>
   <body>
-    <div id="app" data-server-rendered="true"><div class="min-h-screen bg-[#050508] text-[#f0f0f8]"><!--[--><!----><nav class="top-0 fixed left-0 right-0 z-50 backdrop-blur-md bg-[#050508]/80 border-b border-white/5"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"><div class="flex items-center justify-between h-16"><a href="/nexus-orchestrator/" class="flex items-center gap-2 text-lg font-bold"><img src="/nexus-orchestrator/favicon.svg" alt="nexusOrchestrator" class="w-8 h-8"><span class="text-white">nexus-</span><span class="gradient-text">orchestrator</span></a><ul class="hidden lg:flex items-center gap-6 text-sm font-medium list-none"><!--[--><li><a href="/nexus-orchestrator/" class="text-slate-400 hover:text-white transition-colors">Home</a></li><li><a href="/nexus-orchestrator/architecture" class="text-slate-400 hover:text-white transition-colors">Architecture</a></li><li><a href="/nexus-orchestrator/downloads" class="text-slate-400 hover:text-white transition-colors">Downloads</a></li><li><a aria-current="page" href="/nexus-orchestrator/api-reference" class="text-violet-400 router-link-exact-active text-slate-400 hover:text-white transition-colors">API Reference</a></li><li><a href="/nexus-orchestrator/getting-started" class="text-slate-400 hover:text-white transition-colors">Getting Started</a></li><li><a href="/nexus-orchestrator/mcp-integration" class="text-slate-400 hover:text-white transition-colors">MCP Integration</a></li><!--]--></ul><div class="flex items-center gap-3"><a href="/nexus-orchestrator/beta/" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs border border-amber-500/30 rounded-md text-amber-400 hover:border-amber-400 hover:text-amber-300 transition-all" title="Switch to beta docs"><i class="pi pi-code text-xs"></i> beta </a><a href="https://github.com/el-j/nexus-orchestrator" target="_blank" rel="noopener" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm border border-white/10 rounded-lg text-slate-300 hover:border-violet-500/50 hover:text-white transition-all"><i class="pi pi-github text-xs"></i> GitHub </a><a href="/nexus-orchestrator/downloads" class="px-3 py-1.5 text-sm font-semibold rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors"> Download </a><button class="lg:hidden p-2 text-slate-400 hover:text-white" aria-label="Open menu"><i class="pi pi-bars"></i></button></div></div></div><!----></nav><div class="h-16"></div><!--]--><main><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16"><div class="grid grid-cols-1 lg:grid-cols-4 gap-12"><aside class="lg:col-span-1"><div class="sticky top-24 space-y-1"><h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-4"> On this page </h4><nav class="space-y-1"><!--[--><a href="#http-api" class="block text-sm text-slate-500 hover:text-violet-400 transition-colors py-0.5 cursor-pointer">HTTP REST API</a><a href="#sse-events" class="block text-sm text-slate-500 hover:text-violet-400 transition-colors py-0.5 cursor-pointer">SSE Event Stream</a><a href="#mcp-server" class="block text-sm text-slate-500 hover:text-violet-400 transition-colors py-0.5 cursor-pointer">MCP Server</a><a href="#brain-ingest" class="block text-sm text-slate-500 hover:text-violet-400 transition-colors py-0.5 cursor-pointer">Brain / Knowledge</a><a href="#env-vars" class="block text-sm text-slate-500 hover:text-violet-400 transition-colors py-0.5 cursor-pointer">Environment Variables</a><!--]--></nav></div></aside><main class="lg:col-span-3 space-y-16"><div class="reveal"><div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-sm text-violet-300 mb-4"><i class="pi pi-server text-xs"></i> HTTP REST + MCP </div><h1 class="text-4xl font-black mb-4"><span class="gradient-text">API Reference</span></h1><p class="text-lg text-slate-400"> Complete reference for all HTTP REST API endpoints and MCP tools. </p><div class="mt-4 flex flex-wrap gap-3"><span class="px-3 py-1 rounded-lg bg-[#0d0d14] border border-white/8 text-xs text-slate-400 font-mono">Base URL: http://localhost:63987</span><span class="px-3 py-1 rounded-lg bg-[#0d0d14] border border-white/8 text-xs text-slate-400 font-mono">MCP: http://localhost:63988</span></div></div><section id="http-api" class="reveal"><h2 class="text-2xl font-black mb-8 flex items-center gap-2"><span class="text-violet-400">#</span> HTTP REST API </h2><div class="space-y-8"><!--[--><div id="submit-task" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-emerald-500/20 text-emerald-300">POST</span><code class="text-sm text-slate-200 font-mono">/api/tasks</code><span class="ml-auto text-xs text-slate-500">Submit Task</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Submit a new code-generation task to the queue.</p><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Request Body </p><div class="relative group"><pre class="!mt-0"><code class="language-json">{
+    <div id="app" data-server-rendered="true"><div class="min-h-screen bg-[#050508] text-[#f0f0f8]"><!--[--><!----><nav class="top-0 fixed left-0 right-0 z-50 backdrop-blur-md bg-[#050508]/80 border-b border-white/5"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"><div class="flex items-center justify-between h-16"><a href="/nexus-orchestrator/" class="flex items-center gap-2 text-lg font-bold"><img src="/nexus-orchestrator/favicon.svg" alt="nexusOrchestrator" class="w-8 h-8"><span class="text-white">nexus-</span><span class="gradient-text">orchestrator</span></a><ul class="hidden lg:flex items-center gap-6 text-sm font-medium list-none"><!--[--><li><a href="/nexus-orchestrator/" class="text-slate-400 hover:text-white transition-colors">Home</a></li><li><a href="/nexus-orchestrator/architecture" class="text-slate-400 hover:text-white transition-colors">Architecture</a></li><li><a href="/nexus-orchestrator/downloads" class="text-slate-400 hover:text-white transition-colors">Downloads</a></li><li><a aria-current="page" href="/nexus-orchestrator/api-reference" class="text-violet-400 router-link-exact-active text-slate-400 hover:text-white transition-colors">API Reference</a></li><li><a href="/nexus-orchestrator/getting-started" class="text-slate-400 hover:text-white transition-colors">Getting Started</a></li><li><a href="/nexus-orchestrator/guides" class="text-slate-400 hover:text-white transition-colors">Guides</a></li><li><a href="/nexus-orchestrator/mcp-integration" class="text-slate-400 hover:text-white transition-colors">MCP Integration</a></li><!--]--></ul><div class="flex items-center gap-3"><a href="/nexus-orchestrator/beta/" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs border border-amber-500/30 rounded-md text-amber-400 hover:border-amber-400 hover:text-amber-300 transition-all" title="Switch to beta docs"><svg class="inline-block shrink-0 align-[-0.125em] text-xs" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon="code" aria-hidden="true" focusable="false"><!--[--><path d="m16 18 6-6-6-6"></path><path d="m8 6-6 6 6 6"></path><!--]--></svg> beta </a><a href="https://github.com/el-j/nexus-orchestrator" target="_blank" rel="noopener" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm border border-white/10 rounded-lg text-slate-300 hover:border-violet-500/50 hover:text-white transition-all"><svg class="inline-block shrink-0 align-[-0.125em] text-xs" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon="github" aria-hidden="true" focusable="false"><!--[--><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path><path d="M9 18c-4.51 2-5-2-7-2"></path><!--]--></svg> GitHub </a><a href="/nexus-orchestrator/downloads" class="px-3 py-1.5 text-sm font-semibold rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors"> Download </a><button class="lg:hidden p-2 text-slate-400 hover:text-white" aria-label="Open menu"><svg class="inline-block shrink-0 align-[-0.125em]" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon="bars" aria-hidden="true" focusable="false"><!--[--><path d="M4 6h16M4 12h16M4 18h16"></path><!--]--></svg></button></div></div></div><!--teleport start--><!--teleport end--></nav><div class="h-16"></div><!--]--><main><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16" data-v-c0bc2868=""><div class="grid grid-cols-1 lg:grid-cols-4 gap-12" data-v-c0bc2868=""><aside class="lg:col-span-1" data-v-c0bc2868=""><div class="sticky top-24 space-y-1 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2" data-v-c0bc2868=""><h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-4" data-v-c0bc2868=""> On this page </h4><nav class="space-y-1" aria-label="On this page" data-v-c0bc2868=""><!--[--><a href="#http-rest-api" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-300 font-semibold mt-3" data-v-c0bc2868="">HTTP REST API</a><a href="#authentication-and-local-access-protection" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Authentication and local-access protection</a><a href="#discovery" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Discovery</a><a href="#submit-task" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Submit Task</a><a href="#list-tasks" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">List Tasks</a><a href="#get-task" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Get Task</a><a href="#cancel-task" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Cancel Task</a><a href="#list-providers" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">List Providers</a><a href="#register-provider" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Register Provider</a><a href="#remove-provider" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Remove Provider</a><a href="#get-provider-models" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Get Provider Models</a><a href="#sse-event-stream" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">SSE Event Stream</a><a href="#health-check" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Health Check</a><a href="#ingest-project-knowledge" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Ingest Project Knowledge</a><a href="#ingest-uploaded-content" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Ingest Uploaded Content</a><a href="#get-brain-status" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Get Brain Status</a><a href="#get-project-context" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Get Project Context</a><a href="#search-knowledge" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Search Knowledge</a><a href="#get-focused-context" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Get Focused Context</a><a href="#initialize-knowledge-base" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Initialize Knowledge Base</a><a href="#list-knowledge-entries" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">List Knowledge Entries</a><a href="#delete-knowledge-entry" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Delete Knowledge Entry</a><a href="#get-file-map" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Get File Map</a><a href="#backlog-and-planning" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Backlog and planning</a><a href="#provider-discovery-and-configuration" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Provider discovery and configuration</a><a href="#task-coordination-for-ai-agents" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Task coordination (for AI agents)</a><a href="#ai-sessions" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">AI sessions</a><a href="#logs-activity-and-plans" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Logs, activity and plans</a><a href="#dashboard" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Dashboard</a><a href="#mcp-server" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-300 font-semibold mt-3" data-v-c0bc2868="">MCP Server</a><a href="#protocol" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Protocol</a><a href="#available-tools" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Available Tools</a><a href="#example-submit-task-via-mcp" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Example: Submit Task via MCP</a><a href="#example-get-task-status-via-mcp" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3" data-v-c0bc2868="">Example: Get Task Status via MCP</a><a href="#task-lifecycle" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-300 font-semibold mt-3" data-v-c0bc2868="">Task Lifecycle</a><a href="#environment-variables" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-300 font-semibold mt-3" data-v-c0bc2868="">Environment Variables</a><!--]--></nav></div></aside><main class="lg:col-span-3" data-v-c0bc2868=""><div class="mb-10" data-v-c0bc2868=""><div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-sm text-violet-300 mb-4" data-v-c0bc2868=""><svg class="inline-block shrink-0 align-[-0.125em] text-xs" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon="server" aria-hidden="true" focusable="false" data-v-c0bc2868=""><!--[--><path d="M4 3h16a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"></path><path d="M4 13h16a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1z"></path><path d="M7 7.5h.01M7 17.5h.01"></path><!--]--></svg> HTTP REST + MCP </div><h1 class="text-4xl font-black mb-4" data-v-c0bc2868=""><span class="gradient-text" data-v-c0bc2868="">API Reference</span></h1><p class="text-lg text-slate-400" data-v-c0bc2868=""> Complete reference for all HTTP REST API endpoints and MCP tools. </p><div class="mt-4 flex flex-wrap gap-3" data-v-c0bc2868=""><span class="px-3 py-1 rounded-lg bg-[#0d0d14] border border-white/8 text-xs text-slate-400 font-mono" data-v-c0bc2868="">Base URL: http://localhost:63987</span><span class="px-3 py-1 rounded-lg bg-[#0d0d14] border border-white/8 text-xs text-slate-400 font-mono" data-v-c0bc2868="">MCP: http://localhost:63988/mcp</span></div><p class="mt-4 text-sm text-slate-500" data-v-c0bc2868=""> Generated from <a class="text-violet-400 hover:underline" href="https://github.com/el-j/nexus-orchestrator/blob/main/docs/api-reference.md" target="_blank" rel="noopener" data-v-c0bc2868="">docs/api-reference.md</a> in the repository, so it cannot drift from it. </p></div><article class="api-doc" data-testid="api-doc" data-v-c0bc2868=""><h1 id="api-reference">API Reference</h1>
+<h2 id="http-rest-api">HTTP REST API</h2>
+<p>Base URL: <code>http://localhost:63987</code></p>
+<h3 id="authentication-and-local-access-protection">Authentication and local-access protection</h3>
+<p>By default the daemon trusts local callers. Three layers protect it:</p>
+<ul>
+<li><strong>Bearer token (optional).</strong> Set <code>NEXUS_API_TOKEN</code> (or rotate one via <code>PUT /api/config</code>) and every <code>/api/*</code>
+request except <code>/api/health</code>, <code>/api/howto</code> and <code>/.well-known/nexus.json</code> must send
+<code>Authorization: Bearer &lt;token&gt;</code>. The MCP server uses <code>NEXUS_MCP_TOKEN</code> the same way.</li>
+<li><strong>Browser origin check (always on).</strong> A request carrying an <code>Origin</code> header that is not a local origin
+(<code>localhost</code>, <code>127.0.0.1</code>, <code>[::1]</code>, <code>wails://wails.localhost</code>) is rejected with <code>403</code>. This stops a web page
+you happen to visit from driving the daemon with a cross-site request. CLI tools, the MCP stdio proxy and
+<code>curl</code> send no <code>Origin</code> and are unaffected. Add trusted origins with <code>NEXUS_ALLOWED_ORIGINS</code>
+(comma-separated, e.g. <code>https://dash.example.com</code>).</li>
+<li><strong>Host check (loopback binds).</strong> When <code>NEXUS_LISTEN_ADDR</code> is a loopback address, the <code>Host</code> header must be
+<code>localhost</code> or an IP literal, which defeats DNS-rebinding. Add host names with <code>NEXUS_ALLOWED_HOSTS</code>. A
+daemon deliberately bound to all interfaces (containers, LAN) skips the Host check - set <code>NEXUS_API_TOKEN</code> there.</li>
+</ul>
+<h3 id="discovery">Discovery</h3>
+<pre><code>GET /.well-known/nexus.json
+</code></pre>
+<p>A public beacon (no token needed) that tells a tool or agent where everything is: <code>api.base_url</code>, <code>api.howto</code>,
+<code>api.health</code>, <code>api.events</code>, and <code>mcp.endpoint</code>, the full URL of the MCP server on its separate port. The MCP
+endpoint is built from <code>NEXUS_MCP_ADDR</code>; when that address has no host (<code>:63988</code>, <code>0.0.0.0:63988</code>) the host
+you used to reach the REST API is reused. <code>mcp.endpoint</code> is omitted when the daemon does not know the address.</p>
+<p>Error bodies are always <code>{"error": "&lt;message&gt;"}</code>. Server faults (<code>5xx</code>) never include internal details.</p>
+<h3 id="submit-task">Submit Task</h3>
+<pre><code>POST /api/tasks
+</code></pre>
+<p>Submit a new code-generation task to the queue.</p>
+<p><strong>Request Body:</strong></p>
+<pre><code class="language-json">{
   "projectPath": "/path/to/project",
   "targetFile": "output.go",
   "instruction": "Write a function that sorts strings",
@@ -16,51 +47,215 @@
   "modelId": "codellama",
   "providerHint": "LM Studio",
   "command": "execute"
-}</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></div><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Fields </p><div class="overflow-x-auto rounded-lg border border-white/5"><table class="w-full text-xs"><thead><tr class="bg-[#111118]"><th class="px-3 py-2 text-left text-slate-400">Field</th><th class="px-3 py-2 text-left text-slate-400">Required</th><th class="px-3 py-2 text-left text-slate-400">Description</th></tr></thead><tbody><!--[--><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">projectPath</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">Absolute path to the project directory</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-violet-300">targetFile</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">Relative path for the generated output file</td></tr><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">instruction</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">Natural language prompt for the LLM</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-violet-300">contextFiles</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">List of files to include as context</td></tr><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">modelId</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">Constrain to a specific model</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-violet-300">providerHint</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">Prefer a specific provider by name</td></tr><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">command</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">Task type: plan, execute, or auto (default: auto)</td></tr><!--]--></tbody></table></div></div><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Response <span class="text-emerald-400 normal-case font-normal">201 Created</span></p><div class="relative group"><pre class="!mt-0"><code class="language-json">{
-  "id": "a1b2c3d4-e5f6-...",
-  "projectPath": "/path/to/project",
-  "targetFile": "output.go",
-  "instruction": "Write a function that sorts strings",
-  "status": "QUEUED",
-  "command": "execute",
-  "createdAt": "2025-01-01T00:00:00Z",
-  "updatedAt": "2025-01-01T00:00:00Z"
-}</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></div></div></div><div id="list-tasks" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-blue-500/20 text-blue-300">GET</span><code class="text-sm text-slate-200 font-mono">/api/tasks</code><span class="ml-auto text-xs text-slate-500">List Tasks</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Returns all pending (QUEUED or PROCESSING) tasks.</p><!----><!----><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Response <span class="text-emerald-400 normal-case font-normal">200 OK</span></p><div class="relative group"><pre class="!mt-0"><code class="language-json">[
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>projectPath</code></td>
+<td>Yes</td>
+<td>Absolute path to the project directory</td>
+</tr>
+<tr>
+<td><code>targetFile</code></td>
+<td>Yes</td>
+<td>Relative path for the generated output file</td>
+</tr>
+<tr>
+<td><code>instruction</code></td>
+<td>Yes</td>
+<td>Natural language prompt for the LLM</td>
+</tr>
+<tr>
+<td><code>contextFiles</code></td>
+<td>No</td>
+<td>List of files to include as context</td>
+</tr>
+<tr>
+<td><code>modelId</code></td>
+<td>No</td>
+<td>Constrain to a specific model</td>
+</tr>
+<tr>
+<td><code>providerHint</code></td>
+<td>No</td>
+<td>Prefer a specific provider by name</td>
+</tr>
+<tr>
+<td><code>command</code></td>
+<td>No</td>
+<td>Task type: <code>plan</code>, <code>execute</code>, or <code>auto</code> (default: <code>auto</code>)</td>
+</tr>
+<tr>
+<td><code>providerName</code></td>
+<td>No</td>
+<td>Lock routing to this exact provider</td>
+</tr>
+<tr>
+<td><code>role</code></td>
+<td>No</td>
+<td>Routing tier: <code>architect</code>/<code>techlead</code> prefer frontier providers, <code>coder</code>/<code>tester</code>/<code>linter</code> prefer local ones</td>
+</tr>
+<tr>
+<td><code>priority</code></td>
+<td>No</td>
+<td>1 = high, 2 = medium (default), 3 = low</td>
+</tr>
+<tr>
+<td><code>tags</code></td>
+<td>No</td>
+<td>Free-form labels</td>
+</tr>
+<tr>
+<td><code>agentic</code></td>
+<td>No</td>
+<td>Run as a multi-turn tool loop (see below)</td>
+</tr>
+<tr>
+<td><code>maxAgentTurns</code></td>
+<td>No</td>
+<td>Upper bound on model turns when <code>agentic</code> (default 8, max 25)</td>
+</tr>
+</tbody></table>
+<p><strong>Response:</strong> <code>201 Created</code></p>
+<pre><code class="language-json">{ "task_id": "a1b2c3d4-e5f6-...", "status": "QUEUED" }
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>400</code></td>
+<td>Body is not valid JSON</td>
+</tr>
+<tr>
+<td><code>422</code></td>
+<td><code>command</code> is <code>execute</code> but the project has no completed <code>plan</code> task</td>
+</tr>
+<tr>
+<td><code>429</code></td>
+<td>The queue is full (<code>queueCap</code>). Transient: honour the <code>Retry-After</code> header and retry later</td>
+</tr>
+</tbody></table>
+<h4 id="agentic-tasks">Agentic tasks</h4>
+<p>With <code>"agentic": true</code> the model no longer answers once and has the answer written to
+<code>targetFile</code>. Instead it works over several turns, replying each time with fenced
+<code>```nexus-tool</code> blocks holding one JSON call each, and the daemon answers with the results:</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Arguments</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>read_file</code></td>
+<td><code>path</code></td>
+<td>Returns the file (truncated to 16 KiB)</td>
+</tr>
+<tr>
+<td><code>write_file</code></td>
+<td><code>path</code>, <code>content</code></td>
+<td>Creates or replaces a whole file</td>
+</tr>
+<tr>
+<td><code>edit_file</code></td>
+<td><code>path</code>, <code>old</code>, <code>new</code></td>
+<td>Replaces the single exact occurrence of <code>old</code>; refused when <code>old</code> is missing or occurs more than once</td>
+</tr>
+<tr>
+<td><code>verify</code></td>
+<td>none</td>
+<td>Runs the task's <code>verificationCommand</code></td>
+</tr>
+<tr>
+<td><code>finish</code></td>
+<td><code>summary</code></td>
+<td>Ends the task; refused while the verification command still fails</td>
+</tr>
+</tbody></table>
+<p>Safety: all file access is confined to <code>projectPath</code> (absolute paths, <code>..</code> and symlinks
+that leave the project are rejected, and the model is told so). There is no tool that runs
+an arbitrary command; only the <code>verificationCommand</code> the task was submitted with can run.
+At most 8 calls of one reply are executed, the loop stops after <code>maxAgentTurns</code> turns
+(status <code>FAILED</code>), the transcript must fit the provider's context window (otherwise
+<code>TOO_LARGE</code>, or the next provider in the chain is used), and <code>DELETE /api/tasks/{id}</code>
+aborts a turn that is in flight. A task re-queued by a daemon restart starts again from
+the first turn; files already written remain.</p>
+<hr>
+<h3 id="list-tasks">List Tasks</h3>
+<pre><code>GET /api/tasks
+</code></pre>
+<p>Returns all pending (QUEUED or PROCESSING) tasks.</p>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">[
   {
     "id": "...",
     "status": "QUEUED",
-    "instruction": "..."
+    ...
   }
-]</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></div></div></div><div id="list-all-tasks" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-blue-500/20 text-blue-300">GET</span><code class="text-sm text-slate-200 font-mono">/api/tasks/all</code><span class="ml-auto text-xs text-slate-500">List All Tasks</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">List every task including drafts and cancelled (QUEUED, PROCESSING, DRAFT, BACKLOG, COMPLETED, FAILED, CANCELLED).</p><!----><!----><!----></div></div><div id="get-task" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-blue-500/20 text-blue-300">GET</span><code class="text-sm text-slate-200 font-mono">/api/tasks/{id}</code><span class="ml-auto text-xs text-slate-500">Get Task</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Retrieve a single task by ID.</p><!----><!----><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Response <span class="text-emerald-400 normal-case font-normal">200 OK</span></p><div class="relative group"><pre class="!mt-0"><code class="language-json">{
+]
+</code></pre>
+<hr>
+<h3 id="get-task">Get Task</h3>
+<pre><code>GET /api/tasks/{id}
+</code></pre>
+<p>Retrieve a single task by ID.</p>
+<p><strong>Response:</strong> <code>200 OK</code> or <code>404 Not Found</code></p>
+<pre><code class="language-json">{
   "id": "a1b2c3d4-...",
   "status": "COMPLETED",
   "logs": "generated code output..."
-}</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></div></div></div><div id="cancel-task" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-red-500/20 text-red-300">DELETE</span><code class="text-sm text-slate-200 font-mono">/api/tasks/{id}</code><span class="ml-auto text-xs text-slate-500">Cancel Task</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Cancel a queued task before it is processed. Returns 204 No Content on success, 404 Not Found if task doesn't exist or already processed.</p><!----><!----><!----></div></div><div id="update-task" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-slate-500/20 text-slate-300">PUT</span><code class="text-sm text-slate-200 font-mono">/api/tasks/{id}</code><span class="ml-auto text-xs text-slate-500">Update Task</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Update task title, description, or priority.</p><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Request Body </p><div class="relative group"><pre class="!mt-0"><code class="language-json">{
-  "instruction": "Updated instruction text",
-  "priority": 1
-}</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></div><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Fields </p><div class="overflow-x-auto rounded-lg border border-white/5"><table class="w-full text-xs"><thead><tr class="bg-[#111118]"><th class="px-3 py-2 text-left text-slate-400">Field</th><th class="px-3 py-2 text-left text-slate-400">Required</th><th class="px-3 py-2 text-left text-slate-400">Description</th></tr></thead><tbody><!--[--><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">instruction</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">Updated instruction</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-violet-300">priority</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">Priority: 1=high, 2=medium, 3=low</td></tr><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">providerName</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">Updated provider name</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-violet-300">modelId</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">Updated model ID</td></tr><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">tags</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">Updated tags array</td></tr><!--]--></tbody></table></div></div><!----></div></div><div id="promote-task" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-emerald-500/20 text-emerald-300">POST</span><code class="text-sm text-slate-200 font-mono">/api/tasks/{id}/promote</code><span class="ml-auto text-xs text-slate-500">Promote Task</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Promote a backlog draft task into the active execution queue.</p><!----><!----><!----></div></div><div id="claim-task" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-emerald-500/20 text-emerald-300">POST</span><code class="text-sm text-slate-200 font-mono">/api/tasks/{id}/claim</code><span class="ml-auto text-xs text-slate-500">Claim Task</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Claim a QUEUED task for execution by an AI session, transitioning it to PROCESSING.</p><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Request Body </p><div class="relative group"><pre class="!mt-0"><code class="language-json">{
-  "sessionId": "session-uuid"
-}</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></div><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Fields </p><div class="overflow-x-auto rounded-lg border border-white/5"><table class="w-full text-xs"><thead><tr class="bg-[#111118]"><th class="px-3 py-2 text-left text-slate-400">Field</th><th class="px-3 py-2 text-left text-slate-400">Required</th><th class="px-3 py-2 text-left text-slate-400">Description</th></tr></thead><tbody><!--[--><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">sessionId</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">ID of the AI session claiming the task</td></tr><!--]--></tbody></table></div></div><!----></div></div><div id="update-task-status" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-slate-500/20 text-slate-300">PUT</span><code class="text-sm text-slate-200 font-mono">/api/tasks/{id}/status</code><span class="ml-auto text-xs text-slate-500">Update Task Status</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Report task completion or failure from the executing AI session. Only the session that claimed the task may update it.</p><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Request Body </p><div class="relative group"><pre class="!mt-0"><code class="language-json">{
-  "status": "completed",
-  "result": "Task output...",
-  "sessionId": "session-uuid"
-}</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></div><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Fields </p><div class="overflow-x-auto rounded-lg border border-white/5"><table class="w-full text-xs"><thead><tr class="bg-[#111118]"><th class="px-3 py-2 text-left text-slate-400">Field</th><th class="px-3 py-2 text-left text-slate-400">Required</th><th class="px-3 py-2 text-left text-slate-400">Description</th></tr></thead><tbody><!--[--><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">status</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">New status: in_progress | completed | failed</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-violet-300">result</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">Output or log message</td></tr><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">sessionId</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">ID of the AI session that claimed the task</td></tr><!--]--></tbody></table></div></div><!----></div></div><div id="create-draft" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-emerald-500/20 text-emerald-300">POST</span><code class="text-sm text-slate-200 font-mono">/api/tasks/draft</code><span class="ml-auto text-xs text-slate-500">Create Draft</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Create a backlog draft idea for a project without entering the execution queue.</p><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Request Body </p><div class="relative group"><pre class="!mt-0"><code class="language-json">{
-  "projectPath": "/path/to/project",
-  "instruction": "What the task should do",
-  "priority": 2
-}</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></div><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Fields </p><div class="overflow-x-auto rounded-lg border border-white/5"><table class="w-full text-xs"><thead><tr class="bg-[#111118]"><th class="px-3 py-2 text-left text-slate-400">Field</th><th class="px-3 py-2 text-left text-slate-400">Required</th><th class="px-3 py-2 text-left text-slate-400">Description</th></tr></thead><tbody><!--[--><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">projectPath</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">Absolute path to the project</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-violet-300">instruction</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">What the task should do</td></tr><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">targetFile</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">File to write output to</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-violet-300">providerName</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">Preferred provider name</td></tr><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">modelId</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">Preferred model ID</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-violet-300">priority</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">Priority 1=high, 2=medium, 3=low (default 2)</td></tr><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">tags</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">Labels array</td></tr><!--]--></tbody></table></div></div><!----></div></div><div id="list-backlog" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-blue-500/20 text-blue-300">GET</span><code class="text-sm text-slate-200 font-mono">/api/tasks/backlog</code><span class="ml-auto text-xs text-slate-500">List Backlog</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">List all backlog drafts for a project, ordered by priority.</p><!----><!----><!----></div></div><div id="brain-ingest" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-emerald-500/20 text-emerald-300">POST</span><code class="text-sm text-slate-200 font-mono">/api/brain/ingest</code><span class="ml-auto text-xs text-slate-500">Ingest Knowledge</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Parse and ingest a markdown file (e.g. CLAUDE.md) into the project knowledge repository.</p><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Request Body </p><div class="relative group"><pre class="!mt-0"><code class="language-json">{
-  "projectPath": "/your/project",
-  "filePath": "/your/project/CLAUDE.md"
-}</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></div><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Fields </p><div class="overflow-x-auto rounded-lg border border-white/5"><table class="w-full text-xs"><thead><tr class="bg-[#111118]"><th class="px-3 py-2 text-left text-slate-400">Field</th><th class="px-3 py-2 text-left text-slate-400">Required</th><th class="px-3 py-2 text-left text-slate-400">Description</th></tr></thead><tbody><!--[--><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">projectPath</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">Absolute path to the project root</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-violet-300">filePath</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">Path to the markdown file to ingest</td></tr><!--]--></tbody></table></div></div><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Response <span class="text-emerald-400 normal-case font-normal">200 OK</span></p><div class="relative group"><pre class="!mt-0"><code class="language-json">{"ingested": 12, "projectPath": "/your/project"}</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></div></div></div><div id="brain-status" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-blue-500/20 text-blue-300">GET</span><code class="text-sm text-slate-200 font-mono">/api/brain/status</code><span class="ml-auto text-xs text-slate-500">Brain Status</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Get the knowledge repository status for a project (entry count, last ingested, etc.).</p><!----><!----><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Response <span class="text-emerald-400 normal-case font-normal">200 OK</span></p><div class="relative group"><pre class="!mt-0"><code class="language-json">{"projectPath": "/your/project", "entryCount": 42, "lastIngested": "2025-01-01T00:00:00Z"}</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></div></div></div><div id="brain-context" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-emerald-500/20 text-emerald-300">POST</span><code class="text-sm text-slate-200 font-mono">/api/brain/context</code><span class="ml-auto text-xs text-slate-500">Get Project Context</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Get macro context for a project (Architectures, Conventions, File Maps) bounded by a token budget.</p><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Request Body </p><div class="relative group"><pre class="!mt-0"><code class="language-json">{
-  "projectPath": "/your/project",
-  "maxTokens": 800
-}</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></div><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Fields </p><div class="overflow-x-auto rounded-lg border border-white/5"><table class="w-full text-xs"><thead><tr class="bg-[#111118]"><th class="px-3 py-2 text-left text-slate-400">Field</th><th class="px-3 py-2 text-left text-slate-400">Required</th><th class="px-3 py-2 text-left text-slate-400">Description</th></tr></thead><tbody><!--[--><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">projectPath</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">Absolute path to the project root</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-violet-300">maxTokens</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">Maximum tokens to return (default: 400)</td></tr><!--]--></tbody></table></div></div><!----></div></div><div id="brain-focused-context" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-emerald-500/20 text-emerald-300">POST</span><code class="text-sm text-slate-200 font-mono">/api/brain/focused-context</code><span class="ml-auto text-xs text-slate-500">Get Focused Context</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Get task-specific micro context (Learning, Definitions, Gotchas) based on a semantic query.</p><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Request Body </p><div class="relative group"><pre class="!mt-0"><code class="language-json">{
-  "projectPath": "/your/project",
-  "question": "How does authentication work?",
-  "maxTokens": 400
-}</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></div><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Fields </p><div class="overflow-x-auto rounded-lg border border-white/5"><table class="w-full text-xs"><thead><tr class="bg-[#111118]"><th class="px-3 py-2 text-left text-slate-400">Field</th><th class="px-3 py-2 text-left text-slate-400">Required</th><th class="px-3 py-2 text-left text-slate-400">Description</th></tr></thead><tbody><!--[--><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">projectPath</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">Absolute path to the project root</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-violet-300">question</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">Semantic search query to match against knowledge</td></tr><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">maxTokens</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">Maximum tokens to return (default: 400)</td></tr><!--]--></tbody></table></div></div><!----></div></div><div id="brain-search" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-blue-500/20 text-blue-300">GET</span><code class="text-sm text-slate-200 font-mono">/api/brain/search</code><span class="ml-auto text-xs text-slate-500">Search Knowledge</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Full-text search across the project's knowledge base.</p><!----><!----><!----></div></div><div id="brain-init" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-emerald-500/20 text-emerald-300">POST</span><code class="text-sm text-slate-200 font-mono">/api/brain/init</code><span class="ml-auto text-xs text-slate-500">Brain Init</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Auto-ingest CLAUDE.md and initialize a project's knowledge base in one step.</p><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Request Body </p><div class="relative group"><pre class="!mt-0"><code class="language-json">{
-  "projectPath": "/your/project"
-}</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></div><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Fields </p><div class="overflow-x-auto rounded-lg border border-white/5"><table class="w-full text-xs"><thead><tr class="bg-[#111118]"><th class="px-3 py-2 text-left text-slate-400">Field</th><th class="px-3 py-2 text-left text-slate-400">Required</th><th class="px-3 py-2 text-left text-slate-400">Description</th></tr></thead><tbody><!--[--><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">projectPath</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">Absolute path to the project root</td></tr><!--]--></tbody></table></div></div><!----></div></div><div id="brain-knowledge-list" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-blue-500/20 text-blue-300">GET</span><code class="text-sm text-slate-200 font-mono">/api/brain/knowledge</code><span class="ml-auto text-xs text-slate-500">List Knowledge</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">List all knowledge entries for a project, optionally filtered by kind.</p><!----><!----><!----></div></div><div id="brain-knowledge-delete" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-red-500/20 text-red-300">DELETE</span><code class="text-sm text-slate-200 font-mono">/api/brain/knowledge/{id}</code><span class="ml-auto text-xs text-slate-500">Delete Knowledge Entry</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Delete a knowledge entry by ID.</p><!----><!----><!----></div></div><div id="brain-file-map" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-blue-500/20 text-blue-300">GET</span><code class="text-sm text-slate-200 font-mono">/api/brain/file-map</code><span class="ml-auto text-xs text-slate-500">Get File Map</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Get file path map for a project.</p><!----><!----><!----></div></div><div id="list-providers" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-blue-500/20 text-blue-300">GET</span><code class="text-sm text-slate-200 font-mono">/api/providers</code><span class="ml-auto text-xs text-slate-500">List Providers</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Returns all registered LLM providers with their liveness status.</p><!----><!----><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Response <span class="text-emerald-400 normal-case font-normal">200 OK</span></p><div class="relative group"><pre class="!mt-0"><code class="language-json">[
+}
+</code></pre>
+<hr>
+<h3 id="cancel-task">Cancel Task</h3>
+<pre><code>DELETE /api/tasks/{id}
+</code></pre>
+<p>Cancel a task. Which states can be cancelled:</p>
+<table>
+<thead>
+<tr>
+<th>Task status</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>QUEUED</code>, <code>DRAFT</code>, <code>BACKLOG</code>, <code>NO_PROVIDER</code></td>
+<td>Moved to <code>CANCELLED</code> immediately.</td>
+</tr>
+<tr>
+<td><code>PROCESSING</code> (running in this daemon)</td>
+<td>The in-flight provider request is <strong>aborted</strong>; the task becomes <code>CANCELLED</code> a moment later (watch the <code>task.cancelled</code> event). It is not retried and does not fall back to another provider.</td>
+</tr>
+<tr>
+<td><code>PROCESSING</code> (claimed by an external agent)</td>
+<td>Taken off the board as <code>CANCELLED</code>; the external agent cannot be interrupted.</td>
+</tr>
+<tr>
+<td><code>COMPLETED</code>, <code>FAILED</code>, <code>CANCELLED</code>, <code>TOO_LARGE</code></td>
+<td>Not cancellable.</td>
+</tr>
+</tbody></table>
+<p>When the daemon shuts down, a task that was running goes back to <code>QUEUED</code> (it is not marked failed).</p>
+<p><strong>Response:</strong> <code>204 No Content</code> on success, <code>404 Not Found</code> if the task doesn't exist, <code>409 Conflict</code> if its status cannot be cancelled.</p>
+<hr>
+<h3 id="list-providers">List Providers</h3>
+<pre><code>GET /api/providers
+</code></pre>
+<p>Returns all registered LLM providers with their liveness status.</p>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">[
   {
     "name": "LM Studio",
     "active": true,
@@ -71,21 +266,877 @@
     "name": "Ollama",
     "active": false
   }
-]</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></div></div></div><div id="register-provider" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-emerald-500/20 text-emerald-300">POST</span><code class="text-sm text-slate-200 font-mono">/api/providers</code><span class="ml-auto text-xs text-slate-500">Register Provider</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Dynamically register a new cloud LLM provider.</p><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Request Body </p><div class="relative group"><pre class="!mt-0"><code class="language-json">{
+]
+</code></pre>
+<hr>
+<h3 id="register-provider">Register Provider</h3>
+<pre><code>POST /api/providers
+</code></pre>
+<p>Dynamically register a new cloud LLM provider.</p>
+<p><strong>Request Body:</strong></p>
+<pre><code class="language-json">{
   "name": "My OpenAI",
   "kind": "openai-compat",
   "baseURL": "https://api.openai.com/v1",
   "apiKey": "sk-...",
   "model": "gpt-4o-mini"
-}</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></div><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Fields </p><div class="overflow-x-auto rounded-lg border border-white/5"><table class="w-full text-xs"><thead><tr class="bg-[#111118]"><th class="px-3 py-2 text-left text-slate-400">Field</th><th class="px-3 py-2 text-left text-slate-400">Required</th><th class="px-3 py-2 text-left text-slate-400">Description</th></tr></thead><tbody><!--[--><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">name</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">Display name for the provider</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-violet-300">kind</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">Provider type: lmstudio, ollama, openai-compat, anthropic</td></tr><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">baseURL</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">API endpoint URL</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-violet-300">apiKey</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">Required for cloud providers</td></tr><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">model</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">Default model to use</td></tr><!--]--></tbody></table></div></div><!----></div></div><div id="remove-provider" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-red-500/20 text-red-300">DELETE</span><code class="text-sm text-slate-200 font-mono">/api/providers/{name}</code><span class="ml-auto text-xs text-slate-500">Remove Provider</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Deregister a provider by name.</p><!----><!----><!----></div></div><div id="list-provider-configs" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-blue-500/20 text-blue-300">GET</span><code class="text-sm text-slate-200 font-mono">/api/providers/config</code><span class="ml-auto text-xs text-slate-500">List Provider Configs</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">List all persisted LLM provider configuration records.</p><!----><!----><!----></div></div><div id="add-provider-config" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-emerald-500/20 text-emerald-300">POST</span><code class="text-sm text-slate-200 font-mono">/api/providers/config</code><span class="ml-auto text-xs text-slate-500">Add Provider Config</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Persist a provider configuration with API-key masking.</p><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Request Body </p><div class="relative group"><pre class="!mt-0"><code class="language-json">{
-  "kind": "anthropic",
-  "name": "My Claude",
-  "base_url": "https://api.anthropic.com/v1",
-  "api_key": "sk-ant-...",
-  "enabled": true
-}</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></div><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Fields </p><div class="overflow-x-auto rounded-lg border border-white/5"><table class="w-full text-xs"><thead><tr class="bg-[#111118]"><th class="px-3 py-2 text-left text-slate-400">Field</th><th class="px-3 py-2 text-left text-slate-400">Required</th><th class="px-3 py-2 text-left text-slate-400">Description</th></tr></thead><tbody><!--[--><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">kind</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">Provider kind: lmstudio, ollama, openai, anthropic</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-violet-300">name</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">Display name for the provider</td></tr><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">base_url</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">API base URL</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-violet-300">api_key</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">API key if required</td></tr><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">enabled</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">Whether to activate the provider immediately</td></tr><!--]--></tbody></table></div></div><!----></div></div><div id="update-provider-config" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-slate-500/20 text-slate-300">PUT</span><code class="text-sm text-slate-200 font-mono">/api/providers/config/{id}</code><span class="ml-auto text-xs text-slate-500">Update Provider Config</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Update an existing persisted provider configuration by ID.</p><!----><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Fields </p><div class="overflow-x-auto rounded-lg border border-white/5"><table class="w-full text-xs"><thead><tr class="bg-[#111118]"><th class="px-3 py-2 text-left text-slate-400">Field</th><th class="px-3 py-2 text-left text-slate-400">Required</th><th class="px-3 py-2 text-left text-slate-400">Description</th></tr></thead><tbody><!--[--><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">id</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">Provider config ID to update</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-violet-300">kind</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">Provider kind</td></tr><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">name</td><td class="px-3 py-2"><span class="text-emerald-400">Yes</span></td><td class="px-3 py-2 text-slate-400">Display name</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-violet-300">base_url</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">API base URL</td></tr><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-violet-300">api_key</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">API key</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-violet-300">enabled</td><td class="px-3 py-2"><span class="text-slate-500">No</span></td><td class="px-3 py-2 text-slate-400">Whether the provider is active</td></tr><!--]--></tbody></table></div></div><!----></div></div><div id="remove-provider-config" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-red-500/20 text-red-300">DELETE</span><code class="text-sm text-slate-200 font-mono">/api/providers/config/{id}</code><span class="ml-auto text-xs text-slate-500">Remove Provider Config</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Delete a persisted provider configuration and deregister its adapter.</p><!----><!----><!----></div></div><div id="health" class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3 flex-wrap"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-blue-500/20 text-blue-300">GET</span><code class="text-sm text-slate-200 font-mono">/api/health</code><span class="ml-auto text-xs text-slate-500">Health Check</span></div><div class="p-5 space-y-4"><p class="text-sm text-slate-400">Returns daemon health status.</p><!----><!----><div><p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2"> Response <span class="text-emerald-400 normal-case font-normal">200 OK</span></p><div class="relative group"><pre class="!mt-0"><code class="language-json">{"status": "ok"}</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></div></div></div><!--]--></div></section><section id="sse-events" class="reveal"><h2 class="text-2xl font-black mb-4 flex items-center gap-2"><span class="text-violet-400">#</span> SSE Event Stream </h2><div class="rounded-xl border border-white/8 bg-[#0d0d14] overflow-hidden mb-4"><div class="px-4 py-3 bg-[#14141f] border-b border-white/5 flex items-center gap-3"><span class="px-2 py-0.5 rounded text-xs font-bold font-mono bg-blue-500/20 text-blue-300">GET</span><code class="text-sm text-slate-200 font-mono">/api/events</code></div><div class="p-5"><p class="text-sm text-slate-400 mb-4"> Server-Sent Events stream for real-time task lifecycle updates. </p><div class="overflow-x-auto rounded-lg border border-white/5 mb-4"><table class="w-full text-xs"><thead><tr class="bg-[#111118]"><th class="px-3 py-2 text-left text-slate-400">Event</th><th class="px-3 py-2 text-left text-slate-400">Description</th></tr></thead><tbody><!--[--><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-cyan-400">task.queued</td><td class="px-3 py-2 text-slate-400">Task was added to the queue</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-cyan-400">task.processing</td><td class="px-3 py-2 text-slate-400">Task is being processed by an LLM</td></tr><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-cyan-400">task.completed</td><td class="px-3 py-2 text-slate-400">Task completed successfully</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-cyan-400">task.failed</td><td class="px-3 py-2 text-slate-400">Task processing failed</td></tr><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-cyan-400">task.cancelled</td><td class="px-3 py-2 text-slate-400">Task was cancelled</td></tr><tr class="bg-[#0d0d14]"><td class="px-3 py-2 font-mono text-cyan-400">task.too_large</td><td class="px-3 py-2 text-slate-400">Task exceeded context window</td></tr><tr class="bg-[#0a0a10]"><td class="px-3 py-2 font-mono text-cyan-400">task.no_provider</td><td class="px-3 py-2 text-slate-400">No provider available for the task</td></tr><!--]--></tbody></table></div><p class="text-xs text-slate-500 mb-2">Event Format:</p><div class="relative group"><pre class="!mt-0"><code class="language-text">event: task.completed
-data: {"type":"task.completed","taskId":"abc-123","status":"COMPLETED"}</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></div></div></section><section id="mcp-server" class="reveal"><h2 class="text-2xl font-black mb-4 flex items-center gap-2"><span class="text-violet-400">#</span> MCP Server </h2><div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6"><!--[--><div class="rounded-lg border border-white/8 bg-[#0d0d14] p-3 text-center"><div class="text-xs text-slate-500 mb-1">Standard</div><div class="font-mono text-xs text-violet-300 font-bold">JSON-RPC 2.0</div></div><div class="rounded-lg border border-white/8 bg-[#0d0d14] p-3 text-center"><div class="text-xs text-slate-500 mb-1">Version</div><div class="font-mono text-xs text-violet-300 font-bold">2024-11-05</div></div><div class="rounded-lg border border-white/8 bg-[#0d0d14] p-3 text-center"><div class="text-xs text-slate-500 mb-1">Endpoint</div><div class="font-mono text-xs text-violet-300 font-bold">POST /mcp</div></div><div class="rounded-lg border border-white/8 bg-[#0d0d14] p-3 text-center"><div class="text-xs text-slate-500 mb-1">Default Port</div><div class="font-mono text-xs text-violet-300 font-bold">63988</div></div><!--]--></div><h3 class="text-lg font-bold mb-3 text-slate-200">Available Tools</h3><div class="overflow-x-auto rounded-xl border border-white/8 mb-6"><table class="w-full text-sm"><thead><tr class="bg-[#0d0d14]"><th class="px-4 py-3 text-left text-slate-400">Tool</th><th class="px-4 py-3 text-left text-slate-400">Description</th><th class="px-4 py-3 text-left text-slate-400">Parameters</th></tr></thead><tbody><!--[--><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">submit_task</td><td class="px-4 py-2.5 text-slate-400 text-xs">Submit a new code-generation task to the orchestrator</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">projectPath, targetFile, instruction, contextFiles?, command?</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">get_task</td><td class="px-4 py-2.5 text-slate-400 text-xs">Get the current status and output of a task by ID</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">id</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">get_queue</td><td class="px-4 py-2.5 text-slate-400 text-xs">List all tasks currently in the queue</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">—</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">get_all_tasks</td><td class="px-4 py-2.5 text-slate-400 text-xs">Return every task regardless of status</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">—</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">cancel_task</td><td class="px-4 py-2.5 text-slate-400 text-xs">Cancel a pending task by ID</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">id</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">update_task</td><td class="px-4 py-2.5 text-slate-400 text-xs">Update mutable fields on an existing task</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">id, instruction?, priority?, providerName?, modelId?, tags?</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">create_draft</td><td class="px-4 py-2.5 text-slate-400 text-xs">Create a draft idea without entering the execution queue</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">projectPath, instruction, targetFile?, providerName?, modelId?, priority?, tags?</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">get_backlog</td><td class="px-4 py-2.5 text-slate-400 text-xs">List draft and backlog items for a project, ordered by priority</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">projectPath</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">promote_task</td><td class="px-4 py-2.5 text-slate-400 text-xs">Promote a draft or backlog task to the execution queue</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">id</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">claim_task</td><td class="px-4 py-2.5 text-slate-400 text-xs">Claim a QUEUED task for execution by the specified AI session</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">task_id, session_id</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">update_task_status</td><td class="px-4 py-2.5 text-slate-400 text-xs">Report task completion or failure from the executing AI session</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">task_id, session_id, status, logs?</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">heartbeat_task</td><td class="px-4 py-2.5 text-slate-400 text-xs">Keep a PROCESSING task alive — prevents watchdog from marking it failed</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">task_id, session_id</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">terminate_ai_session</td><td class="px-4 py-2.5 text-slate-400 text-xs">Terminate an external AI agent session (SIGTERM or SIGKILL)</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">session_id, force?</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">register_session</td><td class="px-4 py-2.5 text-slate-400 text-xs">Announce this AI agent session for visualisation and orchestration</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">agent_name, project_path?, external_id?</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">get_ai_sessions</td><td class="px-4 py-2.5 text-slate-400 text-xs">Return all known external AI agent sessions registered with this instance</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">—</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">deregister_ai_session</td><td class="px-4 py-2.5 text-slate-400 text-xs">Soft-disconnect an AI agent session without killing the process</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">session_id</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">heartbeat_ai_session</td><td class="px-4 py-2.5 text-slate-400 text-xs">Refresh the last-activity timestamp of an AI session to keep it alive</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">session_id</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">purge_disconnected_sessions</td><td class="px-4 py-2.5 text-slate-400 text-xs">Delete all disconnected AI sessions inactive for more than 2 hours</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">—</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">get_providers</td><td class="px-4 py-2.5 text-slate-400 text-xs">List available LLM providers and their models</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">—</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">discover_providers</td><td class="px-4 py-2.5 text-slate-400 text-xs">Scan the local system for installed AI providers/agents</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">—</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">promote_provider</td><td class="px-4 py-2.5 text-slate-400 text-xs">Promote a discovered provider to an active LLM backend</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">id</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">list_provider_configs</td><td class="px-4 py-2.5 text-slate-400 text-xs">List all persisted LLM provider configuration records</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">—</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">add_provider_config</td><td class="px-4 py-2.5 text-slate-400 text-xs">Add a new LLM provider configuration and register it when enabled=true</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">kind, name, base_url?, api_key?, enabled?</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">update_provider_config</td><td class="px-4 py-2.5 text-slate-400 text-xs">Update an existing LLM provider configuration by ID</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">id, kind, name, base_url?, api_key?, enabled?</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">remove_provider_config</td><td class="px-4 py-2.5 text-slate-400 text-xs">Delete a persisted provider configuration and deregister its adapter</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">id</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">get_brain_status</td><td class="px-4 py-2.5 text-slate-400 text-xs">Check the knowledge repository status for a project</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">projectPath</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">ingest_knowledge</td><td class="px-4 py-2.5 text-slate-400 text-xs">Parse and ingest a markdown file (e.g. CLAUDE.md) into the project knowledge repository</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">projectPath, filePath</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">get_project_context</td><td class="px-4 py-2.5 text-slate-400 text-xs">Get macro context (Architectures, Conventions, File Maps) bounded by a token budget</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">projectPath, maxTokens?</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">get_focused_context</td><td class="px-4 py-2.5 text-slate-400 text-xs">Get task-specific micro context (Learning, Definitions, Gotchas) bounded by a token budget</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">projectPath, question, maxTokens?</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">search_knowledge</td><td class="px-4 py-2.5 text-slate-400 text-xs">Perform full-text search across the project's knowledge base</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">projectPath, query, limit?</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">init_project</td><td class="px-4 py-2.5 text-slate-400 text-xs">Auto-ingest CLAUDE.md and initialize a project's knowledge base in one step</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">projectPath</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">list_knowledge</td><td class="px-4 py-2.5 text-slate-400 text-xs">List all knowledge documents stored for a project, optionally filtered by kind</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">projectPath, kind?</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">delete_knowledge</td><td class="px-4 py-2.5 text-slate-400 text-xs">Delete a knowledge document by ID from the project repository</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">projectPath, id</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">get_file_map</td><td class="px-4 py-2.5 text-slate-400 text-xs">Retrieve the cached or structured file map knowledge document for a project</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">projectPath</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">get_discovered_agents</td><td class="px-4 py-2.5 text-slate-400 text-xs">Return AI agent tools detected on the local system (Claude CLI, VS Code Copilot, etc.)</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">—</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">delegate_to_nexus</td><td class="px-4 py-2.5 text-slate-400 text-xs">Delegate an AI agent session to the nexus task queue</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">session_id</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">get_discovered_plans</td><td class="px-4 py-2.5 text-slate-400 text-xs">Scan for plan/task/orchestration files in a project directory</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">projectPath?</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">howto</td><td class="px-4 py-2.5 text-slate-400 text-xs">Return a complete integration guide — tools, workflow patterns, and HTTP endpoint reference</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">—</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">howto_brief</td><td class="px-4 py-2.5 text-slate-400 text-xs">Get the ultra-compact integration guide (~200 tokens), recommended for small-context models</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">—</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">health</td><td class="px-4 py-2.5 text-slate-400 text-xs">Check that the nexusOrchestrator daemon is reachable</td><td class="px-4 py-2.5 font-mono text-cyan-400 text-xs">—</td></tr><!--]--></tbody></table></div><h3 class="text-lg font-bold mb-3 text-slate-200">Example: Submit Task via MCP</h3><div class="relative group"><pre class="!mt-0"><code class="language-json">// Request
-{
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>name</code></td>
+<td>Yes</td>
+<td>Display name for the provider</td>
+</tr>
+<tr>
+<td><code>kind</code></td>
+<td>Yes</td>
+<td>Provider type: <code>lmstudio</code>, <code>ollama</code>, <code>openai-compat</code>, <code>anthropic</code></td>
+</tr>
+<tr>
+<td><code>baseURL</code></td>
+<td>Yes</td>
+<td>API endpoint URL</td>
+</tr>
+<tr>
+<td><code>apiKey</code></td>
+<td>Depends</td>
+<td>Required for cloud providers</td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td>No</td>
+<td>Default model to use</td>
+</tr>
+</tbody></table>
+<p><strong>Response:</strong> <code>201 Created</code></p>
+<hr>
+<h3 id="remove-provider">Remove Provider</h3>
+<pre><code>DELETE /api/providers/{name}
+</code></pre>
+<p>Deregister a provider by name.</p>
+<p><strong>Response:</strong> <code>204 No Content</code> or <code>404 Not Found</code></p>
+<hr>
+<h3 id="get-provider-models">Get Provider Models</h3>
+<pre><code>GET /api/providers/{name}/models
+</code></pre>
+<p>List available models from a specific provider.</p>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">["codellama", "deepseek-coder", "llama3"]
+</code></pre>
+<hr>
+<h3 id="sse-event-stream">SSE Event Stream</h3>
+<pre><code>GET /api/events
+</code></pre>
+<p>Server-Sent Events stream for real-time updates. Every frame is a plain <code>data:</code> line carrying a JSON object
+whose <code>type</code> field says what happened (there is no SSE <code>event:</code> field, except for <code>log</code> frames, see below).
+The first frame is <code>{"type":"connected"}</code>.</p>
+<p><strong>Task events</strong> (<code>{"type": "...", "taskId": "...", "status": "..."}</code>):</p>
+<table>
+<thead>
+<tr>
+<th><code>type</code></th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>task.queued</code></td>
+<td>Task was added to the queue</td>
+</tr>
+<tr>
+<td><code>task.processing</code></td>
+<td>Task is being processed by an LLM</td>
+</tr>
+<tr>
+<td><code>task.completed</code></td>
+<td>Task completed successfully</td>
+</tr>
+<tr>
+<td><code>task.failed</code></td>
+<td>Task processing failed</td>
+</tr>
+<tr>
+<td><code>task.cancelled</code></td>
+<td>Task was cancelled (also after aborting a running one)</td>
+</tr>
+<tr>
+<td><code>task.too_large</code></td>
+<td>Task exceeded the context window</td>
+</tr>
+<tr>
+<td><code>task.no_provider</code></td>
+<td>No provider available for the task</td>
+</tr>
+<tr>
+<td><code>task.draft</code></td>
+<td>A draft was created</td>
+</tr>
+<tr>
+<td><code>task.backlog</code></td>
+<td>A task was moved to the backlog</td>
+</tr>
+<tr>
+<td><code>task.updated</code></td>
+<td>A task's fields were edited</td>
+</tr>
+</tbody></table>
+<p><strong>Other events:</strong></p>
+<table>
+<thead>
+<tr>
+<th><code>type</code></th>
+<th>Payload</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ai_session_changed</code></td>
+<td><code>aiSessionId</code>, <code>status</code>, <code>timestamp</code></td>
+<td>A session registered, heartbeated or went idle</td>
+</tr>
+<tr>
+<td><code>ai_session_terminated</code></td>
+<td><code>aiSessionId</code>, <code>status</code>, <code>timestamp</code></td>
+<td>A session was terminated</td>
+</tr>
+<tr>
+<td><code>ai_activity_new</code></td>
+<td><code>activity</code> (an AI activity record)</td>
+<td>A new agent activity was observed</td>
+</tr>
+<tr>
+<td><code>provider_discovered</code></td>
+<td><code>count</code></td>
+<td>A provider scan finished (refresh your list)</td>
+</tr>
+</tbody></table>
+<p><strong>Log frames</strong> use a named event so they can be told apart:</p>
+<pre><code>event: log
+data: {"timestamp":"2026-01-01T12:00:00Z","level":"info","source":"httpapi","message":"..."}
+</code></pre>
+<p><strong>Frame format:</strong></p>
+<pre><code>data: {"type":"task.completed","taskId":"abc-123","status":"COMPLETED"}
+</code></pre>
+<p>Slow clients are skipped rather than blocking the daemon, so a client that reconnects should re-read the
+state it cares about (for example <code>GET /api/tasks</code>) instead of relying on having seen every frame.</p>
+<hr>
+<h3 id="health-check">Health Check</h3>
+<pre><code>GET /api/health
+</code></pre>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">{ "status": "ok" }
+</code></pre>
+<hr>
+<h3 id="ingest-project-knowledge">Ingest Project Knowledge</h3>
+<pre><code>POST /api/brain/ingest
+</code></pre>
+<p>Parses and ingests a markdown file into the project context brain.</p>
+<p><strong>Request Body:</strong></p>
+<pre><code class="language-json">{
+  "projectPath": "/path/to/project",
+  "filePath": "CLAUDE.md"
+}
+</code></pre>
+<p><code>filePath</code> is resolved relative to <code>projectPath</code> when it is not absolute. Because the daemon reads the file
+on the caller's behalf, the request is confined (the same rules apply to the MCP <code>ingest</code> tool, the CLI, and
+the desktop app):</p>
+<ul>
+<li>the file, <strong>after resolving symlinks</strong>, must be inside <code>projectPath</code> (a symlink that points out is refused);</li>
+<li>it must be a regular file of at most <strong>1 MiB</strong>;</li>
+<li>anything below <code>.ssh</code>, <code>.gnupg</code>, <code>.aws</code>, <code>.kube</code>, <code>.azure</code>, <code>.docker</code> or <code>.git</code>, and files named <code>.env*</code>,
+<code>.netrc</code>, <code>.npmrc</code>, <code>id_rsa</code> or <code>id_ed25519</code> are refused even inside the project;</li>
+<li><code>projectPath</code> must be an existing directory other than the filesystem root;</li>
+<li>to ingest shared templates that live elsewhere, list their directories in <code>NEXUS_INGEST_ALLOWED_DIRS</code>
+(separated like <code>PATH</code>).</li>
+</ul>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">{
+  "ingestedSections": 5
+}
+</code></pre>
+<p><strong>Errors:</strong> <code>403</code> when the path is refused (<code>{"error": "path not allowed: … is outside the project"}</code>), <code>404</code>
+when the file does not exist, <code>400</code> when <code>projectPath</code> or <code>filePath</code> is missing.</p>
+<hr>
+<h3 id="ingest-uploaded-content">Ingest Uploaded Content</h3>
+<pre><code>POST /api/brain/ingest-content
+</code></pre>
+<p>Ingests markdown sent in the request instead of read from disk. This is what the dashboard and the desktop
+app use for "Ingest File…": a browser file has no path the daemon could read, so its content is uploaded.
+Nothing is read from the daemon's filesystem, so no path rules apply; the size limit does.</p>
+<p><strong>Request Body:</strong></p>
+<pre><code class="language-json">{
+  "projectPath": "/path/to/project",
+  "name": "notes.md",
+  "content": "# Notes\n\n## Architecture\n..."
+}
+</code></pre>
+<p><code>name</code> is only a label (stored as the source <code>upload:notes.md</code>; any directory part is dropped). <code>content</code>
+is parsed like a <code>CLAUDE.md</code>: each <code>## </code> section becomes a knowledge entry.</p>
+<p><strong>Response:</strong> <code>200 OK</code> with <code>{"ingestedSections": 3}</code>.</p>
+<p><strong>Errors:</strong> <code>400</code> when <code>projectPath</code> or <code>content</code> is missing, <code>413</code> when <code>content</code> is larger than 1 MiB, <code>501</code>
+when the running brain service cannot ingest uploads.</p>
+<hr>
+<h3 id="get-brain-status">Get Brain Status</h3>
+<pre><code>GET /api/brain/status?projectPath=/path/to/project
+</code></pre>
+<p>Returns the context token size, entry count, and initialization state.</p>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">{
+  "projectPath": "/path/to/project",
+  "initialized": true,
+  "entryCount": 12,
+  "kindCounts": { "feature": 8, "architecture": 4 },
+  "totalTokens": 850
+}
+</code></pre>
+<hr>
+<h3 id="get-project-context">Get Project Context</h3>
+<pre><code>POST /api/brain/context
+</code></pre>
+<p>Aggregates the top-level macro context for LLM system prompts.</p>
+<p><strong>Request Body:</strong></p>
+<pre><code class="language-json">{
+  "projectPath": "/path/to/project",
+  "maxTokens": 400
+}
+</code></pre>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">{
+  "projectPath": "/path/to/project",
+  "sections": [{ "kind": "architecture", "topic": "Layers", "content": "...", "tokens": 120 }],
+  "suggestedFiles": ["internal/core/services/orchestrator.go"],
+  "tokensUsed": 380,
+  "tokenBudget": 400,
+  "truncated": false
+}
+</code></pre>
+<hr>
+<h3 id="search-knowledge">Search Knowledge</h3>
+<pre><code>GET /api/brain/search?projectPath=/path/to/project&amp;q=auth&amp;limit=5
+</code></pre>
+<p>Performs BM25 search against the SQLite FTS5 index.</p>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">{
+  "results": [
+    { "kind": "architecture", "topic": "Authentication Provider", "content": "...", "tokens": 85 }
+  ]
+}
+</code></pre>
+<p><code>limit</code> is the maximum number of results (default 5).</p>
+<hr>
+<h3 id="get-focused-context">Get Focused Context</h3>
+<pre><code>POST /api/brain/focused-context
+</code></pre>
+<p>Get focused context for a project based on a specific question. Returns context sections most relevant to the question, bounded by a token budget.</p>
+<p><strong>Request Body:</strong></p>
+<pre><code class="language-json">{
+  "projectPath": "/path/to/project",
+  "question": "How does authentication work?",
+  "maxTokens": 400
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>projectPath</code></td>
+<td>Yes</td>
+<td>Absolute path to the project directory</td>
+</tr>
+<tr>
+<td><code>question</code></td>
+<td>Yes</td>
+<td>Question to focus the context retrieval around</td>
+</tr>
+<tr>
+<td><code>maxTokens</code></td>
+<td>No</td>
+<td>Token budget for returned context (default 400)</td>
+</tr>
+</tbody></table>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">{
+  "projectPath": "/path/to/project",
+  "sections": [...],
+  "tokensUsed": 390,
+  "tokenBudget": 400,
+  "truncated": false
+}
+</code></pre>
+<hr>
+<h3 id="initialize-knowledge-base">Initialize Knowledge Base</h3>
+<pre><code>POST /api/brain/init
+</code></pre>
+<p>Auto-ingest CLAUDE.md and initialize a project's knowledge base. Discovers and ingests the project's CLAUDE.md automatically.</p>
+<p><strong>Request Body:</strong></p>
+<pre><code class="language-json">{
+  "projectPath": "/path/to/project",
+  "claudeMDPath": "/path/to/project/CLAUDE.md"
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>projectPath</code></td>
+<td>Yes</td>
+<td>Absolute path to the project directory</td>
+</tr>
+<tr>
+<td><code>claudeMDPath</code></td>
+<td>No</td>
+<td>Explicit path to CLAUDE.md (auto-discovered if omitted)</td>
+</tr>
+</tbody></table>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">{
+  "ingestedSections": 8
+}
+</code></pre>
+<hr>
+<h3 id="list-knowledge-entries">List Knowledge Entries</h3>
+<pre><code>GET /api/brain/knowledge?projectPath=/path/to/project&amp;kind=architecture
+</code></pre>
+<p>List all knowledge entries for a project, with optional filtering by kind.</p>
+<p><strong>Query Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>projectPath</code></td>
+<td>Yes</td>
+<td>Absolute path to the project directory</td>
+</tr>
+<tr>
+<td><code>kind</code></td>
+<td>No</td>
+<td>Filter by knowledge kind (e.g. <code>feature</code>, <code>architecture</code>)</td>
+</tr>
+</tbody></table>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">[
+  {
+    "id": "1",
+    "title": "Hexagonal Architecture",
+    "kind": "architecture",
+    "source": "CLAUDE.md",
+    "tokens": 120
+  }
+]
+</code></pre>
+<hr>
+<h3 id="delete-knowledge-entry">Delete Knowledge Entry</h3>
+<pre><code>DELETE /api/brain/knowledge/{id}
+</code></pre>
+<p>Delete a single knowledge entry by its ID.</p>
+<p><strong>Response:</strong> <code>204 No Content</code> on success, <code>404 Not Found</code> if the entry does not exist.</p>
+<hr>
+<h3 id="get-file-map">Get File Map</h3>
+<pre><code>GET /api/brain/file-map?projectPath=/path/to/project&amp;focusArea=authentication
+</code></pre>
+<p>Get file path map for a project, optionally filtered to a focus area.</p>
+<p><strong>Query Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>projectPath</code></td>
+<td>Yes</td>
+<td>Absolute path to the project directory</td>
+</tr>
+<tr>
+<td><code>focusArea</code></td>
+<td>No</td>
+<td>Narrow the map to files relevant to a focus area</td>
+</tr>
+</tbody></table>
+<p><strong>Response:</strong> <code>200 OK</code></p>
+<pre><code class="language-json">{
+  "projectPath": "/path/to/project",
+  "files": ["internal/auth/handler.go", "internal/auth/service.go"]
+}
+</code></pre>
+<hr>
+<h3 id="backlog-and-planning">Backlog and planning</h3>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>GET /api/tasks/all</code></td>
+<td>Every task, drafts and cancelled ones included. Optional <code>projectPath</code>.</td>
+</tr>
+<tr>
+<td><code>POST /api/tasks/draft</code></td>
+<td>Create a backlog draft that does not enter the execution queue.</td>
+</tr>
+<tr>
+<td><code>GET /api/tasks/backlog?projectPath=</code></td>
+<td>Drafts and backlog items for a project, by priority.</td>
+</tr>
+<tr>
+<td><code>POST /api/tasks/{id}/promote</code></td>
+<td>Move a draft into the active queue.</td>
+</tr>
+<tr>
+<td><code>PUT /api/tasks/{id}</code></td>
+<td>Update a task's instruction, priority, provider, tags or status.</td>
+</tr>
+</tbody></table>
+<h3 id="provider-discovery-and-configuration">Provider discovery and configuration</h3>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>GET /api/providers/discovered</code></td>
+<td>Local and cloud backends found by the last scan.</td>
+</tr>
+<tr>
+<td><code>POST /api/providers/discovered/scan</code></td>
+<td>Run a fresh scan.</td>
+</tr>
+<tr>
+<td><code>POST /api/providers/promote/{id}</code></td>
+<td>Turn a discovered provider into an active backend.</td>
+</tr>
+<tr>
+<td><code>GET /api/providers/config</code></td>
+<td>Stored provider configurations.</td>
+</tr>
+<tr>
+<td><code>POST /api/providers/config</code></td>
+<td>Add a provider configuration (kind <code>lmstudio</code>, <code>ollama</code>, <code>openaicompat</code>, <code>anthropic</code>, <code>gemini</code>, <code>localai</code>, <code>vllm</code> or <code>cli</code>, see <a href="delegating-subscriptions.md">delegating-subscriptions.md</a>).</td>
+</tr>
+<tr>
+<td><code>PUT /api/providers/config/{id}</code></td>
+<td>Update a configuration.</td>
+</tr>
+<tr>
+<td><code>DELETE /api/providers/config/{id}</code></td>
+<td>Remove a configuration.</td>
+</tr>
+</tbody></table>
+<h3 id="task-coordination-for-ai-agents">Task coordination (for AI agents)</h3>
+<p>Agents that pull work from the queue instead of submitting it use these routes.
+Each takes the agent's <code>sessionId</code> (see <em>AI sessions</em> below).</p>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>POST /api/tasks/{id}/claim</code></td>
+<td>Claim a queued task. Body <code>{"sessionId"}</code>. <code>404</code> when the task or session is unknown.</td>
+</tr>
+<tr>
+<td><code>PUT /api/tasks/{id}/status</code></td>
+<td>Report the outcome. Body <code>{"sessionId","status","logs"}</code> where <code>status</code> is <code>COMPLETED</code> or <code>FAILED</code>.</td>
+</tr>
+<tr>
+<td><code>POST /api/tasks/{id}/heartbeat</code></td>
+<td>Keep a claimed task alive. Body <code>{"sessionId"}</code> (<code>session_id</code> is accepted for older clients).</td>
+</tr>
+</tbody></table>
+<h3 id="ai-sessions">AI sessions</h3>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>POST /api/ai-sessions</code></td>
+<td>Register an agent session (name, role, model, project).</td>
+</tr>
+<tr>
+<td><code>GET /api/ai-sessions</code></td>
+<td>List registered sessions.</td>
+</tr>
+<tr>
+<td><code>DELETE /api/ai-sessions</code></td>
+<td>Purge sessions that are disconnected; returns <code>{"deleted": n}</code>.</td>
+</tr>
+<tr>
+<td><code>GET /api/ai-sessions/discovered</code></td>
+<td>Agents found on this machine (Claude, Cursor, Copilot, ...) that are not registered yet.</td>
+</tr>
+<tr>
+<td><code>DELETE /api/ai-sessions/{id}</code></td>
+<td>Deregister a session.</td>
+</tr>
+<tr>
+<td><code>POST /api/ai-sessions/{id}/heartbeat</code></td>
+<td>Keep a session alive; sessions silent for five minutes are marked disconnected.</td>
+</tr>
+<tr>
+<td><code>POST /api/ai-sessions/{id}/terminate</code></td>
+<td>Disconnect a session and stop its agent process when Nexus discovered it. Body <code>{"force": true}</code> sends SIGKILL instead of SIGTERM.</td>
+</tr>
+<tr>
+<td><code>GET /api/ai-sessions/{id}/tasks</code></td>
+<td>Tasks assigned to a session.</td>
+</tr>
+<tr>
+<td><code>POST /api/ai-sessions/{id}/delegate</code></td>
+<td>Hand a session's work over to Nexus.</td>
+</tr>
+</tbody></table>
+<h3 id="logs-activity-and-plans">Logs, activity and plans</h3>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>GET /api/logs</code></td>
+<td>Recent daemon log lines (the same stream the SSE endpoint carries).</td>
+</tr>
+<tr>
+<td><code>GET /api/activities</code></td>
+<td>Agent activity records. Query <code>agent</code>, <code>since</code> (RFC 3339) and <code>limit</code>.</td>
+</tr>
+<tr>
+<td><code>GET /api/activities/timeline</code></td>
+<td>Activity grouped over time; <code>since</code> defaults to the last 24 hours.</td>
+</tr>
+<tr>
+<td><code>GET /api/plans/discovered?projectPath=</code></td>
+<td>Plan files (<code>PLAN-*.md</code>, <code>TASKS.md</code>, ...) discovered in a project.</td>
+</tr>
+<tr>
+<td><code>POST /api/plans/discovered/scan?projectPath=</code></td>
+<td>Rescan and return the discovered plan files.</td>
+</tr>
+<tr>
+<td><code>GET /api/brain/onboarding?projectPath=</code></td>
+<td>A compact orientation for an agent joining the project; <code>maxTokens</code> limits its size.</td>
+</tr>
+</tbody></table>
+<h3 id="dashboard">Dashboard</h3>
+<pre><code>GET /ui
+</code></pre>
+<p>Serves the embedded web dashboard with real-time task monitoring, task submission form, and provider management.</p>
+<hr>
+<h2 id="mcp-server">MCP Server</h2>
+<p>Base URL: <code>http://localhost:63988</code></p>
+<h3 id="protocol">Protocol</h3>
+<ul>
+<li><strong>Standard</strong>: JSON-RPC 2.0</li>
+<li><strong>Version</strong>: <code>2024-11-05</code></li>
+<li><strong>Endpoint</strong>: <code>POST /mcp</code></li>
+<li><strong>Health</strong>: <code>GET /health</code></li>
+<li><strong>Default Port</strong>: 63988 (configurable via <code>NEXUS_MCP_ADDR</code>)</li>
+</ul>
+<h3 id="available-tools">Available Tools</h3>
+<h4 id="tasks-14">Tasks (14)</h4>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>submit_task</code></td>
+<td>Submit a code-generation task to the orchestrator</td>
+<td><code>projectPath</code>, <code>targetFile</code>, <code>instruction</code>, <code>contextFiles?</code>, <code>command?</code>, <code>verificationCommand?</code>, <code>maxCorrectionTurns?</code></td>
+</tr>
+<tr>
+<td><code>get_task</code></td>
+<td>Get task status and output by ID</td>
+<td><code>id</code></td>
+</tr>
+<tr>
+<td><code>wait_for_task</code></td>
+<td>Block until a task has finished and return it; streams the reply as <code>notifications/progress</code> when asked (see below)</td>
+<td><code>id</code>, <code>timeoutSeconds</code></td>
+</tr>
+<tr>
+<td><code>get_queue</code></td>
+<td>List all pending (QUEUED or PROCESSING) tasks</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>get_all_tasks</code></td>
+<td>Return every task regardless of status</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>cancel_task</code></td>
+<td>Cancel a pending task by ID</td>
+<td><code>id</code></td>
+</tr>
+<tr>
+<td><code>update_task</code></td>
+<td>Update mutable fields on an existing task</td>
+<td><code>id</code>, <code>instruction?</code>, <code>priority?</code>, <code>providerName?</code>, <code>modelId?</code>, <code>tags?</code>, <code>status?</code></td>
+</tr>
+<tr>
+<td><code>create_draft</code></td>
+<td>Create a draft idea without entering the execution queue</td>
+<td><code>projectPath</code>, <code>instruction</code>, <code>targetFile?</code>, <code>providerName?</code>, <code>modelId?</code>, <code>priority?</code>, <code>tags?</code></td>
+</tr>
+<tr>
+<td><code>get_backlog</code></td>
+<td>List draft and backlog items for a project, ordered by priority</td>
+<td><code>projectPath</code></td>
+</tr>
+<tr>
+<td><code>promote_task</code></td>
+<td>Promote a draft or backlog task to the execution queue</td>
+<td><code>id</code></td>
+</tr>
+<tr>
+<td><code>claim_task</code></td>
+<td>Claim a QUEUED task for execution by the specified AI session</td>
+<td><code>task_id</code>, <code>session_id</code></td>
+</tr>
+<tr>
+<td><code>update_task_status</code></td>
+<td>Report task completion or failure from executing AI session</td>
+<td><code>task_id</code>, <code>session_id</code>, <code>status</code>, <code>logs?</code></td>
+</tr>
+<tr>
+<td><code>heartbeat_task</code></td>
+<td>Keep a PROCESSING task alive (prevents watchdog failure)</td>
+<td><code>task_id</code>, <code>session_id</code></td>
+</tr>
+<tr>
+<td><code>terminate_ai_session</code></td>
+<td>Disconnect a session and stop its agent process (SIGTERM or SIGKILL) — the process is only signalled when Nexus itself discovered it running (never PID ≤ 1, the daemon or its parent); otherwise the session is just marked disconnected</td>
+<td><code>session_id</code>, <code>force?</code></td>
+</tr>
+</tbody></table>
+<p><strong>Live progress from <code>wait_for_task</code>.</strong> Send <code>_meta.progressToken</code> in the <code>tools/call</code> request and
+<code>Accept: text/event-stream</code>: the response then is an event stream. Each piece of the model's reply
+is a <code>notifications/progress</code> event (<code>progress</code> counts up, <code>message</code> holds the text; a retry or the
+next provider sends <code>↻ new attempt</code>), and the last event is the normal JSON-RPC result. Without the
+token or the header the reply is plain JSON after the task ended. The stdio proxy and the legacy
+<code>/sse</code> transport return the final result only. <code>timeoutSeconds</code> defaults to 300 (max 3600); on a
+timeout the task comes back as it is with <code>"timedOut": true</code>.</p>
+<h4 id="ai-sessions-5">AI Sessions (5)</h4>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>register_session</code></td>
+<td>Announce external AI agent session for visualization &amp; orchestration</td>
+<td><code>agent_name</code>, <code>project_path?</code>, <code>external_id?</code></td>
+</tr>
+<tr>
+<td><code>get_ai_sessions</code></td>
+<td>Return all external AI agent sessions registered with this daemon</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>deregister_ai_session</code></td>
+<td>Soft-disconnect an AI agent session without killing process</td>
+<td><code>session_id</code></td>
+</tr>
+<tr>
+<td><code>heartbeat_ai_session</code></td>
+<td>Refresh last-activity timestamp of an AI session to keep it alive</td>
+<td><code>session_id</code></td>
+</tr>
+<tr>
+<td><code>purge_disconnected_sessions</code></td>
+<td>Delete all disconnected AI sessions inactive for &gt; 2 hours</td>
+<td>—</td>
+</tr>
+</tbody></table>
+<h4 id="providers-7">Providers (7)</h4>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>get_providers</code></td>
+<td>List available LLM providers and models</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>discover_providers</code></td>
+<td>Scan local system for installed AI providers/agents</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>promote_provider</code></td>
+<td>Promote a discovered provider to an active LLM backend</td>
+<td><code>id</code></td>
+</tr>
+<tr>
+<td><code>list_provider_configs</code></td>
+<td>List all persisted LLM provider configuration records</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>add_provider_config</code></td>
+<td>Add a new LLM provider configuration and register when enabled</td>
+<td><code>kind</code>, <code>name</code>, <code>base_url?</code>, <code>api_key?</code>, <code>enabled?</code></td>
+</tr>
+<tr>
+<td><code>update_provider_config</code></td>
+<td>Update an existing LLM provider configuration by ID</td>
+<td><code>id</code>, <code>kind?</code>, <code>name?</code>, <code>base_url?</code>, <code>api_key?</code>, <code>enabled?</code></td>
+</tr>
+<tr>
+<td><code>remove_provider_config</code></td>
+<td>Delete a persisted provider configuration and deregister adapter</td>
+<td><code>id</code></td>
+</tr>
+</tbody></table>
+<h4 id="brain-knowledge-10">Brain / Knowledge (10)</h4>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>get_brain_status</code></td>
+<td>Retrieve indexing status and entry count of project knowledge brain</td>
+<td><code>projectPath</code></td>
+</tr>
+<tr>
+<td><code>ingest_knowledge</code></td>
+<td>Parse and ingest a markdown file (e.g. CLAUDE.md) into project knowledge base</td>
+<td><code>projectPath</code>, <code>filePath</code></td>
+</tr>
+<tr>
+<td><code>get_project_context</code></td>
+<td>Obtain base macro context representation of the project bounded by token budget</td>
+<td><code>projectPath</code>, <code>maxTokens?</code></td>
+</tr>
+<tr>
+<td><code>get_focused_context</code></td>
+<td>Query bounded context sections specific to a reasoning question</td>
+<td><code>projectPath</code>, <code>question</code>, <code>maxTokens?</code></td>
+</tr>
+<tr>
+<td><code>search_knowledge</code></td>
+<td>Search project intelligence via BM25 matching</td>
+<td><code>projectPath</code>, <code>query</code>, <code>limit?</code></td>
+</tr>
+<tr>
+<td><code>init_project</code></td>
+<td>Auto-ingest CLAUDE.md and initialize a project's knowledge base in one step</td>
+<td><code>projectPath</code></td>
+</tr>
+<tr>
+<td><code>list_knowledge</code></td>
+<td>List all knowledge documents stored for a project, optionally filtered by kind</td>
+<td><code>projectPath</code>, <code>kind?</code></td>
+</tr>
+<tr>
+<td><code>delete_knowledge</code></td>
+<td>Delete a knowledge document by ID from the project repository</td>
+<td><code>projectPath</code>, <code>id</code></td>
+</tr>
+<tr>
+<td><code>get_file_map</code></td>
+<td>Retrieve cached file path map knowledge document for a project</td>
+<td><code>projectPath</code></td>
+</tr>
+<tr>
+<td><code>get_onboarding_context</code></td>
+<td>Token-budgeted (&lt; 800 tokens) onboarding summary for agent bootstrap: stack, invariants, test commands, active plan and tasks</td>
+<td><code>projectPath</code>, <code>maxTokens?</code></td>
+</tr>
+</tbody></table>
+<h4 id="discovery-system-6">Discovery &amp; System (6)</h4>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>get_discovered_agents</code></td>
+<td>Return AI agent tools detected on the local system (Claude CLI, Copilot, etc.)</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>delegate_to_nexus</code></td>
+<td>Delegate an AI agent session to the nexus task queue</td>
+<td><code>session_id</code></td>
+</tr>
+<tr>
+<td><code>get_discovered_plans</code></td>
+<td>Scan for plan/task/orchestration files in a project directory</td>
+<td><code>projectPath?</code></td>
+</tr>
+<tr>
+<td><code>howto</code></td>
+<td>Return a complete integration guide — all tools, workflow patterns, and endpoints</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>howto_brief</code></td>
+<td>Ultra-compact integration guide (~200 tokens) for small-context models</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>health</code></td>
+<td>Check daemon reachable and operational</td>
+<td>—</td>
+</tr>
+</tbody></table>
+<h3 id="example-submit-task-via-mcp">Example: Submit Task via MCP</h3>
+<p><strong>Request:</strong></p>
+<pre><code class="language-json">{
   "jsonrpc": "2.0",
   "id": 1,
   "method": "tools/call",
@@ -99,9 +1150,9 @@ data: {"type":"task.completed","taskId":"abc-123","status":"COMPLETED"}</code></
     }
   }
 }
-
-// Response
-{
+</code></pre>
+<p><strong>Response:</strong></p>
+<pre><code class="language-json">{
   "jsonrpc": "2.0",
   "id": 1,
   "result": {
@@ -112,7 +1163,133 @@ data: {"type":"task.completed","taskId":"abc-123","status":"COMPLETED"}</code></
       }
     ]
   }
-}</code></pre><button class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-xs rounded bg-white/10 hover:bg-violet-600/40 text-slate-300 font-mono cursor-pointer">copy</button></div></section><section id="env-vars" class="reveal"><h2 class="text-2xl font-black mb-4 flex items-center gap-2"><span class="text-violet-400">#</span> Environment Variables </h2><div class="overflow-x-auto rounded-xl border border-white/8"><table class="w-full text-sm"><thead><tr class="bg-[#0d0d14]"><th class="px-4 py-3 text-left text-slate-400">Variable</th><th class="px-4 py-3 text-left text-slate-400">Default</th><th class="px-4 py-3 text-left text-slate-400">Description</th></tr></thead><tbody><!--[--><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">NEXUS_DB_PATH</td><td class="px-4 py-2.5 font-mono text-slate-500 text-xs">nexus.db</td><td class="px-4 py-2.5 text-slate-400 text-xs">SQLite database file path</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">NEXUS_LISTEN_ADDR</td><td class="px-4 py-2.5 font-mono text-slate-500 text-xs">127.0.0.1:63987</td><td class="px-4 py-2.5 text-slate-400 text-xs">HTTP API listen address</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">NEXUS_MCP_ADDR</td><td class="px-4 py-2.5 font-mono text-slate-500 text-xs">127.0.0.1:63988</td><td class="px-4 py-2.5 text-slate-400 text-xs">MCP server listen address</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">NEXUS_OPENAI_API_KEY</td><td class="px-4 py-2.5 font-mono text-slate-500 text-xs">—</td><td class="px-4 py-2.5 text-slate-400 text-xs">OpenAI API key (enables OpenAI provider)</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">NEXUS_OPENAI_MODEL</td><td class="px-4 py-2.5 font-mono text-slate-500 text-xs">gpt-4o-mini</td><td class="px-4 py-2.5 text-slate-400 text-xs">Default OpenAI model</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">NEXUS_ANTHROPIC_API_KEY</td><td class="px-4 py-2.5 font-mono text-slate-500 text-xs">—</td><td class="px-4 py-2.5 text-slate-400 text-xs">Anthropic API key (enables Anthropic provider)</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">NEXUS_ANTHROPIC_MODEL</td><td class="px-4 py-2.5 font-mono text-slate-500 text-xs">claude-3-5-sonnet-20241022</td><td class="px-4 py-2.5 text-slate-400 text-xs">Default Anthropic model</td></tr><tr class="bg-[#0d0d14]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">NEXUS_GITHUBCOPILOT_TOKEN</td><td class="px-4 py-2.5 font-mono text-slate-500 text-xs">—</td><td class="px-4 py-2.5 text-slate-400 text-xs">GitHub Copilot token</td></tr><tr class="bg-[#0a0a10]"><td class="px-4 py-2.5 font-mono text-violet-300 text-xs">NEXUS_GITHUBCOPILOT_MODEL</td><td class="px-4 py-2.5 font-mono text-slate-500 text-xs">gpt-4o</td><td class="px-4 py-2.5 text-slate-400 text-xs">Default GitHub Copilot model</td></tr><!--]--></tbody></table></div></section></main></div></div></main><footer class="border-t border-white/5 bg-[#050508] mt-24 py-12"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"><div class="grid grid-cols-1 md:grid-cols-4 gap-8"><div class="md:col-span-1"><div class="text-lg font-bold mb-2"><span class="text-white">nexus-</span><span class="gradient-text">orchestrator</span></div><p class="text-sm text-slate-500"> Local AI task orchestration with multi-provider routing and MCP support. </p></div><!--[--><div class="space-y-3"><h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Docs</h4><ul class="space-y-2 list-none p-0"><!--[--><li><a href="/nexus-orchestrator/getting-started" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Getting Started</a></li><li><a href="/nexus-orchestrator/architecture" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Architecture</a></li><li><a aria-current="page" href="/nexus-orchestrator/api-reference" class="router-link-active router-link-exact-active text-sm text-slate-400 hover:text-violet-400 transition-colors">API Reference</a></li><li><a href="/nexus-orchestrator/mcp-integration" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">MCP Integration</a></li><!--]--></ul></div><div class="space-y-3"><h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Download</h4><ul class="space-y-2 list-none p-0"><!--[--><li><a href="/nexus-orchestrator/downloads" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Desktop App</a></li><li><a href="/nexus-orchestrator/downloads" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">CLI + Daemon</a></li><li><a href="https://github.com/el-j/nexus-orchestrator/releases" target="_blank" rel="noopener" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">GitHub Releases</a></li><!--]--></ul></div><div class="space-y-3"><h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Community</h4><ul class="space-y-2 list-none p-0"><!--[--><li><a href="https://github.com/el-j/nexus-orchestrator" target="_blank" rel="noopener" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">GitHub</a></li><li><a href="https://github.com/el-j/nexus-orchestrator/issues" target="_blank" rel="noopener" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Issues</a></li><li><a href="https://github.com/el-j/nexus-orchestrator/releases" target="_blank" rel="noopener" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Releases</a></li><!--]--></ul></div><!--]--></div><div class="mt-10 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4"><p class="text-xs text-slate-600"> Built with Go 🔷 + Wails · MIT License · © 2026 nexus-orchestrator contributors </p><a href="https://github.com/el-j/nexus-orchestrator"><i class="pi pi-github"></i> View on GitHub </a></div></div></footer><!----></div></div>
+}
+</code></pre>
+<h3 id="example-get-task-status-via-mcp">Example: Get Task Status via MCP</h3>
+<p><strong>Request:</strong></p>
+<pre><code class="language-json">{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "get_task",
+    "arguments": {
+      "taskId": "abc-123"
+    }
+  }
+}
+</code></pre>
+<hr>
+<h2 id="task-lifecycle">Task Lifecycle</h2>
+<pre><code>QUEUED → PROCESSING → COMPLETED
+                    → FAILED
+                    → TOO_LARGE (pre-flight)
+                    → NO_PROVIDER (no backend)
+QUEUED → CANCELLED (user cancellation)
+</code></pre>
+<p>A task moves through these states:</p>
+<ol>
+<li><strong>QUEUED</strong>: Submitted and waiting in the queue</li>
+<li><strong>PROCESSING</strong>: Picked up by the worker, LLM call in progress</li>
+<li><strong>Terminal state</strong>: One of COMPLETED, FAILED, TOO_LARGE, NO_PROVIDER, or CANCELLED</li>
+</ol>
+<hr>
+<h2 id="environment-variables">Environment Variables</h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>NEXUS_DB_PATH</code></td>
+<td><code>~/.nexus/nexus.db</code></td>
+<td>SQLite database file path</td>
+</tr>
+<tr>
+<td><code>NEXUS_LISTEN_ADDR</code></td>
+<td><code>127.0.0.1:63987</code></td>
+<td>HTTP API listen address</td>
+</tr>
+<tr>
+<td><code>NEXUS_MCP_ADDR</code></td>
+<td><code>127.0.0.1:63988</code></td>
+<td>MCP server listen address</td>
+</tr>
+<tr>
+<td><code>NEXUS_API_TOKEN</code></td>
+<td>—</td>
+<td>Require <code>Authorization: Bearer</code> on <code>/api/*</code></td>
+</tr>
+<tr>
+<td><code>NEXUS_MCP_TOKEN</code></td>
+<td>—</td>
+<td>Require <code>Authorization: Bearer</code> on the MCP API</td>
+</tr>
+<tr>
+<td><code>NEXUS_ALLOWED_ORIGINS</code></td>
+<td>—</td>
+<td>Extra browser origins allowed (comma-separated)</td>
+</tr>
+<tr>
+<td><code>NEXUS_ALLOWED_HOSTS</code></td>
+<td>—</td>
+<td>Extra <code>Host</code> names allowed on loopback binds</td>
+</tr>
+<tr>
+<td><code>NEXUS_INGEST_ALLOWED_DIRS</code></td>
+<td>—</td>
+<td>Extra directories brain ingestion may read from</td>
+</tr>
+<tr>
+<td><code>NEXUS_SCAN_INTERVAL</code></td>
+<td><code>30s</code></td>
+<td>Provider re-scan interval (must be &gt; 0)</td>
+</tr>
+<tr>
+<td><code>NEXUS_ADDR</code></td>
+<td><code>http://127.0.0.1:63987</code></td>
+<td>Daemon URL used by <code>nexus</code> and <code>nexus-submit</code></td>
+</tr>
+<tr>
+<td><code>NEXUS_MCP_URL</code></td>
+<td><code>http://127.0.0.1:63988/mcp</code></td>
+<td>MCP endpoint used by <code>nexus-mcp-stdio</code></td>
+</tr>
+<tr>
+<td><code>NEXUS_OPENAI_API_KEY</code></td>
+<td>—</td>
+<td>OpenAI API key (enables OpenAI provider)</td>
+</tr>
+<tr>
+<td><code>NEXUS_OPENAI_MODEL</code></td>
+<td><code>gpt-4o-mini</code></td>
+<td>Default OpenAI model</td>
+</tr>
+<tr>
+<td><code>NEXUS_ANTHROPIC_API_KEY</code></td>
+<td>—</td>
+<td>Anthropic API key (enables Anthropic provider)</td>
+</tr>
+<tr>
+<td><code>NEXUS_ANTHROPIC_MODEL</code></td>
+<td><code>claude-3-5-sonnet-20241022</code></td>
+<td>Default Anthropic model</td>
+</tr>
+<tr>
+<td><code>NEXUS_GITHUBCOPILOT_TOKEN</code></td>
+<td>—</td>
+<td>GitHub Copilot token</td>
+</tr>
+<tr>
+<td><code>NEXUS_GITHUBCOPILOT_MODEL</code></td>
+<td><code>gpt-4o</code></td>
+<td>Default GitHub Copilot model</td>
+</tr>
+</tbody></table>
+</article></main></div></div></main><footer class="border-t border-white/5 bg-[#050508] mt-24 py-12"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"><div class="grid grid-cols-1 md:grid-cols-4 gap-8"><div class="md:col-span-1"><div class="text-lg font-bold mb-2"><span class="text-white">nexus-</span><span class="gradient-text">orchestrator</span></div><p class="text-sm text-slate-500"> Local AI task orchestration with multi-provider routing and MCP support. </p></div><!--[--><div class="space-y-3"><h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Docs</h4><ul class="space-y-2 list-none p-0"><!--[--><li><a href="/nexus-orchestrator/getting-started" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Getting Started</a></li><li><a href="/nexus-orchestrator/guides" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Guides</a></li><li><a href="/nexus-orchestrator/architecture" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Architecture</a></li><li><a aria-current="page" href="/nexus-orchestrator/api-reference" class="router-link-active router-link-exact-active text-sm text-slate-400 hover:text-violet-400 transition-colors">API Reference</a></li><li><a href="/nexus-orchestrator/mcp-integration" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">MCP Integration</a></li><!--]--></ul></div><div class="space-y-3"><h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Download</h4><ul class="space-y-2 list-none p-0"><!--[--><li><a href="/nexus-orchestrator/downloads" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Desktop App</a></li><li><a href="/nexus-orchestrator/downloads" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">CLI + Daemon</a></li><li><a href="https://github.com/el-j/nexus-orchestrator/releases" target="_blank" rel="noopener" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">GitHub Releases</a></li><!--]--></ul></div><div class="space-y-3"><h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Community</h4><ul class="space-y-2 list-none p-0"><!--[--><li><a href="https://github.com/el-j/nexus-orchestrator" target="_blank" rel="noopener" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">GitHub</a></li><li><a href="https://github.com/el-j/nexus-orchestrator/issues" target="_blank" rel="noopener" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Issues</a></li><li><a href="https://github.com/el-j/nexus-orchestrator/releases" target="_blank" rel="noopener" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Releases</a></li><!--]--></ul></div><!--]--></div><div class="mt-10 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4"><p class="text-xs text-slate-600"> Built with Go 🔷 + Wails · MIT License · © 2026 nexus-orchestrator contributors </p><a href="https://github.com/el-j/nexus-orchestrator"><svg class="inline-block shrink-0 align-[-0.125em]" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon="github" aria-hidden="true" focusable="false"><!--[--><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path><path d="M9 18c-4.51 2-5-2-7-2"></path><!--]--></svg> View on GitHub </a></div></div></footer></div></div>
   
 
 </body></html>

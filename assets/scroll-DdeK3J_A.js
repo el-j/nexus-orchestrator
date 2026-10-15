@@ -1,0 +1,1 @@
+function e(e){let t=document.getElementById(e);t?t.scrollIntoView({behavior:`smooth`}):console.warn(`[scrollToId] element #${e} not found`)}export{e as t};
