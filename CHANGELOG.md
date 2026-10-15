@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Releases: stable versions are clean `vX.Y.Z` tags made by release-please; betas are
+  `X.(Y+1).0-beta.N` from develop. GitVersion and `scripts/release.sh` are gone (see
+  [docs/releasing.md](docs/releasing.md)).
+
+### Fixed
+
+- A flaky test compared a fixed pid with the test process's own pid.
+
+## [Unreleased]
+
 ### Added
 
 - The VS Code extension connects the editor's own agent to Nexus: VS Code 1.101+ gets the daemon's MCP server through VS Code's MCP support; in Antigravity (whose agent reads `~/.gemini/.../mcp_config.json`) the extension offers once to add the `nexus` server through a bundled stdio bridge (`dist/mcpProxy.js`, run with the editor's own Node), keeps the entry current across updates and never touches an invalid file. Setting `nexus.mcp.autoConnect` (`ask`/`always`/`never`), command "Nexus: Connect This Editor's Agent". Until now the extension did not register an MCP server at all, although the docs said it did
