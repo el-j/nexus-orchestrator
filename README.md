@@ -62,14 +62,21 @@ New here? `make` lists everything; [docs/using-nexus.md](docs/using-nexus.md) wa
 
 ### macOS (Desktop App)
 
-Download `nexus-orchestrator-desktop-darwin-arm64.zip` (Apple Silicon) or `nexus-orchestrator-desktop-darwin-amd64.zip` (Intel) from [Releases](https://github.com/el-j/nexus-orchestrator/releases/latest).
+The easiest way is the installer. It downloads the app with `curl`, checks its checksum and puts it in `~/Applications` without the macOS quarantine flag, so it opens with a double click:
 
-> **First-run on macOS:** Because the app is not yet notarized with Apple, macOS Gatekeeper applies a quarantine attribute when you download it. Remove it before opening:
->
-> ```sh
-> xattr -dr com.apple.quarantine nexusOrchestrator.app
-> open nexusOrchestrator.app
-> ```
+```sh
+curl -sSfL https://raw.githubusercontent.com/el-j/nexus-orchestrator/main/scripts/install.sh | sh -s -- --desktop
+# newest beta instead of the last stable release:  ... | sh -s -- --desktop --beta
+```
+
+Or download `nexus-orchestrator-desktop-darwin-arm64.zip` (Apple Silicon) or `nexus-orchestrator-desktop-darwin-amd64.zip` (Intel) from [Releases](https://github.com/el-j/nexus-orchestrator/releases). The app is not yet notarized with Apple, so macOS refuses a browser-downloaded copy ("Apple could not verify nexusOrchestrator.app"). Either remove the quarantine flag first:
+
+```sh
+xattr -dr com.apple.quarantine nexusOrchestrator.app
+open nexusOrchestrator.app
+```
+
+or, after the blocked attempt, open **System Settings → Privacy & Security**, scroll to the message about nexusOrchestrator and click **Open Anyway** (macOS 15 and later no longer offers right-click → Open).
 
 ### CLI / Daemon (all platforms)
 

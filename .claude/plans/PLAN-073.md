@@ -3,7 +3,23 @@ id: PLAN-073
 title: 'Real-world readiness: release pipeline, desktop app, subscription delegation'
 status: active
 createdAt: 2026-10-15
-tasks: [TASK-566, TASK-567, TASK-568, TASK-569, TASK-570, TASK-571, TASK-572, TASK-573, TASK-574, TASK-575, TASK-576, TASK-577, TASK-578]
+tasks:
+  [
+    TASK-566,
+    TASK-567,
+    TASK-568,
+    TASK-569,
+    TASK-570,
+    TASK-571,
+    TASK-572,
+    TASK-573,
+    TASK-574,
+    TASK-575,
+    TASK-576,
+    TASK-577,
+    TASK-578,
+    TASK-579,
+  ]
 ---
 
 # PLAN-073 — Real-world readiness

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `scripts/install.sh --desktop` installs the macOS app into `~/Applications` after a checksum check and without the quarantine flag (the app is not notarized, so a browser-downloaded copy is blocked by Gatekeeper); `--beta` / `NEXUS_CHANNEL=beta` picks the newest pre-release instead of the last stable one (which is still from April)
 - Claude Pro/Max can be delegated to: provider kind `cli` runs a logged-in AI command-line tool (`claude -p`, verified against the real `claude`) per request, streams its output, and a discovered "Claude CLI" can be promoted. Only known tools may run (`NEXUS_CLI_PROVIDERS` extends the list). See `docs/delegating-subscriptions.md`
 - OpenAI-compatible providers use the context length the server reports (`context_length`, `context_window`, `max_model_len`) instead of always assuming 128K; the VS Code bridge reports each editor model's `maxInputTokens`
 - MCP `wait_for_task` (42 tools): blocks until a task has finished and streams the model's reply as `notifications/progress` when the caller sends a progress token and `Accept: text/event-stream`; `OrchestratorService` offers its events to in-process adapters through the optional `ports.TaskEventSource`
