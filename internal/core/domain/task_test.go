@@ -74,3 +74,23 @@ func TestTaskVerificationFields(t *testing.T) {
 		t.Errorf("unexpected output: %s", task.VerificationOutput)
 	}
 }
+
+// Whether Nexus itself ran a task is told by the log the engine writes ("completed via X at ...",
+// "failed via X: ..."). A task an agent marked done by hand has no such line.
+func TestRanBy(t *testing.T) {
+	cases := map[string]string{
+		"completed via Claude (subscription) at 2026-10-15T08:18:10Z":                                                         "Claude (subscription)",
+		"first line\nfailed via Ollama: connection refused":                                                                   "Ollama",
+		"verification passed (go test ./...) — completed via LM Studio at 2026-10-15T08:18:10Z":                               "LM Studio",
+		"verification passed on correction turn 2/3 (npm test) — completed via vscode-copilot-gpt-4o at 2026-10-15T08:18:10Z": "vscode-copilot-gpt-4o",
+		"TASK-001 completed: Landing claims corrected":                                                                        "",
+		"":            "",
+		"failed via ": "",
+		"the previous attempt completed via X is not this one but is read": "X",
+	}
+	for logs, want := range cases {
+		if got := RanBy(logs); got != want {
+			t.Errorf("RanBy(%q) = %q, want %q", logs, got, want)
+		}
+	}
+}

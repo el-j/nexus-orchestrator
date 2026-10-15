@@ -147,3 +147,18 @@ describe('TaskDetailDrawer', () => {
     expect(w.emitted('update:modelValue')![0]).toEqual([false]);
   });
 });
+
+describe('TaskDetailDrawer executor', () => {
+  it('says whether Nexus ran the task or an agent only reported a status', () => {
+    const ran = mountDrawer(task({ status: 'COMPLETED', ranBy: 'Ollama' }));
+    expect(ran.get('[data-testid="executor"]').text()).toBe('Run by Nexus on Ollama');
+    const set = mountDrawer(task({ status: 'PROCESSING' }));
+    expect(set.get('[data-testid="executor"]').text()).toContain('Nexus did not run this task');
+    expect(
+      mountDrawer(task({ status: 'CANCELLED' }))
+        .find('[data-testid="executor"]')
+        .exists(),
+    ).toBe(false);
+    expect(mountDrawer(null).find('[data-testid="executor"]').exists()).toBe(false);
+  });
+});

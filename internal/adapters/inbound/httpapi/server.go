@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"nexus-orchestrator/internal/adapters/inbound/httpguard"
+	"nexus-orchestrator/internal/adapters/inbound/webui"
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
 
@@ -32,7 +33,8 @@ type Server struct {
 	activitySvc activityQuerier
 	brain       ports.BrainService
 	guard       *httpguard.Policy
-	mcpAddr     string // listen address of the companion MCP server, advertised in discovery
+	mcpAddr     string       // listen address of the companion MCP server, advertised in discovery
+	ui          http.Handler // the full frontend, served under /app/ (nil: only the built-in dashboard)
 }
 
 // NewServer constructs a Server. hub may be nil to disable SSE.
@@ -44,6 +46,13 @@ func NewServer(orch ports.Orchestrator, brain ports.BrainService, hub *Hub) *Ser
 // the handler still rejects foreign browser origins but does not check Host.
 func (s *Server) WithGuard(g *httpguard.Policy) *Server {
 	s.guard = g
+	return s
+}
+
+// WithUI serves the full frontend under /app/ and makes the root point there. h is expected to
+// answer the whole /app/ subtree (see package webui); nil keeps only the built-in dashboard.
+func (s *Server) WithUI(h http.Handler) *Server {
+	s.ui = h
 	return s
 }
 
@@ -162,9 +171,16 @@ func (s *Server) Handler() http.Handler {
 	r.Use(maxBodySize)
 	r.Use(securityHeaders)
 
-	// Redirect root to dashboard
+	// The root goes to the full UI when this binary has it, else to the built-in dashboard,
+	// which stays available at /ui either way.
+	home := "/ui"
+	if s.ui != nil {
+		home = "/app/"
+		r.Get("/app", func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/app/", http.StatusFound) })
+		r.Handle("/app/*", s.ui)
+	}
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/ui", http.StatusFound)
+		http.Redirect(w, r, home, http.StatusFound)
 	})
 	r.Get("/ui", s.handleUI)
 
@@ -261,7 +277,7 @@ func StartServer(ctx context.Context, orch ports.Orchestrator, brain ports.Brain
 	if bs, ok := orch.(broadcasterSetter); ok {
 		bs.SetBroadcaster(hub)
 	}
-	s := NewServer(orch, brain, hub).WithGuard(httpguard.New(addr))
+	s := NewServer(orch, brain, hub).WithGuard(httpguard.New(addr)).WithUI(webui.Embedded("/app/"))
 	if len(logHub) > 0 && logHub[0] != nil {
 		s.WithLogHub(logHub[0])
 	}
@@ -332,7 +348,7 @@ func StartServerWith(ctx context.Context, orch ports.Orchestrator, brain ports.B
 			abs.SetBroadcaster(hub)
 		}
 	}
-	s := NewServer(orch, brain, hub).WithGuard(httpguard.New(addr)).WithMCPAddr(extras.MCPAddr)
+	s := NewServer(orch, brain, hub).WithGuard(httpguard.New(addr)).WithUI(webui.Embedded("/app/")).WithMCPAddr(extras.MCPAddr)
 	if logHub != nil {
 		s.WithLogHub(logHub)
 	}

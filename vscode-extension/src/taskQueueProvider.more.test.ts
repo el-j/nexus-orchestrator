@@ -31,6 +31,17 @@ const client = (tasks: Task[] | Error, alive = false) =>
 beforeEach(() => resetFakeState());
 afterEach(() => vi.useRealTimers());
 
+describe('TaskItem run by', () => {
+  it('says whether Nexus ran the task or an agent only set its status', () => {
+    const tip = (o: Partial<Task>) => (new TaskItem(task(o)).tooltip as { value: string }).value;
+    expect(tip({ status: 'COMPLETED', ranBy: 'Ollama' })).toContain('**Run by:** Nexus on Ollama');
+    expect(tip({ status: 'COMPLETED' })).toContain('not run by Nexus — status set by an agent');
+    expect(tip({ status: 'PROCESSING' })).toContain('not run by Nexus');
+    expect(tip({ status: 'FAILED' })).toContain('not run by Nexus');
+    expect(tip({ status: 'QUEUED' })).toContain('**Run by:** —');
+  });
+});
+
 describe('TaskItem', () => {
   it('labels with emoji, short id and a truncated instruction', () => {
     const short = new TaskItem(task());
