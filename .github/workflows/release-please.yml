@@ -37,6 +37,8 @@ jobs:
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          # The action defaults to the repository's default branch (develop here); releases are made from main.
+          target-branch: main
           # Pull requests opened with the default token do not start other workflows (CI does not
           # run on the release PR). Set the secret RELEASE_PLEASE_TOKEN (a PAT with contents and
           # pull-requests write) if you want CI on it; without it the PR still works, it only
