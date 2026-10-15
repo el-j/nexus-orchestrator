@@ -58,8 +58,7 @@
           </p>
           <div class="rounded-xl border border-white/8 bg-[#0a0a10] p-4 mt-3">
             <pre class="!border-0 !bg-transparent !p-0 text-xs text-violet-300">
-inbound adapters → core services → ports ← outbound adapters</pre
-            >
+inbound adapters → core services → ports ← outbound adapters</pre>
           </div>
         </section>
 
@@ -326,7 +325,26 @@ const taskFields = [
   { field: 'Status', type: 'TaskStatus', desc: 'Lifecycle state' },
   { field: 'CreatedAt', type: 'time.Time', desc: 'Creation timestamp' },
   { field: 'UpdatedAt', type: 'time.Time', desc: 'Last update timestamp' },
-  { field: 'Logs', type: 'string', desc: 'LLM output or error details' },
+  {
+    field: 'Logs',
+    type: 'string',
+    desc: 'LLM output or error details; the engine writes "completed via <provider>"',
+  },
+  {
+    field: 'RanBy',
+    type: 'string',
+    desc: 'Derived from Logs: the provider Nexus ran the task on, empty when an agent reported the status',
+  },
+  {
+    field: 'Role / Priority / Tags',
+    type: 'string / int / []string',
+    desc: 'Routing tier hint, backlog ordering and labels',
+  },
+  {
+    field: 'Agentic',
+    type: 'bool',
+    desc: 'Run as a bounded multi-turn tool loop over the project files',
+  },
 ];
 
 const statusRows = [
@@ -342,6 +360,11 @@ const statusRows = [
     color: 'bg-emerald-500/20 text-emerald-300',
   },
   { status: 'FAILED', desc: 'LLM call failed', color: 'bg-red-500/20 text-red-300' },
+  {
+    status: 'DRAFT / BACKLOG',
+    desc: 'Staged ideas that do not run until promoted',
+    color: 'bg-sky-500/20 text-sky-300',
+  },
   {
     status: 'CANCELLED',
     desc: 'Cancelled before processing',
@@ -384,15 +407,25 @@ const ports = [
   {
     name: 'LLMClient',
     direction: 'Outbound',
-    desc: 'Interface for any language model backend',
+    desc: 'Interface for any language model backend; every call takes a context so a cancel aborts it',
     code: `type LLMClient interface {
-    Ping() bool
+    Ping(ctx context.Context) bool
     ProviderName() string
     ActiveModel() string
-    GetAvailableModels() ([]string, error)
-    ContextLimit() int
-    GenerateCode(prompt string) (string, error)
-    Chat(messages []domain.Message) (string, error)
+    BaseURL() string
+    GetAvailableModels(ctx context.Context) ([]string, error)
+    ContextLimit(ctx context.Context) int
+    GenerateCode(ctx context.Context, prompt string) (string, error)
+    Chat(ctx context.Context, messages []domain.Message) (string, error)
+}`,
+  },
+  {
+    name: 'ChatStreamer',
+    direction: 'Outbound (optional)',
+    desc: 'A provider that can deliver its reply piece by piece; the engine publishes the pieces as task.chunk events, others send the whole reply as one chunk',
+    code: `type ChatStreamer interface {
+    ChatStream(ctx context.Context, messages []domain.Message,
+        onChunk func(piece string)) (string, error)
 }`,
   },
   {
@@ -400,12 +433,14 @@ const ports = [
     direction: 'Outbound',
     desc: 'Persistence for tasks',
     code: `type TaskRepository interface {
-    Save(t domain.Task) error
-    GetByID(id string) (domain.Task, error)
-    GetPending() ([]domain.Task, error)
-    GetByProjectPath(projectPath string) ([]domain.Task, error)
-    UpdateStatus(id string, status domain.TaskStatus) error
-    UpdateLogs(id, logs string) error
+    Save(ctx context.Context, t domain.Task) error
+    GetByID(ctx context.Context, id string) (domain.Task, error)
+    GetPending(ctx context.Context) ([]domain.Task, error)
+    ClaimNextQueued(ctx context.Context) (domain.Task, error)
+    GetAll(ctx context.Context) ([]domain.Task, error)
+    UpdateStatus(ctx context.Context, id string, status domain.TaskStatus) error
+    UpdateLogs(ctx context.Context, id, logs string) error
+    // ... by project, by status, stale PROCESSING tasks for the watchdog
 }`,
   },
   {
@@ -421,24 +456,84 @@ const ports = [
 ];
 
 const inboundAdapters = [
-  { adapter: 'HTTP API', pkg: 'httpapi', proto: 'REST + SSE', port: ':63987' },
-  { adapter: 'MCP Server', pkg: 'mcp', proto: 'JSON-RPC 2.0', port: ':63988' },
-  { adapter: 'CLI Client', pkg: 'cli', proto: 'HTTP → daemon', port: '—' },
-  { adapter: 'Wails GUI', pkg: 'wailsbind', proto: 'Native + embedded HTTP', port: ':63987' },
-  { adapter: 'System Tray', pkg: 'tray', proto: 'OS native', port: '—' },
+  {
+    adapter: 'HTTP API',
+    pkg: 'httpapi',
+    proto: 'REST + SSE (task events, live chunks)',
+    port: ':63987',
+  },
+  {
+    adapter: 'Web UI',
+    pkg: 'webui',
+    proto: 'The Vue UI embedded in the daemon, at /app/',
+    port: ':63987',
+  },
+  {
+    adapter: 'MCP Server',
+    pkg: 'mcp',
+    proto: 'JSON-RPC 2.0 (42 tools, wait_for_task streams progress)',
+    port: ':63988',
+  },
+  {
+    adapter: 'CLI Client',
+    pkg: 'cli',
+    proto: 'HTTP → daemon; nexus connect edits agent configs',
+    port: '—',
+  },
+  {
+    adapter: 'Origin / Host guard',
+    pkg: 'httpguard',
+    proto: 'Rejects foreign browser origins and DNS rebinding',
+    port: '—',
+  },
+  {
+    adapter: 'Wails GUI',
+    pkg: 'app.go',
+    proto: 'Native window over the same HTTP API',
+    port: ':63987',
+  },
 ];
 
 const outboundAdapters = [
-  { adapter: 'LM Studio', pkg: 'llm_lmstudio', backend: 'OpenAI-compatible API at :1234' },
-  { adapter: 'Ollama', pkg: 'llm_ollama', backend: 'Ollama API at :11434' },
+  {
+    adapter: 'LM Studio',
+    pkg: 'llm_lmstudio',
+    backend: 'OpenAI-compatible API at :1234 (streams)',
+  },
+  { adapter: 'Ollama', pkg: 'llm_ollama', backend: 'Ollama API at :11434 (streams NDJSON)' },
   {
     adapter: 'OpenAI-compatible',
     pkg: 'llm_openaicompat',
-    backend: 'OpenAI, GitHub Copilot, Azure',
+    backend: 'OpenAI, GitHub Copilot, the VS Code model bridge, vLLM, LocalAI (streams SSE)',
   },
-  { adapter: 'Anthropic', pkg: 'llm_anthropic', backend: 'Anthropic Messages API' },
-  { adapter: 'SQLite', pkg: 'repo_sqlite', backend: 'Local SQLite via go-sqlite3' },
-  { adapter: 'Filesystem', pkg: 'fs_writer', backend: 'Disk read/write' },
+  { adapter: 'Anthropic', pkg: 'llm_anthropic', backend: 'Anthropic Messages API (streams)' },
+  {
+    adapter: 'Google Gemini',
+    pkg: 'llm_gemini',
+    backend: 'generateContent / streamGenerateContent',
+  },
+  {
+    adapter: 'CLI subscription',
+    pkg: 'llm_cli',
+    backend: 'A logged-in AI CLI such as claude -p (Claude Pro/Max)',
+  },
+  {
+    adapter: 'SSE reader',
+    pkg: 'sse',
+    backend: 'Shared server-sent-events parser of the streaming adapters',
+  },
+  { adapter: 'SQLite', pkg: 'repo_sqlite', backend: 'Local SQLite (FTS5 brain) via go-sqlite3' },
+  {
+    adapter: 'Filesystem',
+    pkg: 'fs_writer, fs_watcher',
+    backend: 'Disk write-back and project change watching',
+  },
+  {
+    adapter: 'Activity readers',
+    pkg: 'activity_*',
+    backend: 'Claude Code transcripts, Continue, network activity',
+  },
+  { adapter: 'Scanners', pkg: 'sys_scanner', backend: 'Provider, agent and plan-file discovery' },
 ];
 
 const concurrencyPoints = [
@@ -447,6 +542,7 @@ const concurrencyPoints = [
   'Shutdown is coordinated via a <code class="text-slate-300">stopCh chan struct{}</code> channel',
   '<code class="text-slate-300">Stop()</code> is idempotent via <code class="text-slate-300">sync.Once</code>',
   'No goroutines inside core services — goroutine lifecycle is an infrastructure concern owned by inbound adapters',
-  'SSE broadcasting uses a separate Hub with its own mutex to avoid lock nesting',
+  'SSE broadcasting uses a separate Hub with its own mutex to avoid lock nesting; a slow subscriber drops events instead of blocking the engine',
+  'Every attempt publishes task.restart first, then task.chunk events (at most one per 50 ms), so a client needs one rule: restart clears, chunk appends',
 ];
 </script>

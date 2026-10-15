@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-10-15
+
+This release makes Nexus usable day to day: tasks stream while the model writes, your Claude and Copilot subscriptions can run them, the agents on your machine can call Nexus (`nexus-cli connect`, the VS Code extension), the app shows what is true (a task says who ran it, one repository is one project), plans and tasks are found in any folder, and the full UI is served by the daemon. The release pipeline, which had built nothing since #62, works again and the macOS desktop app starts when opened normally. Known limits: the macOS app is not notarized (use `scripts/install.sh --desktop`), the released daemon archives carry only the light dashboard, and the streaming and subscription providers are tested against fakes.
+
 ### Added
 
 - The VS Code extension connects the editor's own agent to Nexus: VS Code 1.101+ gets the daemon's MCP server through VS Code's MCP support; in Antigravity (whose agent reads `~/.gemini/.../mcp_config.json`) the extension offers once to add the `nexus` server through a bundled stdio bridge (`dist/mcpProxy.js`, run with the editor's own Node), keeps the entry current across updates and never touches an invalid file. Setting `nexus.mcp.autoConnect` (`ask`/`always`/`never`), command "Nexus: Connect This Editor's Agent". Until now the extension did not register an MCP server at all, although the docs said it did
@@ -66,7 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Binaries built with `make build` (and every other Makefile build) lacked SQLite FTS5, so `nexus-daemon` exited at start-up with `no such module: fts5`
 - `make nice` type-checked nothing in the frontend (references-only tsconfig) and ran `gofmt -w .` over `node_modules`; it now runs the real frontend and docs type-checks, the TSDoc gate and prettier
 
-## [0.10.0] — 2026-03-14
+## [0.10.0-alpha] — 2026-03-14 (first 0.10.0 snapshot)
 
 ### Added
 

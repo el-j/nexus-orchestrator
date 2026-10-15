@@ -41,15 +41,16 @@
             </div>
 
             <h1 class="text-4xl sm:text-5xl xl:text-6xl font-black leading-tight mb-6">
-              Route AI tasks to<br />
-              <span class="gradient-text">any LLM</span> —<br />
-              <span class="text-slate-300">local or cloud.</span>
+              Run AI tasks on<br />
+              <span class="gradient-text">any model</span> —<br />
+              <span class="text-slate-300">and remember the project.</span>
             </h1>
 
             <p class="text-lg text-slate-400 leading-relaxed mb-8 max-w-lg">
-              nexus-orchestrator is a headless Go daemon with MCP server, REST API, and per-project
-              session memory. Connect Claude Desktop, route to Ollama, LM Studio, OpenAI, or
-              Anthropic — your AI workflows, your rules.
+              Nexus runs coding tasks on the models you already have — local, API, or your Claude
+              and Copilot subscriptions — streams the result while it is written, verifies it, and
+              remembers each project. Agents that work on their own report through the same MCP
+              tools, so one place knows what happened.
             </p>
 
             <div class="flex flex-wrap gap-3 mb-8">
@@ -195,14 +196,20 @@
         </div>
 
         <div class="reveal space-y-3">
-          <UiTabs :tabs="['Build & Start', 'Submit Task', 'MCP (JSON-RPC)']" label="Quick start">
+          <UiTabs
+            :tabs="['Start', 'Connect agents', 'Submit Task', 'MCP (JSON-RPC)']"
+            label="Quick start"
+          >
             <template #panel-0>
               <CodeBlock language="bash" :code="codeStart" />
             </template>
             <template #panel-1>
-              <CodeBlock language="bash" :code="codeSubmit" />
+              <CodeBlock language="bash" :code="codeConnect" />
             </template>
             <template #panel-2>
+              <CodeBlock language="bash" :code="codeSubmit" />
+            </template>
+            <template #panel-3>
               <CodeBlock language="json" :code="codeMcp" />
             </template>
           </UiTabs>
@@ -280,58 +287,73 @@ import TerminalDemo from '../components/TerminalDemo.vue';
 import CodeBlock from '../components/CodeBlock.vue';
 
 const stats = [
-  { value: '6+', label: 'LLM Providers' },
-  { value: '4', label: 'Interfaces (HTTP/MCP/GUI/VSCode)' },
-  { value: '∞', label: 'Project Sessions' },
-  { value: '<1s', label: 'Context Guard' },
+  { value: '10+', label: 'LLM Providers (local, API, subscriptions)' },
+  { value: '42', label: 'MCP tools' },
+  { value: 'Live', label: 'Streamed output' },
+  { value: '1', label: 'Project brain per repo' },
   { value: '0', label: 'Telemetry' },
 ];
 
 const features = [
   {
     icon: '🔀',
-    title: 'Multi-Backend Routing',
-    desc: 'Auto-discovers and routes to LM Studio, Ollama, OpenAI, Anthropic, or any OpenAI-compatible endpoint. Per-task model selection with provider hints.',
+    title: 'Any model, one queue',
+    desc: 'LM Studio, Ollama, OpenAI, Anthropic, Gemini and any OpenAI-compatible endpoint, with discovery, health checks, role-based routing and automatic failover.',
+  },
+  {
+    icon: '🎟️',
+    title: 'Your subscriptions',
+    desc: 'Delegate to Claude Pro/Max through the logged-in claude CLI, and to GitHub Copilot and other editor models through the VS Code model bridge. No API key.',
+  },
+  {
+    icon: '📡',
+    title: 'Live output',
+    desc: 'The reply streams to the UI, VS Code and MCP clients while the model writes it. A failing provider hands over to the next one; partial text never reaches your file.',
   },
   {
     icon: '🧠',
-    title: 'Session Memory',
-    desc: 'Every project path gets its own SQLite-backed conversation history. Multi-turn context maintained automatically across tasks.',
+    title: 'Project brain',
+    desc: 'SQLite FTS5 knowledge per repository, learned from CLAUDE.md, AGENTS.md, GEMINI.md and what agents ingest. Every session starts with a token-budgeted briefing.',
+  },
+  {
+    icon: '📐',
+    title: 'Rules that are enforced',
+    desc: '.nexus/policy.json: default verification command, file-size limit, tests first, free-text rules. The engine enforces them on its own runs and remembers each outcome.',
+  },
+  {
+    icon: '🗂️',
+    title: 'Plans in any folder',
+    desc: 'PLAN-n / TASK-n files are found anywhere in the project (or in the folders you configure) and linked to each other automatically, whichever agent wrote them.',
   },
   {
     icon: '🔌',
-    title: 'MCP Server',
-    desc: 'Built-in JSON-RPC 2.0 server on port 63988, compatible with Claude Desktop and any MCP client. 42 tools ready out of the box.',
+    title: 'MCP server, 42 tools',
+    desc: 'Claude Code, Claude Desktop, Cursor, Antigravity and VS Code Copilot all use the same tools; wait_for_task streams progress. nexus-cli connect wires up the agents on your machine.',
   },
   {
-    icon: '🌐',
-    title: 'Full REST API',
-    desc: 'Complete task management on port 63987 — submit, list, cancel, monitor. Real-time updates via Server-Sent Events.',
-  },
-  {
-    icon: '🛡️',
-    title: 'Context Guard',
-    desc: 'Pre-flight token estimation prevents prompt overflow. Tasks exceeding context limits are flagged as TOO_LARGE immediately.',
-  },
-  {
-    icon: '⚡',
-    title: 'Smart Discovery',
-    desc: 'Auto-detect running LLM backends with health checks and automatic failover when a provider goes down.',
-  },
-  {
-    icon: '🎯',
-    title: 'Command Routing',
-    desc: 'Classify tasks as "plan" or "execute". Enforces that execution tasks have a prior plan, preventing uncoordinated changes.',
+    icon: '🤝',
+    title: 'Agents report here',
+    desc: 'Agents register, claim a task and report its status through MCP, so what you see is what happened. Hand-edited state is shown as such: a task says who ran it.',
   },
   {
     icon: '🖥️',
-    title: 'Desktop GUI',
-    desc: 'Native Wails desktop app with embedded HTTP API, real-time task monitoring, system tray, and provider management.',
+    title: 'Full UI, everywhere',
+    desc: 'Mission Control, Agents, Providers, Projects (activity, plans, history, backlog, brain) and Settings, served by the daemon at /app/ and as a desktop app for macOS, Windows and Linux.',
   },
   {
-    icon: '🔌',
-    title: 'VS Code Extension',
-    desc: 'Submit tasks, monitor the queue, and switch providers without leaving your editor. Available as a .vsix for VS Code 1.85+.',
+    icon: '🧩',
+    title: 'VS Code extension',
+    desc: "Task queue, live output, plan view and brain commands in your editor; shares the editor models with Nexus and connects the editor's own agent (VS Code 1.101+, Antigravity).",
+  },
+  {
+    icon: '🌐',
+    title: 'REST API + CLI',
+    desc: 'Everything over HTTP with an SSE event stream, plus nexus-cli, nexus-submit and a GitHub Action for CI.',
+  },
+  {
+    icon: '🛡️',
+    title: 'Safe by default',
+    desc: 'Loopback only, origin and host guards, pre-flight context guard (TOO_LARGE), plan-first gate, verification with self-healing turns, zero telemetry.',
   },
 ];
 
@@ -340,31 +362,49 @@ const providers = [
   'Ollama',
   'OpenAI',
   'Anthropic',
+  'Google Gemini',
+  'Claude (subscription)',
   'GitHub Copilot',
+  'vLLM / LocalAI',
   'Any OpenAI-compatible',
 ];
 
 const quickSteps = [
   {
-    title: 'Build from source or download',
-    desc: 'CGO_ENABLED=1 go build -o nexus-daemon ./cmd/nexus-daemon/...',
+    title: 'Start Nexus',
+    desc: 'make start — daemon, REST on :63987, MCP on :63988, full UI at /app/ (or install the desktop app)',
   },
-  { title: 'Start the daemon', desc: 'Run ./nexus-daemon — HTTP API on :63987, MCP on :63988' },
   {
-    title: 'Connect your LLM provider',
-    desc: 'LM Studio, Ollama, or set NEXUS_OPENAI_API_KEY for cloud',
+    title: 'Connect your agents',
+    desc: 'nexus-cli connect --write adds Nexus to Antigravity, Cursor and Claude Code; the VS Code extension connects its own editor',
   },
-  { title: 'Submit your first task', desc: 'Via HTTP API, MCP, CLI, or Claude Desktop' },
+  {
+    title: 'Add a provider',
+    desc: 'LM Studio or Ollama are found automatically; add a cloud key, the claude CLI or the editor models',
+  },
+  {
+    title: 'Introduce a project and submit a task',
+    desc: 'make init-project PROJECT=/path/to/repo, then submit via the UI, MCP, CLI or your editor',
+  },
 ];
 
-const codeStart = `# Build
-CGO_ENABLED=1 go build -o nexus-daemon ./cmd/nexus-daemon/...
-
-# Start
-./nexus-daemon
-# HTTP API  → http://localhost:63987
+const codeStart = `# From source (Node >= 22 builds the full UI)
+make start
+# REST      → http://localhost:63987
+# Full UI   → http://localhost:63987/app/
 # MCP       → http://localhost:63988/mcp
-# Dashboard → http://localhost:63987/ui`;
+
+# macOS desktop app, no Gatekeeper dialog
+curl -sSfL https://raw.githubusercontent.com/el-j/nexus-orchestrator/main/scripts/install.sh | sh -s -- --desktop`;
+
+const codeConnect = `# Which agents on this machine can call Nexus? (changes nothing)
+nexus-cli connect
+
+# Connect them: Antigravity, Cursor, Claude Code
+nexus-cli connect --write
+
+# Teach Nexus a project once
+make init-project PROJECT=/path/to/your/repo`;
 
 const codeSubmit = `curl -X POST http://localhost:63987/api/tasks \\
   -H "Content-Type: application/json" \\

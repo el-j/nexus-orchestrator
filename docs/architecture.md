@@ -206,13 +206,13 @@ type FileWriter interface {
 
 ## Inbound Adapters
 
-| Adapter     | Package     | Protocol               | Default Port |
-| ----------- | ----------- | ---------------------- | ------------ |
-| HTTP API    | `httpapi`   | REST + SSE             | `:63987`     |
-| MCP Server  | `mcp`       | JSON-RPC 2.0           | `:63988`     |
-| CLI Client  | `cli`       | HTTP → daemon          | —            |
-| Wails GUI   | `wailsbind` | Native + embedded HTTP | `:63987`     |
-| System Tray | `tray`      | OS native              | —            |
+| Adapter    | Package     | Protocol                                | Default Port |
+| ---------- | ----------- | --------------------------------------- | ------------ |
+| HTTP API   | `httpapi`   | REST + SSE                              | `:63987`     |
+| MCP Server | `mcp`       | JSON-RPC 2.0                            | `:63988`     |
+| CLI Client | `cli`       | HTTP → daemon                           | —            |
+| Wails GUI  | `wailsbind` | Native + embedded HTTP                  | `:63987`     |
+| Web UI     | `webui`     | Vue UI embedded in the daemon (`/app/`) | `:63987`     |
 
 All inbound adapters accept `ports.Orchestrator` as a dependency — never a concrete service type.
 
@@ -220,15 +220,19 @@ All inbound adapters accept `ports.Orchestrator` as a dependency — never a con
 
 ## Outbound Adapters
 
-| Adapter           | Package            | Backend                                                                    |
-| ----------------- | ------------------ | -------------------------------------------------------------------------- |
-| LM Studio         | `llm_lmstudio`     | OpenAI-compatible API at `:1234`                                           |
-| Ollama            | `llm_ollama`       | Ollama API at `:11434`                                                     |
-| OpenAI-compatible | `llm_openaicompat` | OpenAI, GitHub Copilot (`NEXUS_GITHUBCOPILOT_TOKEN`), Azure, LocalAI, vLLM |
-| Anthropic         | `llm_anthropic`    | Anthropic Messages API                                                     |
-| Gemini            | `llm_gemini`       | Google Gemini `generateContent` API                                        |
-| SQLite            | `repo_sqlite`      | Local SQLite via `go-sqlite3`                                              |
-| Filesystem        | `fs_writer`        | Disk read/write                                                            |
+| Adapter           | Package                                                    | Backend                                                                    |
+| ----------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------- |
+| LM Studio         | `llm_lmstudio`                                             | OpenAI-compatible API at `:1234`                                           |
+| Ollama            | `llm_ollama`                                               | Ollama API at `:11434`                                                     |
+| OpenAI-compatible | `llm_openaicompat`                                         | OpenAI, GitHub Copilot (`NEXUS_GITHUBCOPILOT_TOKEN`), Azure, LocalAI, vLLM |
+| Anthropic         | `llm_anthropic`                                            | Anthropic Messages API                                                     |
+| Gemini            | `llm_gemini`                                               | Google Gemini `generateContent` API                                        |
+| SQLite            | `repo_sqlite`                                              | Local SQLite via `go-sqlite3`                                              |
+| CLI subscription  | `llm_cli`                                                  | A logged-in AI CLI (`claude -p`: Claude Pro/Max), allow-listed executables |
+| SSE reader        | `sse`                                                      | Shared server-sent-events parser of the streaming adapters                 |
+| Filesystem        | `fs_writer`, `fs_watcher`                                  | Disk write-back; project change watching                                   |
+| Activity readers  | `activity_claude`, `activity_continue`, `activity_network` | Claude Code transcripts, Continue, network activity                        |
+| Scanners          | `sys_scanner`                                              | Provider, agent and plan-file discovery                                    |
 
 ---
 

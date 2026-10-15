@@ -5,6 +5,7 @@
 
 export const toc = [
   { id: 'what-is-mcp', label: 'What is MCP?' },
+  { id: 'connect-command', label: 'Connect Your Agents' },
   { id: 'claude-desktop', label: 'Claude Desktop Setup' },
   { id: 'vscode-setup', label: 'VS Code Setup' },
   { id: 'available-tools', label: 'Available Tools' },
@@ -14,6 +15,14 @@ export const toc = [
   { id: 'troubleshooting', label: 'Troubleshooting' },
   { id: 'github-actions', label: 'GitHub Actions' },
 ];
+
+/** The command that connects the agents on this machine to the daemon's MCP server. */
+export const connectCommand = `# Which agents on this machine can call Nexus? (changes nothing)
+nexus-cli connect
+
+# Connect them: Antigravity, Cursor, Claude Code
+nexus-cli connect --write
+nexus-cli connect --write --agent antigravity`;
 
 /** Claude Desktop / Claude Code MCP server entry that points at the local daemon. */
 export const claudeConfig = `{

@@ -36,16 +36,29 @@ export function stripFrontMatter(src: string): string {
 /**
  * Renders a trusted, repository-owned Markdown document (GitHub-flavoured) to
  * HTML and collects a table of contents from its `##` and `###` headings.
- * Heading ids are unique within the document even when titles repeat.
+ * Heading ids are unique within the document even when titles repeat. `options.linkHref`
+ * rewrites every link target (used to turn links between guides into site pages).
  *
  * The input is build-time content from this repository, never user input, so the
  * output is not sanitised.
  */
-export function renderMarkdown(src: string): RenderedMarkdown {
+export function renderMarkdown(
+  src: string,
+  options: { linkHref?: (href: string) => string } = {},
+): RenderedMarkdown {
   const toc: TocItem[] = [];
   const seen = new Map<string, number>();
 
   const marked = new Marked({ gfm: true });
+  if (options.linkHref) {
+    const rewrite = options.linkHref;
+    marked.use({
+      walkTokens(token) {
+        if (token.type === 'link')
+          (token as Tokens.Link).href = rewrite((token as Tokens.Link).href);
+      },
+    });
+  }
   marked.use({
     renderer: {
       heading(
