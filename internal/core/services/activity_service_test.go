@@ -154,7 +154,7 @@ func TestActivityService_PollSavesAndBridgesSession(t *testing.T) {
 	activity := domain.AIActivity{
 		ID:          "poll-1",
 		AgentName:   "claude",
-		ProjectPath: "/tmp/myproject",
+		ProjectPath: "/work/myproject",
 		Summary:     "editing files",
 		Timestamp:   time.Now(),
 		TokensIn:    10,

@@ -29,6 +29,8 @@ export interface Task {
   retryCount?: number;
   logs: string;
   providerName?: string;
+  /** The provider Nexus ran the task on; absent when an agent set the status or it has not run. */
+  ranBy?: string;
   durationMs?: number;
   priority?: number;
   tags?: string[];
@@ -148,13 +150,7 @@ export interface DiscoveredAgent {
 
 /** Which convention a discovered plan file follows. */
 export type PlanFileKind =
-  | 'nexus'
-  | 'claude-task'
-  | 'markdown'
-  | 'cursor'
-  | 'mcp-config'
-  | 'crewai'
-  | 'claude';
+  'nexus' | 'claude-task' | 'markdown' | 'cursor' | 'mcp-config' | 'crewai' | 'claude';
 
 /** A plan file found on disk. */
 export interface DiscoveredPlanFile {

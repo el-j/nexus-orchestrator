@@ -60,6 +60,15 @@ function truncate(s: string, max: number): string {
   return s.length > max ? s.slice(0, max) + '…' : s;
 }
 
+/** Who ran the task: Nexus on a provider, or nobody (an agent only reported a status). */
+function runBy(task: Task): string {
+  if (task.ranBy) return `Nexus on ${task.ranBy}`;
+  if (task.status === 'PROCESSING' || task.status === 'COMPLETED' || task.status === 'FAILED') {
+    return 'not run by Nexus — status set by an agent';
+  }
+  return '—';
+}
+
 /** Tree item for one task in the queue view. */
 export class TaskItem extends vscode.TreeItem {
   constructor(public readonly task: Task) {
@@ -84,6 +93,7 @@ export class TaskItem extends vscode.TreeItem {
       `**Source:** ${source ?? 'unknown'}`,
       `**Project:** ${task.projectPath}`,
       `**Target:** ${task.targetFile || '—'}`,
+      `**Run by:** ${runBy(task)}`,
       `**Provider:** ${task.providerHint || '—'}`,
       `**Model:** ${task.modelId || '—'}`,
       `**Created:** ${task.createdAt}`,

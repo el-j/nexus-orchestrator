@@ -2,6 +2,7 @@ package bootstrap_test
 
 import (
 	"context"
+	"database/sql"
 	"io"
 	"net"
 	"net/http"
@@ -257,5 +258,48 @@ func TestDefaultDBPath_KeepsAnExistingDatabaseInTheWorkingDirectory(t *testing.T
 	_ = os.WriteFile(filepath.Join(home, ".nexus", "nexus.db"), nil, 0o600)
 	if got := bootstrap.DefaultDBPath(); got != filepath.Join(home, ".nexus", "nexus.db") {
 		t.Errorf("DefaultDBPath = %q, want the shared database", got)
+	}
+}
+
+// An agent that edited the database by hand must not leave rows the daemon cannot use.
+func TestStart_RepairsTaskRowsWrittenByAnotherTool(t *testing.T) {
+	isolate(t)
+	cfg := bootstrap.Config{DBPath: filepath.Join(t.TempDir(), "r.db"), ListenAddr: freeAddr(t), MCPAddr: freeAddr(t)}
+	seed, err := repo_sqlite.New(cfg.DBPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if err := seed.Save(ctx, domain.Task{ID: "t1", ProjectPath: "/p", TargetFile: "f", Instruction: "i", Status: domain.StatusQueued, CreatedAt: time.Now(), UpdatedAt: time.Now()}); err != nil {
+		t.Fatal(err)
+	}
+	seed.Close()
+	raw, err := sql.Open("sqlite3", cfg.DBPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := raw.Exec(`UPDATE tasks SET status = 'IN_PROGRESS', updated_at = '2026-10-15 12:25:52'`); err != nil {
+		t.Fatal(err)
+	}
+	raw.Close()
+
+	rt, err := bootstrap.Start(ctx, cfg, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rt.Close()
+
+	check, err := sql.Open("sqlite3", cfg.DBPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer check.Close()
+	var status, kind string
+	if err := check.QueryRow(`SELECT status, typeof(updated_at) FROM tasks WHERE id = 't1'`).Scan(&status, &kind); err != nil {
+		t.Fatal(err)
+	}
+	// The repaired task is then handled like any other (here: no provider is reachable).
+	if status == "IN_PROGRESS" || kind != "integer" {
+		t.Errorf("row after start: status %q, updated_at %s; want a daemon status and an integer time", status, kind)
 	}
 }

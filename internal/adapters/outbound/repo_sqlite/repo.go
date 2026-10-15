@@ -323,6 +323,7 @@ func scanTask(s scanner) (domain.Task, error) {
 	}
 	t.Status = normalizeStatus(status)
 	t.Command = domain.CommandType(command)
+	t.RanBy = domain.RanBy(t.Logs)
 	t.CreatedAt = time.UnixMilli(createdMS)
 	t.UpdatedAt = time.UnixMilli(updatedMS)
 
@@ -394,8 +395,12 @@ var statusAliases = map[string]domain.TaskStatus{
 
 // normalizeStatus reads a status column, tolerating case and the aliases above.
 func normalizeStatus(s string) domain.TaskStatus {
-	if alias, ok := statusAliases[strings.ToUpper(strings.TrimSpace(s))]; ok {
+	key := strings.ToUpper(strings.TrimSpace(s))
+	if alias, ok := statusAliases[key]; ok {
 		return alias
+	}
+	if isKnownStatus(domain.TaskStatus(key)) {
+		return domain.TaskStatus(key)
 	}
 	return domain.TaskStatus(s)
 }

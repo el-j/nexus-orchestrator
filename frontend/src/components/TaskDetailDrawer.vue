@@ -59,6 +59,20 @@
         </div>
       </div>
 
+      <!-- Who ran it: Nexus on a provider, or an agent that only reported a status -->
+      <p
+        v-if="executor.text"
+        data-testid="executor"
+        class="text-xs rounded-lg px-3 py-2 border"
+        :class="
+          executor.byNexus
+            ? 'text-emerald-300 border-emerald-500/20 bg-emerald-500/5'
+            : 'text-amber-300 border-amber-500/20 bg-amber-500/5'
+        "
+      >
+        {{ executor.text }}
+      </p>
+
       <!-- Provider / Model -->
       <div class="grid grid-cols-2 gap-3">
         <div>
@@ -126,6 +140,7 @@ import type { Task } from '../types/domain';
 import TaskStatusBadge from './TaskStatusBadge.vue';
 import { formatDate } from '../utils/time';
 import { useLiveOutput } from '../composables/useLiveOutput';
+import { whoRanTask } from '../utils/taskExecutor';
 
 const props = defineProps<{ task: Task | null; modelValue: boolean }>();
 const emit = defineEmits<{
@@ -134,6 +149,8 @@ const emit = defineEmits<{
   close: [];
 }>();
 
+// Read only inside v-if="task", so the task is never null here.
+const executor = computed(() => whoRanTask(props.task as Task));
 const visible = computed({
   get: () => props.modelValue,
   set: (v) => emit('update:modelValue', v),

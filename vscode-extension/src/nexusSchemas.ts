@@ -31,6 +31,7 @@ export const TaskSchema = z
       .transform((v) => v ?? []),
     modelId: z.string().optional(),
     providerHint: z.string().optional(),
+    ranBy: z.string().optional(),
     command: z.enum(['plan', 'execute', 'auto', '']).optional(),
     status: TaskStatusSchema,
     createdAt: z.string(),

@@ -51,3 +51,6 @@ func (o *OrchestratorService) PublishForTest(ev ports.TaskEvent) { o.publish(ev)
 func (o *OrchestratorService) GetClientForTest(name string) (ports.LLMClient, bool) {
 	return o.discovery.GetClientByName(name)
 }
+
+// PollNow runs one poll of the activity readers, so tests need not wait for the ticker.
+func (s *ActivityService) PollNow() { s.poll() }

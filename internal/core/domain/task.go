@@ -4,6 +4,8 @@ package domain
 
 import (
 	"errors"
+	"regexp"
+	"strings"
 	"time"
 )
 
@@ -120,6 +122,9 @@ type Task struct {
 	RetryCount  int         `json:"retryCount,omitempty"`
 	Logs        string      `json:"logs,omitempty"`
 	AISessionID string      `json:"aiSessionId,omitempty"`
+	// RanBy is the provider that ran the task, read from its log; empty when Nexus did not run it
+	// (an agent reported it done, or it has not run yet). It is derived, never stored.
+	RanBy string `json:"ranBy,omitempty"`
 	// VerificationCommand is an optional shell command (e.g. "go test ./...", "npm test")
 	// executed after writing code to verify correctness before marking the task COMPLETED.
 	VerificationCommand string `json:"verificationCommand,omitempty"`
@@ -141,4 +146,19 @@ func (t *Task) ComputeDuration() {
 		return
 	}
 	t.DurationMs = t.UpdatedAt.Sub(t.CreatedAt).Milliseconds()
+}
+
+var ranByRe = regexp.MustCompile(`completed via (.+?) at \d{4}-\d\d-\d\dT|failed via ([^:\n]+?):|completed via (\S+)`)
+
+// RanBy names the provider that ran a task, read from the log the engine writes ("completed via X
+// at <time>", "failed via X: <error>"). It is empty for a task Nexus did not run, for example one
+// an agent marked done itself.
+func RanBy(logs string) string {
+	m := ranByRe.FindStringSubmatch(logs)
+	for _, g := range m[min(1, len(m)):] {
+		if g = strings.TrimSpace(g); g != "" {
+			return g
+		}
+	}
+	return ""
 }

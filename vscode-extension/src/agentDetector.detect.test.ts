@@ -229,28 +229,17 @@ describe('terminals', () => {
   });
 });
 
-describe('language-model participants', () => {
-  it('reports non-Copilot models, preferring id over name', async () => {
+describe('language models are not agents', () => {
+  it('does not report the models other vendors offer (they are a catalogue, not agents at work)', async () => {
     h.lm = {
       selectChatModels: vi.fn().mockResolvedValue([
-        { vendor: 'copilot', family: 'gpt', id: 'c1' },
         { vendor: 'anthropic', family: 'claude', id: 'a1' },
-        { vendor: 'ollama', family: 'llama', name: 'llama3' },
+        { vendor: 'copilotcli', family: 'gpt-5.4', id: 'g1' },
       ]),
     };
     const found = await (await detector()).detectAll();
-    const lm = found.filter((a) => a.detectionMethod === 'lm-participant');
-    expect(lm.map((a) => [a.agentName, a.modelId])).toEqual([
-      ['anthropic/claude', 'a1'],
-      ['ollama/llama', 'llama3'],
-    ]);
-  });
-
-  it('survives an LM API that throws or is missing', async () => {
-    h.lm = { selectChatModels: vi.fn().mockRejectedValue(new Error('x')) };
-    expect(await names(await detector())).toEqual([]);
-    h.lm = {} as never;
-    expect(await names(await detector())).toEqual([]);
+    expect(found.map((a) => a.agentName)).not.toContain('anthropic/claude');
+    expect(found.filter((a) => a.detectionMethod === 'lm-participant')).toEqual([]);
   });
 });
 
