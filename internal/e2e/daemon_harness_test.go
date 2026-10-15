@@ -112,6 +112,9 @@ type fakeOllama struct {
 	reply    func(prompt string) string
 	generate func(prompt string) string
 	chat     func(turn int, lastUser string) string
+	// hold, when set, blocks a streamed chat reply after its first piece until it is closed,
+	// so a test can look at the live output while the model is still "writing".
+	hold chan struct{}
 }
 
 func newFakeOllama(t *testing.T) *fakeOllama {
@@ -145,6 +148,7 @@ func newFakeOllama(t *testing.T) *fakeOllama {
 	mux.HandleFunc("/api/chat", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Messages []struct{ Role, Content string } `json:"messages"`
+			Stream   bool                             `json:"stream"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&req)
 		last := ""
@@ -162,7 +166,25 @@ func newFakeOllama(t *testing.T) *fakeOllama {
 		case reply != nil:
 			out = reply(last)
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"message": map[string]string{"content": out}})
+		if !req.Stream {
+			_ = json.NewEncoder(w).Encode(map[string]any{"message": map[string]string{"content": out}})
+			return
+		}
+		// Like real Ollama: newline-delimited JSON, a few pieces, then a done line.
+		enc, flush := json.NewEncoder(w), w.(http.Flusher).Flush
+		half := len(out) / 2
+		for i, piece := range []string{out[:half], out[half:]} {
+			_ = enc.Encode(map[string]any{"message": map[string]string{"content": piece}, "done": false})
+			flush()
+			if i == 0 && f.hold != nil {
+				select {
+				case <-f.hold:
+				case <-r.Context().Done():
+					return
+				}
+			}
+		}
+		_ = enc.Encode(map[string]any{"message": map[string]string{"content": ""}, "done": true})
 	})
 	f.Server = httptest.NewServer(mux)
 	t.Cleanup(f.Close)

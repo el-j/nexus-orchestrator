@@ -33,7 +33,7 @@ Each model appears as its own provider named `vscode-<vendor>-<model>` (for exam
 ## Limits (checked, not assumed)
 
 - The daemon assumes a 128K context window for these providers, whatever the model really has.
-- The bridge streams when asked (`"stream": true`, OpenAI-style server-sent events); the daemon does not ask yet. System messages are sent as user messages, because the
+- The bridge streams when asked (`"stream": true`, OpenAI-style server-sent events); the daemon asks, so the text of a task shows up live (see [streaming.md](streaming.md)). System messages are sent as user messages, because the
   editor's chat API has no system role.
 - **Copilot**: works through `vscode.lm`. **Antigravity** and **Claude Pro**: see below.
 - Which models you see depends on the editor and your plan. Open `Nexus: Show Providers` or
