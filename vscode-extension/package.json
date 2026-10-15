@@ -2,7 +2,7 @@
   "name": "nexus-orchestrator",
   "displayName": "Nexus Orchestrator",
   "description": "Run AI coding tasks on any model through nexusOrchestrator: live output, plans and brain, editor models as providers, and your editor's agent connected to Nexus",
-  "version": "0.2.0-62",
+  "version": "0.10.0-beta.177",
   "publisher": "el-j",
   "engines": {
     "vscode": "^1.99.0"
