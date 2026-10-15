@@ -90,3 +90,33 @@ func TestOnboarding_ReadsOddlyWrittenPlanFiles(t *testing.T) {
 		t.Errorf("an active plan with no number in its name must be found:\n%s", out)
 	}
 }
+
+// The agent that works on a project may not be Claude: its instructions live in GEMINI.md,
+// AGENTS.md or the Copilot instructions file, and init must learn from them as from CLAUDE.md.
+func TestInitProject_AutoDetectsInstructionFilesOfOtherAgents(t *testing.T) {
+	repo := &mockKnowledgeRepo{}
+	b := services.NewBrainService(repo, nil)
+	dir := t.TempDir()
+	para := "# Title\nA sufficiently long preamble paragraph here.\n"
+	writePlanFile(t, dir, "GEMINI.md", para)
+	writePlanFile(t, dir, "AGENTS.md", para)
+	writePlanFile(t, dir, ".github/copilot-instructions.md", para)
+	if _, err := b.InitProject(bg, dir, ""); err != nil {
+		t.Fatal(err)
+	}
+	sources := map[string]bool{}
+	for _, e := range repo.entries {
+		sources[e.Source] = true
+	}
+	for _, want := range []string{"GEMINI.md", "AGENTS.md", "copilot-instructions.md"} {
+		found := false
+		for s := range sources {
+			if strings.Contains(s, want) {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s was not ingested; sources: %v", want, sources)
+		}
+	}
+}

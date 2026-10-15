@@ -214,22 +214,35 @@ func (b *BrainServiceImpl) GetFileMap(ctx context.Context, projectPath, focusAre
 	return files, nil
 }
 
-// InitProject ingests the project CLAUDE.md (auto-detected if claudeMDPath is empty).
+// instructionFiles are the files in which the agents that work on a project keep their
+// instructions. The first of a group that exists is ingested, so a project that has both
+// CLAUDE.md and .claude/CLAUDE.md is not read twice.
+var instructionFiles = [][]string{
+	{"CLAUDE.md", filepath.Join(".claude", "CLAUDE.md")},
+	{"AGENTS.md"},
+	{"GEMINI.md"},
+	{filepath.Join(".github", "copilot-instructions.md")},
+}
+
+// InitProject ingests the project's agent instructions. With an explicit claudeMDPath only that
+// file is read; with none, the project's CLAUDE.md, AGENTS.md, GEMINI.md and Copilot
+// instructions are found by themselves, whichever agent works on the project.
 func (b *BrainServiceImpl) InitProject(ctx context.Context, projectPath, claudeMDPath string) (domain.BrainStatus, error) {
-	if claudeMDPath == "" {
-		candidates := []string{
-			filepath.Join(projectPath, "CLAUDE.md"),
-			filepath.Join(projectPath, ".claude", "CLAUDE.md"),
-		}
-		for _, c := range candidates {
-			if _, err := os.Stat(c); err == nil {
-				claudeMDPath = c
-				break
+	var paths []string
+	if claudeMDPath != "" {
+		paths = []string{claudeMDPath}
+	} else {
+		for _, group := range instructionFiles {
+			for _, rel := range group {
+				if _, err := os.Stat(filepath.Join(projectPath, rel)); err == nil {
+					paths = append(paths, filepath.Join(projectPath, rel))
+					break
+				}
 			}
 		}
 	}
-	if claudeMDPath != "" {
-		if _, err := b.IngestFromFile(ctx, projectPath, claudeMDPath); err != nil {
+	for _, path := range paths {
+		if _, err := b.IngestFromFile(ctx, projectPath, path); err != nil {
 			return domain.BrainStatus{}, fmt.Errorf("brain_service: init project: %w", err)
 		}
 	}
