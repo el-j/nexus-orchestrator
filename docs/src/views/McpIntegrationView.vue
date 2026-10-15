@@ -38,7 +38,8 @@
             <span class="gradient-text">MCP Integration</span>
           </h1>
           <p class="text-lg text-slate-400">
-            Connect nexus-orchestrator to Claude Desktop and any MCP-compatible client.
+            Connect Claude Code, Claude Desktop, Cursor, Antigravity and any MCP-compatible client
+            to nexus-orchestrator.
           </p>
         </div>
 
@@ -62,6 +63,27 @@
               compatible with Claude Desktop and any MCP-aware client.
             </p>
           </div>
+        </section>
+
+        <!-- Connect with one command -->
+        <section id="connect-command" class="reveal">
+          <h2 class="text-2xl font-black mb-4 flex items-center gap-2">
+            <span class="text-violet-400">#</span> Connect Your Agents
+          </h2>
+          <p class="text-slate-400 text-sm mb-4">
+            An agent that cannot call Nexus tools can only work around them. This finds the agents
+            installed on your machine, shows which are not connected, and with
+            <code class="text-violet-300">--write</code> adds the nexus server to their config
+            (other servers stay, the old file is kept as a backup):
+          </p>
+          <CodeBlock language="bash" :code="connectCommand" />
+          <p class="text-slate-500 text-sm mt-3">
+            Antigravity is connected through the <code>nexus-mcp-stdio</code> bridge, Cursor through
+            the HTTP endpoint, Claude Code through <code>claude mcp add</code>. The VS Code
+            extension does this for the editor's own agent: VS Code 1.101+ through its MCP support,
+            Antigravity after one prompt. Tools that stream: <code>wait_for_task</code> sends the
+            model's text as progress notifications when the client asks for them.
+          </p>
         </section>
 
         <!-- Claude Desktop Setup -->
@@ -371,6 +393,7 @@ import { scrollToId } from '../utils/scroll';
 import {
   toc,
   claudeConfig,
+  connectCommand,
   examples,
   vsCodeConfig,
   brainExamples,

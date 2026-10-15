@@ -30,6 +30,7 @@ describe('AppNav (stable channel)', () => {
       'Downloads',
       'API Reference',
       'Getting Started',
+      'Guides',
       'MCP Integration',
     ]);
   });

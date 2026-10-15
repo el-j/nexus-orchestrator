@@ -62,7 +62,9 @@
         >
       </div>
       <p class="text-slate-500 mb-8 reveal">
-        Full GUI with built-in HTTP API and MCP server. Best for most users.
+        Full UI with built-in HTTP API and MCP server. Best for most users. Keeps its data in
+        <code class="text-slate-400">~/.nexus/nexus.db</code>; do not run it next to a separately
+        started daemon (both use port 63987).
       </p>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -93,6 +95,27 @@
             {{ card.ext }}
           </a>
         </div>
+      </div>
+    </section>
+
+    <!-- macOS note: the app is not notarized yet -->
+    <section class="mb-16 reveal">
+      <div class="rounded-xl border border-amber-500/20 bg-amber-500/5 p-6">
+        <h3 class="font-bold text-amber-300 mb-2">
+          macOS: “Apple could not verify nexusOrchestrator”
+        </h3>
+        <p class="text-sm text-amber-200/70 mb-4">
+          The app is not notarized with Apple yet, so macOS blocks a copy downloaded in a browser.
+          This installer downloads with curl, checks the checksum and installs to
+          <code class="text-amber-100">~/Applications</code> without the block:
+        </p>
+        <CodeBlock language="bash" :code="installDesktopScript" />
+        <p class="text-xs text-amber-200/60 mt-4">
+          Already downloaded the zip? Run
+          <code class="text-amber-100">xattr -dr com.apple.quarantine nexusOrchestrator.app</code>,
+          or click “Open Anyway” in System Settings → Privacy &amp; Security after the blocked
+          attempt (macOS 15 no longer has right-click → Open).
+        </p>
       </div>
     </section>
 
@@ -142,8 +165,9 @@
         >
       </div>
       <p class="text-slate-500 mb-8 reveal">
-        Submit tasks, monitor the queue, and switch providers without leaving your editor. Requires
-        VS Code 1.85+ and a running nexus daemon.
+        Task queue with live output, plan view, brain commands and the editor's models as providers
+        — and it connects the editor's own agent to Nexus (VS Code 1.101+ through its MCP support,
+        Antigravity through its MCP config). Requires VS Code 1.99+ and a running nexus daemon.
       </p>
       <div class="max-w-xs reveal">
         <div
@@ -151,7 +175,7 @@
         >
           <div class="text-3xl mb-3">🔌</div>
           <div class="font-bold text-white mb-1">VS Code</div>
-          <div class="text-xs text-slate-500 mb-1">1.85+</div>
+          <div class="text-xs text-slate-500 mb-1">1.99+</div>
           <div class="text-xs text-slate-600 mb-4">~2 MB</div>
           <a
             :href="vsixURL"
@@ -412,6 +436,12 @@ const installScript = computed(() =>
   channel === 'beta' && latestTag.value
     ? `curl -sSfL https://raw.githubusercontent.com/${REPO}/${latestTag.value}/scripts/install.sh | sh`
     : `curl -sSfL https://raw.githubusercontent.com/${REPO}/main/scripts/install.sh | sh`,
+);
+
+const installDesktopScript = computed(() =>
+  channel === 'beta' && latestTag.value
+    ? `curl -sSfL https://raw.githubusercontent.com/${REPO}/${latestTag.value}/scripts/install.sh | sh -s -- --desktop`
+    : `curl -sSfL https://raw.githubusercontent.com/${REPO}/main/scripts/install.sh | sh -s -- --desktop`,
 );
 
 const verifyMac = computed(

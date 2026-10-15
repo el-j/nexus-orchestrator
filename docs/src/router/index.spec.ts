@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { routes } from './index';
+import { guides } from '../data/guides';
 
 describe('routes', () => {
   it('covers every documented page, each with a title', () => {
@@ -10,6 +11,8 @@ describe('routes', () => {
       '/architecture',
       '/api-reference',
       '/mcp-integration',
+      '/guides',
+      ...guides.map((g) => `/guides/${g.slug}`),
     ]);
     for (const r of routes) expect(String(r.meta?.title), r.path).toMatch(/nexus-orchestrator/);
   });

@@ -19,7 +19,7 @@ it for each task: the prompt goes to `claude -p` on stdin and the printed reply 
     "model": "sonnet", "enabled": true }'
   ```
 
-Things to know:
+### Things to know
 
 - Only known tools may run: `claude`, `aichat`, `llm`, `gemini`, `codex`. Add more executable names
   with `NEXUS_CLI_PROVIDERS=mytool,other` (the config API must not become a way to run any program).

@@ -1,6 +1,6 @@
 # Nexus Orchestrator for VS Code
 
-> Route AI code-generation tasks from your editor through [nexusOrchestrator](../README.md) — leveraging LM Studio, Ollama, OpenAI, Anthropic, or GitHub Copilot backends.
+> Run AI coding tasks from your editor on any model through [nexusOrchestrator](../README.md): task queue with live output, plan and brain views, the editor's own models (Copilot and others) as providers, and the editor's agent connected to Nexus (VS Code 1.101+, Antigravity).
 
 ## Prerequisites
 
@@ -15,8 +15,8 @@ Install via VSIX:
 # In the vscode-extension/ directory
 npm install
 npm run build
-npm run package          # produces nexus-orchestrator-0.1.0.vsix
-code --install-extension nexus-orchestrator-0.1.0.vsix
+npm run package          # produces nexus-orchestrator-<version>.vsix
+code --install-extension nexus-orchestrator-*.vsix
 ```
 
 > Marketplace listing coming soon.

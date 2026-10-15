@@ -58,8 +58,7 @@
           </p>
           <div class="rounded-xl border border-white/8 bg-[#0a0a10] p-4 mt-3">
             <pre class="!border-0 !bg-transparent !p-0 text-xs text-violet-300">
-inbound adapters → core services → ports ← outbound adapters</pre
-            >
+inbound adapters → core services → ports ← outbound adapters</pre>
           </div>
         </section>
 
@@ -275,6 +274,15 @@ inbound adapters → core services → ports ← outbound adapters</pre
 import UiIcon from '../ui/UiIcon.vue';
 import CodeBlock from '../components/CodeBlock.vue';
 import { scrollToId } from '../utils/scroll';
+import {
+  commandRows,
+  concurrencyPoints,
+  inboundAdapters,
+  outboundAdapters,
+  ports,
+  statusRows,
+  taskFields,
+} from '../data/architecture';
 
 const toc = [
   { id: 'hexagonal', label: 'Hexagonal Architecture' },
@@ -313,140 +321,4 @@ const statusDiagram = `          ┌──────────┐
 COMPLETED   FAILED   TOO_LARGE   NO_PROVIDER
 
               CANCELLED (from QUEUED only)`;
-
-const taskFields = [
-  { field: 'ID', type: 'string', desc: 'UUID, generated on submission' },
-  { field: 'ProjectPath', type: 'string', desc: 'Absolute path to the project' },
-  { field: 'TargetFile', type: 'string', desc: 'Relative path for generated code output' },
-  { field: 'Instruction', type: 'string', desc: 'Natural language prompt' },
-  { field: 'ContextFiles', type: '[]string', desc: 'Files to include as context' },
-  { field: 'ModelID', type: 'string', desc: 'Constrain to a specific model (optional)' },
-  { field: 'ProviderHint', type: 'string', desc: 'Prefer a specific provider (optional)' },
-  { field: 'Command', type: 'CommandType', desc: 'Task classification: plan, execute, or auto' },
-  { field: 'Status', type: 'TaskStatus', desc: 'Lifecycle state' },
-  { field: 'CreatedAt', type: 'time.Time', desc: 'Creation timestamp' },
-  { field: 'UpdatedAt', type: 'time.Time', desc: 'Last update timestamp' },
-  { field: 'Logs', type: 'string', desc: 'LLM output or error details' },
-];
-
-const statusRows = [
-  { status: 'QUEUED', desc: 'Task is waiting in the queue', color: 'bg-blue-500/20 text-blue-300' },
-  {
-    status: 'PROCESSING',
-    desc: 'Task is being processed by an LLM',
-    color: 'bg-amber-500/20 text-amber-300',
-  },
-  {
-    status: 'COMPLETED',
-    desc: 'LLM generated output successfully',
-    color: 'bg-emerald-500/20 text-emerald-300',
-  },
-  { status: 'FAILED', desc: 'LLM call failed', color: 'bg-red-500/20 text-red-300' },
-  {
-    status: 'CANCELLED',
-    desc: 'Cancelled before processing',
-    color: 'bg-slate-500/20 text-slate-300',
-  },
-  {
-    status: 'TOO_LARGE',
-    desc: 'Prompt exceeds model context window',
-    color: 'bg-orange-500/20 text-orange-300',
-  },
-  {
-    status: 'NO_PROVIDER',
-    desc: 'No provider available for requested model',
-    color: 'bg-purple-500/20 text-purple-300',
-  },
-];
-
-const commandRows = [
-  { cmd: 'plan', desc: 'Planning/orchestration work (creating plans, task documents)' },
-  { cmd: 'execute', desc: 'Code implementation (requires a prior completed plan)' },
-  { cmd: 'auto', desc: 'Let the orchestrator decide (default)' },
-];
-
-const ports = [
-  {
-    name: 'Orchestrator',
-    direction: 'Inbound',
-    desc: 'The primary interface that UI, CLI, and HTTP API call',
-    code: `type Orchestrator interface {
-    SubmitTask(task domain.Task) (string, error)
-    GetTask(id string) (domain.Task, error)
-    GetQueue() ([]domain.Task, error)
-    GetProviders() ([]ProviderInfo, error)
-    CancelTask(id string) error
-    RegisterCloudProvider(cfg domain.ProviderConfig) error
-    RemoveProvider(providerName string) error
-    GetProviderModels(providerName string) ([]string, error)
-}`,
-  },
-  {
-    name: 'LLMClient',
-    direction: 'Outbound',
-    desc: 'Interface for any language model backend',
-    code: `type LLMClient interface {
-    Ping() bool
-    ProviderName() string
-    ActiveModel() string
-    GetAvailableModels() ([]string, error)
-    ContextLimit() int
-    GenerateCode(prompt string) (string, error)
-    Chat(messages []domain.Message) (string, error)
-}`,
-  },
-  {
-    name: 'TaskRepository',
-    direction: 'Outbound',
-    desc: 'Persistence for tasks',
-    code: `type TaskRepository interface {
-    Save(t domain.Task) error
-    GetByID(id string) (domain.Task, error)
-    GetPending() ([]domain.Task, error)
-    GetByProjectPath(projectPath string) ([]domain.Task, error)
-    UpdateStatus(id string, status domain.TaskStatus) error
-    UpdateLogs(id, logs string) error
-}`,
-  },
-  {
-    name: 'SessionRepository',
-    direction: 'Outbound',
-    desc: 'Per-project conversation history',
-    code: `type SessionRepository interface {
-    Save(s domain.Session) error
-    GetByProjectPath(projectPath string) (domain.Session, error)
-    AppendMessage(projectPath string, msg domain.Message) error
-}`,
-  },
-];
-
-const inboundAdapters = [
-  { adapter: 'HTTP API', pkg: 'httpapi', proto: 'REST + SSE', port: ':63987' },
-  { adapter: 'MCP Server', pkg: 'mcp', proto: 'JSON-RPC 2.0', port: ':63988' },
-  { adapter: 'CLI Client', pkg: 'cli', proto: 'HTTP → daemon', port: '—' },
-  { adapter: 'Wails GUI', pkg: 'wailsbind', proto: 'Native + embedded HTTP', port: ':63987' },
-  { adapter: 'System Tray', pkg: 'tray', proto: 'OS native', port: '—' },
-];
-
-const outboundAdapters = [
-  { adapter: 'LM Studio', pkg: 'llm_lmstudio', backend: 'OpenAI-compatible API at :1234' },
-  { adapter: 'Ollama', pkg: 'llm_ollama', backend: 'Ollama API at :11434' },
-  {
-    adapter: 'OpenAI-compatible',
-    pkg: 'llm_openaicompat',
-    backend: 'OpenAI, GitHub Copilot, Azure',
-  },
-  { adapter: 'Anthropic', pkg: 'llm_anthropic', backend: 'Anthropic Messages API' },
-  { adapter: 'SQLite', pkg: 'repo_sqlite', backend: 'Local SQLite via go-sqlite3' },
-  { adapter: 'Filesystem', pkg: 'fs_writer', backend: 'Disk read/write' },
-];
-
-const concurrencyPoints = [
-  'Shared state is protected with <code class="text-slate-300">sync.Mutex</code> in OrchestratorService',
-  'The background worker goroutine processes tasks sequentially — only one LLM call is ever in flight',
-  'Shutdown is coordinated via a <code class="text-slate-300">stopCh chan struct{}</code> channel',
-  '<code class="text-slate-300">Stop()</code> is idempotent via <code class="text-slate-300">sync.Once</code>',
-  'No goroutines inside core services — goroutine lifecycle is an infrastructure concern owned by inbound adapters',
-  'SSE broadcasting uses a separate Hub with its own mutex to avoid lock nesting',
-];
 </script>
