@@ -24,6 +24,10 @@ func (s *Server) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 			writeJSONError(w, "planning required before execution; submit a 'plan' task first", http.StatusUnprocessableEntity)
 			return
 		}
+		if errors.Is(err, domain.ErrQueueFull) {
+			writeQueueFull(w)
+			return
+		}
 		log.Printf("httpapi: create task: %v", err)
 		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -141,7 +145,7 @@ func (s *Server) handleGetBacklog(w http.ResponseWriter, r *http.Request) {
 	tasks, err := s.orch.GetBacklog(projectPath)
 	if err != nil {
 		log.Printf("httpapi: get backlog: %v", err)
-		writeJSONError(w, err.Error(), http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	if tasks == nil {
@@ -157,6 +161,10 @@ func (s *Server) handlePromoteTask(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			writeJSONError(w, "task not found", http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, domain.ErrQueueFull) {
+			writeQueueFull(w)
 			return
 		}
 		writeJSONError(w, err.Error(), http.StatusBadRequest)
@@ -255,16 +263,33 @@ func (s *Server) handleUpdateTaskStatus(w http.ResponseWriter, r *http.Request) 
 
 func (s *Server) handleHeartbeatTask(w http.ResponseWriter, r *http.Request) {
 	taskID := chi.URLParam(r, "id")
+	// "sessionId" is canonical (as for /claim and /status); "session_id" is
+	// accepted for older callers and the MCP parameter naming.
 	var body struct {
-		SessionID string `json:"session_id"`
+		SessionID       string `json:"sessionId"`
+		LegacySessionID string `json:"session_id"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.SessionID == "" {
-		writeJSONError(w, "session_id is required", http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeJSONError(w, "sessionId is required", http.StatusBadRequest)
 		return
 	}
-	if err := s.orch.HeartbeatTask(r.Context(), taskID, body.SessionID); err != nil {
+	sessionID := body.SessionID
+	if sessionID == "" {
+		sessionID = body.LegacySessionID
+	}
+	if sessionID == "" {
+		writeJSONError(w, "sessionId is required", http.StatusBadRequest)
+		return
+	}
+	if err := s.orch.HeartbeatTask(r.Context(), taskID, sessionID); err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			writeJSONError(w, "task or session not found", http.StatusNotFound)
+			return
+		}
+		if strings.Contains(err.Error(), "not processing") ||
+			strings.Contains(err.Error(), "not claimed by session") ||
+			strings.Contains(err.Error(), "status changed") {
+			writeJSONError(w, err.Error(), http.StatusConflict)
 			return
 		}
 		log.Printf("httpapi: heartbeat task %s: %v", taskID, err)

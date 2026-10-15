@@ -14,46 +14,56 @@ import (
 
 // LLMClient is the port for any language model backend (LM Studio, Ollama, etc.).
 type LLMClient interface {
-	Ping() bool
+	// Ping reports whether the provider is reachable. Cancelling ctx aborts the probe.
+	Ping(ctx context.Context) bool
 	ProviderName() string
 	// ActiveModel returns the model ID currently loaded or configured on this
 	// provider.  Returns empty string when unknown.
 	ActiveModel() string
 	// BaseURL returns the configured endpoint URL for this provider.
 	BaseURL() string
-	GetAvailableModels() ([]string, error)
+	GetAvailableModels(ctx context.Context) ([]string, error)
 	// ContextLimit returns the maximum number of input tokens the currently
 	// loaded model can accept.  Returns 0 if unknown; when 0, no pre-flight
 	// token check is performed.
-	ContextLimit() int
+	ContextLimit(ctx context.Context) int
 	// GenerateCode sends a single prompt and returns generated text.
 	// Prefer Chat for multi-turn session-aware generation.
-	GenerateCode(prompt string) (string, error)
+	// Cancelling ctx aborts the in-flight request.
+	GenerateCode(ctx context.Context, prompt string) (string, error)
 	// Chat sends a full conversation history and returns the assistant reply.
 	// Used by OrchestratorService for per-project session isolation.
-	Chat(messages []domain.Message) (string, error)
+	// Cancelling ctx aborts the in-flight request.
+	Chat(ctx context.Context, messages []domain.Message) (string, error)
+}
+
+// ChatStreamer is the optional LLMClient capability of delivering a reply piece by piece.
+// ChatStream behaves like Chat and also calls onChunk with each piece as it arrives; the
+// returned string is the complete reply. A client without it is called through Chat.
+type ChatStreamer interface {
+	ChatStream(ctx context.Context, messages []domain.Message, onChunk func(piece string)) (string, error)
 }
 
 // TaskRepository is the port for persisting and querying Tasks.
 type TaskRepository interface {
-	Save(t domain.Task) error
-	GetByID(id string) (domain.Task, error)
-	GetPending() ([]domain.Task, error)
-	ClaimNextQueued() (domain.Task, error)
+	Save(ctx context.Context, t domain.Task) error
+	GetByID(ctx context.Context, id string) (domain.Task, error)
+	GetPending(ctx context.Context) ([]domain.Task, error)
+	ClaimNextQueued(ctx context.Context) (domain.Task, error)
 	// GetByProjectPath returns all tasks for the given project path.
-	GetByProjectPath(projectPath string) ([]domain.Task, error)
-	UpdateStatus(id string, status domain.TaskStatus) error
-	UpdateStatusIfCurrent(id string, from, to domain.TaskStatus) (bool, error)
+	GetByProjectPath(ctx context.Context, projectPath string) ([]domain.Task, error)
+	UpdateStatus(ctx context.Context, id string, status domain.TaskStatus) error
+	UpdateStatusIfCurrent(ctx context.Context, id string, from, to domain.TaskStatus) (bool, error)
 	// UpdateLogs replaces the Logs field on the task identified by id.
-	UpdateLogs(id, logs string) error
+	UpdateLogs(ctx context.Context, id, logs string) error
 	// GetAll returns every task, ordered by creation time descending.
-	GetAll() ([]domain.Task, error)
+	GetAll(ctx context.Context) ([]domain.Task, error)
 	// GetByProjectPathAndStatus returns tasks for a project filtered by one or more statuses.
-	GetByProjectPathAndStatus(projectPath string, statuses ...domain.TaskStatus) ([]domain.Task, error)
+	GetByProjectPathAndStatus(ctx context.Context, projectPath string, statuses ...domain.TaskStatus) ([]domain.Task, error)
 	// Update persists changes to an existing task's mutable fields.
-	Update(t domain.Task) error
+	Update(ctx context.Context, t domain.Task) error
 	// GetTasksBySessionID returns all tasks claimed by the given AI session.
-	GetTasksBySessionID(sessionID string) ([]domain.Task, error)
+	GetTasksBySessionID(ctx context.Context, sessionID string) ([]domain.Task, error)
 	// GetStaleProcessing returns tasks in PROCESSING state longer than threshold.
 	GetStaleProcessing(ctx context.Context, threshold time.Duration) ([]domain.Task, error)
 }
@@ -91,12 +101,12 @@ type ProviderInfo struct {
 // SessionRepository is the port for persisting per-project conversation history.
 // ProjectPath (filepath.Clean'd) is the isolation key.
 type SessionRepository interface {
-	Save(s domain.Session) error
+	Save(ctx context.Context, s domain.Session) error
 	// GetByProjectPath returns the session for the given project, or domain.ErrNotFound.
-	GetByProjectPath(projectPath string) (domain.Session, error)
+	GetByProjectPath(ctx context.Context, projectPath string) (domain.Session, error)
 	// AppendMessage adds a message to the session for projectPath.
 	// If no session exists for that path, one is created automatically.
-	AppendMessage(projectPath string, msg domain.Message) error
+	AppendMessage(ctx context.Context, projectPath string, msg domain.Message) error
 }
 
 // RuntimeConfigRepository persists runtime-managed configuration.
@@ -209,6 +219,7 @@ type Orchestrator interface {
 // EventType identifies a task lifecycle event.
 type EventType string
 
+// The EventType values broadcast to SSE subscribers and the UI.
 const (
 	EventTaskQueued     EventType = "task.queued"
 	EventTaskProcessing EventType = "task.processing"
@@ -220,6 +231,11 @@ const (
 	EventTaskDraft      EventType = "task.draft"
 	EventTaskBacklog    EventType = "task.backlog"
 	EventTaskUpdated    EventType = "task.updated"
+	// EventTaskChunk carries a piece of the model's reply while it is being generated.
+	EventTaskChunk EventType = "task.chunk"
+	// EventTaskRestart tells subscribers to discard the text received so far: a new attempt
+	// (retry, next provider, next agent turn) starts.
+	EventTaskRestart EventType = "task.restart"
 )
 
 // TaskEvent is emitted by OrchestratorService on task lifecycle changes.
@@ -227,6 +243,10 @@ type TaskEvent struct {
 	Type   EventType         `json:"type"`
 	TaskID string            `json:"taskId"`
 	Status domain.TaskStatus `json:"status"`
+	// Text is the piece of reply of a task.chunk event.
+	Text string `json:"text,omitempty"`
+	// Seq numbers the chunks of one attempt from 1, so a subscriber that was too slow can see a gap.
+	Seq int `json:"seq,omitempty"`
 }
 
 // EventBroadcaster is the optional outbound port for publishing task lifecycle events.
@@ -234,6 +254,14 @@ type TaskEvent struct {
 type EventBroadcaster interface {
 	Broadcast(event TaskEvent)
 	BroadcastAISessionEvent(event domain.AISessionEvent)
+}
+
+// TaskEventSource is optionally implemented by an Orchestrator that lets in-process adapters
+// follow task events (lifecycle, task.chunk, task.restart) as they happen. The channel is
+// buffered and an event is dropped when a subscriber falls behind, so publishing never blocks.
+// cancel removes the subscription and closes the channel; calling it again is harmless.
+type TaskEventSource interface {
+	SubscribeTaskEvents() (events <-chan TaskEvent, cancel func())
 }
 
 // SystemScanner scans the local system for AI providers/agents.
@@ -313,8 +341,8 @@ type ActivityBroadcaster interface {
 // ModelCapabilityRepository is the outbound port for persisting and querying
 // model capability profiles. Built-in profiles can be overridden by user-defined records.
 type ModelCapabilityRepository interface {
-	Save(p domain.ModelCapabilityProfile) error
-	GetByModelID(modelID string) (domain.ModelCapabilityProfile, error)
-	Delete(modelID string) error
-	GetAll() ([]domain.ModelCapabilityProfile, error)
+	Save(ctx context.Context, p domain.ModelCapabilityProfile) error
+	GetByModelID(ctx context.Context, modelID string) (domain.ModelCapabilityProfile, error)
+	Delete(ctx context.Context, modelID string) error
+	GetAll(ctx context.Context) ([]domain.ModelCapabilityProfile, error)
 }

@@ -5,15 +5,10 @@ package services
 
 import (
 	"context"
-	"crypto/rand"
-	"errors"
-	"fmt"
-	"log"
-	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"encoding/base64"
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
 )
@@ -26,7 +21,8 @@ type discoveredAgentStore interface {
 }
 
 // ErrQueueFull is returned by SubmitTask when the number of QUEUED tasks reaches the queue cap.
-var ErrQueueFull = errors.New("queue is full")
+// It aliases domain.ErrQueueFull so adapters can match it without importing this package.
+var ErrQueueFull = domain.ErrQueueFull
 
 // Option is a functional option for configuring OrchestratorService.
 type Option func(*OrchestratorService)
@@ -78,6 +74,13 @@ func WithCommandRunner(runner ports.CommandRunner) Option {
 	return func(s *OrchestratorService) { s.commandRunner = runner }
 }
 
+// runHandle lets CancelTask and Stop abort the generation of a task in flight.
+type runHandle struct {
+	ctx           context.Context
+	cancel        context.CancelFunc
+	userCancelled atomic.Bool // true when CancelTask (not shutdown) caused the abort
+}
+
 // OrchestratorService implements ports.Orchestrator and drives the worker loop.
 type OrchestratorService struct {
 	mu          sync.Mutex
@@ -87,7 +90,9 @@ type OrchestratorService struct {
 	sessionRepo ports.SessionRepository
 	runtimeCfg  ports.RuntimeConfigRepository
 	broadcaster ports.EventBroadcaster // optional; nil = no event publishing
-	workCh      chan struct{}          // notified when a task is enqueued; capacity 1
+	tapMu       sync.Mutex             // guards taps
+	taps        map[chan ports.TaskEvent]struct{}
+	workCh      chan struct{} // notified when a task is enqueued; capacity 1
 	stopCh      chan struct{}
 	stopped     bool
 	stopOnce    sync.Once
@@ -105,8 +110,14 @@ type OrchestratorService struct {
 	agentRepo          discoveredAgentStore
 	planFileRepo       ports.DiscoveredPlanFileRepo
 	commandRunner      ports.CommandRunner
+	brain              ports.BrainService // optional: project briefing for prompts and task memory
 	lastAgentScan      time.Time
 	lastAgentScanMu    sync.Mutex
+	signalFn           func(pid int, force bool) error // test seam; nil = real os signals
+	baseCtx            context.Context                 // cancelled by Stop: aborts every in-flight generation
+	baseCancel         context.CancelFunc
+	runMu              sync.Mutex
+	running            map[string]*runHandle // tasks being executed by this engine, by task ID
 	maxRetries         int
 	maxResponseTokens  int
 	cleanupInterval    time.Duration
@@ -120,6 +131,9 @@ type OrchestratorService struct {
 // worker that pulls QUEUED tasks and sends them to the active LLM.
 // sessionRepo may be nil; when nil, sessions are not persisted and GenerateCode
 // is used as a fallback instead of Chat.
+//
+// NewOrchestrator panics if discovery, repo or writer is nil: these are wiring
+// errors in the composition root, not recoverable runtime conditions.
 func NewOrchestrator(
 	discovery *DiscoveryService,
 	repo ports.TaskRepository,
@@ -148,7 +162,9 @@ func NewOrchestrator(
 		cleanupInterval:   2 * time.Minute,
 		staleThreshold:    5 * time.Minute,
 		daemonAddr:        "http://127.0.0.1:63987",
+		running:           make(map[string]*runHandle),
 	}
+	svc.baseCtx, svc.baseCancel = context.WithCancel(context.Background())
 	for _, opt := range opts {
 		opt(svc)
 	}
@@ -171,6 +187,9 @@ func (o *OrchestratorService) Stop() {
 		o.mu.Lock()
 		o.stopped = true
 		o.mu.Unlock()
+		// Abort in-flight generations first: without this Stop would wait out a
+		// provider request that can legitimately run for minutes.
+		o.baseCancel()
 		close(o.stopCh)
 	})
 	o.workerWg.Wait()
@@ -221,107 +240,6 @@ func (o *OrchestratorService) WithQueueCap(n int) *OrchestratorService {
 	return o
 }
 
-func (o *OrchestratorService) GetRuntimeConfig(ctx context.Context) (domain.RuntimeConfig, error) {
-	o.mu.Lock()
-	queueCap := o.queueCap
-	repo := o.runtimeCfg
-	o.mu.Unlock()
-
-	effectiveCap := queueCap
-	if effectiveCap <= 0 {
-		effectiveCap = 50
-	}
-
-	cfg := domain.RuntimeConfig{
-		QueueCap: effectiveCap,
-		APIToken: os.Getenv("NEXUS_API_TOKEN"),
-		MCPToken: os.Getenv("NEXUS_MCP_TOKEN"),
-	}
-
-	if repo == nil {
-		return cfg, nil
-	}
-	stored, err := repo.GetRuntimeConfig(ctx)
-	if err != nil && !errors.Is(err, domain.ErrNotFound) {
-		return domain.RuntimeConfig{}, fmt.Errorf("orchestrator: get runtime config: %w", err)
-	}
-	if err == nil {
-		// Prefer persisted values when env vars are not set.
-		if cfg.APIToken == "" {
-			cfg.APIToken = stored.APIToken
-		}
-		if cfg.MCPToken == "" {
-			cfg.MCPToken = stored.MCPToken
-		}
-		if stored.QueueCap > 0 {
-			cfg.QueueCap = stored.QueueCap
-		}
-		cfg.UpdatedAt = stored.UpdatedAt
-	}
-
-	return cfg, nil
-}
-
-func (o *OrchestratorService) UpdateRuntimeConfig(ctx context.Context, update domain.RuntimeConfigUpdate) (domain.RuntimeConfig, error) {
-	o.mu.Lock()
-	repo := o.runtimeCfg
-	o.mu.Unlock()
-
-	current, err := o.GetRuntimeConfig(ctx)
-	if err != nil {
-		return domain.RuntimeConfig{}, err
-	}
-
-	if update.QueueCap != nil {
-		if *update.QueueCap <= 0 {
-			return domain.RuntimeConfig{}, fmt.Errorf("orchestrator: update runtime config: queueCap must be > 0")
-		}
-		current.QueueCap = *update.QueueCap
-		o.WithQueueCap(current.QueueCap)
-	}
-
-	if update.RotateAPIToken {
-		tok, err := generateToken(32)
-		if err != nil {
-			return domain.RuntimeConfig{}, fmt.Errorf("orchestrator: rotate api token: %w", err)
-		}
-		current.APIToken = tok
-	}
-	if update.RotateMCPToken {
-		tok, err := generateToken(32)
-		if err != nil {
-			return domain.RuntimeConfig{}, fmt.Errorf("orchestrator: rotate mcp token: %w", err)
-		}
-		current.MCPToken = tok
-	}
-	if update.APIToken != nil {
-		current.APIToken = *update.APIToken
-	}
-	if update.MCPToken != nil {
-		current.MCPToken = *update.MCPToken
-	}
-
-	current.UpdatedAt = time.Now()
-	if repo != nil {
-		if err := repo.SaveRuntimeConfig(ctx, current); err != nil {
-			return domain.RuntimeConfig{}, fmt.Errorf("orchestrator: save runtime config: %w", err)
-		}
-	}
-
-	return current, nil
-}
-
-func generateToken(n int) (string, error) {
-	if n <= 0 {
-		return "", fmt.Errorf("token bytes must be > 0")
-	}
-	b := make([]byte, n)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
-}
-
 // SetAISessionRepo wires the repository used to persist AI agent sessions.
 func (o *OrchestratorService) SetAISessionRepo(r ports.AISessionRepository) {
 	o.mu.Lock()
@@ -351,230 +269,10 @@ func (o *OrchestratorService) SetBroadcaster(b ports.EventBroadcaster) {
 	o.broadcaster = b
 }
 
-func (o *OrchestratorService) signalWorker() {
-	select {
-	case o.workCh <- struct{}{}:
-	default:
-	}
-}
-
-func (o *OrchestratorService) validateQueueAdmission(task domain.Task) error {
-	o.mu.Lock()
-	stopped := o.stopped
-	queueCap := o.queueCap
-	o.mu.Unlock()
-	if stopped {
-		return fmt.Errorf("orchestrator: queue task: service is stopped")
-	}
-	if queueCap <= 0 {
-		queueCap = 50
-	}
-
-	pending, err := o.repo.GetPending()
-	if err != nil {
-		return fmt.Errorf("orchestrator: queue task: check queue cap: %w", err)
-	}
-	if len(pending) >= queueCap {
-		return fmt.Errorf("orchestrator: queue task: %w", ErrQueueFull)
-	}
-
-	if task.Command == domain.CommandExecute {
-		existing, err := o.repo.GetByProjectPath(task.ProjectPath)
-		if err != nil {
-			return fmt.Errorf("orchestrator: queue task: %w", err)
-		}
-		hasPlan := false
-		for _, existingTask := range existing {
-			if existingTask.Command == domain.CommandPlan && existingTask.Status == domain.StatusCompleted {
-				hasPlan = true
-				break
-			}
-		}
-		if !hasPlan {
-			return fmt.Errorf("orchestrator: queue task: %w", domain.ErrNoPlan)
-		}
-	}
-
-	return nil
-}
-
-// recoverStuckTasks re-queues any tasks that were in PROCESSING state when the
-// previous service instance crashed. Called from NewOrchestrator before the
-// worker goroutine starts, so no locking is needed on o.queue.
-func (o *OrchestratorService) recoverStuckTasks() {
-	pending, err := o.repo.GetPending()
-	if err != nil {
-		log.Printf("orchestrator: startup recovery: get pending: %v", err)
-		return
-	}
-	requeued := 0
-	hasQueued := false
-	for _, t := range pending {
-		if t.Status == domain.StatusQueued {
-			hasQueued = true
-		}
-		if t.Status == domain.StatusProcessing {
-			ok, err := o.repo.UpdateStatusIfCurrent(t.ID, domain.StatusProcessing, domain.StatusQueued)
-			if err != nil {
-				log.Printf("orchestrator: startup recovery: re-queue task %s: %v", t.ID, err)
-				continue
-			}
-			if ok {
-				requeued++
-				hasQueued = true
-			}
-		}
-	}
-	if requeued > 0 {
-		log.Printf("orchestrator: startup recovery: re-queued %d stuck tasks", requeued)
-	}
-	if hasQueued {
-		o.signalWorker()
-	}
-}
-
-// requeueForRetry increments the task's RetryCount, persists it with StatusQueued,
-// re-adds it to the in-memory queue, and signals the worker.
-// Returns true when the task was successfully re-queued; false when maxRetries is
-// exhausted or the repo update fails (caller should then mark the task FAILED).
-func (o *OrchestratorService) requeueForRetry(task domain.Task) bool {
-	if task.RetryCount >= o.maxRetries {
-		return false
-	}
-	task.RetryCount++
-	task.Status = domain.StatusQueued
-	task.UpdatedAt = time.Now()
-	if err := o.repo.Update(task); err != nil {
-		log.Printf("orchestrator: requeue task %s: update: %v", task.ID, err)
-		return false
-	}
-	log.Printf("orchestrator: task %s: retry %d/%d", task.ID, task.RetryCount, o.maxRetries)
-	o.signalWorker()
-	o.emit(task.ID, domain.StatusQueued)
-	return true
-}
-
-// runWorker is the background loop that processes QUEUED tasks sequentially.
-// It blocks on workCh until a task is submitted, then drains the entire queue
-// before waiting again — guaranteeing only one LLM call is ever in flight.
-func (o *OrchestratorService) runWorker() {
-	defer o.workerWg.Done()
-	for {
-		select {
-		case <-o.stopCh:
-			return
-		case <-o.workCh:
-			for {
-				select {
-				case <-o.stopCh:
-					return
-				default:
-				}
-				if !o.processNext() {
-					break
-				}
-			}
-		}
-	}
-}
-
-// runSessionCleanup periodically marks AI sessions as disconnected when they
-// have not sent a heartbeat within the stale threshold (5 × heartbeat interval = 5 min).
-// It runs until stopCh is closed and shares the workerWg lifecycle.
-func (o *OrchestratorService) runSessionCleanup() {
-	defer o.workerWg.Done()
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		<-o.stopCh
-		cancel()
-	}()
-	defer cancel()
-	ticker := time.NewTicker(o.cleanupInterval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-o.stopCh:
-			return
-		case <-ticker.C:
-			o.mu.Lock()
-			repo := o.aiSessionRepo
-			b := o.broadcaster
-			o.mu.Unlock()
-			if repo == nil {
-				continue
-			}
-			sessions, err := repo.ListAISessions(ctx)
-			if err != nil {
-				log.Printf("orchestrator: session cleanup: list: %v", err)
-				continue
-			}
-			cutoff := time.Now().Add(-o.staleThreshold)
-			for _, s := range sessions {
-				if s.Status != domain.SessionStatusDisconnected && s.LastActivity.Before(cutoff) {
-					if markErr := repo.UpdateAISessionStatus(ctx, s.ID, domain.SessionStatusDisconnected, s.LastActivity); markErr != nil {
-						log.Printf("orchestrator: session cleanup: mark disconnected %s: %v", s.ID, markErr)
-						continue
-					}
-					if b != nil {
-						b.BroadcastAISessionEvent(domain.AISessionEvent{
-							Type:        "ai_session_changed",
-							AISessionID: s.ID,
-							Status:      domain.SessionStatusDisconnected,
-							Timestamp:   time.Now(),
-						})
-					}
-				}
-			}
-			// Purge disconnected sessions older than 2 hours to prevent unbounded growth.
-			if n, purgeErr := repo.PurgeDisconnected(ctx, 2*time.Hour); purgeErr != nil {
-				log.Printf("orchestrator: session cleanup: purge: %v", purgeErr)
-			} else if n > 0 {
-				log.Printf("orchestrator: session cleanup: purged %d stale disconnected sessions", n)
-			}
-		}
-	}
-}
-
-func (o *OrchestratorService) runTaskWatchdog() {
-	defer o.workerWg.Done()
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		<-o.stopCh
-		cancel()
-	}()
-	defer cancel()
-	watchdogInterval := o.watchdogInterval
-	if watchdogInterval <= 0 {
-		watchdogInterval = time.Minute
-	}
-	ticker := time.NewTicker(watchdogInterval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-o.stopCh:
-			return
-		case <-ticker.C:
-			// 5 minutes timeout for processing tasks
-			tasks, err := o.repo.GetStaleProcessing(ctx, 5*time.Minute)
-			if err != nil {
-				log.Printf("orchestrator: task watchdog: get stale tasks: %v", err)
-				continue
-			}
-			for _, t := range tasks {
-				log.Printf("orchestrator: task watchdog: task %s stuck in PROCESSING, failing", t.ID)
-				t.Status = domain.StatusFailed
-				t.Logs += "\n\n[System] Task timed out while PROCESSING. Marked as FAILED by watchdog."
-				if err := o.repo.Update(t); err != nil {
-					log.Printf("orchestrator: task watchdog: update task %s fail: %v", t.ID, err)
-					continue
-				}
-				o.emit(t.ID, domain.StatusFailed)
-				if o.broadcaster != nil {
-					o.broadcaster.Broadcast(ports.TaskEvent{
-						Type: ports.EventTaskFailed, TaskID: t.ID, Status: domain.StatusFailed,
-					})
-				}
-			}
-		}
-	}
+// dbCtx is the context for repository calls made outside a caller-supplied
+// one. It keeps the service's values but not its cancellation: a status
+// transition that has begun (for example resetting an interrupted task to
+// QUEUED while Stop is cancelling baseCtx) must still reach the database.
+func (o *OrchestratorService) dbCtx() context.Context {
+	return context.WithoutCancel(o.baseCtx)
 }

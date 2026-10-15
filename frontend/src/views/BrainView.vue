@@ -1,3 +1,6 @@
+<!--
+  Project Brain: initialise, ingest into, search and browse the selected project's knowledge base.
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->
@@ -234,7 +237,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, shallowRef, computed, onMounted } from 'vue';
 import { useBrain } from '../composables/useBrain';
 import { currentProject } from '../composables/useProjectState';
 
@@ -256,7 +259,9 @@ const tabs = [
 
 // brain ref is swapped when projectPath changes; computed proxies ensure the
 // template always reads from the current instance's reactive state.
-const brain = ref(useBrain(''));
+// shallowRef (not ref): ref() would deep-unwrap the composable's inner refs and
+// make the `.value` accesses below read `undefined`.
+const brain = shallowRef(useBrain(''));
 
 // Computed proxies — necessary because destructuring brain.value captures refs
 // from the initial instance and won't update when brain.value is reassigned.
@@ -310,7 +315,7 @@ async function onFilesSelected(e: Event) {
   let totalSections = 0;
   for (let i = 0; i < files.length; i++) {
     ingestProgress.value = `Ingesting ${i + 1}/${files.length}: ${files[i].name}…`;
-    const count = await brain.value.ingest(files[i].name);
+    const count = await brain.value.ingestUpload(files[i]);
     totalSections += count;
   }
   ingesting.value = false;

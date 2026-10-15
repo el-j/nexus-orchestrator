@@ -2,6 +2,7 @@
 # NexusOrchestrator — Makefile
 # =============================================================================
 # Usage:
+#   make                 show this overview (same as make help)
 #   make build           native CLI + daemon (current OS/arch)
 #   make build-all       cross-compile CLI + daemon for all platforms
 #   make test            run all tests
@@ -40,6 +41,10 @@ VERSION_FLAGS := -X 'main.version=$(VERSION)' \
                  -X 'main.commit=$(GIT_COMMIT)' \
                  -X 'main.buildDate=$(BUILD_DATE)'
 
+# Run golangci-lint via the same Go toolchain as go.mod to avoid version skew.
+GO_TOOLCHAIN_VERSION := go1.27.0
+GOLANGCI_LINT := GOTOOLCHAIN=$(GO_TOOLCHAIN_VERSION) go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+
 # Build tags that enable the mattn/go-sqlite3 driver
 BUILD_FLAGS := -trimpath
 LDFLAGS     := -s -w $(VERSION_FLAGS)
@@ -50,14 +55,23 @@ LDFLAGS_WIN_GUI := -s -w -H windowsgui $(VERSION_FLAGS)
 LINUX_BUILD_FLAGS := -trimpath -tags netgo,osusergo
 LINUX_LDFLAGS     := -s -w -extldflags='-static' $(VERSION_FLAGS)
 
+# The knowledge repository needs SQLite FTS5; without this flag the daemon builds but dies at
+# start-up with "no such module: fts5". Exported so every go/wails build below picks it up.
+FTS5_CFLAGS := -DSQLITE_ENABLE_FTS5
+# zig cc enables UBSan by default, which leaves __ubsan_* symbols unresolved when linking sqlite3.
+ZIG_CFLAGS := $(FTS5_CFLAGS) -fno-sanitize=undefined -Wno-unused-command-line-argument
+export CGO_CFLAGS := $(FTS5_CFLAGS)
+
 # Detect host OS for zig target triple selection
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 
-.PHONY: build build-gui build-gui-windows-amd64 build-all test vet lint clean help \
+.DEFAULT_GOAL := help
+
+.PHONY: check-node web web-auto help start start-bg stop dogfood status connect init-project build build-gui build-gui-windows-amd64 build-all test vet lint clean help \
         build-linux-amd64 build-linux-arm64 \
         build-darwin-amd64 build-darwin-arm64 \
         build-windows-amd64 \
-        build-frontend build-vscode build-dev dev dev-daemon check-air \
+        mutation build-frontend build-vscode build-dev dev dev-daemon check-air \
         version version-sync release-alpha release-beta release-rc release \
         docker-build docker-push docker-run \
         nice nice-go nice-frontend
@@ -74,17 +88,98 @@ build: vet
 	@echo "Built → $(DIST)/native/"
 
 # ---------------------------------------------------------------------------
+# Use the orchestrator (one daemon for all your projects)
+# ---------------------------------------------------------------------------
+WAILS_GOMOD  := $(shell go list -m -f '{{.Version}}' github.com/wailsapp/wails/v2 2>/dev/null)
+NEXUS_HOME    ?= $(HOME)/.nexus
+NEXUS_API     ?= http://localhost:63987
+NEXUS_MCP     ?= http://localhost:63988/mcp
+
+# Build and run the daemon in the foreground with ONE database for every project.
+# (Without NEXUS_DB_PATH the daemon writes nexus.db into the current directory, so
+# starting it from different folders would give you different, empty queues.)
+start: web-auto build
+	@mkdir -p $(NEXUS_HOME)
+	@echo "nexus-daemon → API $(NEXUS_API)  MCP $(NEXUS_MCP)  DB $(NEXUS_HOME)/nexus.db"
+	@if [ -f $(WEBUI_DIR)/index.html ]; then echo "full UI      → $(NEXUS_API)/app/   (light dashboard: $(NEXUS_API)/ui)"; else echo "dashboard    → $(NEXUS_API)/ui   (the full UI needs Node >= 22: nvm use; make start)"; fi
+	NEXUS_DB_PATH=$(NEXUS_HOME)/nexus.db $(DIST)/native/$(BINARY_DAEMON)
+
+# Same daemon, detached: log to $(NEXUS_HOME)/daemon.log, pid in $(NEXUS_HOME)/daemon.pid.
+start-bg: web-auto build
+	@mkdir -p $(NEXUS_HOME)
+	@if curl -fsS $(NEXUS_API)/api/health >/dev/null 2>&1; then echo "daemon already running at $(NEXUS_API)"; exit 0; fi; \
+	NEXUS_DB_PATH=$(NEXUS_HOME)/nexus.db nohup $(DIST)/native/$(BINARY_DAEMON) >> $(NEXUS_HOME)/daemon.log 2>&1 & echo $$! > $(NEXUS_HOME)/daemon.pid; \
+	for i in $$(seq 1 30); do curl -fsS $(NEXUS_API)/api/health >/dev/null 2>&1 && { echo "daemon started (pid $$(cat $(NEXUS_HOME)/daemon.pid)), log $(NEXUS_HOME)/daemon.log"; exit 0; }; sleep 1; done; \
+	echo "daemon did not become healthy; see $(NEXUS_HOME)/daemon.log"; exit 1
+
+# Stop the daemon started by start-bg.
+stop:
+	@if [ -f $(NEXUS_HOME)/daemon.pid ] && kill -0 $$(cat $(NEXUS_HOME)/daemon.pid) 2>/dev/null; then \
+		kill $$(cat $(NEXUS_HOME)/daemon.pid) && rm -f $(NEXUS_HOME)/daemon.pid && echo "daemon stopped"; \
+	else \
+		echo "no daemon started by 'make start-bg' is running (a foreground 'make start' stops with Ctrl-C)"; \
+	fi
+
+# Use nexusOrchestrator on this repository itself: daemon up + this project's knowledge loaded.
+dogfood: start-bg
+	@$(MAKE) --no-print-directory init-project PROJECT="$(CURDIR)"
+	@echo ""
+	@echo "Agents in this repo now find the orchestrator through .mcp.json; see CLAUDE.md."
+
+# Is the daemon up, and which LLM providers does it see?
+status:
+	@curl -fsS $(NEXUS_API)/api/health >/dev/null 2>&1 \
+		&& echo "daemon: running at $(NEXUS_API)" \
+		|| { echo "daemon: NOT running — start it with: make start"; exit 1; }
+	@$(DIST)/native/$(BINARY_CLI) providers 2>/dev/null || true
+
+# Print the commands that register the MCP server once for every project/agent.
+connect: build
+	@echo "Agents on this machine and whether they can call Nexus (nothing is changed):"
+	@$(DIST)/native/$(BINARY_CLI) connect
+	@echo ""
+	@echo "Connect them:  $(DIST)/native/$(BINARY_CLI) connect --write   (merges the nexus server into each agent's MCP config)"
+	@echo "VS Code / Antigravity: install the extension (make build-vscode); it connects the editor's own agent (command: Nexus: Connect This Editor's Agent)."
+	@echo "Guide: docs/using-nexus.md"
+
+# Teach the orchestrator about a project once: make init-project PROJECT=/path/to/repo
+init-project: build
+	@test -n "$(PROJECT)" || { echo "usage: make init-project PROJECT=/absolute/path/to/repo"; exit 2; }
+	$(DIST)/native/$(BINARY_CLI) brain init --project "$(PROJECT)"
+
+# ---------------------------------------------------------------------------
 # Frontend GUI assets (Vite → build/frontend/) and VS Code extension
 # ---------------------------------------------------------------------------
 
+# Node 22 is required by the frontend/docs/extension toolchains (see .nvmrc); older Node fails
+# deep inside Vite/husky with confusing errors, so say so up front.
+check-node:
+	@node -e 'process.exit(+process.versions.node.split(".")[0] >= 22 ? 0 : 1)' || { echo "Node >= 22 required (found $$(node -v 2>/dev/null || echo none)); run: nvm use  (see .nvmrc)"; exit 1; }
+
+# The full UI inside the daemon: build the Vite frontend and copy it where the daemon embeds it
+# (internal/adapters/inbound/webui/dist), so "make start" serves it at /app/ and the root goes there.
+WEBUI_DIR := internal/adapters/inbound/webui/dist
+web: build-frontend
+	@rm -rf $(WEBUI_DIR) && mkdir -p $(WEBUI_DIR)
+	@cp -R build/frontend/. $(WEBUI_DIR)/ && touch $(WEBUI_DIR)/.gitkeep
+	@echo "Embedded UI → $(WEBUI_DIR)"
+
+# Rebuild the embedded UI when the frontend changed; skip it (with a note) without Node >= 22.
+web-auto:
+	@if node -e 'process.exit(+process.versions.node.split(".")[0] >= 22 ? 0 : 1)' 2>/dev/null; then \
+		if [ ! -f $(WEBUI_DIR)/index.html ] || [ -n "$$(find frontend/src frontend/index.html frontend/package.json -type f -newer $(WEBUI_DIR)/index.html 2>/dev/null | head -1)" ]; then \
+			$(MAKE) --no-print-directory web; \
+		else echo "embedded UI is up to date"; fi; \
+	else echo "note: Node >= 22 not found, so the daemon will serve only the light dashboard at /ui (nvm use, then make web, for the full UI)"; fi
+
 # Build the Vite frontend into build/frontend/  (embedded by Wails at build time)
-build-frontend:
+build-frontend: check-node
 	@echo "Building Vite frontend…"
 	cd frontend && npm install --prefer-offline --silent && npm run build
 	@echo "Built → build/frontend/"
 
 # Compile the VS Code extension bundle and package it as a .vsix
-build-vscode:
+build-vscode: check-node
 	@echo "Building VS Code extension…"
 	@mkdir -p $(DIST_VSCODE)
 	cd vscode-extension && npm install --prefer-offline --silent && \
@@ -169,7 +264,12 @@ build-gui: build-frontend
 	@echo "Building Wails desktop application..."
 	@mkdir -p $(DIST_DESKTOP)
 	@if command -v wails >/dev/null 2>&1; then \
+		set -e; \
+		cli=$$(wails version 2>/dev/null | grep -Eo 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1); \
+		if [ -n "$(WAILS_GOMOD)" ] && [ "$$cli" != "$(WAILS_GOMOD)" ]; then \
+			echo "wails CLI $$cli does not match go.mod $(WAILS_GOMOD): go install github.com/wailsapp/wails/v2/cmd/wails@$(WAILS_GOMOD)"; exit 1; fi; \
 		wails build -clean -ldflags "-s -w -X 'main.version=$(VERSION)' -X 'main.commit=$(GIT_COMMIT)' -X 'main.buildDate=$(BUILD_DATE)'"; \
+		test -d build/bin || { echo "wails produced no build/bin (CLI $$(wails version 2>/dev/null | tail -1) vs go.mod $(WAILS_GOMOD))"; exit 1; }; \
 		cp -r build/bin/* $(DIST_DESKTOP)/; \
 		echo "  → $(DIST_DESKTOP)/"; \
 	else \
@@ -195,11 +295,13 @@ build-all: build-linux-amd64 build-linux-arm64 build-darwin-amd64 build-darwin-a
 build-linux-amd64:
 	@mkdir -p $(DIST)/linux_amd64
 	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
+		CGO_CFLAGS="$(ZIG_CFLAGS)" \
 		CC="zig cc -target x86_64-linux-musl" \
 		CXX="zig c++ -target x86_64-linux-musl" \
 		go build $(LINUX_BUILD_FLAGS) -ldflags "$(LINUX_LDFLAGS)" \
 		-o $(DIST)/linux_amd64/$(BINARY_CLI) ./cmd/nexus-cli/...
 	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
+		CGO_CFLAGS="$(ZIG_CFLAGS)" \
 		CC="zig cc -target x86_64-linux-musl" \
 		CXX="zig c++ -target x86_64-linux-musl" \
 		go build $(LINUX_BUILD_FLAGS) -ldflags "$(LINUX_LDFLAGS)" \
@@ -209,11 +311,13 @@ build-linux-amd64:
 build-linux-arm64:
 	@mkdir -p $(DIST)/linux_arm64
 	CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
+		CGO_CFLAGS="$(ZIG_CFLAGS)" \
 		CC="zig cc -target aarch64-linux-musl" \
 		CXX="zig c++ -target aarch64-linux-musl" \
 		go build $(LINUX_BUILD_FLAGS) -ldflags "$(LINUX_LDFLAGS)" \
 		-o $(DIST)/linux_arm64/$(BINARY_CLI) ./cmd/nexus-cli/...
 	CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
+		CGO_CFLAGS="$(ZIG_CFLAGS)" \
 		CC="zig cc -target aarch64-linux-musl" \
 		CXX="zig c++ -target aarch64-linux-musl" \
 		go build $(LINUX_BUILD_FLAGS) -ldflags "$(LINUX_LDFLAGS)" \
@@ -225,13 +329,13 @@ build-darwin-amd64:
 	# macOS cross-arch: pass -arch x86_64 to the native clang via CGO_CFLAGS/CGO_LDFLAGS.
 	# Requires Xcode Command Line Tools (xcrun sdk present). Skips gracefully if SDK absent.
 	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
-		CGO_CFLAGS="-arch x86_64" \
+		CGO_CFLAGS="-arch x86_64 $(FTS5_CFLAGS)" \
 		CGO_LDFLAGS="-arch x86_64" \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/darwin_amd64/$(BINARY_CLI) ./cmd/nexus-cli/... || \
 		(echo "NOTE: build-darwin-amd64 requires Xcode SDK with x86_64 support — skipped."; exit 0)
 	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
-		CGO_CFLAGS="-arch x86_64" \
+		CGO_CFLAGS="-arch x86_64 $(FTS5_CFLAGS)" \
 		CGO_LDFLAGS="-arch x86_64" \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/darwin_amd64/$(BINARY_DAEMON) ./cmd/nexus-daemon/... || \
@@ -252,11 +356,13 @@ build-windows-amd64:
 	@mkdir -p $(DIST)/windows_amd64
 	# NOTE: for the GUI binary (main.go), use LDFLAGS_WIN_GUI (-H windowsgui) to suppress the console window.
 	CGO_ENABLED=1 GOOS=windows GOARCH=amd64 \
+		CGO_CFLAGS="$(ZIG_CFLAGS)" \
 		CC="zig cc -target x86_64-windows-gnu" \
 		CXX="zig c++ -target x86_64-windows-gnu" \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/windows_amd64/$(BINARY_CLI).exe ./cmd/nexus-cli/...
 	CGO_ENABLED=1 GOOS=windows GOARCH=amd64 \
+		CGO_CFLAGS="$(ZIG_CFLAGS)" \
 		CC="zig cc -target x86_64-windows-gnu" \
 		CXX="zig c++ -target x86_64-windows-gnu" \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
@@ -277,48 +383,43 @@ test-cover:
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report → coverage.html"
 
+# Local-only (never in CI: too many workflow minutes). See docs/mutation-testing.md.
+mutation:
+	./scripts/mutation.sh
+
 vet:
 	go vet ./...
 
 lint:
-	@if command -v golangci-lint >/dev/null 2>&1; then \
-		LINT_VER=$$(golangci-lint version 2>&1 | grep -oE 'v[0-9]+' | head -1); \
-		if [ "$$LINT_VER" = "v1" ]; then \
-			echo "  ⚠  golangci-lint v1 found but config requires v2 — upgrading…"; \
-			go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest; \
-		fi; \
-	fi
-	golangci-lint run ./...
+	$(GOLANGCI_LINT) run ./...
 
 # ---------------------------------------------------------------------------
 # Code quality — format, fix, lint everything in one go
 # ---------------------------------------------------------------------------
 
-# Go: auto-format + vet + lint with auto-fix
+# Go: auto-format + vet + lint with auto-fix (only tracked Go dirs; never node_modules)
 nice-go:
 	@echo "── Go: formatting ──"
-	@gofmt -w .
+	@gofmt -w main.go app.go *_test.go cmd internal
 	@echo "── Go: vet ──"
-	@go vet ./...
+	@CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" go vet ./...
 	@echo "── Go: lint + auto-fix ──"
-	@if command -v golangci-lint >/dev/null 2>&1; then \
-		LINT_VER=$$(golangci-lint version 2>&1 | grep -oE 'v[0-9]+' | head -1); \
-		if [ "$$LINT_VER" = "v1" ]; then \
-			echo "  ⚠  golangci-lint v1 found but config requires v2 — upgrading…"; \
-			go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest; \
-		fi; \
-		golangci-lint run --fix ./...; \
-	else \
-		echo "  ⚠  golangci-lint not installed — installing v2…"; \
-		go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest; \
-		golangci-lint run --fix ./...; \
-	fi
+	@$(GOLANGCI_LINT) run --fix ./...
 	@echo "── Go: clean ✓ ──"
 
-# Frontend: type-check
-nice-frontend:
+# Frontend + docs: real type-check (tsconfig.app.json), TSDoc gate, prettier on sources
+nice-frontend: check-node
+	@test -d node_modules || npm install --prefer-offline --silent
+	@test -d frontend/node_modules || (cd frontend && npm install --prefer-offline --silent)
+	@test -d docs/node_modules || (cd docs && npm install --prefer-offline --silent)
 	@echo "── Frontend: type-check ──"
-	@cd frontend && npx vue-tsc --noEmit
+	@cd frontend && npm run --silent typecheck
+	@echo "── Frontend: TSDoc ──"
+	@cd frontend && npm run --silent check:docs
+	@echo "── Docs site: type-check ──"
+	@cd docs && npm run --silent type-check
+	@echo "── Prettier ──"
+	@npx --no-install prettier --write "frontend/src/**/*.{ts,vue,css}" "docs/src/**/*.{ts,vue,css}" >/dev/null
 	@echo "── Frontend: clean ✓ ──"
 
 # Everything: Go + Frontend
@@ -354,7 +455,7 @@ upgrade-latest:
 	    (cd "$$dir" && npx -y npm-check-updates && npx -y npm-check-updates -u --doctor); \
 	  fi; \
 	done
-	@echo "── Upgrading Go modules to latest 1.26+ ──"
+	@echo "── Upgrading Go modules to latest 1.27+ ──"
 	@if [ -f go.mod ]; then \
 	  go get -u=patch ./...; \
 	  go get -u ./...; \
@@ -424,6 +525,18 @@ docker-run:
 
 help:
 	@echo ""
+	@echo "nexusOrchestrator — run 'make <target>'"
+	@echo ""
+	@echo "Use it (start here):"
+	@echo "  make start                  Build + run the daemon with one shared DB (~/.nexus/nexus.db); full UI at /app/"
+	@echo "  make web                    Rebuild the full UI that the daemon embeds (Node >= 22)"
+	@echo "  make start-bg / make stop   Same daemon, detached (pid + log in ~/.nexus) / stop it"
+	@echo "  make dogfood                Start the daemon and load THIS repo's CLAUDE.md into it"
+	@echo "  make status                 Is the daemon running? Which providers does it see?"
+	@echo "  make connect                Print how to register it with Claude Code / Desktop / VS Code"
+	@echo "  make init-project PROJECT=/path   Teach it a project (ingests its CLAUDE.md)"
+	@echo "  (full walkthrough: docs/using-nexus.md)"
+	@echo ""
 	@echo "Build:"
 	@echo "  make build                  Native CLI + daemon (current OS/arch)"
 	@echo "  make build-gui              Desktop GUI (Wails, native)"
@@ -448,9 +561,10 @@ help:
 	@echo "  make test-cover             Tests + HTML coverage report"
 	@echo "  make vet                    go vet ./..."
 	@echo "  make lint                   golangci-lint run ./..."
-	@echo "  make nice                   Format + vet + lint (Go + Frontend)"
-	@echo "  make nice-go                Format + vet + lint (Go only)"
-	@echo "  make nice-frontend          Type-check frontend (vue-tsc)"
+	@echo "  make nice                   Fix + check everything (Go and frontend/docs)"
+	@echo "  make nice-go                gofmt + go vet + golangci-lint --fix"
+	@echo "  make nice-frontend          Type-check, TSDoc gate and prettier (frontend + docs)"
+	@echo "  make mutation               Local-only mutation testing (never in CI)"
 	@echo ""
 	@echo "Versioning:"
 	@echo "  make version                Show current version + commit + build date"

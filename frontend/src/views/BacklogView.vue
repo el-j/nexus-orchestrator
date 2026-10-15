@@ -1,3 +1,7 @@
+<!--
+  Backlog: draft and backlog tasks for the selected project. Refreshes on task events, or by
+  polling every 2 seconds while the event stream is down.
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->
@@ -56,12 +60,12 @@ let interval: ReturnType<typeof setInterval> | null = null;
 const { on, off, connected } = useGlobalSSE();
 
 function sseHandler(data: { type: string; [key: string]: unknown }) {
-  if (data.type === 'connected' || data.type === 'log') return;
-  void refresh();
+  // Only task lifecycle events change the backlog; logs and activity share the stream.
+  if (data.type.startsWith('task.')) void refresh();
 }
 
 function startPolling() {
-  if (interval) return;
+  stopPolling();
   interval = setInterval(() => {
     void refresh();
   }, 2000);
@@ -106,13 +110,16 @@ watch(connected, (isConnected) => {
   }
 });
 
+let disposed = false; // set on unmount so a refresh that finishes late starts nothing
 onMounted(async () => {
   await refresh();
+  if (disposed) return;
   on('*', sseHandler);
   syncPolling(connected.value);
 });
 
 onUnmounted(() => {
+  disposed = true;
   off('*', sseHandler);
   stopPolling();
 });

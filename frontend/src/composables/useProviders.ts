@@ -2,11 +2,13 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import type { ProviderInfo } from '../types/domain';
 import { getProviders } from '../types/wails';
 
+/** Provider list plus add/update/remove/scan actions. */
 export function useProviders() {
   const providers = ref<ProviderInfo[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
   let interval: ReturnType<typeof setInterval> | null = null;
+  let disposed = false; // set on unmount so a fetch that finishes late starts nothing
 
   async function refresh() {
     try {
@@ -21,10 +23,12 @@ export function useProviders() {
     loading.value = true;
     await refresh();
     loading.value = false;
+    if (disposed) return;
     interval = setInterval(refresh, 30_000); // matches backend health cache TTL (30 s)
   });
 
   onUnmounted(() => {
+    disposed = true;
     if (interval) clearInterval(interval);
   });
 

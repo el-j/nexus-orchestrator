@@ -1,6 +1,6 @@
 # Nexus Orchestrator for VS Code
 
-> Route AI code-generation tasks from your editor through [nexusOrchestrator](../README.md) — leveraging LM Studio, Ollama, OpenAI, Anthropic, or GitHub Copilot backends.
+> Run AI coding tasks from your editor on any model through [nexusOrchestrator](../README.md): task queue with live output, plan and brain views, the editor's own models (Copilot and others) as providers, and the editor's agent connected to Nexus (VS Code 1.101+, Antigravity).
 
 ## Prerequisites
 
@@ -15,8 +15,8 @@ Install via VSIX:
 # In the vscode-extension/ directory
 npm install
 npm run build
-npm run package          # produces nexus-orchestrator-0.1.0.vsix
-code --install-extension nexus-orchestrator-0.1.0.vsix
+npm run package          # produces nexus-orchestrator-<version>.vsix
+code --install-extension nexus-orchestrator-*.vsix
 ```
 
 > Marketplace listing coming soon.
@@ -57,6 +57,32 @@ All commands are accessible via the Command Palette (`⌘⇧P` / `Ctrl+Shift+P`)
 ### Task Queue sidebar
 
 The Nexus activity bar icon (⚡) shows all tasks with live status. Right-click a task to cancel it.
+
+### Workspace Agents (plans and tasks)
+
+The **Workspace Agents** view lists the plans and tasks of every open folder, whichever agent wrote
+them: `.claude/plans/PLAN-*.md` and `.claude/tasks/TASK-*.md` (and the same under `.nexus/`), plus
+`.claude/orchestrator.json` when a tool maintains one. Front matter (`id`, `title`, `status`,
+`planId`, `tasks`) is used when present; otherwise the first heading, a `Status:` line and the first
+`PLAN-n` mentioned. The active plan is the one `orchestrator.json` names, else one marked
+active/in-progress, else the newest unfinished one. The view refreshes when those files change. Plans and tasks in other folders are found when they
+are named `PLAN-n.md` / `TASK-n.md`; for any other layout run **Nexus: Choose Plan and Task Folders**
+(or set `nexus.planFiles.*`). See [docs/plan-files.md](../docs/plan-files.md).
+The daemon's onboarding context reads the same files, so a fresh session learns the active plan
+even without an `orchestrator.json`.
+
+### Connecting the editor's agent to Nexus
+
+An agent that cannot call the Nexus MCP tools can only work around them. The extension connects the
+agent of the editor it runs in:
+
+- **VS Code 1.101+**: registers the daemon's MCP server with VS Code's MCP support (nothing is written;
+  VS Code asks you to trust it the first time; see Chat → Configure Tools).
+- **Antigravity**: its agent reads `~/.gemini/.../mcp_config.json`. The extension offers once to add the
+  `nexus` server there (a bundled bridge, `dist/mcpProxy.js`, run with the editor's own Node) and keeps
+  the entry current across updates. Setting `nexus.mcp.autoConnect`: `ask` (default), `always`, `never`.
+  Existing servers stay and the old file is kept as a backup. Reload the window afterwards.
+- Any editor: **Nexus: Connect This Editor's Agent** does it on demand, or run `nexus-cli connect --write`.
 
 ### Status bar
 

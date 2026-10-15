@@ -1,3 +1,6 @@
+<!--
+  Docs site shell: navigation bar, the routed page and the footer.
+-->
 <template>
   <div class="min-h-screen bg-[#050508] text-[#f0f0f8]">
     <AppNav />
@@ -5,29 +8,30 @@
       <RouterView />
     </main>
     <AppFooter />
-    <Toast position="bottom-right" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { RouterView, useRoute } from 'vue-router'
-import { onMounted, watch, nextTick } from 'vue'
-import AppNav from './components/AppNav.vue'
-import AppFooter from './components/AppFooter.vue'
-import Toast from 'primevue/toast'
+import { RouterView, useRoute } from 'vue-router';
+import { onMounted, watch, nextTick } from 'vue';
+import AppNav from './components/AppNav.vue';
+import AppFooter from './components/AppFooter.vue';
 
-const route = useRoute()
+const route = useRoute();
 
 // Scroll reveal observer — re-runs on every route navigation
 onMounted(() => {
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(e => {
-      if (e.isIntersecting) {
-        e.target.classList.add('visible')
-        observer.unobserve(e.target)
-      }
-    })
-  }, { threshold: 0.1 })
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          observer.unobserve(e.target);
+        }
+      });
+    },
+    { threshold: 0.1 },
+  );
 
   const observe = () => {
     // Query only elements that have not yet become visible so we never
@@ -36,15 +40,17 @@ onMounted(() => {
     // so this selector acts as a cheap guard against DOM churn on fast
     // navigations where the previous route's .visible elements are still in
     // the document during the transition.
-    document.querySelectorAll<Element>('.reveal:not(.visible)').forEach(el => observer.observe(el))
-  }
+    document
+      .querySelectorAll<Element>('.reveal:not(.visible)')
+      .forEach((el) => observer.observe(el));
+  };
 
-  observe()
+  observe();
 
   // Re-observe after each route change so newly rendered .reveal elements are picked up
   watch(route, async () => {
-    await nextTick()
-    observe()
-  })
-})
+    await nextTick();
+    observe();
+  });
+});
 </script>

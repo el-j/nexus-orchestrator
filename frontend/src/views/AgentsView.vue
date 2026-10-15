@@ -1,3 +1,7 @@
+<!--
+  Agents: registered AI sessions and the AI tools discovered on this machine (with their
+  sub-agents), plus the activity tab. Sort, filter and search; sessions can be deregistered or purged.
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->
@@ -205,7 +209,7 @@
                 <button
                   v-if="s.status !== 'disconnected'"
                   class="text-xs text-red-400 hover:text-red-300 px-2.5 py-1 rounded-lg border border-red-500/20 hover:border-red-500/40 transition-all"
-                  @click="deregister(s.id)"
+                  @click.stop="deregister(s.id)"
                 >
                   Disconnect
                 </button>
@@ -304,78 +308,7 @@
         </template>
       </template>
 
-      <!-- ===== ACTIVITY TAB ===== -->
-      <template v-if="activeTab === 'activity'">
-        <!-- Filters -->
-        <div class="flex items-center gap-3 mb-4 flex-wrap">
-          <select
-            v-model="activityAgentFilter"
-            class="text-xs bg-white/5 border border-white/10 rounded px-2 py-1 text-slate-300 focus:outline-none focus:border-violet-500/40"
-          >
-            <option value="">All agents</option>
-            <option v-for="a in activityAgentOptions" :key="a" :value="a">{{ a }}</option>
-          </select>
-          <select
-            v-model="activityProjectFilter"
-            class="text-xs bg-white/5 border border-white/10 rounded px-2 py-1 text-slate-300 focus:outline-none focus:border-violet-500/40"
-          >
-            <option value="">All projects</option>
-            <option v-for="p in activityProjectOptions" :key="p" :value="p">
-              {{ shortPath(p) }}
-            </option>
-          </select>
-        </div>
-
-        <!-- Loading -->
-        <div
-          v-if="activityLoading && activityList.length === 0"
-          class="flex items-center justify-center py-12"
-        >
-          <div
-            class="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"
-          ></div>
-        </div>
-
-        <!-- Empty -->
-        <div
-          v-else-if="filteredActivities.length === 0"
-          class="flex flex-col items-center justify-center py-16 text-center"
-        >
-          <p class="text-sm text-slate-500">No AI activity detected</p>
-          <p class="text-xs text-slate-600 mt-1">Start an AI tool and it will appear here</p>
-        </div>
-
-        <!-- Activity timeline -->
-        <div v-else class="space-y-1.5">
-          <div
-            v-for="a in filteredActivities"
-            :key="a.id"
-            class="flex items-center gap-3 px-3 py-2 rounded-lg border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
-          >
-            <span class="text-[10px] text-slate-500 shrink-0 w-14 font-mono">{{
-              formatActivityTime(a.timestamp)
-            }}</span>
-            <span
-              class="text-xs font-semibold truncate shrink-0 max-w-[8rem]"
-              :class="activityAgentColor(a.agentName)"
-              >{{ a.agentName }}</span
-            >
-            <span
-              :class="[
-                'text-[10px] px-1.5 py-0.5 rounded shrink-0 font-medium',
-                activityTypeBadge(a.activityType),
-              ]"
-              >{{ a.activityType }}</span
-            >
-            <span class="text-xs text-slate-300 truncate flex-1">{{ a.summary }}</span>
-            <span
-              v-if="a.projectPath"
-              class="text-[10px] text-slate-600 shrink-0 truncate max-w-[8rem]"
-              >{{ shortPath(a.projectPath) }}</span
-            >
-          </div>
-        </div>
-      </template>
+      <AgentActivityTab v-if="activeTab === 'activity'" />
     </div>
   </div>
 
@@ -389,11 +322,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useAISessions } from '../composables/useAISessions';
-import { useActivities } from '../composables/useActivities';
 import AgentDetailDrawer from '../components/AgentDetailDrawer.vue';
-import type { DiscoveredAgent, ActivityType } from '../types/domain';
+import AgentActivityTab from '../components/AgentActivityTab.vue';
+import type { DiscoveredAgent } from '../types/domain';
 import { resolveServerUrl } from '../composables/useServerUrl';
 import { relativeTime } from '../utils/time';
+import { shortPath } from '../utils/path';
 
 const { sessions, loading, error, refresh, deregister, purgeDisconnected } = useAISessions();
 
@@ -408,7 +342,6 @@ const sortOptions = [
 // --- Filter ---
 const searchQuery = ref('');
 const sessionStatusFilter = ref<'' | 'active' | 'idle' | 'disconnected'>('');
-const agentStatusFilter = ref<'' | 'running' | 'stopped'>('');
 
 // --- Tabs ---
 const tabs = [
@@ -417,61 +350,8 @@ const tabs = [
 ];
 const activeTab = ref('sessions');
 
-// --- Activity tab ---
-const { activities: activityList, loading: activityLoading } = useActivities({ limit: 200 });
-
-const activityAgentFilter = ref('');
-const activityProjectFilter = ref('');
-
-const activityAgentOptions = computed(() =>
-  [...new Set(activityList.value.map((a) => a.agentName))].sort(),
-);
-const activityProjectOptions = computed(() =>
-  [...new Set(activityList.value.map((a) => a.projectPath).filter(Boolean) as string[])].sort(),
-);
-
-const filteredActivities = computed(() => {
-  let result = activityList.value;
-  if (activityAgentFilter.value)
-    result = result.filter((a) => a.agentName === activityAgentFilter.value);
-  if (activityProjectFilter.value)
-    result = result.filter((a) => a.projectPath === activityProjectFilter.value);
-  return result;
-});
-
-function formatActivityTime(ts: string): string {
-  const d = new Date(ts);
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function activityAgentColor(name: string): string {
-  const lower = name.toLowerCase();
-  if (lower.includes('claude') || lower.includes('anthropic')) return 'text-violet-400';
-  if (lower.includes('copilot') || lower.includes('github')) return 'text-blue-400';
-  if (lower.includes('cursor')) return 'text-cyan-400';
-  if (lower.includes('continue')) return 'text-emerald-400';
-  return 'text-slate-300';
-}
-
-function activityTypeBadge(type: ActivityType): string {
-  switch (type) {
-    case 'message':
-      return 'bg-blue-500/20 text-blue-300';
-    case 'tool_use':
-      return 'bg-green-500/20 text-green-300';
-    case 'thinking':
-      return 'bg-purple-500/20 text-purple-300';
-    case 'file_edit':
-      return 'bg-orange-500/20 text-orange-300';
-    case 'generation':
-      return 'bg-yellow-500/20 text-yellow-300';
-    default:
-      return 'bg-white/10 text-slate-400';
-  }
-}
-
 const agents = ref<DiscoveredAgent[]>([]);
-let discoveredInterval: ReturnType<typeof setInterval> | null = null;
+let discoveredInterval: ReturnType<typeof setInterval> | undefined;
 
 const activeCount = computed(() => sessions.value.filter((s) => s.status === 'active').length);
 
@@ -490,10 +370,8 @@ const sortedSessions = computed(() => {
       return list.sort(
         (a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime(),
       );
-    case 'name':
-      return list.sort((a, b) => a.agentName.localeCompare(b.agentName));
     default:
-      return list;
+      return list.sort((a, b) => a.agentName.localeCompare(b.agentName));
   }
 });
 
@@ -529,10 +407,8 @@ const sortedAgentRoots = computed(() => {
       );
     case 'recent':
       return list.sort((a, b) => new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime());
-    case 'name':
-      return list.sort((a, b) => a.name.localeCompare(b.name));
     default:
-      return list;
+      return list.sort((a, b) => a.name.localeCompare(b.name));
   }
 });
 
@@ -555,11 +431,6 @@ const filteredSessions = computed(() => {
 
 const filteredAgentRoots = computed(() => {
   let list = sortedAgentRoots.value;
-  if (agentStatusFilter.value === 'running') {
-    list = list.filter((a) => a.isRunning);
-  } else if (agentStatusFilter.value === 'stopped') {
-    list = list.filter((a) => !a.isRunning);
-  }
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase();
     list = list.filter(
@@ -586,10 +457,6 @@ async function refreshAll() {
   await Promise.all([refresh(), loadAgents()]);
 }
 
-function shortPath(path: string): string {
-  return path.split('/').filter(Boolean).slice(-2).join('/');
-}
-
 function shortModelName(id: string): string {
   return id.replace(/^claude-/, '');
 }
@@ -598,13 +465,16 @@ function shortWorkingDir(dir: string): string {
   return dir.split('/').filter(Boolean).slice(-2).join('/');
 }
 
+let agentsDisposed = false; // set on unmount so a load that finishes late starts no polling
 onMounted(async () => {
   await loadAgents();
+  if (agentsDisposed) return;
   discoveredInterval = setInterval(loadAgents, 30_000);
 });
 
 onUnmounted(() => {
-  if (discoveredInterval) clearInterval(discoveredInterval);
+  agentsDisposed = true;
+  clearInterval(discoveredInterval);
 });
 
 const selectedAgent = ref('');

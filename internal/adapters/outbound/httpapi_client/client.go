@@ -11,11 +11,19 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
 )
+
+// maxErrorBody bounds how much of an error response is read to extract the
+// server's message.
+const maxErrorBody = 4 << 10
+
+// Compile-time proof that Client satisfies the orchestrator port.
+var _ ports.Orchestrator = (*Client)(nil)
 
 // Client forwards orchestrator calls to the running nexusOrchestrator HTTP API.
 type Client struct {
@@ -24,29 +32,8 @@ type Client struct {
 	client  *http.Client
 }
 
-type submitTaskResponse struct {
-	TaskID string `json:"task_id"`
-}
-
-type createDraftResponse struct {
-	ID string `json:"id"`
-}
-
-type terminateAISessionRequest struct {
-	Force bool `json:"force"`
-}
-
-type sessionIDRequest struct {
-	SessionID string `json:"sessionId"`
-}
-
-type updateTaskStatusRequest struct {
-	SessionID string `json:"sessionId"`
-	Status    string `json:"status"`
-	Logs      string `json:"logs,omitempty"`
-}
-
 // NewClient returns a new Client that talks to the nexusOrchestrator daemon at baseURL.
+// The bearer token, when the daemon requires one, is read from NEXUS_API_TOKEN.
 func NewClient(baseURL string) *Client {
 	return &Client{
 		baseURL: strings.TrimRight(baseURL, "/"),
@@ -74,820 +61,366 @@ func (r *Client) newRequest(ctx context.Context, method, path string, body io.Re
 	return req, nil
 }
 
-func (r *Client) do(req *http.Request) (*http.Response, error) {
-	return r.client.Do(req)
+// call describes one daemon request.
+type call struct {
+	op       string // short operation name used in error messages, e.g. "submit task"
+	method   string
+	path     string // request path, including any already-encoded query string
+	body     any    // marshalled to JSON when non-nil
+	ok       []int  // accepted status codes; defaults to {200}
+	notFound bool   // map HTTP 404 to domain.ErrNotFound
 }
 
+// send performs c and, when out is non-nil and the response carries a body,
+// decodes the JSON response into out. All failures are wrapped as
+// "remote: <op>: ..."; a 404 wraps domain.ErrNotFound when c.notFound is set,
+// and any other unexpected status includes the server's {"error": "..."} message.
+func (r *Client) send(ctx context.Context, c call, out any) error {
+	var reader io.Reader
+	if c.body != nil {
+		payload, err := json.Marshal(c.body)
+		if err != nil {
+			return fmt.Errorf("remote: %s: marshal request: %w", c.op, err)
+		}
+		reader = bytes.NewReader(payload)
+	}
+	req, err := r.newRequest(ctx, c.method, c.path, reader)
+	if err != nil {
+		return fmt.Errorf("remote: %s: build request: %w", c.op, err)
+	}
+	if c.body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	resp, err := r.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("remote: %s: %w", c.op, err)
+	}
+	defer resp.Body.Close()
+
+	if c.notFound && resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("remote: %s: %w", c.op, domain.ErrNotFound)
+	}
+	ok := c.ok
+	if len(ok) == 0 {
+		ok = []int{http.StatusOK}
+	}
+	if !slices.Contains(ok, resp.StatusCode) {
+		return fmt.Errorf("remote: %s: unexpected status %d%s", c.op, resp.StatusCode, serverMessage(resp.Body))
+	}
+	if out == nil || resp.StatusCode == http.StatusNoContent {
+		return nil
+	}
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return fmt.Errorf("remote: %s: decode response: %w", c.op, err)
+	}
+	return nil
+}
+
+// serverMessage extracts ": <message>" from a {"error":"<message>"} body, or
+// returns "" when the body has no such field.
+func serverMessage(body io.Reader) string {
+	var e struct {
+		Error string `json:"error"`
+	}
+	if err := json.NewDecoder(io.LimitReader(body, maxErrorBody)).Decode(&e); err != nil || e.Error == "" {
+		return ""
+	}
+	return ": " + e.Error
+}
+
+// query returns "?key=value" with both parts URL-escaped.
+func query(key, value string) string {
+	return "?" + url.Values{key: {value}}.Encode()
+}
+
+func esc(s string) string { return url.PathEscape(s) }
+
+type submitTaskResponse struct {
+	TaskID string `json:"task_id"`
+}
+
+type createDraftResponse struct {
+	ID string `json:"id"`
+}
+
+type terminateAISessionRequest struct {
+	Force bool `json:"force"`
+}
+
+type sessionIDRequest struct {
+	SessionID string `json:"sessionId"`
+}
+
+type updateTaskStatusRequest struct {
+	SessionID string `json:"sessionId"`
+	Status    string `json:"status"`
+	Logs      string `json:"logs,omitempty"`
+}
+
+var (
+	statusCreated = []int{http.StatusCreated}
+	statusNoBody  = []int{http.StatusNoContent}
+	statusOKOrNil = []int{http.StatusOK, http.StatusNoContent}
+	statusAny2xx  = []int{http.StatusOK, http.StatusCreated, http.StatusAccepted, http.StatusNoContent}
+)
+
+// ── Tasks ────────────────────────────────────────────────────────────────────
+
+// SubmitTask queues task and returns its new ID.
 func (r *Client) SubmitTask(task domain.Task) (string, error) {
-	body, err := json.Marshal(task)
-	if err != nil {
-		return "", fmt.Errorf("remote: marshal task: %w", err)
-	}
-	req, err := r.newRequest(context.Background(), http.MethodPost, "/api/tasks", bytes.NewReader(body))
-	if err != nil {
-		return "", fmt.Errorf("remote: build submit request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := r.do(req)
-	if err != nil {
-		return "", fmt.Errorf("remote: submit task: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusCreated {
-		return "", fmt.Errorf("remote: submit task: unexpected status %d", resp.StatusCode)
-	}
-
-	var result submitTaskResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("remote: decode response: %w", err)
-	}
-	return result.TaskID, nil
+	var out submitTaskResponse
+	err := r.send(context.Background(), call{op: "submit task", method: http.MethodPost, path: "/api/tasks", body: task, ok: statusCreated}, &out)
+	return out.TaskID, err
 }
 
+// GetTask returns the task with the given ID, or domain.ErrNotFound.
 func (r *Client) GetTask(id string) (domain.Task, error) {
-	req, err := r.newRequest(context.Background(), http.MethodGet, "/api/tasks/"+url.PathEscape(id), nil)
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("remote: build get task request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("remote: get task: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNotFound {
-		return domain.Task{}, fmt.Errorf("remote: get task: %w", domain.ErrNotFound)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return domain.Task{}, fmt.Errorf("remote: get task: unexpected status %d", resp.StatusCode)
-	}
-
-	var task domain.Task
-	if err := json.NewDecoder(resp.Body).Decode(&task); err != nil {
-		return domain.Task{}, fmt.Errorf("remote: decode task: %w", err)
-	}
-	return task, nil
+	var out domain.Task
+	err := r.send(context.Background(), call{op: "get task", method: http.MethodGet, path: "/api/tasks/" + esc(id), notFound: true}, &out)
+	return out, err
 }
 
+// GetQueue returns every QUEUED or PROCESSING task.
 func (r *Client) GetQueue() ([]domain.Task, error) {
-	req, err := r.newRequest(context.Background(), http.MethodGet, "/api/tasks", nil)
-	if err != nil {
-		return nil, fmt.Errorf("remote: build get queue request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return nil, fmt.Errorf("remote: get queue: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("remote: get queue: unexpected status %d", resp.StatusCode)
-	}
-
-	var tasks []domain.Task
-	if err := json.NewDecoder(resp.Body).Decode(&tasks); err != nil {
-		return nil, fmt.Errorf("remote: decode queue: %w", err)
-	}
-	return tasks, nil
+	var out []domain.Task
+	err := r.send(context.Background(), call{op: "get queue", method: http.MethodGet, path: "/api/tasks"}, &out)
+	return out, err
 }
 
+// GetAllTasks returns every task regardless of status.
 func (r *Client) GetAllTasks() ([]domain.Task, error) {
-	req, err := r.newRequest(context.Background(), http.MethodGet, "/api/tasks/all", nil)
-	if err != nil {
-		return nil, fmt.Errorf("remote: build get all tasks request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return nil, fmt.Errorf("remote: get all tasks: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("remote: get all tasks: unexpected status %d", resp.StatusCode)
-	}
-
-	var tasks []domain.Task
-	if err := json.NewDecoder(resp.Body).Decode(&tasks); err != nil {
-		return nil, fmt.Errorf("remote: decode all tasks: %w", err)
-	}
-	return tasks, nil
+	var out []domain.Task
+	err := r.send(context.Background(), call{op: "get all tasks", method: http.MethodGet, path: "/api/tasks/all"}, &out)
+	return out, err
 }
 
+// GetQueueForProject returns QUEUED and PROCESSING tasks of one project.
 func (r *Client) GetQueueForProject(projectPath string) ([]domain.Task, error) {
-	u := "/api/tasks?projectPath=" + projectPath
-	req, err := r.newRequest(context.Background(), http.MethodGet, u, nil)
-	if err != nil {
-		return nil, fmt.Errorf("remote: build get queue for project request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return nil, fmt.Errorf("remote: get queue for project: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("remote: get queue for project: unexpected status %d", resp.StatusCode)
-	}
-
-	var tasks []domain.Task
-	if err := json.NewDecoder(resp.Body).Decode(&tasks); err != nil {
-		return nil, fmt.Errorf("remote: decode queue for project: %w", err)
-	}
-	return tasks, nil
+	var out []domain.Task
+	err := r.send(context.Background(), call{op: "get queue for project", method: http.MethodGet, path: "/api/tasks" + query("projectPath", projectPath)}, &out)
+	return out, err
 }
 
+// GetTasksForProject returns every task of one project.
 func (r *Client) GetTasksForProject(projectPath string) ([]domain.Task, error) {
-	u := "/api/tasks/all?projectPath=" + projectPath
-	req, err := r.newRequest(context.Background(), http.MethodGet, u, nil)
-	if err != nil {
-		return nil, fmt.Errorf("remote: build get tasks for project request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return nil, fmt.Errorf("remote: get tasks for project: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("remote: get tasks for project: unexpected status %d", resp.StatusCode)
-	}
-
-	var tasks []domain.Task
-	if err := json.NewDecoder(resp.Body).Decode(&tasks); err != nil {
-		return nil, fmt.Errorf("remote: decode tasks for project: %w", err)
-	}
-	return tasks, nil
+	var out []domain.Task
+	err := r.send(context.Background(), call{op: "get tasks for project", method: http.MethodGet, path: "/api/tasks/all" + query("projectPath", projectPath)}, &out)
+	return out, err
 }
 
+// CancelTask cancels a task that has not started executing.
+func (r *Client) CancelTask(id string) error {
+	return r.send(context.Background(), call{op: "cancel task", method: http.MethodDelete, path: "/api/tasks/" + esc(id), ok: statusNoBody, notFound: true}, nil)
+}
+
+// CreateDraft stores task as a DRAFT and returns its ID.
+func (r *Client) CreateDraft(task domain.Task) (string, error) {
+	var out createDraftResponse
+	err := r.send(context.Background(), call{op: "create draft", method: http.MethodPost, path: "/api/tasks/draft", body: task, ok: statusCreated}, &out)
+	return out.ID, err
+}
+
+// GetBacklog returns DRAFT and BACKLOG tasks of a project.
+func (r *Client) GetBacklog(projectPath string) ([]domain.Task, error) {
+	var out []domain.Task
+	err := r.send(context.Background(), call{op: "get backlog", method: http.MethodGet, path: "/api/tasks/backlog" + query("project", projectPath)}, &out)
+	return out, err
+}
+
+// PromoteTask moves a DRAFT or BACKLOG task into the execution queue.
+func (r *Client) PromoteTask(id string) (ports.PromoteResult, error) {
+	var out ports.PromoteResult
+	err := r.send(context.Background(), call{op: "promote task", method: http.MethodPost, path: "/api/tasks/" + esc(id) + "/promote", notFound: true}, &out)
+	return out, err
+}
+
+// UpdateTask patches the mutable fields of a task.
+func (r *Client) UpdateTask(id string, updates domain.Task) (domain.Task, error) {
+	var out domain.Task
+	err := r.send(context.Background(), call{op: "update task", method: http.MethodPut, path: "/api/tasks/" + esc(id), body: updates, notFound: true}, &out)
+	return out, err
+}
+
+// ClaimTask binds a QUEUED task to an AI session and marks it PROCESSING.
+// Any non-200 answer (for example 409 when the task is no longer QUEUED) is an
+// error; a rejected claim is never reported as a successful empty task.
+func (r *Client) ClaimTask(ctx context.Context, taskID string, sessionID string) (domain.Task, error) {
+	var out domain.Task
+	err := r.send(ctx, call{op: "claim task", method: http.MethodPost, path: "/api/tasks/" + esc(taskID) + "/claim", body: sessionIDRequest{SessionID: sessionID}, notFound: true}, &out)
+	return out, err
+}
+
+// UpdateTaskStatus reports completion or failure of a task claimed by sessionID.
+func (r *Client) UpdateTaskStatus(ctx context.Context, taskID string, sessionID string, status domain.TaskStatus, logs string) (domain.Task, error) {
+	var out domain.Task
+	body := updateTaskStatusRequest{SessionID: sessionID, Status: string(status), Logs: logs}
+	err := r.send(ctx, call{op: "update task status", method: http.MethodPut, path: "/api/tasks/" + esc(taskID) + "/status", body: body, notFound: true}, &out)
+	return out, err
+}
+
+// HeartbeatTask keeps a PROCESSING task alive.
+func (r *Client) HeartbeatTask(ctx context.Context, taskID, sessionID string) error {
+	return r.send(ctx, call{op: "heartbeat task", method: http.MethodPost, path: "/api/tasks/" + esc(taskID) + "/heartbeat", body: sessionIDRequest{SessionID: sessionID}, ok: statusOKOrNil, notFound: true}, nil)
+}
+
+// ── Providers ────────────────────────────────────────────────────────────────
+
+// GetProviders lists the active providers.
 func (r *Client) GetProviders() ([]ports.ProviderInfo, error) {
-	req, err := r.newRequest(context.Background(), http.MethodGet, "/api/providers", nil)
-	if err != nil {
-		return nil, fmt.Errorf("remote: build get providers request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return nil, fmt.Errorf("remote: get providers: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("remote: get providers: unexpected status %d", resp.StatusCode)
-	}
-
-	var providers []ports.ProviderInfo
-	if err := json.NewDecoder(resp.Body).Decode(&providers); err != nil {
-		return nil, fmt.Errorf("remote: decode providers: %w", err)
-	}
-	return providers, nil
+	var out []ports.ProviderInfo
+	err := r.send(context.Background(), call{op: "get providers", method: http.MethodGet, path: "/api/providers"}, &out)
+	return out, err
 }
 
+// RegisterCloudProvider registers an adapter for cfg at runtime.
+func (r *Client) RegisterCloudProvider(cfg domain.ProviderConfig) error {
+	return r.send(context.Background(), call{op: "register provider", method: http.MethodPost, path: "/api/providers", body: cfg, ok: statusCreated}, nil)
+}
+
+// RemoveProvider deregisters the named provider.
+func (r *Client) RemoveProvider(name string) error {
+	return r.send(context.Background(), call{op: "remove provider", method: http.MethodDelete, path: "/api/providers/" + esc(name), ok: statusNoBody, notFound: true}, nil)
+}
+
+// GetProviderModels lists the model catalogue of the named provider.
+func (r *Client) GetProviderModels(name string) ([]string, error) {
+	var out []string
+	err := r.send(context.Background(), call{op: "get provider models", method: http.MethodGet, path: "/api/providers/" + esc(name) + "/models", notFound: true}, &out)
+	return out, err
+}
+
+// AddProviderConfig persists a new provider configuration.
+func (r *Client) AddProviderConfig(ctx context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
+	var out domain.ProviderConfig
+	err := r.send(ctx, call{op: "add provider config", method: http.MethodPost, path: "/api/providers/config", body: cfg, ok: statusCreated}, &out)
+	return out, err
+}
+
+// UpdateProviderConfig overwrites an existing provider configuration.
+func (r *Client) UpdateProviderConfig(ctx context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
+	var out domain.ProviderConfig
+	err := r.send(ctx, call{op: "update provider config", method: http.MethodPut, path: "/api/providers/config/" + esc(cfg.ID), body: cfg, notFound: true}, &out)
+	return out, err
+}
+
+// RemoveProviderConfig deletes a persisted provider configuration.
+func (r *Client) RemoveProviderConfig(ctx context.Context, id string) error {
+	return r.send(ctx, call{op: "remove provider config", method: http.MethodDelete, path: "/api/providers/config/" + esc(id), ok: statusNoBody, notFound: true}, nil)
+}
+
+// ListProviderConfigs returns all persisted provider configurations.
+func (r *Client) ListProviderConfigs(ctx context.Context) ([]domain.ProviderConfig, error) {
+	var out []domain.ProviderConfig
+	err := r.send(ctx, call{op: "list provider configs", method: http.MethodGet, path: "/api/providers/config"}, &out)
+	return out, err
+}
+
+// GetDiscoveredProviders returns auto-detected providers that are not yet promoted.
+func (r *Client) GetDiscoveredProviders() ([]domain.DiscoveredProvider, error) {
+	var out []domain.DiscoveredProvider
+	err := r.send(context.Background(), call{op: "get discovered providers", method: http.MethodGet, path: "/api/providers/discovered"}, &out)
+	return out, err
+}
+
+// TriggerScan asks the daemon to rescan the machine for providers. A 204 reply
+// means the scan found nothing and yields an empty (non-nil) slice.
+func (r *Client) TriggerScan(ctx context.Context) ([]domain.DiscoveredProvider, error) {
+	out := []domain.DiscoveredProvider{}
+	err := r.send(ctx, call{op: "trigger scan", method: http.MethodPost, path: "/api/providers/discovered/scan", ok: statusOKOrNil}, &out)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// PromoteProvider promotes a discovered provider to a configured one.
+func (r *Client) PromoteProvider(ctx context.Context, id string) error {
+	return r.send(ctx, call{op: "promote provider", method: http.MethodPost, path: "/api/providers/promote/" + esc(id), ok: statusAny2xx, notFound: true}, nil)
+}
+
+// ── Runtime configuration ────────────────────────────────────────────────────
+
+// GetRuntimeConfig returns the daemon's runtime configuration. Only the queue
+// cap is exposed over GET; tokens are never returned by that endpoint.
 func (r *Client) GetRuntimeConfig(ctx context.Context) (domain.RuntimeConfig, error) {
-	req, err := r.newRequest(ctx, http.MethodGet, "/api/config", nil)
-	if err != nil {
-		return domain.RuntimeConfig{}, fmt.Errorf("remote: build get config request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return domain.RuntimeConfig{}, fmt.Errorf("remote: get config: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return domain.RuntimeConfig{}, fmt.Errorf("remote: get config: unexpected status %d", resp.StatusCode)
-	}
 	var out struct {
 		QueueCap int `json:"queueCap"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return domain.RuntimeConfig{}, fmt.Errorf("remote: decode config: %w", err)
-	}
-	return domain.RuntimeConfig{QueueCap: out.QueueCap}, nil
+	err := r.send(ctx, call{op: "get config", method: http.MethodGet, path: "/api/config"}, &out)
+	return domain.RuntimeConfig{QueueCap: out.QueueCap}, err
 }
 
+// UpdateRuntimeConfig applies a partial update and returns the resulting
+// configuration, including any newly rotated tokens.
 func (r *Client) UpdateRuntimeConfig(ctx context.Context, update domain.RuntimeConfigUpdate) (domain.RuntimeConfig, error) {
-	body, err := json.Marshal(update)
-	if err != nil {
-		return domain.RuntimeConfig{}, fmt.Errorf("remote: marshal config update: %w", err)
-	}
-	req, err := r.newRequest(ctx, http.MethodPut, "/api/config", bytes.NewReader(body))
-	if err != nil {
-		return domain.RuntimeConfig{}, fmt.Errorf("remote: build update config request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := r.do(req)
-	if err != nil {
-		return domain.RuntimeConfig{}, fmt.Errorf("remote: update config: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return domain.RuntimeConfig{}, fmt.Errorf("remote: update config: unexpected status %d", resp.StatusCode)
-	}
 	var out struct {
 		QueueCap int    `json:"queueCap"`
 		APIToken string `json:"apiToken,omitempty"`
 		MCPToken string `json:"mcpToken,omitempty"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return domain.RuntimeConfig{}, fmt.Errorf("remote: decode updated config: %w", err)
-	}
-	return domain.RuntimeConfig{QueueCap: out.QueueCap, APIToken: out.APIToken, MCPToken: out.MCPToken}, nil
+	err := r.send(ctx, call{op: "update config", method: http.MethodPut, path: "/api/config", body: update}, &out)
+	return domain.RuntimeConfig{QueueCap: out.QueueCap, APIToken: out.APIToken, MCPToken: out.MCPToken}, err
 }
 
-func (r *Client) CancelTask(id string) error {
-	req, err := r.newRequest(context.Background(), http.MethodDelete, "/api/tasks/"+url.PathEscape(id), nil)
-	if err != nil {
-		return fmt.Errorf("remote: build cancel request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return fmt.Errorf("remote: cancel task: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("remote: cancel task: unexpected status %d", resp.StatusCode)
-	}
-	return nil
-}
+// ── AI sessions and agents ───────────────────────────────────────────────────
 
-func (r *Client) RegisterCloudProvider(cfg domain.ProviderConfig) error {
-	body, err := json.Marshal(cfg)
-	if err != nil {
-		return fmt.Errorf("remote: marshal provider config: %w", err)
-	}
-	req, err := r.newRequest(context.Background(), http.MethodPost, "/api/providers", bytes.NewReader(body))
-	if err != nil {
-		return fmt.Errorf("remote: build register provider request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := r.do(req)
-	if err != nil {
-		return fmt.Errorf("remote: register provider: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("remote: register provider: unexpected status %d", resp.StatusCode)
-	}
-	return nil
-}
-
-func (r *Client) RemoveProvider(name string) error {
-	req, err := r.newRequest(context.Background(), http.MethodDelete, "/api/providers/"+url.PathEscape(name), nil)
-	if err != nil {
-		return fmt.Errorf("remote: build remove-provider request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return fmt.Errorf("remote: remove provider: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNotFound {
-		return fmt.Errorf("remote: remove provider: %w", domain.ErrNotFound)
-	}
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("remote: remove provider: unexpected status %d", resp.StatusCode)
-	}
-	return nil
-}
-
-func (r *Client) GetProviderModels(name string) ([]string, error) {
-	req, err := r.newRequest(context.Background(), http.MethodGet, "/api/providers/"+url.PathEscape(name)+"/models", nil)
-	if err != nil {
-		return nil, fmt.Errorf("remote: build get provider models request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return nil, fmt.Errorf("remote: get provider models: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("remote: get provider models: %w", domain.ErrNotFound)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("remote: get provider models: unexpected status %d", resp.StatusCode)
-	}
-	var models []string
-	if err := json.NewDecoder(resp.Body).Decode(&models); err != nil {
-		return nil, fmt.Errorf("remote: decode models: %w", err)
-	}
-	return models, nil
-}
-
-func (r *Client) AddProviderConfig(ctx context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
-	body, err := json.Marshal(cfg)
-	if err != nil {
-		return domain.ProviderConfig{}, fmt.Errorf("remote: marshal provider config: %w", err)
-	}
-	req, err := r.newRequest(ctx, http.MethodPost, "/api/providers/config", bytes.NewReader(body))
-	if err != nil {
-		return domain.ProviderConfig{}, fmt.Errorf("remote: build add provider config request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := r.do(req)
-	if err != nil {
-		return domain.ProviderConfig{}, fmt.Errorf("remote: add provider config: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated {
-		return domain.ProviderConfig{}, fmt.Errorf("remote: add provider config: unexpected status %d", resp.StatusCode)
-	}
-	var created domain.ProviderConfig
-	if err := json.NewDecoder(resp.Body).Decode(&created); err != nil {
-		return domain.ProviderConfig{}, fmt.Errorf("remote: decode provider config: %w", err)
-	}
-	return created, nil
-}
-
-func (r *Client) UpdateProviderConfig(ctx context.Context, cfg domain.ProviderConfig) (domain.ProviderConfig, error) {
-	body, err := json.Marshal(cfg)
-	if err != nil {
-		return domain.ProviderConfig{}, fmt.Errorf("remote: marshal provider config: %w", err)
-	}
-	req, err := r.newRequest(ctx, http.MethodPut, "/api/providers/config/"+url.PathEscape(cfg.ID), bytes.NewReader(body))
-	if err != nil {
-		return domain.ProviderConfig{}, fmt.Errorf("remote: build update provider config request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := r.do(req)
-	if err != nil {
-		return domain.ProviderConfig{}, fmt.Errorf("remote: update provider config: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNotFound {
-		return domain.ProviderConfig{}, fmt.Errorf("remote: update provider config: %w", domain.ErrNotFound)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return domain.ProviderConfig{}, fmt.Errorf("remote: update provider config: unexpected status %d", resp.StatusCode)
-	}
-	var updated domain.ProviderConfig
-	if err := json.NewDecoder(resp.Body).Decode(&updated); err != nil {
-		return domain.ProviderConfig{}, fmt.Errorf("remote: decode provider config: %w", err)
-	}
-	return updated, nil
-}
-
-func (r *Client) RemoveProviderConfig(ctx context.Context, id string) error {
-	req, err := r.newRequest(ctx, http.MethodDelete, "/api/providers/config/"+url.PathEscape(id), nil)
-	if err != nil {
-		return fmt.Errorf("remote: build remove provider config request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return fmt.Errorf("remote: remove provider config: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNotFound {
-		return fmt.Errorf("remote: remove provider config: %w", domain.ErrNotFound)
-	}
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("remote: remove provider config: unexpected status %d", resp.StatusCode)
-	}
-	return nil
-}
-
-func (r *Client) ListProviderConfigs(ctx context.Context) ([]domain.ProviderConfig, error) {
-	req, err := r.newRequest(ctx, http.MethodGet, "/api/providers/config", nil)
-	if err != nil {
-		return nil, fmt.Errorf("remote: build list provider configs request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return nil, fmt.Errorf("remote: list provider configs: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("remote: list provider configs: unexpected status %d", resp.StatusCode)
-	}
-	var cfgs []domain.ProviderConfig
-	if err := json.NewDecoder(resp.Body).Decode(&cfgs); err != nil {
-		return nil, fmt.Errorf("remote: decode provider configs: %w", err)
-	}
-	return cfgs, nil
-}
-
-func (r *Client) GetDiscoveredProviders() ([]domain.DiscoveredProvider, error) {
-	req, err := r.newRequest(context.Background(), http.MethodGet, "/api/providers/discovered", nil)
-	if err != nil {
-		return nil, fmt.Errorf("remote: build get discovered providers request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return nil, fmt.Errorf("remote: get discovered providers: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("remote: get discovered providers: unexpected status %d", resp.StatusCode)
-	}
-	var providers []domain.DiscoveredProvider
-	if err := json.NewDecoder(resp.Body).Decode(&providers); err != nil {
-		return nil, fmt.Errorf("remote: decode discovered providers: %w", err)
-	}
-	return providers, nil
-}
-
-func (r *Client) TriggerScan(_ context.Context) ([]domain.DiscoveredProvider, error) {
-	req, err := r.newRequest(context.Background(), http.MethodPost, "/api/providers/discovered/scan", nil)
-	if err != nil {
-		return nil, fmt.Errorf("remote: build trigger scan request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := r.do(req)
-	if err != nil {
-		return nil, fmt.Errorf("remote: trigger scan: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		return nil, fmt.Errorf("remote: trigger scan: unexpected status %d", resp.StatusCode)
-	}
-	var providers []domain.DiscoveredProvider
-	if err := json.NewDecoder(resp.Body).Decode(&providers); err != nil {
-		return nil, fmt.Errorf("remote: trigger scan: decode: %w", err)
-	}
-	return providers, nil
-}
-
-func (r *Client) PromoteProvider(ctx context.Context, id string) error {
-	req, err := r.newRequest(ctx, http.MethodPost, "/api/providers/promote/"+url.PathEscape(id), nil)
-	if err != nil {
-		return fmt.Errorf("cli: promote provider: build request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return fmt.Errorf("cli: promote provider: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("cli: promote provider: unexpected status %d", resp.StatusCode)
-	}
-	return nil
-}
-
-func (r *Client) CreateDraft(task domain.Task) (string, error) {
-	body, err := json.Marshal(task)
-	if err != nil {
-		return "", fmt.Errorf("remote: marshal draft task: %w", err)
-	}
-	req, err := r.newRequest(context.Background(), http.MethodPost, "/api/tasks/draft", bytes.NewReader(body))
-	if err != nil {
-		return "", fmt.Errorf("remote: build create draft request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := r.do(req)
-	if err != nil {
-		return "", fmt.Errorf("remote: create draft: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated {
-		return "", fmt.Errorf("remote: create draft: unexpected status %d", resp.StatusCode)
-	}
-	var result createDraftResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("remote: decode draft response: %w", err)
-	}
-	return result.ID, nil
-}
-
-func (r *Client) GetBacklog(projectPath string) ([]domain.Task, error) {
-	params := url.Values{}
-	params.Set("project", projectPath)
-	req, err := r.newRequest(context.Background(), http.MethodGet, "/api/tasks/backlog?"+params.Encode(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("remote: build get backlog request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return nil, fmt.Errorf("remote: get backlog: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("remote: get backlog: unexpected status %d", resp.StatusCode)
-	}
-	var tasks []domain.Task
-	if err := json.NewDecoder(resp.Body).Decode(&tasks); err != nil {
-		return nil, fmt.Errorf("remote: decode backlog: %w", err)
-	}
-	return tasks, nil
-}
-
-func (r *Client) PromoteTask(id string) (ports.PromoteResult, error) {
-	req, err := r.newRequest(context.Background(), http.MethodPost, "/api/tasks/"+url.PathEscape(id)+"/promote", nil)
-	if err != nil {
-		return ports.PromoteResult{}, fmt.Errorf("remote: build promote task request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := r.do(req)
-	if err != nil {
-		return ports.PromoteResult{}, fmt.Errorf("remote: promote task: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNotFound {
-		return ports.PromoteResult{}, fmt.Errorf("remote: promote task: %w", domain.ErrNotFound)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return ports.PromoteResult{}, fmt.Errorf("remote: promote task: unexpected status %d", resp.StatusCode)
-	}
-	var result ports.PromoteResult
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return ports.PromoteResult{}, fmt.Errorf("remote: promote task: decode response: %w", err)
-	}
-	return result, nil
-}
-
-func (r *Client) UpdateTask(id string, updates domain.Task) (domain.Task, error) {
-	body, err := json.Marshal(updates)
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("remote: marshal task updates: %w", err)
-	}
-	req, err := r.newRequest(context.Background(), http.MethodPut, "/api/tasks/"+url.PathEscape(id), bytes.NewReader(body))
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("remote: build update task request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := r.do(req)
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("remote: update task: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNotFound {
-		return domain.Task{}, fmt.Errorf("remote: update task: %w", domain.ErrNotFound)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return domain.Task{}, fmt.Errorf("remote: update task: unexpected status %d", resp.StatusCode)
-	}
-	var updated domain.Task
-	if err := json.NewDecoder(resp.Body).Decode(&updated); err != nil {
-		return domain.Task{}, fmt.Errorf("remote: decode updated task: %w", err)
-	}
-	return updated, nil
-}
-
+// RegisterAISession registers (or refreshes) an external agent session.
 func (r *Client) RegisterAISession(ctx context.Context, s domain.AISession) (domain.AISession, error) {
-	body, err := json.Marshal(s)
-	if err != nil {
-		return domain.AISession{}, fmt.Errorf("remote: marshal ai session: %w", err)
-	}
-	req, err := r.newRequest(ctx, http.MethodPost, "/api/ai-sessions", bytes.NewReader(body))
-	if err != nil {
-		return domain.AISession{}, fmt.Errorf("remote: build register ai session request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := r.do(req)
-	if err != nil {
-		return domain.AISession{}, fmt.Errorf("remote: register ai session: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated {
-		return domain.AISession{}, fmt.Errorf("remote: register ai session: unexpected status %d", resp.StatusCode)
-	}
-	var created domain.AISession
-	if err := json.NewDecoder(resp.Body).Decode(&created); err != nil {
-		return domain.AISession{}, fmt.Errorf("remote: decode ai session: %w", err)
-	}
-	return created, nil
+	var out domain.AISession
+	err := r.send(ctx, call{op: "register ai session", method: http.MethodPost, path: "/api/ai-sessions", body: s, ok: statusCreated}, &out)
+	return out, err
 }
 
+// ListAISessions returns all persisted AI sessions.
 func (r *Client) ListAISessions(ctx context.Context) ([]domain.AISession, error) {
-	req, err := r.newRequest(ctx, http.MethodGet, "/api/ai-sessions", nil)
-	if err != nil {
-		return nil, fmt.Errorf("remote: build list ai sessions request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return nil, fmt.Errorf("remote: list ai sessions: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("remote: list ai sessions: unexpected status %d", resp.StatusCode)
-	}
-	var sessions []domain.AISession
-	if err := json.NewDecoder(resp.Body).Decode(&sessions); err != nil {
-		return nil, fmt.Errorf("remote: decode ai sessions: %w", err)
-	}
-	return sessions, nil
+	var out []domain.AISession
+	err := r.send(ctx, call{op: "list ai sessions", method: http.MethodGet, path: "/api/ai-sessions"}, &out)
+	return out, err
 }
 
+// DeregisterAISession marks a session disconnected.
 func (r *Client) DeregisterAISession(ctx context.Context, id string) error {
-	req, err := r.newRequest(ctx, http.MethodDelete, "/api/ai-sessions/"+url.PathEscape(id), nil)
-	if err != nil {
-		return fmt.Errorf("remote: build deregister ai session request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return fmt.Errorf("remote: deregister ai session: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNotFound {
-		return fmt.Errorf("remote: deregister ai session: %w", domain.ErrNotFound)
-	}
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("remote: deregister ai session: unexpected status %d", resp.StatusCode)
-	}
-	return nil
+	return r.send(ctx, call{op: "deregister ai session", method: http.MethodDelete, path: "/api/ai-sessions/" + esc(id), ok: statusNoBody, notFound: true}, nil)
 }
 
+// TerminateAISession asks the daemon to stop the agent process behind a session.
 func (r *Client) TerminateAISession(ctx context.Context, id string, force bool) error {
-	payload, err := json.Marshal(terminateAISessionRequest{Force: force})
-	if err != nil {
-		return fmt.Errorf("remote: marshal terminate ai session body: %w", err)
-	}
-	req, err := r.newRequest(ctx, http.MethodPost, "/api/ai-sessions/"+url.PathEscape(id)+"/terminate", bytes.NewReader(payload))
-	if err != nil {
-		return fmt.Errorf("remote: build terminate ai session request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := r.do(req)
-	if err != nil {
-		return fmt.Errorf("remote: terminate ai session: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNotFound {
-		return fmt.Errorf("remote: terminate ai session: %w", domain.ErrNotFound)
-	}
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("remote: terminate ai session: unexpected status %d", resp.StatusCode)
-	}
-	return nil
+	return r.send(ctx, call{op: "terminate ai session", method: http.MethodPost, path: "/api/ai-sessions/" + esc(id) + "/terminate", body: terminateAISessionRequest{Force: force}, ok: statusOKOrNil, notFound: true}, nil)
 }
 
+// HeartbeatAISession refreshes a session's last-activity timestamp.
 func (r *Client) HeartbeatAISession(ctx context.Context, id string) error {
-	req, err := r.newRequest(ctx, http.MethodPost, "/api/ai-sessions/"+url.PathEscape(id)+"/heartbeat", nil)
-	if err != nil {
-		return fmt.Errorf("remote: build heartbeat ai session request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return fmt.Errorf("remote: heartbeat ai session: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNotFound {
-		return fmt.Errorf("remote: heartbeat ai session: %w", domain.ErrNotFound)
-	}
-	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("remote: heartbeat ai session: unexpected status %d", resp.StatusCode)
-	}
-	return nil
+	return r.send(ctx, call{op: "heartbeat ai session", method: http.MethodPost, path: "/api/ai-sessions/" + esc(id) + "/heartbeat", ok: statusNoBody, notFound: true}, nil)
 }
 
-func (r *Client) HeartbeatTask(ctx context.Context, taskID, sessionID string) error {
-	body, err := json.Marshal(sessionIDRequest{SessionID: sessionID})
-	if err != nil {
-		return fmt.Errorf("remote: marshal heartbeat task body: %w", err)
-	}
-	req, err := r.newRequest(ctx, http.MethodPost, "/api/tasks/"+url.PathEscape(taskID)+"/heartbeat", bytes.NewReader(body))
-	if err != nil {
-		return fmt.Errorf("remote: build heartbeat task request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := r.do(req)
-	if err != nil {
-		return fmt.Errorf("remote: heartbeat task: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("remote: heartbeat task: unexpected status %d", resp.StatusCode)
-	}
-	return nil
-}
-
-func (r *Client) ClaimTask(ctx context.Context, taskID string, sessionID string) (domain.Task, error) {
-	body, err := json.Marshal(sessionIDRequest{SessionID: sessionID})
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("remote: marshal claim task body: %w", err)
-	}
-	req, err := r.newRequest(ctx, http.MethodPost, "/api/tasks/"+url.PathEscape(taskID)+"/claim", bytes.NewReader(body))
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("remote: build claim task request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := r.do(req)
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("remote: claim task: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNotFound {
-		return domain.Task{}, fmt.Errorf("remote: claim task: %w", domain.ErrNotFound)
-	}
-	var task domain.Task
-	if err := json.NewDecoder(resp.Body).Decode(&task); err != nil {
-		return domain.Task{}, fmt.Errorf("remote: claim task: decode: %w", err)
-	}
-	return task, nil
-}
-
-func (r *Client) UpdateTaskStatus(ctx context.Context, taskID string, sessionID string, status domain.TaskStatus, logs string) (domain.Task, error) {
-	payload := updateTaskStatusRequest{
-		SessionID: sessionID,
-		Status:    string(status),
-		Logs:      logs,
-	}
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("remote: marshal update task status body: %w", err)
-	}
-	req, err := r.newRequest(ctx, http.MethodPut, "/api/tasks/"+url.PathEscape(taskID)+"/status", bytes.NewReader(data))
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("remote: build update task status request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := r.do(req)
-	if err != nil {
-		return domain.Task{}, fmt.Errorf("remote: update task status: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNotFound {
-		return domain.Task{}, fmt.Errorf("remote: update task status: %w", domain.ErrNotFound)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return domain.Task{}, fmt.Errorf("remote: update task status: unexpected status %d", resp.StatusCode)
-	}
-	var task domain.Task
-	if err := json.NewDecoder(resp.Body).Decode(&task); err != nil {
-		return domain.Task{}, fmt.Errorf("remote: update task status: decode: %w", err)
-	}
-	return task, nil
-}
-
+// PurgeDisconnectedSessions deletes long-disconnected sessions and returns how many.
 func (r *Client) PurgeDisconnectedSessions(ctx context.Context) (int, error) {
-	req, err := r.newRequest(ctx, http.MethodDelete, "/api/ai-sessions", nil)
-	if err != nil {
-		return 0, fmt.Errorf("remote: build purge disconnected sessions request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return 0, fmt.Errorf("remote: purge disconnected sessions: %w", err)
-	}
-	defer resp.Body.Close()
-	var result struct {
+	var out struct {
 		Deleted int `json:"deleted"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return 0, fmt.Errorf("remote: purge disconnected sessions: decode: %w", err)
-	}
-	return result.Deleted, nil
+	err := r.send(ctx, call{op: "purge disconnected sessions", method: http.MethodDelete, path: "/api/ai-sessions"}, &out)
+	return out.Deleted, err
 }
 
+// GetDiscoveredAgents returns AI agent processes found on the machine.
 func (r *Client) GetDiscoveredAgents(ctx context.Context) ([]domain.DiscoveredAgent, error) {
-	req, err := r.newRequest(ctx, http.MethodGet, "/api/ai-sessions/discovered", nil)
-	if err != nil {
-		return nil, fmt.Errorf("remote: build get discovered agents request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return nil, fmt.Errorf("remote: get discovered agents: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("remote: get discovered agents: unexpected status %d", resp.StatusCode)
-	}
-	var agents []domain.DiscoveredAgent
-	if err := json.NewDecoder(resp.Body).Decode(&agents); err != nil {
-		return nil, fmt.Errorf("remote: get discovered agents: decode: %w", err)
-	}
-	return agents, nil
+	var out []domain.DiscoveredAgent
+	err := r.send(ctx, call{op: "get discovered agents", method: http.MethodGet, path: "/api/ai-sessions/discovered"}, &out)
+	return out, err
 }
 
+// DelegateToNexus marks a session as delegated and returns the agent instruction text.
 func (r *Client) DelegateToNexus(ctx context.Context, sessionID string) (string, error) {
-	req, err := r.newRequest(ctx, http.MethodPost, "/api/ai-sessions/"+url.PathEscape(sessionID)+"/delegate", nil)
-	if err != nil {
-		return "", fmt.Errorf("remote: build delegate to nexus request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return "", fmt.Errorf("remote: delegate to nexus: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusNotFound {
-		return "", fmt.Errorf("remote: delegate to nexus: %w", domain.ErrNotFound)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("remote: delegate to nexus: unexpected status %d", resp.StatusCode)
-	}
-	var result struct {
+	var out struct {
 		Instruction string `json:"instruction"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("remote: delegate to nexus: decode: %w", err)
-	}
-	return result.Instruction, nil
+	err := r.send(ctx, call{op: "delegate to nexus", method: http.MethodPost, path: "/api/ai-sessions/" + esc(sessionID) + "/delegate", notFound: true}, &out)
+	return out.Instruction, err
 }
 
+// GetDiscoveredPlanFiles returns plan/task files found near projectPath.
 func (r *Client) GetDiscoveredPlanFiles(ctx context.Context, projectPath string) ([]domain.DiscoveredPlanFile, error) {
-	params := url.Values{}
-	params.Set("projectPath", projectPath)
-	req, err := r.newRequest(ctx, http.MethodGet, "/api/plans/discovered?"+params.Encode(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("remote: build get discovered plan files request: %w", err)
-	}
-	resp, err := r.do(req)
-	if err != nil {
-		return nil, fmt.Errorf("remote: get discovered plan files: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("remote: get discovered plan files: unexpected status %d", resp.StatusCode)
-	}
-	var files []domain.DiscoveredPlanFile
-	if err := json.NewDecoder(resp.Body).Decode(&files); err != nil {
-		return nil, fmt.Errorf("remote: get discovered plan files: decode: %w", err)
-	}
-	return files, nil
+	var out []domain.DiscoveredPlanFile
+	err := r.send(ctx, call{op: "get discovered plan files", method: http.MethodGet, path: "/api/plans/discovered" + query("projectPath", projectPath)}, &out)
+	return out, err
 }

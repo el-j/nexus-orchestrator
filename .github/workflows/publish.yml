@@ -75,8 +75,9 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.26"
+          go-version: "1.27"
           cache: true
+          check-latest: true
 
       - name: go vet
         run: go vet ./...
@@ -96,7 +97,8 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.26"
+          go-version: "1.27"
+          check-latest: true
 
       - name: Check gofmt
         run: |
@@ -111,6 +113,9 @@ jobs:
         uses: golangci/golangci-lint-action@v7
         with:
           version: latest
+
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
   test:
     needs: version
@@ -127,12 +132,16 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.26"
+          go-version: "1.27"
           cache: true
+          check-latest: true
 
       - name: Run tests
         shell: bash
         run: CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" CGO_LDFLAGS="-lm" go test -race -count=1 ./...
+
+      - name: Go coverage gate (merged, ratchet)
+        run: MIN_COVERAGE=95 ./scripts/go-coverage.sh
 
   frontend-test:
     needs: version
@@ -144,7 +153,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
@@ -154,7 +163,7 @@ jobs:
 
       - name: Type-check frontend
         working-directory: frontend
-        run: npx vue-tsc --noEmit
+        run: npm run typecheck
 
       - name: Run frontend smoke coverage
         working-directory: frontend
@@ -170,7 +179,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: vscode-extension/package-lock.json
 
@@ -180,7 +189,7 @@ jobs:
 
       - name: Type-check extension
         working-directory: vscode-extension
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: Run extension smoke coverage
         working-directory: vscode-extension
@@ -205,12 +214,14 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.26"
+          go-version: "1.27"
           cache: true
+          check-latest: true
 
-      - name: Run daemon E2E smoke
+      # Builds the shipped binaries and drives a real daemon process (same suite as CI).
+      - name: Run real-daemon E2E
         shell: bash
-        run: ./scripts/e2e-smoke.sh
+        run: CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" CGO_LDFLAGS="-lm" go test -tags e2e -count=1 -timeout 10m ./internal/e2e/
 
   release-gate:
     needs: [version, vet, lint, test, frontend-test, vscode-gate, e2e]
@@ -291,8 +302,9 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.26"
+          go-version: "1.27"
           cache: true
+          check-latest: true
 
       - name: Install zig
         if: matrix.runner == 'ubuntu-latest'
@@ -313,7 +325,11 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
-          CGO_CFLAGS: "-DSQLITE_ENABLE_FTS5"
+          # zig cc enables UBSan by default and its runtime is not linked on
+          # windows-gnu (undefined __ubsan_handle_*). Disabling it makes Go's own
+          # runtime/cgo compile fail on an unused -fno-rtlib-defaultlib argument
+          # (-Werror), so that warning is silenced too. Verified with zig 0.14.0.
+          CGO_CFLAGS: "-DSQLITE_ENABLE_FTS5 -fno-sanitize=undefined -Wno-unused-command-line-argument"
           CGO_LDFLAGS: ${{ matrix.cgo_ldflags }}
         run: |
           VERSION="${{ needs.version.outputs.tag }}"
@@ -402,8 +418,9 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.26"
+          go-version: "1.27"
           cache: true
+          check-latest: true
 
       - name: Install Linux dependencies
         if: matrix.os == 'linux'
@@ -415,7 +432,7 @@ jobs:
       - name: Install Wails CLI
         shell: bash
         run: |
-          go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
 
       - name: Build desktop app
         shell: bash
@@ -498,10 +515,10 @@ jobs:
           # ditto preserves macOS resource forks, symlinks, and extended attributes
           # that tar can silently drop. The archive includes the app and a
           # launcher script that clears quarantine before opening.
-          cd build/desktop
-          ditto -c -k --sequesterRsrc . \
+          # The archive is written outside build/desktop: zipping "." while creating the zip
+          # inside it put a copy of the archive into itself.
+          ditto -c -k --sequesterRsrc build/desktop \
             "${{ matrix.archive_name }}.zip"
-          mv "${{ matrix.archive_name }}.zip" ../..
 
       - name: Package Linux (tar.gz)
         if: matrix.os == 'linux'
@@ -533,7 +550,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: vscode-extension/package-lock.json
 
@@ -543,7 +560,7 @@ jobs:
 
       - name: Type-check extension
         working-directory: vscode-extension
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: Run extension smoke coverage
         working-directory: vscode-extension
@@ -582,9 +599,60 @@ jobs:
      #   run: npx ovsx publish ../build/vscode/nexus-orchestrator.vsix --pat ${{ secrets.OVSX_PAT }}
 
 
+  smoke-test:
+    name: Smoke ${{ matrix.os }}-${{ matrix.arch }}
+    needs: [version, build-cli]
+    if: needs.version.outputs.exists == 'false'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: linux, arch: amd64, runner: ubuntu-latest, ext: tar.gz, bin_ext: "" }
+          - { os: darwin, arch: arm64, runner: macos-latest, ext: tar.gz, bin_ext: "" }
+          - { os: windows, arch: amd64, runner: windows-latest, ext: zip, bin_ext: ".exe" }
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          name: nexus-orchestrator-${{ matrix.os }}-${{ matrix.arch }}.${{ matrix.ext }}
+
+      - name: Extract archive
+        shell: bash
+        run: |
+          ARCHIVE="nexus-orchestrator-${{ matrix.os }}-${{ matrix.arch }}.${{ matrix.ext }}"
+          mkdir smoke
+          if [ "${{ matrix.ext }}" = "zip" ]; then 7z x -y -osmoke "$ARCHIVE"; else tar xzf "$ARCHIVE" -C smoke; fi
+          ls -la smoke
+
+      - name: CLI reports its version
+        shell: bash
+        run: |
+          out=$(./smoke/nexus-cli${{ matrix.bin_ext }} --version)
+          echo "$out"
+          echo "$out" | grep -F "${{ needs.version.outputs.tag }}"
+
+      - name: Daemon boots and serves /api/health
+        shell: bash
+        env:
+          NEXUS_DB_PATH: smoke/smoke.db
+          NEXUS_LISTEN_ADDR: 127.0.0.1:63987
+          NEXUS_MCP_ADDR: 127.0.0.1:63988
+        run: |
+          ./smoke/nexus-daemon${{ matrix.bin_ext }} > smoke/daemon.log 2>&1 &
+          DAEMON_PID=$!
+          ok=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:63987/api/health | grep -q '"status":"ok"'; then ok=1; break; fi
+            sleep 1
+          done
+          kill "$DAEMON_PID" 2>/dev/null || true
+          if [ "$ok" != 1 ]; then echo "daemon did not become healthy"; cat smoke/daemon.log; exit 1; fi
+          echo "daemon healthy"
+
   release:
     name: Create Release
-    needs: [version, build-cli, build-desktop, build-vscode]
+    needs: [version, build-cli, smoke-test, build-desktop, build-vscode]
     if: needs.version.outputs.exists == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 30

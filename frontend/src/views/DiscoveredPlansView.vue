@@ -1,3 +1,7 @@
+<!--
+  Plans: plan and task files found in the projects (NEXUS.md, TASK-n.md, CLAUDE.md, ...), grouped by
+  project and parent plan, with the brain card per project and a Promote button for todo tasks.
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->
@@ -25,7 +29,7 @@
           :disabled="loading"
           @click="scan"
         >
-          <i :class="['pi pi-search text-xs mr-1', loading && 'animate-spin']"></i>
+          <UiIcon name="search" :class="['text-xs mr-1', loading && 'animate-spin']" />
           {{ loading ? 'Scanning…' : 'Scan Now' }}
         </button>
       </div>
@@ -240,12 +244,24 @@
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { computed, ref, watch } from 'vue';
+import { useToast } from '../composables/useToast';
 import ProjectBrainCard from '../components/ProjectBrainCard.vue';
 import { useDiscoveredPlans } from '../composables/useDiscoveredPlans';
 import { currentProject } from '../composables/useProjectState';
 import { createDraft } from '../types/wails';
 import type { PlanFileKind, DiscoveredPlanFile } from '../types/domain';
+import {
+  kindLabel,
+  extractParentPlan,
+  basename,
+  truncate,
+  formatDate,
+  kindBadgeClass,
+  parseStatus,
+  statusBadgeClass,
+} from '../utils/plans';
 
 const { plans, loading, error, scan } = useDiscoveredPlans(currentProject);
 
@@ -302,19 +318,6 @@ function toggleFilter(kind: PlanFileKind) {
   activeFilters.value = new Set(activeFilters.value);
 }
 
-function kindLabel(kind: PlanFileKind): string {
-  const labels: Record<PlanFileKind, string> = {
-    nexus: 'Nexus',
-    'claude-task': 'Tasks',
-    claude: 'Instructions',
-    cursor: 'Cursor',
-    'mcp-config': 'Config',
-    crewai: 'CrewAI',
-    markdown: 'Markdown',
-  };
-  return labels[kind] ?? kind;
-}
-
 const availableKinds = computed<PlanFileKind[]>(() => {
   const kinds = new Set<PlanFileKind>();
   for (const plan of plans.value) kinds.add(plan.kind);
@@ -328,12 +331,6 @@ const availableKinds = computed<PlanFileKind[]>(() => {
     ...[...kinds].filter((k) => k === 'markdown'),
   ];
 });
-
-function extractParentPlan(file: DiscoveredPlanFile): string | null {
-  const m = file.summary?.match(/\*\*Plan:\*\*\s*(PLAN-\d+)/);
-  if (m) return m[1];
-  return null;
-}
 
 const projectGroups = computed(() => {
   const map: Record<
@@ -367,9 +364,8 @@ const projectGroups = computed(() => {
     const sortedGroups = Object.entries(groups).sort(([a], [b]) => {
       if (a === 'ungrouped') return 1;
       if (b === 'ungrouped') return -1;
-      const numA = parseInt(a.match(/PLAN-(\d+)/)?.[1] ?? '0');
-      const numB = parseInt(b.match(/PLAN-(\d+)/)?.[1] ?? '0');
-      return numB - numA;
+      // Group keys are "PLAN-<n>" (see extractParentPlan) or "ungrouped", handled above.
+      return Number(b.slice('PLAN-'.length)) - Number(a.slice('PLAN-'.length));
     });
     map[proj] = { nexus, planGroups: sortedGroups, others };
   }
@@ -385,7 +381,7 @@ const filteredProjectGroups = computed(() => {
     const planGroups = group.planGroups
       .map(
         ([planId, files]) =>
-          [planId, files.filter((f) => activeFilters.value.has('claude-task'))] as [
+          [planId, files.filter(() => activeFilters.value.has('claude-task'))] as [
             string,
             DiscoveredPlanFile[],
           ],
@@ -399,74 +395,30 @@ const filteredProjectGroups = computed(() => {
   return filtered;
 });
 
-function basename(path: string): string {
-  return path.split('/').pop() ?? path;
-}
-
-function truncate(text: string, max: number): string {
-  return text.length > max ? text.slice(0, max) + '…' : text;
-}
-
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  } catch {
-    return iso;
-  }
-}
-
-const kindColors: Record<PlanFileKind, string> = {
-  nexus: 'bg-indigo-500/20 text-indigo-300',
-  markdown: 'bg-emerald-500/20 text-emerald-300',
-  cursor: 'bg-blue-500/20 text-blue-300',
-  claude: 'bg-orange-500/20 text-orange-300',
-  'mcp-config': 'bg-purple-500/20 text-purple-300',
-  crewai: 'bg-pink-500/20 text-pink-300',
-  'claude-task': 'bg-amber-500/20 text-amber-300',
-};
-
-function kindBadgeClass(kind: PlanFileKind): string {
-  return kindColors[kind] ?? 'bg-white/5 text-slate-400';
-}
-
-// Status parsing from plan file summary (YAML frontmatter or body-level)
-function parseStatus(plan: DiscoveredPlanFile): string | null {
-  if (!plan.summary) return null;
-  // YAML frontmatter: "status: todo"
-  const yamlMatch = plan.summary.match(/\bstatus:\s*([^\n\r]+)/i);
-  if (yamlMatch) return yamlMatch[1].trim().toLowerCase();
-  // Body-level: "**Status:** todo"
-  const bodyMatch = plan.summary.match(/\*\*Status:\*\*\s*([^\n\r]+)/i);
-  if (bodyMatch) return bodyMatch[1].trim().toLowerCase();
-  return null;
-}
-
-const statusBadgeColors: Record<string, string> = {
-  todo: 'bg-yellow-500/20 text-yellow-300',
-  'in-progress': 'bg-blue-500/20 text-blue-300',
-  done: 'bg-emerald-500/20 text-emerald-300',
-  completed: 'bg-emerald-500/20 text-emerald-300',
-  blocked: 'bg-red-500/20 text-red-300',
-};
-
-function statusBadgeClass(status: string): string {
-  return statusBadgeColors[status] ?? 'bg-white/5 text-slate-400';
-}
-
 // Promote plan task to nexus queue
 const promoting = ref<string | null>(null);
+const toast = useToast();
 
 async function handlePromote(plan: DiscoveredPlanFile) {
   promoting.value = plan.id;
   try {
-    await createDraft({
+    const id = await createDraft({
       projectPath: plan.projectPath,
-      instruction: plan.summary ?? `Execute task from ${plan.path}`,
+      instruction: plan.summary!, // only todo tasks (which have a summary) can be promoted
       targetFile: plan.path,
+    });
+    toast.add({
+      severity: 'success',
+      summary: 'Saved as draft',
+      detail: `${basename(plan.path)} → ${id}`,
+      life: 3000,
+    });
+  } catch (e) {
+    toast.add({
+      severity: 'error',
+      summary: 'Promote failed',
+      detail: e instanceof Error ? e.message : String(e),
+      life: 5000,
     });
   } finally {
     promoting.value = null;

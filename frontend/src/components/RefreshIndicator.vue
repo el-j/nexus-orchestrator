@@ -1,3 +1,7 @@
+<!--
+  Small "updated Ns ago" label that ticks every second.
+  Props: lastRefreshed (Date of the last successful refresh, or null before the first one).
+-->
 <template>
   <span class="text-[10px] text-slate-600 tabular-nums">
     {{ label }}
@@ -10,7 +14,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 const props = defineProps<{ lastRefreshed: Date | null }>();
 
 const now = ref(Date.now());
-let timer: ReturnType<typeof setInterval> | null = null;
+let timer: ReturnType<typeof setInterval> | undefined;
 
 onMounted(() => {
   timer = setInterval(() => {
@@ -18,7 +22,7 @@ onMounted(() => {
   }, 5000);
 });
 onUnmounted(() => {
-  if (timer) clearInterval(timer);
+  clearInterval(timer);
 });
 
 const label = computed(() => {

@@ -3,6 +3,7 @@ import type { Ref } from 'vue';
 import type { DiscoveredPlanFile } from '../types/domain';
 import { resolveServerUrl } from './useServerUrl';
 
+/** Plan files discovered on the machine, with a promote action that queues them. */
 export function useDiscoveredPlans(projectPath: Ref<string | null>) {
   const plans = ref<DiscoveredPlanFile[]>([]);
   const loading = ref(false);
@@ -16,9 +17,12 @@ export function useDiscoveredPlans(projectPath: Ref<string | null>) {
         ? `?projectPath=${encodeURIComponent(projectPath.value)}`
         : '';
       const res = await fetch(`${base}/api/plans/discovered${params}`);
-      if (res.ok) plans.value = (await res.json()) as DiscoveredPlanFile[];
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // A Go nil slice is serialised as JSON null.
+      plans.value = ((await res.json()) as DiscoveredPlanFile[] | null) ?? [];
+      error.value = null;
     } catch (e) {
-      error.value = String(e);
+      error.value = e instanceof Error ? e.message : String(e);
     } finally {
       loading.value = false;
     }
@@ -31,10 +35,11 @@ export function useDiscoveredPlans(projectPath: Ref<string | null>) {
       const params = projectPath.value
         ? `?projectPath=${encodeURIComponent(projectPath.value)}`
         : '';
-      await fetch(`${base}/api/plans/discovered/scan${params}`, { method: 'POST' });
+      const res = await fetch(`${base}/api/plans/discovered/scan${params}`, { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       await fetchPlans();
     } catch (e) {
-      error.value = String(e);
+      error.value = e instanceof Error ? e.message : String(e);
     } finally {
       loading.value = false;
     }

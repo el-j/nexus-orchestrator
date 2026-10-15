@@ -1,3 +1,8 @@
+> **Historical document (March 2026) — superseded.** Several statements below are out of date (for example the
+> MCP tool count is 41, not 14 or 40, and the `docs/*.html` pages it mentions have been removed). The current
+> audit, with measured coverage and the open work, is tracked in the GitHub issues and milestones M0–M9 of
+> [el-j/nexus-orchestrator](https://github.com/el-j/nexus-orchestrator/issues).
+
 # Nexus Orchestrator — Comprehensive Project Audit & Gap Analysis
 
 **Date:** 2026-09-25  

@@ -126,4 +126,21 @@ describe('BacklogView', () => {
 
     expect(mockOff).toHaveBeenCalledWith('*', expect.any(Function));
   });
+
+  it('starts no polling and no SSE handler when unmounted before the first load finishes', async () => {
+    vi.useFakeTimers();
+    try {
+      mockGetBacklog.mockResolvedValue([]);
+      mockOn.mockClear();
+      const wrapper = shallowMount(BacklogView, STUBS);
+      wrapper.unmount();
+      await flushPromises();
+      const calls = mockGetBacklog.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(mockOn).not.toHaveBeenCalled();
+      expect(mockGetBacklog.mock.calls.length).toBe(calls);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

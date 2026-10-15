@@ -29,7 +29,7 @@ func NewKnowledgeRepo(r *Repository) *KnowledgeRepo {
 }
 
 func migrateKnowledge(db *sql.DB) error {
-	_, err := db.Exec(`
+	_, err := db.ExecContext(context.Background(), `
 		CREATE TABLE IF NOT EXISTS project_knowledge (
 			id             TEXT    PRIMARY KEY,
 			project_path   TEXT    NOT NULL,
@@ -166,7 +166,7 @@ func (r *KnowledgeRepo) DeleteKnowledge(ctx context.Context, id string) error {
 	if err != nil {
 		return fmt.Errorf("knowledge_repo: delete: %w", err)
 	}
-	n, _ := res.RowsAffected()
+	n := affected(res)
 	if n == 0 {
 		return fmt.Errorf("knowledge_repo: delete: %w", domain.ErrNotFound)
 	}

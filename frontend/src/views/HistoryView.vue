@@ -1,3 +1,7 @@
+<!--
+  Task History: finished tasks (completed, failed, cancelled) with status filters and a summary.
+  Refreshes on task events, or by polling while the event stream is down.
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->
@@ -23,13 +27,17 @@
           v-for="badge in summaryBadges"
           :key="badge.status"
           @click="toggleStatusFilter(badge.status)"
-          :aria-pressed="selectedFilter === badge.status"
+          :disabled="!badge.filterable"
+          :aria-pressed="badge.filterable ? selectedFilter === badge.status : undefined"
           :class="[
-            'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all cursor-pointer border',
+            'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all border',
+            badge.filterable ? 'cursor-pointer' : 'cursor-default',
             badge.color,
             selectedFilter === badge.status
               ? 'border-current opacity-100'
-              : 'border-transparent opacity-75 hover:opacity-100',
+              : badge.filterable
+                ? 'border-transparent opacity-75 hover:opacity-100'
+                : 'border-transparent opacity-75',
           ]"
         >
           {{ badge.label }}&nbsp;<span class="font-mono">{{ badge.count }}</span>
@@ -89,7 +97,7 @@
       <div
         class="w-16 h-16 rounded-2xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center mb-4"
       >
-        <i class="pi pi-clock text-2xl text-violet-400"></i>
+        <UiIcon name="clock" class="text-2xl text-violet-400" />
       </div>
       <h3 class="font-semibold text-white mb-2">No task history yet.</h3>
       <p class="text-sm text-slate-500 max-w-xs">
@@ -154,6 +162,7 @@
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import type { Task, TaskStatus } from '../types/domain';
 import { currentProject } from '../composables/useProjectState';
@@ -172,12 +181,12 @@ let interval: ReturnType<typeof setInterval> | null = null;
 const { on, off, connected } = useGlobalSSE();
 
 function sseHandler(data: { type: string; [key: string]: unknown }) {
-  if (data.type === 'connected' || data.type === 'log') return;
-  void refresh();
+  // Only task lifecycle events change the history; logs and activity events share the stream.
+  if (data.type.startsWith('task.')) void refresh();
 }
 
 function startPolling() {
-  if (interval) return;
+  stopPolling();
   interval = setInterval(() => {
     void refresh();
   }, 2000);
@@ -236,13 +245,16 @@ const statusSummary = computed<Partial<Record<TaskStatus, number>>>(() => {
 
 const summaryBadges = computed(() =>
   Object.entries(statusColorMap)
-    .filter(([status]) => (statusSummary.value[status as TaskStatus] ?? 0) > 0)
     .map(([status, { color, label }]) => ({
       status: status as TaskStatus,
       label,
       color,
       count: statusSummary.value[status as TaskStatus] ?? 0,
-    })),
+      // This page lists finished tasks only: filtering by Queued/Draft/… would
+      // always produce an empty list, so those badges are informational.
+      filterable: historyStatuses.has(status as TaskStatus),
+    }))
+    .filter((badge) => badge.count > 0),
 );
 
 const historyTasks = computed(() =>
@@ -292,15 +304,18 @@ watch(connected, (isConnected) => {
   }
 });
 
+let disposed = false; // set on unmount so a refresh that finishes late starts nothing
 onMounted(async () => {
   loading.value = true;
   await refresh();
+  loading.value = false;
+  if (disposed) return;
   on('*', sseHandler);
   syncPolling(connected.value);
-  loading.value = false;
 });
 
 onUnmounted(() => {
+  disposed = true;
   off('*', sseHandler);
   stopPolling();
 });

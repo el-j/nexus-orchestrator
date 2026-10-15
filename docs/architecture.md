@@ -5,13 +5,15 @@ nav_order: 2
 ---
 
 # Architecture
+
 {: .no_toc }
 
 ## Table of contents
+
 {: .no_toc .text-delta }
 
 1. TOC
-{:toc}
+   {:toc}
 
 ---
 
@@ -51,20 +53,20 @@ The domain layer contains pure Go types with no framework imports.
 
 The central entity representing a single unit of AI work:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `ID` | `string` | UUID, generated on submission |
-| `ProjectPath` | `string` | Absolute path to the project |
-| `TargetFile` | `string` | Relative path for generated code output |
-| `Instruction` | `string` | Natural language prompt |
-| `ContextFiles` | `[]string` | Files to include as context |
-| `ModelID` | `string` | Constrain to a specific model (optional) |
-| `ProviderHint` | `string` | Prefer a specific provider (optional) |
-| `Command` | `CommandType` | Task classification: plan, execute, or auto |
-| `Status` | `TaskStatus` | Lifecycle state |
-| `CreatedAt` | `time.Time` | Creation timestamp |
-| `UpdatedAt` | `time.Time` | Last update timestamp |
-| `Logs` | `string` | LLM output or error details |
+| Field          | Type          | Description                                 |
+| -------------- | ------------- | ------------------------------------------- |
+| `ID`           | `string`      | UUID, generated on submission               |
+| `ProjectPath`  | `string`      | Absolute path to the project                |
+| `TargetFile`   | `string`      | Relative path for generated code output     |
+| `Instruction`  | `string`      | Natural language prompt                     |
+| `ContextFiles` | `[]string`    | Files to include as context                 |
+| `ModelID`      | `string`      | Constrain to a specific model (optional)    |
+| `ProviderHint` | `string`      | Prefer a specific provider (optional)       |
+| `Command`      | `CommandType` | Task classification: plan, execute, or auto |
+| `Status`       | `TaskStatus`  | Lifecycle state                             |
+| `CreatedAt`    | `time.Time`   | Creation timestamp                          |
+| `UpdatedAt`    | `time.Time`   | Last update timestamp                       |
+| `Logs`         | `string`      | LLM output or error details                 |
 
 ### TaskStatus Lifecycle
 
@@ -84,25 +86,25 @@ COMPLETED   FAILED   TOO_LARGE   NO_PROVIDER
               CANCELLED (from QUEUED only)
 ```
 
-| Status | Description |
-|--------|-------------|
-| `QUEUED` | Task is waiting in the queue |
-| `PROCESSING` | Task is being processed by an LLM |
-| `COMPLETED` | LLM generated output successfully |
-| `FAILED` | LLM call failed |
-| `CANCELLED` | Cancelled before processing |
-| `TOO_LARGE` | Prompt exceeds model context window |
+| Status        | Description                               |
+| ------------- | ----------------------------------------- |
+| `QUEUED`      | Task is waiting in the queue              |
+| `PROCESSING`  | Task is being processed by an LLM         |
+| `COMPLETED`   | LLM generated output successfully         |
+| `FAILED`      | LLM call failed                           |
+| `CANCELLED`   | Cancelled before processing               |
+| `TOO_LARGE`   | Prompt exceeds model context window       |
 | `NO_PROVIDER` | No provider available for requested model |
 
 ### CommandType
 
 Tasks can be classified to enable command-aware routing:
 
-| Command | Description |
-|---------|-------------|
-| `plan` | Planning/orchestration work (creating plans, task documents) |
-| `execute` | Code implementation (requires a prior completed plan) |
-| `auto` | Let the orchestrator decide (default) |
+| Command   | Description                                                  |
+| --------- | ------------------------------------------------------------ |
+| `plan`    | Planning/orchestration work (creating plans, task documents) |
+| `execute` | Code implementation (requires a prior completed plan)        |
+| `auto`    | Let the orchestrator decide (default)                        |
 
 ### Session & Message
 
@@ -115,13 +117,13 @@ Per-project conversation history for multi-turn LLM interactions:
 
 Runtime configuration for dynamically registering cloud providers:
 
-| Field | Description |
-|-------|-------------|
-| `Name` | Display name |
-| `Kind` | Provider type: `lmstudio`, `ollama`, `openai-compat`, `anthropic` |
-| `BaseURL` | API endpoint |
-| `APIKey` | Authentication key |
-| `Model` | Default model |
+| Field     | Description                                                       |
+| --------- | ----------------------------------------------------------------- |
+| `Name`    | Display name                                                      |
+| `Kind`    | Provider type: `lmstudio`, `ollama`, `openai-compat`, `anthropic` |
+| `BaseURL` | API endpoint                                                      |
+| `APIKey`  | Authentication key                                                |
+| `Model`   | Default model                                                     |
 
 ---
 
@@ -204,13 +206,13 @@ type FileWriter interface {
 
 ## Inbound Adapters
 
-| Adapter | Package | Protocol | Default Port |
-|---------|---------|----------|-------------|
-| HTTP API | `httpapi` | REST + SSE | `:63987` |
-| MCP Server | `mcp` | JSON-RPC 2.0 | `:63988` |
-| CLI Client | `cli` | HTTP → daemon | — |
-| Wails GUI | `wailsbind` | Native + embedded HTTP | `:63987` |
-| System Tray | `tray` | OS native | — |
+| Adapter    | Package     | Protocol                                | Default Port |
+| ---------- | ----------- | --------------------------------------- | ------------ |
+| HTTP API   | `httpapi`   | REST + SSE                              | `:63987`     |
+| MCP Server | `mcp`       | JSON-RPC 2.0                            | `:63988`     |
+| CLI Client | `cli`       | HTTP → daemon                           | —            |
+| Wails GUI  | `wailsbind` | Native + embedded HTTP                  | `:63987`     |
+| Web UI     | `webui`     | Vue UI embedded in the daemon (`/app/`) | `:63987`     |
 
 All inbound adapters accept `ports.Orchestrator` as a dependency — never a concrete service type.
 
@@ -218,24 +220,63 @@ All inbound adapters accept `ports.Orchestrator` as a dependency — never a con
 
 ## Outbound Adapters
 
-| Adapter | Package | Backend |
-|---------|---------|---------|
-| LM Studio | `llm_lmstudio` | OpenAI-compatible API at `:1234` |
-| Ollama | `llm_ollama` | Ollama API at `:11434` |
-| OpenAI-compatible | `llm_openaicompat` | OpenAI, GitHub Copilot, Azure |
-| Anthropic | `llm_anthropic` | Anthropic Messages API |
-| SQLite | `repo_sqlite` | Local SQLite via `go-sqlite3` |
-| Filesystem | `fs_writer` | Disk read/write |
+| Adapter           | Package                                                    | Backend                                                                    |
+| ----------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------- |
+| LM Studio         | `llm_lmstudio`                                             | OpenAI-compatible API at `:1234`                                           |
+| Ollama            | `llm_ollama`                                               | Ollama API at `:11434`                                                     |
+| OpenAI-compatible | `llm_openaicompat`                                         | OpenAI, GitHub Copilot (`NEXUS_GITHUBCOPILOT_TOKEN`), Azure, LocalAI, vLLM |
+| Anthropic         | `llm_anthropic`                                            | Anthropic Messages API                                                     |
+| Gemini            | `llm_gemini`                                               | Google Gemini `generateContent` API                                        |
+| SQLite            | `repo_sqlite`                                              | Local SQLite via `go-sqlite3`                                              |
+| CLI subscription  | `llm_cli`                                                  | A logged-in AI CLI (`claude -p`: Claude Pro/Max), allow-listed executables |
+| SSE reader        | `sse`                                                      | Shared server-sent-events parser of the streaming adapters                 |
+| Filesystem        | `fs_writer`, `fs_watcher`                                  | Disk write-back; project change watching                                   |
+| Activity readers  | `activity_claude`, `activity_continue`, `activity_network` | Claude Code transcripts, Continue, network activity                        |
+| Scanners          | `sys_scanner`                                              | Provider, agent and plan-file discovery                                    |
+
+---
+
+## Execution Engine
+
+`services.OrchestratorService` runs one task at a time (`execution_engine.go`):
+
+1. **Route.** `provider_selection.go` builds an ordered chain of providers. An explicit
+   `providerName` wins; otherwise the task's `role` picks the tier: frontier roles
+   (`architect`, `techlead`, `planner`, ...) prefer cloud models, routine roles (`linter`,
+   `tester`, `boilerplate`, ...) prefer local ones, and the remaining providers follow as
+   fallbacks. A provider that fails, is unreachable or has too small a context window is
+   skipped for the next one in the chain.
+2. **Assemble context.** The Context Broker (`brain_service.go`, `brain_ingest.go`) selects
+   project knowledge that fits the provider's context window. A task that cannot fit ends as
+   `TOO_LARGE` instead of being truncated silently.
+3. **Generate.** A plain task asks once and writes the answer to `targetFile`. An
+   `agentic` task runs the bounded tool loop in `agent_loop.go`
+   (`read_file`, `write_file`, `edit_file`, `verify`, `finish`; see the
+   [API reference](api-reference.md#agentic-tasks)).
+4. **Verify.** When a `verificationCommand` is set, it runs in the project directory and the
+   task only becomes `COMPLETED` if it passes (`verification.go`).
+
+State changes use a context that outlives `Stop()`, so a task is never left `PROCESSING`
+by a shutdown; interrupted tasks are re-queued on the next start.
+
+---
+
+## Surfaces
+
+Every capability is reachable through the surfaces that make sense for it: REST, the MCP
+server, `nexus-cli`, the Wails desktop bindings, the frontend and the VS Code extension.
+`internal/docscheck/surface_matrix_test.go` holds the matrix; a capability missing from a
+surface must say why, and CI fails otherwise.
 
 ---
 
 ## Entry Points
 
-| Binary | Path | Purpose |
-|--------|------|---------|
-| Desktop GUI | `main.go` + `app.go` | Wails window + embedded HTTP API + MCP |
-| Headless Daemon | `cmd/nexus-daemon/main.go` | HTTP API on `:63987` + MCP on `:63988` |
-| CLI Client | `cmd/nexus-cli/main.go` | Thin HTTP client → daemon at `127.0.0.1:63987` |
+| Binary          | Path                       | Purpose                                        |
+| --------------- | -------------------------- | ---------------------------------------------- |
+| Desktop GUI     | `main.go` + `app.go`       | Wails window + embedded HTTP API + MCP         |
+| Headless Daemon | `cmd/nexus-daemon/main.go` | HTTP API on `:63987` + MCP on `:63988`         |
+| CLI Client      | `cmd/nexus-cli/main.go`    | Thin HTTP client → daemon at `127.0.0.1:63987` |
 
 ---
 

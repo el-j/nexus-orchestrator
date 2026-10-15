@@ -1,23 +1,20 @@
 package sys_scanner
 
 import (
-	"bufio"
 	"context"
-	"crypto/sha1"
-	"encoding/json"
+	"crypto/sha1" //nolint:gosec // G505: non-cryptographic stable id, see the id derivation below
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
-	"unicode"
 
 	"nexus-orchestrator/internal/core/domain"
 )
 
 // ScanPlanFiles scans rootPaths and their well-known subdirectories for plan/task/orchestration files.
 func (s *Scanner) ScanPlanFiles(_ context.Context, rootPaths []string) ([]domain.DiscoveredPlanFile, error) {
-	home := os.Getenv("HOME")
+	home := userHome()
 	seen := map[string]bool{}
 	var results []domain.DiscoveredPlanFile
 
@@ -36,7 +33,7 @@ func (s *Scanner) ScanPlanFiles(_ context.Context, rootPaths []string) ([]domain
 			filepath.Join(absRoot, ".github", "agents"),
 		}
 		for _, dir := range scanDirs {
-			found, err := scanDir(dir, absRoot, home, seen)
+			found, err := scanDir(dir, home, seen)
 			if err != nil {
 				continue
 			}
@@ -49,23 +46,17 @@ func (s *Scanner) ScanPlanFiles(_ context.Context, rootPaths []string) ([]domain
 			filepath.Join(absRoot, ".github"),
 		}
 		for _, base := range recursiveRoots {
-			found, err := scanRecursiveInstructionFiles(base, home, seen, 3)
-			if err != nil {
-				continue
-			}
-			results = append(results, found...)
+			results = append(results, scanRecursiveInstructionFiles(base, home, seen, 3)...)
 		}
 	}
 	return results, nil
 }
 
-func scanRecursiveInstructionFiles(base, home string, seen map[string]bool, maxDepth int) ([]domain.DiscoveredPlanFile, error) {
-	if _, err := os.Stat(base); err != nil {
-		return nil, nil
-	}
-
+// scanRecursiveInstructionFiles collects *.instructions.md and *.prompt.md files up to
+// maxDepth levels below base. Unreadable entries are skipped, so it cannot fail.
+func scanRecursiveInstructionFiles(base, home string, seen map[string]bool, maxDepth int) []domain.DiscoveredPlanFile {
 	var results []domain.DiscoveredPlanFile
-	err := filepath.WalkDir(base, func(path string, d os.DirEntry, walkErr error) error {
+	_ = filepath.WalkDir(base, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return nil
 		}
@@ -73,10 +64,7 @@ func scanRecursiveInstructionFiles(base, home string, seen map[string]bool, maxD
 			return nil
 		}
 
-		rel, err := filepath.Rel(base, path)
-		if err != nil {
-			return nil
-		}
+		rel, _ := filepath.Rel(base, path) // path is below base, so this cannot fail
 		depth := strings.Count(rel, string(filepath.Separator))
 
 		if d.IsDir() {
@@ -111,14 +99,11 @@ func scanRecursiveInstructionFiles(base, home string, seen map[string]bool, maxD
 		results = append(results, pf)
 		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
-	return results, nil
+	return results
 }
 
 // scanDir inspects dir for all recognised plan-file patterns.
-func scanDir(dir, root, home string, seen map[string]bool) ([]domain.DiscoveredPlanFile, error) {
+func scanDir(dir, home string, seen map[string]bool) ([]domain.DiscoveredPlanFile, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
@@ -286,60 +271,6 @@ func classifyFile(fullPath, dir, name string) (domain.PlanFileKind, string) {
 	return "", ""
 }
 
-// containsCrewAI checks whether the first 20 lines of a Python file contain a crewai import.
-func containsCrewAI(path string) bool {
-	f, err := os.Open(path)
-	if err != nil {
-		return false
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	lineNum := 0
-	for scanner.Scan() && lineNum < 20 {
-		line := scanner.Text()
-		if strings.Contains(line, "crewai") {
-			return true
-		}
-		lineNum++
-	}
-	return false
-}
-
-// summarizeOrchestratorJSON parses an orchestrator.json file and returns a human-readable summary.
-func summarizeOrchestratorJSON(path string) string {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return ""
-	}
-	var doc struct {
-		Counters struct {
-			NextPlanID int `json:"nextPlanId"`
-			NextTaskID int `json:"nextTaskId"`
-		} `json:"counters"`
-		Plans map[string]struct {
-			Status string `json:"status"`
-		} `json:"plans"`
-		UpdatedAt string `json:"updatedAt"`
-	}
-	if err := json.Unmarshal(data, &doc); err != nil {
-		return ""
-	}
-	totalPlans := len(doc.Plans)
-	completedPlans := 0
-	for _, p := range doc.Plans {
-		if p.Status == "completed" || p.Status == "done" {
-			completedPlans++
-		}
-	}
-	totalTasks := doc.Counters.NextTaskID - 1
-	if totalTasks < 0 {
-		totalTasks = 0
-	}
-	return fmt.Sprintf("plans: %d (%d completed) · tasks: %d · updated: %s",
-		totalPlans, completedPlans, totalTasks, doc.UpdatedAt)
-}
-
 // buildPlanFile creates a DiscoveredPlanFile from a path and its classification.
 func buildPlanFile(absPath string, kind domain.PlanFileKind, format, home string) (domain.DiscoveredPlanFile, error) {
 	fi, err := os.Stat(absPath)
@@ -347,7 +278,9 @@ func buildPlanFile(absPath string, kind domain.PlanFileKind, format, home string
 		return domain.DiscoveredPlanFile{}, err
 	}
 
-	id := fmt.Sprintf("%x", sha1.Sum([]byte(absPath)))[:12]
+	// Non-cryptographic: a short stable id for a path. Changing the hash would
+	// orphan ids already persisted for discovered plan files.
+	id := fmt.Sprintf("%x", sha1.Sum([]byte(absPath)))[:12] //nolint:gosec // G401
 	var summary string
 	if kind == domain.PlanFileKindNexus {
 		summary = summarizeOrchestratorJSON(absPath)
@@ -367,156 +300,6 @@ func buildPlanFile(absPath string, kind domain.PlanFileKind, format, home string
 		LastModified: fi.ModTime(),
 		IsActive:     isActive,
 	}, nil
-}
-
-// readSummary reads the first 300 bytes, strips non-printable chars, and trims to 200 chars.
-func readSummary(path string) string {
-	f, err := os.Open(path)
-	if err != nil {
-		return ""
-	}
-	defer f.Close()
-
-	buf := make([]byte, 300)
-	n, _ := f.Read(buf)
-	raw := string(buf[:n])
-
-	var sb strings.Builder
-	for _, r := range raw {
-		if unicode.IsPrint(r) || r == '\n' || r == '\t' {
-			sb.WriteRune(r)
-		}
-	}
-	summary := strings.TrimSpace(sb.String())
-	if len(summary) > 200 {
-		summary = summary[:200]
-	}
-	if strings.HasSuffix(strings.ToLower(path), ".md") {
-		summary = summarizeMarkdownHeuristics(raw, summary)
-	}
-	return summary
-}
-
-func summarizeMarkdownHeuristics(raw, summary string) string {
-	features := markdownFeatures(raw)
-	if len(features) == 0 {
-		return summary
-	}
-	prefix := "[" + strings.Join(features, ", ") + "] "
-	out := prefix + summary
-	if len(out) > 200 {
-		return out[:200]
-	}
-	return out
-}
-
-func markdownFeatures(raw string) []string {
-	text := strings.ReplaceAll(raw, "\r\n", "\n")
-	features := make([]string, 0, 3)
-	if hasYAMLFrontmatter(text) {
-		features = append(features, "frontmatter")
-	}
-	if checklistCount(text) >= 2 {
-		features = append(features, "checklist")
-	}
-	if headingCount(text) >= 2 {
-		features = append(features, "headings")
-	}
-	return features
-}
-
-func hasYAMLFrontmatter(text string) bool {
-	if !strings.HasPrefix(text, "---\n") {
-		return false
-	}
-	rest := text[4:]
-	return strings.Contains(rest, "\n---\n")
-}
-
-func checklistCount(text string) int {
-	count := 0
-	for _, line := range strings.Split(text, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "- [ ] ") || strings.HasPrefix(strings.ToLower(trimmed), "- [x] ") {
-			count++
-		}
-	}
-	return count
-}
-
-func headingCount(text string) int {
-	count := 0
-	for _, line := range strings.Split(text, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "# ") || strings.HasPrefix(trimmed, "## ") || strings.HasPrefix(trimmed, "### ") {
-			count++
-		}
-	}
-	return count
-}
-
-func numberedListCount(text string) int {
-	count := 0
-	for _, line := range strings.Split(text, "\n") {
-		trimmed := strings.TrimLeft(line, " \t")
-		if len(trimmed) == 0 {
-			continue
-		}
-		// Find end of leading digits.
-		i := 0
-		for i < len(trimmed) && trimmed[i] >= '0' && trimmed[i] <= '9' {
-			i++
-		}
-		// Need at least one digit, then ". ", then non-whitespace.
-		if i > 0 && i+2 <= len(trimmed) && trimmed[i] == '.' && trimmed[i+1] == ' ' {
-			if strings.TrimSpace(trimmed[i+2:]) != "" {
-				count++
-			}
-		}
-	}
-	return count
-}
-
-func looksLikePlanMarkdown(path string) bool {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return false
-	}
-	sample := string(data)
-	if len(sample) > 2048 {
-		sample = sample[:2048]
-	}
-	if hasYAMLFrontmatter(sample) || checklistCount(sample) >= 2 || headingCount(sample) >= 5 || numberedListCount(sample) >= 3 {
-		return true
-	}
-	for _, line := range strings.Split(sample, "\n") {
-		trimmed := strings.TrimSpace(strings.ToUpper(line))
-		if strings.HasPrefix(trimmed, "# PLAN") ||
-			strings.HasPrefix(trimmed, "## PLAN") ||
-			strings.HasPrefix(trimmed, "# TASK") ||
-			strings.HasPrefix(trimmed, "## TASK") ||
-			strings.HasPrefix(trimmed, "# ROADMAP") ||
-			strings.HasPrefix(trimmed, "## ROADMAP") ||
-			strings.HasPrefix(trimmed, "# TODO") ||
-			strings.HasPrefix(trimmed, "## TODO") ||
-			strings.HasPrefix(trimmed, "# WORKFLOW") ||
-			strings.HasPrefix(trimmed, "## WORKFLOW") ||
-			strings.HasPrefix(trimmed, "# SPRINT") ||
-			strings.HasPrefix(trimmed, "## SPRINT") ||
-			strings.HasPrefix(trimmed, "# EPIC") ||
-			strings.HasPrefix(trimmed, "## EPIC") ||
-			strings.HasPrefix(trimmed, "# MILESTONE") ||
-			strings.HasPrefix(trimmed, "## MILESTONE") ||
-			strings.HasPrefix(trimmed, "# BACKLOG") ||
-			strings.HasPrefix(trimmed, "## BACKLOG") ||
-			strings.HasPrefix(trimmed, "# OBJECTIVES") ||
-			strings.HasPrefix(trimmed, "## OBJECTIVES") ||
-			strings.HasPrefix(trimmed, "# IMPLEMENTATION") ||
-			strings.HasPrefix(trimmed, "## IMPLEMENTATION") {
-			return true
-		}
-	}
-	return false
 }
 
 // findProjectPath walks up from dir until it finds a .git directory or reaches the home dir.

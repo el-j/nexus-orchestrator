@@ -11,13 +11,15 @@ const (
 	// SessionSourceVSCode is pushed by the nexus VS Code extension.
 	SessionSourceVSCode AISessionSource = "vscode"
 	// SessionSourceHTTP is posted to POST /api/ai-sessions.
-	SessionSourceHTTP             AISessionSource = "http"
+	SessionSourceHTTP AISessionSource = "http"
+	// SessionSourceVSCodeDiscovered marks a session found by the VS Code extension rather than registered by the agent.
 	SessionSourceVSCodeDiscovered AISessionSource = "vscode-discovered"
 )
 
 // AISessionStatus represents the lifecycle state of an AI agent session.
 type AISessionStatus string
 
+// AISessionStatus values describe how recently an AI session was heard from.
 const (
 	SessionStatusActive       AISessionStatus = "active"
 	SessionStatusIdle         AISessionStatus = "idle"

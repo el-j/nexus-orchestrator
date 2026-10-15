@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "verify": "scripts/check-file-size.sh && CGO_ENABLED=1 CGO_CFLAGS=-DSQLITE_ENABLE_FTS5 go vet ./... && CGO_ENABLED=1 CGO_CFLAGS=-DSQLITE_ENABLE_FTS5 go test -count=1 ./internal/core/...",
+  "maxFileLines": 500,
+  "testsFirst": true,
+  "remember": true,
+  "rules": [
+    "Hexagonal layering: internal/core never imports adapters; adapters implement ports.",
+    "Read the code you will change first; follow the surrounding style and naming.",
+    "Plan first: .claude/plans/PLAN-NNN.md and .claude/tasks/TASK-NNN.md before code; one task is one small change.",
+    "Write the failing test first, then the code. Behaviour that crosses a process boundary gets a black-box test in internal/e2e or frontend/e2e.",
+    "Document every exported Go identifier and every TypeScript export; each Vue component starts with a description comment.",
+    "A new capability must exist on REST, MCP, CLI, desktop, frontend and extension, or say why not (internal/docscheck).",
+    "Update CHANGELOG.md and docs for user-visible changes.",
+    "Mutation testing is local only (make mutation); never add it to a workflow.",
+    "Do not change anything the task does not ask for."
+  ]
+}

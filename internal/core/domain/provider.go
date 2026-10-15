@@ -1,10 +1,14 @@
 package domain
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // ProviderKind identifies the adapter family for a cloud LLM provider.
 type ProviderKind string
 
+// The built-in ProviderKind values, the kinds a provider config can have.
 const (
 	ProviderKindLMStudio     ProviderKind = "lmstudio"
 	ProviderKindOllama       ProviderKind = "ollama"
@@ -17,6 +21,37 @@ const (
 	ProviderKindCLI          ProviderKind = "cli"
 	ProviderKindDesktopApp   ProviderKind = "desktopapp"
 )
+
+// MaskedSecretPrefix starts every masked secret shown to API clients
+// (for example "****abcd"). A masked value is a display placeholder, never a
+// real credential.
+const MaskedSecretPrefix = "****"
+
+// MaskSecret returns the display form of a secret: "****" followed by its last
+// four characters, or just "****" when it is four characters or shorter. The
+// empty string stays empty.
+func MaskSecret(secret string) string {
+	switch {
+	case secret == "":
+		return ""
+	case len(secret) > 4:
+		return MaskedSecretPrefix + secret[len(secret)-4:]
+	default:
+		return MaskedSecretPrefix
+	}
+}
+
+// Masked returns a copy of the config that is safe to show to API and MCP
+// clients: the API key is replaced by its masked display form.
+func (c ProviderConfig) Masked() ProviderConfig {
+	c.APIKey = MaskSecret(c.APIKey)
+	return c
+}
+
+// IsMaskedSecret reports whether s is a masked placeholder produced for display
+// rather than a real secret. Updating a config with a masked API key means
+// "leave the stored key unchanged".
+func IsMaskedSecret(s string) bool { return strings.HasPrefix(s, MaskedSecretPrefix) }
 
 // String returns the underlying string value of the ProviderKind.
 func (k ProviderKind) String() string { return string(k) }
@@ -47,6 +82,7 @@ type ProviderConfig struct {
 // DiscoveryMethod describes how a provider was found on the local system.
 type DiscoveryMethod string
 
+// The DiscoveryMethod values: how a provider was found.
 const (
 	DiscoveryMethodPort    DiscoveryMethod = "port"
 	DiscoveryMethodCLI     DiscoveryMethod = "cli"
@@ -56,6 +92,7 @@ const (
 // DiscoveryStatus describes the level of detection for a discovered provider.
 type DiscoveryStatus string
 
+// The DiscoveryStatus values: how far a discovered provider got.
 const (
 	DiscoveryStatusReachable DiscoveryStatus = "reachable"
 	DiscoveryStatusInstalled DiscoveryStatus = "installed"

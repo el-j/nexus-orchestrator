@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "maxFileLines": 500,
+  "testsFirst": true,
+  "remember": true,
+  "rules": [
+    "Read the code you will change before editing it; follow the existing style and layering.",
+    "Plan first: state the small steps, then do one step at a time.",
+    "Write the failing test before the code that makes it pass.",
+    "Test behaviour from the outside (black-box) as well as units.",
+    "Keep files small and single-purpose; split instead of growing a file.",
+    "Document every exported/public item in the code.",
+    "Do not change anything the task does not ask for.",
+    "Finish only when the verification command passes."
+  ]
+}

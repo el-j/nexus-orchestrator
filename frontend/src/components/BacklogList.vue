@@ -1,3 +1,8 @@
+<!--
+  List of backlog and draft tasks, each with Promote (move into the queue) and Dismiss (cancel).
+  Props: items.
+  Emits: promoted(id), dismissed(id).
+-->
 <template>
   <!-- Empty state -->
   <div
@@ -7,7 +12,7 @@
     <div
       class="w-16 h-16 rounded-2xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center mb-4"
     >
-      <i class="pi pi-bookmark text-2xl text-violet-400"></i>
+      <UiIcon name="bookmark" class="text-2xl text-violet-400" />
     </div>
     <h3 class="font-semibold text-white mb-2">Backlog is empty</h3>
     <p class="text-sm text-slate-500 max-w-xs">
@@ -57,7 +62,7 @@
       <div class="flex flex-col items-end gap-1.5 shrink-0">
         <span class="text-xs text-slate-600 uppercase tracking-wider">{{ task.status }}</span>
         <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-          <Button
+          <UiButton
             @click="onPromote(task.id)"
             label="Promote ↑"
             size="small"
@@ -66,7 +71,7 @@
             :loading="promoting === task.id"
             :disabled="dismissing === task.id"
           />
-          <Button
+          <UiButton
             @click="onDismiss(task.id)"
             label="Dismiss"
             size="small"
@@ -83,9 +88,10 @@
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { ref } from 'vue';
-import Button from 'primevue/button';
-import { useToast } from 'primevue/usetoast';
+import UiButton from '../ui/UiButton.vue';
+import { useToast } from '../composables/useToast';
 import { useTasks } from '../composables/useTasks';
 import type { Task } from '../types/domain';
 

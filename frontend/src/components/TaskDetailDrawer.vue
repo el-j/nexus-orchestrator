@@ -1,5 +1,10 @@
+<!--
+  Right-hand drawer with every field of a task, its logs and a Cancel/Interrupt action.
+  Props: task (null renders only the header), modelValue (open state).
+  Emits: update:modelValue(open), cancelled(id) after a successful cancel, close().
+-->
 <template>
-  <Drawer v-model:visible="visible" position="right" class="!bg-[#0d0d14] !w-full sm:!w-[480px]">
+  <UiDrawer v-model="visible" label="Task details">
     <template #header>
       <div class="flex items-center gap-3">
         <TaskStatusBadge v-if="task" :status="task.status" />
@@ -19,7 +24,6 @@
           <span class="font-mono text-xs text-violet-400 uppercase">{{
             task.command || 'auto'
           }}</span>
-
         </div>
         <div class="flex justify-between items-center">
           <span class="text-slate-500 text-xs">Created</span>
@@ -55,6 +59,20 @@
         </div>
       </div>
 
+      <!-- Who ran it: Nexus on a provider, or an agent that only reported a status -->
+      <p
+        v-if="executor.text"
+        data-testid="executor"
+        class="text-xs rounded-lg px-3 py-2 border"
+        :class="
+          executor.byNexus
+            ? 'text-emerald-300 border-emerald-500/20 bg-emerald-500/5'
+            : 'text-amber-300 border-amber-500/20 bg-amber-500/5'
+        "
+      >
+        {{ executor.text }}
+      </p>
+
       <!-- Provider / Model -->
       <div class="grid grid-cols-2 gap-3">
         <div>
@@ -67,18 +85,26 @@
         </div>
       </div>
 
+      <div v-if="task.status === 'PROCESSING' && liveText(task.id)" data-testid="live-output">
+        <p class="text-xs text-slate-500 mb-2 uppercase tracking-wider font-semibold">
+          Live output
+        </p>
+        <pre
+          class="text-xs text-cyan-300/80 bg-[#0a0a10] border border-white/5 rounded-lg p-3 overflow-auto max-h-64 whitespace-pre-wrap font-mono leading-relaxed"
+          >{{ liveText(task.id) }}</pre>
+      </div>
+
       <div v-if="task.logs">
         <p class="text-xs text-slate-500 mb-2 uppercase tracking-wider font-semibold">Output</p>
         <pre
           class="text-xs text-emerald-300/80 bg-[#0a0a10] border border-white/5 rounded-lg p-3 overflow-auto max-h-64 whitespace-pre-wrap font-mono leading-relaxed"
-          >{{ task.logs }}</pre
-        >
+          >{{ task.logs }}</pre>
       </div>
 
       <div v-if="task.status === 'QUEUED'" class="pt-2">
-        <Button
+        <UiButton
           label="Cancel Task"
-          icon="pi pi-times"
+          icon="times"
           severity="danger"
           outlined
           size="small"
@@ -88,9 +114,9 @@
       </div>
 
       <div v-if="task.status === 'PROCESSING'" class="pt-2 flex flex-col gap-2">
-        <Button
+        <UiButton
           label="Interrupt"
-          icon="pi pi-stop"
+          icon="stop"
           size="small"
           title="Force cancel a running task"
           :loading="cancelling"
@@ -101,18 +127,20 @@
         <p v-if="cancelError" class="text-xs text-red-400">{{ cancelError }}</p>
       </div>
     </div>
-  </Drawer>
+  </UiDrawer>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import Drawer from 'primevue/drawer';
-import Button from 'primevue/button';
-import { useToast } from 'primevue/usetoast';
+import UiDrawer from '../ui/UiDrawer.vue';
+import UiButton from '../ui/UiButton.vue';
+import { useToast } from '../composables/useToast';
 import { cancelTask } from '../types/wails';
 import type { Task } from '../types/domain';
 import TaskStatusBadge from './TaskStatusBadge.vue';
 import { formatDate } from '../utils/time';
+import { useLiveOutput } from '../composables/useLiveOutput';
+import { whoRanTask } from '../utils/taskExecutor';
 
 const props = defineProps<{ task: Task | null; modelValue: boolean }>();
 const emit = defineEmits<{
@@ -121,23 +149,27 @@ const emit = defineEmits<{
   close: [];
 }>();
 
+// Read only inside v-if="task", so the task is never null here.
+const executor = computed(() => whoRanTask(props.task as Task));
 const visible = computed({
   get: () => props.modelValue,
   set: (v) => emit('update:modelValue', v),
 });
 
 const toast = useToast();
+const { liveText } = useLiveOutput();
 const cancelling = ref(false);
 const cancelError = ref<string | null>(null);
 
 async function handleCancel() {
-  if (!props.task) return;
+  // Both buttons only render while a task is shown, so the task is always present.
+  const id = props.task!.id;
   cancelling.value = true;
   cancelError.value = null;
   try {
-    await cancelTask(props.task.id);
+    await cancelTask(id);
     toast.add({ severity: 'success', summary: 'Task cancelled', life: 2000 });
-    emit('cancelled', props.task.id);
+    emit('cancelled', id);
     emit('close');
     visible.value = false;
   } catch (e) {

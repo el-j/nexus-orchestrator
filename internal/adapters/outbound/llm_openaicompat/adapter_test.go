@@ -1,6 +1,7 @@
 package llm_openaicompat
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -49,7 +50,7 @@ func TestOpenAICompat_Ping_Success(t *testing.T) {
 	defer srv.Close()
 
 	a := NewAdapter("TestProvider", srv.URL, "", "gpt-4o")
-	if !a.Ping() {
+	if !a.Ping(context.Background()) {
 		t.Fatal("Ping() returned false; expected true")
 	}
 }
@@ -60,7 +61,7 @@ func TestOpenAICompat_Ping_ConnectionRefused(t *testing.T) {
 	dead.Close()
 
 	a := NewAdapter("TestProvider", url, "", "gpt-4o")
-	if a.Ping() {
+	if a.Ping(context.Background()) {
 		t.Fatal("Ping() returned true; expected false (connection refused)")
 	}
 }
@@ -72,7 +73,7 @@ func TestOpenAICompat_Ping_NonOKStatus(t *testing.T) {
 	defer srv.Close()
 
 	a := NewAdapter("TestProvider", srv.URL, "", "gpt-4o")
-	if a.Ping() {
+	if a.Ping(context.Background()) {
 		t.Fatal("Ping() returned true on 401; expected false")
 	}
 }
@@ -86,7 +87,7 @@ func TestOpenAICompat_Ping_SetsAuthHeader(t *testing.T) {
 	defer srv.Close()
 
 	a := NewAdapter("TestProvider", srv.URL, "my-secret-key", "gpt-4o")
-	a.Ping()
+	a.Ping(context.Background())
 
 	const expected = "Bearer my-secret-key"
 	if gotAuth != expected {
@@ -103,7 +104,7 @@ func TestOpenAICompat_Ping_NoAuthHeader_WhenKeyEmpty(t *testing.T) {
 	defer srv.Close()
 
 	a := NewAdapter("TestProvider", srv.URL, "", "gpt-4o")
-	a.Ping()
+	a.Ping(context.Background())
 
 	if gotAuth != "" {
 		t.Errorf("expected no Authorization header, got %q", gotAuth)
@@ -115,7 +116,7 @@ func TestOpenAICompat_GetAvailableModels(t *testing.T) {
 	defer srv.Close()
 
 	a := NewAdapter("TestProvider", srv.URL, "", "gpt-4o")
-	models, err := a.GetAvailableModels()
+	models, err := a.GetAvailableModels(context.Background())
 	if err != nil {
 		t.Fatalf("GetAvailableModels() error: %v", err)
 	}
@@ -139,8 +140,8 @@ func TestOpenAICompat_GetAvailableModels_Cached(t *testing.T) {
 	defer srv.Close()
 
 	a := NewAdapter("TestProvider", srv.URL, "", "gpt-4o")
-	a.GetAvailableModels() //nolint:errcheck
-	a.GetAvailableModels() //nolint:errcheck
+	a.GetAvailableModels(context.Background()) //nolint:errcheck
+	a.GetAvailableModels(context.Background()) //nolint:errcheck
 
 	if callCount != 1 {
 		t.Errorf("expected exactly 1 HTTP call (result should be cached), got %d", callCount)
@@ -154,7 +155,7 @@ func TestOpenAICompat_GetAvailableModels_ServerError(t *testing.T) {
 	defer srv.Close()
 
 	a := NewAdapter("TestProvider", srv.URL, "", "gpt-4o")
-	_, err := a.GetAvailableModels()
+	_, err := a.GetAvailableModels(context.Background())
 	if err == nil {
 		t.Fatal("expected error from GetAvailableModels() on 500 response")
 	}
@@ -165,7 +166,7 @@ func TestOpenAICompat_GenerateCode(t *testing.T) {
 	defer srv.Close()
 
 	a := NewAdapter("TestProvider", srv.URL, "", "gpt-4o")
-	result, err := a.GenerateCode("write hello world")
+	result, err := a.GenerateCode(context.Background(), "write hello world")
 	if err != nil {
 		t.Fatalf("GenerateCode() error: %v", err)
 	}
@@ -181,7 +182,7 @@ func TestOpenAICompat_GenerateCode_RateLimit(t *testing.T) {
 	defer srv.Close()
 
 	a := NewAdapter("TestProvider", srv.URL, "", "gpt-4o")
-	_, err := a.GenerateCode("prompt")
+	_, err := a.GenerateCode(context.Background(), "prompt")
 	if err == nil {
 		t.Fatal("expected error from GenerateCode() on 429 response")
 	}
@@ -206,7 +207,7 @@ func TestOpenAICompat_GenerateCode_SendsModel(t *testing.T) {
 	defer srv.Close()
 
 	a := NewAdapter("TestProvider", srv.URL, "", "gpt-4o")
-	_, err := a.GenerateCode("test prompt")
+	_, err := a.GenerateCode(context.Background(), "test prompt")
 	if err != nil {
 		t.Fatalf("GenerateCode() error: %v", err)
 	}
@@ -228,7 +229,7 @@ func TestOpenAICompat_Chat(t *testing.T) {
 		{Role: domain.RoleAssistant, Content: "hi there"},
 		{Role: domain.RoleUser, Content: "write code"},
 	}
-	result, err := a.Chat(messages)
+	result, err := a.Chat(context.Background(), messages)
 	if err != nil {
 		t.Fatalf("Chat() error: %v", err)
 	}
@@ -260,7 +261,7 @@ func TestOpenAICompat_Chat_ForwardsAllMessages(t *testing.T) {
 		{Role: domain.RoleAssistant, Content: "reply 1"},
 		{Role: domain.RoleUser, Content: "turn 2"},
 	}
-	_, err := a.Chat(messages)
+	_, err := a.Chat(context.Background(), messages)
 	if err != nil {
 		t.Fatalf("Chat() error: %v", err)
 	}
@@ -279,7 +280,7 @@ func TestOpenAICompat_GetAvailableModels_FailureNotCached(t *testing.T) {
 	}))
 	a := NewAdapter("TestProvider", failServer.URL, "", "gpt-4o")
 
-	_, err := a.GetAvailableModels()
+	_, err := a.GetAvailableModels(context.Background())
 	if err == nil {
 		t.Fatal("expected error from failing server")
 	}
@@ -297,7 +298,7 @@ func TestOpenAICompat_GetAvailableModels_FailureNotCached(t *testing.T) {
 	// Override baseURL to point at the ok server (same adapter instance).
 	a.baseURL = okServer.URL
 
-	models, err := a.GetAvailableModels()
+	models, err := a.GetAvailableModels(context.Background())
 	if err != nil {
 		t.Fatalf("second call (to working server) returned error: %v", err)
 	}

@@ -7,7 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.10.0] — 2026-03-14
+## [0.10.0] — 2026-10-15
+
+This release makes Nexus usable day to day: tasks stream while the model writes, your Claude and Copilot subscriptions can run them, the agents on your machine can call Nexus (`nexus-cli connect`, the VS Code extension), the app shows what is true (a task says who ran it, one repository is one project), plans and tasks are found in any folder, and the full UI is served by the daemon. The release pipeline, which had built nothing since #62, works again and the macOS desktop app starts when opened normally. Known limits: the macOS app is not notarized (use `scripts/install.sh --desktop`), the released daemon archives carry only the light dashboard, and the streaming and subscription providers are tested against fakes.
+
+### Added
+
+- The VS Code extension connects the editor's own agent to Nexus: VS Code 1.101+ gets the daemon's MCP server through VS Code's MCP support; in Antigravity (whose agent reads `~/.gemini/.../mcp_config.json`) the extension offers once to add the `nexus` server through a bundled stdio bridge (`dist/mcpProxy.js`, run with the editor's own Node), keeps the entry current across updates and never touches an invalid file. Setting `nexus.mcp.autoConnect` (`ask`/`always`/`never`), command "Nexus: Connect This Editor's Agent". Until now the extension did not register an MCP server at all, although the docs said it did
+- `nexus-cli connect [--write] [--agent antigravity|cursor|claude]` (and `make connect`): finds the AI agents on this machine, shows which cannot call the Nexus MCP tools and connects them (merges the nexus server into the agent's MCP config, keeps other servers and a backup, never touches invalid JSON; Claude Code through `claude mcp add`). Antigravity's MCP config was an empty file, so its agent could not use Nexus at all. New projects get the rule "report through the Nexus tools; never edit the database by hand". `docs/how-work-reaches-nexus.md` explains what Nexus does and how work reaches it
+- The daemon serves the full Vue UI at `/app/` (the root redirects there) when it is built with the frontend: `make start` / `start-bg` build it automatically with Node >= 22 (`make web` by hand) and fall back to the light dashboard at `/ui` otherwise. The UI talks to the daemon it was loaded from, whatever host and port that is
+- Configurable, self-linking plan and task files: `planFiles` in `.nexus/policy.json` (`plans`, `tasks` folders, `discover`) plus the settings `nexus.planFiles.*` and the command "Nexus: Choose Plan and Task Folders"; without configuration any `PLAN-n.md` / `TASK-n.md` (or `type: plan|task`, or a `plans`/`tasks` folder) anywhere in the project is found, and tasks are linked to plans by planId, the plan's task list, their folder, or mentions; tasks no plan claims are shown as "Unassigned tasks". The daemon's onboarding and the extension share one rule set tested against `testdata/planfiles/cases.json`. See `docs/plan-files.md`
+- `scripts/install.sh --desktop` installs the macOS app into `~/Applications` after a checksum check and without the quarantine flag (the app is not notarized, so a browser-downloaded copy is blocked by Gatekeeper); `--beta` / `NEXUS_CHANNEL=beta` picks the newest pre-release instead of the last stable one (which is still from April)
+- Claude Pro/Max can be delegated to: provider kind `cli` runs a logged-in AI command-line tool (`claude -p`, verified against the real `claude`) per request, streams its output, and a discovered "Claude CLI" can be promoted. Only known tools may run (`NEXUS_CLI_PROVIDERS` extends the list). See `docs/delegating-subscriptions.md`
+- OpenAI-compatible providers use the context length the server reports (`context_length`, `context_window`, `max_model_len`) instead of always assuming 128K; the VS Code bridge reports each editor model's `maxInputTokens`
+- MCP `wait_for_task` (42 tools): blocks until a task has finished and streams the model's reply as `notifications/progress` when the caller sends a progress token and `Accept: text/event-stream`; `OrchestratorService` offers its events to in-process adapters through the optional `ports.TaskEventSource`
+- Anthropic, Gemini and LM Studio providers stream (`ChatStream`, shared `sse` reader), and the single-prompt path without a session store streams too; a cut-off stream is a failure that falls over to the next provider
+- Live output in the clients: VS Code channel `Nexus Live Output` (`nexus.liveOutput.enabled`, command `Nexus: Show Live Task Output`) and a "Live output" block in the task detail drawer; an OpenAI-compatible server that ignores `stream: true` is still accepted (one chunk)
+- OpenAI-compatible and Ollama providers stream (`ChatStream`): server-sent events / newline-delimited JSON, a cut-off stream is a failure that falls over to the next provider
+- Live output: the engine publishes a task's reply on the event stream while the model writes it (`task.chunk` with `text` and `seq`, `task.restart` before every attempt: retry, next provider, each agent turn). Optional `ports.ChatStreamer` for providers; others send one chunk. Not stored. See `docs/streaming.md`
+- VS Code model bridge streams: `POST /v1/chat/completions` with `"stream": true` answers with OpenAI `chat.completion.chunk` server-sent events as the editor's model produces text (a failure mid-stream arrives as an error event, a disconnect cancels the model request)
+- VS Code model bridge: with `nexus.lmBridge.enabled` the extension serves an OpenAI-compatible endpoint on loopback (bearer token) in front of `vscode.lm` and registers each model the editor offers (Copilot and others) with the daemon as a `vscode-<vendor>-<model>` provider, kept in step with daemon restarts and model changes. Off by default. See `docs/vscode-model-bridge.md`
+- Rule-based workflow: `.nexus/policy.json` per project (default `verify` command, `maxFileLines`, `testsFirst`, `remember`, free-text `rules`). The engine puts a token-bounded project briefing and the rules in front of every task, applies the default verification command, refuses agent writes that break the size or tests-first rules, remembers each finished task in the project knowledge (newest 30) and sends only the newest 20 session messages; the onboarding leads with the rules; `init` creates the file once. See `docs/rulebased-workflow.md`
+- Agentic `edit_file` tool: replaces the single exact occurrence of a text in a project file (refused when it is missing or ambiguous), so small changes no longer need the whole file rewritten
+- Cross-surface parity matrix (`internal/docscheck/surface_matrix_test.go`): every capability must exist on REST, MCP, CLI, the desktop bindings, the frontend and the VS Code extension, or say why not; CI fails otherwise
+- `docs/api-reference.md` documents every REST route, guarded by a test; architecture guide covers the execution engine, provider routing and the surface matrix
+- `npm run check:docs` now also covers the docs site and requires a description comment on every Vue component
+- Agentic tasks: `agentic` / `maxAgentTurns` on a task let the model read and write project files over several turns and re-verify before finishing; exposed on REST, MCP, `nexus-cli`, `nexus-submit` and the UI
+- Routing parity: `providerName`, `providerHint`, `modelId`, `role`, `priority` and `tags` are accepted by `submit_task` / `create_draft` and the CLIs; GitHub Copilot and LM Studio are classified correctly for role routing
+- Real-daemon end-to-end suite (`go test -tags e2e ./internal/e2e/`): builds the shipped binaries and drives REST, every MCP tool, the stdio proxy, both CLIs, restart persistence, shutdown and port conflicts
+- Playwright `real-daemon` project (daemon plus a fake Ollama), VS Code extension-host tests (`npm run test:host`), a Wails desktop smoke job and a GitHub Action end-to-end job
+- Local-only mutation testing for Go (gremlins) and TypeScript (Stryker) via `make mutation` / `scripts/mutation.sh`, documented in `docs/mutation-testing.md`; deliberately not run in CI to save workflow minutes; `scripts/check-tsdoc.mjs` and revive `exported` doc-comment gates, and `scripts/check-file-size.sh` (500-line cap)
+- `make dogfood` / `start-bg` / `stop`, root `CLAUDE.md` and `.mcp.json` so sessions in this repository start on the orchestrator, `.nvmrc`, and `docs/agent-workflow-audit.md` (evidence-based review of the agent workflow and its gaps)
+- `make` now prints the target overview (default goal is `help`); new `make start`, `status`, `connect` and `init-project` targets and `docs/using-nexus.md` for running one orchestrator across all projects
+
+### Changed
+
+- The sidebar of the UI shows five things instead of nine: Mission Control, Agents, Providers, Projects and Settings. Activity, Plans, History, Backlog and Brain are tabs of one Projects hub (`/projects`, `/projects/plans`, ...); the old paths (`/plans`, `/history`, `/backlog`, `/brain`) redirect to their tab
+- Removed PrimeVue, `@primevue/themes` and `primeicons` from the frontend and the docs site (epic #64). Both now use internal primitives (`UiIcon`, `UiButton`, `UiSkeleton`, `UiSelect`, `UiDrawer`, `UiToaster`/`useToast`, `UiTabs`) with design tokens, a focus trap, reduced-motion support and an SVG icon set; see `docs/ui-foundation.md`. Bundles shrank by 42-50 % (frontend JS 190 -> 95 KiB gz, docs JS 167 -> 97 KiB gz) and CI now enforces bundle budgets (`scripts/check-bundle-budget.mjs`) and bans a UI kit (`scripts/check-no-ui-kit.mjs`).
+- Astro feasibility study (`docs/astro-feasibility.md`): no-go for the frontend, no-go with checkpoints for the docs.
+- Playwright regression matrix for keyboard, focus, ARIA and motion (`frontend/e2e/ui-foundation.spec.ts`).
+
+- Repository ports (`TaskRepository`, `SessionRepository`, `ModelCapabilityRepository`) take a `context.Context`; `repo_sqlite` uses the `*Context` database calls and the `noctx` exclusion is gone
+- Oversized source files split along their seams (engine, orchestrator, SQLite repository, scanners, brain service, extension client, several views)
+- The GitHub Action's `command` input defaults to `auto` instead of `execute`
+- Coverage ratchets: frontend, docs site, GitHub Action and extension are at 100% on every metric and gated there; Go merged coverage is 97% (96.9% in CI) with the gate at 96%
+
+### Fixed
+
+- The UI and the editor showed state that was not true: one repository appeared as several projects and "agents" (a Claude session started in `frontend/`, `src/` or a temp directory became its own project and discovered agent), every non-Copilot language model of the editor (`copilotcli/gpt-5.4`, ...) was listed as an active agent in every window, and tasks an agent had marked processing or done by hand looked like work Nexus was doing. Activities now belong to the repository (nearest `.git`), activity in temp directories is ignored, discovered sessions at sub-folders are removed, the extension no longer reports language models as agents, and a task says who ran it: `ranBy` (read from the engine's log) in the API, "Run by Nexus on X" or "Status set by an agent — Nexus did not run this task" in the task drawer and the editor tooltip
+- Task rows another tool wrote straight into the database (an agent running `sqlite3`: `IN_PROGRESS`, times as text or in seconds) are repaired at daemon start, so the watchdog and the queue queries see them too
+- One hand-edited task row made `GET /api/tasks/all` answer 500 ("converting driver.Value type string to a int64"), so every client, the VS Code extension included, showed the daemon as offline: an agent had run `UPDATE tasks SET status='IN_PROGRESS', updated_at=datetime('now')` on the database. The repository now reads timestamps stored as text (SQLite datetime, ISO 8601, a number in text), reads `IN_PROGRESS`/`DONE`/`ERROR`/... as PROCESSING/COMPLETED/FAILED, and a list skips a row it cannot decode (logged) instead of failing; asking for that task by id still reports it
+- The extension's task view said "daemon offline" for any failure; a daemon that answers `/api/health` but fails the list now shows "Nexus daemon error" with the reason
+- `init_project` / `nexus init` only learned from `CLAUDE.md`; it now also reads `AGENTS.md`, `GEMINI.md` and `.github/copilot-instructions.md` when they exist, so a project worked on by another agent is onboarded too
+- The VS Code "Workspace Agents" view said "No orchestrator.json found" for a repository whose agent (here Gemini) wrote plans and tasks as markdown under `.claude/plans` and `.claude/tasks` but no `orchestrator.json`: the view now reads those files (and `.nexus/`), merges them with the JSON when there is one, and picks the active plan; the daemon's onboarding context does the same instead of reporting "Active Plan: None"
+- Registering the same provider again (the VS Code bridge after a restart) replaced nothing and left a stale duplicate; the same name and model now replace each other
+- The daemon kept running (and printed its ready banner) when the REST or MCP port was already in use; it now exits non-zero
+- The Action failed on the first run in any project because `execute` requires a completed plan
+- Views and composables that unmounted before their first fetch finished left a poller running for the rest of the session
+- `PromoteTask` was declared as returning nothing in the desktop binding while Go returns the promote result
+- The "Deterministic Daemon E2E" and Playwright CI jobs could not fail (a skipped script, `continue-on-error`); both now run for real
+- `make stop` was a no-op; the zig cross-builds (`build-linux-*`, `build-windows-amd64`) failed to link; `make build-gui` reported success when Wails failed; `make nice` and the frontend builds failed on a fresh checkout or Node 20 with unclear errors
+- Binaries built with `make build` (and every other Makefile build) lacked SQLite FTS5, so `nexus-daemon` exited at start-up with `no such module: fts5`
+- `make nice` type-checked nothing in the frontend (references-only tsconfig) and ran `gofmt -w .` over `node_modules`; it now runs the real frontend and docs type-checks, the TSDoc gate and prettier
+
+## [0.10.0-alpha] — 2026-03-14 (first 0.10.0 snapshot)
 
 ### Added
 
@@ -298,9 +361,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - HTTP body size cap prevents memory exhaustion from malformed or malicious API requests
 - SQLite `PRAGMA foreign_keys=ON` prevents referential integrity violations; WAL mode reduces write contention
 
-[Unreleased]: https://github.com/el-j/nexusOrchestrator/compare/v0.9.2...HEAD
-[0.9.2]: https://github.com/el-j/nexusOrchestrator/compare/v0.9.1...v0.9.2
-[0.9.1]: https://github.com/el-j/nexusOrchestrator/compare/v0.9.0...v0.9.1
-[0.9.0]: https://github.com/el-j/nexusOrchestrator/compare/v0.8.0...v0.9.0
-[0.8.0]: https://github.com/el-j/nexusOrchestrator/releases/tag/v0.8.0
-[0.2.0]: https://github.com/el-j/nexusOrchestrator/releases/tag/v0.2.0
+[Unreleased]: https://github.com/el-j/nexus-orchestrator/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/el-j/nexus-orchestrator/compare/v0.9.1...v0.9.2
+[0.9.1]: https://github.com/el-j/nexus-orchestrator/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/el-j/nexus-orchestrator/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/el-j/nexus-orchestrator/releases/tag/v0.8.0
+[0.2.0]: https://github.com/el-j/nexus-orchestrator/releases/tag/v0.2.0

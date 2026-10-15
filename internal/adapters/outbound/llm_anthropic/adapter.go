@@ -3,10 +3,12 @@ package llm_anthropic
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -51,13 +53,18 @@ var claudeContextLimits = map[string]int{
 	"claude-3-5-haiku-20241022":  200000,
 }
 
+// ProviderName returns the human-readable provider name shown in the UI and used for routing.
 func (a *Adapter) ProviderName() string { return "Anthropic" }
-func (a *Adapter) ActiveModel() string  { return a.model }
-func (a *Adapter) BaseURL() string      { return a.baseURL }
+
+// ActiveModel returns the model this adapter sends requests to.
+func (a *Adapter) ActiveModel() string { return a.model }
+
+// BaseURL returns the API endpoint this adapter talks to.
+func (a *Adapter) BaseURL() string { return a.baseURL }
 
 // ContextLimit returns the context window size for the configured Claude model.
 // Defaults to 200000 for unknown models (all modern Claude models support 200K).
-func (a *Adapter) ContextLimit() int {
+func (a *Adapter) ContextLimit(_ context.Context) int {
 	if limit, ok := claudeContextLimits[a.model]; ok {
 		return limit
 	}
@@ -65,8 +72,8 @@ func (a *Adapter) ContextLimit() int {
 }
 
 // Ping checks Anthropic API reachability via the /v1/models endpoint.
-func (a *Adapter) Ping() bool {
-	req, err := a.newRequest(http.MethodGet, a.baseURL+"/v1/models", nil)
+func (a *Adapter) Ping(ctx context.Context) bool {
+	req, err := a.newRequest(ctx, http.MethodGet, a.baseURL+"/v1/models", nil)
 	if err != nil {
 		return false
 	}
@@ -79,8 +86,8 @@ func (a *Adapter) Ping() bool {
 }
 
 // GetAvailableModels queries Anthropic's /v1/models endpoint for available models.
-func (a *Adapter) GetAvailableModels() ([]string, error) {
-	req, err := a.newRequest(http.MethodGet, a.baseURL+"/v1/models", nil)
+func (a *Adapter) GetAvailableModels(ctx context.Context) ([]string, error) {
+	req, err := a.newRequest(ctx, http.MethodGet, a.baseURL+"/v1/models", nil)
 	if err != nil {
 		return nil, fmt.Errorf("anthropic: build models request: %w", err)
 	}
@@ -108,14 +115,15 @@ func (a *Adapter) GetAvailableModels() ([]string, error) {
 }
 
 // GenerateCode sends a single prompt as a user message to Claude.
-func (a *Adapter) GenerateCode(prompt string) (string, error) {
-	return a.sendMessages([]anthropicMessage{{Role: "user", Content: prompt}})
+func (a *Adapter) GenerateCode(ctx context.Context, prompt string) (string, error) {
+	return a.sendMessages(ctx, "", []anthropicMessage{{Role: "user", Content: prompt}})
 }
 
 // Chat converts the multi-turn conversation history into Anthropic format.
 // Consecutive same-role messages are merged (Anthropic requires alternating turns).
-func (a *Adapter) Chat(messages []domain.Message) (string, error) {
-	return a.sendMessages(toAnthropicMessages(messages))
+func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, error) {
+	system, turns := toAnthropicMessages(messages)
+	return a.sendMessages(ctx, system, turns)
 }
 
 type anthropicMessage struct {
@@ -123,40 +131,59 @@ type anthropicMessage struct {
 	Content string `json:"content"`
 }
 
-// toAnthropicMessages converts domain messages, filtering non-user/assistant roles
-// and merging consecutive same-role messages.
-func toAnthropicMessages(msgs []domain.Message) []anthropicMessage {
-	out := make([]anthropicMessage, 0, len(msgs))
+// toAnthropicMessages converts domain messages to the Messages API shape:
+//
+//   - system messages are joined into the top-level "system" prompt (the API has
+//     no system role inside "messages"; dropping them would lose instructions),
+//   - empty messages are skipped (the API rejects empty text blocks),
+//   - consecutive same-role messages are merged (turns must alternate),
+//   - leading assistant turns are dropped (the first turn must be a user turn).
+func toAnthropicMessages(msgs []domain.Message) (system string, out []anthropicMessage) {
+	var systemParts []string
 	for _, m := range msgs {
-		if m.Role != domain.RoleUser && m.Role != domain.RoleAssistant {
+		if strings.TrimSpace(m.Content) == "" {
 			continue
 		}
-		if len(out) > 0 && out[len(out)-1].Role == string(m.Role) {
-			out[len(out)-1].Content += "\n" + m.Content
-		} else {
-			out = append(out, anthropicMessage{Role: string(m.Role), Content: m.Content})
+		switch m.Role {
+		case domain.RoleSystem:
+			systemParts = append(systemParts, m.Content)
+		case domain.RoleUser, domain.RoleAssistant:
+			if len(out) > 0 && out[len(out)-1].Role == string(m.Role) {
+				out[len(out)-1].Content += "\n" + m.Content
+			} else {
+				out = append(out, anthropicMessage{Role: string(m.Role), Content: m.Content})
+			}
 		}
 	}
-	return out
+	for len(out) > 0 && out[0].Role != "user" {
+		out = out[1:]
+	}
+	return strings.Join(systemParts, "\n\n"), out
 }
 
 // anthropicRequest is the request body for the Anthropic /v1/messages endpoint.
 type anthropicRequest struct {
 	Model     string             `json:"model"`
 	MaxTokens int                `json:"max_tokens"`
+	System    string             `json:"system,omitempty"`
 	Messages  []anthropicMessage `json:"messages"`
+	Stream    bool               `json:"stream,omitempty"`
 }
 
-func (a *Adapter) sendMessages(messages []anthropicMessage) (string, error) {
+func (a *Adapter) sendMessages(ctx context.Context, system string, messages []anthropicMessage) (string, error) {
+	if len(messages) == 0 {
+		return "", fmt.Errorf("anthropic: no user message to send")
+	}
 	reqBody, err := json.Marshal(anthropicRequest{
 		Model:     a.model,
 		MaxTokens: defaultMaxTokens,
+		System:    system,
 		Messages:  messages,
 	})
 	if err != nil {
 		return "", fmt.Errorf("anthropic: marshal request: %w", err)
 	}
-	req, err := a.newRequest(http.MethodPost, a.baseURL+"/v1/messages", bytes.NewReader(reqBody))
+	req, err := a.newRequest(ctx, http.MethodPost, a.baseURL+"/v1/messages", bytes.NewReader(reqBody))
 	if err != nil {
 		return "", fmt.Errorf("anthropic: build request: %w", err)
 	}
@@ -170,15 +197,20 @@ func (a *Adapter) sendMessages(messages []anthropicMessage) (string, error) {
 		return "", fmt.Errorf("anthropic: rate limited (429)")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("anthropic: unexpected status %d", resp.StatusCode)
+		return "", fmt.Errorf("anthropic: unexpected status %d%s", resp.StatusCode, errorDetail(resp.Body))
 	}
+	return decodeMessage(resp.Body)
+}
+
+// decodeMessage reads a non-streaming Messages API reply and returns its first text block.
+func decodeMessage(body io.Reader) (string, error) {
 	var result struct {
 		Content []struct {
 			Type string `json:"type"`
 			Text string `json:"text"`
 		} `json:"content"`
 	}
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
+	if err := json.NewDecoder(io.LimitReader(body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("anthropic: decode response: %w", err)
 	}
 	for _, block := range result.Content {
@@ -189,8 +221,24 @@ func (a *Adapter) sendMessages(messages []anthropicMessage) (string, error) {
 	return "", fmt.Errorf("anthropic: no text content in response")
 }
 
-func (a *Adapter) newRequest(method, url string, body io.Reader) (*http.Request, error) {
-	req, err := http.NewRequest(method, url, body)
+// errorDetail extracts ": <message>" from an Anthropic error body
+// ({"type":"error","error":{"type":"...","message":"..."}}), or "" when the body
+// carries none. The message tells the user *why* (for example "prompt is too
+// long" or "invalid x-api-key"); it never contains the request's API key.
+func errorDetail(body io.Reader) string {
+	var e struct {
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.NewDecoder(io.LimitReader(body, 4096)).Decode(&e); err != nil || e.Error.Message == "" {
+		return ""
+	}
+	return ": " + e.Error.Message
+}
+
+func (a *Adapter) newRequest(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return nil, err
 	}

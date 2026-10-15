@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
@@ -46,6 +47,22 @@ func (s *DiscoveryService) RegisterProvider(c ports.LLMClient) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.availableClients = append(s.availableClients, c)
+}
+
+// ReplaceProvider registers c, first dropping any provider with the same name and active model:
+// registering the same backend again (a restarted bridge, a re-sent config) must not leave a
+// stale copy next to it. A different model under the same name is a different provider and stays.
+func (s *DiscoveryService) ReplaceProvider(c ports.LLMClient) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	kept := s.availableClients[:0:0]
+	for _, old := range s.availableClients {
+		if strings.EqualFold(old.ProviderName(), c.ProviderName()) && old.ActiveModel() == c.ActiveModel() {
+			continue
+		}
+		kept = append(kept, old)
+	}
+	s.availableClients = append(kept, c)
 }
 
 // RemoveProvider removes the first registered provider whose ProviderName()
@@ -151,6 +168,9 @@ func (s *DiscoveryService) FindForModel(modelID, providerHint string) (ports.LLM
 	return nil, fmt.Errorf("discovery: model %q not available on any registered provider", modelID)
 }
 
+// probeTimeout bounds each liveness / model-list probe made on behalf of the API.
+const probeTimeout = 10 * time.Second
+
 // ListProviders returns the liveness and model information for every registered
 // LLM backend without modifying internal state.
 func (s *DiscoveryService) ListProviders() []ports.ProviderInfo {
@@ -159,6 +179,9 @@ func (s *DiscoveryService) ListProviders() []ports.ProviderInfo {
 	copy(clients, s.availableClients)
 	s.mu.RUnlock()
 
+	probeCtx, cancel := context.WithTimeout(context.Background(), probeTimeout)
+	defer cancel()
+
 	result := make([]ports.ProviderInfo, 0, len(clients))
 	for _, c := range clients {
 		h := s.cachedHealth(c)
@@ -166,7 +189,7 @@ func (s *DiscoveryService) ListProviders() []ports.ProviderInfo {
 			Name:             c.ProviderName(),
 			Active:           h.alive,
 			BaseURL:          c.BaseURL(),
-			ContextLimit:     c.ContextLimit(),
+			ContextLimit:     c.ContextLimit(probeCtx),
 			LastChecked:      h.checkedAt,
 			ConsecutiveFails: h.consecutiveFails,
 		}
@@ -241,9 +264,11 @@ func (s *DiscoveryService) cachedHealth(c ports.LLMClient) *providerHealth {
 		return h // cache is fresh — no network call
 	}
 
-	// Cache is stale or missing — probe now.
+	// Cache is stale or missing — probe now, but never wait on a hung provider forever.
+	ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
+	defer cancel()
 	start := time.Now()
-	alive := c.Ping()
+	alive := c.Ping(ctx)
 	latMs := time.Since(start).Milliseconds()
 	updated := &providerHealth{
 		alive:     alive,
@@ -255,7 +280,7 @@ func (s *DiscoveryService) cachedHealth(c ports.LLMClient) *providerHealth {
 	}
 	if alive {
 		updated.activeModel = c.ActiveModel()
-		if models, mErr := c.GetAvailableModels(); mErr != nil {
+		if models, mErr := c.GetAvailableModels(ctx); mErr != nil {
 			log.Printf("discovery: get models from %s: %v", name, mErr)
 		} else {
 			updated.models = models

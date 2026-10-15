@@ -20,10 +20,12 @@ type RuntimeConfigRepo struct {
 	db *sql.DB
 }
 
+// NewRuntimeConfigRepo returns a RuntimeConfigRepo backed by r.
 func NewRuntimeConfigRepo(r *Repository) *RuntimeConfigRepo {
 	return &RuntimeConfigRepo{db: r.db}
 }
 
+// GetRuntimeConfig loads the persisted runtime configuration, or the defaults when none is stored.
 func (r *RuntimeConfigRepo) GetRuntimeConfig(ctx context.Context) (domain.RuntimeConfig, error) {
 	row := r.db.QueryRowContext(ctx, `SELECT json, updated_at FROM runtime_config WHERE id = 1`)
 	var raw string
@@ -46,6 +48,7 @@ func (r *RuntimeConfigRepo) GetRuntimeConfig(ctx context.Context) (domain.Runtim
 	return cfg, nil
 }
 
+// SaveRuntimeConfig persists the runtime configuration.
 func (r *RuntimeConfigRepo) SaveRuntimeConfig(ctx context.Context, cfg domain.RuntimeConfig) error {
 	// Persist tokens and queue cap; UpdatedAt is stored separately as milliseconds.
 	b, err := json.Marshal(struct {

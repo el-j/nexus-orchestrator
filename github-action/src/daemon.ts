@@ -2,6 +2,7 @@ import * as core from '@actions/core';
 import * as fs from 'fs';
 import * as http from 'http';
 
+/** Options for starting the nexus daemon from the Action. */
 export interface DaemonOptions {
   readonly binPath: string;
   readonly listenAddr: string;
@@ -14,8 +15,13 @@ export interface DaemonOptions {
   readonly githubCopilotToken: string;
   readonly githubCopilotModel: string;
   readonly logFile: string;
+  /** How long to wait for /api/health before giving up (default 20s). */
+  readonly healthTimeoutMs?: number;
 }
 
+const DEFAULT_HEALTH_TIMEOUT_MS = 20_000;
+
+/** A started daemon: its base URL plus a function that stops it. */
 export interface DaemonHandle {
   readonly pid: number;
   readonly logFile: string;
@@ -47,7 +53,8 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
   }
   if (opts.githubCopilotToken.length > 0) {
     env['NEXUS_GITHUBCOPILOT_TOKEN'] = opts.githubCopilotToken;
-    if (opts.githubCopilotModel.length > 0) env['NEXUS_GITHUBCOPILOT_MODEL'] = opts.githubCopilotModel;
+    if (opts.githubCopilotModel.length > 0)
+      env['NEXUS_GITHUBCOPILOT_MODEL'] = opts.githubCopilotModel;
   }
 
   const logFd = fs.openSync(opts.logFile, 'w');
@@ -70,30 +77,40 @@ export async function startDaemon(opts: DaemonOptions): Promise<DaemonHandle> {
   const pid = child.pid;
   fs.closeSync(logFd);
 
-  // Wait up to 20s for health check
+  // Wait for the health endpoint. If the daemon never comes up, the caller never
+  // receives a handle and so cannot stop it: terminate it here and surface its log,
+  // which is the only diagnostic for why it failed to start.
   const healthUrl = `http://${opts.listenAddr}/api/health`;
-  await waitForHealth(healthUrl, 20_000);
+  try {
+    await waitForHealth(healthUrl, opts.healthTimeoutMs ?? DEFAULT_HEALTH_TIMEOUT_MS);
+  } catch (err) {
+    terminate(pid);
+    printDaemonLog(opts.logFile);
+    throw err;
+  }
   core.info(`nexus-daemon started (pid=${pid})`);
 
   return {
     pid,
     logFile: opts.logFile,
     stop(): void {
-      try {
-        process.kill(pid, 'SIGTERM');
-        core.info(`nexus-daemon stopped (pid=${pid})`);
-      } catch {
-        // Already dead — ignore
-      }
+      if (terminate(pid)) core.info(`nexus-daemon stopped (pid=${pid})`);
     },
   };
 }
 
+/** SIGTERM a process; returns false when it was already gone. */
+function terminate(pid: number): boolean {
+  try {
+    process.kill(pid, 'SIGTERM');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Poll the health URL until it responds 200 or timeout elapses */
-export async function waitForHealth(
-  url: string,
-  timeoutMs: number
-): Promise<void> {
+export async function waitForHealth(url: string, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
@@ -116,14 +133,14 @@ export function printDaemonLog(logFile: string): void {
 
 function httpGet(url: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    http
-      .get(url, { timeout: 2_000 }, (res) => {
-        res.resume();
-        if (res.statusCode === 200) resolve();
-        else reject(new Error(`HTTP ${res.statusCode ?? '?'}`));
-      })
-      .on('error', reject)
-      .on('timeout', () => reject(new Error('timeout')));
+    const req = http.get(url, { timeout: 2_000 }, (res) => {
+      res.resume();
+      if (res.statusCode === 200) resolve();
+      else reject(new Error(`HTTP ${res.statusCode ?? '?'}`));
+    });
+    req.on('error', reject);
+    // 'timeout' only reports inactivity; destroy the socket so polling does not pile up connections.
+    req.on('timeout', () => req.destroy(new Error('timeout')));
   });
 }
 

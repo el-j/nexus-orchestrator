@@ -29,7 +29,7 @@ func (o *OrchestratorService) RegisterCloudProvider(cfg domain.ProviderConfig) e
 	if err != nil {
 		return fmt.Errorf("orchestrator: register cloud provider: %w", err)
 	}
-	o.discovery.RegisterProvider(client)
+	o.discovery.ReplaceProvider(client)
 	return nil
 }
 
@@ -49,7 +49,9 @@ func (o *OrchestratorService) GetProviderModels(providerName string) ([]string, 
 	if !ok {
 		return nil, fmt.Errorf("orchestrator: get provider models: %w", domain.ErrNotFound)
 	}
-	models, err := client.GetAvailableModels()
+	ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
+	defer cancel()
+	models, err := client.GetAvailableModels(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("orchestrator: get provider models: %w", err)
 	}
@@ -90,7 +92,22 @@ func (o *OrchestratorService) TriggerScan(ctx context.Context) ([]domain.Discove
 
 	o.discovery.InvalidateHealthCache()
 
+	// Tell connected UIs so they refresh now instead of at their next poll.
+	o.mu.Lock()
+	b := o.broadcaster
+	o.mu.Unlock()
+	if pb, ok := b.(providerDiscoveryBroadcaster); ok {
+		pb.BroadcastProviderDiscovered(len(results))
+	}
+
 	return results, nil
+}
+
+// providerDiscoveryBroadcaster is implemented by broadcasters that can announce a
+// finished provider scan (the SSE hub does). It is optional so the core
+// EventBroadcaster port, and its many test doubles, stay unchanged.
+type providerDiscoveryBroadcaster interface {
+	BroadcastProviderDiscovered(count int)
 }
 
 // PromoteProvider converts a discovered provider into an active registered backend.
@@ -109,10 +126,15 @@ func (o *OrchestratorService) PromoteProvider(ctx context.Context, discoveredID 
 	if found == nil {
 		return fmt.Errorf("orchestrator: promote provider: %w", domain.ErrNotFound)
 	}
-	if found.Status != domain.DiscoveryStatusReachable {
+	baseURL := found.BaseURL
+	if found.Kind == domain.ProviderKindCLI && found.CLIPath != "" {
+		// A command-line AI tool has a path, not a URL; "-p" is the non-interactive print mode
+		// of claude, the tool this kind is for.
+		baseURL = found.CLIPath + " -p"
+	} else if found.Status != domain.DiscoveryStatusReachable {
 		return fmt.Errorf("orchestrator: promote provider: provider %q is not reachable (status: %s)", found.Name, found.Status)
 	}
-	if found.BaseURL == "" {
+	if baseURL == "" {
 		return fmt.Errorf("orchestrator: promote provider: discovered provider has no base URL")
 	}
 
@@ -120,7 +142,7 @@ func (o *OrchestratorService) PromoteProvider(ctx context.Context, discoveredID 
 		ID:      found.ID,
 		Name:    found.Name,
 		Kind:    found.Kind,
-		BaseURL: found.BaseURL,
+		BaseURL: baseURL,
 		Enabled: true,
 	}
 
@@ -191,6 +213,11 @@ func (o *OrchestratorService) UpdateProviderConfig(ctx context.Context, cfg doma
 
 	cfg.CreatedAt = old.CreatedAt
 	cfg.UpdatedAt = time.Now()
+	// Clients receive masked API keys. If one sends the placeholder back it means
+	// "unchanged"; storing it would silently destroy the real credential.
+	if domain.IsMaskedSecret(cfg.APIKey) {
+		cfg.APIKey = old.APIKey
+	}
 
 	if err := repo.SaveProviderConfig(ctx, cfg); err != nil {
 		return domain.ProviderConfig{}, fmt.Errorf("orchestrator: update provider config: %w", err)

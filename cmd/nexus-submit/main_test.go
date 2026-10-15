@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -73,7 +75,7 @@ func TestSubmitTask_Success(t *testing.T) {
 		"instruction": "package main",
 	}
 
-	taskID, status, err := SubmitTask(server.URL, body)
+	taskID, status, err := SubmitTask(context.Background(), server.URL, body)
 	if err != nil {
 		t.Fatalf("SubmitTask: %v", err)
 	}
@@ -92,7 +94,7 @@ func TestSubmitTask_ErrorStatus(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, _, err := SubmitTask(server.URL, map[string]interface{}{})
+	_, _, err := SubmitTask(context.Background(), server.URL, map[string]interface{}{})
 	if err == nil {
 		t.Error("expected error on 400 response, got nil")
 	}
@@ -107,5 +109,23 @@ func TestGetEnv(t *testing.T) {
 	}
 	if got := getEnv("NONEXISTENT_VAR", "default"); got != "default" {
 		t.Errorf("expected default, got %s", got)
+	}
+}
+
+func TestApplyRouting(t *testing.T) {
+	body := map[string]interface{}{}
+	ApplyRouting(body, "", "", "", "", 0, "")
+	if len(body) != 0 {
+		t.Fatalf("unset flags must not be sent, got %v", body)
+	}
+	ApplyRouting(body, "GitHub Copilot", "Ollama", "gpt-4o", "architect", 1, " a, ,b ")
+	want := map[string]interface{}{
+		"providerName": "GitHub Copilot", "providerHint": "Ollama", "modelId": "gpt-4o",
+		"role": "architect", "priority": 1, "tags": []string{"a", "b"},
+	}
+	got, _ := json.Marshal(body)
+	exp, _ := json.Marshal(want)
+	if !bytes.Equal(got, exp) {
+		t.Errorf("body = %s, want %s", got, exp)
 	}
 }

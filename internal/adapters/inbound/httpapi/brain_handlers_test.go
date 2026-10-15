@@ -5,8 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -551,5 +554,41 @@ func TestHandleGetOnboardingContext_Error(t *testing.T) {
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("expected 500, got %d; body: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// A path the daemon refuses to read is the caller's fault (403) and its explanation is
+// safe to show; a missing file is a 404; anything else is a generic 500 that must not
+// echo the internal error (which can contain filesystem paths).
+func TestHandleIngestKnowledge_ErrorMapping(t *testing.T) {
+	tests := []struct {
+		name        string
+		err         error
+		wantCode    int
+		wantBody    string
+		wantNotBody string
+	}{
+		{"refused path", fmt.Errorf("%w: secret.md is outside the project", domain.ErrPathNotAllowed), http.StatusForbidden, "outside the project", ""},
+		{"missing file", fmt.Errorf("brain_service: ingest from file: %w", os.ErrNotExist), http.StatusNotFound, "file not found", "brain_service"},
+		{"internal failure", errors.New("open /var/lib/nexus/secret.db: disk on fire"), http.StatusInternalServerError, "internal server error", "/var/lib/nexus"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := &mockBrainService{ingestFromFileErr: tc.err}
+			body, _ := json.Marshal(map[string]string{"projectPath": "/p", "filePath": "/p/x.md"})
+			req := httptest.NewRequest(http.MethodPost, "/api/brain/ingest", bytes.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+			serveWithBrain(mock, req, rec)
+			if rec.Code != tc.wantCode {
+				t.Fatalf("status = %d, want %d; body %s", rec.Code, tc.wantCode, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), tc.wantBody) {
+				t.Errorf("body %q should contain %q", rec.Body.String(), tc.wantBody)
+			}
+			if tc.wantNotBody != "" && strings.Contains(rec.Body.String(), tc.wantNotBody) {
+				t.Errorf("body %q must not leak %q", rec.Body.String(), tc.wantNotBody)
+			}
+		})
 	}
 }

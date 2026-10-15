@@ -219,3 +219,51 @@ func TestWellKnownNexus_CapabilitiesContainTaskQueue(t *testing.T) {
 		t.Errorf("capabilities should contain task-queue, got %v", doc.Capabilities)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// MCP endpoint advertised by /.well-known/nexus.json
+// ---------------------------------------------------------------------------
+
+func mcpEndpointFor(t *testing.T, mcpAddr string) string {
+	t.Helper()
+	srv := httpapi.NewServer(&mockOrchestrator{}, nil, httpapi.NewHub()).WithMCPAddr(mcpAddr)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+	resp, err := http.Get(ts.URL + "/.well-known/nexus.json")
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	defer resp.Body.Close()
+	var doc struct {
+		MCP struct {
+			Endpoint string `json:"endpoint"`
+		} `json:"mcp"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&doc); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	return doc.MCP.Endpoint
+}
+
+func TestWellKnownNexus_AdvertisesConfiguredMCPEndpoint(t *testing.T) {
+	if got := mcpEndpointFor(t, "10.1.2.3:7000"); got != "http://10.1.2.3:7000/mcp" {
+		t.Errorf("endpoint = %q, want http://10.1.2.3:7000/mcp", got)
+	}
+}
+
+func TestWellKnownNexus_HostlessMCPAddrUsesRequestHost(t *testing.T) {
+	// httptest serves on 127.0.0.1, so a wildcard bind must be reported on that host.
+	for _, addr := range []string{":63988", "0.0.0.0:63988", "[::]:63988"} {
+		if got := mcpEndpointFor(t, addr); got != "http://127.0.0.1:63988/mcp" {
+			t.Errorf("addr %q: endpoint = %q, want http://127.0.0.1:63988/mcp", addr, got)
+		}
+	}
+}
+
+func TestWellKnownNexus_OmitsEndpointWhenUnknownOrInvalid(t *testing.T) {
+	for _, addr := range []string{"", "not-an-address"} {
+		if got := mcpEndpointFor(t, addr); got != "" {
+			t.Errorf("addr %q: endpoint = %q, want it omitted", addr, got)
+		}
+	}
+}

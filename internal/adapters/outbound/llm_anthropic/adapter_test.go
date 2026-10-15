@@ -4,6 +4,7 @@
 package llm_anthropic
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -58,7 +59,7 @@ func TestAnthropic_Ping_Success(t *testing.T) {
 	defer srv.Close()
 
 	a := newTestAdapter(t, srv.URL, "claude-sonnet-4-5")
-	if !a.Ping() {
+	if !a.Ping(context.Background()) {
 		t.Fatal("Ping() returned false; expected true")
 	}
 }
@@ -69,7 +70,7 @@ func TestAnthropic_Ping_ConnectionRefused(t *testing.T) {
 	dead.Close()
 
 	a := newTestAdapter(t, url, "claude-sonnet-4-5")
-	if a.Ping() {
+	if a.Ping(context.Background()) {
 		t.Fatal("Ping() returned true; expected false (connection refused)")
 	}
 }
@@ -81,7 +82,7 @@ func TestAnthropic_Ping_NonOKStatus(t *testing.T) {
 	defer srv.Close()
 
 	a := newTestAdapter(t, srv.URL, "claude-sonnet-4-5")
-	if a.Ping() {
+	if a.Ping(context.Background()) {
 		t.Fatal("Ping() returned true on 401; expected false")
 	}
 }
@@ -96,7 +97,7 @@ func TestAnthropic_Ping_SetsRequiredHeaders(t *testing.T) {
 	defer srv.Close()
 
 	a := newTestAdapter(t, srv.URL, "claude-sonnet-4-5")
-	a.Ping()
+	a.Ping(context.Background())
 
 	if gotAPIKey != "test-api-key" {
 		t.Errorf("expected x-api-key %q, got %q", "test-api-key", gotAPIKey)
@@ -111,7 +112,7 @@ func TestAnthropic_GetAvailableModels(t *testing.T) {
 	defer srv.Close()
 
 	a := newTestAdapter(t, srv.URL, "claude-sonnet-4-5")
-	models, err := a.GetAvailableModels()
+	models, err := a.GetAvailableModels(context.Background())
 	if err != nil {
 		t.Fatalf("GetAvailableModels() error: %v", err)
 	}
@@ -130,7 +131,7 @@ func TestAnthropic_GetAvailableModels_ServerError(t *testing.T) {
 	defer srv.Close()
 
 	a := newTestAdapter(t, srv.URL, "claude-sonnet-4-5")
-	_, err := a.GetAvailableModels()
+	_, err := a.GetAvailableModels(context.Background())
 	if err == nil {
 		t.Fatal("expected error from GetAvailableModels() on 500 response")
 	}
@@ -141,7 +142,7 @@ func TestAnthropic_GenerateCode(t *testing.T) {
 	defer srv.Close()
 
 	a := newTestAdapter(t, srv.URL, "claude-sonnet-4-5")
-	result, err := a.GenerateCode("write hello world")
+	result, err := a.GenerateCode(context.Background(), "write hello world")
 	if err != nil {
 		t.Fatalf("GenerateCode() error: %v", err)
 	}
@@ -157,7 +158,7 @@ func TestAnthropic_GenerateCode_RateLimit(t *testing.T) {
 	defer srv.Close()
 
 	a := newTestAdapter(t, srv.URL, "claude-sonnet-4-5")
-	_, err := a.GenerateCode("prompt")
+	_, err := a.GenerateCode(context.Background(), "prompt")
 	if err == nil {
 		t.Fatal("expected error from GenerateCode() on 429 response")
 	}
@@ -178,7 +179,7 @@ func TestAnthropic_GenerateCode_SetsAuthHeaders(t *testing.T) {
 	defer srv.Close()
 
 	a := newTestAdapter(t, srv.URL, "claude-sonnet-4-5")
-	_, err := a.GenerateCode("prompt")
+	_, err := a.GenerateCode(context.Background(), "prompt")
 	if err != nil {
 		t.Fatalf("GenerateCode() error: %v", err)
 	}
@@ -200,7 +201,7 @@ func TestAnthropic_Chat(t *testing.T) {
 		{Role: domain.RoleAssistant, Content: "hi there"},
 		{Role: domain.RoleUser, Content: "write code"},
 	}
-	result, err := a.Chat(messages)
+	result, err := a.Chat(context.Background(), messages)
 	if err != nil {
 		t.Fatalf("Chat() error: %v", err)
 	}
@@ -235,7 +236,7 @@ func TestAnthropic_Chat_MergesConsecutiveSameRoleMessages(t *testing.T) {
 		{Role: domain.RoleUser, Content: "second"},
 		{Role: domain.RoleAssistant, Content: "reply"},
 	}
-	_, err := a.Chat(messages)
+	_, err := a.Chat(context.Background(), messages)
 	if err != nil {
 		t.Fatalf("Chat() error: %v", err)
 	}
@@ -277,7 +278,7 @@ func TestAnthropic_Chat_FiltersSystemMessages(t *testing.T) {
 		{Role: domain.RoleUser, Content: "user message"},
 		{Role: domain.RoleAssistant, Content: "assistant reply"},
 	}
-	_, err := a.Chat(messages)
+	_, err := a.Chat(context.Background(), messages)
 	if err != nil {
 		t.Fatalf("Chat() error: %v", err)
 	}
@@ -302,7 +303,7 @@ func TestAnthropic_Chat_NoTextContentBlock(t *testing.T) {
 	defer srv.Close()
 
 	a := newTestAdapter(t, srv.URL, "claude-sonnet-4-5")
-	_, err := a.Chat([]domain.Message{{Role: domain.RoleUser, Content: "hi"}})
+	_, err := a.Chat(context.Background(), []domain.Message{{Role: domain.RoleUser, Content: "hi"}})
 	if err == nil {
 		t.Fatal("expected error when response has no text content block")
 	}

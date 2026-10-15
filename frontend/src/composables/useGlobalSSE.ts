@@ -83,6 +83,7 @@ function disconnect() {
   connecting = false;
 }
 
+/** Shared Server-Sent Events connection with reconnect; components subscribe to event types. */
 export function useGlobalSSE() {
   function on(type: string, handler: SSEHandler) {
     if (!handlers.has(type)) handlers.set(type, new Set());

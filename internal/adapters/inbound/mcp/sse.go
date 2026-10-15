@@ -21,7 +21,6 @@ type sseSession struct {
 	mu      sync.Mutex
 	writer  http.ResponseWriter
 	flusher http.Flusher
-	done    chan struct{}
 }
 
 func (s *sseSession) sendEvent(event, data string) error {
@@ -45,7 +44,6 @@ func (m *sseManager) add(id string, w http.ResponseWriter, f http.Flusher) *sseS
 		id:      id,
 		writer:  w,
 		flusher: f,
-		done:    make(chan struct{}),
 	}
 	m.mu.Lock()
 	m.sessions[id] = s
@@ -62,10 +60,7 @@ func (m *sseManager) get(id string) (*sseSession, bool) {
 
 func (m *sseManager) remove(id string) {
 	m.mu.Lock()
-	if s, ok := m.sessions[id]; ok {
-		close(s.done)
-		delete(m.sessions, id)
-	}
+	delete(m.sessions, id)
 	m.mu.Unlock()
 }
 
@@ -79,6 +74,7 @@ type captureWriter struct {
 	status int
 }
 
+// Header implements http.ResponseWriter for the captured response.
 func (c *captureWriter) Header() http.Header {
 	if c.header == nil {
 		c.header = make(http.Header)
@@ -91,6 +87,7 @@ func (c *captureWriter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
+// WriteHeader implements http.ResponseWriter and records the status code.
 func (c *captureWriter) WriteHeader(code int) {
 	c.status = code
 }
@@ -131,7 +128,7 @@ func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Block until client disconnects or session is closed, sending periodic
+	// Block until the client disconnects, sending periodic
 	// SSE comment-pings to keep the connection alive through proxies.
 	pingTicker := time.NewTicker(sseKeepaliveInterval)
 	defer pingTicker.Stop()
@@ -149,8 +146,6 @@ loop:
 				break loop
 			}
 		case <-r.Context().Done():
-			break loop
-		case <-session.done:
 			break loop
 		}
 	}

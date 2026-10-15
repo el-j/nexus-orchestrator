@@ -1,6 +1,7 @@
 package repo_sqlite
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -25,12 +26,9 @@ func NewSessionRepo(r *Repository) *SessionRepo {
 }
 
 // Save persists a Session (insert or replace by project_path).
-func (s *SessionRepo) Save(sess domain.Session) error {
-	msgsJSON, err := json.Marshal(sess.Messages)
-	if err != nil {
-		return fmt.Errorf("sqlite: marshal session messages: %w", err)
-	}
-	_, err = s.db.Exec(
+func (s *SessionRepo) Save(ctx context.Context, sess domain.Session) error {
+	msgsJSON := marshal(sess.Messages)
+	_, err := s.db.ExecContext(ctx,
 		`INSERT INTO sessions (id, project_path, messages, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?)
 		 ON CONFLICT(project_path) DO UPDATE SET
@@ -47,9 +45,9 @@ func (s *SessionRepo) Save(sess domain.Session) error {
 
 // GetByProjectPath returns the session for the normalized project path, or
 // domain.ErrNotFound when no session exists yet.
-func (s *SessionRepo) GetByProjectPath(projectPath string) (domain.Session, error) {
+func (s *SessionRepo) GetByProjectPath(ctx context.Context, projectPath string) (domain.Session, error) {
 	clean := filepath.Clean(projectPath)
-	row := s.db.QueryRow(
+	row := s.db.QueryRowContext(ctx,
 		`SELECT id, project_path, messages, created_at, updated_at FROM sessions WHERE project_path = ?`,
 		clean,
 	)
@@ -58,10 +56,10 @@ func (s *SessionRepo) GetByProjectPath(projectPath string) (domain.Session, erro
 
 // AppendMessage adds a single message to the session identified by projectPath.
 // If no session exists it is created automatically.
-func (s *SessionRepo) AppendMessage(projectPath string, msg domain.Message) error {
+func (s *SessionRepo) AppendMessage(ctx context.Context, projectPath string, msg domain.Message) error {
 	clean := filepath.Clean(projectPath)
 
-	tx, err := s.db.Begin()
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("sqlite: begin tx for append message: %w", err)
 	}
@@ -69,7 +67,7 @@ func (s *SessionRepo) AppendMessage(projectPath string, msg domain.Message) erro
 	// following idiomatic Go transaction patterns.
 	defer tx.Rollback() //nolint:errcheck
 
-	row := tx.QueryRow(
+	row := tx.QueryRowContext(ctx,
 		`SELECT id, project_path, messages, created_at, updated_at FROM sessions WHERE project_path = ?`,
 		clean,
 	)
@@ -90,11 +88,8 @@ func (s *SessionRepo) AppendMessage(projectPath string, msg domain.Message) erro
 	sess.Messages = append(sess.Messages, msg)
 	sess.UpdatedAt = time.Now()
 
-	msgsJSON, err := json.Marshal(sess.Messages)
-	if err != nil {
-		return fmt.Errorf("sqlite: marshal messages: %w", err)
-	}
-	_, err = tx.Exec(
+	msgsJSON := marshal(sess.Messages)
+	_, err = tx.ExecContext(ctx,
 		`INSERT INTO sessions (id, project_path, messages, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?)
 		 ON CONFLICT(project_path) DO UPDATE SET

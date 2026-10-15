@@ -27,7 +27,8 @@ describe('NexusClient Brain APIs', () => {
     const results = await client.searchKnowledge('/workspace', 'clean architecture', 5);
     expect(results).toEqual(mockResults);
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://127.0.0.1:63987/api/brain/search?projectPath=%2Fworkspace&query=clean+architecture&limit=5',
+      'http://127.0.0.1:63987/api/brain/search?projectPath=%2Fworkspace&q=clean+architecture&limit=5',
+      expect.anything(),
     );
   });
 

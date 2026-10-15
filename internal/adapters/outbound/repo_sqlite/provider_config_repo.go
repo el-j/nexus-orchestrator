@@ -108,10 +108,7 @@ func (p *ProviderConfigRepo) DeleteProviderConfig(ctx context.Context, id string
 	if err != nil {
 		return fmt.Errorf("sqlite: delete provider config: %w", err)
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("sqlite: delete provider config rows affected: %w", err)
-	}
+	n := affected(res)
 	if n == 0 {
 		return fmt.Errorf("sqlite: delete provider config: %w", domain.ErrNotFound)
 	}

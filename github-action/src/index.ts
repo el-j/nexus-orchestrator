@@ -26,7 +26,7 @@ function getInputs(): ActionInputs {
             .map((f) => f.trim())
             .filter(Boolean)
         : [],
-    command: (core.getInput('command').trim() || 'execute') as 'execute' | 'plan',
+    command: core.getInput('command').trim() || 'auto',
     model: core.getInput('model').trim(),
     provider: core.getInput('provider').trim(),
     agent: core.getInput('agent').trim(),
@@ -37,7 +37,8 @@ function getInputs(): ActionInputs {
     daemonUrl: core.getInput('daemon_url').trim() || 'http://127.0.0.1:63987',
     startDaemon: core.getInput('start_daemon').trim() !== 'false',
     nexusVersion: core.getInput('nexus_version').trim() || 'latest',
-    timeoutSeconds: parseInt(core.getInput('timeout_seconds').trim() || '300', 10),
+    // Number(), not parseInt(): "1.5" or "300abc" must be rejected, not truncated.
+    timeoutSeconds: Number(core.getInput('timeout_seconds').trim() || '300'),
     openaiApiKey: core.getInput('openai_api_key'),
     openaiModel: core.getInput('openai_model').trim(),
     anthropicApiKey: core.getInput('anthropic_api_key'),
@@ -45,6 +46,23 @@ function getInputs(): ActionInputs {
     githubCopilotToken: core.getInput('github_copilot_token'),
     githubCopilotModel: core.getInput('github_copilot_model').trim(),
   };
+}
+
+/** Registers credentials with the runner so they are masked if they ever reach a log line. */
+function maskSecrets(inputs: ActionInputs): void {
+  for (const secret of [inputs.openaiApiKey, inputs.anthropicApiKey, inputs.githubCopilotToken]) {
+    if (secret.length > 0) core.setSecret(secret);
+  }
+}
+
+/** Rejects inputs the daemon would silently misinterpret. */
+function validateInputs(inputs: ActionInputs): void {
+  if (inputs.command !== 'execute' && inputs.command !== 'plan' && inputs.command !== 'auto') {
+    throw new Error(`Invalid command "${inputs.command}": expected "plan", "execute" or "auto".`);
+  }
+  if (!Number.isInteger(inputs.timeoutSeconds) || inputs.timeoutSeconds <= 0) {
+    throw new Error(`Invalid timeout_seconds: expected a positive whole number of seconds.`);
+  }
 }
 
 // ── Agent resolution ───────────────────────────────────────────────────────
@@ -111,10 +129,13 @@ function buildInstruction(inputs: ActionInputs, systemPrompt: string): string {
 
 async function run(): Promise<void> {
   const inputs = getInputs();
+  maskSecrets(inputs);
   let daemonHandle: { stop(): void; logFile: string } | null = null;
   const tmpDir = os.tmpdir();
 
   try {
+    validateInputs(inputs);
+
     // 1. Optionally start daemon
     let daemonUrl = inputs.daemonUrl;
     if (inputs.startDaemon) {

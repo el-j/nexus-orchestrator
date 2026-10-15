@@ -4,10 +4,13 @@ package llm_ollama
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,12 +22,24 @@ const DefaultBaseURL = "http://127.0.0.1:11434"
 
 // Adapter implements ports.LLMClient for Ollama's REST API.
 type Adapter struct {
-	baseURL      string
-	model        string
-	httpClient   *http.Client
-	contextLimit int       // cached value; 0 = unknown
-	limitOnce    sync.Once // ensures the network query runs at most once
+	baseURL    string
+	model      string
+	httpClient *http.Client
+
+	infoMu       sync.Mutex
+	contextLimit int       // last successfully read value; 0 = unknown
+	infoAt       time.Time // when contextLimit was last read successfully
+	infoTried    time.Time // when the last attempt (successful or not) started
 }
+
+// Package-level so tests can shorten them; production code never reassigns them.
+var (
+	// infoTTL is how long a successfully read context limit is trusted. Models can
+	// be swapped or re-created with another num_ctx, so it must not live forever.
+	infoTTL = 5 * time.Minute
+	// infoRetry throttles re-queries while Ollama is unreachable or the model unknown.
+	infoRetry = 10 * time.Second
+)
 
 // NewOllamaAdapter creates an Adapter pointing at the given Ollama base URL
 // (e.g. "http://127.0.0.1:11434") with the specified default model.
@@ -47,9 +62,26 @@ func (a *Adapter) ActiveModel() string { return a.model }
 // BaseURL returns the configured endpoint URL for this adapter.
 func (a *Adapter) BaseURL() string { return a.baseURL }
 
+// do sends a request bound to ctx, so cancelling ctx aborts it. A non-nil body is
+// sent as JSON.
+func (a *Adapter) do(ctx context.Context, client *http.Client, method, path string, body []byte) (*http.Response, error) {
+	var rdr io.Reader
+	if body != nil {
+		rdr = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, a.baseURL+path, rdr)
+	if err != nil {
+		return nil, err
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	return client.Do(req)
+}
+
 // Ping checks whether Ollama is reachable.
-func (a *Adapter) Ping() bool {
-	resp, err := a.httpClient.Get(a.baseURL + "/api/tags")
+func (a *Adapter) Ping(ctx context.Context) bool {
+	resp, err := a.do(ctx, a.httpClient, http.MethodGet, "/api/tags", nil)
 	if err != nil {
 		return false
 	}
@@ -58,8 +90,8 @@ func (a *Adapter) Ping() bool {
 }
 
 // GetAvailableModels returns the list of model names pulled into Ollama.
-func (a *Adapter) GetAvailableModels() ([]string, error) {
-	resp, err := a.httpClient.Get(a.baseURL + "/api/tags")
+func (a *Adapter) GetAvailableModels(ctx context.Context) ([]string, error) {
+	resp, err := a.do(ctx, a.httpClient, http.MethodGet, "/api/tags", nil)
 	if err != nil {
 		return nil, fmt.Errorf("ollama: list models: %w", err)
 	}
@@ -100,7 +132,7 @@ type ollamaChatRequest struct {
 }
 
 // GenerateCode sends a chat completion request to Ollama and returns the generated text.
-func (a *Adapter) GenerateCode(prompt string) (string, error) {
+func (a *Adapter) GenerateCode(ctx context.Context, prompt string) (string, error) {
 	reqBody, err := json.Marshal(generateRequest{
 		Model:  a.model,
 		Prompt: prompt,
@@ -110,11 +142,7 @@ func (a *Adapter) GenerateCode(prompt string) (string, error) {
 		return "", fmt.Errorf("ollama: marshal request: %w", err)
 	}
 
-	resp, err := a.httpClient.Post(
-		a.baseURL+"/api/generate",
-		"application/json",
-		bytes.NewReader(reqBody),
-	)
+	resp, err := a.do(ctx, a.httpClient, http.MethodPost, "/api/generate", reqBody)
 	if err != nil {
 		return "", fmt.Errorf("ollama: request: %w", err)
 	}
@@ -137,34 +165,84 @@ func (a *Adapter) GenerateCode(prompt string) (string, error) {
 }
 
 // ContextLimit queries Ollama's /api/show endpoint for the model's context
-// window size. Returns 0 on any error (safe fallback — caller skips pre-flight).
-func (a *Adapter) ContextLimit() int {
-	a.limitOnce.Do(func() {
-		body, err := json.Marshal(map[string]string{"name": a.model})
-		if err != nil {
-			return
-		}
-		resp, err := a.httpClient.Post(a.baseURL+"/api/show", "application/json", bytes.NewReader(body))
-		if err != nil {
-			return
-		}
-		defer resp.Body.Close()
-		var result struct {
-			ModelInfo map[string]interface{} `json:"model_info"`
-		}
-		if json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result) != nil {
-			return
-		}
-		if v, ok := result.ModelInfo["llama.context_length"]; ok {
-			switch n := v.(type) {
-			case float64:
-				a.contextLimit = int(n)
-			case int:
-				a.contextLimit = n
-			}
-		}
-	})
+// window size. Returns 0 when it cannot be determined (safe fallback — the
+// caller skips its pre-flight check). A successful value is cached for infoTTL;
+// failures are retried at most every infoRetry, so a transient outage at the
+// first call does not disable the check for the life of the process.
+func (a *Adapter) ContextLimit(ctx context.Context) int {
+	a.infoMu.Lock()
+	defer a.infoMu.Unlock()
+	now := time.Now()
+	if a.contextLimit > 0 && now.Sub(a.infoAt) < infoTTL {
+		return a.contextLimit
+	}
+	if now.Sub(a.infoTried) < infoRetry {
+		return a.contextLimit
+	}
+	a.infoTried = now
+	if n := a.fetchContextLimit(ctx); n > 0 {
+		a.contextLimit = n
+		a.infoAt = now
+	}
 	return a.contextLimit
+}
+
+// fetchContextLimit reads the context length from /api/show. Ollama names the
+// key after the model architecture ("llama.context_length",
+// "qwen2.context_length", "gemma3.context_length", ...), so the architecture
+// from "general.architecture" is tried first, then any "*.context_length" key.
+func (a *Adapter) fetchContextLimit(ctx context.Context) int {
+	body, err := json.Marshal(map[string]string{"name": a.model})
+	if err != nil {
+		return 0
+	}
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := a.do(ctx, client, http.MethodPost, "/api/show", body)
+	if err != nil {
+		return 0
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return 0
+	}
+	var result struct {
+		ModelInfo map[string]any `json:"model_info"`
+	}
+	if json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result) != nil {
+		return 0
+	}
+	return contextLengthFromModelInfo(result.ModelInfo)
+}
+
+// contextLengthFromModelInfo extracts the context length from /api/show's model_info.
+func contextLengthFromModelInfo(info map[string]any) int {
+	asInt := func(v any) int {
+		switch n := v.(type) {
+		case float64:
+			return int(n)
+		case int:
+			return n
+		}
+		return 0
+	}
+	if arch, ok := info["general.architecture"].(string); ok && arch != "" {
+		if n := asInt(info[arch+".context_length"]); n > 0 {
+			return n
+		}
+	}
+	keys := make([]string, 0, len(info))
+	for k := range info {
+		if strings.HasSuffix(k, ".context_length") {
+			keys = append(keys, k)
+		}
+	}
+	sort.Strings(keys) // deterministic when several architectures are reported
+	for _, k := range keys {
+		if n := asInt(info[k]); n > 0 {
+			return n
+		}
+	}
+	return 0
 }
 
 // messagesToMaps converts a slice of domain.Message to the map representation
@@ -179,7 +257,7 @@ func messagesToMaps(msgs []domain.Message) []map[string]string {
 
 // Chat sends a multi-turn conversation history to Ollama using the /api/chat
 // endpoint and returns the assistant reply.
-func (a *Adapter) Chat(messages []domain.Message) (string, error) {
+func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, error) {
 	reqBody, err := json.Marshal(ollamaChatRequest{
 		Model:    a.model,
 		Messages: messagesToMaps(messages),
@@ -189,11 +267,7 @@ func (a *Adapter) Chat(messages []domain.Message) (string, error) {
 		return "", fmt.Errorf("ollama: marshal chat request: %w", err)
 	}
 
-	resp, err := a.httpClient.Post(
-		a.baseURL+"/api/chat",
-		"application/json",
-		bytes.NewReader(reqBody),
-	)
+	resp, err := a.do(ctx, a.httpClient, http.MethodPost, "/api/chat", reqBody)
 	if err != nil {
 		return "", fmt.Errorf("ollama: chat request: %w", err)
 	}

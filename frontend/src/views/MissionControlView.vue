@@ -1,3 +1,7 @@
+<!--
+  Mission Control: the overview page. Status bar (agents, queue, providers), active work, recent
+  history, provider health, connected sessions and the task submit form.
+-->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- STATUS BAR -->
@@ -49,7 +53,7 @@
         </div>
         <div class="rounded-xl border border-white/5 bg-white/2 overflow-hidden">
           <div v-if="tasksLoading" class="p-4 space-y-2">
-            <Skeleton v-for="i in 3" :key="i" height="2rem" class="mb-2" />
+            <UiSkeleton v-for="i in 3" :key="i" height="2rem" class="mb-2" />
           </div>
           <div
             v-else-if="filteredWorkTasks.length === 0"
@@ -164,7 +168,7 @@
           <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Agents</h2>
           <div class="space-y-2">
             <div v-if="sessionsLoading" class="space-y-2">
-              <Skeleton v-for="i in 2" :key="i" height="3rem" />
+              <UiSkeleton v-for="i in 2" :key="i" height="3rem" />
             </div>
             <div
               v-else-if="sessions.length === 0"
@@ -219,7 +223,7 @@
           </h2>
           <div class="space-y-2">
             <div v-if="providersLoading" class="space-y-2">
-              <Skeleton v-for="i in 2" :key="i" height="3rem" />
+              <UiSkeleton v-for="i in 2" :key="i" height="3rem" />
             </div>
             <div
               v-else-if="providers.length === 0"
@@ -279,8 +283,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import Skeleton from 'primevue/skeleton';
-import { useToast } from 'primevue/usetoast';
+import UiSkeleton from '../ui/UiSkeleton.vue';
+import { useToast } from '../composables/useToast';
 import { useTasks } from '../composables/useTasks';
 import { useProviders } from '../composables/useProviders';
 import { useAISessions } from '../composables/useAISessions';
@@ -333,7 +337,7 @@ const historyFilters: { label: string; value: HistoryFilterValue }[] = [
 ];
 const historyFilter = ref<HistoryFilterValue>('ALL');
 
-let historyInterval: ReturnType<typeof setInterval> | null = null;
+let historyInterval: ReturnType<typeof setInterval> | undefined;
 const historyStatuses = new Set(['COMPLETED', 'FAILED', 'CANCELLED']);
 
 async function refreshHistory() {
@@ -356,7 +360,7 @@ onMounted(() => {
   historyInterval = setInterval(refreshHistory, 30_000);
 });
 onUnmounted(() => {
-  if (historyInterval) clearInterval(historyInterval);
+  clearInterval(historyInterval);
 });
 
 // --- Status bar counts ---
@@ -450,8 +454,7 @@ function formatDuration(ms?: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
-function formatContextLimit(limit?: number): string {
-  if (!limit) return '';
+function formatContextLimit(limit: number): string {
   return `${Math.round(limit / 1024)}k ctx`;
 }
 

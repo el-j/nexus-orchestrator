@@ -1,3 +1,8 @@
+<!--
+  Cards for the registered LLM providers: reachability, active model and the models each one
+  has loaded (from live agent activity), plus the discovered-providers panel.
+  Props: providers, refresh (re-poll callback), hideDiscovered, modelStates.
+-->
 <template>
   <div class="flex flex-col gap-1">
     <!-- Live provider status -->
@@ -137,7 +142,7 @@
       :message="confirmDialog.message"
       :danger="true"
       @confirm="
-        confirmDialog.onConfirm();
+        confirmDialog.onConfirm!();
         confirmDialog.open = false;
       "
       @cancel="confirmDialog.open = false"
@@ -147,7 +152,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue';
-import { useToast } from 'primevue/usetoast';
+import { useToast } from '../composables/useToast';
 import type { ProviderInfo, ProviderConfig } from '../types/domain';
 import type { ProviderModelState } from '../composables/useProviderActivity';
 import {
@@ -165,7 +170,7 @@ const confirmDialog = reactive({
   open: false,
   title: '',
   message: '',
-  onConfirm: () => {},
+  onConfirm: null as (() => void) | null, // set by showConfirm before the dialog opens
 });
 
 function showConfirm(title: string, message: string, onConfirm: () => void) {

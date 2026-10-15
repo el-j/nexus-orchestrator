@@ -15,7 +15,7 @@ build/desktop/
 build/vscode/
 build/docs/
 build/frontend/*
-!build/frontend/.gitkeep
+build
 *.exe
 
 /**/dist/*
@@ -33,7 +33,11 @@ vendor/
 .DS_Store
 Thumbs.db
 
-github-action/dist
+# The Action runs from its committed ncc bundle (action.yml: main), so index.js and
+# its licenses must be tracked. Everything else tsc/ncc emits (.d.ts, maps) is not.
+github-action/dist/*
+!github-action/dist/index.js
+!github-action/dist/licenses.txt
 # Root dev tooling (husky, lint-staged, prettier — installed at repo root)
 node_modules/
 package-lock.json
@@ -55,3 +59,10 @@ coverage
 
 # air hot-reload build output
 tmp/
+reports/
+.stryker-tmp/
+frontend/test-results/
+
+# The frontend the daemon embeds (make web); only the placeholder is tracked
+internal/adapters/inbound/webui/dist/*
+!internal/adapters/inbound/webui/dist/.gitkeep

@@ -1,7 +1,7 @@
-import { getServerAddr } from '../types/wails'
+import { getServerAddr } from '../types/wails';
 
 // Module-level cache: resolved once per app session.
-let cachedUrl: string | null = null
+let cachedUrl: string | null = null;
 
 /**
  * Resolves the base HTTP URL of the embedded API server.
@@ -9,7 +9,7 @@ let cachedUrl: string | null = null
  * default dev address); subsequent calls return the cached value.
  */
 export async function resolveServerUrl(): Promise<string> {
-  if (cachedUrl !== null) return cachedUrl
-  cachedUrl = await getServerAddr()
-  return cachedUrl
+  if (cachedUrl !== null) return cachedUrl;
+  cachedUrl = await getServerAddr();
+  return cachedUrl;
 }

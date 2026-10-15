@@ -1,0 +1,51 @@
+# Live output while a task runs
+
+While a model writes its reply, the daemon publishes it on the event stream (`GET /api/events`,
+server-sent events) next to the usual task status events. Subscribe once and you see the text as
+it is generated instead of waiting for the task to finish.
+
+## Events
+
+| `type`         | Fields                  | Meaning                                                                       |
+| -------------- | ----------------------- | ----------------------------------------------------------------------------- |
+| `task.restart` | `taskId`                | A new attempt starts: throw away the text you collected for this task so far. |
+| `task.chunk`   | `taskId`, `text`, `seq` | The next piece of the reply. `seq` counts from 1 within an attempt.           |
+
+A restart is sent before **every** attempt: the first try, a retry, the next provider in the
+fallback chain after a failure, and each turn of an agentic task. So a client needs only one rule:
+on `task.restart` clear the buffer, on `task.chunk` append `text`.
+
+## Where you see it
+
+- **VS Code**: the `Nexus Live Output` channel (command `Nexus: Show Live Task Output`) prints each
+  running task's text under a `[task-id]` header and marks a restart with a line. Turn it off with
+  `nexus.liveOutput.enabled`.
+- **Desktop / web UI**: the task detail drawer shows a "Live output" block while the task is
+  processing.
+- **REST**: subscribe to `GET /api/events` yourself.
+- **MCP**: the `wait_for_task` tool blocks until the task has finished. Send `_meta.progressToken`
+  in the `tools/call` request and `Accept: text/event-stream`, and the response becomes an event
+  stream: one `notifications/progress` per piece of the reply (`message` is the text, `progress`
+  counts up, a restart sends `↻ new attempt`), then the normal result as the last event. Without
+  the token or the header you get plain JSON when the task ends. A timeout (`timeoutSeconds`,
+  default 300, max 3600) returns the task as it is with `"timedOut": true`; call it again to keep
+  waiting. The legacy `/sse` transport and `nexus-mcp-stdio` return the final result only.
+
+## Guarantees and limits
+
+- The final result of a task is unchanged: it is the complete reply, written and verified as
+  before. Live text is not stored anywhere; only a subscriber that was connected sees it.
+- A subscriber that reads too slowly may miss events (the hub drops instead of blocking). A gap in
+  `seq` tells you so; the finished task still holds the full result.
+- Pieces that arrive within 50 ms of each other are joined into one chunk.
+- A provider that cannot stream sends its whole reply as one chunk after it finishes.
+- Providers that stream: OpenAI-compatible endpoints (OpenAI, the VS Code model bridge and other
+  servers speaking `stream: true`), Ollama, Anthropic (Messages API `stream`), Gemini
+  (`streamGenerateContent?alt=sse`) and LM Studio.
+- A server that ignores the stream request and answers with a normal JSON reply still works: its
+  reply arrives as one chunk.
+- A stream that ends without its terminator (`[DONE]` / `done` / `message_stop` / a Gemini
+  `finishReason`) counts as a failure, so the next provider takes over and a `task.restart`
+  precedes its text.
+- The same holds when no session store is configured (the single-prompt path): a provider that
+  can stream receives the prompt as one user message and streams its reply.

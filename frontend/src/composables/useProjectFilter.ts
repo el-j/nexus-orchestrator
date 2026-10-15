@@ -3,10 +3,11 @@ import { useTasks } from './useTasks';
 import { currentProject, setProject } from './useProjectState';
 import { getAllTasks } from '../types/wails';
 
+/** Project filter shared across views: the selected project plus the project paths known from live tasks and history. */
 export function useProjectFilter() {
   const { tasks } = useTasks();
   const allHistoryPaths = ref<string[]>([]);
-  let historyInterval: ReturnType<typeof setInterval> | null = null;
+  let historyInterval: ReturnType<typeof setInterval> | undefined;
 
   async function fetchHistoryPaths() {
     try {
@@ -23,7 +24,7 @@ export function useProjectFilter() {
   });
 
   onUnmounted(() => {
-    if (historyInterval) clearInterval(historyInterval);
+    clearInterval(historyInterval);
   });
 
   const projectList = computed<string[]>(() => {

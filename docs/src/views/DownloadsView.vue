@@ -1,3 +1,7 @@
+<!--
+  Downloads page: desktop and CLI release archives per platform (from data/downloads.ts),
+  requirements and the install options.
+-->
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
     <!-- Hero -->
@@ -5,7 +9,7 @@
       <div
         class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-sm text-violet-300 mb-6"
       >
-        <i class="pi pi-download text-xs"></i>
+        <UiIcon name="download" class="text-xs" />
         Latest release always available on GitHub
       </div>
       <h1 class="text-4xl sm:text-5xl font-black mb-4">
@@ -19,21 +23,21 @@
           v-if="tagLoading"
           class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/5 text-sm text-amber-400"
         >
-          <i class="pi pi-spin pi-spinner text-xs"></i>
+          <UiIcon name="spinner" class="animate-spin text-xs" />
           Resolving latest beta release…
         </span>
         <span
           v-else-if="latestTag"
           class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 text-sm font-mono text-amber-300"
         >
-          <i class="pi pi-tag text-xs"></i>
+          <UiIcon name="tag" class="text-xs" />
           {{ latestTag }}
         </span>
         <span
           v-else
           class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-700 bg-slate-800/50 text-sm text-slate-400"
         >
-          <i class="pi pi-exclamation-circle text-xs"></i>
+          <UiIcon name="exclamation-circle" class="text-xs" />
           No beta release yet — links point to latest stable
         </span>
       </div>
@@ -58,7 +62,9 @@
         >
       </div>
       <p class="text-slate-500 mb-8 reveal">
-        Full GUI with built-in HTTP API and MCP server. Best for most users.
+        Full UI with built-in HTTP API and MCP server. Best for most users. Keeps its data in
+        <code class="text-slate-400">~/.nexus/nexus.db</code>; do not run it next to a separately
+        started daemon (both use port 63987).
       </p>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -85,10 +91,31 @@
             :href="card.url"
             class="inline-flex items-center justify-center gap-1.5 w-full py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors"
           >
-            <i class="pi pi-download text-xs"></i>
+            <UiIcon name="download" class="text-xs" />
             {{ card.ext }}
           </a>
         </div>
+      </div>
+    </section>
+
+    <!-- macOS note: the app is not notarized yet -->
+    <section class="mb-16 reveal">
+      <div class="rounded-xl border border-amber-500/20 bg-amber-500/5 p-6">
+        <h3 class="font-bold text-amber-300 mb-2">
+          macOS: “Apple could not verify nexusOrchestrator”
+        </h3>
+        <p class="text-sm text-amber-200/70 mb-4">
+          The app is not notarized with Apple yet, so macOS blocks a copy downloaded in a browser.
+          This installer downloads with curl, checks the checksum and installs to
+          <code class="text-amber-100">~/Applications</code> without the block:
+        </p>
+        <CodeBlock language="bash" :code="installDesktopScript" />
+        <p class="text-xs text-amber-200/60 mt-4">
+          Already downloaded the zip? Run
+          <code class="text-amber-100">xattr -dr com.apple.quarantine nexusOrchestrator.app</code>,
+          or click “Open Anyway” in System Settings → Privacy &amp; Security after the blocked
+          attempt (macOS 15 no longer has right-click → Open).
+        </p>
       </div>
     </section>
 
@@ -120,7 +147,7 @@
             :href="card.url"
             class="inline-flex items-center justify-center gap-1 w-full py-1.5 rounded-lg border border-violet-500/40 text-violet-300 hover:bg-violet-600/10 text-xs font-semibold transition-colors"
           >
-            <i class="pi pi-download text-xs"></i>
+            <UiIcon name="download" class="text-xs" />
             {{ card.ext }}
           </a>
         </div>
@@ -138,8 +165,9 @@
         >
       </div>
       <p class="text-slate-500 mb-8 reveal">
-        Submit tasks, monitor the queue, and switch providers without leaving your editor. Requires
-        VS Code 1.85+ and a running nexus daemon.
+        Task queue with live output, plan view, brain commands and the editor's models as providers
+        — and it connects the editor's own agent to Nexus (VS Code 1.101+ through its MCP support,
+        Antigravity through its MCP config). Requires VS Code 1.99+ and a running nexus daemon.
       </p>
       <div class="max-w-xs reveal">
         <div
@@ -147,20 +175,20 @@
         >
           <div class="text-3xl mb-3">🔌</div>
           <div class="font-bold text-white mb-1">VS Code</div>
-          <div class="text-xs text-slate-500 mb-1">1.85+</div>
+          <div class="text-xs text-slate-500 mb-1">1.99+</div>
           <div class="text-xs text-slate-600 mb-4">~2 MB</div>
           <a
             :href="vsixURL"
             class="inline-flex items-center justify-center gap-1.5 w-full py-2 rounded-lg border border-cyan-500/40 text-cyan-300 hover:bg-cyan-600/10 text-sm font-semibold transition-colors"
           >
-            <i class="pi pi-download text-xs"></i>
+            <UiIcon name="download" class="text-xs" />
             .vsix
           </a>
         </div>
       </div>
       <p class="text-xs text-slate-600 mt-4 reveal">
         Or install from the command line:
-        <code class="text-slate-400">code --install-extension nexus-orchestrator-vscode.vsix</code>
+        <code class="text-slate-400">code --install-extension nexus-orchestrator.vsix</code>
       </p>
     </section>
 
@@ -236,7 +264,7 @@
               :key="item"
               class="text-xs text-slate-500 flex items-start gap-1.5"
             >
-              <i class="pi pi-check text-violet-500 text-xs mt-0.5 flex-shrink-0"></i>
+              <UiIcon name="check" class="text-violet-500 text-xs mt-0.5 flex-shrink-0" />
               <span v-html="item"></span>
             </li>
           </ul>
@@ -266,7 +294,7 @@
               :key="item"
               class="text-sm text-slate-400 flex items-start gap-2"
             >
-              <i class="pi pi-check-circle text-emerald-500 text-xs mt-0.5 flex-shrink-0"></i>
+              <UiIcon name="check-circle" class="text-emerald-500 text-xs mt-0.5 flex-shrink-0" />
               <span v-html="item"></span>
             </li>
           </ul>
@@ -280,7 +308,7 @@
         to="/getting-started"
         class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold transition-all mr-3"
       >
-        Getting Started Guide <i class="pi pi-arrow-right text-xs"></i>
+        Getting Started Guide <UiIcon name="arrow-right" class="text-xs" />
       </RouterLink>
       <a
         href="https://github.com/el-j/nexus-orchestrator"
@@ -288,16 +316,18 @@
         rel="noopener"
         class="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-white/10 hover:border-violet-500/40 text-slate-300 hover:text-white font-bold transition-all"
       >
-        <i class="pi pi-github"></i> View Source on GitHub
+        <UiIcon name="github" /> View Source on GitHub
       </a>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { ref, computed, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
 import CodeBlock from '../components/CodeBlock.vue';
+import { DESKTOP_ASSETS, CLI_ASSETS, requirements, packages } from '../data/downloads';
 
 const REPO = 'el-j/nexus-orchestrator';
 // Baked in at SSG build time — 'beta' on develop, 'stable' on main.
@@ -391,85 +421,7 @@ const baseURL = computed(() => {
   return `https://github.com/${REPO}/releases/latest/download`;
 });
 
-const vsixURL = computed(() => `${baseURL.value}/nexus-orchestrator-vscode.vsix`);
-
-const DESKTOP_ASSETS = [
-  {
-    icon: '🍎',
-    platform: 'macOS',
-    arch: 'Apple Silicon (M1/M2/M3/M4)',
-    ext: '.zip',
-    osKey: 'mac-arm',
-    file: 'nexus-orchestrator-desktop-darwin-arm64.zip',
-  },
-  {
-    icon: '🍎',
-    platform: 'macOS',
-    arch: 'Intel (x86_64)',
-    ext: '.zip',
-    osKey: 'mac-intel',
-    file: 'nexus-orchestrator-desktop-darwin-amd64.zip',
-  },
-  {
-    icon: '🪟',
-    platform: 'Windows',
-    arch: '64-bit (x86_64)',
-    ext: '.zip',
-    osKey: 'win',
-    file: 'nexus-orchestrator-desktop-windows-amd64.zip',
-  },
-  {
-    icon: '🐧',
-    platform: 'Linux',
-    arch: '64-bit (x86_64)',
-    ext: '.tar.gz',
-    osKey: 'linux',
-    file: 'nexus-orchestrator-desktop-linux-amd64.tar.gz',
-  },
-];
-
-const CLI_ASSETS = [
-  {
-    icon: '🍎',
-    platform: 'macOS',
-    arch: 'Apple Silicon (arm64)',
-    ext: '.tar.gz',
-    osKey: 'mac-arm',
-    file: 'nexus-orchestrator-darwin-arm64.tar.gz',
-  },
-  {
-    icon: '🍎',
-    platform: 'macOS',
-    arch: 'Intel (amd64)',
-    ext: '.tar.gz',
-    osKey: 'mac-intel',
-    file: 'nexus-orchestrator-darwin-amd64.tar.gz',
-  },
-  {
-    icon: '🪟',
-    platform: 'Windows',
-    arch: '64-bit (amd64)',
-    ext: '.zip',
-    osKey: 'win',
-    file: 'nexus-orchestrator-windows-amd64.zip',
-  },
-  {
-    icon: '🐧',
-    platform: 'Linux',
-    arch: '64-bit (amd64)',
-    ext: '.tar.gz',
-    osKey: 'linux',
-    file: 'nexus-orchestrator-linux-amd64.tar.gz',
-  },
-  {
-    icon: '🐧',
-    platform: 'Linux',
-    arch: 'ARM64',
-    ext: '.tar.gz',
-    osKey: 'linux-arm',
-    file: 'nexus-orchestrator-linux-arm64.tar.gz',
-  },
-];
+const vsixURL = computed(() => `${baseURL.value}/nexus-orchestrator.vsix`);
 
 const desktopCards = computed(() =>
   DESKTOP_ASSETS.map((a) => ({ ...a, url: `${baseURL.value}/${a.file}` })),
@@ -484,6 +436,12 @@ const installScript = computed(() =>
   channel === 'beta' && latestTag.value
     ? `curl -sSfL https://raw.githubusercontent.com/${REPO}/${latestTag.value}/scripts/install.sh | sh`
     : `curl -sSfL https://raw.githubusercontent.com/${REPO}/main/scripts/install.sh | sh`,
+);
+
+const installDesktopScript = computed(() =>
+  channel === 'beta' && latestTag.value
+    ? `curl -sSfL https://raw.githubusercontent.com/${REPO}/${latestTag.value}/scripts/install.sh | sh -s -- --desktop`
+    : `curl -sSfL https://raw.githubusercontent.com/${REPO}/main/scripts/install.sh | sh -s -- --desktop`,
 );
 
 const verifyMac = computed(
@@ -505,89 +463,4 @@ sha256sum -c SHA256SUMS.txt --ignore-missing`,
 const verifyWin = `# PowerShell
 Get-FileHash .\\nexus-orchestrator-windows-amd64.zip -Algorithm SHA256
 # Compare with SHA256SUMS.txt`;
-
-const requirements = [
-  {
-    icon: '🍎',
-    title: 'macOS',
-    items: [
-      'macOS 11 (Big Sur) or later',
-      'Apple Silicon or Intel processor',
-      'Native .app bundle included',
-    ],
-  },
-  {
-    icon: '🪟',
-    title: 'Windows',
-    items: [
-      'Windows 10 (version 1809) or later',
-      '64-bit processor (x86_64 or ARM64)',
-      'WebView2 runtime (usually pre-installed)',
-    ],
-  },
-  {
-    icon: '🐧',
-    title: 'Linux',
-    items: [
-      'Ubuntu 20.04+ / Debian 11+ / Fedora 36+',
-      'x86_64 or ARM64 processor',
-      'GTK 3 and WebKit2GTK (Desktop app)',
-    ],
-  },
-  {
-    icon: '🔧',
-    title: 'Build from Source',
-    items: [
-      'Go 1.26+ with <code class="text-slate-300">CGO_ENABLED=1</code>',
-      'C compiler (gcc / clang) for sqlite3',
-      '<a href="https://wails.io/" class="text-violet-400">Wails v2</a> for Desktop builds',
-    ],
-  },
-];
-
-const packages = [
-  {
-    icon: '🖥️',
-    title: 'Desktop App',
-    items: [
-      'Full Wails GUI with task dashboard',
-      'Embedded HTTP API on port <code class="text-slate-300">63987</code>',
-      'Embedded MCP server on port <code class="text-slate-300">63988</code>',
-      'Provider auto-discovery &amp; health UI',
-      'Per-project session viewer',
-    ],
-  },
-  {
-    icon: '⚙️',
-    title: 'Daemon (nexus-daemon)',
-    items: [
-      'Headless background service',
-      'HTTP API on port <code class="text-slate-300">63987</code>',
-      'MCP server on port <code class="text-slate-300">63988</code>',
-      'Ideal for servers &amp; CI environments',
-      'Configurable via environment variables',
-    ],
-  },
-  {
-    icon: '📟',
-    title: 'CLI (nexus-cli)',
-    items: [
-      'Thin HTTP client — no embedded LLM logic',
-      'Submit, list, cancel, and monitor tasks',
-      'Connects to daemon at <code class="text-slate-300">127.0.0.1:63987</code>',
-      'Scriptable for automation &amp; pipelines',
-    ],
-  },
-  {
-    icon: '🔌',
-    title: 'VS Code Extension',
-    items: [
-      'Submit tasks directly from the editor',
-      'Task queue tree view sidebar',
-      'Status bar with live daemon health',
-      'Provider &amp; model picker command',
-      'Connects to daemon at <code class="text-slate-300">127.0.0.1:63987</code>',
-    ],
-  },
-];
 </script>

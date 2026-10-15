@@ -165,15 +165,14 @@ describe('index integration: real NexusClient + factory-mocked HttpClient', () =
   });
 
   it('timeout: task never reaches terminal status; action fails with timeout error', async () => {
-    // timeout_seconds=0 → waitForTask deadline is already past, throws immediately
-    setInputs({ timeout_seconds: '0' });
+    // a 1s timeout with a never-finishing task → waitForTask polls until the deadline, then throws
+    setInputs({ timeout_seconds: '1' });
 
     mockPostJson.mockResolvedValue({
       statusCode: 201,
       result: { task_id: 'int-timeout-1', status: 'QUEUED' },
       headers: {},
     });
-    // getJson should not even be called with 0s timeout
     mockGetJson.mockResolvedValue({
       statusCode: 200,
       result: {
@@ -192,12 +191,13 @@ describe('index integration: real NexusClient + factory-mocked HttpClient', () =
     expect(core._outputs['status']).toBe('FAILED');
     expect(core._failures.length).toBeGreaterThan(0);
     expect(core._failures[0]).toMatch(/did not complete/i);
+    expect(core._failures[0]).toContain('last status: PROCESSING');
   });
 
-  it('NO_PROVIDER is non-terminal: with 0s timeout, action fails via timeout', async () => {
-    // NO_PROVIDER is not in TERMINAL_STATUSES; with 0s timeout waitForTask
-    // exits with "did not complete" before ever polling getTask.
-    setInputs({ timeout_seconds: '0' });
+  it('NO_PROVIDER is non-terminal: the action keeps waiting, then times out saying why', async () => {
+    // NO_PROVIDER is not in TERMINAL_STATUSES (a provider may still appear), so
+    // waitForTask polls until the deadline and reports the last status it saw.
+    setInputs({ timeout_seconds: '1' });
 
     mockPostJson.mockResolvedValue({
       statusCode: 201,
@@ -217,10 +217,11 @@ describe('index integration: real NexusClient + factory-mocked HttpClient', () =
       headers: {},
     });
 
-    const core = await runWithTimers(5_000);
+    const core = await runWithTimers(10_000);
 
     expect(core._outputs['status']).toBe('FAILED');
-    expect(core._failures.length).toBeGreaterThan(0);
+    expect(core._failures[0]).toMatch(/did not complete/i);
+    expect(core._failures[0]).toContain('last status: NO_PROVIDER');
   });
 
   it('network error on submit: action fails with the connection error message', async () => {

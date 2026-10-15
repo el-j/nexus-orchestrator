@@ -1,3 +1,8 @@
+<!--
+  Card showing the knowledge-base ("brain") status of one project, with actions to initialise it,
+  sync its plan file and upload files to ingest.
+  Props: projectPath, nexusFile (the project's plan file, when one was discovered).
+-->
 <template>
   <div class="mb-5 rounded-xl border border-violet-500/30 bg-violet-500/[0.04] p-3 text-white">
     <div class="flex items-start gap-3">
@@ -92,7 +97,7 @@
           :disabled="ingesting"
           class="px-2 py-1 bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 text-xs rounded border border-amber-500/50 transition-all flex items-center gap-1"
         >
-          <i v-if="ingesting" class="pi pi-spin pi-spinner text-[10px]"></i>
+          <UiIcon v-if="ingesting" name="spinner" class="animate-spin text-[10px]" />
           <span>{{ ingesting ? 'Initializing…' : 'Initialize Brain' }}</span>
         </button>
 
@@ -112,7 +117,7 @@
             :disabled="ingesting"
             class="px-2 py-1 bg-violet-500/20 hover:bg-violet-500/40 text-violet-300 text-xs rounded border border-violet-500/50 transition-all flex items-center justify-center gap-1 min-w-[70px]"
           >
-            <i v-if="ingesting" class="pi pi-spin pi-spinner text-[10px]"></i>
+            <UiIcon v-if="ingesting" name="spinner" class="animate-spin text-[10px]" />
             <span>{{ ingesting ? ingestProgress || 'Syncing…' : 'Sync Brain' }}</span>
           </button>
           <button
@@ -130,9 +135,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue';
+import UiIcon from '../ui/UiIcon.vue';
+import { ref, onMounted, watch } from 'vue';
 import type { DiscoveredPlanFile, BrainStatus } from '../types/domain';
-import { getBrainStatus, ingestKnowledge, initProject } from '../types/wails';
+import { getBrainStatus, ingestKnowledge, ingestContent, initProject } from '../types/wails';
+import { MAX_UPLOAD_BYTES } from '../composables/useBrain';
 
 const props = defineProps<{
   projectPath: string;
@@ -147,8 +154,6 @@ const ingestResult = ref('');
 const ingestError = ref('');
 const fileInputRef = ref<HTMLInputElement | null>(null);
 
-const isIngestible = computed(() => !!props.nexusFile);
-
 async function fetchStatus() {
   loading.value = true;
   try {
@@ -161,15 +166,11 @@ async function fetchStatus() {
 }
 
 function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  } catch {
-    return iso;
-  }
+  return new Date(iso).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 async function handleInit() {
@@ -188,14 +189,15 @@ async function handleInit() {
 }
 
 async function handleSyncNexusFile() {
-  if (!props.nexusFile) return;
+  // The Sync button only renders for a plan file.
+  const nexusFile = props.nexusFile!;
   ingesting.value = true;
   ingestProgress.value = 'Syncing…';
   ingestResult.value = '';
   ingestError.value = '';
   try {
-    const count = await ingestKnowledge(props.projectPath, props.nexusFile.path);
-    ingestResult.value = `Ingested ${count} sections from ${props.nexusFile.path.split('/').pop()}.`;
+    const count = await ingestKnowledge(props.projectPath, nexusFile.path);
+    ingestResult.value = `Ingested ${count} sections from ${nexusFile.path.split('/').pop()}.`;
     await fetchStatus();
   } catch (err) {
     ingestError.value = err instanceof Error ? err.message : String(err);
@@ -217,7 +219,9 @@ async function onFilesSelected(e: Event) {
   for (let i = 0; i < files.length; i++) {
     ingestProgress.value = `${i + 1}/${files.length}`;
     try {
-      const count = await ingestKnowledge(props.projectPath, files[i].name);
+      // A browser File has no path the daemon could read, so its content is sent.
+      if (files[i].size > MAX_UPLOAD_BYTES) throw new Error('larger than 1 MiB');
+      const count = await ingestContent(props.projectPath, files[i].name, await files[i].text());
       totalSections += count;
     } catch (err) {
       errors.push(files[i].name);
@@ -229,7 +233,7 @@ async function onFilesSelected(e: Event) {
   if (errors.length > 0) {
     ingestError.value = `Failed: ${errors.join(', ')}`;
   }
-  if (fileInputRef.value) fileInputRef.value.value = '';
+  fileInputRef.value!.value = '';
   await fetchStatus();
 }
 

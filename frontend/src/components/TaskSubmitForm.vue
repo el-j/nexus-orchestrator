@@ -1,59 +1,67 @@
+<!--
+  Collapsible form to submit a task, save it as a draft or add it to the backlog. Covers project,
+  target file, instruction, command, provider/model routing, priority, tags and agentic mode.
+  Emits: submitted(id) after a task has been accepted by the daemon.
+-->
 <template>
   <div class="border-t border-white/5 bg-[#0a0a10] p-4">
     <form @submit.prevent="handleSubmit" class="flex flex-col gap-3">
       <div class="flex items-center justify-between">
-        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Submit Task</span>
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider"
+          >Submit Task</span
+        >
         <button
           type="button"
           @click="expanded = !expanded"
           class="p-1 rounded text-slate-500 hover:text-slate-300 transition-colors"
           :aria-label="expanded ? 'Collapse form' : 'Expand form'"
         >
-          <i :class="`pi ${expanded ? 'pi-chevron-down' : 'pi-chevron-up'} text-xs`"></i>
+          <UiIcon :name="expanded ? 'chevron-down' : 'chevron-up'" class="text-xs" />
         </button>
       </div>
 
       <div v-show="expanded" class="space-y-3">
-        <Textarea
+        <textarea
           v-model="form.Instruction"
           placeholder="What should the AI do? e.g. 'Add error handling to the HTTP handler'"
-          :rows="2"
-          class="w-full text-sm resize-none"
-          :invalid="submitted && !form.Instruction.trim()"
-        />
+          aria-label="Instruction"
+          rows="2"
+          class="ui-field text-sm resize-none"
+          :aria-invalid="submitted && !form.Instruction.trim() ? 'true' : undefined"
+        ></textarea>
         <small v-if="submitted && !form.Instruction.trim()" class="text-red-400 text-xs">
           Instruction is required.
         </small>
 
         <!-- Project + Target file -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <InputText
+          <input
             v-model="form.ProjectPath"
             placeholder="Project path (absolute)"
-            class="text-xs"
+            aria-label="Project path (absolute)"
+            class="ui-field text-xs"
           />
-          <InputText
+          <input
             v-model="form.TargetFile"
             placeholder="Target file (e.g. handler.go)"
-            class="text-xs"
+            aria-label="Target file (e.g. handler.go)"
+            class="ui-field text-xs"
           />
         </div>
 
         <!-- Command + Priority -->
         <div class="grid grid-cols-2 gap-2">
-          <Select
+          <UiSelect
             v-model="form.Command"
             :options="commandOptions"
-            option-label="label"
-            option-value="value"
+            label="Command"
             placeholder="Command"
             class="text-xs"
           />
-          <Select
+          <UiSelect
             v-model="form.Priority"
             :options="priorityOptions"
-            option-label="label"
-            option-value="value"
+            label="Priority"
             placeholder="Priority"
             class="text-xs"
           />
@@ -61,31 +69,47 @@
 
         <!-- Provider + Model -->
         <div class="grid grid-cols-2 gap-2">
-          <Select
+          <UiSelect
             v-model="form.ProviderName"
             :options="providerOptions"
-            option-label="label"
-            option-value="value"
+            label="Provider"
             placeholder="Auto (best available)"
             class="text-xs"
           />
-          <Select
+          <UiSelect
             v-model="form.ModelID"
             :options="modelOptions"
-            option-label="label"
-            option-value="value"
+            label="Model"
             placeholder="Default model"
             :disabled="!form.ProviderName"
             class="text-xs"
           />
         </div>
 
+        <!-- Agentic -->
+        <label class="flex items-start gap-2 text-xs text-slate-300 cursor-pointer">
+          <input
+            v-model="form.Agentic"
+            type="checkbox"
+            data-testid="agentic"
+            class="mt-0.5 accent-purple-500"
+          />
+          <span>
+            Agentic mode
+            <span class="text-slate-500"
+              >— the model reads and edits several project files over multiple turns and re-runs
+              verification before finishing</span
+            >
+          </span>
+        </label>
+
         <!-- Tags -->
         <div>
-          <InputText
+          <input
             v-model="tagInput"
             placeholder="Add tag… (Enter or ,)"
-            class="w-full text-xs"
+            aria-label="Add tag… (Enter or ,)"
+            class="ui-field w-full text-xs"
             @keydown.enter.prevent="addTag"
             @keydown="onTagKeydown"
           />
@@ -101,14 +125,16 @@
                 @click="removeTag(i)"
                 class="ml-0.5 text-indigo-400 hover:text-indigo-100 leading-none"
                 :aria-label="`Remove tag ${tag}`"
-              >×</button>
+              >
+                ×
+              </button>
             </span>
           </div>
         </div>
 
         <!-- Actions: Clear + Split submit button -->
         <div class="flex justify-end gap-2">
-          <Button
+          <UiButton
             type="button"
             label="Clear"
             severity="secondary"
@@ -118,12 +144,12 @@
           />
           <!-- Split button: Primary + dropdown toggle -->
           <div class="relative flex" ref="splitRef">
-            <Button
+            <UiButton
               type="submit"
               :label="submitting ? 'Submitting…' : 'Submit to Queue'"
               :loading="submitting"
               size="small"
-              icon="pi pi-send"
+              icon="send"
               class="!rounded-r-none"
             />
             <button
@@ -134,7 +160,7 @@
               aria-label="More submit options"
               :aria-expanded="splitOpen"
             >
-              <i class="pi pi-chevron-down text-[10px]"></i>
+              <UiIcon name="chevron-down" class="text-[10px]" />
             </button>
             <!-- Dropdown -->
             <Transition name="split-menu">
@@ -150,7 +176,7 @@
                   @click="handleSaveDraft"
                   class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-white/5 flex items-center gap-2 transition-colors"
                 >
-                  <i class="pi pi-file-edit text-slate-400"></i>
+                  <UiIcon name="file-edit" class="text-slate-400" />
                   Save as Draft
                 </button>
                 <button
@@ -159,7 +185,7 @@
                   @click="handleSaveBacklog"
                   class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-white/5 flex items-center gap-2 transition-colors"
                 >
-                  <i class="pi pi-list text-slate-400"></i>
+                  <UiIcon name="list" class="text-slate-400" />
                   Add to Backlog
                 </button>
               </div>
@@ -172,27 +198,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
-import Button from 'primevue/button'
-import InputText from 'primevue/inputtext'
-import Textarea from 'primevue/textarea'
-import Select from 'primevue/select'
-import { useToast } from 'primevue/usetoast'
-import { submitTask, createDraft } from '../types/wails'
-import type { Task } from '../types/domain'
-import { useProviders } from '../composables/useProviders'
+import UiIcon from '../ui/UiIcon.vue';
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
+import UiButton from '../ui/UiButton.vue';
+import UiSelect from '../ui/UiSelect.vue';
+import { useToast } from '../composables/useToast';
+import { submitTask, createDraft } from '../types/wails';
+import { useProviders } from '../composables/useProviders';
 
-const emit = defineEmits<{ submitted: [id: string] }>()
+const emit = defineEmits<{ submitted: [id: string] }>();
 
-const toast = useToast()
-const expanded = ref(true)
-const submitting = ref(false)
-const submitted = ref(false)
-const splitOpen = ref(false)
-const splitRef = ref<HTMLElement | null>(null)
-const tagInput = ref('')
+const toast = useToast();
+const expanded = ref(true);
+const submitting = ref(false);
+const submitted = ref(false);
+const splitOpen = ref(false);
+const splitRef = ref<HTMLElement | null>(null);
+const tagInput = ref('');
 
-const { providers } = useProviders()
+const { providers } = useProviders();
 
 // --- Options ---
 
@@ -200,38 +224,39 @@ const commandOptions = [
   { label: 'Auto', value: 'auto' },
   { label: 'Plan', value: 'plan' },
   { label: 'Execute', value: 'execute' },
-]
+];
 
 const priorityOptions = [
   { label: '🔴 High', value: 1 },
   { label: '🟡 Medium', value: 2 },
   { label: '🟢 Low', value: 3 },
-]
+];
 
 const providerOptions = computed(() => [
   { label: 'Auto (best available)', value: '' },
-  ...providers.value.map(p => ({ label: p.name, value: p.name })),
-])
+  ...providers.value.map((p) => ({ label: p.name, value: p.name })),
+]);
 
 const modelOptions = computed(() => {
-  const selected = providers.value.find(p => p.name === form.ProviderName)
+  const selected = providers.value.find((p) => p.name === form.ProviderName);
   return [
     { label: 'Default model', value: '' },
-    ...(selected?.models ?? []).map(m => ({ label: m, value: m })),
-  ]
-})
+    ...(selected?.models ?? []).map((m) => ({ label: m, value: m })),
+  ];
+});
 
 // --- Form state ---
 
 interface FormState {
-  ProjectPath: string
-  TargetFile: string
-  Instruction: string
-  Command: 'auto' | 'plan' | 'execute'
-  ProviderName: string
-  ModelID: string
-  Priority: number
-  Tags: string[]
+  ProjectPath: string;
+  TargetFile: string;
+  Instruction: string;
+  Command: 'auto' | 'plan' | 'execute';
+  ProviderName: string;
+  ModelID: string;
+  Priority: number;
+  Tags: string[];
+  Agentic: boolean;
 }
 
 function defaultForm(): FormState {
@@ -244,42 +269,43 @@ function defaultForm(): FormState {
     ModelID: '',
     Priority: 2,
     Tags: [],
-  }
+    Agentic: false,
+  };
 }
 
-const form = reactive<FormState>(defaultForm())
+const form = reactive<FormState>(defaultForm());
 
 function resetForm() {
-  submitted.value = false
-  tagInput.value = ''
-  splitOpen.value = false
-  Object.assign(form, defaultForm())
+  submitted.value = false;
+  tagInput.value = '';
+  splitOpen.value = false;
+  Object.assign(form, defaultForm());
 }
 
 // --- Tag helpers ---
 
 function addTag() {
-  const tag = tagInput.value.replace(/,/g, '').trim()
+  const tag = tagInput.value.replace(/,/g, '').trim();
   if (tag && !form.Tags.includes(tag)) {
-    form.Tags.push(tag)
+    form.Tags.push(tag);
   }
-  tagInput.value = ''
+  tagInput.value = '';
 }
 
 function onTagKeydown(e: KeyboardEvent) {
   if (e.key === ',') {
-    e.preventDefault()
-    addTag()
+    e.preventDefault();
+    addTag();
   }
 }
 
 function removeTag(index: number) {
-  form.Tags.splice(index, 1)
+  form.Tags.splice(index, 1);
 }
 
 // --- Payload builder ---
 
-function buildTaskPayload(): Partial<Task> {
+function buildTaskPayload() {
   return {
     projectPath: form.ProjectPath,
     targetFile: form.TargetFile,
@@ -290,79 +316,83 @@ function buildTaskPayload(): Partial<Task> {
     priority: form.Priority,
     tags: form.Tags.length > 0 ? [...form.Tags] : [],
     contextFiles: [],
-  }
+    agentic: form.Agentic,
+  };
 }
 
 // --- Submit handlers ---
 
 async function handleSubmit() {
-  submitted.value = true
-  if (!form.Instruction?.trim()) return
+  submitted.value = true;
+  if (!form.Instruction?.trim()) return;
 
-  submitting.value = true
+  submitting.value = true;
   try {
-    const p = buildTaskPayload()
+    const p = buildTaskPayload();
     const id = await submitTask({
-      projectPath: p.projectPath ?? '',
-      targetFile: p.targetFile ?? '',
-      instruction: p.instruction ?? '',
+      projectPath: p.projectPath,
+      targetFile: p.targetFile,
+      instruction: p.instruction,
       command: p.command,
-      providerHint: p.providerHint ?? '',
-      modelId: p.modelId ?? '',
+      providerHint: p.providerHint,
+      modelId: p.modelId,
       contextFiles: [],
-    })
-    toast.add({ severity: 'success', summary: 'Task submitted', detail: `ID: ${id}`, life: 3000 })
-    emit('submitted', id)
-    resetForm()
+      priority: p.priority,
+      tags: p.tags,
+      agentic: p.agentic,
+    });
+    toast.add({ severity: 'success', summary: 'Task submitted', detail: `ID: ${id}`, life: 3000 });
+    emit('submitted', id);
+    resetForm();
   } catch (e) {
     toast.add({
       severity: 'error',
       summary: 'Submit failed',
       detail: e instanceof Error ? e.message : String(e),
       life: 5000,
-    })
+    });
   } finally {
-    submitting.value = false
+    submitting.value = false;
   }
 }
 
 async function handleSaveDraft() {
-  splitOpen.value = false
-  submitted.value = true
-  if (!form.Instruction?.trim()) return
+  splitOpen.value = false;
+  submitted.value = true;
+  if (!form.Instruction?.trim()) return;
 
   try {
-    const id = await createDraft({ ...buildTaskPayload(), status: 'DRAFT' })
-    toast.add({ severity: 'info', summary: 'Draft saved', detail: `ID: ${id}`, life: 3000 })
-    emit('submitted', id)
-    resetForm()
+    const id = await createDraft({ ...buildTaskPayload(), status: 'DRAFT' });
+    toast.add({ severity: 'info', summary: 'Draft saved', detail: `ID: ${id}`, life: 3000 });
+    emit('submitted', id);
+    resetForm();
   } catch (e) {
     toast.add({
       severity: 'error',
       summary: 'Save failed',
       detail: e instanceof Error ? e.message : String(e),
       life: 5000,
-    })
+    });
   }
 }
 
 async function handleSaveBacklog() {
-  splitOpen.value = false
-  submitted.value = true
-  if (!form.Instruction?.trim()) return
+  splitOpen.value = false;
+  submitted.value = true;
+  if (!form.Instruction?.trim()) return;
 
   try {
-    const id = await createDraft({ ...buildTaskPayload(), status: 'BACKLOG' })
-    toast.add({ severity: 'info', summary: 'Added to backlog', detail: `ID: ${id}`, life: 3000 })
-    emit('submitted', id)
-    resetForm()
+    const id = await createDraft({ ...buildTaskPayload(), status: 'BACKLOG' });
+    toast.add({ severity: 'info', summary: 'Added to backlog', detail: `ID: ${id}`, life: 3000 });
+    emit('submitted', id);
+    resetForm();
   } catch (e) {
     toast.add({
       severity: 'error',
       summary: 'Save failed',
       detail: e instanceof Error ? e.message : String(e),
       life: 5000,
-    })
+    });
   }
 }
 
@@ -370,18 +400,20 @@ async function handleSaveBacklog() {
 
 function onDocumentClick(e: MouseEvent) {
   if (splitRef.value && !splitRef.value.contains(e.target as Node)) {
-    splitOpen.value = false
+    splitOpen.value = false;
   }
 }
 
-onMounted(() => document.addEventListener('click', onDocumentClick))
-onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
+onMounted(() => document.addEventListener('click', onDocumentClick));
+onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick));
 </script>
 
 <style scoped>
 .split-menu-enter-active,
 .split-menu-leave-active {
-  transition: opacity 0.1s ease, transform 0.1s ease;
+  transition:
+    opacity 0.1s ease,
+    transform 0.1s ease;
 }
 .split-menu-enter-from,
 .split-menu-leave-to {

@@ -1,3 +1,9 @@
+<!--
+  Right-hand drawer with the recent activity and token total of one agent, and a link to its
+  timeline in Live Activity.
+  Props: agentName, modelVisible (open state; bound with v-model:modelVisible).
+  Emits: update:modelVisible(open).
+-->
 <template>
   <Teleport to="body">
     <Transition name="drawer">
@@ -26,7 +32,7 @@
               @click="close"
               aria-label="Close"
             >
-              <i class="pi pi-times text-sm"></i>
+              <UiIcon name="times" class="text-sm" />
             </button>
           </header>
 
@@ -127,6 +133,7 @@
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type { AIActivity } from '../types/domain';
@@ -144,9 +151,10 @@ const emit = defineEmits<{
 
 const router = useRouter();
 
-const { activities, loading } = useActivities({
-  agentFilter: computed(() => props.agentName).value,
-  limit: 10,
+// `filtered` applies the agent filter; the raw `activities` list holds every
+// agent's events, so using it would show another agent's work in this drawer.
+const { filtered: activities, loading } = useActivities({
+  agentFilter: props.agentName,
 });
 
 const totalTokens = computed(() =>

@@ -4,6 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { NexusClient } from './nexusClient';
 
+/** An AI agent extension found in this VS Code window. */
 export interface DetectedAgent {
   agentName: string;
   source: 'vscode-discovered';
@@ -30,6 +31,7 @@ const knownAIExtensions: Record<string, { name: string; capabilities: string[] }
   'github.copilot-chat': { name: 'GitHub Copilot Chat', capabilities: ['chat'] },
 };
 
+/** Detects AI agent extensions in the window and registers them with the daemon as sessions. */
 export class AgentDetector implements vscode.Disposable {
   private readonly _onDidChange = new vscode.EventEmitter<void>();
   readonly onDidChange: vscode.Event<void> = this._onDidChange.event;
@@ -37,6 +39,7 @@ export class AgentDetector implements vscode.Disposable {
   private intervalHandle: ReturnType<typeof setInterval> | undefined;
   private sessionMap = new Map<string, string>(); // externalId → sessionId
   private isDisposed = false;
+  private ticking = false;
   private machineId: string;
 
   constructor(
@@ -72,7 +75,6 @@ export class AgentDetector implements vscode.Disposable {
       this.detectVSCodeExtensions(),
       this.detectFromFilesystem(),
       this.detectFromTerminals(),
-      this.detectActiveLMParticipants(),
     ]);
 
     const seen = new Map<string, DetectedAgent>();
@@ -89,7 +91,10 @@ export class AgentDetector implements vscode.Disposable {
   }
 
   private async tick(): Promise<void> {
-    if (this.isDisposed) return;
+    // A slow daemon can make a tick outlast the 30s interval; overlapping ticks would
+    // both see an agent as unregistered and register it twice.
+    if (this.isDisposed || this.ticking) return;
+    this.ticking = true;
     try {
       const detected = await this.detectAll();
       const currentIds = new Set(detected.map((a) => a.externalId));
@@ -117,7 +122,10 @@ export class AgentDetector implements vscode.Disposable {
       for (const [externalId, sessionId] of this.sessionMap) {
         if (currentIds.has(externalId)) {
           try {
-            await this.client.heartbeatSession(sessionId);
+            // false = the daemon forgot this session; drop it so the next tick registers it again.
+            if ((await this.client.heartbeatSession(sessionId)) === false) {
+              this.sessionMap.delete(externalId);
+            }
           } catch (_) {
             /* silent */
           }
@@ -139,6 +147,8 @@ export class AgentDetector implements vscode.Disposable {
       this._onDidChange.fire();
     } catch (_) {
       /* silent */
+    } finally {
+      this.ticking = false;
     }
   }
 
@@ -270,30 +280,6 @@ export class AgentDetector implements vscode.Disposable {
           detectionMethod: 'terminal',
         });
       }
-    }
-    return results;
-  }
-
-  private async detectActiveLMParticipants(): Promise<DetectedAgent[]> {
-    const results: DetectedAgent[] = [];
-    try {
-      if (vscode.lm?.selectChatModels) {
-        const models = await vscode.lm.selectChatModels({});
-        for (const m of models) {
-          if (m.vendor !== 'copilot') {
-            results.push({
-              agentName: `${m.vendor}/${m.family}`,
-              source: 'vscode-discovered',
-              externalId: `discover:${this.machineId}:lm:${m.vendor}:${m.family}`,
-              capabilities: ['chat'],
-              detectionMethod: 'lm-participant',
-              modelId: m.id ?? m.name,
-            });
-          }
-        }
-      }
-    } catch (_) {
-      /* lm not available */
     }
     return results;
   }

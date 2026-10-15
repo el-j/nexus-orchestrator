@@ -1,6 +1,7 @@
 package services_test
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -21,14 +22,18 @@ type mockLLMClient struct {
 	models       []string
 }
 
-func (m *mockLLMClient) Ping() bool                                 { return m.alive }
-func (m *mockLLMClient) ProviderName() string                       { return m.name }
-func (m *mockLLMClient) ActiveModel() string                        { return m.activeModel }
-func (m *mockLLMClient) BaseURL() string                            { return m.baseURL }
-func (m *mockLLMClient) GetAvailableModels() ([]string, error)      { return m.models, nil }
-func (m *mockLLMClient) ContextLimit() int                          { return m.contextLimit }
-func (m *mockLLMClient) GenerateCode(prompt string) (string, error) { return m.code, m.codeErr }
-func (m *mockLLMClient) Chat(_ []domain.Message) (string, error)    { return m.code, m.codeErr }
+func (m *mockLLMClient) Ping(_ context.Context) bool                            { return m.alive }
+func (m *mockLLMClient) ProviderName() string                                   { return m.name }
+func (m *mockLLMClient) ActiveModel() string                                    { return m.activeModel }
+func (m *mockLLMClient) BaseURL() string                                        { return m.baseURL }
+func (m *mockLLMClient) GetAvailableModels(_ context.Context) ([]string, error) { return m.models, nil }
+func (m *mockLLMClient) ContextLimit(_ context.Context) int                     { return m.contextLimit }
+func (m *mockLLMClient) GenerateCode(_ context.Context, prompt string) (string, error) {
+	return m.code, m.codeErr
+}
+func (m *mockLLMClient) Chat(_ context.Context, _ []domain.Message) (string, error) {
+	return m.code, m.codeErr
+}
 
 func TestDiscoveryService_DetectActive_ReturnsFirstAlive(t *testing.T) {
 	dead := &mockLLMClient{alive: false, name: "dead"}

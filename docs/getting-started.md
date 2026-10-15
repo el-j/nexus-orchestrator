@@ -19,7 +19,7 @@ nav_order: 4
 
 ## Prerequisites
 
-- **Go 1.26+** with CGO support (`CGO_ENABLED=1`)
+- **Go 1.27+** with CGO support (`CGO_ENABLED=1`)
 - **C compiler** — `gcc` or `clang` (required by `go-sqlite3`)
 - **At least one LLM provider**:
   - [LM Studio](https://lmstudio.ai/) running on `127.0.0.1:1234`, or
@@ -30,8 +30,8 @@ nav_order: 4
 
 ```sh
 # Clone the repository
-git clone https://github.com/el-j/nexusOrchestrator.git
-cd nexusOrchestrator
+git clone https://github.com/el-j/nexus-orchestrator.git
+cd nexus-orchestrator
 
 # Build all binaries
 CGO_ENABLED=1 go build ./...
@@ -45,13 +45,19 @@ CGO_ENABLED=1 go build -o nexus-cli ./cmd/nexus-cli/...
 
 When you first open the Desktop app (or run a binary) after downloading, macOS may show **"Apple could not verify nexusOrchestrator.app"**. This is expected — the app is ad-hoc signed and not yet notarized by Apple.
 
-**Method 1 (GUI):** Right-click (or Control-click) the app → select **Open** → click **Open** in the confirmation dialog. macOS remembers this choice for future launches.
+**Easiest:** install with the script, which downloads without the quarantine flag:
 
-**Method 2 (Terminal):**
+```sh
+curl -sSfL https://raw.githubusercontent.com/el-j/nexus-orchestrator/main/scripts/install.sh | sh -s -- --desktop
+```
+
+**Method 1 (Terminal):**
 
 ```sh
 xattr -dr com.apple.quarantine nexusOrchestrator.app
 ```
+
+**Method 2 (System Settings):** after the blocked attempt open **System Settings → Privacy & Security**, scroll down to the message about nexusOrchestrator and click **Open Anyway**. (On macOS 15 and later right-click → Open no longer works for unnotarized apps.)
 
 > **Note:** You only need to do this once per download.
 
@@ -223,6 +229,6 @@ claiming tasks** to load relevant project knowledge into their context window.
 
 ## Next Steps
 
-- [API Reference](/nexusOrchestrator/api-reference) — Full HTTP, Context Brain, and MCP endpoint docs
-- [MCP Integration](/nexusOrchestrator/mcp-integration) — Connect with Claude Desktop
-- [Architecture](/nexusOrchestrator/architecture) — Understand the hexagonal design
+- [API Reference](/api-reference) — Full HTTP, Context Brain, and MCP endpoint docs
+- [MCP Integration](/mcp-integration) — Connect with Claude Desktop
+- [Architecture](/architecture) — Understand the hexagonal design

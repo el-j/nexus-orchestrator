@@ -10,16 +10,21 @@ import {
 import { currentProject } from './useProjectState';
 import { useGlobalSSE } from './useGlobalSSE';
 
+/** Task queue and history, refreshed on task.* SSE events. */
 export function useTasks() {
   const tasks = ref<Task[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
   let interval: ReturnType<typeof setInterval> | null = null;
+  let disposed = false; // set on unmount so a fetch that finishes late starts nothing
 
   const { on, off } = useGlobalSSE();
 
   function sseHandler(data: { type: string; [key: string]: unknown }) {
-    if (data.type !== 'connected') refresh();
+    // Only task lifecycle events ("task.queued", "task.completed", …) change the
+    // queue. The stream also carries every log line and activity event, and
+    // refetching the queue for each of those would hammer the daemon.
+    if (data.type.startsWith('task.')) void refresh();
   }
 
   const queuedTasks = computed(() =>
@@ -64,12 +69,14 @@ export function useTasks() {
   onMounted(async () => {
     loading.value = true;
     await refresh();
+    loading.value = false;
+    if (disposed) return;
     on('*', sseHandler);
     interval = setInterval(refresh, 15_000);
-    loading.value = false;
   });
 
   onUnmounted(() => {
+    disposed = true;
     off('*', sseHandler);
     if (interval) clearInterval(interval);
   });

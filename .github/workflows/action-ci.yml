@@ -2,16 +2,18 @@ name: Action CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - 'action.yml'
       - 'github-action/**'
       - '!github-action/dist/**'
+      - 'frontend/e2e/support/**'
   pull_request:
     paths:
       - 'action.yml'
       - 'github-action/**'
       - '!github-action/dist/**'
+      - 'frontend/e2e/support/**'
 
 permissions:
   contents: read
@@ -36,7 +38,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: github-action/package-lock.json
 
@@ -52,8 +54,11 @@ jobs:
         # to package.json, add a "lint" script and this step will start enforcing it.
         run: npm run lint --if-present
 
-      - name: Unit tests
-        run: npm test
+      - name: Exported declarations are documented
+        run: npm run check:docs
+
+      - name: Unit tests with coverage gate
+        run: npm run test:coverage
 
   build-check:
     name: Verify dist is up to date
@@ -70,7 +75,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: github-action/package-lock.json
 
@@ -81,13 +86,77 @@ jobs:
         run: npm run build
 
       - name: Check dist is unchanged
-        # Working directory is github-action/, so use dist/index.js (not github-action/dist/index.js)
-        # The -- separator tells git this is a path, not a revision
+        # `git status` (not `git diff`) so an untracked or missing bundle also fails:
+        # action.yml runs github-action/dist/index.js, so it must be committed.
         run: |
-          if ! git diff --quiet -- dist/index.js; then
-            echo "::error::github-action/dist/index.js is out of date."
-            echo "Run 'cd github-action && npm run build' and commit the result."
-            git diff --stat -- dist/index.js
+          if [ -n "$(git status --porcelain -- dist/index.js dist/licenses.txt)" ] || ! git ls-files --error-unmatch dist/index.js >/dev/null 2>&1; then
+            echo "::error::github-action/dist is missing or out of date."
+            echo "Run 'cd github-action && npm ci && npm run build' and commit dist/index.js and dist/licenses.txt."
+            git status --short -- dist
             exit 1
           fi
-          echo "dist/index.js is up to date ✓"
+          echo "dist/index.js is committed and up to date ✓"
+
+  e2e:
+    name: Action E2E (real daemon)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure embedded frontend path exists
+        run: |
+          mkdir -p build/frontend build/bin
+          test -f build/frontend/.gitkeep || touch build/frontend/.gitkeep
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+          check-latest: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build the daemon
+        env:
+          CGO_ENABLED: '1'
+          CGO_CFLAGS: '-DSQLITE_ENABLE_FTS5'
+          CGO_LDFLAGS: '-lm'
+        run: go build -o build/bin/nexus-daemon-e2e ./cmd/nexus-daemon
+
+      # A real daemon on the default ports plus a fake Ollama, the same stack the
+      # Playwright real-daemon project uses.
+      - name: Start the daemon with a fake model
+        env:
+          NEXUS_DAEMON_BIN: ${{ github.workspace }}/build/bin/nexus-daemon-e2e
+        run: |
+          node frontend/e2e/support/stack.mjs > stack.log 2>&1 &
+          curl -sf --retry 40 --retry-delay 1 --retry-connrefused http://127.0.0.1:63987/api/health
+
+      - name: Create the project the task will write into
+        run: mkdir -p "$RUNNER_TEMP/project"
+
+      - name: Run the action against it
+        id: nexus
+        uses: ./
+        with:
+          start_daemon: 'false'
+          daemon_url: http://127.0.0.1:63987
+          project_path: ${{ runner.temp }}/project
+          target_file: from_action.go
+          instruction: 'write FUNC_FromAction'
+          timeout_seconds: '90'
+
+      - name: Check what the action reported and wrote
+        run: |
+          test "${{ steps.nexus.outputs.status }}" = "COMPLETED"
+          test -n "${{ steps.nexus.outputs.task_id }}"
+          grep -q 'func FromAction' "$RUNNER_TEMP/project/from_action.go"
+
+      - name: Show the daemon log on failure
+        if: failure()
+        run: cat stack.log

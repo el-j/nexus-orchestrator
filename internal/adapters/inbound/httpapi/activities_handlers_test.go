@@ -3,6 +3,7 @@ package httpapi_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -220,5 +221,21 @@ func TestHandleActivityTimeline_Empty(t *testing.T) {
 	body := rec.Body.String()
 	if body == "null\n" || body == "null" {
 		t.Errorf("expected JSON array, got %q", body)
+	}
+}
+
+func TestHandleActivities_ErrorsAndFilters(t *testing.T) {
+	boom := errors.New("db down")
+	for _, path := range []string{"/api/activities", "/api/activities/timeline"} {
+		rec := httptest.NewRecorder()
+		serveWithActivity(&mockActivityService{recentActivitiesErr: boom, timelineErr: boom}, httptest.NewRequest(http.MethodGet, path, nil), rec)
+		if rec.Code != http.StatusInternalServerError {
+			t.Errorf("%s: %d, want 500", path, rec.Code)
+		}
+	}
+	rec := httptest.NewRecorder()
+	serveWithActivity(&mockActivityService{}, httptest.NewRequest(http.MethodGet, "/api/activities?since=2026-01-02T03:04:05Z&agent=x", nil), rec)
+	if rec.Code != http.StatusOK {
+		t.Errorf("since filter: %d", rec.Code)
 	}
 }

@@ -18,6 +18,14 @@ func (s *Server) toolSubmitTask(args json.RawMessage) (callToolResult, error) {
 		Command             string   `json:"command"`
 		VerificationCommand string   `json:"verificationCommand"`
 		MaxCorrectionTurns  int      `json:"maxCorrectionTurns"`
+		ProviderName        string   `json:"providerName"`
+		ProviderHint        string   `json:"providerHint"`
+		ModelID             string   `json:"modelId"`
+		Role                string   `json:"role"`
+		Priority            int      `json:"priority"`
+		Tags                []string `json:"tags"`
+		Agentic             bool     `json:"agentic"`
+		MaxAgentTurns       int      `json:"maxAgentTurns"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: submit_task: invalid arguments: %w", err)
@@ -30,6 +38,14 @@ func (s *Server) toolSubmitTask(args json.RawMessage) (callToolResult, error) {
 		Command:             domain.CommandType(p.Command),
 		VerificationCommand: p.VerificationCommand,
 		MaxCorrectionTurns:  p.MaxCorrectionTurns,
+		ProviderName:        p.ProviderName,
+		ProviderHint:        p.ProviderHint,
+		ModelID:             p.ModelID,
+		Role:                p.Role,
+		Priority:            p.Priority,
+		Tags:                p.Tags,
+		Agentic:             p.Agentic,
+		MaxAgentTurns:       p.MaxAgentTurns,
 	}
 	id, err := s.orch.SubmitTask(t)
 	if err != nil {
@@ -57,12 +73,27 @@ func (s *Server) toolGetTask(args json.RawMessage) (callToolResult, error) {
 	return textResult(string(b)), nil
 }
 
+// decodeOptionalArgs decodes tool arguments where every field is optional.
+// Absent, empty and JSON null arguments leave v untouched; anything else that
+// does not decode is an invalid-params error. Silently ignoring a malformed
+// projectPath would make list tools fall back to the unfiltered, cross-project
+// result.
+func decodeOptionalArgs(args json.RawMessage, v any) error {
+	if len(args) == 0 || string(args) == "null" {
+		return nil
+	}
+	if err := json.Unmarshal(args, v); err != nil {
+		return &mcpError{code: codeInvalidParams, msg: "invalid arguments: " + err.Error()}
+	}
+	return nil
+}
+
 func (s *Server) toolGetQueue(args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
 	}
-	if len(args) > 0 {
-		_ = json.Unmarshal(args, &p)
+	if err := decodeOptionalArgs(args, &p); err != nil {
+		return callToolResult{}, err
 	}
 	var (
 		tasks []domain.Task
@@ -87,8 +118,8 @@ func (s *Server) toolGetAllTasks(args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
 	}
-	if len(args) > 0 {
-		_ = json.Unmarshal(args, &p)
+	if err := decodeOptionalArgs(args, &p); err != nil {
+		return callToolResult{}, err
 	}
 	var (
 		tasks []domain.Task
@@ -129,7 +160,9 @@ func (s *Server) toolCreateDraft(args json.RawMessage) (callToolResult, error) {
 		Instruction  string   `json:"instruction"`
 		TargetFile   string   `json:"targetFile"`
 		ProviderName string   `json:"providerName"`
+		ProviderHint string   `json:"providerHint"`
 		ModelID      string   `json:"modelId"`
+		Role         string   `json:"role"`
 		Priority     int      `json:"priority"`
 		Tags         []string `json:"tags"`
 	}
@@ -141,7 +174,9 @@ func (s *Server) toolCreateDraft(args json.RawMessage) (callToolResult, error) {
 		Instruction:  p.Instruction,
 		TargetFile:   p.TargetFile,
 		ProviderName: p.ProviderName,
+		ProviderHint: p.ProviderHint,
 		ModelID:      p.ModelID,
+		Role:         p.Role,
 		Priority:     p.Priority,
 		Tags:         p.Tags,
 	}
@@ -237,6 +272,14 @@ func taskToolDefs() []toolDef {
 					"command":             {Type: "string", Description: "Task type: plan, execute, or auto (default: auto)."},
 					"verificationCommand": {Type: "string", Description: "Optional command (e.g. 'go test ./...', 'npm test') to verify output and trigger self-healing if it fails."},
 					"maxCorrectionTurns":  {Type: "integer", Description: "Max self-healing attempts if verification fails (default: 2)."},
+					"agentic":             {Type: "boolean", Description: "Run as a multi-turn tool loop: the model reads/writes project files and re-verifies before finishing (optional)."},
+					"maxAgentTurns":       {Type: "integer", Description: "Upper bound on model turns for an agentic task (default 8, max 25)."},
+					"providerName":        {Type: "string", Description: "Exact provider name to lock routing to (optional)."},
+					"providerHint":        {Type: "string", Description: "Preferred provider when several serve the model (optional)."},
+					"modelId":             {Type: "string", Description: "Model that must process the task (optional)."},
+					"role":                {Type: "string", Description: "Routing tier hint: architect, techlead, coder, tester or linter (optional)."},
+					"priority":            {Type: "integer", Description: "Priority 1=high, 2=medium, 3=low (default 2)."},
+					"tags":                {Type: "array", Description: "Labels (optional).", Items: &propertyItems{Type: "string"}},
 				},
 				Required: []string{"projectPath", "targetFile", "instruction"},
 			},
@@ -289,7 +332,9 @@ func taskToolDefs() []toolDef {
 					"instruction":  {Type: "string", Description: "What the task should do."},
 					"targetFile":   {Type: "string", Description: "File to write output to (optional)."},
 					"providerName": {Type: "string", Description: "Exact provider name for routing (optional)."},
+					"providerHint": {Type: "string", Description: "Preferred provider when several serve the model (optional)."},
 					"modelId":      {Type: "string", Description: "Model to use (optional)."},
+					"role":         {Type: "string", Description: "Routing tier hint: architect, techlead, coder, tester or linter (optional)."},
 					"priority":     {Type: "integer", Description: "Priority 1=high, 2=medium, 3=low (default 2)."},
 					"tags":         {Type: "array", Description: "Labels (optional).", Items: &propertyItems{Type: "string"}},
 				},

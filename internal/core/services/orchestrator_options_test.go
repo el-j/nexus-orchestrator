@@ -22,13 +22,13 @@ type optRepo struct {
 
 func newOptRepo() *optRepo { return &optRepo{tasks: make(map[string]domain.Task)} }
 
-func (r *optRepo) Save(t domain.Task) error {
+func (r *optRepo) Save(_ context.Context, t domain.Task) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.tasks[t.ID] = t
 	return nil
 }
-func (r *optRepo) GetByID(id string) (domain.Task, error) {
+func (r *optRepo) GetByID(_ context.Context, id string) (domain.Task, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	t, ok := r.tasks[id]
@@ -37,25 +37,31 @@ func (r *optRepo) GetByID(id string) (domain.Task, error) {
 	}
 	return t, nil
 }
-func (r *optRepo) ClaimNextQueued() (domain.Task, error)            { return domain.Task{}, domain.ErrNotFound }
-func (r *optRepo) GetPending() ([]domain.Task, error)               { return nil, nil }
-func (r *optRepo) UpdateStatus(_ string, _ domain.TaskStatus) error { return nil }
-func (r *optRepo) UpdateStatusIfCurrent(_ string, _ domain.TaskStatus, _ domain.TaskStatus) (bool, error) {
+func (r *optRepo) ClaimNextQueued(context.Context) (domain.Task, error) {
+	return domain.Task{}, domain.ErrNotFound
+}
+func (r *optRepo) GetPending(context.Context) ([]domain.Task, error)                   { return nil, nil }
+func (r *optRepo) UpdateStatus(_ context.Context, _ string, _ domain.TaskStatus) error { return nil }
+func (r *optRepo) UpdateStatusIfCurrent(_ context.Context, _ string, _ domain.TaskStatus, _ domain.TaskStatus) (bool, error) {
 	return false, nil
 }
-func (r *optRepo) UpdateLogs(_, _ string) error                     { return nil }
-func (r *optRepo) GetByProjectPath(_ string) ([]domain.Task, error) { return nil, nil }
-func (r *optRepo) GetByProjectPathAndStatus(_ string, _ ...domain.TaskStatus) ([]domain.Task, error) {
+func (r *optRepo) UpdateLogs(_ context.Context, _, _ string) error { return nil }
+func (r *optRepo) GetByProjectPath(_ context.Context, _ string) ([]domain.Task, error) {
 	return nil, nil
 }
-func (r *optRepo) Update(t domain.Task) error {
+func (r *optRepo) GetByProjectPathAndStatus(_ context.Context, _ string, _ ...domain.TaskStatus) ([]domain.Task, error) {
+	return nil, nil
+}
+func (r *optRepo) Update(_ context.Context, t domain.Task) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.tasks[t.ID] = t
 	return nil
 }
-func (r *optRepo) GetAll() ([]domain.Task, error)                      { return nil, nil }
-func (r *optRepo) GetTasksBySessionID(_ string) ([]domain.Task, error) { return nil, nil }
+func (r *optRepo) GetAll(context.Context) ([]domain.Task, error) { return nil, nil }
+func (r *optRepo) GetTasksBySessionID(_ context.Context, _ string) ([]domain.Task, error) {
+	return nil, nil
+}
 func (r *optRepo) GetStaleProcessing(_ context.Context, _ time.Duration) ([]domain.Task, error) {
 	return nil, nil
 }

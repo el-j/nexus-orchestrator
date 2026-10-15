@@ -4,16 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
+	"unicode/utf8"
 
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
-
-	"github.com/google/uuid"
 )
 
 // compile-time interface check
@@ -39,31 +38,25 @@ func estimateStringTokens(text string) int {
 	return n
 }
 
-// classifySection maps a markdown heading to the most appropriate KnowledgeKind.
-func classifySection(heading string) domain.KnowledgeKind {
-	h := strings.ToLower(heading)
-	switch {
-	case strings.Contains(h, "architecture") || strings.Contains(h, "design") ||
-		strings.Contains(h, "hexagonal") || strings.Contains(h, "layer"):
-		return domain.KnowledgeArchitecture
-	case strings.Contains(h, "file") || strings.Contains(h, "structure") ||
-		strings.Contains(h, "directory") || strings.Contains(h, "map") ||
-		strings.Contains(h, "path") || strings.Contains(h, "layout"):
-		return domain.KnowledgeFileMap
-	case strings.Contains(h, "learning") || strings.Contains(h, "lesson") ||
-		strings.Contains(h, "discovered") || strings.Contains(h, "pitfall") ||
-		strings.Contains(h, "avoid"):
-		return domain.KnowledgeLearning
-	case strings.Contains(h, "glossary") || strings.Contains(h, "term") ||
-		strings.Contains(h, "definition") || strings.Contains(h, "vocabulary"):
-		return domain.KnowledgeGlossary
-	case strings.Contains(h, "convention") || strings.Contains(h, "style") ||
-		strings.Contains(h, "rule") || strings.Contains(h, "pattern") ||
-		strings.Contains(h, "standard") || strings.Contains(h, "error"):
-		return domain.KnowledgeConvention
-	default:
-		return domain.KnowledgeConvention
+// cutUTF8 returns the longest prefix of s that is at most maxBytes long and does
+// not end in the middle of a multi-byte character.
+func cutUTF8(s string, maxBytes int) string {
+	if len(s) <= maxBytes {
+		return s
 	}
+	for maxBytes > 0 && !utf8.RuneStart(s[maxBytes]) {
+		maxBytes--
+	}
+	return s[:maxBytes]
+}
+
+// truncateUTF8 shortens s to at most maxBytes (rune-safe) and appends "..." when
+// anything was removed.
+func truncateUTF8(s string, maxBytes int) string {
+	if len(s) <= maxBytes {
+		return s
+	}
+	return cutUTF8(s, maxBytes) + "..."
 }
 
 // kindPriority defines the assembly order for GetContext.
@@ -168,97 +161,6 @@ func (b *BrainServiceImpl) GetFocusedContext(ctx context.Context, q domain.Conte
 	return resp, nil
 }
 
-// IngestKnowledge stores a knowledge entry, computing token count and setting timestamps.
-func (b *BrainServiceImpl) IngestKnowledge(ctx context.Context, k domain.ProjectKnowledge) (domain.ProjectKnowledge, error) {
-	k.ProjectPath = filepath.Clean(k.ProjectPath)
-	if k.ID == "" {
-		k.ID = uuid.New().String()
-	}
-	k.TokenCount = estimateStringTokens(k.Content)
-	if k.RelevanceScore == 0 {
-		k.RelevanceScore = 0.5
-	}
-	now := time.Now()
-	if k.CreatedAt.IsZero() {
-		k.CreatedAt = now
-	}
-	k.UpdatedAt = now
-	if err := b.repo.SaveKnowledge(ctx, k); err != nil {
-		return domain.ProjectKnowledge{}, fmt.Errorf("brain_service: ingest knowledge: %w", err)
-	}
-	return k, nil
-}
-
-// IngestFromFile parses a CLAUDE.md-style markdown file and ingests each ## section.
-func (b *BrainServiceImpl) IngestFromFile(ctx context.Context, projectPath, filePath string) (int, error) {
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return 0, fmt.Errorf("brain_service: ingest from file: %w", err)
-	}
-	src := "file:" + filepath.Base(filePath)
-	// Split on "## " to get sections; the first element is preamble before the first ##.
-	raw := strings.Split(string(data), "\n## ")
-	count := 0
-	var sectionErrors []error
-	for i, section := range raw {
-		if i == 0 {
-			// Preamble — skip or treat as convention if non-trivial.
-			trimmed := strings.TrimSpace(section)
-			// Strip leading "# " title line if present.
-			lines := strings.SplitN(trimmed, "\n", 2)
-			if len(lines) == 2 {
-				section = strings.TrimSpace(lines[1])
-			} else {
-				continue
-			}
-			if len(strings.TrimSpace(section)) < 20 {
-				continue
-			}
-			// Ingest preamble as a general convention.
-			_, err := b.IngestKnowledge(ctx, domain.ProjectKnowledge{
-				ProjectPath: projectPath,
-				Kind:        domain.KnowledgeConvention,
-				Topic:       "Overview",
-				Content:     strings.TrimSpace(section),
-				Source:      src,
-			})
-			if err == nil {
-				count++
-			} else {
-				sectionErrors = append(sectionErrors, err)
-			}
-			continue
-		}
-		// Each subsequent section starts with the heading (everything before first \n).
-		nl := strings.IndexByte(section, '\n')
-		if nl < 0 {
-			continue
-		}
-		heading := strings.TrimSpace(section[:nl])
-		content := strings.TrimSpace(section[nl+1:])
-		if len(content) < 20 {
-			continue
-		}
-		kind := classifySection(heading)
-		_, err := b.IngestKnowledge(ctx, domain.ProjectKnowledge{
-			ProjectPath: projectPath,
-			Kind:        kind,
-			Topic:       heading,
-			Content:     content,
-			Source:      src,
-		})
-		if err == nil {
-			count++
-		} else {
-			sectionErrors = append(sectionErrors, err)
-		}
-	}
-	if count == 0 && len(sectionErrors) > 0 {
-		return 0, fmt.Errorf("brain_service: IngestFromFile: all %d sections failed to save: %w", len(sectionErrors), sectionErrors[0])
-	}
-	return count, nil
-}
-
 // SearchKnowledge performs BM25 search and returns ContextSection slices within budget.
 func (b *BrainServiceImpl) SearchKnowledge(ctx context.Context, projectPath, query string, maxTokens int) ([]domain.ContextSection, error) {
 	itemLimit := 0
@@ -269,10 +171,8 @@ func (b *BrainServiceImpl) SearchKnowledge(ctx context.Context, projectPath, que
 	} else if maxTokens <= 0 {
 		maxTokens = 400
 	}
-	fetchCount := 20
-	if itemLimit > 0 && itemLimit > fetchCount {
-		fetchCount = itemLimit
-	}
+	// itemLimit is at most 20 (see above), so a fixed fetch of 20 always covers it.
+	const fetchCount = 20
 	entries, err := b.repo.SearchFTS(ctx, filepath.Clean(projectPath), query, fetchCount)
 	if err != nil {
 		return nil, fmt.Errorf("brain_service: search knowledge: %w", err)
@@ -314,24 +214,44 @@ func (b *BrainServiceImpl) GetFileMap(ctx context.Context, projectPath, focusAre
 	return files, nil
 }
 
-// InitProject ingests the project CLAUDE.md (auto-detected if claudeMDPath is empty).
+// instructionFiles are the files in which the agents that work on a project keep their
+// instructions. The first of a group that exists is ingested, so a project that has both
+// CLAUDE.md and .claude/CLAUDE.md is not read twice.
+var instructionFiles = [][]string{
+	{"CLAUDE.md", filepath.Join(".claude", "CLAUDE.md")},
+	{"AGENTS.md"},
+	{"GEMINI.md"},
+	{filepath.Join(".github", "copilot-instructions.md")},
+}
+
+// InitProject ingests the project's agent instructions. With an explicit claudeMDPath only that
+// file is read; with none, the project's CLAUDE.md, AGENTS.md, GEMINI.md and Copilot
+// instructions are found by themselves, whichever agent works on the project.
 func (b *BrainServiceImpl) InitProject(ctx context.Context, projectPath, claudeMDPath string) (domain.BrainStatus, error) {
-	if claudeMDPath == "" {
-		candidates := []string{
-			filepath.Join(projectPath, "CLAUDE.md"),
-			filepath.Join(projectPath, ".claude", "CLAUDE.md"),
-		}
-		for _, c := range candidates {
-			if _, err := os.Stat(c); err == nil {
-				claudeMDPath = c
-				break
+	var paths []string
+	if claudeMDPath != "" {
+		paths = []string{claudeMDPath}
+	} else {
+		for _, group := range instructionFiles {
+			for _, rel := range group {
+				if _, err := os.Stat(filepath.Join(projectPath, rel)); err == nil {
+					paths = append(paths, filepath.Join(projectPath, rel))
+					break
+				}
 			}
 		}
 	}
-	if claudeMDPath != "" {
-		if _, err := b.IngestFromFile(ctx, projectPath, claudeMDPath); err != nil {
+	for _, path := range paths {
+		if _, err := b.IngestFromFile(ctx, projectPath, path); err != nil {
 			return domain.BrainStatus{}, fmt.Errorf("brain_service: init project: %w", err)
 		}
+	}
+	// A project that is introduced to the orchestrator also gets its rule file, once.
+	// Failing to write it (read-only checkout, a file named .nexus) must not fail the init.
+	if created, err := EnsureProjectPolicy(projectPath); err != nil {
+		log.Printf("brain_service: init project %s: policy: %v", projectPath, err)
+	} else if created {
+		log.Printf("brain_service: init project %s: wrote default %s", projectPath, PolicyFile)
 	}
 	return b.repo.GetStatus(ctx, filepath.Clean(projectPath))
 }
@@ -358,6 +278,16 @@ func (b *BrainServiceImpl) DeleteKnowledge(ctx context.Context, id string) error
 // GetOnboardingContext returns a concise, token-budgeted Tier 0/1 onboarding summary
 // for an AI agent starting a session on a project.
 func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath string, maxTokens int) (string, error) {
+	return b.buildOnboarding(ctx, projectPath, maxTokens, true)
+}
+
+// GetProjectBrief is GetOnboardingContext without the workflow rules. The engine
+// states the rules itself, in full and once, so the briefing must not repeat them.
+func (b *BrainServiceImpl) GetProjectBrief(ctx context.Context, projectPath string, maxTokens int) (string, error) {
+	return b.buildOnboarding(ctx, projectPath, maxTokens, false)
+}
+
+func (b *BrainServiceImpl) buildOnboarding(ctx context.Context, projectPath string, maxTokens int, withRules bool) (string, error) {
 	if maxTokens <= 0 {
 		maxTokens = 800
 	}
@@ -403,10 +333,25 @@ func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath
 			activePlan = orchConfig.ActivePlanID
 		}
 	}
+	// Agents that do not keep orchestrator.json up to date still leave plan and task files.
+	var planCfg *domain.PlanFilesPolicy
+	if pol, ok, _ := LoadProjectPolicy(clean); ok {
+		planCfg = pol.PlanFiles
+	}
+	scan := ScanPlanFiles(clean, planCfg)
+	planFiles, taskFiles := scan.flat()
+	if activePlan == "None" {
+		if p, ok := activePlanFromFiles(planFiles); ok {
+			activePlan = p.ID + " — " + p.Title
+		}
+	}
 	fmt.Fprintf(&sb, "- **Active Plan:** %s\n", activePlan)
+	if summary := taskFileSummary(taskFiles); summary != "" {
+		fmt.Fprintf(&sb, "- **Plan files:** %s, read from %s\n", summary, strings.Join(scan.Folders, ", "))
+	}
 
 	if b.taskRepo != nil {
-		tasks, _ := b.taskRepo.GetByProjectPath(clean)
+		tasks, _ := b.taskRepo.GetByProjectPath(ctx, clean)
 		var queued, processing, completed, failed int
 		var activeTaskDesc string
 		for _, t := range tasks {
@@ -432,15 +377,23 @@ func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath
 	}
 	sb.WriteString("\n")
 
+	// 2b. Project rules go before everything that can be truncated: a fresh session
+	// must learn them even on a tight budget.
+	policy, hasPolicy, policyErr := LoadProjectPolicy(clean)
+	switch {
+	case policyErr != nil:
+		fmt.Fprintf(&sb, "## Workflow rules\n- The project's policy file is invalid and no rules are applied until it is fixed: %v\n\n", policyErr)
+	case hasPolicy && withRules:
+		sb.WriteString(renderPolicy(policy))
+		sb.WriteString("\n")
+	}
+
 	// 3. Architecture & Invariants
 	archEntries, _ := b.repo.GetByProjectAndKind(ctx, clean, domain.KnowledgeArchitecture)
 	if len(archEntries) > 0 {
 		sb.WriteString("## Architectural Overview\n")
 		for _, a := range archEntries {
-			content := strings.TrimSpace(a.Content)
-			if len(content) > 300 {
-				content = content[:300] + "..."
-			}
+			content := truncateUTF8(strings.TrimSpace(a.Content), 300)
 			fmt.Fprintf(&sb, "### %s\n%s\n\n", a.Topic, content)
 		}
 	}
@@ -451,10 +404,7 @@ func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath
 		sb.WriteString("## Key Conventions & Constraints\n")
 		count := 0
 		for _, c := range convEntries {
-			content := strings.TrimSpace(c.Content)
-			if len(content) > 250 {
-				content = content[:250] + "..."
-			}
+			content := truncateUTF8(strings.TrimSpace(c.Content), 250)
 			fmt.Fprintf(&sb, "- **%s:** %s\n", c.Topic, content)
 			count++
 			if count >= 5 {
@@ -464,7 +414,10 @@ func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath
 		sb.WriteString("\n")
 	}
 
-	// 5. Mandatory Verification Commands
+	// 5. Mandatory Verification Commands (a policy states the real one; guessing would contradict it)
+	if hasPolicy {
+		return b.fitOnboarding(sb.String(), maxTokens), nil
+	}
 	sb.WriteString("## Verification Commands\n")
 	var verifCommands []string
 	if strings.Contains(stackStr, "Go") {
@@ -486,14 +439,15 @@ func (b *BrainServiceImpl) GetOnboardingContext(ctx context.Context, projectPath
 		fmt.Fprintf(&sb, "- `%s`\n", cmd)
 	}
 
-	result := sb.String()
-	tokens := estimateStringTokens(result)
-	if tokens > maxTokens {
-		maxChars := maxTokens * 4
-		if len(result) > maxChars {
-			result = result[:maxChars] + "\n\n...[Onboarding context truncated to fit token budget]"
+	return b.fitOnboarding(sb.String(), maxTokens), nil
+}
+
+// fitOnboarding cuts text to the token budget, marking the cut.
+func (b *BrainServiceImpl) fitOnboarding(result string, maxTokens int) string {
+	if estimateStringTokens(result) > maxTokens {
+		if maxChars := maxTokens * 4; len(result) > maxChars {
+			result = cutUTF8(result, maxChars) + "\n\n...[Onboarding context truncated to fit token budget]"
 		}
 	}
-
-	return result, nil
+	return result
 }

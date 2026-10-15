@@ -3,6 +3,7 @@ import type { AIActivity, ActivityType } from '../types/domain';
 import { resolveServerUrl } from './useServerUrl';
 import { useGlobalSSE } from './useGlobalSSE';
 
+/** Reactive live activity feed of AI agents, merged from the SSE stream. */
 export function useActivities(options?: {
   agentFilter?: string;
   projectFilter?: string;
@@ -13,6 +14,7 @@ export function useActivities(options?: {
   const loading = ref(false);
   const error = ref<string | null>(null);
   let interval: ReturnType<typeof setInterval> | null = null;
+  let disposed = false; // set on unmount so a fetch that finishes late starts nothing
 
   const { on, off } = useGlobalSSE();
 
@@ -60,12 +62,14 @@ export function useActivities(options?: {
   onMounted(async () => {
     loading.value = true;
     await refresh();
+    loading.value = false;
+    if (disposed) return;
     on('ai_activity_new', sseHandler);
     interval = setInterval(refresh, 15_000);
-    loading.value = false;
   });
 
   onUnmounted(() => {
+    disposed = true;
     off('ai_activity_new', sseHandler);
     if (interval) clearInterval(interval);
   });

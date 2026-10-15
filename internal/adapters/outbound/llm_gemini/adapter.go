@@ -3,6 +3,7 @@ package llm_gemini
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -54,12 +55,17 @@ var geminiContextLimits = map[string]int{
 	"gemini-1.0-pro":   32768,
 }
 
+// ProviderName returns the human-readable provider name shown in the UI and used for routing.
 func (a *Adapter) ProviderName() string { return "Google Gemini" }
-func (a *Adapter) ActiveModel() string  { return a.model }
-func (a *Adapter) BaseURL() string      { return a.baseURL }
+
+// ActiveModel returns the model this adapter sends requests to.
+func (a *Adapter) ActiveModel() string { return a.model }
+
+// BaseURL returns the API endpoint this adapter talks to.
+func (a *Adapter) BaseURL() string { return a.baseURL }
 
 // ContextLimit returns the maximum input token count for the configured Gemini model.
-func (a *Adapter) ContextLimit() int {
+func (a *Adapter) ContextLimit(_ context.Context) int {
 	if limit, ok := geminiContextLimits[a.model]; ok {
 		return limit
 	}
@@ -67,8 +73,8 @@ func (a *Adapter) ContextLimit() int {
 }
 
 // Ping checks whether the Gemini endpoint is reachable.
-func (a *Adapter) Ping() bool {
-	req, err := a.newRequest(http.MethodGet, a.baseURL+"/v1beta/models", nil)
+func (a *Adapter) Ping(ctx context.Context) bool {
+	req, err := a.newRequest(ctx, http.MethodGet, a.baseURL+"/v1beta/models", nil)
 	if err != nil {
 		return false
 	}
@@ -81,8 +87,8 @@ func (a *Adapter) Ping() bool {
 }
 
 // GetAvailableModels lists models supporting generateContent from the Gemini API.
-func (a *Adapter) GetAvailableModels() ([]string, error) {
-	req, err := a.newRequest(http.MethodGet, a.baseURL+"/v1beta/models", nil)
+func (a *Adapter) GetAvailableModels(ctx context.Context) ([]string, error) {
+	req, err := a.newRequest(ctx, http.MethodGet, a.baseURL+"/v1beta/models", nil)
 	if err != nil {
 		return nil, fmt.Errorf("gemini: build models request: %w", err)
 	}
@@ -128,19 +134,19 @@ func (a *Adapter) GetAvailableModels() ([]string, error) {
 }
 
 // GenerateCode sends a prompt as a single user message to Gemini.
-func (a *Adapter) GenerateCode(prompt string) (string, error) {
-	return a.Chat([]domain.Message{{Role: domain.RoleUser, Content: prompt}})
+func (a *Adapter) GenerateCode(ctx context.Context, prompt string) (string, error) {
+	return a.Chat(ctx, []domain.Message{{Role: domain.RoleUser, Content: prompt}})
 }
 
 // Chat sends a multi-turn conversation to the Gemini generateContent endpoint.
-func (a *Adapter) Chat(messages []domain.Message) (string, error) {
+func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, error) {
 	reqBody, err := a.buildGenerateRequest(messages)
 	if err != nil {
 		return "", fmt.Errorf("gemini: marshal request: %w", err)
 	}
 
 	url := fmt.Sprintf("%s/v1beta/models/%s:generateContent", a.baseURL, a.model)
-	req, err := a.newRequest(http.MethodPost, url, bytes.NewReader(reqBody))
+	req, err := a.newRequest(ctx, http.MethodPost, url, bytes.NewReader(reqBody))
 	if err != nil {
 		return "", fmt.Errorf("gemini: build request: %w", err)
 	}
@@ -160,26 +166,34 @@ func (a *Adapter) Chat(messages []domain.Message) (string, error) {
 		return "", fmt.Errorf("gemini: unexpected status %d: %s", resp.StatusCode, string(respBytes))
 	}
 
-	var result struct {
-		Candidates []struct {
-			Content struct {
-				Parts []struct {
-					Text string `json:"text"`
-				} `json:"parts"`
-				Role string `json:"role"`
-			} `json:"content"`
-			FinishReason string `json:"finishReason"`
-		} `json:"candidates"`
-	}
+	return decodeCandidate(resp.Body)
+}
 
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
+// geminiCandidates is a generateContent reply, whole or one streamed chunk of it.
+type geminiCandidates struct {
+	Candidates []struct {
+		Content struct {
+			Parts []struct {
+				Text string `json:"text"`
+			} `json:"parts"`
+			Role string `json:"role"`
+		} `json:"content"`
+		FinishReason string `json:"finishReason"`
+	} `json:"candidates"`
+	Error *struct {
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+// decodeCandidate reads a non-streaming generateContent reply and returns its text.
+func decodeCandidate(body io.Reader) (string, error) {
+	var result geminiCandidates
+	if err := json.NewDecoder(io.LimitReader(body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("gemini: decode response: %w", err)
 	}
-
 	if len(result.Candidates) == 0 || len(result.Candidates[0].Content.Parts) == 0 {
 		return "", fmt.Errorf("gemini: empty candidate response")
 	}
-
 	var sb strings.Builder
 	for _, part := range result.Candidates[0].Content.Parts {
 		sb.WriteString(part.Text)
@@ -242,8 +256,8 @@ func (a *Adapter) buildGenerateRequest(messages []domain.Message) ([]byte, error
 	return json.Marshal(req)
 }
 
-func (a *Adapter) newRequest(method, url string, body io.Reader) (*http.Request, error) {
-	req, err := http.NewRequest(method, url, body)
+func (a *Adapter) newRequest(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return nil, err
 	}

@@ -1,3 +1,9 @@
+<!--
+  Panel listing LLM backends found by the last discovery scan, with a Scan button and a Promote
+  button that turns a discovered backend into a configured one.
+  Props: providers, loading, scanning.
+  Emits: promote(provider), scan().
+-->
 <template>
   <div class="flex flex-col gap-4">
     <!-- Header -->
@@ -10,7 +16,7 @@
         :disabled="scanning"
         class="text-[10px] text-cyan-400 hover:text-cyan-300 transition-colors px-2 py-1 rounded-md border border-cyan-500/20 hover:border-cyan-500/40 hover:bg-cyan-500/5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
       >
-        <i :class="['pi pi-sync text-[10px]', scanning && 'animate-spin']"></i>
+        <UiIcon name="sync" :class="['text-[10px]', scanning && 'animate-spin']" />
         {{ scanning ? 'Scanning…' : 'Scan Now' }}
       </button>
     </div>
@@ -20,7 +26,7 @@
       v-if="!loading && providers.length === 0"
       class="text-center py-10 text-sm text-slate-600 border border-dashed border-white/10 rounded-xl"
     >
-      <i class="pi pi-search text-2xl text-slate-700 mb-2 block"></i>
+      <UiIcon name="search" class="text-2xl text-slate-700 mb-2 block" />
       No AI tools detected — click Scan Now to search
     </div>
 
@@ -48,7 +54,7 @@
               class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
               :class="iconBg(p.status)"
             >
-              <i :class="['pi text-sm', methodIcon(p.method)]"></i>
+              <UiIcon :name="methodIcon(p.method)" class="text-sm" />
             </div>
             <div class="min-w-0">
               <p class="font-semibold text-sm text-white truncate">{{ p.name }}</p>
@@ -66,15 +72,15 @@
         <!-- Details -->
         <div class="space-y-1.5 mb-3">
           <div v-if="p.baseUrl" class="flex items-center gap-1.5">
-            <i class="pi pi-globe text-[10px] text-slate-600"></i>
+            <UiIcon name="globe" class="text-[10px] text-slate-600" />
             <span class="text-[10px] text-slate-500 font-mono truncate">{{ p.baseUrl }}</span>
           </div>
           <div v-if="p.cliPath" class="flex items-center gap-1.5">
-            <i class="pi pi-chevron-right text-[10px] text-slate-600"></i>
+            <UiIcon name="chevron-right" class="text-[10px] text-slate-600" />
             <span class="text-[10px] text-slate-500 font-mono truncate">{{ p.cliPath }}</span>
           </div>
           <div v-if="p.processName" class="flex items-center gap-1.5">
-            <i class="pi pi-cog text-[10px] text-slate-600"></i>
+            <UiIcon name="cog" class="text-[10px] text-slate-600" />
             <span class="text-[10px] text-slate-500 font-mono">{{ p.processName }}</span>
           </div>
           <div class="text-[10px] text-slate-600">Last seen {{ timeAgo(p.lastSeen) }}</div>
@@ -102,7 +108,7 @@
           @click="$emit('promote', p)"
           class="w-full text-xs font-medium py-1.5 rounded-lg border transition-all border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/50"
         >
-          <i class="pi pi-plus-circle mr-1 text-[10px]"></i>
+          <UiIcon name="plus-circle" class="mr-1 text-[10px]" />
           Promote to Active
         </button>
         <div
@@ -120,6 +126,8 @@
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
+import type { IconName } from '../ui/icons';
 import type { DiscoveredProvider, DiscoveryStatus, DiscoveryMethod } from '../types/discovery';
 import { timeAgo } from '../utils/time';
 
@@ -160,16 +168,16 @@ function iconBg(status: DiscoveryStatus): string {
   }
 }
 
-function methodIcon(method: DiscoveryMethod): string {
+function methodIcon(method: DiscoveryMethod): IconName {
   switch (method) {
     case 'port':
-      return 'pi-wifi'; // network / port scan
+      return 'wifi'; // network / port scan
     case 'cli':
-      return 'pi-terminal'; // CLI / which
+      return 'terminal'; // CLI / which
     case 'process':
-      return 'pi-cog'; // process list
+      return 'cog'; // process list
     default:
-      return 'pi-question-circle';
+      return 'question-circle';
   }
 }
 

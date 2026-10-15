@@ -85,7 +85,7 @@ describe('AgentsView', () => {
   });
 
   it('loads discovered agents via fetch', async () => {
-    const wrapper = shallowMount(AgentsView);
+    shallowMount(AgentsView);
     await flushPromises();
 
     expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/api/ai-sessions/discovered'));
@@ -104,5 +104,19 @@ describe('AgentsView', () => {
     const wrapper = shallowMount(AgentsView);
     const refreshBtn = wrapper.findAll('button').find((b) => b.text().includes('Refresh'));
     expect(refreshBtn).toBeDefined();
+  });
+
+  it('starts no polling when unmounted before the first load finishes', async () => {
+    vi.useFakeTimers();
+    try {
+      const w = shallowMount(AgentsView);
+      w.unmount();
+      await flushPromises();
+      mockFetch.mockClear();
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(mockFetch).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

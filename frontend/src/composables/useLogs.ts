@@ -8,6 +8,7 @@ const POLL_INTERVAL_MS = 3_000;
 const DISCONNECTED_WARNING =
   'Realtime log stream disconnected. Polling fallback active while reconnecting.';
 
+/** Daemon log entries (capped at 2000), streamed over SSE with a polling fallback while disconnected. */
 export function useLogs() {
   const logs = ref<LogEntry[]>([]);
   const error = ref<string | null>(null);
@@ -52,7 +53,7 @@ export function useLogs() {
   }
 
   function startPolling() {
-    if (pollTimer) return;
+    stopPolling();
     pollTimer = setInterval(() => {
       void fetchLogs();
     }, POLL_INTERVAL_MS);

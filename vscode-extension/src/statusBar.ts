@@ -12,6 +12,7 @@ import * as vscode from 'vscode';
 import { NexusClient, AISession, AIActivity } from './nexusClient';
 import { getActivitySnapshot } from './activityLog';
 
+/** Status bar item showing daemon connectivity and queue depth. */
 export class NexusStatusBar {
   private item: vscode.StatusBarItem;
   private pollTimer?: NodeJS.Timeout;
@@ -28,6 +29,7 @@ export class NexusStatusBar {
    * Returns a Disposable so it can be pushed onto context.subscriptions.
    */
   startPolling(intervalMs = 10000): vscode.Disposable {
+    if (this.pollTimer !== undefined) clearInterval(this.pollTimer); // never stack two pollers
     void this.update();
     this.pollTimer = setInterval(() => void this.update(), intervalMs);
     return { dispose: () => this.dispose() };

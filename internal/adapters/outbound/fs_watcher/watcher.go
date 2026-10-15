@@ -30,6 +30,11 @@ var IgnoredDirs = map[string]bool{
 	".vscode":      true,
 }
 
+// MaxWatchedDirs is the most directories one project may have. Every watched directory costs a
+// file descriptor, so an accidental project root such as "/" or a home directory would exhaust
+// the process; such a project is refused instead.
+var MaxWatchedDirs = 4096
+
 // AllowedExtensions contains file extensions eligible for workspace change events.
 var AllowedExtensions = map[string]bool{
 	".go":   true,
@@ -150,26 +155,38 @@ func (w *Watcher) Watch(projectPath string) error {
 		return fmt.Errorf("fs_watcher: watcher is closed")
 	}
 
-	w.projects[absPath] = true
-
-	return filepath.WalkDir(absPath, func(path string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
+	var found []string
+	tooMany := false
+	err = filepath.WalkDir(absPath, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil || !d.IsDir() {
 			return nil
 		}
-		if !d.IsDir() {
-			return nil
-		}
-		base := d.Name()
-		if IgnoredDirs[base] && path != absPath {
+		if IgnoredDirs[d.Name()] && path != absPath {
 			return filepath.SkipDir
 		}
+		if len(found) >= MaxWatchedDirs {
+			tooMany = true
+			return filepath.SkipAll
+		}
+		found = append(found, path)
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("fs_watcher: scan %s: %w", absPath, err)
+	}
+	if tooMany {
+		return fmt.Errorf("fs_watcher: %s has too many directories to watch (more than %d)", absPath, MaxWatchedDirs)
+	}
+
+	w.projects[absPath] = true
+	for _, path := range found {
 		if addErr := w.watcher.Add(path); addErr != nil {
 			log.Printf("fs_watcher: add dir %s: %v", path, addErr)
 		} else {
 			w.dirs[path] = absPath
 		}
-		return nil
-	})
+	}
+	return nil
 }
 
 // Unwatch removes a project directory and all its subdirectories from the watcher.
@@ -184,7 +201,7 @@ func (w *Watcher) Unwatch(projectPath string) error {
 
 	delete(w.projects, absPath)
 	for dir, proj := range w.dirs {
-		if proj == absPath || strings.HasPrefix(dir, absPath) {
+		if proj == absPath || isWithin(absPath, dir) {
 			_ = w.watcher.Remove(dir)
 			delete(w.dirs, dir)
 		}
@@ -286,12 +303,20 @@ func (w *Watcher) findProjectForPath(path string) string {
 	if proj, ok := w.dirs[dir]; ok {
 		return proj
 	}
+	// Longest match wins so nested projects resolve to the innermost one.
+	best := ""
 	for p := range w.projects {
-		if strings.HasPrefix(path, p) {
-			return p
+		if isWithin(p, path) && len(p) > len(best) {
+			best = p
 		}
 	}
-	return ""
+	return best
+}
+
+// isWithin reports whether path equals root or lies beneath it. A plain
+// strings.HasPrefix would also match siblings such as /work/app2 for /work/app.
+func isWithin(root, path string) bool {
+	return path == root || strings.HasPrefix(path, root+string(filepath.Separator))
 }
 
 func (w *Watcher) triggerChange(projectPath, filePath string) {

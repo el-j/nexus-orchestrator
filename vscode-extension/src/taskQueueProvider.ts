@@ -22,6 +22,10 @@ function statusEmoji(status: TaskStatus): string {
       return '📏';
     case 'NO_PROVIDER':
       return '🔌';
+    case 'DRAFT':
+      return '📝';
+    case 'BACKLOG':
+      return '📋';
     default:
       return '❓';
   }
@@ -43,6 +47,10 @@ function statusIcon(status: TaskStatus): vscode.ThemeIcon {
       return new vscode.ThemeIcon('file-binary');
     case 'NO_PROVIDER':
       return new vscode.ThemeIcon('plug');
+    case 'DRAFT':
+      return new vscode.ThemeIcon('edit');
+    case 'BACKLOG':
+      return new vscode.ThemeIcon('checklist');
     default:
       return new vscode.ThemeIcon('question');
   }
@@ -52,6 +60,16 @@ function truncate(s: string, max: number): string {
   return s.length > max ? s.slice(0, max) + '…' : s;
 }
 
+/** Who ran the task: Nexus on a provider, or nobody (an agent only reported a status). */
+function runBy(task: Task): string {
+  if (task.ranBy) return `Nexus on ${task.ranBy}`;
+  if (task.status === 'PROCESSING' || task.status === 'COMPLETED' || task.status === 'FAILED') {
+    return 'not run by Nexus — status set by an agent';
+  }
+  return '—';
+}
+
+/** Tree item for one task in the queue view. */
 export class TaskItem extends vscode.TreeItem {
   constructor(public readonly task: Task) {
     const emoji = statusEmoji(task.status);
@@ -75,6 +93,7 @@ export class TaskItem extends vscode.TreeItem {
       `**Source:** ${source ?? 'unknown'}`,
       `**Project:** ${task.projectPath}`,
       `**Target:** ${task.targetFile || '—'}`,
+      `**Run by:** ${runBy(task)}`,
       `**Provider:** ${task.providerHint || '—'}`,
       `**Model:** ${task.modelId || '—'}`,
       `**Created:** ${task.createdAt}`,
@@ -92,6 +111,16 @@ export class TaskItem extends vscode.TreeItem {
   }
 }
 
+/** The daemon answers, but not to this request (for example HTTP 500): not the same as offline. */
+class DaemonErrorItem extends vscode.TreeItem {
+  constructor(reason: string) {
+    super('Nexus daemon error — see the tooltip', vscode.TreeItemCollapsibleState.None);
+    this.iconPath = new vscode.ThemeIcon('warning');
+    this.tooltip = `The daemon is running but could not list the tasks: ${reason}`;
+    this.contextValue = 'nexusDaemonError';
+  }
+}
+
 class DaemonOfflineItem extends vscode.TreeItem {
   constructor() {
     super('Nexus daemon offline — start daemon to connect', vscode.TreeItemCollapsibleState.None);
@@ -101,9 +130,12 @@ class DaemonOfflineItem extends vscode.TreeItem {
   }
 }
 
-export class TaskQueueProvider implements vscode.TreeDataProvider<TaskItem | DaemonOfflineItem> {
+/** Tree data provider listing queued and recent tasks. */
+export class TaskQueueProvider implements vscode.TreeDataProvider<
+  TaskItem | DaemonOfflineItem | DaemonErrorItem
+> {
   private readonly _onDidChangeTreeData = new vscode.EventEmitter<
-    TaskItem | DaemonOfflineItem | undefined | void
+    TaskItem | DaemonOfflineItem | DaemonErrorItem | undefined | void
   >();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
   private workspacePath: string | undefined;
@@ -133,11 +165,11 @@ export class TaskQueueProvider implements vscode.TreeDataProvider<TaskItem | Dae
     return new vscode.Disposable(() => clearInterval(handle));
   }
 
-  getTreeItem(element: TaskItem | DaemonOfflineItem): vscode.TreeItem {
+  getTreeItem(element: TaskItem | DaemonOfflineItem | DaemonErrorItem): vscode.TreeItem {
     return element;
   }
 
-  async getChildren(): Promise<(TaskItem | DaemonOfflineItem)[]> {
+  async getChildren(): Promise<(TaskItem | DaemonOfflineItem | DaemonErrorItem)[]> {
     try {
       const tasks = await this.client.getAllTasks();
       const filtered =
@@ -151,7 +183,12 @@ export class TaskQueueProvider implements vscode.TreeDataProvider<TaskItem | Dae
         .filter((t) => t.status !== 'QUEUED' && t.status !== 'PROCESSING')
         .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
       return [...active, ...recent].map((t) => new TaskItem(t));
-    } catch {
+    } catch (err) {
+      // "Offline" is only true when nothing answers; a daemon that answers /api/health but fails
+      // this request has a problem of its own and must not be reported as stopped.
+      if (await this.client.health()) {
+        return [new DaemonErrorItem(err instanceof Error ? err.message : String(err))];
+      }
       return [new DaemonOfflineItem()];
     }
   }

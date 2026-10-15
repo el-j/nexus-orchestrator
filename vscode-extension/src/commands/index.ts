@@ -10,6 +10,7 @@ export { selectProviderCommand } from './selectProvider';
 export { viewQueueCommand } from './viewQueue';
 export { delegateToNexusCommand } from './delegateToNexus';
 
+/** Command: list the daemon's providers and their models. */
 export async function showProvidersCommand(client: NexusClient): Promise<void> {
   let providers: Provider[];
   try {
@@ -38,10 +39,13 @@ export async function showProvidersCommand(client: NexusClient): Promise<void> {
 
   const items: ProviderPickItem[] = providers.map((p) => ({
     label: p.name,
-    description:
-      [p.active ? '● active' : '○ inactive', p.kind ? `kind: ${p.kind}` : undefined, p.baseURL]
-        .filter(Boolean)
-        .join(' · ') || undefined,
+    description: [
+      p.active ? '● active' : '○ inactive',
+      p.kind ? `kind: ${p.kind}` : undefined,
+      p.baseURL,
+    ]
+      .filter(Boolean)
+      .join(' · '),
     detail:
       [
         p.details,

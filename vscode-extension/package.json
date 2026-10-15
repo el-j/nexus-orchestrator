@@ -1,8 +1,8 @@
 {
   "name": "nexus-orchestrator",
   "displayName": "Nexus Orchestrator",
-  "description": "Route AI code-generation tasks through nexusOrchestrator",
-  "version": "0.9.4",
+  "description": "Run AI coding tasks on any model through nexusOrchestrator: live output, plans and brain, editor models as providers, and your editor's agent connected to Nexus",
+  "version": "0.2.0-62",
   "publisher": "el-j",
   "engines": {
     "vscode": "^1.99.0"
@@ -20,6 +20,12 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "nexus.mcp",
+        "label": "Nexus Orchestrator"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -68,6 +74,18 @@
       {
         "command": "nexus.selectProvider",
         "title": "Nexus: Select Provider / Model"
+      },
+      {
+        "command": "nexus.showLiveOutput",
+        "title": "Nexus: Show Live Task Output"
+      },
+      {
+        "command": "nexus.connectAgent",
+        "title": "Nexus: Connect This Editor's Agent"
+      },
+      {
+        "command": "nexus.configurePlanFolders",
+        "title": "Nexus: Choose Plan and Task Folders"
       },
       {
         "command": "nexus.showProviders",
@@ -201,6 +219,61 @@
           "default": "http://127.0.0.1:63987",
           "description": "URL of the nexusOrchestrator daemon"
         },
+        "nexus.apiToken": {
+          "type": "string",
+          "default": "",
+          "description": "Bearer token for a daemon started with NEXUS_API_TOKEN. Leave empty when the daemon has no token. If empty, the NEXUS_API_TOKEN environment variable of the editor is used.",
+          "scope": "machine"
+        },
+        "nexus.mcp.autoConnect": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "always",
+            "never"
+          ],
+          "default": "ask",
+          "markdownDescription": "In Antigravity the agent reads its MCP servers from `~/.gemini/.../mcp_config.json`. `ask` offers once to add the Nexus server there, `always` adds and keeps it current without asking, `never` leaves the file alone. (VS Code gets the server through its own MCP support and needs no file.)"
+        },
+        "nexus.planFiles.plans": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Folders (relative to the workspace folder) whose markdown files are plans, in addition to `.claude/plans`, `.nexus/plans` and any `PLAN-n.md` found in the project. The project's `.nexus/policy.json` (`planFiles.plans`) is added to these."
+        },
+        "nexus.planFiles.tasks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Folders (relative to the workspace folder) whose markdown files are tasks, in addition to `.claude/tasks`, `.nexus/tasks` and any `TASK-n.md` found in the project."
+        },
+        "nexus.planFiles.discover": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Also find plan and task files anywhere in the project (files named `PLAN-n.md` / `TASK-n.md`, folders called `plans` / `tasks`, front matter `type: plan|task`). Turn off to read only the folders listed here and in `.nexus/policy.json`."
+        },
+        "nexus.liveOutput.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Follow the daemon's event stream and print the text of running tasks in the 'Nexus Live Output' channel while the model writes it."
+        },
+        "nexus.lmBridge.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Let the Nexus daemon use the chat models this editor offers (GitHub Copilot and any other extension that registers one). Each model is registered as a provider named vscode-<vendor>-<model> and its requests are billed to the signed-in subscription. VS Code asks for your consent on first use."
+        },
+        "nexus.lmBridge.vendors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Only share models from these vendors (for example [\"copilot\"]). Empty shares every vendor the editor offers."
+        },
         "nexus.defaultProvider": {
           "type": "string",
           "default": "",
@@ -238,22 +311,31 @@
   },
   "scripts": {
     "compile": "npm run build",
-    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
+    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node && esbuild src/mcpProxyEntry.ts --bundle --outfile=dist/mcpProxy.js --format=cjs --platform=node",
     "watch": "npm run build -- --watch",
     "package": "vsce package --no-dependencies",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "test:mutation": "stryker run",
+    "check:docs": "node ../scripts/check-tsdoc.mjs src",
+    "test:host": "npm run build && node host-test/run.mjs"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "@types/vscode": "^1.85.0",
-    "@vitest/coverage-v8": "^4.1.0",
-    "@vscode/vsce": "^3.4.0",
-    "esbuild": "^0.27.0",
-    "typescript": "^5.3.0",
-    "vitest": "^4.1.0"
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/typescript-checker": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
+    "@types/node": "^26.6.5",
+    "@types/vscode": "^1.99.0",
+    "@vitest/coverage-v8": "^5.0.3",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
+    "mocha": "^12.0.3",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.3"
   },
   "dependencies": {
-    "zod": "^4.3.6"
+    "zod": "^4.6.6"
   }
 }

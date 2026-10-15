@@ -62,7 +62,13 @@ func (s *Server) toolListProviderConfigs(ctx context.Context) (callToolResult, e
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: list_provider_configs: %w", err)
 	}
-	b, _ := json.Marshal(cfgs)
+	// API keys are never returned to MCP clients (they are AI agents whose context
+	// and logs are not a safe place for credentials).
+	masked := make([]domain.ProviderConfig, len(cfgs))
+	for i, c := range cfgs {
+		masked[i] = c.Masked()
+	}
+	b, _ := json.Marshal(masked)
 	return textResult(string(b)), nil
 }
 
@@ -85,18 +91,18 @@ func (s *Server) toolAddProviderConfig(ctx context.Context, args json.RawMessage
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: add_provider_config: %w", err)
 	}
-	b, _ := json.Marshal(saved)
+	b, _ := json.Marshal(saved.Masked())
 	return textResult(string(b)), nil
 }
 
 func (s *Server) toolUpdateProviderConfig(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
-		ID      string `json:"id"`
-		Kind    string `json:"kind"`
-		Name    string `json:"name"`
-		BaseURL string `json:"base_url"`
-		APIKey  string `json:"api_key"`
-		Enabled bool   `json:"enabled"`
+		ID      string  `json:"id"`
+		Kind    string  `json:"kind"`
+		Name    string  `json:"name"`
+		BaseURL string  `json:"base_url"`
+		APIKey  *string `json:"api_key"` // nil (omitted) keeps the stored key
+		Enabled bool    `json:"enabled"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
 		return callToolResult{}, &mcpError{code: codeInvalidParams, msg: "invalid update_provider_config params"}
@@ -104,12 +110,18 @@ func (s *Server) toolUpdateProviderConfig(ctx context.Context, args json.RawMess
 	if p.ID == "" || p.Kind == "" || p.Name == "" {
 		return callToolResult{}, &mcpError{code: codeInvalidParams, msg: "id, kind and name are required"}
 	}
-	cfg := domain.ProviderConfig{ID: p.ID, Kind: domain.ProviderKind(p.Kind), Name: p.Name, BaseURL: p.BaseURL, APIKey: p.APIKey, Enabled: p.Enabled}
+	// The masked placeholder means "leave the stored key unchanged" (see
+	// domain.IsMaskedSecret); an omitted api_key must not silently clear it.
+	apiKey := domain.MaskedSecretPrefix
+	if p.APIKey != nil {
+		apiKey = *p.APIKey
+	}
+	cfg := domain.ProviderConfig{ID: p.ID, Kind: domain.ProviderKind(p.Kind), Name: p.Name, BaseURL: p.BaseURL, APIKey: apiKey, Enabled: p.Enabled}
 	updated, err := s.orch.UpdateProviderConfig(ctx, cfg)
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: update_provider_config: %w", err)
 	}
-	b, _ := json.Marshal(updated)
+	b, _ := json.Marshal(updated.Masked())
 	return textResult(string(b)), nil
 }
 

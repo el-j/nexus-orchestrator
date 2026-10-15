@@ -4,11 +4,27 @@ package domain
 
 import (
 	"errors"
+	"regexp"
+	"strings"
 	"time"
 )
 
 // ErrNotFound is returned when a task cannot be found by its ID.
 var ErrNotFound = errors.New("task not found")
+
+// ErrQueueFull is returned when a task cannot be queued because the number of
+// QUEUED tasks has reached the configured queue cap. It is transient: callers
+// should back off and retry.
+var ErrQueueFull = errors.New("queue is full")
+
+// ErrPathNotAllowed is returned when a client-supplied file path is outside what
+// the daemon may read on its behalf (outside the project, a special file, too large,
+// or a credentials location).
+var ErrPathNotAllowed = errors.New("path not allowed")
+
+// ErrInputTooLarge is returned when caller-supplied content exceeds what the
+// daemon accepts (for example markdown uploaded for the project brain).
+var ErrInputTooLarge = errors.New("input too large")
 
 // ErrNoPlan is returned when an execute task is submitted but no prior plan exists for the project.
 var ErrNoPlan = errors.New("no plan exists; planning required before execution")
@@ -21,6 +37,7 @@ var ErrSubsystemNotConfigured = errors.New("plan scanning subsystem not configur
 // TaskStatus represents the lifecycle state of a Task.
 type TaskStatus string
 
+// The TaskStatus lifecycle values (see docs/api-reference.md, Task Lifecycle).
 const (
 	StatusQueued     TaskStatus = "QUEUED"
 	StatusProcessing TaskStatus = "PROCESSING"
@@ -85,6 +102,12 @@ type Task struct {
 	ProviderName string `json:"providerName,omitempty"`
 	// Role optionally hints the model tier or persona needed (e.g. "architect", "techlead", "coder", "tester", "linter").
 	Role string `json:"role,omitempty"`
+	// Agentic switches the task from one-shot generation to a bounded multi-turn
+	// tool loop: the model may read and write files inside the project and run the
+	// task's verification command before it declares the work finished.
+	Agentic bool `json:"agentic,omitempty"`
+	// MaxAgentTurns bounds the loop; zero means the engine default.
+	MaxAgentTurns int `json:"maxAgentTurns,omitempty"`
 	// Priority controls backlog ordering (1=highest, 2=medium default, 3+=low).
 	Priority int `json:"priority,omitempty"`
 	// Tags are free-form labels for organising ideas and backlog items.
@@ -99,6 +122,9 @@ type Task struct {
 	RetryCount  int         `json:"retryCount,omitempty"`
 	Logs        string      `json:"logs,omitempty"`
 	AISessionID string      `json:"aiSessionId,omitempty"`
+	// RanBy is the provider that ran the task, read from its log; empty when Nexus did not run it
+	// (an agent reported it done, or it has not run yet). It is derived, never stored.
+	RanBy string `json:"ranBy,omitempty"`
 	// VerificationCommand is an optional shell command (e.g. "go test ./...", "npm test")
 	// executed after writing code to verify correctness before marking the task COMPLETED.
 	VerificationCommand string `json:"verificationCommand,omitempty"`
@@ -120,4 +146,19 @@ func (t *Task) ComputeDuration() {
 		return
 	}
 	t.DurationMs = t.UpdatedAt.Sub(t.CreatedAt).Milliseconds()
+}
+
+var ranByRe = regexp.MustCompile(`completed via (.+?) at \d{4}-\d\d-\d\dT|failed via ([^:\n]+?):|completed via (\S+)`)
+
+// RanBy names the provider that ran a task, read from the log the engine writes ("completed via X
+// at <time>", "failed via X: <error>"). It is empty for a task Nexus did not run, for example one
+// an agent marked done itself.
+func RanBy(logs string) string {
+	m := ranByRe.FindStringSubmatch(logs)
+	for _, g := range m[min(1, len(m)):] {
+		if g = strings.TrimSpace(g); g != "" {
+			return g
+		}
+	}
+	return ""
 }

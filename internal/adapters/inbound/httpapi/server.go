@@ -5,15 +5,19 @@ package httpapi
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
+	"nexus-orchestrator/internal/adapters/inbound/httpguard"
+	"nexus-orchestrator/internal/adapters/inbound/webui"
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
 
@@ -28,11 +32,35 @@ type Server struct {
 	logHub      *LogHub
 	activitySvc activityQuerier
 	brain       ports.BrainService
+	guard       *httpguard.Policy
+	mcpAddr     string       // listen address of the companion MCP server, advertised in discovery
+	ui          http.Handler // the full frontend, served under /app/ (nil: only the built-in dashboard)
 }
 
 // NewServer constructs a Server. hub may be nil to disable SSE.
 func NewServer(orch ports.Orchestrator, brain ports.BrainService, hub *Hub) *Server {
 	return &Server{orch: orch, brain: brain, hub: hub}
+}
+
+// WithGuard sets the Origin/Host policy applied to every request. Without it
+// the handler still rejects foreign browser origins but does not check Host.
+func (s *Server) WithGuard(g *httpguard.Policy) *Server {
+	s.guard = g
+	return s
+}
+
+// WithUI serves the full frontend under /app/ and makes the root point there. h is expected to
+// answer the whole /app/ subtree (see package webui); nil keeps only the built-in dashboard.
+func (s *Server) WithUI(h http.Handler) *Server {
+	s.ui = h
+	return s
+}
+
+// WithMCPAddr records the listen address of the companion MCP server so the
+// discovery document can advertise where it actually is.
+func (s *Server) WithMCPAddr(addr string) *Server {
+	s.mcpAddr = addr
+	return s
 }
 
 // WithLogHub configures the Server to capture and stream log entries via SSE.
@@ -70,11 +98,12 @@ func securityHeaders(next http.Handler) http.Handler {
 	})
 }
 
-// corsMiddleware allows requests from the Wails WebView and local browser.
+// corsMiddleware allows requests from the Wails WebView (wails://wails on macOS and Linux,
+// http://wails.localhost on Windows) and the local browser.
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		if origin == "wails://wails.localhost" || strings.HasPrefix(origin, "http://localhost:") {
+		if origin == "wails://wails" || origin == "wails://wails.localhost" || origin == "http://wails.localhost" || strings.HasPrefix(origin, "http://localhost:") {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
@@ -116,7 +145,9 @@ func (s *Server) tokenAuthMiddleware(next http.Handler) http.Handler {
 
 		auth := r.Header.Get("Authorization")
 		const prefix = "Bearer "
-		if !strings.HasPrefix(auth, prefix) || strings.TrimSpace(strings.TrimPrefix(auth, prefix)) != token {
+		// Constant-time comparison so response timing does not leak the token.
+		given := strings.TrimSpace(strings.TrimPrefix(auth, prefix))
+		if !strings.HasPrefix(auth, prefix) || subtle.ConstantTimeCompare([]byte(given), []byte(token)) != 1 {
 			writeJSONError(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -125,18 +156,31 @@ func (s *Server) tokenAuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// Handler returns the server's root http.Handler, with every middleware applied.
 func (s *Server) Handler() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	guard := s.guard
+	if guard == nil {
+		guard = httpguard.New("")
+	}
+	r.Use(guard.Middleware)
 	r.Use(corsMiddleware)
 	r.Use(s.tokenAuthMiddleware)
 	r.Use(maxBodySize)
 	r.Use(securityHeaders)
 
-	// Redirect root to dashboard
+	// The root goes to the full UI when this binary has it, else to the built-in dashboard,
+	// which stays available at /ui either way.
+	home := "/ui"
+	if s.ui != nil {
+		home = "/app/"
+		r.Get("/app", func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/app/", http.StatusFound) })
+		r.Handle("/app/*", s.ui)
+	}
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/ui", http.StatusFound)
+		http.Redirect(w, r, home, http.StatusFound)
 	})
 	r.Get("/ui", s.handleUI)
 
@@ -207,6 +251,7 @@ func (s *Server) Handler() http.Handler {
 
 	// Brain
 	r.Post("/api/brain/ingest", s.handleIngestKnowledge)
+	r.Post("/api/brain/ingest-content", s.handleIngestContent)
 	r.Get("/api/brain/status", s.handleGetBrainStatus)
 	r.Post("/api/brain/context", s.handleGetProjectContext)
 	r.Post("/api/brain/focused-context", s.handleGetFocusedContext)
@@ -220,6 +265,10 @@ func (s *Server) Handler() http.Handler {
 	return r
 }
 
+// shutdownGrace is how long in-flight requests get to finish on shutdown before
+// the remaining connections are closed.
+const shutdownGrace = 2 * time.Second
+
 // StartServer starts the HTTP API on addr and blocks until ctx is cancelled.
 // An optional *LogHub may be passed as the final argument to capture log output via SSE.
 func StartServer(ctx context.Context, orch ports.Orchestrator, brain ports.BrainService, addr string, logHub ...*LogHub) error {
@@ -228,12 +277,17 @@ func StartServer(ctx context.Context, orch ports.Orchestrator, brain ports.Brain
 	if bs, ok := orch.(broadcasterSetter); ok {
 		bs.SetBroadcaster(hub)
 	}
-	s := NewServer(orch, brain, hub)
+	s := NewServer(orch, brain, hub).WithGuard(httpguard.New(addr)).WithUI(webui.Embedded("/app/"))
 	if len(logHub) > 0 && logHub[0] != nil {
 		s.WithLogHub(logHub[0])
 	}
+	// Cancelled when shutdown starts so long-lived /api/events streams end
+	// promptly (http.Server.Shutdown does not cancel request contexts itself).
+	baseCtx, cancelBase := context.WithCancel(context.Background())
+	defer cancelBase()
 	srv := &http.Server{
 		Addr:         addr,
+		BaseContext:  func(net.Listener) context.Context { return baseCtx },
 		Handler:      s.Handler(),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 0, // no write timeout — required for long-lived SSE connections
@@ -242,10 +296,12 @@ func StartServer(ctx context.Context, orch ports.Orchestrator, brain ports.Brain
 
 	go func() {
 		<-ctx.Done()
-		shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		cancelBase()
+		shutCtx, cancel := context.WithTimeout(context.Background(), shutdownGrace)
 		defer cancel()
 		if err := srv.Shutdown(shutCtx); err != nil {
-			log.Printf("httpapi: shutdown: %v", err)
+			log.Printf("httpapi: shutdown grace period elapsed, closing remaining connections: %v", err)
+			_ = srv.Close()
 		}
 	}()
 
@@ -265,6 +321,24 @@ type activityBroadcasterSetter interface {
 // StartServerFull is like StartServer but also wires an activity service for
 // the activity observatory endpoints and SSE broadcasting of activity events.
 func StartServerFull(ctx context.Context, orch ports.Orchestrator, brain ports.BrainService, addr string, actSvc activityQuerier, logHub ...*LogHub) error {
+	extras := Extras{Activity: actSvc}
+	if len(logHub) > 0 {
+		extras.LogHub = logHub[0]
+	}
+	return StartServerWith(ctx, orch, brain, addr, extras)
+}
+
+// Extras are the optional collaborators of StartServerWith.
+type Extras struct {
+	Activity activityQuerier // activity timeline service; nil disables /api/activities
+	LogHub   *LogHub         // log capture for /api/logs; nil disables it
+	MCPAddr  string          // companion MCP server address, advertised by /.well-known/nexus.json
+}
+
+// StartServerWith starts the REST API with every optional collaborator in
+// Extras. It blocks until ctx is cancelled.
+func StartServerWith(ctx context.Context, orch ports.Orchestrator, brain ports.BrainService, addr string, extras Extras) error {
+	actSvc, logHub := extras.Activity, extras.LogHub
 	hub := NewHub()
 	if bs, ok := orch.(broadcasterSetter); ok {
 		bs.SetBroadcaster(hub)
@@ -274,15 +348,20 @@ func StartServerFull(ctx context.Context, orch ports.Orchestrator, brain ports.B
 			abs.SetBroadcaster(hub)
 		}
 	}
-	s := NewServer(orch, brain, hub)
-	if len(logHub) > 0 && logHub[0] != nil {
-		s.WithLogHub(logHub[0])
+	s := NewServer(orch, brain, hub).WithGuard(httpguard.New(addr)).WithUI(webui.Embedded("/app/")).WithMCPAddr(extras.MCPAddr)
+	if logHub != nil {
+		s.WithLogHub(logHub)
 	}
 	if actSvc != nil {
 		s.WithActivityService(actSvc)
 	}
+	// Cancelled when shutdown starts so long-lived /api/events streams end
+	// promptly (http.Server.Shutdown does not cancel request contexts itself).
+	baseCtx, cancelBase := context.WithCancel(context.Background())
+	defer cancelBase()
 	srv := &http.Server{
 		Addr:         addr,
+		BaseContext:  func(net.Listener) context.Context { return baseCtx },
 		Handler:      s.Handler(),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 0, // no write timeout — required for long-lived SSE connections
@@ -294,10 +373,12 @@ func StartServerFull(ctx context.Context, orch ports.Orchestrator, brain ports.B
 
 	go func() {
 		<-ctx.Done()
-		shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		cancelBase()
+		shutCtx, cancel := context.WithTimeout(context.Background(), shutdownGrace)
 		defer cancel()
 		if err := srv.Shutdown(shutCtx); err != nil {
-			log.Printf("httpapi: shutdown: %v", err)
+			log.Printf("httpapi: shutdown grace period elapsed, closing remaining connections: %v", err)
+			_ = srv.Close()
 		}
 	}()
 
@@ -316,6 +397,13 @@ func writeJSONError(w http.ResponseWriter, msg string, code int) {
 	if err := json.NewEncoder(w).Encode(map[string]string{"error": msg}); err != nil {
 		log.Printf("httpapi: json encode: %v", err)
 	}
+}
+
+// writeQueueFull answers 429 with a Retry-After hint: a full queue is a
+// transient condition clients should back off from, not a server fault.
+func writeQueueFull(w http.ResponseWriter) {
+	w.Header().Set("Retry-After", "5")
+	writeJSONError(w, "queue is full; retry later", http.StatusTooManyRequests)
 }
 
 // writeJSON sets Content-Type to application/json, writes the given HTTP status

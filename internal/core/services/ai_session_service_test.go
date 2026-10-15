@@ -53,14 +53,6 @@ func (b *capturingBroadcaster) BroadcastAISessionEvent(ev domain.AISessionEvent)
 	b.sessionEvents = append(b.sessionEvents, ev)
 }
 
-func (b *capturingBroadcaster) snapshot() []ports.TaskEvent {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	out := make([]ports.TaskEvent, len(b.events))
-	copy(out, b.events)
-	return out
-}
-
 func (b *capturingBroadcaster) sessionSnapshot() []domain.AISessionEvent {
 	b.mu.Lock()
 	defer b.mu.Unlock()

@@ -20,7 +20,7 @@ type activityQuerier interface {
 // Query params: since (RFC3339), agent, project, type, limit (default 50)
 func (s *Server) handleListActivities(w http.ResponseWriter, r *http.Request) {
 	if s.activitySvc == nil {
-		http.Error(w, `{"error":"activity service not available"}`, http.StatusServiceUnavailable)
+		writeJSONError(w, "activity service not available", http.StatusServiceUnavailable)
 		return
 	}
 	q := r.URL.Query()
@@ -47,7 +47,7 @@ func (s *Server) handleListActivities(w http.ResponseWriter, r *http.Request) {
 
 	activities, err := s.activitySvc.GetRecentActivities(r.Context(), f)
 	if err != nil {
-		http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	if activities == nil {
@@ -60,7 +60,7 @@ func (s *Server) handleListActivities(w http.ResponseWriter, r *http.Request) {
 // Query params: since (RFC3339), limit (default 100)
 func (s *Server) handleActivityTimeline(w http.ResponseWriter, r *http.Request) {
 	if s.activitySvc == nil {
-		http.Error(w, `{"error":"activity service not available"}`, http.StatusServiceUnavailable)
+		writeJSONError(w, "activity service not available", http.StatusServiceUnavailable)
 		return
 	}
 	q := r.URL.Query()
@@ -79,7 +79,7 @@ func (s *Server) handleActivityTimeline(w http.ResponseWriter, r *http.Request) 
 
 	activities, err := s.activitySvc.GetTimeline(r.Context(), since, limit)
 	if err != nil {
-		http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 	if activities == nil {

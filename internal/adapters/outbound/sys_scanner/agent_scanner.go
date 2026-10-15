@@ -1,19 +1,14 @@
 package sys_scanner
 
 import (
-	"bufio"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
@@ -89,7 +84,10 @@ func (s *Scanner) ScanAgents(ctx context.Context) ([]domain.DiscoveredAgent, err
 
 func (s *Scanner) probeClaudeConfig(ctx context.Context) []domain.DiscoveredAgent {
 	var results []domain.DiscoveredAgent
-	home := os.Getenv("HOME")
+	home := userHome()
+	if home == "" {
+		return nil
+	}
 
 	settingsPath := filepath.Join(home, ".claude", "settings.json")
 	if data, err := os.ReadFile(settingsPath); err == nil {
@@ -167,12 +165,11 @@ func probeVSCodeExtensionsDir(_ context.Context, extDir string) []domain.Discove
 }
 
 func (s *Scanner) probeVSCodeExtensions(ctx context.Context) []domain.DiscoveredAgent {
-	home := os.Getenv("HOME")
-	extDir := filepath.Join(home, ".vscode", "extensions")
-	if runtime.GOOS == "windows" {
-		extDir = filepath.Join(os.Getenv("USERPROFILE"), ".vscode", "extensions")
+	home := userHome()
+	if home == "" {
+		return nil
 	}
-	return probeVSCodeExtensionsDir(ctx, extDir)
+	return probeVSCodeExtensionsDir(ctx, filepath.Join(home, ".vscode", "extensions"))
 }
 
 func probeMCPPortList(ctx context.Context, ports []int) []domain.DiscoveredAgent {
@@ -181,7 +178,8 @@ func probeMCPPortList(ctx context.Context, ports []int) []domain.DiscoveredAgent
 
 	for _, port := range ports {
 		addr := fmt.Sprintf("127.0.0.1:%d", port)
-		conn, err := net.DialTimeout("tcp", addr, 500*time.Millisecond)
+		dialer := net.Dialer{Timeout: 500 * time.Millisecond}
+		conn, err := dialer.DialContext(ctx, "tcp", addr)
 		if err != nil {
 			continue
 		}
@@ -227,32 +225,21 @@ func (s *Scanner) probeMCPPorts(ctx context.Context) []domain.DiscoveredAgent {
 }
 
 func (s *Scanner) probeProcessFlags(ctx context.Context) []domain.DiscoveredAgent {
-	if runtime.GOOS == "windows" {
+	if goos == "windows" {
 		return nil
 	}
 	patterns := []string{"--mcp", "--mcp-server"}
 	seen := map[string]bool{}
 	var results []domain.DiscoveredAgent
 	for _, pat := range patterns {
-		out, err := exec.CommandContext(ctx, "pgrep", "-lf", pat).Output()
+		out, err := runPgrep(ctx, pat)
 		if err != nil {
 			continue
 		}
 		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-			if line == "" {
-				continue
-			}
-			parts := strings.SplitN(line, " ", 2)
-			procName := ""
-			pid := 0
-			if len(parts) > 1 {
-				pid, _ = strconv.Atoi(parts[0])
-				procName = strings.TrimSpace(parts[1])
-				if idx := strings.Index(procName, " "); idx > 0 {
-					procName = procName[:idx]
-				}
-			}
-			if procName == "" || seen[procName] {
+			// pattern "" => a line without a command column yields an empty name.
+			found, procName, pid := parsePgrep(line, "")
+			if !found || procName == "" || seen[procName] {
 				continue
 			}
 			seen[procName] = true
@@ -299,210 +286,15 @@ func (s *Scanner) probeAgentProcesses(ctx context.Context) []domain.DiscoveredAg
 	return results
 }
 
-// probeClaudeSubAgents reads Claude Code session JSONL files from
-// ~/.claude/projects/ to discover active Claude CLI sessions and sub-agents.
-func (s *Scanner) probeClaudeSubAgents(ctx context.Context) []domain.DiscoveredAgent {
-	return probeClaudeSubAgentsDir(ctx, "")
-}
-
-// probeClaudeSubAgentsDir is the testable inner implementation.
-// If homeDir is empty, os.UserHomeDir() is used.
-func probeClaudeSubAgentsDir(_ context.Context, homeDir string) []domain.DiscoveredAgent {
-	if homeDir == "" {
-		var err error
-		homeDir, err = os.UserHomeDir()
-		if err != nil {
-			return nil
-		}
-	}
-
-	projectsDir := filepath.Join(homeDir, ".claude", "projects")
-	if _, err := os.Stat(projectsDir); err != nil {
-		return nil
-	}
-
-	now := time.Now()
-	const staleThreshold = 2 * time.Hour
-	const activeThreshold = 5 * time.Minute
-	const maxLines = 500
-
-	var results []domain.DiscoveredAgent
-
-	// Walk up to 2 levels deep: projectsDir/<encoded-path>/<session>.jsonl
-	encodedDirs, err := os.ReadDir(projectsDir)
-	if err != nil {
-		return nil
-	}
-
-	for _, encodedEntry := range encodedDirs {
-		if !encodedEntry.IsDir() {
-			continue
-		}
-		encodedName := encodedEntry.Name()
-		encodedPath := filepath.Join(projectsDir, encodedName)
-
-		// Decode base64 directory name to get the working directory.
-		decodedBytes, decErr := base64.StdEncoding.DecodeString(encodedName)
-		workingDirFromDir := ""
-		if decErr == nil {
-			workingDirFromDir = string(decodedBytes)
-		}
-
-		sessionFiles, err := os.ReadDir(encodedPath)
-		if err != nil {
-			continue
-		}
-
-		// Collect all valid sessions for this directory, then emit one agent.
-		var dirSessions []domain.DiscoveredAgent
-		var latestMtime time.Time
-
-		for _, sessionEntry := range sessionFiles {
-			if sessionEntry.IsDir() {
-				continue
-			}
-			if !strings.HasSuffix(sessionEntry.Name(), ".jsonl") {
-				continue
-			}
-
-			filePath := filepath.Join(encodedPath, sessionEntry.Name())
-			info, err := sessionEntry.Info()
-			if err != nil {
-				continue
-			}
-			mtime := info.ModTime()
-			if now.Sub(mtime) > staleThreshold {
-				continue
-			}
-
-			agent := parseClaudeSessionFile(filePath, maxLines)
-			if agent == nil {
-				continue
-			}
-
-			// Fall back to directory-decoded working dir if JSONL cwd was empty.
-			if agent.WorkingDir == "" {
-				agent.WorkingDir = workingDirFromDir
-			}
-
-			agent.IsRunning = now.Sub(mtime) < activeThreshold
-			agent.Kind = domain.AgentKindClaudeCLI
-			agent.DetectionMethod = "claude-session-file"
-			agent.LastSeen = mtime
-
-			dirSessions = append(dirSessions, *agent)
-			if mtime.After(latestMtime) {
-				latestMtime = mtime
-			}
-		}
-
-		if len(dirSessions) == 0 {
-			continue
-		}
-
-		// Pick the most recently seen session as the representative.
-		var rep domain.DiscoveredAgent
-		for _, s := range dirSessions {
-			if s.LastSeen.Equal(latestMtime) {
-				rep = s
-				break
-			}
-		}
-
-		// Stable ID per project directory (not per session file).
-		rep.ID = "claude-cli-" + encodedName
-
-		// Build Name with session count.
-		baseName := "Claude Code"
-		if rep.WorkingDir != "" {
-			baseName = "Claude Code " + filepath.Base(rep.WorkingDir)
-		}
-		if len(dirSessions) > 1 {
-			baseName += " (" + strconv.Itoa(len(dirSessions)) + " sessions)"
-		}
-		rep.Name = baseName
-
-		results = append(results, rep)
-	}
-
-	return results
-}
-
-// parseClaudeSessionFile reads up to maxLines from a JSONL session file and
-// extracts agent metadata. Returns nil if no agentId was found.
-func parseClaudeSessionFile(filePath string, maxLines int) *domain.DiscoveredAgent {
-	f, err := os.Open(filePath)
-	if err != nil {
-		return nil
-	}
-	defer f.Close()
-
-	type jsonlMsg struct {
-		AgentID     string `json:"agentId"`
-		IsSidechain bool   `json:"isSidechain"`
-		ParentUUID  string `json:"parentUuid"`
-		Model       string `json:"model"`
-		CWD         string `json:"cwd"`
-	}
-
-	var (
-		agentID     string
-		model       string
-		cwd         string
-		isSidechain bool
-		parentUUID  string
-	)
-
-	sc := bufio.NewScanner(f)
-	lineCount := 0
-	for sc.Scan() {
-		if lineCount >= maxLines {
-			break
-		}
-		lineCount++
-
-		line := strings.TrimSpace(sc.Text())
-		if line == "" {
-			continue
-		}
-
-		var msg jsonlMsg
-		if err := json.Unmarshal([]byte(line), &msg); err != nil {
-			continue
-		}
-
-		if agentID == "" && msg.AgentID != "" {
-			agentID = msg.AgentID
-		}
-		if model == "" && msg.Model != "" {
-			model = msg.Model
-		}
-		if cwd == "" && msg.CWD != "" {
-			cwd = msg.CWD
-		}
-		if msg.IsSidechain {
-			isSidechain = true
-		}
-		if parentUUID == "" && msg.ParentUUID != "" {
-			parentUUID = msg.ParentUUID
-		}
-	}
-
-	// Use filename (without extension) as fallback ID.
-	if agentID == "" {
-		base := filepath.Base(filePath)
-		agentID = strings.TrimSuffix(base, filepath.Ext(base))
-	}
-
-	agent := &domain.DiscoveredAgent{
-		ID:         agentID,
-		ModelID:    model,
-		WorkingDir: cwd,
-	}
-
-	if isSidechain && parentUUID != "" {
-		agent.ParentAgentID = parentUUID
-	}
-
-	return agent
-}
+// claudeStaleThreshold, claudeActiveThreshold and claudeMaxLines bound what the
+// Claude session probe reads: sessions untouched for two hours are ignored, one
+// written to within five minutes counts as running, and only the head of each file
+// is parsed (they grow to many megabytes).
+const (
+	claudeStaleThreshold  = 2 * time.Hour
+	claudeActiveThreshold = 5 * time.Minute
+	claudeMaxLines        = 500
+	// claudeMaxSubAgents caps the sub-agents reported per project so a long agentic
+	// run cannot flood the agent list.
+	claudeMaxSubAgents = 25
+)

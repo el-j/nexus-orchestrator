@@ -26,6 +26,10 @@ type ActivityService struct {
 	readers      []ports.ActivityReader
 	broadcaster  ports.ActivityBroadcaster // optional; may be nil
 
+	// pollEvery and purgeEvery default to the package constants; tests shorten them.
+	pollEvery  time.Duration
+	purgeEvery time.Duration
+
 	stopCh   chan struct{}
 	stopOnce sync.Once
 	wg       sync.WaitGroup
@@ -44,6 +48,8 @@ func NewActivityService(
 		activityRepo: activityRepo,
 		sessionRepo:  sessionRepo,
 		readers:      readers,
+		pollEvery:    activityPollInterval,
+		purgeEvery:   retentionPurgeInterval,
 		stopCh:       make(chan struct{}),
 		lastSeen:     make(map[string]time.Time),
 	}
@@ -83,7 +89,7 @@ func (s *ActivityService) GetTimeline(ctx context.Context, since time.Time, limi
 
 func (s *ActivityService) pollLoop() {
 	defer s.wg.Done()
-	ticker := time.NewTicker(activityPollInterval)
+	ticker := time.NewTicker(s.pollEvery)
 	defer ticker.Stop()
 
 	// Do an immediate first poll.
@@ -101,7 +107,7 @@ func (s *ActivityService) pollLoop() {
 
 func (s *ActivityService) purgeLoop() {
 	defer s.wg.Done()
-	ticker := time.NewTicker(retentionPurgeInterval)
+	ticker := time.NewTicker(s.purgeEvery)
 	defer ticker.Stop()
 	for {
 		select {
@@ -123,6 +129,7 @@ func (s *ActivityService) purgeLoop() {
 func (s *ActivityService) poll() {
 	ctx := context.Background()
 	since := time.Now().Add(-activityRetentionWindow)
+	s.tidyDiscoveredSessions(ctx)
 
 	for _, reader := range s.readers {
 		activities, err := reader.ReadActivities(ctx, since)
@@ -131,6 +138,12 @@ func (s *ActivityService) poll() {
 			continue
 		}
 		for _, a := range activities {
+			// The project is the repository, not the folder the agent's shell was in; a throwaway
+			// command in a temp directory is no project at all.
+			if IsScratchDir(a.ProjectPath) {
+				continue
+			}
+			a.ProjectPath = ProjectRoot(a.ProjectPath)
 			if err := s.activityRepo.SaveActivity(ctx, a); err != nil {
 				log.Printf("activity_service: save activity: %v", err)
 				continue
@@ -248,6 +261,27 @@ func (s *ActivityService) checkIdleDisconnect(ctx context.Context) {
 		sess.UpdatedAt = now
 		if err := s.sessionRepo.SaveAISession(ctx, sess); err != nil {
 			log.Printf("activity_service: status update: %v", err)
+		}
+	}
+}
+
+// tidyDiscoveredSessions removes sessions this service created earlier for a folder inside a
+// repository or for a temp directory. They are not agents anyone works with; the next activity of
+// the agent creates its session again on the repository. Sessions registered by an editor or an
+// agent itself are never touched.
+func (s *ActivityService) tidyDiscoveredSessions(ctx context.Context) {
+	sessions, err := s.sessionRepo.ListAISessions(ctx)
+	if err != nil {
+		return
+	}
+	for _, sess := range sessions {
+		if sess.Source != "discovered" {
+			continue
+		}
+		if IsScratchDir(sess.ProjectPath) || ProjectRoot(sess.ProjectPath) != sess.ProjectPath {
+			if err := s.sessionRepo.DeleteAISession(ctx, sess.ID); err != nil {
+				log.Printf("activity_service: remove session %s: %v", sess.ID, err)
+			}
 		}
 	}
 }

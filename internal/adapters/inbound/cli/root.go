@@ -4,8 +4,8 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -29,6 +29,7 @@ func NewRootCmd(orch ports.Orchestrator, brain ports.BrainService) *cobra.Comman
 	root.AddCommand(newPromoteCmd(orch))
 	root.AddCommand(newUpdateCmd(orch))
 	root.AddCommand(newBrainCmd(brain))
+	root.AddCommand(newConnectCmd())
 
 	return root
 }
@@ -49,11 +50,11 @@ func newQueueCmd(orch ports.Orchestrator) *cobra.Command {
 				return fmt.Errorf("queue list: %w", err)
 			}
 			if len(tasks) == 0 {
-				fmt.Println("Queue is empty.")
+				fmt.Fprintln(cmd.OutOrStdout(), "Queue is empty.")
 				return nil
 			}
 			for _, t := range tasks {
-				fmt.Printf("[%-10s] %s → %s\n\t%q\n",
+				fmt.Fprintf(cmd.OutOrStdout(), "[%-10s] %s → %s\n\t%q\n",
 					t.Status, t.ProjectPath, t.TargetFile, t.Instruction)
 			}
 			return nil
@@ -69,7 +70,7 @@ func newQueueCmd(orch ports.Orchestrator) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("queue get: %w", err)
 			}
-			enc := json.NewEncoder(os.Stdout)
+			enc := json.NewEncoder(cmd.OutOrStdout())
 			enc.SetIndent("", "  ")
 			return enc.Encode(task)
 		},
@@ -83,7 +84,7 @@ func newQueueCmd(orch ports.Orchestrator) *cobra.Command {
 			if err := orch.CancelTask(args[0]); err != nil {
 				return fmt.Errorf("cancel: %w", err)
 			}
-			fmt.Printf("Task %s cancelled.\n", args[0])
+			fmt.Fprintf(cmd.OutOrStdout(), "Task %s cancelled.\n", args[0])
 			return nil
 		},
 	}
@@ -94,7 +95,7 @@ func newQueueCmd(orch ports.Orchestrator) *cobra.Command {
 
 // newDraftCmd returns the `nexus draft` command which creates a DRAFT task.
 func newDraftCmd(orch ports.Orchestrator) *cobra.Command {
-	var project, instruction, target, provider, model, tags string
+	var project, instruction, target, provider, providerHint, model, role, tags string
 	var priority int
 
 	cmd := &cobra.Command{
@@ -106,7 +107,9 @@ func newDraftCmd(orch ports.Orchestrator) *cobra.Command {
 				Instruction:  instruction,
 				TargetFile:   target,
 				ProviderName: provider,
+				ProviderHint: providerHint,
 				ModelID:      model,
+				Role:         role,
 				Priority:     priority,
 			}
 			if cmd.Flags().Changed("tags") {
@@ -118,7 +121,7 @@ func newDraftCmd(orch ports.Orchestrator) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("cli: draft: %w", err)
 			}
-			fmt.Printf("Draft created: %s\n", id)
+			fmt.Fprintf(cmd.OutOrStdout(), "Draft created: %s\n", id)
 			return nil
 		},
 	}
@@ -127,7 +130,9 @@ func newDraftCmd(orch ports.Orchestrator) *cobra.Command {
 	cmd.Flags().StringVar(&instruction, "instruction", "", "Task instruction (required)")
 	cmd.Flags().StringVar(&target, "target", "", "Target file")
 	cmd.Flags().StringVar(&provider, "provider", "", "Provider name")
+	cmd.Flags().StringVar(&providerHint, "provider-hint", "", "Preferred provider when several serve the model")
 	cmd.Flags().StringVar(&model, "model", "", "Model ID")
+	cmd.Flags().StringVar(&role, "role", "", "Routing tier hint (architect, techlead, coder, tester, linter)")
 	cmd.Flags().IntVar(&priority, "priority", 2, "Priority (1=highest, 2=medium, 3+=low)")
 	cmd.Flags().StringVar(&tags, "tags", "", "Comma-separated tags")
 	_ = cmd.MarkFlagRequired("project")
@@ -149,17 +154,17 @@ func newBacklogCmd(orch ports.Orchestrator) *cobra.Command {
 				return fmt.Errorf("cli: backlog: %w", err)
 			}
 			if len(tasks) == 0 {
-				fmt.Println("No backlog items for project.")
+				fmt.Fprintln(cmd.OutOrStdout(), "No backlog items for project.")
 				return nil
 			}
-			fmt.Printf("%-36s  %8s  %-10s  %-12s  %s\n", "ID", "Priority", "Status", "Provider", "Instruction")
-			fmt.Println(strings.Repeat("-", 100))
+			fmt.Fprintf(cmd.OutOrStdout(), "%-36s  %8s  %-10s  %-12s  %s\n", "ID", "Priority", "Status", "Provider", "Instruction")
+			fmt.Fprintln(cmd.OutOrStdout(), strings.Repeat("-", 100))
 			for _, t := range tasks {
 				instr := t.Instruction
 				if len(instr) > 60 {
 					instr = instr[:60]
 				}
-				fmt.Printf("%-36s  %8d  %-10s  %-12s  %s\n",
+				fmt.Fprintf(cmd.OutOrStdout(), "%-36s  %8d  %-10s  %-12s  %s\n",
 					t.ID, t.Priority, t.Status, t.ProviderName, instr)
 			}
 			return nil
@@ -182,15 +187,15 @@ func newPromoteCmd(orch ports.Orchestrator) *cobra.Command {
 			id := args[0]
 			result, err := orch.PromoteTask(id)
 			if err != nil {
-				if strings.Contains(err.Error(), "not found") {
-					fmt.Printf("Task %s not found\n", id)
-					return nil
+				if errors.Is(err, domain.ErrNotFound) || strings.Contains(err.Error(), "not found") {
+					// A missing task is a failure: scripts must see a non-zero exit code.
+					return fmt.Errorf("cli: promote: task %s not found", id)
 				}
 				return fmt.Errorf("cli: promote: %w", err)
 			}
-			fmt.Printf("Task %s promoted to queue\n", id)
+			fmt.Fprintf(cmd.OutOrStdout(), "Task %s promoted to queue\n", id)
 			if result.Warning != "" {
-				fmt.Printf("Warning: %s\n", result.Warning)
+				fmt.Fprintf(cmd.OutOrStdout(), "Warning: %s\n", result.Warning)
 			}
 			return nil
 		},
@@ -230,7 +235,7 @@ func newUpdateCmd(orch ports.Orchestrator) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("cli: update: %w", err)
 			}
-			fmt.Printf("Task %s updated: status=%s, priority=%d\n", updated.ID, updated.Status, updated.Priority)
+			fmt.Fprintf(cmd.OutOrStdout(), "Task %s updated: status=%s, priority=%d\n", updated.ID, updated.Status, updated.Priority)
 			return nil
 		},
 	}
@@ -256,10 +261,10 @@ func newProvidersCmd(orch ports.Orchestrator) *cobra.Command {
 				return fmt.Errorf("providers: %w", err)
 			}
 			if len(providers) == 0 {
-				fmt.Println("No providers registered.")
+				fmt.Fprintln(cmd.OutOrStdout(), "No providers registered.")
 				return nil
 			}
-			enc := json.NewEncoder(os.Stdout)
+			enc := json.NewEncoder(cmd.OutOrStdout())
 			enc.SetIndent("", "  ")
 			return enc.Encode(providers)
 		},

@@ -17,6 +17,13 @@ linters:
     - errcheck
     - gocritic
     - revive
+    - unused
+    - unparam
+    - errorlint
+    - bodyclose
+    - misspell
+    - gosec
+    - noctx
 
   settings:
     errcheck:
@@ -47,7 +54,6 @@ linters:
       rules:
         # Style-only rules — disabled to avoid noisy CI failures
         - name: exported
-          disabled: true
         - name: unexported-return
           disabled: true
         - name: var-naming
@@ -62,6 +68,29 @@ linters:
         # unused-parameter: cobra RunE callbacks must match the func(cmd, args) signature
         - name: unused-parameter
           disabled: true
+
+    gosec:
+      excludes:
+        # G104: duplicate of errcheck, which is configured explicitly above.
+        - G104
+        # G117: flags JSON fields named APIKey/APIToken. Provider config must
+        # round-trip these by design; they are never logged.
+        - G117
+        # G204 / G304 / G703: nexus scans the user's machine and runs the user's
+        # own agent CLIs and verification commands — variable paths and
+        # subprocess arguments are the product, not a vulnerability.
+        - G204
+        - G304
+        - G703
+        # G704 / G706: taint-analysis findings on a local daemon that logs and
+        # proxies to user-configured endpoints.
+        - G704
+        - G706
+        # G118: server shutdown contexts must outlive the request/server context.
+        - G118
+        # G306: generated project files use 0640 so collaborators in the same
+        # group can read them; directories are 0750.
+        - G306
 
     gocritic:
       enabled-tags:
@@ -94,6 +123,22 @@ linters:
       - ".*\\.pb\\.go"
       - "wailsjs/.*"
     rules:
+      # MCP tool handlers share one dispatcher signature (result, error) even
+      # when a particular tool cannot fail.
+      - path: "internal/adapters/inbound/mcp/tools.*\\.go"
+        linters:
+          - unparam
+      # Test helpers legitimately take parameters that every caller passes the
+      # same value for, and tests are not a security boundary.
+      # Test doubles implement the production ports; their methods are documented there.
+      - path: "internal/testutil/"
+        linters:
+          - revive
+      - path: "_test\\.go"
+        linters:
+          - unparam
+          - gosec
+          - noctx
       # Test HTTP handlers legitimately ignore json.Encoder.Encode errors
       - path: "_test\\.go"
         linters:

@@ -1,3 +1,6 @@
+<!--
+  Getting Started page: install, start the daemon, connect an agent and submit a first task.
+-->
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-12">
@@ -27,7 +30,7 @@
           <div
             class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-sm text-violet-300 mb-4"
           >
-            <i class="pi pi-book text-xs"></i>
+            <UiIcon name="book" class="text-xs" />
             Step-by-step guide
           </div>
           <h1 class="text-4xl font-black mb-4">
@@ -46,7 +49,7 @@
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div class="rounded-xl border border-white/8 bg-[#0d0d14] p-4">
               <div class="text-lg mb-2">🔷</div>
-              <div class="font-bold text-white text-sm mb-1">Go 1.26+</div>
+              <div class="font-bold text-white text-sm mb-1">Go 1.27+</div>
               <div class="text-xs text-slate-500">
                 With CGO_ENABLED=1 and a C compiler (gcc/clang)
               </div>
@@ -106,6 +109,25 @@
           <CodeBlock language="bash" :code="codeDaemonCloud" />
         </section>
 
+        <!-- Connect agents -->
+        <section id="connect-agents" class="reveal">
+          <h2 class="text-2xl font-black mb-4 flex items-center gap-2">
+            <span class="text-violet-400">#</span> Connect Your Agents
+          </h2>
+          <p class="text-slate-400 text-sm mb-4">
+            An agent that cannot call Nexus tools can only work around them, for example by editing
+            the database by hand, and then Nexus shows state it never ran. Connect the agents on
+            your machine once:
+          </p>
+          <CodeBlock language="bash" :code="codeConnect" />
+          <p class="text-slate-500 text-sm mt-3">
+            With the VS Code extension installed, the editor's own agent is connected for you (VS
+            Code 1.101+ through its MCP support, Antigravity after one prompt). Then
+            <code class="text-violet-300">make init-project PROJECT=/path/to/repo</code> teaches
+            Nexus the project, and every session starts with its briefing.
+          </p>
+        </section>
+
         <!-- First Task -->
         <section id="first-task" class="reveal">
           <h2 class="text-2xl font-black mb-4 flex items-center gap-2">
@@ -140,12 +162,13 @@
         <!-- Dashboard -->
         <section id="dashboard" class="reveal">
           <h2 class="text-2xl font-black mb-4 flex items-center gap-2">
-            <span class="text-violet-400">#</span> Using the Dashboard
+            <span class="text-violet-400">#</span> Using the UI
           </h2>
           <div class="rounded-xl border border-white/8 bg-[#0d0d14] p-6">
             <p class="text-slate-400 text-sm mb-3">
-              Open <code class="text-violet-300">http://localhost:63987/ui</code> in your browser
-              for a live dashboard that:
+              Open <code class="text-violet-300">http://localhost:63987/app/</code> in your browser
+              (the daemon embeds the full UI when built with Node 22; otherwise
+              <code class="text-violet-300">/ui</code> is a light dashboard):
             </p>
             <ul class="space-y-2 list-none p-0">
               <li
@@ -153,7 +176,7 @@
                 :key="feature"
                 class="flex items-start gap-2 text-sm text-slate-400"
               >
-                <i class="pi pi-check-circle text-emerald-500 text-xs mt-0.5 flex-shrink-0"></i>
+                <UiIcon name="check-circle" class="text-emerald-500 text-xs mt-0.5 flex-shrink-0" />
                 {{ feature }}
               </li>
             </ul>
@@ -196,6 +219,7 @@
 </template>
 
 <script setup lang="ts">
+import UiIcon from '../ui/UiIcon.vue';
 import { RouterLink } from 'vue-router';
 import CodeBlock from '../components/CodeBlock.vue';
 import { scrollToId } from '../utils/scroll';
@@ -204,6 +228,7 @@ const toc = [
   { id: 'prerequisites', label: 'Prerequisites' },
   { id: 'installation', label: 'Installation' },
   { id: 'starting-daemon', label: 'Starting the Daemon' },
+  { id: 'connect-agents', label: 'Connect Your Agents' },
   { id: 'first-task', label: 'Your First Task' },
   { id: 'task-management', label: 'Task Management' },
   { id: 'providers', label: 'Managing Providers' },
@@ -212,24 +237,29 @@ const toc = [
   { id: 'next-steps', label: 'Next Steps' },
 ];
 
-const codeInstall = `# Clone the repository
+const codeInstall = `# macOS desktop app (no Gatekeeper dialog), or the CLI + daemon on any system
+curl -sSfL https://raw.githubusercontent.com/el-j/nexus-orchestrator/main/scripts/install.sh | sh -s -- --desktop
+curl -sSfL https://raw.githubusercontent.com/el-j/nexus-orchestrator/main/scripts/install.sh | sh
+
+# Or from source: one command builds and starts everything
 git clone https://github.com/el-j/nexus-orchestrator.git
 cd nexus-orchestrator
+nvm use          # Node >= 22 builds the full UI
+make start`;
 
-# Build all binaries
-CGO_ENABLED=1 go build ./...
+const codeConnect = `# Which agents on this machine can call Nexus? (changes nothing)
+nexus-cli connect
 
-# Or build specific binaries
-CGO_ENABLED=1 go build -o nexus-daemon ./cmd/nexus-daemon/...
-CGO_ENABLED=1 go build -o nexus-cli ./cmd/nexus-cli/...`;
+# Connect them: Antigravity, Cursor, Claude Code
+nexus-cli connect --write`;
 
 const codeDaemonBasic = `# Start with default settings
 ./nexus-daemon
 # HTTP API:   http://127.0.0.1:63987
 # MCP server: http://127.0.0.1:63988/mcp
-# Dashboard:  http://127.0.0.1:63987/ui`;
+# Full UI:    http://127.0.0.1:63987/app/   (light dashboard: /ui)`;
 
-const codeDaemonCustom = `# Use environment variables for custom settings
+const codeDaemonCustom = `# Use environment variables for custom settings (default database: ~/.nexus/nexus.db)
 NEXUS_DB_PATH=/path/to/nexus.db \\
 NEXUS_LISTEN_ADDR=:8080 \\
 NEXUS_MCP_ADDR=:8081 \\
@@ -254,12 +284,8 @@ curl -s -X POST http://localhost:63987/api/tasks \\
   }' | jq .`;
 
 const codeFirstTaskResponse = `{
-  "id": "a1b2c3d4-...",
-  "projectPath": "/path/to/project",
-  "targetFile": "hello.go",
-  "instruction": "Write a Go function...",
-  "status": "QUEUED",
-  "createdAt": "2025-01-01T00:00:00Z"
+  "task_id": "a1b2c3d4-...",
+  "status": "QUEUED"
 }`;
 
 const codeStatus = `# Get task by ID
@@ -298,10 +324,10 @@ CGO_ENABLED=1 go test ./internal/core/services/...
 go vet ./...`;
 
 const dashboardFeatures = [
-  'Shows all tasks with real-time status updates via SSE',
-  'Allows submitting new tasks directly',
-  'Displays provider status and model information',
-  'Auto-refreshes every 2 seconds',
+  'Mission Control: active work, recent completions, agents and providers, task submission',
+  'Live output of a running task while the model writes it',
+  'Projects: activity, plans, history, backlog and the project brain as tabs',
+  'Each task says who ran it: Nexus on a provider, or an agent that only reported a status',
 ];
 
 const nextSteps = [
@@ -314,7 +340,7 @@ const nextSteps = [
   {
     icon: '🔌',
     title: 'MCP Integration',
-    desc: 'Connect with Claude Desktop',
+    desc: 'Connect Claude Code, Cursor, Antigravity and Claude Desktop',
     to: '/mcp-integration',
   },
   {

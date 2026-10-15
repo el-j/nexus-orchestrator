@@ -3,11 +3,13 @@ import type { AISession } from '../types/domain';
 import { listAISessions, deregisterAISession, purgeDisconnectedSessions } from '../types/wails';
 import { useGlobalSSE } from './useGlobalSSE';
 
+/** Reactive list of AI sessions with register/deregister/purge actions, refreshed on SSE events. */
 export function useAISessions() {
   const sessions = ref<AISession[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
   let interval: ReturnType<typeof setInterval> | null = null;
+  let disposed = false; // set on unmount so a fetch that finishes late starts nothing
 
   const { on, off } = useGlobalSSE();
 
@@ -37,12 +39,14 @@ export function useAISessions() {
   onMounted(async () => {
     loading.value = true;
     await refresh();
+    loading.value = false;
+    if (disposed) return;
     on('ai_session_changed', sseHandler);
     interval = setInterval(refresh, 15_000);
-    loading.value = false;
   });
 
   onUnmounted(() => {
+    disposed = true;
     off('ai_session_changed', sseHandler);
     if (interval) clearInterval(interval);
   });

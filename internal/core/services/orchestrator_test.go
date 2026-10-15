@@ -23,14 +23,14 @@ type memRepo struct {
 
 func newMemRepo() *memRepo { return &memRepo{tasks: make(map[string]domain.Task)} }
 
-func (r *memRepo) Save(t domain.Task) error {
+func (r *memRepo) Save(_ context.Context, t domain.Task) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.tasks[t.ID] = t
 	return nil
 }
 
-func (r *memRepo) GetByID(id string) (domain.Task, error) {
+func (r *memRepo) GetByID(_ context.Context, id string) (domain.Task, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	t, ok := r.tasks[id]
@@ -40,7 +40,7 @@ func (r *memRepo) GetByID(id string) (domain.Task, error) {
 	return t, nil
 }
 
-func (r *memRepo) GetPending() ([]domain.Task, error) {
+func (r *memRepo) GetPending(context.Context) ([]domain.Task, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	var out []domain.Task
@@ -52,7 +52,7 @@ func (r *memRepo) GetPending() ([]domain.Task, error) {
 	return out, nil
 }
 
-func (r *memRepo) ClaimNextQueued() (domain.Task, error) {
+func (r *memRepo) ClaimNextQueued(context.Context) (domain.Task, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	var (
@@ -77,7 +77,7 @@ func (r *memRepo) ClaimNextQueued() (domain.Task, error) {
 	return claimed, nil
 }
 
-func (r *memRepo) UpdateStatus(id string, status domain.TaskStatus) error {
+func (r *memRepo) UpdateStatus(_ context.Context, id string, status domain.TaskStatus) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	t, ok := r.tasks[id]
@@ -89,7 +89,7 @@ func (r *memRepo) UpdateStatus(id string, status domain.TaskStatus) error {
 	return nil
 }
 
-func (r *memRepo) UpdateStatusIfCurrent(id string, from, to domain.TaskStatus) (bool, error) {
+func (r *memRepo) UpdateStatusIfCurrent(_ context.Context, id string, from, to domain.TaskStatus) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	t, ok := r.tasks[id]
@@ -105,7 +105,7 @@ func (r *memRepo) UpdateStatusIfCurrent(id string, from, to domain.TaskStatus) (
 	return true, nil
 }
 
-func (r *memRepo) UpdateLogs(id, logs string) error {
+func (r *memRepo) UpdateLogs(_ context.Context, id, logs string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	t, ok := r.tasks[id]
@@ -117,7 +117,7 @@ func (r *memRepo) UpdateLogs(id, logs string) error {
 	return nil
 }
 
-func (r *memRepo) GetByProjectPath(projectPath string) ([]domain.Task, error) {
+func (r *memRepo) GetByProjectPath(_ context.Context, projectPath string) ([]domain.Task, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	var out []domain.Task
@@ -129,7 +129,7 @@ func (r *memRepo) GetByProjectPath(projectPath string) ([]domain.Task, error) {
 	return out, nil
 }
 
-func (r *memRepo) GetByProjectPathAndStatus(projectPath string, statuses ...domain.TaskStatus) ([]domain.Task, error) {
+func (r *memRepo) GetByProjectPathAndStatus(_ context.Context, projectPath string, statuses ...domain.TaskStatus) ([]domain.Task, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	statusSet := make(map[domain.TaskStatus]bool, len(statuses))
@@ -145,14 +145,14 @@ func (r *memRepo) GetByProjectPathAndStatus(projectPath string, statuses ...doma
 	return out, nil
 }
 
-func (r *memRepo) Update(t domain.Task) error {
+func (r *memRepo) Update(_ context.Context, t domain.Task) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.tasks[t.ID] = t
 	return nil
 }
 
-func (r *memRepo) GetAll() ([]domain.Task, error) {
+func (r *memRepo) GetAll(context.Context) ([]domain.Task, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	out := []domain.Task{}
@@ -162,7 +162,7 @@ func (r *memRepo) GetAll() ([]domain.Task, error) {
 	return out, nil
 }
 
-func (r *memRepo) GetTasksBySessionID(sessionID string) ([]domain.Task, error) {
+func (r *memRepo) GetTasksBySessionID(_ context.Context, sessionID string) ([]domain.Task, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	var out []domain.Task
@@ -254,7 +254,7 @@ func TestOrchestrator_SubmitTask_AssignsIDAndQueues(t *testing.T) {
 		t.Fatal("expected a non-empty task ID")
 	}
 
-	saved, err := repo.GetByID(id)
+	saved, err := repo.GetByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("task not persisted: %v", err)
 	}
@@ -270,7 +270,7 @@ func TestOrchestrator_GetQueue_ReturnsPendingTasks(t *testing.T) {
 	defer orch.Stop()
 
 	for i, status := range []domain.TaskStatus{domain.StatusQueued, domain.StatusProcessing, domain.StatusQueued} {
-		err := repo.Save(domain.Task{
+		err := repo.Save(context.Background(), domain.Task{
 			ID:          fmt.Sprintf("pending-%d", i),
 			Instruction: "task",
 			Status:      status,
@@ -322,7 +322,7 @@ func TestOrchestrator_WorkerProcessesTask(t *testing.T) {
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		time.Sleep(300 * time.Millisecond)
-		saved, _ := repo.GetByID(id)
+		saved, _ := repo.GetByID(context.Background(), id)
 		if saved.Status == domain.StatusCompleted {
 			return // success
 		}
@@ -341,14 +341,14 @@ func newMemSessionRepo() *memSessionRepo {
 	return &memSessionRepo{sessions: make(map[string][]domain.Message)}
 }
 
-func (r *memSessionRepo) Save(s domain.Session) error {
+func (r *memSessionRepo) Save(_ context.Context, s domain.Session) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.sessions[s.ProjectPath] = s.Messages
 	return nil
 }
 
-func (r *memSessionRepo) GetByProjectPath(p string) (domain.Session, error) {
+func (r *memSessionRepo) GetByProjectPath(_ context.Context, p string) (domain.Session, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	msgs, ok := r.sessions[p]
@@ -358,7 +358,7 @@ func (r *memSessionRepo) GetByProjectPath(p string) (domain.Session, error) {
 	return domain.Session{ProjectPath: p, Messages: msgs}, nil
 }
 
-func (r *memSessionRepo) AppendMessage(p string, msg domain.Message) error {
+func (r *memSessionRepo) AppendMessage(_ context.Context, p string, msg domain.Message) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.sessions[p] = append(r.sessions[p], msg)
@@ -373,12 +373,12 @@ type chatTrackingLLM struct {
 	lastMsgs   []domain.Message
 }
 
-func (c *chatTrackingLLM) Chat(msgs []domain.Message) (string, error) {
+func (c *chatTrackingLLM) Chat(_ context.Context, msgs []domain.Message) (string, error) {
 	c.mu.Lock()
 	c.chatCalled++
 	c.lastMsgs = msgs
 	c.mu.Unlock()
-	return c.mockLLMClient.Chat(msgs)
+	return c.mockLLMClient.Chat(context.Background(), msgs)
 }
 
 // --- Session isolation tests -------------------------------------------------
@@ -396,7 +396,7 @@ func TestOrchestrator_Session_UsesChatWhenRepoProvided(t *testing.T) {
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		time.Sleep(300 * time.Millisecond)
-		saved, _ := repo.GetByID(id)
+		saved, _ := repo.GetByID(context.Background(), id)
 		if saved.Status == domain.StatusCompleted {
 			llm.mu.Lock()
 			called := llm.chatCalled
@@ -427,7 +427,7 @@ func TestOrchestrator_Session_HistoryAccumulatedPerProject(t *testing.T) {
 	id2, _ := orch.SubmitTask(domain.Task{ProjectPath: path, Instruction: "second"})
 	waitCompleted(t, repo, id2, 10*time.Second)
 
-	sess, err := sessRepo.GetByProjectPath(path)
+	sess, err := sessRepo.GetByProjectPath(context.Background(), path)
 	if err != nil {
 		t.Fatalf("GetByProjectPath: %v", err)
 	}
@@ -451,8 +451,8 @@ func TestOrchestrator_Session_IsolatedByProjectPath(t *testing.T) {
 	idB, _ := orch.SubmitTask(domain.Task{ProjectPath: "/proj/beta", Instruction: "beta task"})
 	waitCompleted(t, repo, idB, 10*time.Second)
 
-	sessA, _ := sessRepo.GetByProjectPath("/proj/alpha")
-	sessB, _ := sessRepo.GetByProjectPath("/proj/beta")
+	sessA, _ := sessRepo.GetByProjectPath(context.Background(), "/proj/alpha")
+	sessB, _ := sessRepo.GetByProjectPath(context.Background(), "/proj/beta")
 
 	if len(sessA.Messages) != 2 {
 		t.Errorf("alpha: expected 2 messages, got %d", len(sessA.Messages))
@@ -467,7 +467,7 @@ func waitCompleted(t *testing.T, repo *memRepo, id string, timeout time.Duration
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		time.Sleep(300 * time.Millisecond)
-		saved, _ := repo.GetByID(id)
+		saved, _ := repo.GetByID(context.Background(), id)
 		if saved.Status == domain.StatusCompleted {
 			return
 		}
@@ -495,7 +495,7 @@ func TestOrchestrator_PreFlight_TooLarge(t *testing.T) {
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		time.Sleep(200 * time.Millisecond)
-		saved, _ := repo.GetByID(id)
+		saved, _ := repo.GetByID(context.Background(), id)
 		if saved.Status == domain.StatusTooLarge {
 			if !strings.Contains(saved.Logs, "context too large") {
 				t.Errorf("expected 'context too large' in Logs, got: %s", saved.Logs)
@@ -552,7 +552,7 @@ func TestOrchestrator_StatusNoProvider_WhenModelUnavailable(t *testing.T) {
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		time.Sleep(200 * time.Millisecond)
-		saved, _ := repo.GetByID(id)
+		saved, _ := repo.GetByID(context.Background(), id)
 		if saved.Status == domain.StatusNoProvider {
 			return // success
 		}
@@ -753,7 +753,7 @@ func TestOrchestrator_CommandPlan_Succeeds(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SubmitTask with CommandPlan: %v", err)
 	}
-	saved, err := repo.GetByID(id)
+	saved, err := repo.GetByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -848,7 +848,7 @@ func TestOrchestrator_EmptyCommand_DefaultsToAuto(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SubmitTask: %v", err)
 	}
-	saved, err := repo.GetByID(id)
+	saved, err := repo.GetByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -907,7 +907,7 @@ func TestOrchestrator_StatusNoProvider_AfterRemove(t *testing.T) {
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		time.Sleep(200 * time.Millisecond)
-		saved, _ := repo.GetByID(id)
+		saved, _ := repo.GetByID(context.Background(), id)
 		if saved.Status == domain.StatusNoProvider {
 			return
 		}
@@ -936,7 +936,7 @@ func TestCreateDraft_CreatesStatusDraft(t *testing.T) {
 	if id == "" {
 		t.Fatal("expected non-empty task ID")
 	}
-	saved, err := repo.GetByID(id)
+	saved, err := repo.GetByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -966,7 +966,7 @@ func TestCreateDraft_DefaultsPriorityToTwo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateDraft: %v", err)
 	}
-	saved, _ := repo.GetByID(id)
+	saved, _ := repo.GetByID(context.Background(), id)
 	if saved.Priority != 2 {
 		t.Errorf("priority: want 2, got %d", saved.Priority)
 	}
@@ -1001,7 +1001,7 @@ func TestGetBacklog_ReturnsOnlyDraftAndBacklog(t *testing.T) {
 	}
 
 	// Manually save a BACKLOG task.
-	if err := repo.Save(domain.Task{
+	if err := repo.Save(context.Background(), domain.Task{
 		ID:          "backlog-1",
 		ProjectPath: proj,
 		Instruction: "backlog idea",
@@ -1058,7 +1058,7 @@ func TestPromoteTask_DraftToQueued(t *testing.T) {
 		t.Fatalf("PromoteTask: %v", err)
 	}
 
-	saved, err := repo.GetByID(id)
+	saved, err := repo.GetByID(context.Background(), id)
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
@@ -1095,7 +1095,7 @@ func TestPromoteTask_EnforcesQueueCap(t *testing.T) {
 	orch.WithQueueCap(queueCap)
 	defer orch.Stop()
 
-	if err := repo.Save(domain.Task{
+	if err := repo.Save(context.Background(), domain.Task{
 		ID:          "pending-cap-task",
 		ProjectPath: "/proj/cap",
 		Instruction: "existing queued task",
@@ -1150,7 +1150,7 @@ func TestUpdateTask_MergesFields(t *testing.T) {
 		t.Errorf("priority: want 1, got %d", updated.Priority)
 	}
 	// Verify persisted in repository.
-	saved, _ := repo.GetByID(id)
+	saved, _ := repo.GetByID(context.Background(), id)
 	if saved.Instruction != "updated instruction" {
 		t.Errorf("persisted instruction: want %q, got %q", "updated instruction", saved.Instruction)
 	}
@@ -1889,5 +1889,39 @@ func TestUpdateTaskStatus_NotProcessing(t *testing.T) {
 	// Either "does not own" or "not PROCESSING" is acceptable since AISessionID won't match.
 	if !strings.Contains(err.Error(), "does not own") && !strings.Contains(err.Error(), "not PROCESSING") {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+// Registering the same provider twice (the VS Code extension re-registers its models after a
+// restart) must not leave two copies behind; a different model of the same vendor is a
+// different provider and stays.
+func TestOrchestrator_RegisterCloudProvider_ReplacesTheSameProvider(t *testing.T) {
+	orch := services.NewOrchestrator(services.NewDiscoveryService(), newMemRepo(), &noopWriter{}, nil)
+	defer orch.Stop()
+	orch.WithProviderFactory(func(cfg domain.ProviderConfig) (ports.LLMClient, error) {
+		return &mockLLMClient{alive: true, name: cfg.Name, activeModel: cfg.Model, baseURL: cfg.BaseURL}, nil
+	})
+	reg := func(name, model, url string) {
+		t.Helper()
+		if err := orch.RegisterCloudProvider(domain.ProviderConfig{Name: name, Model: model, BaseURL: url}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	reg("vscode-copilot-gpt", "gpt", "http://127.0.0.1:1/v1")
+	reg("vscode-copilot-gpt", "gpt", "http://127.0.0.1:1/v1") // again, same
+	reg("vscode-copilot-gpt", "gpt", "http://127.0.0.1:2/v1") // the bridge came back on another port: the new one wins
+	reg("Anthropic", "sonnet", "")
+	reg("Anthropic", "opus", "") // same vendor, other model: a separate provider
+
+	counts := map[string]int{}
+	providers, _ := orch.GetProviders()
+	for _, p := range providers {
+		counts[p.Name]++
+	}
+	if counts["vscode-copilot-gpt"] != 1 || counts["Anthropic"] != 2 {
+		t.Errorf("providers = %v; want one bridge provider and both Anthropic models", counts)
+	}
+	if c, ok := orch.GetClientForTest("vscode-copilot-gpt"); !ok || c.BaseURL() != "http://127.0.0.1:2/v1" {
+		t.Errorf("the latest registration must win, got %v", c)
 	}
 }

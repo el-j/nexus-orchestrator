@@ -1,3 +1,8 @@
+<!--
+  One row of the activity feed: icon by activity type, agent, summary, relative time, token
+  counts and the project the agent worked in.
+  Props: activity.
+-->
 <template>
   <div
     class="rounded-lg border-l-4 bg-white/2 px-3 py-2 flex flex-col gap-0.5"
@@ -100,8 +105,8 @@ const tokenTotal = computed(() => {
 });
 
 const shortPath = computed(() => {
-  if (!props.activity.projectPath) return '';
-  const parts = props.activity.projectPath.replace(/\\/g, '/').split('/').filter(Boolean);
+  // Only rendered when a project path is set (see the v-if on the row).
+  const parts = props.activity.projectPath!.replace(/\\/g, '/').split('/').filter(Boolean);
   return parts.slice(-2).join('/');
 });
 

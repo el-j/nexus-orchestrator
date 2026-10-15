@@ -6,201 +6,35 @@
  */
 
 import { z } from 'zod';
+import type {
+  AISession,
+  Provider,
+  ProviderConfig,
+  Task,
+  TaskStatus,
+  CommandType,
+  SubmitTaskRequest,
+  DiscoveredAgent,
+  AIActivity,
+  DelegateResponse,
+  RegisterSessionRequest,
+  BrainStatus,
+  ContextSection,
+  ProjectKnowledge,
+  ContextResponse,
+  KnowledgeResult,
+  CreateTaskResponse,
+  HealthResponse,
+} from './nexusTypes';
+import {
+  TaskStatusSchema,
+  TaskSchema,
+  AISessionSchema,
+  ProviderSchema,
+  ProviderConfigSchema,
+} from './nexusSchemas';
 
-// ---- Domain types (mirror internal/core/domain/task.go) ----
-
-export type TaskStatus =
-  | 'QUEUED'
-  | 'PROCESSING'
-  | 'COMPLETED'
-  | 'FAILED'
-  | 'CANCELLED'
-  | 'TOO_LARGE'
-  | 'NO_PROVIDER';
-
-export type CommandType = 'plan' | 'execute' | 'auto' | '';
-
-export interface Task {
-  id: string;
-  projectPath: string;
-  targetFile: string;
-  instruction: string;
-  contextFiles: string[];
-  modelId?: string;
-  providerHint?: string;
-  command?: CommandType;
-  status: TaskStatus;
-  createdAt: string;
-  updatedAt: string;
-  logs?: string;
-  aiSessionId?: string;
-}
-
-// ---- Provider type (mirrors ports.ProviderInfo) ----
-
-export interface Provider {
-  name: string;
-  active: boolean;
-  kind?: string;
-  activeModel?: string;
-  models?: string[];
-  baseURL?: string;
-  details?: string;
-  error?: string;
-  contextLimit?: number;
-}
-
-// ---- Request types ----
-
-export interface SubmitTaskRequest {
-  instruction: string;
-  projectPath: string;
-  targetFile?: string;
-  providerHint?: string;
-  modelId?: string;
-  command?: CommandType;
-  contextFiles?: string[];
-}
-
-// ---- AI Session types ----
-
-export interface AISession {
-  id: string;
-  agentName: string;
-  source: string;
-  status: string;
-  lastActivity: string;
-  projectPath?: string;
-  delegatedToNexus?: boolean;
-  delegationTimestamp?: string;
-  agentCapabilities?: string[];
-  detectionMethod?: string;
-}
-
-export interface DiscoveredAgent {
-  id: string;
-  kind: string;
-  name: string;
-  detectionMethod: string;
-  processName?: string;
-  cliPath?: string;
-  configPath?: string;
-  mcpEndpoint?: string;
-  isRunning: boolean;
-  lastSeen: string;
-}
-
-// ---- AI Activity types ----
-
-export interface AIActivity {
-  id: string;
-  sessionId?: string;
-  agentName: string;
-  activityType: 'message' | 'tool_use' | 'thinking' | 'file_edit' | 'generation';
-  summary: string;
-  projectPath?: string;
-  model?: string;
-  tokensIn?: number;
-  tokensOut?: number;
-  timestamp: string;
-  metadata?: Record<string, string>;
-}
-
-export interface DelegateResponse {
-  instruction: string;
-  sessionId: string;
-}
-
-export interface RegisterSessionRequest {
-  agentName: string;
-  source: 'vscode' | 'mcp' | 'http';
-  projectPath?: string;
-  externalId?: string;
-  modelId?: string;
-}
-
-// ---- Brain Context types ----
-
-export interface BrainStatus {
-  projectPath: string;
-  initialized: boolean;
-  entryCount: number;
-  kindCounts: Record<string, number>;
-  totalTokens: number;
-  lastUpdated?: string;
-}
-
-export interface ContextQuery {
-  projectPath: string;
-  question?: string;
-  maxTokens?: number;
-}
-
-export interface ContextSection {
-  title?: string;
-  topic: string;
-  kind: string;
-  content: string;
-  tokens: number;
-  source: string;
-}
-
-export interface ProjectKnowledge {
-  id: string;
-  projectPath: string;
-  kind: string;
-  topic: string;
-  content: string;
-  tokenCount: number;
-  relevanceScore: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ContextResponse {
-  projectPath: string;
-  sections: ContextSection[];
-  totalTokens: number;
-  truncated: boolean;
-}
-
-export interface KnowledgeResult {
-  id: string;
-  projectPath: string;
-  kind: string;
-  topic: string;
-  content: string;
-  source: string;
-  tokens: number;
-  relevance: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// ---- Internal response shape from POST /api/tasks ----
-
-interface CreateTaskResponse {
-  task_id: string;
-  status: string;
-}
-
-// ---- Health response ----
-
-interface HealthResponse {
-  status: string;
-  service: string;
-}
-
-// ---- Provider config (mirrors daemon ProviderConfig) ----
-
-export interface ProviderConfig {
-  id: string;
-  name: string;
-  kind: string;
-  baseURL?: string;
-  model?: string;
-  enabled: boolean;
-}
+export * from './nexusTypes';
 
 // ---- Validation error ----
 
@@ -214,88 +48,22 @@ export class NexusClientError extends Error {
   }
 }
 
-// ---- Zod schemas for runtime validation of critical API responses ----
-
-const TaskStatusSchema = z.enum([
-  'QUEUED',
-  'PROCESSING',
-  'COMPLETED',
-  'FAILED',
-  'CANCELLED',
-  'TOO_LARGE',
-  'NO_PROVIDER',
-]);
-
-const TaskSchema = z
-  .object({
-    id: z.string(),
-    projectPath: z.string(),
-    targetFile: z.string(),
-    instruction: z.string(),
-    contextFiles: z
-      .array(z.string())
-      .nullish()
-      .transform((v) => v ?? []),
-    modelId: z.string().optional(),
-    providerHint: z.string().optional(),
-    command: z.enum(['plan', 'execute', 'auto', '']).optional(),
-    status: TaskStatusSchema,
-    createdAt: z.string(),
-    updatedAt: z.string(),
-    logs: z.string().optional(),
-    aiSessionId: z.string().optional(),
-    claimedBy: z.string().optional(),
-    claimedAt: z.string().optional(),
-    retryCount: z.number().optional(),
-  })
-  .passthrough();
-
-const AISessionSchema = z
-  .object({
-    id: z.string(),
-    agentName: z.string(),
-    source: z.string(),
-    status: z.string(),
-    lastActivity: z.string(),
-    projectPath: z.string().optional(),
-    delegatedToNexus: z.boolean().optional(),
-    delegationTimestamp: z.string().optional(),
-    agentCapabilities: z.array(z.string()).optional(),
-    detectionMethod: z.string().optional(),
-  })
-  .passthrough();
-
-const ProviderSchema = z
-  .object({
-    name: z.string(),
-    active: z.boolean(),
-    kind: z.string().optional(),
-    activeModel: z.string().optional(),
-    models: z.array(z.string()).optional(),
-    baseURL: z.string().optional(),
-    details: z.string().optional(),
-    error: z.string().optional(),
-    contextLimit: z.number().optional(),
-  })
-  .passthrough();
-
-const ProviderConfigSchema = z
-  .object({
-    id: z.string(),
-    name: z.string(),
-    kind: z.string(),
-    baseURL: z.string().optional(),
-    model: z.string().optional(),
-    enabled: z.boolean(),
-  })
-  .passthrough();
-
 // ---- Client ----
 
+/** Default per-request timeout; a hung daemon must not hang the editor. */
+const REQUEST_TIMEOUT_MS = 15_000;
+
+/** HTTP client for the daemon REST API (bearer token, 15 s timeout, typed errors). */
 export class NexusClient {
+  /**
+   * @param baseUrl REST API base URL, e.g. http://127.0.0.1:63987
+   * @param mcpPort port of the companion MCP server
+   * @param token   bearer token when the daemon runs with NEXUS_API_TOKEN set
+   */
   constructor(
     private baseUrl: string,
     private mcpPort: number = 63988,
+    private token: string = '',
   ) {}
 
   /** Expose the configured MCP port. */
@@ -303,9 +71,25 @@ export class NexusClient {
     return this.mcpPort;
   }
 
+  /** The REST API base URL this client talks to. */
+  getBaseUrl(): string {
+    return this.baseUrl;
+  }
+
   /**
-   * Probe each port with HEAD /health and return the first responding port.
-   * Deduplicates the list; user-supplied port is probed first.
+   * Re-point this client in place. Components capture the client once at
+   * activation, so a settings change must update the shared instance rather
+   * than create a new one that only some of them would see.
+   */
+  configure(baseUrl: string, mcpPort: number, token = ''): void {
+    this.baseUrl = baseUrl;
+    this.mcpPort = mcpPort;
+    this.token = token;
+  }
+
+  /**
+   * Probe each REST port with GET /api/health and return the first responding port.
+   * Deduplicates the list; the first candidate is probed first.
    */
   async tryConnect(ports: number[]): Promise<number> {
     const seen = new Set<number>();
@@ -314,11 +98,8 @@ export class NexusClient {
       if (seen.has(port)) continue;
       seen.add(port);
       try {
-        const probeUrl = `${url.protocol}//${url.hostname}:${port}/health`;
-        const resp = await fetch(probeUrl, {
-          method: 'HEAD',
-          signal: AbortSignal.timeout(1500),
-        });
+        const probeUrl = `${url.protocol}//${url.hostname}:${port}/api/health`;
+        const resp = await fetch(probeUrl, { signal: AbortSignal.timeout(1500) });
         if (resp.ok) return port;
       } catch {
         // port not responding — try next
@@ -357,18 +138,40 @@ export class NexusClient {
    */
   async cancelTask(id: string): Promise<void> {
     const url = `${this.baseUrl}/api/tasks/${encodeURIComponent(id)}`;
-    const resp = await fetch(url, { method: 'DELETE' });
-    if (!resp.ok) {
-      const body = await resp.text().catch(() => '');
-      throw new Error(
-        `nexus: cancel task ${id}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`,
-      );
-    }
+    const resp = await this.send(url, { method: 'DELETE' });
+    if (!resp.ok) throw await this.failure(`cancel task ${id}`, resp);
   }
 
   /** Return all registered LLM providers and their liveness status. */
   async getProviders(): Promise<Provider[]> {
     return this.get('/api/providers', z.array(ProviderSchema));
+  }
+
+  /** Register an OpenAI-compatible provider with the running daemon (in memory, not persisted). */
+  async registerProvider(cfg: {
+    name: string;
+    kind: string;
+    baseUrl: string;
+    apiKey: string;
+    model: string;
+  }): Promise<void> {
+    await this.post('/api/providers', { ...cfg, enabled: true });
+  }
+
+  /** Remove a registered provider by name. A provider that is already gone is not an error. */
+  async removeProvider(name: string): Promise<void> {
+    try {
+      await this.delete(`/api/providers/${encodeURIComponent(name)}`);
+    } catch (err) {
+      if (!(err instanceof Error) || !err.message.includes('HTTP 404')) throw err;
+    }
+  }
+
+  /** Opens the daemon's server-sent event stream. The caller reads the body and ends it with `signal`. */
+  async openEvents(signal: AbortSignal): Promise<Response> {
+    const resp = await this.send(`${this.baseUrl}/api/events`, { signal });
+    if (!resp.ok) throw await this.failure('GET /api/events', resp);
+    return resp;
   }
 
   /** Register a new AI session with the daemon. */
@@ -379,26 +182,22 @@ export class NexusClient {
   /** Deregister an AI session by ID. */
   async deregisterSession(id: string): Promise<void> {
     const url = `${this.baseUrl}/api/ai-sessions/${encodeURIComponent(id)}`;
-    const resp = await fetch(url, { method: 'DELETE' });
-    if (!resp.ok) {
-      const body = await resp.text().catch(() => '');
-      throw new Error(
-        `nexus: deregister session ${id}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`,
-      );
-    }
+    const resp = await this.send(url, { method: 'DELETE' });
+    if (!resp.ok) throw await this.failure(`deregister session ${id}`, resp);
   }
 
-  /** Send a heartbeat for an existing session to refresh its last-activity timestamp. */
-  async heartbeatSession(id: string): Promise<void> {
+  /**
+   * Send a heartbeat for an existing session to refresh its last-activity timestamp.
+   * Resolves true when the session is alive, false when the daemon no longer knows it
+   * (404: it was purged or the daemon restarted), in which case the caller must
+   * register again. Rejects on any other failure.
+   */
+  async heartbeatSession(id: string): Promise<boolean> {
     const url = `${this.baseUrl}/api/ai-sessions/${encodeURIComponent(id)}/heartbeat`;
-    const resp = await fetch(url, { method: 'POST' });
-    if (!resp.ok && resp.status !== 404) {
-      // 404 means the session was cleaned up — caller should re-register.
-      const body = await resp.text().catch(() => '');
-      throw new Error(
-        `nexus: heartbeat session ${id}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`,
-      );
-    }
+    const resp = await this.send(url, { method: 'POST' });
+    if (resp.status === 404) return false;
+    if (!resp.ok) throw await this.failure(`heartbeat session ${id}`, resp);
+    return true;
   }
 
   /** Return all registered AI sessions. */
@@ -457,7 +256,7 @@ export class NexusClient {
     if (options?.type) params.set('type', options.type);
     if (options?.limit) params.set('limit', String(options.limit));
     const url = `${this.baseUrl}/api/activities${params.size ? '?' + params.toString() : ''}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
+    const res = await this.send(url, { signal: AbortSignal.timeout(3000) });
     if (!res.ok) return [];
     return res.json() as Promise<AIActivity[]>;
   }
@@ -476,7 +275,7 @@ export class NexusClient {
    */
   async health(): Promise<boolean> {
     try {
-      const resp = await fetch(`${this.baseUrl}/api/health`);
+      const resp = await this.send(`${this.baseUrl}/api/health`);
       if (!resp.ok) {
         return false;
       }
@@ -535,7 +334,7 @@ export class NexusClient {
    * Search project intelligence via BM25 matching.
    */
   async searchKnowledge(projectPath: string, query: string, limit = 5): Promise<ContextSection[]> {
-    const params = new URLSearchParams({ projectPath, query, limit: String(limit) });
+    const params = new URLSearchParams({ projectPath, q: query, limit: String(limit) });
     const data = await this.get<{ results: ContextSection[] }>(`/api/brain/search?${params}`);
     return data.results ?? [];
   }
@@ -576,6 +375,46 @@ export class NexusClient {
 
   // ---- Private helpers ----
 
+  /** fetch() with the bearer token and a timeout, so no call can hang forever. */
+  private async send(
+    url: string,
+    init: RequestInit = {},
+    timeoutMs: number = REQUEST_TIMEOUT_MS,
+  ): Promise<Response> {
+    const headers: Record<string, string> = {
+      ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+      ...(init.headers as Record<string, string> | undefined),
+    };
+    try {
+      return await fetch(url, {
+        ...init,
+        headers,
+        signal: init.signal ?? AbortSignal.timeout(timeoutMs),
+      });
+    } catch (err) {
+      if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+        throw new NexusClientError(
+          `nexus: no response from ${url} within ${timeoutMs / 1000}s`,
+          err,
+        );
+      }
+      throw err;
+    }
+  }
+
+  /** Builds the error for a non-2xx response, using the daemon's {"error": "..."} message. */
+  private async failure(what: string, resp: Response): Promise<Error> {
+    const raw = (await resp.text().catch(() => '')).trim();
+    let detail = raw;
+    try {
+      const parsed = JSON.parse(raw) as { error?: unknown };
+      if (typeof parsed.error === 'string' && parsed.error) detail = parsed.error;
+    } catch {
+      /* not JSON: keep the raw text */
+    }
+    return new Error(`nexus: ${what}: HTTP ${resp.status}${detail ? ` — ${detail}` : ''}`);
+  }
+
   private parseResponse<T>(schema: z.ZodSchema<T>, data: unknown): T {
     const result = schema.safeParse(data);
     if (!result.success) {
@@ -588,50 +427,36 @@ export class NexusClient {
   }
 
   private async get<T>(path: string, schema?: z.ZodSchema<T>): Promise<T> {
-    const resp = await fetch(`${this.baseUrl}${path}`);
-    if (!resp.ok) {
-      const body = await resp.text().catch(() => '');
-      throw new Error(`nexus: GET ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`);
-    }
+    const resp = await this.send(`${this.baseUrl}${path}`);
+    if (!resp.ok) throw await this.failure(`GET ${path}`, resp);
     const data: unknown = await resp.json();
     return schema ? this.parseResponse(schema, data) : (data as T);
   }
 
   private async post<T>(path: string, payload: unknown, schema?: z.ZodSchema<T>): Promise<T> {
-    const resp = await fetch(`${this.baseUrl}${path}`, {
+    const resp = await this.send(`${this.baseUrl}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!resp.ok) {
-      const body = await resp.text().catch(() => '');
-      throw new Error(`nexus: POST ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`);
-    }
+    if (!resp.ok) throw await this.failure(`POST ${path}`, resp);
     const data: unknown = await resp.json();
     return schema ? this.parseResponse(schema, data) : (data as T);
   }
 
   private async delete(path: string): Promise<void> {
-    const resp = await fetch(`${this.baseUrl}${path}`, { method: 'DELETE' });
-    if (!resp.ok) {
-      const body = await resp.text().catch(() => '');
-      throw new Error(
-        `nexus: DELETE ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`,
-      );
-    }
+    const resp = await this.send(`${this.baseUrl}${path}`, { method: 'DELETE' });
+    if (!resp.ok) throw await this.failure(`DELETE ${path}`, resp);
   }
 
-  private async put<T>(path: string, payload: unknown, schema?: z.ZodSchema<T>): Promise<T> {
-    const resp = await fetch(`${this.baseUrl}${path}`, {
+  private async put<T>(path: string, payload: unknown, schema: z.ZodSchema<T>): Promise<T> {
+    const resp = await this.send(`${this.baseUrl}${path}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!resp.ok) {
-      const body = await resp.text().catch(() => '');
-      throw new Error(`nexus: PUT ${path}: HTTP ${resp.status}${body ? ` — ${body.trim()}` : ''}`);
-    }
+    if (!resp.ok) throw await this.failure(`PUT ${path}`, resp);
     const data: unknown = await resp.json();
-    return schema ? this.parseResponse(schema, data) : (data as T);
+    return this.parseResponse(schema, data);
   }
 }

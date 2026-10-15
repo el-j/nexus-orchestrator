@@ -1,6 +1,7 @@
 package repo_sqlite
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -24,7 +25,7 @@ func NewModelCapabilityRepo(r *Repository) *ModelCapabilityRepo {
 }
 
 // Save inserts or updates a model capability profile (upsert by model_id).
-func (m *ModelCapabilityRepo) Save(p domain.ModelCapabilityProfile) error {
+func (m *ModelCapabilityRepo) Save(ctx context.Context, p domain.ModelCapabilityProfile) error {
 	now := time.Now()
 	createdAt := p.CreatedAt
 	if createdAt.IsZero() {
@@ -36,7 +37,7 @@ func (m *ModelCapabilityRepo) Save(p domain.ModelCapabilityProfile) error {
 		builtIn = 1
 	}
 
-	_, err := m.db.Exec(
+	_, err := m.db.ExecContext(ctx,
 		`INSERT INTO model_capabilities (model_id, context_window, recommended_max_output, notes, built_in, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(model_id) DO UPDATE SET
@@ -55,8 +56,8 @@ func (m *ModelCapabilityRepo) Save(p domain.ModelCapabilityProfile) error {
 }
 
 // GetByModelID returns the model capability profile with the given model ID, or domain.ErrNotFound.
-func (m *ModelCapabilityRepo) GetByModelID(modelID string) (domain.ModelCapabilityProfile, error) {
-	row := m.db.QueryRow(
+func (m *ModelCapabilityRepo) GetByModelID(ctx context.Context, modelID string) (domain.ModelCapabilityProfile, error) {
+	row := m.db.QueryRowContext(ctx,
 		`SELECT model_id, context_window, recommended_max_output, notes, built_in, created_at, updated_at
 		 FROM model_capabilities WHERE model_id = ?`, modelID,
 	)
@@ -71,8 +72,8 @@ func (m *ModelCapabilityRepo) GetByModelID(modelID string) (domain.ModelCapabili
 }
 
 // GetAll returns all model capability profiles ordered by model_id.
-func (m *ModelCapabilityRepo) GetAll() ([]domain.ModelCapabilityProfile, error) {
-	rows, err := m.db.Query(
+func (m *ModelCapabilityRepo) GetAll(ctx context.Context) ([]domain.ModelCapabilityProfile, error) {
+	rows, err := m.db.QueryContext(ctx,
 		`SELECT model_id, context_window, recommended_max_output, notes, built_in, created_at, updated_at
 		 FROM model_capabilities ORDER BY model_id`,
 	)
@@ -97,15 +98,12 @@ func (m *ModelCapabilityRepo) GetAll() ([]domain.ModelCapabilityProfile, error) 
 
 // Delete removes the model capability profile with the given model ID.
 // Returns domain.ErrNotFound when no row with that ID exists.
-func (m *ModelCapabilityRepo) Delete(modelID string) error {
-	res, err := m.db.Exec(`DELETE FROM model_capabilities WHERE model_id = ?`, modelID)
+func (m *ModelCapabilityRepo) Delete(ctx context.Context, modelID string) error {
+	res, err := m.db.ExecContext(ctx, `DELETE FROM model_capabilities WHERE model_id = ?`, modelID)
 	if err != nil {
 		return fmt.Errorf("sqlite: delete model capability: %w", err)
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("sqlite: delete model capability rows affected: %w", err)
-	}
+	n := affected(res)
 	if n == 0 {
 		return fmt.Errorf("sqlite: delete model capability: %w", domain.ErrNotFound)
 	}
@@ -126,17 +124,27 @@ func scanModelCapability(s scanner) (domain.ModelCapabilityProfile, error) {
 
 	p.BuiltIn = builtInInt != 0
 
-	// Parse DATETIME strings returned from SQLite
-	if createdAtStr != "" {
-		if parsed, err := time.Parse("2006-01-02 15:04:05", createdAtStr); err == nil {
-			p.CreatedAt = parsed.UTC()
-		}
-	}
-	if updatedAtStr != "" {
-		if parsed, err := time.Parse("2006-01-02 15:04:05", updatedAtStr); err == nil {
-			p.UpdatedAt = parsed.UTC()
-		}
-	}
+	p.CreatedAt = parseSQLiteTime(createdAtStr)
+	p.UpdatedAt = parseSQLiteTime(updatedAtStr)
 
 	return p, nil
+}
+
+// sqliteTimeLayouts lists the timestamp encodings that can appear in a DATETIME
+// column: the RFC 3339 form written by the driver for time.Time values, and
+// SQLite's own CURRENT_TIMESTAMP form.
+var sqliteTimeLayouts = []string{time.RFC3339Nano, "2006-01-02 15:04:05"}
+
+// parseSQLiteTime parses a stored DATETIME string into UTC. Empty or
+// unrecognised values yield the zero time.
+func parseSQLiteTime(s string) time.Time {
+	if s == "" {
+		return time.Time{}
+	}
+	for _, layout := range sqliteTimeLayouts {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t.UTC()
+		}
+	}
+	return time.Time{}
 }

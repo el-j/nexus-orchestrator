@@ -4,6 +4,7 @@ import {
   getBrainStatus,
   initProject,
   ingestKnowledge,
+  ingestContent,
   listKnowledge,
   deleteKnowledge,
   searchKnowledge,
@@ -12,6 +13,10 @@ import {
   getFocusedContext,
 } from '../types/wails';
 
+/** Largest document the daemon accepts for ingestion (1 MiB). */
+export const MAX_UPLOAD_BYTES = 1024 * 1024;
+
+/** State and actions for the Context Brain: status, entries, ingestion, search and context. */
 export function useBrain(projectPath: string) {
   const status = ref<BrainStatus | null>(null);
   const entries = ref<ProjectKnowledge[]>([]);
@@ -48,6 +53,30 @@ export function useBrain(projectPath: string) {
     error.value = null;
     try {
       const count = await ingestKnowledge(projectPath, filePath);
+      await fetchStatus();
+      return count;
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : String(e);
+      return 0;
+    }
+  }
+
+  /**
+   * Ingests a file the user picked in the browser. Its content is sent to the
+   * daemon because a browser File has no path the daemon could read.
+   */
+  async function ingestUpload(file: {
+    name: string;
+    size: number;
+    text(): Promise<string>;
+  }): Promise<number> {
+    error.value = null;
+    if (file.size > MAX_UPLOAD_BYTES) {
+      error.value = `${file.name} is larger than 1 MiB`;
+      return 0;
+    }
+    try {
+      const count = await ingestContent(projectPath, file.name, await file.text());
       await fetchStatus();
       return count;
     } catch (e) {
@@ -139,6 +168,7 @@ export function useBrain(projectPath: string) {
     fetchStatus,
     init,
     ingest,
+    ingestUpload,
     listEntries,
     deleteEntry,
     search,

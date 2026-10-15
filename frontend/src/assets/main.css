@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
-@import "tailwindcss";
+@import 'tailwindcss';
+@import './tokens.css';
 
 @theme {
   --color-nexus-900: #050508;
@@ -13,8 +14,14 @@
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
-html, body { height: 100%; overflow: hidden; }
-#app { height: 100%; }
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+#app {
+  height: 100%;
+}
 
 body {
   background-color: #050508;
@@ -23,9 +30,17 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #7c3aed; border-radius: 2px; }
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #7c3aed;
+  border-radius: 2px;
+}
 
 .gradient-text {
   background: linear-gradient(135deg, #a78bfa 0%, #06b6d4 100%);
@@ -34,4 +49,7 @@ body {
   background-clip: text;
 }
 
-pre, code { font-family: var(--font-mono) !important; }
+pre,
+code {
+  font-family: var(--font-mono) !important;
+}

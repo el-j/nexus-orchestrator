@@ -1,3 +1,8 @@
+<!--
+  Modal form to add or edit a saved provider configuration. The Type dropdown is a UI preset
+  (LM Studio, Ollama, OpenAI, Anthropic, Gemini, Copilot, custom) that maps to the stored provider kind.
+  Props: modelValue (config being edited, null when adding), onClose, onSave (async; a rejection is shown in the form).
+-->
 <template>
   <div
     class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
@@ -19,7 +24,8 @@
         <div class="flex flex-col gap-1">
           <label class="text-xs text-slate-400">Type</label>
           <select
-            v-model="form.kind"
+            v-model="preset"
+            data-testid="provider-type"
             class="bg-slate-700 rounded px-3 py-2 text-sm w-full text-white border border-white/10 focus:outline-none focus:border-purple-500"
             @change="onTypeChange"
           >
@@ -27,6 +33,8 @@
             <option value="ollama">Ollama</option>
             <option value="openai">OpenAI</option>
             <option value="anthropic">Anthropic</option>
+            <option value="gemini">Google Gemini</option>
+            <option value="copilot">GitHub Copilot</option>
             <option value="openaicompat">Custom (OpenAI-compatible)</option>
           </select>
         </div>
@@ -87,11 +95,15 @@
             type="checkbox"
             class="accent-purple-500 w-4 h-4 cursor-pointer"
           />
-          <label for="cfg-enabled" class="text-xs text-slate-400 cursor-pointer select-none">Enabled</label>
+          <label for="cfg-enabled" class="text-xs text-slate-400 cursor-pointer select-none"
+            >Enabled</label
+          >
         </div>
 
         <!-- Error message -->
-        <p v-if="error" class="text-xs text-red-400 bg-red-500/10 rounded px-2 py-1.5">{{ error }}</p>
+        <p v-if="error" class="text-xs text-red-400 bg-red-500/10 rounded px-2 py-1.5">
+          {{ error }}
+        </p>
 
         <!-- Buttons -->
         <div class="flex justify-end gap-2 mt-2 pt-2 border-t border-white/5">
@@ -99,12 +111,16 @@
             type="button"
             class="px-4 py-1.5 text-xs rounded bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors"
             @click="onClose"
-          >Cancel</button>
+          >
+            Cancel
+          </button>
           <button
             type="submit"
             :disabled="saving"
             class="px-4 py-1.5 text-xs rounded bg-purple-600 text-white hover:bg-purple-500 disabled:opacity-50 transition-colors"
-          >{{ saving ? 'Saving…' : 'Save' }}</button>
+          >
+            {{ saving ? 'Saving…' : 'Save' }}
+          </button>
         </div>
       </form>
     </div>
@@ -112,21 +128,42 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
-import type { ProviderConfig } from '../types/domain'
+import { ref, watch, onMounted, onUnmounted } from 'vue';
+import type { ProviderConfig } from '../types/domain';
 
 const props = defineProps<{
-  modelValue: ProviderConfig | null
-  onClose: () => void
-  onSave: (cfg: Partial<ProviderConfig>) => Promise<void>
-}>()
+  modelValue: ProviderConfig | null;
+  onClose: () => void;
+  onSave: (cfg: Partial<ProviderConfig>) => Promise<void>;
+}>();
 
+// The Type dropdown is a UI *preset*, not the stored provider kind: the daemon
+// has no "openai" or "copilot" kind: both are openaicompat providers with their own URL.
 const BASE_URL_PRESETS: Record<string, string> = {
   lmstudio: 'http://127.0.0.1:1234/v1',
   ollama: 'http://127.0.0.1:11434',
   openai: 'https://api.openai.com/v1',
   anthropic: 'https://api.anthropic.com',
+  gemini: 'https://generativelanguage.googleapis.com',
+  copilot: 'https://api.githubcopilot.com',
   openaicompat: '',
+};
+
+/** Maps a UI preset to the provider kind the daemon understands. */
+function kindForPreset(preset: string): ProviderConfig['kind'] {
+  return (
+    preset === 'openai' || preset === 'copilot' ? 'openaicompat' : preset
+  ) as ProviderConfig['kind'];
+}
+
+/** Picks the preset that describes an existing config (so editing shows "OpenAI", not "Custom"). */
+function presetForConfig(cfg: Partial<ProviderConfig> | null): string {
+  if (!cfg?.kind) return 'lmstudio';
+  if (cfg.kind === 'openaicompat' && (cfg.baseUrl ?? '').startsWith(BASE_URL_PRESETS.openai))
+    return 'openai';
+  if (cfg.kind === 'openaicompat' && (cfg.baseUrl ?? '').startsWith(BASE_URL_PRESETS.copilot))
+    return 'copilot';
+  return cfg.kind;
 }
 
 function buildDefaultForm(): Partial<ProviderConfig> {
@@ -137,56 +174,56 @@ function buildDefaultForm(): Partial<ProviderConfig> {
     apiKey: '',
     model: '',
     enabled: true,
-  }
+  };
 }
 
 const form = ref<Partial<ProviderConfig>>(
   props.modelValue ? { ...props.modelValue } : buildDefaultForm(),
-)
-const saving = ref(false)
-const error = ref('')
+);
+const preset = ref<string>(presetForConfig(props.modelValue));
+const saving = ref(false);
+const error = ref('');
 
 watch(
   () => props.modelValue,
   (v) => {
-    form.value = v ? { ...v } : buildDefaultForm()
-    error.value = ''
+    form.value = v ? { ...v } : buildDefaultForm();
+    preset.value = presetForConfig(v);
+    error.value = '';
   },
   { immediate: true },
-)
+);
 
 function onTypeChange() {
-  const preset = BASE_URL_PRESETS[form.value.kind ?? 'openaicompat']
-  if (preset !== undefined) {
-    form.value.baseUrl = preset
-  }
+  form.value.kind = kindForPreset(preset.value);
+  form.value.baseUrl = BASE_URL_PRESETS[preset.value];
 }
 
 async function handleSave() {
-  error.value = ''
+  error.value = '';
   if (!form.value.name?.trim()) {
-    error.value = 'Name is required.'
-    return
+    error.value = 'Name is required.';
+    return;
   }
-  const baseUrl = form.value.baseUrl?.trim() ?? ''
+  const baseUrl = form.value.baseUrl?.trim() ?? '';
   if (baseUrl && !/^https?:\/\//i.test(baseUrl)) {
-    error.value = 'Base URL must start with http:// or https://'
-    return
+    error.value = 'Base URL must start with http:// or https://';
+    return;
   }
-  saving.value = true
+  saving.value = true;
   try {
-    await props.onSave(form.value)
+    await props.onSave({ ...form.value, kind: kindForPreset(preset.value) });
   } catch (e) {
-    error.value = e instanceof Error ? e.message : String(e)
+    error.value = e instanceof Error ? e.message : String(e);
   } finally {
-    saving.value = false
+    saving.value = false;
   }
 }
 
 function handleEscape(e: KeyboardEvent) {
-  if (e.key === 'Escape') props.onClose()
+  if (e.key === 'Escape') props.onClose();
 }
 
-onMounted(() => window.addEventListener('keydown', handleEscape))
-onUnmounted(() => window.removeEventListener('keydown', handleEscape))
+onMounted(() => window.addEventListener('keydown', handleEscape));
+onUnmounted(() => window.removeEventListener('keydown', handleEscape));
 </script>
