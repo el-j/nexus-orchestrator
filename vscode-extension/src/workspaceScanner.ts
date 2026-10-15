@@ -6,6 +6,14 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { assemblePlans, readPlanFiles, type PlanFs } from './planFiles';
+
+/** The real file system, as the plan-file reader sees it. */
+const realFs: PlanFs = {
+  readdirSync: (dir) => fs.readdirSync(dir),
+  readFileSync: (p) => fs.readFileSync(p, 'utf8'),
+  statSync: (p) => fs.statSync(p),
+};
 
 /** A single task entry extracted from orchestrator.json */
 export interface OrchestratorTask {
@@ -37,7 +45,11 @@ export interface WorkspaceOrchestration {
   lastModified: Date;
 }
 
-/** Scans workspace folders for Nexus plans (.claude/orchestrator.json) and task files. */
+/**
+ * Scans workspace folders for Nexus plans: .claude/orchestrator.json when there is one, and the
+ * plan and task markdown files (.claude/plans, .claude/tasks, the same under .nexus) that agents
+ * write whether or not they maintain the JSON.
+ */
 export class WorkspaceScanner implements vscode.Disposable {
   private readonly _onDidChange = new vscode.EventEmitter<void>();
   readonly onDidChange = this._onDidChange.event;
@@ -68,36 +80,49 @@ export class WorkspaceScanner implements vscode.Disposable {
     return this.orchestrations;
   }
 
-  /** Re-reads all orchestrator.json files synchronously. */
+  /** Re-reads the orchestrator.json and plan/task files of every folder synchronously. */
   scan(): void {
     this.orchestrations = [];
     const folders = vscode.workspace.workspaceFolders ?? [];
     for (const folder of folders) {
-      const filePath = path.join(folder.uri.fsPath, '.claude', 'orchestrator.json');
-      if (!fs.existsSync(filePath)) continue;
-      try {
-        const raw = fs.readFileSync(filePath, 'utf8');
-        const parsed = parseOrchestratorFile(raw);
-        if (parsed) {
-          const stat = fs.statSync(filePath);
-          this.orchestrations.push({
-            folderPath: folder.uri.fsPath,
-            folderName: path.basename(folder.uri.fsPath),
-            ...parsed,
-            lastModified: stat.mtime,
-          });
+      const root = folder.uri.fsPath;
+      const filePath = path.join(root, '.claude', 'orchestrator.json');
+      let parsed: ReturnType<typeof parseOrchestratorFile> = null;
+      let modified = 0;
+      if (fs.existsSync(filePath)) {
+        try {
+          parsed = parseOrchestratorFile(fs.readFileSync(filePath, 'utf8'));
+          if (parsed) modified = fs.statSync(filePath).mtime.getTime();
+        } catch (e) {
+          console.error('WorkspaceScanner: file I/O failed:', e);
         }
-      } catch (e) {
-        console.error('WorkspaceScanner: file I/O failed:', e);
       }
+      const files = readPlanFiles(root, realFs);
+      if (!parsed && files.plans.length === 0 && files.tasks.length === 0) continue;
+      const { allPlans, activePlan } = assemblePlans(
+        files.plans,
+        files.tasks,
+        parsed?.activePlanId ?? null,
+        parsed?.allPlans ?? [],
+      );
+      this.orchestrations.push({
+        folderPath: root,
+        folderName: path.basename(root),
+        activePlan,
+        allPlans,
+        lastModified: new Date(Math.max(modified, files.newest)),
+      });
     }
   }
 
   private startWatchers(): void {
     const folders = vscode.workspace.workspaceFolders ?? [];
     for (const folder of folders) {
-      // Use a glob that covers the exact file we care about
-      const pattern = new vscode.RelativePattern(folder, '.claude/orchestrator.json');
+      // The JSON and the plan and task files an agent may write instead of (or besides) it.
+      const pattern = new vscode.RelativePattern(
+        folder,
+        '{.claude,.nexus}/{orchestrator.json,plans/*.md,tasks/*.md}',
+      );
       const watcher = vscode.workspace.createFileSystemWatcher(pattern);
       const refresh = (): void => {
         this.scan();
@@ -129,9 +154,11 @@ export class WorkspaceScanner implements vscode.Disposable {
  * Returns null if the file is not recognized as a valid orchestrator file.
  * This is intentionally lenient — missing fields default gracefully.
  */
-function parseOrchestratorFile(
-  raw: string,
-): Omit<WorkspaceOrchestration, 'folderPath' | 'folderName' | 'lastModified'> | null {
+function parseOrchestratorFile(raw: string):
+  | (Omit<WorkspaceOrchestration, 'folderPath' | 'folderName' | 'lastModified'> & {
+      activePlanId: string | null;
+    })
+  | null {
   let json: Record<string, unknown>;
   try {
     const parsed: unknown = JSON.parse(raw);
@@ -165,10 +192,10 @@ function parseOrchestratorFile(
     }),
   }));
 
-  const activePlanId = json.activePlanId as string | null | undefined;
+  const activePlanId = (json.activePlanId as string | null | undefined) ?? null;
   const activePlan = allPlans.find((p) => p.id === activePlanId) ?? null;
 
-  return { activePlan, allPlans };
+  return { activePlan, allPlans, activePlanId };
 }
 
 interface RawPlan {

@@ -58,6 +58,17 @@ All commands are accessible via the Command Palette (`⌘⇧P` / `Ctrl+Shift+P`)
 
 The Nexus activity bar icon (⚡) shows all tasks with live status. Right-click a task to cancel it.
 
+### Workspace Agents (plans and tasks)
+
+The **Workspace Agents** view lists the plans and tasks of every open folder, whichever agent wrote
+them: `.claude/plans/PLAN-*.md` and `.claude/tasks/TASK-*.md` (and the same under `.nexus/`), plus
+`.claude/orchestrator.json` when a tool maintains one. Front matter (`id`, `title`, `status`,
+`planId`, `tasks`) is used when present; otherwise the first heading, a `Status:` line and the first
+`PLAN-n` mentioned. The active plan is the one `orchestrator.json` names, else one marked
+active/in-progress, else the newest unfinished one. The view refreshes when those files change.
+The daemon's onboarding context reads the same files, so a fresh session learns the active plan
+even without an `orchestrator.json`.
+
 ### Status bar
 
 The bottom-left status bar item shows daemon connection status and active task count. Click it for quick actions.

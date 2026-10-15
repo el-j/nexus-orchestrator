@@ -45,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `init_project` / `nexus init` only learned from `CLAUDE.md`; it now also reads `AGENTS.md`, `GEMINI.md` and `.github/copilot-instructions.md` when they exist, so a project worked on by another agent is onboarded too
+- The VS Code "Workspace Agents" view said "No orchestrator.json found" for a repository whose agent (here Gemini) wrote plans and tasks as markdown under `.claude/plans` and `.claude/tasks` but no `orchestrator.json`: the view now reads those files (and `.nexus/`), merges them with the JSON when there is one, and picks the active plan; the daemon's onboarding context does the same instead of reporting "Active Plan: None"
 - Registering the same provider again (the VS Code bridge after a restart) replaced nothing and left a stale duplicate; the same name and model now replace each other
 - The daemon kept running (and printed its ready banner) when the REST or MCP port was already in use; it now exits non-zero
 - The Action failed on the first run in any project because `execute` requires a completed plan

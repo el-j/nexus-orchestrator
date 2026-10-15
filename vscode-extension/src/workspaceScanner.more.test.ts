@@ -15,11 +15,19 @@ const h = vi.hoisted(() => ({
 
 vi.mock('fs', () => ({
   existsSync: (p: string) => h.files.has(p),
+  readdirSync: (dir: string) => {
+    const names = [...h.files.keys()]
+      .filter((p) => p.startsWith(dir + '/'))
+      .map((p) => p.slice(dir.length + 1))
+      .filter((n) => !n.includes('/'));
+    if (names.length === 0) throw new Error('ENOENT');
+    return names;
+  },
   readFileSync: (p: string) => {
     if (h.throwOn === p) throw new Error('EACCES');
     return h.files.get(p);
   },
-  statSync: () => ({ mtime: h.mtime }),
+  statSync: () => ({ mtime: h.mtime, mtimeMs: h.mtime.getTime() }),
 }));
 vi.mock('vscode', () => {
   class EventEmitter {
@@ -110,10 +118,10 @@ describe('parsing orchestrator.json', () => {
     ]);
   });
 
-  it('defaults missing plan fields and has no active plan when the id does not match', () => {
-    const [o] = scan(doc({ activePlanId: 'nope', plans: { a: {} } }));
+  it('defaults missing plan fields and has no active plan when the id does not match a plan left to do', () => {
+    const [o] = scan(doc({ activePlanId: 'nope', plans: { a: { status: 'done' } } }));
     expect(o.activePlan).toBeNull();
-    expect(o.allPlans[0]).toEqual({ id: '', title: '', status: 'unknown', tasks: [] });
+    expect(o.allPlans[0]).toEqual({ id: '', title: '', status: 'done', tasks: [] });
   });
 
   it('defaults a referenced task that has no status', () => {
@@ -132,6 +140,54 @@ describe('parsing orchestrator.json', () => {
       expect(scan(raw)).toEqual([]);
     },
   );
+});
+
+describe('plans written as markdown files, with or without orchestrator.json', () => {
+  const md = (root: string, kind: 'plans' | 'tasks', name: string, text: string) =>
+    h.files.set(`${root}/.claude/${kind}/${name}`, text);
+
+  it('shows a repository that only has plan and task files, which is what other agents write', () => {
+    md(
+      '/repo-one',
+      'plans',
+      'PLAN-001.md',
+      '---\nid: PLAN-001\ntitle: Audit\nstatus: active\n---\n',
+    );
+    md('/repo-one', 'tasks', 'TASK-001.md', '# TASK-001 — Fix tokens\nStatus: todo\nPLAN-001\n');
+    const s = new WorkspaceScanner(ctx());
+    s.scan();
+    const [o] = s.getOrchestrations();
+    expect(o.folderName).toBe('repo-one');
+    expect(o.activePlan?.id).toBe('PLAN-001');
+    expect(o.allPlans[0].tasks).toEqual([
+      { id: 'TASK-001', title: 'Fix tokens', status: 'todo', role: '' },
+    ]);
+    expect(o.lastModified).toEqual(h.mtime);
+  });
+
+  it('adds the files to an orchestrator.json that does not list them', () => {
+    h.files.set(
+      file('/repo-one'),
+      doc({
+        activePlanId: 'PLAN-001',
+        plans: { a: { id: 'PLAN-001', title: 'J', status: 'active', tasks: [] } },
+      }),
+    );
+    md('/repo-one', 'tasks', 'TASK-009.md', '# TASK-009 — New\nStatus: todo\nPLAN-001\n');
+    md('/repo-one', 'plans', 'PLAN-002.md', '# Later\n');
+    const s = new WorkspaceScanner(ctx());
+    s.scan();
+    const [o] = s.getOrchestrations();
+    expect(o.allPlans.map((p) => p.id)).toEqual(['PLAN-001', 'PLAN-002']);
+    expect(o.allPlans[0].tasks.map((t) => t.id)).toEqual(['TASK-009']);
+    expect(o.activePlan?.id).toBe('PLAN-001');
+  });
+
+  it('shows nothing for a folder without any plan, task or orchestrator.json', () => {
+    const s = new WorkspaceScanner(ctx());
+    s.scan();
+    expect(s.getOrchestrations()).toEqual([]);
+  });
 });
 
 describe('scanning folders', () => {
@@ -175,9 +231,10 @@ describe('watching', () => {
     const changed = vi.fn();
     s.onDidChange(changed);
     s.start();
+    const WATCHED = '{.claude,.nexus}/{orchestrator.json,plans/*.md,tasks/*.md}';
     expect(h.watchers.map((w) => (w.pattern as { pattern: string }).pattern)).toEqual([
-      '.claude/orchestrator.json',
-      '.claude/orchestrator.json',
+      WATCHED,
+      WATCHED,
     ]);
 
     h.files.set(file('/a'), doc({ plans: {} }));

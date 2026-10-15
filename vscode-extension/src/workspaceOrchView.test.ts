@@ -131,7 +131,7 @@ describe('WorkspaceOrchViewProvider', () => {
 
     expect(roots).toHaveLength(1);
     expect((roots[0] as { label: string }).label).toContain(
-      'No orchestrator.json found in workspace',
+      'No plans or tasks found in workspace (.claude/plans, .claude/tasks)',
     );
   });
 

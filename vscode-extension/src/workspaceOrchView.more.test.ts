@@ -98,14 +98,14 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('root', () => {
-  it('is empty without workspace folders, and explains a missing orchestrator.json', async () => {
+  it('is empty without workspace folders, and explains that no plans or tasks were found', async () => {
     fakeState.folders = undefined;
     expect(await new WorkspaceOrchViewProvider(asScanner(scannerWith([]))).getChildren()).toEqual(
       [],
     );
     fakeState.folders = [{ uri: Uri.file('/workspace'), name: 'w' }];
     const [empty] = await new WorkspaceOrchViewProvider(asScanner(scannerWith([]))).getChildren();
-    expect(empty.label).toBe('No orchestrator.json found in workspace');
+    expect(empty.label).toBe('No plans or tasks found in workspace (.claude/plans, .claude/tasks)');
     expect(iconId(empty)).toBe('info');
   });
 
