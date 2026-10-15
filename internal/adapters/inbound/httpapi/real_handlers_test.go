@@ -162,7 +162,7 @@ func TestDriveByCrossSiteWritesNeverReachTheOrchestrator(t *testing.T) {
 	}
 
 	// The same call from a local origin and from a non-browser client works.
-	for _, hdrs := range [][]string{{"Origin", "http://localhost:5173"}, {"Origin", "wails://wails.localhost"}, {}} {
+	for _, hdrs := range [][]string{{"Origin", "http://localhost:5173"}, {"Origin", "wails://wails.localhost"}, {"Origin", "wails://wails"}, {}} {
 		if rec = send(h, http.MethodPost, "/api/tasks", `{"instruction":"ok","projectPath":"/p"}`, hdrs...); rec.Code != http.StatusCreated {
 			t.Errorf("legitimate caller %v: status %d body %s", hdrs, rec.Code, rec.Body)
 		}
@@ -243,6 +243,13 @@ func TestCORSHeadersAndPreflight(t *testing.T) {
 	rec := send(h, http.MethodOptions, "/api/tasks", "", "Origin", "http://localhost:5173")
 	if rec.Code != http.StatusNoContent || rec.Header().Get("Access-Control-Allow-Origin") != "http://localhost:5173" {
 		t.Errorf("preflight from a local app: %d %v", rec.Code, rec.Header())
+	}
+	// The desktop WebView: wails://wails on macOS and Linux, http://wails.localhost on Windows.
+	for _, o := range []string{"wails://wails", "http://wails.localhost"} {
+		rec = send(h, http.MethodGet, "/api/health", "", "Origin", o)
+		if rec.Code != http.StatusOK || rec.Header().Get("Access-Control-Allow-Origin") != o {
+			t.Errorf("desktop origin %s: %d %v", o, rec.Code, rec.Header())
+		}
 	}
 	rec = send(h, http.MethodGet, "/api/health", "")
 	if rec.Header().Get("Access-Control-Allow-Origin") != "" {

@@ -42,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Release pipeline: the publish workflow ran `scripts/e2e-smoke.sh`, which no longer exists, so no release was built after #62; it now runs the real-daemon e2e suite, and a test fails when any workflow runs a missing script
+- Desktop app on macOS and Linux: the WebView's origin `wails://wails` was rejected with 403 by the origin guard and the CORS middleware, so the UI could not reach the API
+- Desktop app started from Finder crashed: the working directory was `/`, where the relative default database `nexus.db` cannot be created, and the daemon tried to watch the whole disk until it ran out of file descriptors. The default database is now `~/.nexus/nexus.db` (an existing `./nexus.db` is still used until the shared one exists), only project directories are watched, and a project with more than 4096 directories is refused
+- macOS desktop archive contained a copy of itself
 - The daemon kept running (and printed its ready banner) when the REST or MCP port was already in use; it now exits non-zero
 - The Action failed on the first run in any project because `execute` requires a completed plan
 - Views and composables that unmounted before their first fetch finished left a poller running for the rest of the session

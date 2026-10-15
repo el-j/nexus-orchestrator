@@ -12,9 +12,9 @@ make status     # in another terminal: is it up, and which LLM providers does it
 ```
 
 - API and dashboard: <http://localhost:63987> (`/ui`), MCP endpoint: <http://localhost:63988/mcp>.
-- Use `make start`, not a bare `./nexus-daemon`: without `NEXUS_DB_PATH` the daemon writes
-  `nexus.db` into the **current directory**, so starting it from two folders gives you two separate,
-  empty queues and knowledge bases.
+- Every way of starting Nexus (`make start`, a bare `nexus-daemon`, the desktop app) now uses the
+  same database, `~/.nexus/nexus.db`, unless `NEXUS_DB_PATH` says otherwise. (An older setup with a
+  `nexus.db` in the current directory keeps using it until `~/.nexus/nexus.db` exists.)
 - Prefer the desktop app or the VS Code extension? They run the same daemon; skip this step.
 
 ## 2. Connect your agents once

@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -254,5 +255,33 @@ func TestShouldProcess(t *testing.T) {
 		if got := ShouldProcess(p); got != want {
 			t.Errorf("ShouldProcess(%q) = %v, want %v", p, got, want)
 		}
+	}
+}
+
+// Watching "/" or a home directory once tried to register every directory on the disk and ran
+// the process out of file descriptors. A project with more directories than the cap is refused.
+func TestWatchRefusesAProjectWithTooManyDirectories(t *testing.T) {
+	old := MaxWatchedDirs
+	MaxWatchedDirs = 10
+	defer func() { MaxWatchedDirs = old }()
+
+	root := realDir(t)
+	for i := 0; i < 30; i++ {
+		if err := os.MkdirAll(filepath.Join(root, "d"+string(rune('a'+i%26)), "sub"+string(rune('a'+i/26))), 0o750); err != nil {
+			t.Fatal(err)
+		}
+	}
+	w, err := New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+	if err := w.Watch(root); err == nil || !strings.Contains(err.Error(), "too many directories") {
+		t.Fatalf("Watch err = %v, want a too-many-directories error", err)
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if len(w.dirs) != 0 || w.projects[root] {
+		t.Errorf("a refused project must leave nothing registered: %d dirs, project=%v", len(w.dirs), w.projects[root])
 	}
 }
