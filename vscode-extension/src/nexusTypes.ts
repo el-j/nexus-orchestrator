@@ -28,6 +28,8 @@ export interface Task {
   contextFiles: string[];
   modelId?: string;
   providerHint?: string;
+  /** The provider Nexus ran the task on; absent when an agent set the status or it has not run. */
+  ranBy?: string;
   command?: CommandType;
   status: TaskStatus;
   createdAt: string;

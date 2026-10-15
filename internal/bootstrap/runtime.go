@@ -128,6 +128,11 @@ func Start(ctx context.Context, cfg Config, logHub *httpapi.LogHub) (*Runtime, e
 		return nil, fmt.Errorf("open database: %w", err)
 	}
 
+	// Another tool (an agent with sqlite3) may have edited task rows by hand; make them usable.
+	if _, err := repo.RepairForeignRows(ctx); err != nil {
+		log.Printf("startup: repair task rows: %v", err)
+	}
+
 	rt := &Runtime{Config: cfg, repo: repo, failed: make(chan error, 2)}
 	runCtx, cancel := context.WithCancel(ctx)
 	rt.cancel = cancel

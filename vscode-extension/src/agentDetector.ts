@@ -75,7 +75,6 @@ export class AgentDetector implements vscode.Disposable {
       this.detectVSCodeExtensions(),
       this.detectFromFilesystem(),
       this.detectFromTerminals(),
-      this.detectActiveLMParticipants(),
     ]);
 
     const seen = new Map<string, DetectedAgent>();
@@ -281,30 +280,6 @@ export class AgentDetector implements vscode.Disposable {
           detectionMethod: 'terminal',
         });
       }
-    }
-    return results;
-  }
-
-  private async detectActiveLMParticipants(): Promise<DetectedAgent[]> {
-    const results: DetectedAgent[] = [];
-    try {
-      if (vscode.lm?.selectChatModels) {
-        const models = await vscode.lm.selectChatModels({});
-        for (const m of models) {
-          if (m.vendor !== 'copilot') {
-            results.push({
-              agentName: `${m.vendor}/${m.family}`,
-              source: 'vscode-discovered',
-              externalId: `discover:${this.machineId}:lm:${m.vendor}:${m.family}`,
-              capabilities: ['chat'],
-              detectionMethod: 'lm-participant',
-              modelId: m.id ?? m.name,
-            });
-          }
-        }
-      }
-    } catch (_) {
-      /* lm not available */
     }
     return results;
   }

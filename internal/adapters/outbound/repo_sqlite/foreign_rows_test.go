@@ -99,3 +99,50 @@ func TestTaskTimestampsInOtherStorageClasses(t *testing.T) {
 		t.Errorf("a created_at that is no time must be reported: %v", err)
 	}
 }
+
+// The daemon repairs rows another tool wrote, so its SQL queries (status = 'PROCESSING' for the
+// watchdog, ordering by updated_at) see them too, not only the tolerant reader.
+func TestRepairForeignRows(t *testing.T) {
+	r := newTestRepo(t)
+	ctx := context.Background()
+	now := time.Now()
+	for _, id := range []string{"fine", "text", "alias", "seconds", "bad"} {
+		if err := r.Save(ctx, domain.Task{ID: id, ProjectPath: "/p", TargetFile: "f", Instruction: "i", Status: domain.StatusQueued, CreatedAt: now, UpdatedAt: now}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, q := range []string{
+		`UPDATE tasks SET updated_at = '2026-10-15 12:25:52' WHERE id = 'text'`,
+		`UPDATE tasks SET status = 'in_progress' WHERE id = 'alias'`,
+		`UPDATE tasks SET updated_at = 1792053 WHERE id = 'seconds'`, // not a plausible millisecond time
+		`UPDATE tasks SET updated_at = 'garbage' WHERE id = 'bad'`,
+	} {
+		if _, err := r.DB().Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	n, err := r.RepairForeignRows(ctx)
+	if err != nil || n != 4 {
+		t.Fatalf("repaired %d rows (%v), want the 4 foreign ones", n, err)
+	}
+	for _, c := range []struct{ id, col, want string }{
+		{"text", "typeof(updated_at)", "integer"},
+		{"text", "updated_at", "1792067152000"}, // 2026-10-15 12:25:52 UTC
+		{"alias", "status", "PROCESSING"},
+		{"seconds", "updated_at = created_at", "1"},
+		{"bad", "updated_at = created_at", "1"},
+		{"fine", "typeof(updated_at)", "integer"},
+	} {
+		var got string
+		if err := r.DB().QueryRow(`SELECT CAST(`+c.col+` AS TEXT) FROM tasks WHERE id = ?`, c.id).Scan(&got); err != nil || got != c.want {
+			t.Errorf("%s %s = %q (%v), want %q", c.id, c.col, got, err, c.want)
+		}
+	}
+	if n, _ := r.RepairForeignRows(ctx); n != 0 {
+		t.Errorf("a second run repaired %d rows, want none", n)
+	}
+	all, err := r.GetAll(ctx)
+	if err != nil || len(all) != 5 {
+		t.Errorf("GetAll after repair: %d rows, %v", len(all), err)
+	}
+}
