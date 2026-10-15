@@ -37,6 +37,13 @@ type LLMClient interface {
 	Chat(ctx context.Context, messages []domain.Message) (string, error)
 }
 
+// ChatStreamer is the optional LLMClient capability of delivering a reply piece by piece.
+// ChatStream behaves like Chat and also calls onChunk with each piece as it arrives; the
+// returned string is the complete reply. A client without it is called through Chat.
+type ChatStreamer interface {
+	ChatStream(ctx context.Context, messages []domain.Message, onChunk func(piece string)) (string, error)
+}
+
 // TaskRepository is the port for persisting and querying Tasks.
 type TaskRepository interface {
 	Save(ctx context.Context, t domain.Task) error
@@ -224,6 +231,11 @@ const (
 	EventTaskDraft      EventType = "task.draft"
 	EventTaskBacklog    EventType = "task.backlog"
 	EventTaskUpdated    EventType = "task.updated"
+	// EventTaskChunk carries a piece of the model's reply while it is being generated.
+	EventTaskChunk EventType = "task.chunk"
+	// EventTaskRestart tells subscribers to discard the text received so far: a new attempt
+	// (retry, next provider, next agent turn) starts.
+	EventTaskRestart EventType = "task.restart"
 )
 
 // TaskEvent is emitted by OrchestratorService on task lifecycle changes.
@@ -231,6 +243,10 @@ type TaskEvent struct {
 	Type   EventType         `json:"type"`
 	TaskID string            `json:"taskId"`
 	Status domain.TaskStatus `json:"status"`
+	// Text is the piece of reply of a task.chunk event.
+	Text string `json:"text,omitempty"`
+	// Seq numbers the chunks of one attempt from 1, so a subscriber that was too slow can see a gap.
+	Seq int `json:"seq,omitempty"`
 }
 
 // EventBroadcaster is the optional outbound port for publishing task lifecycle events.

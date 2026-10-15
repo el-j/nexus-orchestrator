@@ -178,11 +178,11 @@ func (o *OrchestratorService) finishInterrupted(task domain.Task, run *runHandle
 }
 
 // tryGenerate dispatches to Chat (when sessionRepo is set) or GenerateCode for a single attempt.
-func (o *OrchestratorService) tryGenerate(ctx context.Context, llm ports.LLMClient, prompt string, sessionHistory []domain.Message) (string, error) {
+func (o *OrchestratorService) tryGenerate(ctx context.Context, taskID string, llm ports.LLMClient, prompt string, sessionHistory []domain.Message) (string, error) {
 	if o.sessionRepo != nil {
 		userMsg := domain.Message{Role: domain.RoleUser, Content: prompt, CreatedAt: time.Now()}
 		history := append(append([]domain.Message(nil), sessionHistory...), userMsg)
-		return nonEmpty(llm.Chat(ctx, history))
+		return nonEmpty(o.liveChat(ctx, taskID, llm, history))
 	}
 	return nonEmpty(llm.GenerateCode(ctx, prompt))
 }
@@ -226,7 +226,7 @@ func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task doma
 		}
 		allTooLarge = false
 
-		code, err := o.tryGenerate(run.ctx, llm, prompt, sessionHistory)
+		code, err := o.tryGenerate(run.ctx, task.ID, llm, prompt, sessionHistory)
 		if run.ctx.Err() != nil {
 			// Cancelled mid-generation: whatever came back (error or not) is discarded.
 			o.finishInterrupted(task, run)
@@ -293,7 +293,7 @@ func (o *OrchestratorService) executeGeneration(run *runHandle, task domain.Task
 		// Build the chat history using the already-loaded session (no second DB call).
 		userMsg := domain.Message{Role: domain.RoleUser, Content: prompt, CreatedAt: time.Now()}
 		history := append(append([]domain.Message(nil), sessionHistory...), userMsg)
-		code, err := nonEmpty(llm.Chat(run.ctx, history))
+		code, err := nonEmpty(o.liveChat(run.ctx, task.ID, llm, history))
 		if run.ctx.Err() != nil {
 			o.finishInterrupted(task, run)
 			return "", run.ctx.Err()
