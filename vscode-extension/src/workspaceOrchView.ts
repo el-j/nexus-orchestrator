@@ -80,7 +80,10 @@ class FolderNode extends vscode.TreeItem {
   constructor(public readonly orch: WorkspaceOrchestration) {
     super(orch.folderName, vscode.TreeItemCollapsibleState.Expanded);
     this.description = `${orch.allPlans.length} plans`;
-    this.tooltip = orch.folderPath;
+    this.tooltip =
+      orch.sources.length > 0
+        ? `${orch.folderPath}\nPlans and tasks read from: ${orch.sources.join(', ')}`
+        : orch.folderPath;
     this.iconPath = new vscode.ThemeIcon('folder');
     this.contextValue = 'nexusWorkspaceFolder';
   }

@@ -11,23 +11,28 @@ const h = vi.hoisted(() => ({
     dispose: ReturnType<typeof vi.fn>;
   }>,
   folderChange: undefined as undefined | (() => void),
+  configChange: undefined as
+    undefined | ((e: { affectsConfiguration: (s: string) => boolean }) => void),
+  settings: {} as Record<string, unknown>,
 }));
 
 vi.mock('fs', () => ({
   existsSync: (p: string) => h.files.has(p),
   readdirSync: (dir: string) => {
-    const names = [...h.files.keys()]
-      .filter((p) => p.startsWith(dir + '/'))
-      .map((p) => p.slice(dir.length + 1))
-      .filter((n) => !n.includes('/'));
-    if (names.length === 0) throw new Error('ENOENT');
-    return names;
+    const kids = new Map<string, boolean>();
+    for (const p of h.files.keys()) {
+      if (!p.startsWith(dir + '/')) continue;
+      const rest = p.slice(dir.length + 1);
+      kids.set(rest.split('/')[0]!, rest.includes('/'));
+    }
+    if (kids.size === 0) throw new Error('ENOENT');
+    return [...kids].map(([name, isDir]) => ({ name, isDirectory: () => isDir }));
   },
   readFileSync: (p: string) => {
     if (h.throwOn === p) throw new Error('EACCES');
     return h.files.get(p);
   },
-  statSync: () => ({ mtime: h.mtime, mtimeMs: h.mtime.getTime() }),
+  statSync: () => ({ mtime: h.mtime, mtimeMs: h.mtime.getTime(), size: 10 }),
 }));
 vi.mock('vscode', () => {
   class EventEmitter {
@@ -59,6 +64,13 @@ vi.mock('vscode', () => {
           dispose: w.dispose,
         };
       },
+      getConfiguration: () => ({
+        get: (key: string, fallback: unknown) => (key in h.settings ? h.settings[key] : fallback),
+      }),
+      onDidChangeConfiguration: (f: typeof h.configChange) => {
+        h.configChange = f;
+        return { dispose: vi.fn() };
+      },
       onDidChangeWorkspaceFolders: (f: () => void) => {
         h.folderChange = f;
         return { dispose: vi.fn() };
@@ -82,6 +94,8 @@ beforeEach(() => {
   h.throwOn = undefined;
   h.watchers.length = 0;
   h.folderChange = undefined;
+  h.configChange = undefined;
+  h.settings = {};
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -190,6 +204,74 @@ describe('plans written as markdown files, with or without orchestrator.json', (
   });
 });
 
+describe('configuring where plans and tasks live', () => {
+  const policy = (o: object) => h.files.set('/repo-one/.nexus/policy.json', JSON.stringify(o));
+  const plansOf = () => {
+    const s = new WorkspaceScanner(ctx());
+    s.scan();
+    return s.getOrchestrations()[0]?.allPlans.map((p) => p.id) ?? [];
+  };
+
+  it('reads folders from .nexus/policy.json', () => {
+    policy({ planFiles: { plans: ['design/specs'] } });
+    h.files.set('/repo-one/design/specs/launch.md', '# Launch\n');
+    expect(plansOf()).toEqual(['launch']);
+  });
+
+  it('adds the folders of the nexus.planFiles settings to the policy ones, without duplicates', () => {
+    policy({ planFiles: { plans: ['a', 'b'] } });
+    h.settings = { plans: ['b', 'c'], tasks: ['t'] };
+    h.files.set('/repo-one/c/one.md', '# C\n');
+    h.files.set('/repo-one/a/two.md', '# A\n');
+    expect(plansOf()).toEqual(['one', 'two']);
+  });
+
+  it('searches the whole project unless the policy or a setting turns that off', () => {
+    h.files.set('/repo-one/docs/PLAN-1.md', '# Elsewhere\n');
+    expect(plansOf()).toEqual(['PLAN-1']);
+    policy({ planFiles: { discover: false, plans: ['x'] } });
+    expect(plansOf()).toEqual([]);
+    h.files.delete('/repo-one/.nexus/policy.json');
+    h.settings = { discover: false, plans: ['x'] };
+    expect(plansOf()).toEqual([]);
+  });
+
+  it.each([
+    ['not json'],
+    ['null'],
+    [JSON.stringify({ planFiles: 'x' })],
+    [JSON.stringify({ planFiles: null })],
+  ])('ignores a policy.json with %s in it and keeps the defaults', (raw) => {
+    h.files.set('/repo-one/.nexus/policy.json', raw);
+    h.files.set('/repo-one/.claude/plans/PLAN-1.md', '# One\n');
+    expect(plansOf()).toEqual(['PLAN-1']);
+  });
+
+  it('tolerates settings that are not lists', () => {
+    h.settings = { plans: 'docs', tasks: { a: 1 } };
+    h.files.set('/repo-one/.claude/plans/PLAN-1.md', '# One\n');
+    expect(plansOf()).toEqual(['PLAN-1']);
+  });
+
+  it('watches the configured folders and rebuilds when the settings change', () => {
+    policy({ planFiles: { plans: ['design/specs'], tasks: ['design/work'] } });
+    const s = new WorkspaceScanner(ctx());
+    const changed = vi.fn();
+    s.onDidChange(changed);
+    s.start();
+    const patterns = h.watchers.map((w) => (w.pattern as { pattern: string }).pattern);
+    expect(patterns).toContain('design/specs/**/*.md');
+    expect(patterns).toContain('design/work/**/*.md');
+    const before = h.watchers[0];
+
+    h.configChange!({ affectsConfiguration: () => false });
+    expect(changed).not.toHaveBeenCalled();
+    h.configChange!({ affectsConfiguration: (k) => k === 'nexus.planFiles' });
+    expect(before.dispose).toHaveBeenCalled();
+    expect(changed).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('scanning folders', () => {
   it('skips folders without the file, reports unreadable ones, and keeps scanning', () => {
     h.folders = [
@@ -231,10 +313,13 @@ describe('watching', () => {
     const changed = vi.fn();
     s.onDidChange(changed);
     s.start();
-    const WATCHED = '{.claude,.nexus}/{orchestrator.json,plans/*.md,tasks/*.md}';
+    const WATCHED = '{.claude,.nexus}/{orchestrator.json,policy.json,plans/**/*.md,tasks/**/*.md}';
+    const ANYWHERE = '**/{PLAN,TASK}-*.md';
     expect(h.watchers.map((w) => (w.pattern as { pattern: string }).pattern)).toEqual([
       WATCHED,
+      ANYWHERE,
       WATCHED,
+      ANYWHERE,
     ]);
 
     h.files.set(file('/a'), doc({ plans: {} }));
@@ -256,7 +341,7 @@ describe('watching', () => {
     h.folders = [{ uri: { fsPath: '/x' } }, { uri: { fsPath: '/y' } }];
     h.folderChange!();
     expect(first.dispose).toHaveBeenCalled();
-    expect(h.watchers).toHaveLength(3);
+    expect(h.watchers).toHaveLength(6); // two for the old folder, four for the two new ones
     expect(changed).toHaveBeenCalledTimes(1);
   });
 

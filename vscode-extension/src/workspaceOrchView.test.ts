@@ -73,6 +73,7 @@ describe('WorkspaceOrchViewProvider', () => {
       folderPath: '/repo-one',
       folderName: 'repo-one',
       lastModified: new Date('2026-04-04T00:00:00Z'),
+      sources: ['.claude/plans', '.claude/tasks'],
       activePlan: {
         id: 'PLAN-1',
         title: 'Active Plan',
@@ -146,6 +147,7 @@ describe('WorkspaceOrchViewProvider', () => {
         lastModified: new Date('2026-04-04T00:00:00Z'),
         activePlan: null,
         allPlans: [],
+        sources: [],
       },
       {
         folderPath: '/repo-two',
@@ -153,6 +155,7 @@ describe('WorkspaceOrchViewProvider', () => {
         lastModified: new Date('2026-04-04T00:00:00Z'),
         activePlan: null,
         allPlans: [],
+        sources: [],
       },
     ];
 

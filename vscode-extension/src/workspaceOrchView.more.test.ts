@@ -21,6 +21,7 @@ const orch = (o: Partial<WorkspaceOrchestration> = {}): WorkspaceOrchestration =
   activePlan: null,
   allPlans: [],
   lastModified: new Date(NOW),
+  sources: [],
   ...o,
 });
 const task = (o: Partial<Task> = {}): Task => ({
@@ -116,6 +117,11 @@ describe('root', () => {
     expect(f.label).toBe('workspace');
     expect(f.description).toBe('2 plans');
     expect(f.tooltip).toBe('/workspace');
+    const withSources = new (await import('./workspaceOrchView')).WorkspaceOrchViewProvider(
+      asScanner(scannerWith([orch({ sources: ['.claude/plans', 'docs'] })])),
+    );
+    const [g] = await withSources.getChildren();
+    expect(g.tooltip).toBe('/workspace\nPlans and tasks read from: .claude/plans, docs');
     expect(iconId(f)).toBe('folder');
   });
 

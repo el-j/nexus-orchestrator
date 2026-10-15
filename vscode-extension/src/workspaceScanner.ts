@@ -6,14 +6,49 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { assemblePlans, readPlanFiles, type PlanFs } from './planFiles';
+import { assemblePlans, scanPlanFiles, type PlanFilesConfig, type PlanFs } from './planFiles';
 
 /** The real file system, as the plan-file reader sees it. */
 const realFs: PlanFs = {
-  readdirSync: (dir) => fs.readdirSync(dir),
+  readdirSync: (dir) =>
+    fs.readdirSync(dir, { withFileTypes: true }).map((e) => ({
+      name: e.name,
+      isDirectory: e.isDirectory(),
+    })),
   readFileSync: (p) => fs.readFileSync(p, 'utf8'),
   statSync: (p) => fs.statSync(p),
 };
+
+/** The `planFiles` block of the project's .nexus/policy.json, or {} when absent or unreadable. */
+export function readPolicyPlanFiles(root: string): PlanFilesConfig {
+  try {
+    const raw: unknown = JSON.parse(
+      fs.readFileSync(path.join(root, '.nexus', 'policy.json'), 'utf8'),
+    );
+    const block = (raw as { planFiles?: PlanFilesConfig } | null)?.planFiles;
+    return block && typeof block === 'object' ? block : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Where this folder keeps plans and tasks: the project's policy.json plus the user's
+ * `nexus.planFiles.*` settings. The folder lists add up; the search of the whole project is on
+ * unless either one turns it off.
+ */
+export function planFilesConfig(root: string): Required<PlanFilesConfig> {
+  const policy = readPolicyPlanFiles(root);
+  const settings = vscode.workspace.getConfiguration('nexus.planFiles');
+  const list = (a: unknown, b: unknown): string[] => [
+    ...new Set([...(Array.isArray(a) ? a : []), ...(Array.isArray(b) ? b : [])].map(String)),
+  ];
+  return {
+    plans: list(policy.plans, settings.get<string[]>('plans', [])),
+    tasks: list(policy.tasks, settings.get<string[]>('tasks', [])),
+    discover: policy.discover !== false && settings.get<boolean>('discover', true) !== false,
+  };
+}
 
 /** A single task entry extracted from orchestrator.json */
 export interface OrchestratorTask {
@@ -43,6 +78,8 @@ export interface WorkspaceOrchestration {
   allPlans: OrchestratorPlan[];
   /** When the file was last modified */
   lastModified: Date;
+  /** Project-relative folders the plan and task files were read from */
+  sources: string[];
 }
 
 /**
@@ -64,13 +101,17 @@ export class WorkspaceScanner implements vscode.Disposable {
     this.scan();
     this.startWatchers();
 
-    // Re-scan when workspace folders are added/removed
+    // Re-scan when workspace folders are added/removed or the plan-folder settings change
+    const rebuild = (): void => {
+      this.disposeWatchers();
+      this.scan();
+      this.startWatchers();
+      this._onDidChange.fire();
+    };
     this.context.subscriptions.push(
-      vscode.workspace.onDidChangeWorkspaceFolders(() => {
-        this.disposeWatchers();
-        this.scan();
-        this.startWatchers();
-        this._onDidChange.fire();
+      vscode.workspace.onDidChangeWorkspaceFolders(rebuild),
+      vscode.workspace.onDidChangeConfiguration((e) => {
+        if (e.affectsConfiguration('nexus.planFiles')) rebuild();
       }),
     );
   }
@@ -97,11 +138,10 @@ export class WorkspaceScanner implements vscode.Disposable {
           console.error('WorkspaceScanner: file I/O failed:', e);
         }
       }
-      const files = readPlanFiles(root, realFs);
-      if (!parsed && files.plans.length === 0 && files.tasks.length === 0) continue;
+      const found = scanPlanFiles(root, realFs, planFilesConfig(root));
+      if (!parsed && found.plans.length === 0 && found.orphans.length === 0) continue;
       const { allPlans, activePlan } = assemblePlans(
-        files.plans,
-        files.tasks,
+        found,
         parsed?.activePlanId ?? null,
         parsed?.allPlans ?? [],
       );
@@ -110,29 +150,37 @@ export class WorkspaceScanner implements vscode.Disposable {
         folderName: path.basename(root),
         activePlan,
         allPlans,
-        lastModified: new Date(Math.max(modified, files.newest)),
+        lastModified: new Date(Math.max(modified, found.newest)),
+        sources: found.folders,
       });
     }
   }
 
   private startWatchers(): void {
     const folders = vscode.workspace.workspaceFolders ?? [];
+    const refresh = (): void => {
+      this.scan();
+      this._onDidChange.fire();
+    };
     for (const folder of folders) {
-      // The JSON and the plan and task files an agent may write instead of (or besides) it.
-      const pattern = new vscode.RelativePattern(
-        folder,
-        '{.claude,.nexus}/{orchestrator.json,plans/*.md,tasks/*.md}',
-      );
-      const watcher = vscode.workspace.createFileSystemWatcher(pattern);
-      const refresh = (): void => {
-        this.scan();
-        this._onDidChange.fire();
-      };
-      watcher.onDidChange(refresh);
-      watcher.onDidCreate(refresh);
-      watcher.onDidDelete(refresh);
-      this.context.subscriptions.push(watcher);
-      this.watchers.push(watcher);
+      // The JSON and policy, the default plan and task folders, any PLAN-n / TASK-n file, and the
+      // folders this project configured.
+      const cfg = planFilesConfig(folder.uri.fsPath);
+      const patterns = [
+        '{.claude,.nexus}/{orchestrator.json,policy.json,plans/**/*.md,tasks/**/*.md}',
+        '**/{PLAN,TASK}-*.md',
+        ...[...cfg.plans, ...cfg.tasks].map((d) => `${d}/**/*.md`),
+      ];
+      for (const pattern of patterns) {
+        const watcher = vscode.workspace.createFileSystemWatcher(
+          new vscode.RelativePattern(folder, pattern),
+        );
+        watcher.onDidChange(refresh);
+        watcher.onDidCreate(refresh);
+        watcher.onDidDelete(refresh);
+        this.context.subscriptions.push(watcher);
+        this.watchers.push(watcher);
+      }
     }
   }
 
@@ -155,7 +203,7 @@ export class WorkspaceScanner implements vscode.Disposable {
  * This is intentionally lenient — missing fields default gracefully.
  */
 function parseOrchestratorFile(raw: string):
-  | (Omit<WorkspaceOrchestration, 'folderPath' | 'folderName' | 'lastModified'> & {
+  | (Omit<WorkspaceOrchestration, 'folderPath' | 'folderName' | 'lastModified' | 'sources'> & {
       activePlanId: string | null;
     })
   | null {

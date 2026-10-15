@@ -120,3 +120,58 @@ func TestInitProject_AutoDetectsInstructionFilesOfOtherAgents(t *testing.T) {
 		}
 	}
 }
+
+// The project says where its plans and tasks live; the onboarding follows.
+func TestOnboarding_FollowsTheFoldersNamedInThePolicy(t *testing.T) {
+	dir := t.TempDir()
+	writePlanFile(t, dir, ".nexus/policy.json", `{"planFiles":{"plans":["design/specs"],"tasks":["design/work"]}}`)
+	writePlanFile(t, dir, "design/specs/launch.md", "# Launch\nstatus: in-progress\n")
+	writePlanFile(t, dir, "design/work/a.md", "# A\nstatus: done\n")
+	writePlanFile(t, dir, "design/work/b.md", "# B\n")
+	out := onboarding(t, dir)
+	for _, want := range []string{"**Active Plan:** launch — Launch", "2 task files (1 done, 0 in progress, 1 to do), read from design/specs, design/work"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("onboarding lacks %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestScanPlanFiles_Limits(t *testing.T) {
+	dir := t.TempDir()
+	deep := ".claude/tasks/a/b/c/d"
+	writePlanFile(t, dir, deep+"/too-deep.md", "# too deep in a task folder, and not named like a task\n")
+	writePlanFile(t, dir, ".claude/tasks/a/b/deep-enough.md", "# deep enough\n")
+	writePlanFile(t, dir, "x/y/z/w/v/u/t/PLAN-9.md", "# beyond the search depth\n")
+	writePlanFile(t, dir, "docs/PLAN-1.md", "# found\n")
+	writePlanFile(t, dir, ".hidden/PLAN-2.md", "# hidden folders are skipped\n")
+	writePlanFile(t, dir, "docs/huge.md", "---\ntype: plan\n---\n"+strings.Repeat("x", 300<<10))
+	got := services.ScanPlanFiles(dir, nil)
+	ids := map[string]bool{}
+	for _, p := range got.Plans {
+		ids[p.ID] = true
+		for _, tk := range p.Tasks {
+			ids[tk.ID] = true
+		}
+	}
+	for _, o := range got.Orphans {
+		ids[o.ID] = true
+	}
+	if !ids["PLAN-1"] || !ids["deep-enough"] {
+		t.Errorf("expected PLAN-1 and deep-enough, got %v", ids)
+	}
+	for _, not := range []string{"too-deep", "PLAN-9", "PLAN-2", "huge"} {
+		if ids[not] {
+			t.Errorf("%s must not be found: %v", not, ids)
+		}
+	}
+}
+
+func TestScanPlanFiles_ListedTaskWithoutAFileAndPlanLinksByStem(t *testing.T) {
+	dir := t.TempDir()
+	writePlanFile(t, dir, ".claude/plans/launch-plan.md", "---\ntasks:\n  - TASK-5\n---\n# Launch\n")
+	writePlanFile(t, dir, ".claude/tasks/TASK-1.md", "---\nplan: launch-plan\n---\n# One\n")
+	got := services.ScanPlanFiles(dir, nil)
+	if len(got.Plans) != 1 || len(got.Plans[0].Tasks) != 2 || got.Plans[0].Tasks[1].ID != "TASK-5" || got.Plans[0].Tasks[1].Status != "unknown" {
+		t.Errorf("plans = %+v", got.Plans)
+	}
+}

@@ -74,6 +74,10 @@
         "title": "Nexus: Show Live Task Output"
       },
       {
+        "command": "nexus.configurePlanFolders",
+        "title": "Nexus: Choose Plan and Task Folders"
+      },
+      {
         "command": "nexus.showProviders",
         "title": "Nexus: Show Providers"
       },
@@ -210,6 +214,27 @@
           "default": "",
           "description": "Bearer token for a daemon started with NEXUS_API_TOKEN. Leave empty when the daemon has no token. If empty, the NEXUS_API_TOKEN environment variable of the editor is used.",
           "scope": "machine"
+        },
+        "nexus.planFiles.plans": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Folders (relative to the workspace folder) whose markdown files are plans, in addition to `.claude/plans`, `.nexus/plans` and any `PLAN-n.md` found in the project. The project's `.nexus/policy.json` (`planFiles.plans`) is added to these."
+        },
+        "nexus.planFiles.tasks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Folders (relative to the workspace folder) whose markdown files are tasks, in addition to `.claude/tasks`, `.nexus/tasks` and any `TASK-n.md` found in the project."
+        },
+        "nexus.planFiles.discover": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Also find plan and task files anywhere in the project (files named `PLAN-n.md` / `TASK-n.md`, folders called `plans` / `tasks`, front matter `type: plan|task`). Turn off to read only the folders listed here and in `.nexus/policy.json`."
         },
         "nexus.liveOutput.enabled": {
           "type": "boolean",

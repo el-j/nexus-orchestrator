@@ -1,0 +1,140 @@
+{
+  "_doc": "Shared by the Go daemon (internal/core/services) and the VS Code extension (vscode-extension/src/planFiles): both must find the same plans, tasks and links in the same files. 'files' maps project-relative paths to content; 'config' is the planFiles block of .nexus/policy.json.",
+  "cases": [
+    {
+      "name": "defaults: .claude plans and tasks, linked by the plan a task mentions",
+      "files": {
+        ".claude/plans/PLAN-001.md": "---\nid: PLAN-001\ntitle: Audit\nstatus: active\n---\n",
+        ".claude/tasks/TASK-001.md": "# TASK-001 — Fix tokens\nStatus: todo\nPart of PLAN-001.\n"
+      },
+      "expect": {
+        "plans": [
+          { "id": "PLAN-001", "title": "Audit", "status": "active", "tasks": ["TASK-001"] }
+        ],
+        "orphanTasks": [],
+        "folders": [".claude/plans", ".claude/tasks"]
+      }
+    },
+    {
+      "name": "anywhere: PLAN-n and TASK-n files are found in any folder, ignored folders stay ignored",
+      "files": {
+        "docs/roadmap/PLAN-007.md": "# PLAN-007 — Launch\n",
+        "docs/roadmap/TASK-070.md": "# TASK-070 — Press kit\nSee PLAN-007\n",
+        "docs/roadmap/README.md": "# Roadmap\n",
+        "node_modules/pkg/PLAN-1.md": "# not ours\n",
+        ".git/PLAN-2.md": "# not ours\n"
+      },
+      "expect": {
+        "plans": [
+          { "id": "PLAN-007", "title": "Launch", "status": "unknown", "tasks": ["TASK-070"] }
+        ],
+        "orphanTasks": [],
+        "folders": ["docs/roadmap"]
+      }
+    },
+    {
+      "name": "configured folders: free file names, linked by plan id or file name",
+      "config": { "plans": ["design/specs"], "tasks": ["design/work"] },
+      "files": {
+        "design/specs/launch.md": "# Launch plan\nstatus: in-progress\n",
+        "design/work/fix-tokens.md": "---\nplan: launch\nstatus: todo\n---\n# Fix tokens\n",
+        "design/work/orphan.md": "# Loose end\n"
+      },
+      "expect": {
+        "plans": [
+          {
+            "id": "launch",
+            "title": "Launch plan",
+            "status": "in-progress",
+            "tasks": ["fix-tokens"]
+          }
+        ],
+        "orphanTasks": ["orphan"],
+        "folders": ["design/specs", "design/work"]
+      }
+    },
+    {
+      "name": "folder links: a task in a folder named after its plan belongs to it",
+      "files": {
+        ".claude/plans/PLAN-002.md": "# PLAN-002 — Two\n",
+        ".claude/plans/PLAN-003.md": "# PLAN-003 — Three\n",
+        ".claude/tasks/PLAN-002/TASK-5.md": "# TASK-5 — Nested\n",
+        ".claude/tasks/PLAN-003/TASK-6.md": "# TASK-6 — Nested too\nmentions PLAN-002 in passing\n"
+      },
+      "expect": {
+        "plans": [
+          { "id": "PLAN-002", "title": "Two", "status": "unknown", "tasks": ["TASK-5"] },
+          { "id": "PLAN-003", "title": "Three", "status": "unknown", "tasks": ["TASK-6"] }
+        ],
+        "orphanTasks": [],
+        "folders": [".claude/plans", ".claude/tasks/PLAN-002", ".claude/tasks/PLAN-003"]
+      }
+    },
+    {
+      "name": "plans list their tasks: front matter list and mentions in the plan body",
+      "files": {
+        ".claude/plans/PLAN-001.md": "---\nid: PLAN-001\ntasks: [TASK-1]\n---\nAlso covers TASK-9 and TASK-404.\n",
+        ".claude/tasks/TASK-1.md": "# TASK-1 — One\n",
+        ".claude/tasks/TASK-9.md": "# TASK-9 — Nine\n"
+      },
+      "expect": {
+        "plans": [
+          {
+            "id": "PLAN-001",
+            "title": "PLAN-001",
+            "status": "unknown",
+            "tasks": ["TASK-1", "TASK-9", "TASK-404"]
+          }
+        ],
+        "orphanTasks": [],
+        "folders": [".claude/plans", ".claude/tasks"]
+      }
+    },
+    {
+      "name": "discover off: only the configured folders count",
+      "config": { "plans": ["a"], "discover": false },
+      "files": {
+        "a/one.md": "# One\n",
+        "docs/PLAN-1.md": "# Elsewhere\n",
+        ".claude/plans/PLAN-2.md": "# Default folder\n"
+      },
+      "expect": {
+        "plans": [{ "id": "one", "title": "One", "status": "unknown", "tasks": [] }],
+        "orphanTasks": [],
+        "folders": ["a"]
+      }
+    },
+    {
+      "name": "front matter type marks a file as a task wherever it lives",
+      "files": {
+        "work/auth.md": "---\ntype: task\nplan: PLAN-001\nstatus: done\n---\n# Auth\n",
+        "work/PLAN-001.md": "# PLAN-001 — Security\n",
+        "work/notes.md": "# Just notes\n"
+      },
+      "expect": {
+        "plans": [
+          { "id": "PLAN-001", "title": "Security", "status": "unknown", "tasks": ["auth"] }
+        ],
+        "orphanTasks": [],
+        "folders": ["work"]
+      }
+    },
+    {
+      "name": "dedupe: the same id in .claude and elsewhere keeps the .claude file",
+      "files": {
+        ".claude/plans/PLAN-001.md": "# PLAN-001 — Real\n",
+        "docs/PLAN-001.md": "# PLAN-001 — Copy\n"
+      },
+      "expect": {
+        "plans": [{ "id": "PLAN-001", "title": "Real", "status": "unknown", "tasks": [] }],
+        "orphanTasks": [],
+        "folders": [".claude/plans"]
+      }
+    },
+    {
+      "name": "nothing found",
+      "files": { "src/main.go": "package main", "README.md": "# Hi" },
+      "expect": { "plans": [], "orphanTasks": [], "folders": [] }
+    }
+  ]
+}

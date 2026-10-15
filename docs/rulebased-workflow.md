@@ -20,13 +20,14 @@ for a stack-appropriate default when it is missing. It never overwrites an exist
 
 ## What each field does
 
-| Field          | Effect                                                                                                                                                     | Enforced?                        |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| `verify`       | Default verification command for tasks that do not set their own. Self-healing re-prompts on failure; an agentic task cannot `finish` until it passes.     | Yes, every task                  |
-| `maxFileLines` | A source-file write that would exceed the limit is refused and the model is told to split it.                                                              | Yes, agentic tasks               |
-| `testsFirst`   | Source-file writes and edits are refused until the run has written a test file.                                                                            | Yes, agentic tasks               |
-| `remember`     | After each completed or failed task a short entry (outcome, instruction, target, verification command) is stored in the project knowledge, newest 30 kept. | Yes                              |
-| `rules`        | Free text, shown to the model verbatim in every task prompt and in the onboarding.                                                                         | Advisory (the model must follow) |
+| Field          | Effect                                                                                                                                                     | Enforced?                         |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| `verify`       | Default verification command for tasks that do not set their own. Self-healing re-prompts on failure; an agentic task cannot `finish` until it passes.     | Yes, every task                   |
+| `maxFileLines` | A source-file write that would exceed the limit is refused and the model is told to split it.                                                              | Yes, agentic tasks                |
+| `testsFirst`   | Source-file writes and edits are refused until the run has written a test file.                                                                            | Yes, agentic tasks                |
+| `remember`     | After each completed or failed task a short entry (outcome, instruction, target, verification command) is stored in the project knowledge, newest 30 kept. | Yes                               |
+| `rules`        | Free text, shown to the model verbatim in every task prompt and in the onboarding.                                                                         | Advisory (the model must follow)  |
+| `planFiles`    | Where the project keeps its plan and task markdown files (`plans`, `tasks` folders, `discover`); see [plan-files.md](plan-files.md).                       | Used by onboarding and the editor |
 
 Test and source files are told apart by name and directory (`*_test.go`, `*.test.ts`, `*.spec.*`,
 `test_*.py`, `tests/`, `__tests__/`, `e2e/` are tests; documentation, configuration, fixtures and
