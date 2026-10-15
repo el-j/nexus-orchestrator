@@ -2,7 +2,7 @@
   "name": "nexus-orchestrator",
   "displayName": "Nexus Orchestrator",
   "description": "Route AI code-generation tasks through nexusOrchestrator",
-  "version": "0.2.0-62",
+  "version": "0.10.0-beta.171",
   "publisher": "el-j",
   "engines": {
     "vscode": "^1.99.0"
