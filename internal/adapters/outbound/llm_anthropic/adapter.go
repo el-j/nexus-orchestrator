@@ -167,6 +167,7 @@ type anthropicRequest struct {
 	MaxTokens int                `json:"max_tokens"`
 	System    string             `json:"system,omitempty"`
 	Messages  []anthropicMessage `json:"messages"`
+	Stream    bool               `json:"stream,omitempty"`
 }
 
 func (a *Adapter) sendMessages(ctx context.Context, system string, messages []anthropicMessage) (string, error) {
@@ -198,13 +199,18 @@ func (a *Adapter) sendMessages(ctx context.Context, system string, messages []an
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("anthropic: unexpected status %d%s", resp.StatusCode, errorDetail(resp.Body))
 	}
+	return decodeMessage(resp.Body)
+}
+
+// decodeMessage reads a non-streaming Messages API reply and returns its first text block.
+func decodeMessage(body io.Reader) (string, error) {
 	var result struct {
 		Content []struct {
 			Type string `json:"type"`
 			Text string `json:"text"`
 		} `json:"content"`
 	}
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
+	if err := json.NewDecoder(io.LimitReader(body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("anthropic: decode response: %w", err)
 	}
 	for _, block := range result.Content {

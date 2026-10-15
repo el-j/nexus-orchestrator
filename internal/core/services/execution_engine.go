@@ -184,7 +184,7 @@ func (o *OrchestratorService) tryGenerate(ctx context.Context, taskID string, ll
 		history := append(append([]domain.Message(nil), sessionHistory...), userMsg)
 		return nonEmpty(o.liveChat(ctx, taskID, llm, history))
 	}
-	return nonEmpty(llm.GenerateCode(ctx, prompt))
+	return nonEmpty(o.liveGenerate(ctx, taskID, llm, prompt))
 }
 
 // appendTaskLog appends a new log line to existing task logs without overwriting history.
@@ -324,7 +324,7 @@ func (o *OrchestratorService) executeGeneration(run *runHandle, task domain.Task
 		return code, nil
 	}
 
-	code, err := nonEmpty(llm.GenerateCode(run.ctx, prompt))
+	code, err := nonEmpty(o.liveGenerate(run.ctx, task.ID, llm, prompt))
 	if run.ctx.Err() != nil {
 		o.finishInterrupted(task, run)
 		return "", run.ctx.Err()

@@ -136,3 +136,43 @@ func TestStream_AgentTurnsStream(t *testing.T) {
 		t.Errorf("agent turn text = %q", got)
 	}
 }
+
+// Without a session store the engine sends a single prompt through GenerateCode. A provider that
+// can stream still streams it; one that cannot sends the whole reply as one chunk.
+func TestStream_SinglePromptPathStreamsToo(t *testing.T) {
+	llm := &streamLLM{scriptLLM: &scriptLLM{name: "live", alive: true}, pieces: []string{"one ", "shot"}}
+	w := &contextWriter{}
+	e := newEngine(t, w, nil, nil, llm)
+	id := e.queue(domain.Task{Instruction: "no session", TargetFile: "out.txt"})
+	e.runOne(id, domain.StatusCompleted)
+
+	evs := taskEvents(e, id)
+	if len(evs) < 2 || evs[0].Type != ports.EventTaskRestart || joinedText(evs) != "one shot" {
+		t.Fatalf("events = %+v", evs)
+	}
+	if len(w.writes) != 1 || !strings.Contains(w.writes[0], "one shot") {
+		t.Errorf("result not written from the streamed text: %v", w.writes)
+	}
+}
+
+func TestStream_SinglePromptPathWithoutStreamingSendsOneChunk(t *testing.T) {
+	llm := &scriptLLM{name: "plain", alive: true, replies: []string{"whole answer"}}
+	e := newEngine(t, &noopWriter{}, nil, nil, llm)
+	id := e.queue(domain.Task{Instruction: "no session no stream"})
+	e.runOne(id, domain.StatusCompleted)
+
+	evs := taskEvents(e, id)
+	if len(evs) != 2 || evs[0].Type != ports.EventTaskRestart || evs[1].Text != "whole answer" {
+		t.Errorf("want restart + one chunk, got %+v", evs)
+	}
+}
+
+func TestStream_SinglePromptFailureStillEmitsTheRestart(t *testing.T) {
+	llm := &scriptLLM{name: "broken", alive: true, errs: []error{errors.New("down")}}
+	e := newEngine(t, &noopWriter{}, nil, nil, llm)
+	id := e.queue(domain.Task{Instruction: "fails"})
+	e.runOne(id, domain.StatusQueued) // the first failure re-queues the task for a retry
+	if evs := taskEvents(e, id); len(evs) != 1 || evs[0].Type != ports.EventTaskRestart {
+		t.Errorf("want only the restart event, got %+v", evs)
+	}
+}

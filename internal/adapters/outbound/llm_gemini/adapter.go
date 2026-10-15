@@ -166,26 +166,34 @@ func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, 
 		return "", fmt.Errorf("gemini: unexpected status %d: %s", resp.StatusCode, string(respBytes))
 	}
 
-	var result struct {
-		Candidates []struct {
-			Content struct {
-				Parts []struct {
-					Text string `json:"text"`
-				} `json:"parts"`
-				Role string `json:"role"`
-			} `json:"content"`
-			FinishReason string `json:"finishReason"`
-		} `json:"candidates"`
-	}
+	return decodeCandidate(resp.Body)
+}
 
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
+// geminiCandidates is a generateContent reply, whole or one streamed chunk of it.
+type geminiCandidates struct {
+	Candidates []struct {
+		Content struct {
+			Parts []struct {
+				Text string `json:"text"`
+			} `json:"parts"`
+			Role string `json:"role"`
+		} `json:"content"`
+		FinishReason string `json:"finishReason"`
+	} `json:"candidates"`
+	Error *struct {
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+// decodeCandidate reads a non-streaming generateContent reply and returns its text.
+func decodeCandidate(body io.Reader) (string, error) {
+	var result geminiCandidates
+	if err := json.NewDecoder(io.LimitReader(body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("gemini: decode response: %w", err)
 	}
-
 	if len(result.Candidates) == 0 || len(result.Candidates[0].Content.Parts) == 0 {
 		return "", fmt.Errorf("gemini: empty candidate response")
 	}
-
 	var sb strings.Builder
 	for _, part := range result.Candidates[0].Content.Parts {
 		sb.WriteString(part.Text)

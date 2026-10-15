@@ -197,6 +197,7 @@ type chatCompletionRequest struct {
 	Model       string              `json:"model"`
 	Messages    []map[string]string `json:"messages"`
 	Temperature float64             `json:"temperature"`
+	Stream      bool                `json:"stream,omitempty"`
 }
 
 // GenerateCode sends a chat completion request to LM Studio and returns the
@@ -269,6 +270,11 @@ func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, 
 		return "", fmt.Errorf("lmstudio: chat: unexpected status %d", resp.StatusCode)
 	}
 
+	return decodeChat(resp.Body)
+}
+
+// decodeChat reads a non-streaming chat completion and returns the first choice's text.
+func decodeChat(body io.Reader) (string, error) {
 	var result struct {
 		Choices []struct {
 			Message struct {
@@ -276,7 +282,7 @@ func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, 
 			} `json:"message"`
 		} `json:"choices"`
 	}
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
+	if err := json.NewDecoder(io.LimitReader(body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("lmstudio: decode chat response: %w", err)
 	}
 	if len(result.Choices) == 0 {
