@@ -29,24 +29,13 @@ jobs:
     name: Semver Preview
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    outputs:
-      semVer: ${{ steps.gitversion.outputs.semVer }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - uses: gittools/actions/gitversion/setup@v4.3.3
-        with:
-          versionSpec: '6.x'
-
-      - id: gitversion
-        uses: gittools/actions/gitversion/execute@v4.3.3
-        with:
-          configFilePath: GitVersion.yml
-
-      - name: Show calculated version
-        run: echo "Version this PR would produce → v${{ steps.gitversion.outputs.semVer }}"
+      - name: Show the beta version develop would publish
+        run: echo "Next beta -> v$(bash scripts/next-version.sh)"
 
   vet:
     name: Vet
