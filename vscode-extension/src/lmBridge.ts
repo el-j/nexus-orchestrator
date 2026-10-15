@@ -76,12 +76,19 @@ async function handle(
       return send(res, 200, await listModels());
     }
     if (req.method === 'POST' && req.url === '/v1/chat/completions') {
-      return send(res, 200, await complete(req, res, inflight));
+      const whole = await complete(req, res, inflight);
+      if (whole !== undefined) send(res, 200, whole); // undefined: it was streamed
+      return;
     }
     throw new BridgeError(404, 'not found');
   } catch (err) {
     const failure = toBridgeError(err);
-    send(res, failure.status, { error: { message: failure.message } });
+    const body = { error: { message: failure.message } };
+    if (res.headersSent) {
+      res.end(`data: ${JSON.stringify(body)}\n\n`); // mid-stream: the status line is gone
+    } else {
+      send(res, failure.status, body);
+    }
   }
 }
 
@@ -109,7 +116,7 @@ async function complete(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   inflight: Set<vscode.CancellationTokenSource>,
-): Promise<unknown> {
+): Promise<unknown | undefined> {
   const body = await readJson(req);
   const modelId = typeof body.model === 'string' ? body.model : '';
   const messages = Array.isArray(body.messages) ? (body.messages as ChatMessage[]) : [];
@@ -124,6 +131,10 @@ async function complete(
   res.once('close', () => source.cancel()); // the daemon gave up: stop spending quota
   try {
     const response = await model.sendRequest(toLmMessages(messages), {}, source.token);
+    if (body.stream === true) {
+      await streamChunks(res, model.id, response.text);
+      return undefined;
+    }
     let text = '';
     for await (const part of response.text) text += part;
     return {
@@ -135,6 +146,25 @@ async function complete(
     inflight.delete(source);
     source.dispose();
   }
+}
+
+/** Writes the model's text as OpenAI `chat.completion.chunk` server-sent events. */
+async function streamChunks(
+  res: http.ServerResponse,
+  modelId: string,
+  parts: AsyncIterable<string>,
+): Promise<void> {
+  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
+  const chunk = (delta: object, finish: string | null): void => {
+    const data = { object: 'chat.completion.chunk', model: modelId };
+    res.write(
+      `data: ${JSON.stringify({ ...data, choices: [{ index: 0, delta, finish_reason: finish }] })}\n\n`,
+    );
+  };
+  chunk({ role: 'assistant' }, null);
+  for await (const part of parts) chunk({ content: part }, null);
+  chunk({}, 'stop');
+  res.end('data: [DONE]\n\n');
 }
 
 /**

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- VS Code model bridge streams: `POST /v1/chat/completions` with `"stream": true` answers with OpenAI `chat.completion.chunk` server-sent events as the editor's model produces text (a failure mid-stream arrives as an error event, a disconnect cancels the model request)
 - VS Code model bridge: with `nexus.lmBridge.enabled` the extension serves an OpenAI-compatible endpoint on loopback (bearer token) in front of `vscode.lm` and registers each model the editor offers (Copilot and others) with the daemon as a `vscode-<vendor>-<model>` provider, kept in step with daemon restarts and model changes. Off by default. See `docs/vscode-model-bridge.md`
 - Rule-based workflow: `.nexus/policy.json` per project (default `verify` command, `maxFileLines`, `testsFirst`, `remember`, free-text `rules`). The engine puts a token-bounded project briefing and the rules in front of every task, applies the default verification command, refuses agent writes that break the size or tests-first rules, remembers each finished task in the project knowledge (newest 30) and sends only the newest 20 session messages; the onboarding leads with the rules; `init` creates the file once. See `docs/rulebased-workflow.md`
 - Agentic `edit_file` tool: replaces the single exact occurrence of a text in a project file (refused when it is missing or ambiguous), so small changes no longer need the whole file rewritten
