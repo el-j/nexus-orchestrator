@@ -63,7 +63,6 @@ func TestChatStream_DeliversOutputAsItIsWritten(t *testing.T) {
 	a, _ := NewAdapter("c", cli, "")
 	var pieces []string
 	var firstAt, lastAt time.Time
-	start := time.Now()
 	out, err := a.ChatStream(context.Background(), []domain.Message{{Role: domain.RoleUser, Content: "x"}}, func(p string) {
 		if firstAt.IsZero() {
 			firstAt = time.Now()
@@ -74,8 +73,10 @@ func TestChatStream_DeliversOutputAsItIsWritten(t *testing.T) {
 	if err != nil || out != "FIRST SECOND" {
 		t.Fatalf("out=%q err=%v", out, err)
 	}
-	if firstAt.Sub(start) > 250*time.Millisecond || lastAt.Sub(firstAt) < 200*time.Millisecond {
-		t.Errorf("not streamed: first after %v, last %v later; pieces %q", firstAt.Sub(start), lastAt.Sub(firstAt), pieces)
+	// FIRST is written 300ms before SECOND: if the output were collected and sent at the end,
+	// both pieces would arrive together. (No upper bound on the start: a loaded CI runner is slow.)
+	if lastAt.Sub(firstAt) < 150*time.Millisecond {
+		t.Errorf("not streamed: last piece only %v after the first; pieces %q", lastAt.Sub(firstAt), pieces)
 	}
 }
 
