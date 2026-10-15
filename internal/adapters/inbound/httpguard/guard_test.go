@@ -13,6 +13,7 @@ func TestOriginAllowed(t *testing.T) {
 		"", "http://localhost", "http://localhost:5173", "https://localhost:8443",
 		"http://127.0.0.1:63987", "http://[::1]:3000", "wails://wails.localhost",
 		"http://wails.localhost", "HTTP://LOCALHOST:1",
+		"wails://wails", // the macOS and Linux desktop WebView
 	}
 	for _, o := range allowed {
 		if !p.OriginAllowed(o) {
@@ -23,6 +24,7 @@ func TestOriginAllowed(t *testing.T) {
 		"https://evil.example", "http://localhost.evil.example", "http://127.0.0.1.evil.example",
 		"null", "file://", "ftp://localhost", "http://", "not a url", "http://192.168.1.5:80",
 		"javascript:alert(1)", "http://localhost@evil.example",
+		"http://wails", "https://wails", // only the wails scheme may use the bare host
 	}
 	for _, o := range denied {
 		if p.OriginAllowed(o) {

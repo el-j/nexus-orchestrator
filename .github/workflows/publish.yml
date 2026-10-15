@@ -218,9 +218,10 @@ jobs:
           cache: true
           check-latest: true
 
-      - name: Run daemon E2E smoke
+      # Builds the shipped binaries and drives a real daemon process (same suite as CI).
+      - name: Run real-daemon E2E
         shell: bash
-        run: ./scripts/e2e-smoke.sh
+        run: CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" CGO_LDFLAGS="-lm" go test -tags e2e -count=1 -timeout 10m ./internal/e2e/
 
   release-gate:
     needs: [version, vet, lint, test, frontend-test, vscode-gate, e2e]
@@ -514,10 +515,10 @@ jobs:
           # ditto preserves macOS resource forks, symlinks, and extended attributes
           # that tar can silently drop. The archive includes the app and a
           # launcher script that clears quarantine before opening.
-          cd build/desktop
-          ditto -c -k --sequesterRsrc . \
+          # The archive is written outside build/desktop: zipping "." while creating the zip
+          # inside it put a copy of the archive into itself.
+          ditto -c -k --sequesterRsrc build/desktop \
             "${{ matrix.archive_name }}.zip"
-          mv "${{ matrix.archive_name }}.zip" ../..
 
       - name: Package Linux (tar.gz)
         if: matrix.os == 'linux'

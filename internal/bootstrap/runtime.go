@@ -25,7 +25,6 @@ import (
 
 // Defaults for Config fields left empty or invalid.
 const (
-	DefaultDBPath       = "nexus.db"
 	DefaultListenAddr   = "127.0.0.1:63987"
 	DefaultMCPAddr      = "127.0.0.1:63988"
 	DefaultScanInterval = 30 * time.Second
@@ -57,9 +56,28 @@ func ConfigFromEnv() Config {
 	return cfg.withDefaults()
 }
 
+// DefaultDBPath is where the database lives when NEXUS_DB_PATH is not set: one file shared by
+// every project, ~/.nexus/nexus.db. A relative "nexus.db" would be created in whatever directory the
+// process happens to start in, which for a desktop app launched from Finder is "/" and fails.
+// A nexus.db in the working directory is still used while no shared database exists, so
+// existing setups keep their data.
+func DefaultDBPath() string {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return "nexus.db"
+	}
+	shared := filepath.Join(home, ".nexus", "nexus.db")
+	if _, err := os.Stat(shared); err != nil {
+		if _, err := os.Stat("nexus.db"); err == nil {
+			return "nexus.db"
+		}
+	}
+	return shared
+}
+
 func (c Config) withDefaults() Config {
 	if c.DBPath == "" {
-		c.DBPath = DefaultDBPath
+		c.DBPath = DefaultDBPath()
 	}
 	if c.ListenAddr == "" {
 		c.ListenAddr = DefaultListenAddr
@@ -100,6 +118,11 @@ type Runtime struct {
 func Start(ctx context.Context, cfg Config, logHub *httpapi.LogHub) (*Runtime, error) {
 	cfg = cfg.withDefaults()
 
+	if cfg.DBPath == DefaultDBPath() && filepath.IsAbs(cfg.DBPath) {
+		if err := os.MkdirAll(filepath.Dir(cfg.DBPath), 0o700); err != nil {
+			return nil, fmt.Errorf("create data directory: %w", err)
+		}
+	}
 	repo, err := repo_sqlite.New(cfg.DBPath)
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
@@ -137,7 +160,7 @@ func Start(ctx context.Context, cfg Config, logHub *httpapi.LogHub) (*Runtime, e
 		log.Printf("startup: create fs watcher: %v", err)
 	} else {
 		rt.Watcher = w
-		if cwd, err := os.Getwd(); err == nil {
+		if cwd, err := os.Getwd(); err == nil && isProjectDir(cwd) {
 			if err := w.Watch(cwd); err != nil {
 				log.Printf("startup: watch workspace %s: %v", cwd, err)
 			} else {
@@ -273,4 +296,26 @@ func FormatBanner(headline, listenAddr, mcpAddr string) string {
 		"│  MCP       →  %-39s  │\n"+
 		"└────────────────────────────────────────────────────────┘\n\n",
 		headline, httpBase, httpBase+"/ui", httpBase+"/api/howto", httpBase+"/.well-known/nexus.json", "http://"+mcpAddr+"/mcp")
+}
+
+// projectMarkers are the files and directories whose presence makes a directory a project root.
+var projectMarkers = []string{".git", ".nexus", "go.mod", "package.json", "Cargo.toml", "pyproject.toml"}
+
+// isProjectDir reports whether dir looks like a project root worth watching. The filesystem root
+// and the home directory never are, even if they contain a marker: a desktop app started from
+// Finder has "/" as its working directory.
+func isProjectDir(dir string) bool {
+	dir = filepath.Clean(dir)
+	if dir == filepath.Dir(dir) {
+		return false
+	}
+	if home, err := os.UserHomeDir(); err == nil && filepath.Clean(home) == dir {
+		return false
+	}
+	for _, m := range projectMarkers {
+		if _, err := os.Stat(filepath.Join(dir, m)); err == nil {
+			return true
+		}
+	}
+	return false
 }

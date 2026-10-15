@@ -848,7 +848,7 @@ A task moves through these states:
 
 | Variable                    | Default                      | Description                                     |
 | --------------------------- | ---------------------------- | ----------------------------------------------- |
-| `NEXUS_DB_PATH`             | `nexus.db`                   | SQLite database file path                       |
+| `NEXUS_DB_PATH`             | `~/.nexus/nexus.db`          | SQLite database file path                       |
 | `NEXUS_LISTEN_ADDR`         | `127.0.0.1:63987`            | HTTP API listen address                         |
 | `NEXUS_MCP_ADDR`            | `127.0.0.1:63988`            | MCP server listen address                       |
 | `NEXUS_API_TOKEN`           | —                            | Require `Authorization: Bearer` on `/api/*`     |
