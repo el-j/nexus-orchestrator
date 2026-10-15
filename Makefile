@@ -475,27 +475,13 @@ version-sync:
 	@bash scripts/version-sync.sh "$(VERSION)"
 
 # ---------------------------------------------------------------------------
-# Release tagging (local) — pushes an annotated git tag
+# Releases are made by release-please, not by hand (see docs/releasing.md)
 # ---------------------------------------------------------------------------
-# Usage:
-#   make release-alpha VER=0.10.0    → tags v0.10.0-alpha.1 (next alpha number)
-#   make release-beta  VER=0.10.0    → tags v0.10.0-beta.1
-#   make release-rc    VER=0.10.0    → tags v0.10.0-rc.1
-#   make release       VER=0.10.0    → tags v0.10.0
-#
-# If VER is omitted the current computed VERSION is used.
-
-release-alpha:
-	@bash scripts/release.sh alpha "$(or $(VER),$(VERSION))"
-
-release-beta:
-	@bash scripts/release.sh beta "$(or $(VER),$(VERSION))"
-
-release-rc:
-	@bash scripts/release.sh rc "$(or $(VER),$(VERSION))"
-
-release:
-	@bash scripts/release.sh stable "$(or $(VER),$(VERSION))"
+release release-alpha release-beta release-rc:
+	@echo "Releases are made by release-please: merge develop into main, then merge the"
+	@echo "'chore(main): release X.Y.Z' pull request. See docs/releasing.md."
+	@echo "Next beta from develop: v$$(bash scripts/next-version.sh)"
+	@exit 1
 
 # ---------------------------------------------------------------------------
 # Docker — build image locally and push to ghcr.io
@@ -569,17 +555,8 @@ help:
 	@echo "Versioning:"
 	@echo "  make version                Show current version + commit + build date"
 	@echo "  make version-sync           Stamp version into all package manifests"
-	@echo "  make release-alpha VER=X.Y.Z  Tag v X.Y.Z-alpha.N (auto-increment N)"
-	@echo "  make release-beta  VER=X.Y.Z  Tag vX.Y.Z-beta.N"
-	@echo "  make release-rc    VER=X.Y.Z  Tag vX.Y.Z-rc.N"
-	@echo "  make release       VER=X.Y.Z  Tag vX.Y.Z (stable)"
-	@echo ""
-	@echo "  Branch → tag workchain:"
-	@echo "    feature/** or alpha/**  →  vX.Y.Z-alpha.N"
-	@echo "    beta/**                 →  vX.Y.Z-beta.N"
-	@echo "    release/**              →  vX.Y.Z-rc.N"
-	@echo "    main                    →  vX.Y.Z"
-	@echo "    hotfix/**               →  vX.Y.(Z+1)"
+	@echo "  make release               Explains the release flow (release-please)"
+	@echo "  Betas: develop -> vX.(Y+1).0-beta.N; stable: release-please -> vX.Y.Z"
 	@echo ""
 	@echo "Docker (ghcr.io/el-j/nexus-orchestrator):"
 	@echo "  make docker-build           Build image locally (nexus-daemon)"
