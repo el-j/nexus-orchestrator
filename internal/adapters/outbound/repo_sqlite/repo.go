@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -91,15 +92,7 @@ func (r *Repository) GetPending(ctx context.Context) ([]domain.Task, error) {
 	}
 	defer rows.Close()
 
-	tasks := []domain.Task{}
-	for rows.Next() {
-		t, err := scanTask(rows)
-		if err != nil {
-			return nil, err
-		}
-		tasks = append(tasks, t)
-	}
-	return tasks, rows.Err()
+	return collectTasks(rows)
 }
 
 // ClaimNextQueued atomically claims the oldest queued task and marks it PROCESSING.
@@ -197,15 +190,7 @@ func (r *Repository) GetAll(ctx context.Context) ([]domain.Task, error) {
 	}
 	defer rows.Close()
 
-	tasks := []domain.Task{}
-	for rows.Next() {
-		t, err := scanTask(rows)
-		if err != nil {
-			return nil, err
-		}
-		tasks = append(tasks, t)
-	}
-	return tasks, rows.Err()
+	return collectTasks(rows)
 }
 
 // GetByProjectPath returns all tasks for the given project path, ordered by creation time descending.
@@ -220,15 +205,7 @@ func (r *Repository) GetByProjectPath(ctx context.Context, projectPath string) (
 	}
 	defer rows.Close()
 
-	tasks := []domain.Task{}
-	for rows.Next() {
-		t, err := scanTask(rows)
-		if err != nil {
-			return nil, err
-		}
-		tasks = append(tasks, t)
-	}
-	return tasks, rows.Err()
+	return collectTasks(rows)
 }
 
 // GetByProjectPathAndStatus returns tasks for a project filtered by one or more statuses,
@@ -255,15 +232,7 @@ func (r *Repository) GetByProjectPathAndStatus(ctx context.Context, projectPath 
 		return nil, fmt.Errorf("sqlite: query by project path and status: %w", err)
 	}
 	defer rows.Close()
-	tasks := []domain.Task{}
-	for rows.Next() {
-		t, err := scanTask(rows)
-		if err != nil {
-			return nil, err
-		}
-		tasks = append(tasks, t)
-	}
-	return tasks, rows.Err()
+	return collectTasks(rows)
 }
 
 // Update persists changes to an existing task's mutable fields.
@@ -304,15 +273,7 @@ func (r *Repository) GetTasksBySessionID(ctx context.Context, sessionID string) 
 	}
 	defer rows.Close()
 
-	tasks := []domain.Task{}
-	for rows.Next() {
-		t, err := scanTask(rows)
-		if err != nil {
-			return nil, err
-		}
-		tasks = append(tasks, t)
-	}
-	return tasks, rows.Err()
+	return collectTasks(rows)
 }
 
 // GetStaleProcessing returns tasks in PROCESSING status that haven't been updated for the threshold duration.
@@ -327,15 +288,7 @@ func (r *Repository) GetStaleProcessing(ctx context.Context, threshold time.Dura
 	}
 	defer rows.Close()
 
-	tasks := []domain.Task{}
-	for rows.Next() {
-		t, err := scanTask(rows)
-		if err != nil {
-			return nil, err
-		}
-		tasks = append(tasks, t)
-	}
-	return tasks, rows.Err()
+	return collectTasks(rows)
 }
 
 type scanner interface {
@@ -348,11 +301,11 @@ func scanTask(s scanner) (domain.Task, error) {
 	var command string
 	var ctxJSON string
 	var tagsJSON string
-	var createdMS, updatedMS int64
+	var createdRaw, updatedRaw any
 
 	if err := s.Scan(
 		&t.ID, &t.ProjectPath, &t.TargetFile, &t.Instruction,
-		&ctxJSON, &status, &createdMS, &updatedMS, &t.Logs,
+		&ctxJSON, &status, &createdRaw, &updatedRaw, &t.Logs,
 		&t.ModelID, &t.ProviderHint, &command, &t.ProviderName, &t.Priority, &tagsJSON, &t.RetryCount, &t.AISessionID,
 		&t.VerificationCommand, &t.MaxCorrectionTurns, &t.VerificationOutput,
 		&t.Role, &t.Agentic, &t.MaxAgentTurns,
@@ -360,7 +313,15 @@ func scanTask(s scanner) (domain.Task, error) {
 		return t, fmt.Errorf("sqlite: scan task: %w", err)
 	}
 
-	t.Status = domain.TaskStatus(status)
+	createdMS, err := millisOf(createdRaw)
+	if err != nil {
+		return t, fmt.Errorf("sqlite: task %s: created_at: %w", t.ID, err)
+	}
+	updatedMS, err := millisOf(updatedRaw)
+	if err != nil {
+		return t, fmt.Errorf("sqlite: task %s: updated_at: %w", t.ID, err)
+	}
+	t.Status = normalizeStatus(status)
 	t.Command = domain.CommandType(command)
 	t.CreatedAt = time.UnixMilli(createdMS)
 	t.UpdatedAt = time.UnixMilli(updatedMS)
@@ -374,4 +335,67 @@ func scanTask(s scanner) (domain.Task, error) {
 		}
 	}
 	return t, nil
+}
+
+// collectTasks reads every row of a task query. A row that cannot be decoded is logged and
+// skipped: one damaged or hand-edited row must not make the whole list unavailable (every client
+// would show the daemon as offline). Asking for that task by id still reports the problem.
+func collectTasks(rows *sql.Rows) ([]domain.Task, error) {
+	tasks := []domain.Task{}
+	for rows.Next() {
+		t, err := scanTask(rows)
+		if err != nil {
+			log.Printf("repo_sqlite: skipping an unreadable task row: %v", err)
+			continue
+		}
+		tasks = append(tasks, t)
+	}
+	return tasks, rows.Err()
+}
+
+// timeLayouts are the text forms of a time that tools other than this daemon write: SQLite's own
+// datetime('now') (UTC, no zone), and ISO 8601.
+var timeLayouts = []string{"2006-01-02 15:04:05", "2006-01-02T15:04:05", time.RFC3339Nano, time.RFC3339}
+
+// millisOf reads a timestamp column. The daemon stores Unix milliseconds; a column edited by hand
+// may hold the number as text or a datetime text, which is read as UTC when it names no zone.
+func millisOf(v any) (int64, error) {
+	switch x := v.(type) {
+	case int64:
+		return x, nil
+	case float64:
+		return int64(x), nil
+	case time.Time:
+		return x.UnixMilli(), nil
+	case []byte:
+		return millisOf(string(x))
+	case string:
+		x = strings.TrimSpace(x)
+		if n, err := strconv.ParseInt(x, 10, 64); err == nil {
+			return n, nil
+		}
+		for _, layout := range timeLayouts {
+			if t, err := time.ParseInLocation(layout, x, time.UTC); err == nil {
+				return t.UnixMilli(), nil
+			}
+		}
+		return 0, fmt.Errorf("cannot read %q as a time", x)
+	default:
+		return 0, fmt.Errorf("cannot read a %T as a time", v)
+	}
+}
+
+// statusAliases maps the words other tools use for a task's state to the daemon's statuses.
+var statusAliases = map[string]domain.TaskStatus{
+	"IN_PROGRESS": domain.StatusProcessing, "RUNNING": domain.StatusProcessing,
+	"DONE": domain.StatusCompleted, "COMPLETE": domain.StatusCompleted,
+	"ERROR": domain.StatusFailed, "PENDING": domain.StatusQueued, "TODO": domain.StatusQueued,
+}
+
+// normalizeStatus reads a status column, tolerating case and the aliases above.
+func normalizeStatus(s string) domain.TaskStatus {
+	if alias, ok := statusAliases[strings.ToUpper(strings.TrimSpace(s))]; ok {
+		return alias
+	}
+	return domain.TaskStatus(s)
 }
