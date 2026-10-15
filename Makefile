@@ -139,7 +139,7 @@ connect: build
 	@$(DIST)/native/$(BINARY_CLI) connect
 	@echo ""
 	@echo "Connect them:  $(DIST)/native/$(BINARY_CLI) connect --write   (merges the nexus server into each agent's MCP config)"
-	@echo "VS Code: install the extension (make build-vscode); it registers the server itself."
+	@echo "VS Code / Antigravity: install the extension (make build-vscode); it connects the editor's own agent (command: Nexus: Connect This Editor's Agent)."
 	@echo "Guide: docs/using-nexus.md"
 
 # Teach the orchestrator about a project once: make init-project PROJECT=/path/to/repo

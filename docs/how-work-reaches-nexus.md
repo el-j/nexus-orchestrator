@@ -33,8 +33,9 @@ nexus-cli connect --write --agent antigravity
 It knows Antigravity (`~/.gemini/.../mcp_config.json`, through the `nexus-mcp-stdio` proxy), Cursor
 (`~/.cursor/mcp.json`) and Claude Code (`claude mcp add`). Other servers in a config stay, the
 previous file is kept as `<file>.nexus-backup`, and a config that is not valid JSON is never touched.
-Restart the agent afterwards. VS Code with the extension needs nothing (the extension registers the
-server).
+Restart the agent afterwards. With the VS Code extension installed this is done for the editor's own
+agent: VS Code (1.101+) gets the server through its MCP support, and Antigravity is offered the config
+change once (_Nexus: Connect This Editor's Agent_, setting `nexus.mcp.autoConnect`).
 
 Then tell the agent to use it. `nexus init` (the `init_project` tool) writes the rule into the project's
 `.nexus/policy.json`, which every session receives in its briefing: _report progress through the Nexus
