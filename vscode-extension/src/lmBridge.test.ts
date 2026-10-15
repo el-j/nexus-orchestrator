@@ -2,7 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const cancelled: boolean[] = [];
 const state = {
-  models: [] as Array<{ id: string; vendor: string; sendRequest: ReturnType<typeof vi.fn> }>,
+  models: [] as Array<{
+    id: string;
+    vendor: string;
+    maxInputTokens?: number;
+    sendRequest: ReturnType<typeof vi.fn>;
+  }>,
 };
 
 vi.mock('vscode', () => ({
@@ -73,6 +78,18 @@ describe('lmBridge', () => {
       object: 'list',
       data: [{ id: 'gpt-4o', object: 'model', owned_by: 'copilot' }],
     });
+  });
+
+  it('reports the context length of a model that has a known input limit', async () => {
+    state.models = [
+      { id: 'small', vendor: 'copilot', maxInputTokens: 8192, sendRequest: reply('x') },
+      { id: 'unknown', vendor: 'copilot', maxInputTokens: 0, sendRequest: reply('x') },
+    ];
+    const body = (await (await call('/v1/models')).json()) as {
+      data: Array<Record<string, unknown>>;
+    };
+    expect(body.data[0]).toMatchObject({ id: 'small', context_length: 8192 });
+    expect(body.data[1]).not.toHaveProperty('context_length');
   });
 
   it('answers a chat completion with the joined streamed text', async () => {

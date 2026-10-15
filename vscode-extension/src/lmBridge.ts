@@ -108,7 +108,13 @@ async function listModels(): Promise<unknown> {
   const models = await vscode.lm.selectChatModels({});
   return {
     object: 'list',
-    data: models.map((m) => ({ id: m.id, object: 'model', owned_by: m.vendor })),
+    // context_length lets the daemon refuse a prompt the model cannot take instead of failing it.
+    data: models.map((m) => ({
+      id: m.id,
+      object: 'model',
+      owned_by: m.vendor,
+      ...(m.maxInputTokens > 0 ? { context_length: m.maxInputTokens } : {}),
+    })),
   };
 }
 

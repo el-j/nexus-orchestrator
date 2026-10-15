@@ -94,3 +94,16 @@ func TestBuildProviderFromConfig_AllKinds(t *testing.T) {
 		t.Error("expected error for unknown kind, got nil")
 	}
 }
+
+// A CLI provider delegates to a logged-in AI command-line tool (Claude Pro without an API key).
+func TestBuildProviderFromConfig_CLI(t *testing.T) {
+	p, err := bootstrap.BuildProviderFromConfig(domain.ProviderConfig{Kind: domain.ProviderKindCLI, Name: "Claude (subscription)", BaseURL: "claude -p", Model: "sonnet"})
+	if err != nil || p.ProviderName() != "Claude (subscription)" || p.BaseURL() != "claude -p" || p.ActiveModel() != "sonnet" {
+		t.Fatalf("provider = %+v, err = %v", p, err)
+	}
+	for _, bad := range []string{"", "/bin/sh -c id"} {
+		if _, err := bootstrap.BuildProviderFromConfig(domain.ProviderConfig{Kind: domain.ProviderKindCLI, Name: "x", BaseURL: bad}); err == nil {
+			t.Errorf("command %q must be refused", bad)
+		}
+	}
+}

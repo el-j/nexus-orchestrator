@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Claude Pro/Max can be delegated to: provider kind `cli` runs a logged-in AI command-line tool (`claude -p`, verified against the real `claude`) per request, streams its output, and a discovered "Claude CLI" can be promoted. Only known tools may run (`NEXUS_CLI_PROVIDERS` extends the list). See `docs/delegating-subscriptions.md`
+- OpenAI-compatible providers use the context length the server reports (`context_length`, `context_window`, `max_model_len`) instead of always assuming 128K; the VS Code bridge reports each editor model's `maxInputTokens`
 - MCP `wait_for_task` (42 tools): blocks until a task has finished and streams the model's reply as `notifications/progress` when the caller sends a progress token and `Accept: text/event-stream`; `OrchestratorService` offers its events to in-process adapters through the optional `ports.TaskEventSource`
 - Anthropic, Gemini and LM Studio providers stream (`ChatStream`, shared `sse` reader), and the single-prompt path without a session store streams too; a cut-off stream is a failure that falls over to the next provider
 - Live output in the clients: VS Code channel `Nexus Live Output` (`nexus.liveOutput.enabled`, command `Nexus: Show Live Task Output`) and a "Live output" block in the task detail drawer; an OpenAI-compatible server that ignores `stream: true` is still accepted (one chunk)
@@ -42,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Registering the same provider again (the VS Code bridge after a restart) replaced nothing and left a stale duplicate; the same name and model now replace each other
 - The daemon kept running (and printed its ready banner) when the REST or MCP port was already in use; it now exits non-zero
 - The Action failed on the first run in any project because `execute` requires a completed plan
 - Views and composables that unmounted before their first fetch finished left a poller running for the rest of the session

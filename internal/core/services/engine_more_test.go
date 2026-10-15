@@ -325,3 +325,29 @@ func TestEmptyProviderResponseIsAFailedAttempt(t *testing.T) {
 		}
 	})
 }
+
+// A command-line AI tool found on the PATH is "installed", not "reachable", and has a path, not a
+// URL. It can still be promoted: the path becomes the command of the provider.
+func TestPromoteProvider_AnInstalledCLIBecomesAProviderRunningItsPath(t *testing.T) {
+	var got domain.ProviderConfig
+	orch, _ := newProviderOrch(t, nil, func(cfg domain.ProviderConfig) (ports.LLMClient, error) {
+		got = cfg
+		return &mockLLMClient{alive: true, name: cfg.Name}, nil
+	})
+	orch.WithSystemScanner(&mockScanner{results: []domain.DiscoveredProvider{
+		{ID: "cli", Name: "Claude CLI", Kind: domain.ProviderKindCLI, Status: domain.DiscoveryStatusInstalled, CLIPath: "/usr/local/bin/claude"},
+		{ID: "bare", Name: "Installed but not a CLI kind", Kind: domain.ProviderKindOllama, Status: domain.DiscoveryStatusInstalled, CLIPath: "/usr/bin/ollama"},
+	}})
+	if _, err := orch.TriggerScan(bg); err != nil {
+		t.Fatal(err)
+	}
+	if err := orch.PromoteProvider(bg, "cli"); err != nil {
+		t.Fatalf("promote CLI: %v", err)
+	}
+	if got.Kind != domain.ProviderKindCLI || got.BaseURL != "/usr/local/bin/claude -p" {
+		t.Errorf("config = %+v; want the claude path with -p", got)
+	}
+	if err := orch.PromoteProvider(bg, "bare"); err == nil {
+		t.Error("only a CLI-kind tool may be promoted from its path")
+	}
+}
