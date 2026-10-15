@@ -71,8 +71,9 @@ test.describe('against a real daemon', () => {
     await page.goto('/');
     await page
       .locator('aside nav')
-      .getByRole('button', { name: /backlog/i })
+      .getByRole('button', { name: /projects/i })
       .click();
+    await page.getByTestId('project-tab-backlog').click();
     await expect(page.getByRole('heading', { name: /^backlog$/i })).toBeVisible();
 
     const promote = await request.post(`${API}/api/tasks/${id}/promote`);
@@ -87,22 +88,19 @@ test.describe('against a real daemon', () => {
 
     await page.goto('/');
     const nav = page.locator('aside nav');
-    const labels = [
-      'Mission Control',
-      'Agents',
-      'Providers',
-      'Projects',
-      'Plans',
-      'History',
-      'Backlog',
-      'Brain',
-      'Settings',
-    ];
+    const labels = ['Mission Control', 'Agents', 'Providers', 'Projects', 'Settings'];
     for (const label of labels) {
       const item = nav.getByRole('button', { name: new RegExp(label, 'i') });
       await item.click();
       await expect(item).toBeVisible();
       await page.waitForTimeout(400); // views poll and stream, so the network never goes idle
+    }
+    // Everything about a project is a tab of the Projects hub.
+    await nav.getByRole('button', { name: /projects/i }).click();
+    for (const tab of ['plans', 'history', 'backlog', 'brain', 'activity']) {
+      await page.getByTestId(`project-tab-${tab}`).click();
+      await expect(page.getByTestId(`project-tab-${tab}`)).toHaveAttribute('aria-current', 'page');
+      await page.waitForTimeout(400);
     }
     expect(errors).toEqual([]);
   });
