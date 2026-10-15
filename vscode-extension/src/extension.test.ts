@@ -26,6 +26,7 @@ const h = vi.hoisted(() => {
       sessions: undefined as unknown,
       detector: undefined as unknown,
       scanner: undefined as unknown,
+      mcpConnect: undefined as unknown,
     },
     fns: {
       sendCurrentContext: vi.fn(),
@@ -77,6 +78,7 @@ vi.mock('./nexusClient', () => {
   class NexusClient {
     configure = vi.fn();
     getBaseUrl = vi.fn(() => 'http://127.0.0.1:63987');
+    getMcpPort = vi.fn(() => 63988);
     health = vi.fn().mockResolvedValue(true);
     tryConnect = vi.fn().mockRejectedValue(new Error('none'));
     getTasks = vi.fn().mockResolvedValue([]);
@@ -109,6 +111,17 @@ vi.mock('./statusBar', () => ({
   },
 }));
 vi.mock('./planFolders', () => ({ registerPlanFolders: vi.fn() }));
+vi.mock('./mcpConnect', () => ({
+  McpConnect: class {
+    constructor(
+      _ctx: unknown,
+      public endpoint: () => { url: string; token: string },
+    ) {
+      h.instances.mcpConnect = this;
+    }
+    register = vi.fn();
+  },
+}));
 vi.mock('./liveOutput', () => ({
   LiveOutput: class {
     register = vi.fn();
@@ -299,6 +312,17 @@ describe('activate', () => {
     expect(C<{ start: ReturnType<typeof vi.fn> }>('monitor').start).toHaveBeenCalled();
     expect(C<{ start: ReturnType<typeof vi.fn> }>('scanner').start).toHaveBeenCalled();
     expect(C<{ start: ReturnType<typeof vi.fn> }>('detector').start).toHaveBeenCalled();
+  });
+
+  it("connects the editor's agent to the daemon's MCP endpoint, with the configured token", async () => {
+    h.config['apiToken'] = 'tok';
+    await activateExtension();
+    const m = C<{
+      endpoint: () => { url: string; token: string };
+      register: ReturnType<typeof vi.fn>;
+    }>('mcpConnect');
+    expect(m.register).toHaveBeenCalled();
+    expect(m.endpoint()).toEqual({ url: 'http://127.0.0.1:63988/mcp', token: 'tok' });
   });
 
   it('getClient/getStatusBar return the shared instances', async () => {

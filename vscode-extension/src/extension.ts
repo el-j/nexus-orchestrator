@@ -25,6 +25,7 @@ import { delegateToNexusCommand } from './commands/delegateToNexus';
 import { LmShare } from './lmShare';
 import { LiveOutput } from './liveOutput';
 import { registerPlanFolders } from './planFolders';
+import { McpConnect } from './mcpConnect';
 
 let client: NexusClient | undefined;
 let statusBar: NexusStatusBar | undefined;
@@ -134,6 +135,12 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   registerPlanFolders(context, workspaceScanner); // where plans and tasks live, when not the default
+
+  // The editor's own agent must be able to call Nexus tools (VS Code MCP support / Antigravity config).
+  new McpConnect(context, () => ({
+    url: `http://${new URL(getClient().getBaseUrl()).hostname}:${getClient().getMcpPort()}/mcp`,
+    token: apiToken(),
+  })).register();
 
   // ── Editor models → daemon providers (opt-in, see lmShare.ts) ──────────────
   new LmShare(getClient()).register(context);

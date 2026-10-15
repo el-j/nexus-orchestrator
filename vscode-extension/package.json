@@ -20,6 +20,12 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "nexus.mcp",
+        "label": "Nexus Orchestrator"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -72,6 +78,10 @@
       {
         "command": "nexus.showLiveOutput",
         "title": "Nexus: Show Live Task Output"
+      },
+      {
+        "command": "nexus.connectAgent",
+        "title": "Nexus: Connect This Editor's Agent"
       },
       {
         "command": "nexus.configurePlanFolders",
@@ -215,6 +225,16 @@
           "description": "Bearer token for a daemon started with NEXUS_API_TOKEN. Leave empty when the daemon has no token. If empty, the NEXUS_API_TOKEN environment variable of the editor is used.",
           "scope": "machine"
         },
+        "nexus.mcp.autoConnect": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "always",
+            "never"
+          ],
+          "default": "ask",
+          "markdownDescription": "In Antigravity the agent reads its MCP servers from `~/.gemini/.../mcp_config.json`. `ask` offers once to add the Nexus server there, `always` adds and keeps it current without asking, `never` leaves the file alone. (VS Code gets the server through its own MCP support and needs no file.)"
+        },
         "nexus.planFiles.plans": {
           "type": "array",
           "items": {
@@ -291,7 +311,7 @@
   },
   "scripts": {
     "compile": "npm run build",
-    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
+    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node && esbuild src/mcpProxyEntry.ts --bundle --outfile=dist/mcpProxy.js --format=cjs --platform=node",
     "watch": "npm run build -- --watch",
     "package": "vsce package --no-dependencies",
     "test": "vitest run",

@@ -53,7 +53,7 @@ var matrix = []row{
 	{"connect the agents on this machine to MCP", without("a local setup step for the machine, not something the daemon can do from outside"),
 		without("a local setup step for the machine"), has("newConnectCmd"),
 		without("a local setup step; the CLI does it"), without("the UI shows the queue and agents, it does not edit other tools' config files"),
-		without("the extension registers its own MCP server; other editors are connected with nexus connect")},
+		has("nexus.connectAgent")},
 	{"list the queue", has(`Get("/api/tasks"`), has("'get_queue'"), has(`"list"`), has("GetQueue("), has("getQueue"), has("/api/tasks")},
 	{"list every task", has(`"/api/tasks/all"`), has("'get_all_tasks'"), noCLI, has("GetAllTasks("), has("getAllTasks"), has("/api/tasks/all")},
 	{"cancel a task", has(`Delete("/api/tasks/{id}"`), has("'cancel_task'"), has("cancel <task-id>"), has("CancelTask("), has("cancelTask"), has("cancelTask")},

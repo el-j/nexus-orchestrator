@@ -26,8 +26,14 @@ nexus-cli connect --write       # adds the nexus MCP server to Antigravity, Curs
 
 An agent that is not connected cannot use Nexus: it can only edit files and the database around it,
 which Nexus then shows as state it never ran. [how-work-reaches-nexus.md](how-work-reaches-nexus.md)
-explains what each way in does. The VS Code extension registers the server itself; Claude Desktop
+explains what each way in does. The VS Code extension connects the editor's own agent (below); Claude Desktop
 uses `{"mcpServers": {"nexusOrchestrator": {"url": "http://localhost:63988/mcp"}}}`.
+
+**With the VS Code extension installed** the editor's own agent is connected for you: in VS Code (1.101+)
+the extension registers the Nexus server with VS Code's MCP support (Chat → Configure Tools); in
+Antigravity it offers once to add the server to `~/.gemini/.../mcp_config.json` (setting
+`nexus.mcp.autoConnect`: `ask`, `always`, `never`; command _Nexus: Connect This Editor's Agent_).
+Reload the window afterwards.
 
 ## 3. Introduce each project once
 
