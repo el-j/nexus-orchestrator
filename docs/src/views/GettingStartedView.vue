@@ -109,6 +109,25 @@
           <CodeBlock language="bash" :code="codeDaemonCloud" />
         </section>
 
+        <!-- Connect agents -->
+        <section id="connect-agents" class="reveal">
+          <h2 class="text-2xl font-black mb-4 flex items-center gap-2">
+            <span class="text-violet-400">#</span> Connect Your Agents
+          </h2>
+          <p class="text-slate-400 text-sm mb-4">
+            An agent that cannot call Nexus tools can only work around them, for example by editing
+            the database by hand, and then Nexus shows state it never ran. Connect the agents on
+            your machine once:
+          </p>
+          <CodeBlock language="bash" :code="codeConnect" />
+          <p class="text-slate-500 text-sm mt-3">
+            With the VS Code extension installed, the editor's own agent is connected for you (VS
+            Code 1.101+ through its MCP support, Antigravity after one prompt). Then
+            <code class="text-violet-300">make init-project PROJECT=/path/to/repo</code> teaches
+            Nexus the project, and every session starts with its briefing.
+          </p>
+        </section>
+
         <!-- First Task -->
         <section id="first-task" class="reveal">
           <h2 class="text-2xl font-black mb-4 flex items-center gap-2">
@@ -143,12 +162,13 @@
         <!-- Dashboard -->
         <section id="dashboard" class="reveal">
           <h2 class="text-2xl font-black mb-4 flex items-center gap-2">
-            <span class="text-violet-400">#</span> Using the Dashboard
+            <span class="text-violet-400">#</span> Using the UI
           </h2>
           <div class="rounded-xl border border-white/8 bg-[#0d0d14] p-6">
             <p class="text-slate-400 text-sm mb-3">
-              Open <code class="text-violet-300">http://localhost:63987/ui</code> in your browser
-              for a live dashboard that:
+              Open <code class="text-violet-300">http://localhost:63987/app/</code> in your browser
+              (the daemon embeds the full UI when built with Node 22; otherwise
+              <code class="text-violet-300">/ui</code> is a light dashboard):
             </p>
             <ul class="space-y-2 list-none p-0">
               <li
@@ -208,6 +228,7 @@ const toc = [
   { id: 'prerequisites', label: 'Prerequisites' },
   { id: 'installation', label: 'Installation' },
   { id: 'starting-daemon', label: 'Starting the Daemon' },
+  { id: 'connect-agents', label: 'Connect Your Agents' },
   { id: 'first-task', label: 'Your First Task' },
   { id: 'task-management', label: 'Task Management' },
   { id: 'providers', label: 'Managing Providers' },
@@ -216,24 +237,29 @@ const toc = [
   { id: 'next-steps', label: 'Next Steps' },
 ];
 
-const codeInstall = `# Clone the repository
+const codeInstall = `# macOS desktop app (no Gatekeeper dialog), or the CLI + daemon on any system
+curl -sSfL https://raw.githubusercontent.com/el-j/nexus-orchestrator/main/scripts/install.sh | sh -s -- --desktop
+curl -sSfL https://raw.githubusercontent.com/el-j/nexus-orchestrator/main/scripts/install.sh | sh
+
+# Or from source: one command builds and starts everything
 git clone https://github.com/el-j/nexus-orchestrator.git
 cd nexus-orchestrator
+nvm use          # Node >= 22 builds the full UI
+make start`;
 
-# Build all binaries
-CGO_ENABLED=1 go build ./...
+const codeConnect = `# Which agents on this machine can call Nexus? (changes nothing)
+nexus-cli connect
 
-# Or build specific binaries
-CGO_ENABLED=1 go build -o nexus-daemon ./cmd/nexus-daemon/...
-CGO_ENABLED=1 go build -o nexus-cli ./cmd/nexus-cli/...`;
+# Connect them: Antigravity, Cursor, Claude Code
+nexus-cli connect --write`;
 
 const codeDaemonBasic = `# Start with default settings
 ./nexus-daemon
 # HTTP API:   http://127.0.0.1:63987
 # MCP server: http://127.0.0.1:63988/mcp
-# Dashboard:  http://127.0.0.1:63987/ui`;
+# Full UI:    http://127.0.0.1:63987/app/   (light dashboard: /ui)`;
 
-const codeDaemonCustom = `# Use environment variables for custom settings
+const codeDaemonCustom = `# Use environment variables for custom settings (default database: ~/.nexus/nexus.db)
 NEXUS_DB_PATH=/path/to/nexus.db \\
 NEXUS_LISTEN_ADDR=:8080 \\
 NEXUS_MCP_ADDR=:8081 \\
@@ -298,10 +324,10 @@ CGO_ENABLED=1 go test ./internal/core/services/...
 go vet ./...`;
 
 const dashboardFeatures = [
-  'Shows all tasks with real-time status updates via SSE',
-  'Allows submitting new tasks directly',
-  'Displays provider status and model information',
-  'Auto-refreshes every 2 seconds',
+  'Mission Control: active work, recent completions, agents and providers, task submission',
+  'Live output of a running task while the model writes it',
+  'Projects: activity, plans, history, backlog and the project brain as tabs',
+  'Each task says who ran it: Nexus on a provider, or an agent that only reported a status',
 ];
 
 const nextSteps = [
@@ -314,7 +340,7 @@ const nextSteps = [
   {
     icon: '🔌',
     title: 'MCP Integration',
-    desc: 'Connect with Claude Desktop',
+    desc: 'Connect Claude Code, Cursor, Antigravity and Claude Desktop',
     to: '/mcp-integration',
   },
   {

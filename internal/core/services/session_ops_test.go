@@ -16,21 +16,6 @@ import (
 	"nexus-orchestrator/internal/core/services"
 )
 
-// Fixed pids are used as agents' pids; one of them can be the test process's own pid (a CI runner
-// happened to give it 7777), which the service refuses to signal, so they are moved off it.
-var (
-	pidA = otherPID(7777)
-	pidB = otherPID(8888)
-	pidC = otherPID(4321)
-)
-
-func otherPID(n int) int {
-	if n == os.Getpid() {
-		return n + 1
-	}
-	return n
-}
-
 // faultyAIRepo wraps memAISessionRepo with injectable failures per method.
 type faultyAIRepo struct {
 	*memAISessionRepo
@@ -252,10 +237,10 @@ func TestTerminateAISession_RefusesToSignalUnverifiedProcesses(t *testing.T) {
 		{"the daemon itself", os.Getpid(), []domain.DiscoveredAgent{runningAgent(os.Getpid())}, nil},
 		{"the daemon's parent", os.Getppid(), []domain.DiscoveredAgent{runningAgent(os.Getppid())}, nil},
 		{"a pid nobody discovered", 424242, []domain.DiscoveredAgent{runningAgent(1234)}, nil},
-		{"an agent that is not running", pidC, []domain.DiscoveredAgent{{ID: "a", PID: pidC, IsRunning: false, LastSeen: now}}, nil},
-		{"an agent not seen recently (PID may be recycled)", pidC, []domain.DiscoveredAgent{{ID: "a", PID: pidC, IsRunning: true, LastSeen: now.Add(-time.Hour)}}, nil},
-		{"no agents known at all", pidC, nil, nil},
-		{"the agent list cannot be read", pidC, nil, errInjected},
+		{"an agent that is not running", 4321, []domain.DiscoveredAgent{{ID: "a", PID: 4321, IsRunning: false, LastSeen: now}}, nil},
+		{"an agent not seen recently (PID may be recycled)", 4321, []domain.DiscoveredAgent{{ID: "a", PID: 4321, IsRunning: true, LastSeen: now.Add(-time.Hour)}}, nil},
+		{"no agents known at all", 4321, nil, nil},
+		{"the agent list cannot be read", 4321, nil, errInjected},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -283,31 +268,31 @@ func TestTerminateAISession_RefusesToSignalUnverifiedProcesses(t *testing.T) {
 
 func TestTerminateAISession_SignalsOnlyTheVerifiedPID(t *testing.T) {
 	orch, repo, _ := newSessionOrch(t)
-	orch.SetDiscoveredAgentRepo(&stubAgentStore{list: []domain.DiscoveredAgent{runningAgent(pidA), runningAgent(pidB)}})
+	orch.SetDiscoveredAgentRepo(&stubAgentStore{list: []domain.DiscoveredAgent{runningAgent(7777), runningAgent(8888)}})
 	type call struct {
 		pid   int
 		force bool
 	}
 	var calls []call
 	orch.SetSignalFunc(func(pid int, force bool) error { calls = append(calls, call{pid, force}); return nil })
-	_ = repo.memAISessionRepo.SaveAISession(bg, domain.AISession{ID: "s", Status: domain.SessionStatusActive, PID: pidA})
+	_ = repo.memAISessionRepo.SaveAISession(bg, domain.AISession{ID: "s", Status: domain.SessionStatusActive, PID: 7777})
 	if err := orch.TerminateAISession(bg, "s", false); err != nil {
 		t.Fatal(err)
 	}
-	_ = repo.memAISessionRepo.SaveAISession(bg, domain.AISession{ID: "s", Status: domain.SessionStatusActive, PID: pidA})
+	_ = repo.memAISessionRepo.SaveAISession(bg, domain.AISession{ID: "s", Status: domain.SessionStatusActive, PID: 7777})
 	if err := orch.TerminateAISession(bg, "s", true); err != nil {
 		t.Fatal(err)
 	}
-	if len(calls) != 2 || calls[0] != (call{pidA, false}) || calls[1] != (call{pidA, true}) {
+	if len(calls) != 2 || calls[0] != (call{7777, false}) || calls[1] != (call{7777, true}) {
 		t.Fatalf("calls = %+v", calls)
 	}
 }
 
 func TestTerminateAISession_ASignalFailureIsLoggedNotReturned(t *testing.T) {
 	orch, repo, _ := newSessionOrch(t)
-	orch.SetDiscoveredAgentRepo(&stubAgentStore{list: []domain.DiscoveredAgent{runningAgent(pidA)}})
+	orch.SetDiscoveredAgentRepo(&stubAgentStore{list: []domain.DiscoveredAgent{runningAgent(7777)}})
 	orch.SetSignalFunc(func(int, bool) error { return errInjected })
-	_ = repo.memAISessionRepo.SaveAISession(bg, domain.AISession{ID: "s", Status: domain.SessionStatusActive, PID: pidA})
+	_ = repo.memAISessionRepo.SaveAISession(bg, domain.AISession{ID: "s", Status: domain.SessionStatusActive, PID: 7777})
 	if err := orch.TerminateAISession(bg, "s", true); err != nil {
 		t.Fatalf("an already-dead process must not fail the terminate: %v", err)
 	}

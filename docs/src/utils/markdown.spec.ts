@@ -66,3 +66,13 @@ describe('renderMarkdown', () => {
     expect(renderMarkdown('## Same').toc[0].id).toBe('same');
   });
 });
+
+describe('renderMarkdown link rewriting', () => {
+  it('passes every link target through linkHref and leaves links alone without it', () => {
+    const src = 'See [the guide](plan-files.md) and [a site](https://x.dev).';
+    expect(renderMarkdown(src).html).toContain('href="plan-files.md"');
+    const out = renderMarkdown(src, { linkHref: (h) => `/rewritten/${h}` }).html;
+    expect(out).toContain('href="/rewritten/plan-files.md"');
+    expect(out).toContain('href="/rewritten/https://x.dev"');
+  });
+});

@@ -73,6 +73,7 @@ const footerCols: FooterCol[] = [
     heading: 'Docs',
     links: [
       { label: 'Getting Started', to: '/getting-started' },
+      { label: 'Guides', to: '/guides' },
       { label: 'Architecture', to: '/architecture' },
       { label: 'API Reference', to: '/api-reference' },
       { label: 'MCP Integration', to: '/mcp-integration' },

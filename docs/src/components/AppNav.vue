@@ -131,6 +131,7 @@ const navLinks = [
   { to: '/downloads', label: 'Downloads' },
   { to: '/api-reference', label: 'API Reference' },
   { to: '/getting-started', label: 'Getting Started' },
+  { to: '/guides', label: 'Guides' },
   { to: '/mcp-integration', label: 'MCP Integration' },
 ];
 </script>

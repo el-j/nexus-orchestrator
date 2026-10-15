@@ -7,17 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+## [0.10.0] — 2026-10-15
 
-- Releases: stable versions are clean `vX.Y.Z` tags made by release-please; betas are
-  `X.(Y+1).0-beta.N` from develop. GitVersion and `scripts/release.sh` are gone (see
-  [docs/releasing.md](docs/releasing.md)).
-
-### Fixed
-
-- A flaky test compared a fixed pid with the test process's own pid.
-
-## [Unreleased]
+This release makes Nexus usable day to day: tasks stream while the model writes, your Claude and Copilot subscriptions can run them, the agents on your machine can call Nexus (`nexus-cli connect`, the VS Code extension), the app shows what is true (a task says who ran it, one repository is one project), plans and tasks are found in any folder, and the full UI is served by the daemon. The release pipeline, which had built nothing since #62, works again and the macOS desktop app starts when opened normally. Known limits: the macOS app is not notarized (use `scripts/install.sh --desktop`), the released daemon archives carry only the light dashboard, and the streaming and subscription providers are tested against fakes.
 
 ### Added
 
@@ -78,7 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Binaries built with `make build` (and every other Makefile build) lacked SQLite FTS5, so `nexus-daemon` exited at start-up with `no such module: fts5`
 - `make nice` type-checked nothing in the frontend (references-only tsconfig) and ran `gofmt -w .` over `node_modules`; it now runs the real frontend and docs type-checks, the TSDoc gate and prettier
 
-## [0.10.0] — 2026-03-14
+## [0.10.0-alpha] — 2026-03-14 (first 0.10.0 snapshot)
 
 ### Added
 
