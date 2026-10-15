@@ -75,4 +75,4 @@ jobs:
           fi
           gh pr create --base develop --head main \
             --title "chore: merge main back into develop (${{ needs.release-please.outputs.tag_name }})" \
-            --body "Release ${{ needs.release-please.outputs.tag_name }} was made from main. This brings its version bump back to develop so betas continue from the new version. Merge with a merge commit."
+            --body "Release ${{ needs.release-please.outputs.tag_name }} was made from main. This brings its version bump back to develop so betas continue from the new version. develop allows only squash or rebase merges (linear history), so squash this one."
