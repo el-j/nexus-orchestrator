@@ -1,10 +1,20 @@
 #!/bin/sh
-# scripts/install.sh — Install nexus-cli and nexus-daemon binaries.
+# scripts/install.sh — Install nexus-cli and nexus-daemon binaries, or the macOS desktop app.
 # Usage: curl -sSfL https://raw.githubusercontent.com/el-j/nexus-orchestrator/main/scripts/install.sh | sh
+#   Desktop app (macOS):  ... | sh -s -- --desktop
+#   Newest beta:          ... | sh -s -- --beta        (can be combined with --desktop)
+#
+# Why --desktop: the macOS app is not notarized yet, so a zip downloaded in a browser is
+# quarantined and Gatekeeper refuses to open it ("Apple could not verify ..."). Files fetched
+# with curl are not quarantined, and this script clears the flag anyway, so the installed app
+# opens with a double click.
 #
 # Environment variables:
 #   NEXUS_INSTALL_DIR  — Override install directory (default: /usr/local/bin or ~/.local/bin)
-#   NEXUS_VERSION      — Install a specific version tag (default: "latest")
+#   NEXUS_APP_DIR      — Where --desktop puts nexusOrchestrator.app (default: ~/Applications)
+#   NEXUS_VERSION      — Install a specific version tag (default: "latest", the newest stable)
+#   NEXUS_CHANNEL      — "beta" installs the newest pre-release (same as --beta)
+#   NEXUS_RELEASE_BASE — Download from this URL instead of GitHub (tests, mirrors)
 
 set -eu
 
@@ -85,7 +95,16 @@ verify_checksum() {
 
 resolve_version() {
     version="${NEXUS_VERSION:-latest}"
-    if [ "$version" = "latest" ]; then
+    if [ "$version" = "latest" ] && [ "${NEXUS_CHANNEL:-}" = "beta" ]; then
+        # The newest release of any kind (the API lists newest first).
+        api="https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=1"
+        if has_cmd curl; then
+            version=$(curl -sSf "$api" 2>/dev/null | grep -m1 '"tag_name"' | sed 's/.*"tag_name"[^"]*"\([^"]*\)".*/\1/')
+        elif has_cmd wget; then
+            version=$(wget -q -O - "$api" 2>/dev/null | grep -m1 '"tag_name"' | sed 's/.*"tag_name"[^"]*"\([^"]*\)".*/\1/')
+        fi
+        [ -n "$version" ] || fatal "Unable to determine the newest beta release."
+    elif [ "$version" = "latest" ]; then
         # GitHub redirects /latest to the actual tag; follow the redirect and extract.
         if has_cmd curl; then
             version=$(curl -sSfI "https://github.com/${GITHUB_REPO}/releases/latest" 2>/dev/null \
@@ -126,12 +145,60 @@ ensure_install_dir() {
     fi
 }
 
+# --- desktop app (macOS) ----------------------------------------------------
+
+install_desktop() {
+    [ "$OS" = "darwin" ] || fatal "--desktop is for macOS. On Linux and Windows download the desktop archive from https://github.com/${GITHUB_REPO}/releases"
+    has_cmd ditto || fatal "ditto not found; this does not look like macOS."
+    APP_DIR="${NEXUS_APP_DIR:-${HOME}/Applications}"
+    ARCHIVE="nexus-orchestrator-desktop-darwin-${ARCH}.zip"
+    BASE_URL="${NEXUS_RELEASE_BASE:-https://github.com/${GITHUB_REPO}/releases/download/${VERSION}}"
+    log "Installing the desktop app ${VERSION} (darwin/${ARCH}) into ${APP_DIR}"
+
+    TMPDIR_INSTALL=$(mktemp -d "${TMPDIR:-/tmp}/${TMPDIR_PREFIX}.XXXXXX")
+    download "${BASE_URL}/${ARCHIVE}" "${TMPDIR_INSTALL}/${ARCHIVE}"
+    if download "${BASE_URL}/SHA256SUMS-desktop.txt" "${TMPDIR_INSTALL}/SHA256SUMS-desktop.txt" 2>/dev/null; then
+        expected=$(grep "${ARCHIVE}" "${TMPDIR_INSTALL}/SHA256SUMS-desktop.txt" | awk '{print $1}')
+        [ -n "$expected" ] || fatal "Archive not found in SHA256SUMS-desktop.txt — cannot verify integrity of ${ARCHIVE}."
+        verify_checksum "$expected" "${TMPDIR_INSTALL}/${ARCHIVE}"
+    else
+        fatal "Could not download SHA256SUMS-desktop.txt — cannot verify integrity of ${ARCHIVE}."
+    fi
+
+    ditto -x -k "${TMPDIR_INSTALL}/${ARCHIVE}" "${TMPDIR_INSTALL}/unpacked"
+    [ -d "${TMPDIR_INSTALL}/unpacked/nexusOrchestrator.app" ] || fatal "nexusOrchestrator.app not found in ${ARCHIVE}"
+    mkdir -p "$APP_DIR" || fatal "Cannot create ${APP_DIR}; set NEXUS_APP_DIR to a writable folder."
+    rm -rf "${APP_DIR}/nexusOrchestrator.app"
+    ditto "${TMPDIR_INSTALL}/unpacked/nexusOrchestrator.app" "${APP_DIR}/nexusOrchestrator.app"
+    # curl does not quarantine, but a mirror or a proxy tool might have.
+    xattr -dr com.apple.quarantine "${APP_DIR}/nexusOrchestrator.app" 2>/dev/null || true
+
+    log ""
+    log "Installed ${APP_DIR}/nexusOrchestrator.app"
+    log "Open it with:  open \"${APP_DIR}/nexusOrchestrator.app\""
+    log "(Started from Finder it keeps its data in ~/.nexus/nexus.db and serves the API on :63987.)"
+}
+
 # --- main -------------------------------------------------------------------
 
 main() {
+    DESKTOP=0
+    for arg in "$@"; do
+        case "$arg" in
+            --desktop) DESKTOP=1 ;;
+            --beta)    NEXUS_CHANNEL=beta ;;
+            -h|--help) sed -n '2,19p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//'; exit 0 ;;
+            *) fatal "Unknown option: $arg (try --desktop, --beta)" ;;
+        esac
+    done
+
     OS=$(detect_os)
     ARCH=$(detect_arch)
     VERSION=$(resolve_version)
+    if [ "$DESKTOP" = 1 ]; then
+        install_desktop
+        return
+    fi
     INSTALL_DIR=$(resolve_install_dir)
 
     log "Installing nexus-orchestrator ${VERSION} (${OS}/${ARCH})"
@@ -139,7 +206,7 @@ main() {
     ensure_install_dir "$INSTALL_DIR"
 
     ARCHIVE="nexus-orchestrator-${OS}-${ARCH}.tar.gz"
-    BASE_URL="https://github.com/${GITHUB_REPO}/releases/download/${VERSION}"
+    BASE_URL="${NEXUS_RELEASE_BASE:-https://github.com/${GITHUB_REPO}/releases/download/${VERSION}}"
     ARCHIVE_URL="${BASE_URL}/${ARCHIVE}"
     CHECKSUM_URL="${BASE_URL}/SHA256SUMS.txt"
 
@@ -215,4 +282,4 @@ main() {
     esac
 }
 
-main
+main "$@"

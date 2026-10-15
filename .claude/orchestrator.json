@@ -2,7 +2,7 @@
   "version": "2",
   "updatedAt": "2026-04-14T03:00:00Z",
   "counters": {
-    "nextTaskId": 579,
+    "nextTaskId": 580,
     "nextPlanId": 74
   },
   "activePlanId": "PLAN-073",
@@ -143,13 +143,7 @@
       "goal": "Context-window guard: token pre-flight check blocks tasks that would overflow the loaded model, surfacing StatusTooLarge before wasting LLM time",
       "status": "completed",
       "createdAt": "2026-03-10T00:00:00.000Z",
-      "taskIds": [
-        "TASK-039",
-        "TASK-040",
-        "TASK-041",
-        "TASK-042",
-        "TASK-043"
-      ],
+      "taskIds": ["TASK-039", "TASK-040", "TASK-041", "TASK-042", "TASK-043"],
       "completedAt": "2026-03-10T00:30:00.000Z"
     },
     "PLAN-005": {
@@ -209,14 +203,7 @@
       "status": "completed",
       "createdAt": "2026-03-10T14:00:00.000Z",
       "completedAt": "2026-03-10T14:40:00.000Z",
-      "taskIds": [
-        "TASK-068",
-        "TASK-069",
-        "TASK-070",
-        "TASK-071",
-        "TASK-072",
-        "TASK-073"
-      ]
+      "taskIds": ["TASK-068", "TASK-069", "TASK-070", "TASK-071", "TASK-072", "TASK-073"]
     },
     "PLAN-009": {
       "id": "PLAN-009",
@@ -244,14 +231,7 @@
       "status": "completed",
       "createdAt": "2026-03-10T16:00:00.000Z",
       "completedAt": "2026-03-10T17:00:00.000Z",
-      "taskIds": [
-        "TASK-085",
-        "TASK-086",
-        "TASK-087",
-        "TASK-088",
-        "TASK-089",
-        "TASK-090"
-      ]
+      "taskIds": ["TASK-085", "TASK-086", "TASK-087", "TASK-088", "TASK-089", "TASK-090"]
     },
     "PLAN-011": {
       "id": "PLAN-011",
@@ -275,14 +255,7 @@
       "status": "completed",
       "createdAt": "2026-03-10T20:00:00.000Z",
       "completedAt": "2026-03-10T20:20:00.000Z",
-      "taskIds": [
-        "TASK-098",
-        "TASK-099",
-        "TASK-100",
-        "TASK-101",
-        "TASK-102",
-        "TASK-103"
-      ]
+      "taskIds": ["TASK-098", "TASK-099", "TASK-100", "TASK-101", "TASK-102", "TASK-103"]
     },
     "PLAN-013": {
       "id": "PLAN-013",
@@ -290,12 +263,7 @@
       "status": "completed",
       "createdAt": "2026-03-10T21:00:00.000Z",
       "completedAt": "2026-03-10T22:00:00.000Z",
-      "taskIds": [
-        "TASK-104",
-        "TASK-105",
-        "TASK-106",
-        "TASK-107"
-      ]
+      "taskIds": ["TASK-104", "TASK-105", "TASK-106", "TASK-107"]
     },
     "PLAN-014": {
       "id": "PLAN-014",
@@ -303,26 +271,14 @@
       "status": "completed",
       "createdAt": "2026-03-10T22:00:00.000Z",
       "completedAt": "2026-03-10T22:35:00.000Z",
-      "taskIds": [
-        "TASK-108",
-        "TASK-109",
-        "TASK-110",
-        "TASK-111"
-      ]
+      "taskIds": ["TASK-108", "TASK-109", "TASK-110", "TASK-111"]
     },
     "PLAN-015": {
       "id": "PLAN-015",
       "goal": "Production-grade GitHub Action (Node20/TypeScript) with built-in agent identity loading from el-j/agency-agents, unit tests, CI workflow, and updated docs",
       "status": "completed",
       "createdAt": "2026-03-10T22:43:07.000Z",
-      "taskIds": [
-        "TASK-112",
-        "TASK-113",
-        "TASK-114",
-        "TASK-115",
-        "TASK-116",
-        "TASK-117"
-      ],
+      "taskIds": ["TASK-112", "TASK-113", "TASK-114", "TASK-115", "TASK-116", "TASK-117"],
       "completedAt": "2026-03-10T22:43:07.000Z"
     },
     "PLAN-016": {
@@ -331,12 +287,7 @@
       "status": "completed",
       "createdAt": "2026-03-11T00:00:00.000Z",
       "completedAt": "2026-03-11T00:00:00.000Z",
-      "taskIds": [
-        "TASK-118",
-        "TASK-119",
-        "TASK-120",
-        "TASK-121"
-      ]
+      "taskIds": ["TASK-118", "TASK-119", "TASK-120", "TASK-121"]
     },
     "PLAN-017": {
       "id": "PLAN-017",
@@ -344,11 +295,7 @@
       "status": "completed",
       "createdAt": "2026-03-11T01:00:00.000Z",
       "completedAt": "2026-03-11T01:00:00.000Z",
-      "taskIds": [
-        "TASK-122",
-        "TASK-123",
-        "TASK-124"
-      ]
+      "taskIds": ["TASK-122", "TASK-123", "TASK-124"]
     },
     "PLAN-018": {
       "id": "PLAN-018",
@@ -377,14 +324,7 @@
       "status": "completed",
       "createdAt": "2026-03-11T18:00:00.000Z",
       "completedAt": "2026-03-11T18:30:00.000Z",
-      "taskIds": [
-        "TASK-137",
-        "TASK-138",
-        "TASK-139",
-        "TASK-140",
-        "TASK-141",
-        "TASK-142"
-      ]
+      "taskIds": ["TASK-137", "TASK-138", "TASK-139", "TASK-140", "TASK-141", "TASK-142"]
     },
     "PLAN-020": {
       "id": "PLAN-020",
@@ -392,23 +332,14 @@
       "status": "completed",
       "createdAt": "2026-03-11T19:00:00.000Z",
       "completedAt": "2026-03-11T19:30:00.000Z",
-      "taskIds": [
-        "TASK-143",
-        "TASK-144",
-        "TASK-145"
-      ]
+      "taskIds": ["TASK-143", "TASK-144", "TASK-145"]
     },
     "PLAN-021": {
       "id": "PLAN-021",
       "goal": "SSE real-time task updates, fix ProviderConfig kind/type mismatch, CHANGELOG v0.8.0",
       "status": "completed",
       "createdAt": "2026-03-12T10:00:00.000Z",
-      "taskIds": [
-        "TASK-146",
-        "TASK-147",
-        "TASK-148",
-        "TASK-149"
-      ]
+      "taskIds": ["TASK-146", "TASK-147", "TASK-148", "TASK-149"]
     },
     "PLAN-022": {
       "id": "PLAN-022",
@@ -476,13 +407,7 @@
       "title": "Distribution Hardening & VS Code Extension v0.2.0",
       "status": "completed",
       "createdAt": "2026-03-12T10:00:00.000Z",
-      "taskIds": [
-        "TASK-184",
-        "TASK-185",
-        "TASK-186",
-        "TASK-187",
-        "TASK-188"
-      ],
+      "taskIds": ["TASK-184", "TASK-185", "TASK-186", "TASK-187", "TASK-188"],
       "completedAt": "2026-03-12T00:45:32Z"
     },
     "PLAN-026": {
@@ -491,12 +416,7 @@
       "status": "completed",
       "goal": "Close the last gaps in the v0.9.x feature set: orchestrator robustness (startup recovery, retry limits, queue cap, path normalization), GUI completeness (Task History view, Settings view), and README refresh documenting v0.9.x features.",
       "createdAt": "2026-03-12T10:00:00.000Z",
-      "tasks": [
-        "TASK-189",
-        "TASK-190",
-        "TASK-191",
-        "TASK-192"
-      ],
+      "tasks": ["TASK-189", "TASK-190", "TASK-191", "TASK-192"],
       "completedAt": "2026-03-12T08:49:21Z"
     },
     "PLAN-032": {
@@ -504,11 +424,7 @@
       "goal": "Fix null-array crash: Go nil-slice JSON serialization + frontend null-coalescing guards",
       "status": "completed",
       "createdAt": "2026-03-13T00:36:00.000Z",
-      "taskIds": [
-        "TASK-230",
-        "TASK-231",
-        "TASK-232"
-      ],
+      "taskIds": ["TASK-230", "TASK-231", "TASK-232"],
       "completedAt": "2026-03-13T01:00:00.000Z"
     },
     "PLAN-033": {
@@ -516,11 +432,7 @@
       "goal": "Fix data source mismatch: BacklogView and HistoryView call getQueue() which excludes DRAFT/BACKLOG/COMPLETED tasks",
       "status": "completed",
       "createdAt": "2026-03-13T01:10:00.000Z",
-      "taskIds": [
-        "TASK-233",
-        "TASK-234",
-        "TASK-235"
-      ],
+      "taskIds": ["TASK-233", "TASK-234", "TASK-235"],
       "completedAt": "2026-03-13T01:50:00.000Z"
     },
     "PLAN-034": {
@@ -528,11 +440,7 @@
       "goal": "Make Nexus routing explicit in the VS Code extension and surface route visibility through logs, status, and queue UI",
       "status": "completed",
       "createdAt": "2026-03-13T01:30:00.000Z",
-      "taskIds": [
-        "TASK-236",
-        "TASK-237",
-        "TASK-238"
-      ],
+      "taskIds": ["TASK-236", "TASK-237", "TASK-238"],
       "completedAt": "2026-03-13T01:50:00.000Z"
     },
     "PLAN-035": {
@@ -540,12 +448,7 @@
       "goal": "Add deterministic release-gate E2E coverage for daemon, frontend views, and VS Code extension",
       "status": "completed",
       "createdAt": "2026-03-13T02:00:00.000Z",
-      "taskIds": [
-        "TASK-239",
-        "TASK-240",
-        "TASK-241",
-        "TASK-242"
-      ],
+      "taskIds": ["TASK-239", "TASK-240", "TASK-241", "TASK-242"],
       "completedAt": "2026-03-13T08:31:20.000Z"
     },
     "PLAN-036": {
@@ -553,12 +456,7 @@
       "goal": "Formalize the completed 2026-03-13 release-readiness audit into .claude orchestration records",
       "status": "completed",
       "createdAt": "2026-03-13T09:59:36.000Z",
-      "taskIds": [
-        "TASK-243",
-        "TASK-244",
-        "TASK-245",
-        "TASK-246"
-      ],
+      "taskIds": ["TASK-243", "TASK-244", "TASK-245", "TASK-246"],
       "completedAt": "2026-03-13T09:59:36.000Z"
     },
     "PLAN-037": {
@@ -566,12 +464,7 @@
       "goal": "Execute Wave 1 release-readiness hardening: queued-task authority, publish-gate parity, and durable provider promotion",
       "status": "completed",
       "createdAt": "2026-03-13T10:17:51.000Z",
-      "taskIds": [
-        "TASK-247",
-        "TASK-248",
-        "TASK-249",
-        "TASK-250"
-      ],
+      "taskIds": ["TASK-247", "TASK-248", "TASK-249", "TASK-250"],
       "completedAt": "2026-03-13T11:34:30.000Z"
     },
     "PLAN-038": {
@@ -598,12 +491,7 @@
       "status": "completed",
       "createdAt": "2026-03-14T12:00:00.000Z",
       "completedAt": "2026-03-14T13:00:00.000Z",
-      "taskIds": [
-        "TASK-272",
-        "TASK-273",
-        "TASK-274",
-        "TASK-275"
-      ]
+      "taskIds": ["TASK-272", "TASK-273", "TASK-274", "TASK-275"]
     },
     "PLAN-044": {
       "id": "PLAN-044",
@@ -669,13 +557,7 @@
       "status": "completed",
       "createdAt": "2026-03-24T08:17:00.125886Z",
       "completedAt": "2026-03-24T09:00:00.000Z",
-      "taskIds": [
-        "TASK-296",
-        "TASK-297",
-        "TASK-298",
-        "TASK-299",
-        "TASK-300"
-      ]
+      "taskIds": ["TASK-296", "TASK-297", "TASK-298", "TASK-299", "TASK-300"]
     },
     "PLAN-048": {
       "id": "PLAN-048",
@@ -766,12 +648,7 @@
       "status": "completed",
       "createdAt": "2026-03-28T18:00:00Z",
       "completedAt": "2026-03-28T18:10:00Z",
-      "tasks": [
-        "TASK-364",
-        "TASK-365",
-        "TASK-366",
-        "TASK-367"
-      ]
+      "tasks": ["TASK-364", "TASK-365", "TASK-366", "TASK-367"]
     },
     "PLAN-054": {
       "id": "PLAN-054",
@@ -780,13 +657,7 @@
       "status": "completed",
       "createdAt": "2026-03-28T18:30:00Z",
       "completedAt": "2026-03-28T20:00:00Z",
-      "tasks": [
-        "TASK-368",
-        "TASK-369",
-        "TASK-370",
-        "TASK-371",
-        "TASK-372"
-      ]
+      "tasks": ["TASK-368", "TASK-369", "TASK-370", "TASK-371", "TASK-372"]
     },
     "PLAN-055": {
       "id": "PLAN-055",
@@ -895,14 +766,7 @@
       "status": "completed",
       "createdAt": "2026-03-29T15:00:00Z",
       "completedAt": "2026-03-29T15:20:00Z",
-      "tasks": [
-        "TASK-454",
-        "TASK-455",
-        "TASK-456",
-        "TASK-457",
-        "TASK-458",
-        "TASK-459"
-      ]
+      "tasks": ["TASK-454", "TASK-455", "TASK-456", "TASK-457", "TASK-458", "TASK-459"]
     },
     "PLAN-061": {
       "id": "PLAN-061",
@@ -996,12 +860,7 @@
       "status": "completed",
       "createdAt": "2026-04-10T13:19:39Z",
       "completedAt": "2026-04-13T00:00:00Z",
-      "tasks": [
-        "TASK-505",
-        "TASK-506",
-        "TASK-507",
-        "TASK-508"
-      ]
+      "tasks": ["TASK-505", "TASK-506", "TASK-507", "TASK-508"]
     },
     "PLAN-066": {
       "id": "PLAN-066",
@@ -1032,15 +891,7 @@
       "status": "completed",
       "createdAt": "2026-09-25T10:05:00Z",
       "completedAt": "2026-09-25T10:44:00Z",
-      "tasks": [
-        "TASK-559",
-        "TASK-560",
-        "TASK-561",
-        "TASK-562",
-        "TASK-563",
-        "TASK-564",
-        "TASK-565"
-      ]
+      "tasks": ["TASK-559", "TASK-560", "TASK-561", "TASK-562", "TASK-563", "TASK-564", "TASK-565"]
     }
   },
   "tasks": {
@@ -1062,9 +913,7 @@
       "status": "done",
       "role": "architecture",
       "planId": "PLAN-001",
-      "dependencies": [
-        "TASK-001"
-      ],
+      "dependencies": ["TASK-001"],
       "createdAt": "2026-03-09T00:00:00.000Z",
       "updatedAt": "2026-03-09T10:00:00.000Z",
       "startedAt": "2026-03-09T00:00:00.000Z",
@@ -1076,9 +925,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-001",
-      "dependencies": [
-        "TASK-002"
-      ],
+      "dependencies": ["TASK-002"],
       "createdAt": "2026-03-09T00:00:00.000Z",
       "updatedAt": "2026-03-09T10:00:00.000Z",
       "startedAt": "2026-03-09T00:00:00.000Z",
@@ -1090,9 +937,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-001",
-      "dependencies": [
-        "TASK-002"
-      ],
+      "dependencies": ["TASK-002"],
       "createdAt": "2026-03-09T00:00:00.000Z",
       "updatedAt": "2026-03-09T10:00:00.000Z",
       "startedAt": "2026-03-09T00:00:00.000Z",
@@ -1104,10 +949,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-001",
-      "dependencies": [
-        "TASK-003",
-        "TASK-004"
-      ],
+      "dependencies": ["TASK-003", "TASK-004"],
       "createdAt": "2026-03-09T00:00:00.000Z",
       "updatedAt": "2026-03-09T10:00:00.000Z",
       "startedAt": "2026-03-09T00:00:00.000Z",
@@ -1119,9 +961,7 @@
       "status": "done",
       "role": "mcp",
       "planId": "PLAN-001",
-      "dependencies": [
-        "TASK-002"
-      ],
+      "dependencies": ["TASK-002"],
       "createdAt": "2026-03-09T00:00:00.000Z",
       "updatedAt": "2026-03-09T10:00:00.000Z",
       "startedAt": "2026-03-09T00:00:00.000Z",
@@ -1133,9 +973,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-001",
-      "dependencies": [
-        "TASK-006"
-      ],
+      "dependencies": ["TASK-006"],
       "createdAt": "2026-03-09T00:00:00.000Z",
       "updatedAt": "2026-03-09T10:00:00.000Z",
       "startedAt": "2026-03-09T00:00:00.000Z",
@@ -1147,9 +985,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-001",
-      "dependencies": [
-        "TASK-003"
-      ],
+      "dependencies": ["TASK-003"],
       "createdAt": "2026-03-09T00:00:00.000Z",
       "updatedAt": "2026-03-09T10:00:00.000Z",
       "startedAt": "2026-03-09T00:00:00.000Z",
@@ -1161,9 +997,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-001",
-      "dependencies": [
-        "TASK-005"
-      ],
+      "dependencies": ["TASK-005"],
       "createdAt": "2026-03-09T00:00:00.000Z",
       "updatedAt": "2026-03-09T10:00:00.000Z",
       "startedAt": "2026-03-09T00:00:00.000Z",
@@ -1175,9 +1009,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-001",
-      "dependencies": [
-        "TASK-006"
-      ],
+      "dependencies": ["TASK-006"],
       "createdAt": "2026-03-09T00:00:00.000Z",
       "updatedAt": "2026-03-09T10:00:00.000Z",
       "startedAt": "2026-03-09T00:00:00.000Z",
@@ -1201,10 +1033,7 @@
       "status": "done",
       "role": "planning",
       "planId": "PLAN-001",
-      "dependencies": [
-        "TASK-005",
-        "TASK-006"
-      ],
+      "dependencies": ["TASK-005", "TASK-006"],
       "createdAt": "2026-03-09T00:00:00.000Z",
       "updatedAt": "2026-03-09T10:00:00.000Z",
       "startedAt": "2026-03-09T00:00:00.000Z",
@@ -1252,9 +1081,7 @@
       "status": "done",
       "role": "cli",
       "planId": "PLAN-002",
-      "dependencies": [
-        "TASK-015"
-      ],
+      "dependencies": ["TASK-015"],
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
@@ -1266,9 +1093,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-002",
-      "dependencies": [
-        "TASK-015"
-      ],
+      "dependencies": ["TASK-015"],
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
@@ -1280,9 +1105,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-002",
-      "dependencies": [
-        "TASK-015"
-      ],
+      "dependencies": ["TASK-015"],
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
@@ -1294,10 +1117,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-002",
-      "dependencies": [
-        "TASK-017",
-        "TASK-018"
-      ],
+      "dependencies": ["TASK-017", "TASK-018"],
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
@@ -1309,10 +1129,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-002",
-      "dependencies": [
-        "TASK-017",
-        "TASK-018"
-      ],
+      "dependencies": ["TASK-017", "TASK-018"],
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
@@ -1324,10 +1141,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-002",
-      "dependencies": [
-        "TASK-017",
-        "TASK-018"
-      ],
+      "dependencies": ["TASK-017", "TASK-018"],
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
@@ -1339,10 +1153,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-002",
-      "dependencies": [
-        "TASK-017",
-        "TASK-018"
-      ],
+      "dependencies": ["TASK-017", "TASK-018"],
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
@@ -1354,10 +1165,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-002",
-      "dependencies": [
-        "TASK-019",
-        "TASK-020"
-      ],
+      "dependencies": ["TASK-019", "TASK-020"],
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
@@ -1369,14 +1177,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-002",
-      "dependencies": [
-        "TASK-013",
-        "TASK-014",
-        "TASK-019",
-        "TASK-020",
-        "TASK-021",
-        "TASK-022"
-      ],
+      "dependencies": ["TASK-013", "TASK-014", "TASK-019", "TASK-020", "TASK-021", "TASK-022"],
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
@@ -1388,9 +1189,7 @@
       "status": "done",
       "role": "verify",
       "planId": "PLAN-002",
-      "dependencies": [
-        "TASK-024"
-      ],
+      "dependencies": ["TASK-024"],
       "createdAt": "2026-03-09T12:00:00.000Z",
       "updatedAt": "2026-03-09T12:00:00.000Z",
       "startedAt": null,
@@ -1414,9 +1213,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-002",
-      "dependencies": [
-        "TASK-026"
-      ],
+      "dependencies": ["TASK-026"],
       "createdAt": "2026-03-09T13:00:00.000Z",
       "updatedAt": "2026-03-09T13:00:00.000Z",
       "startedAt": null,
@@ -1428,10 +1225,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-002",
-      "dependencies": [
-        "TASK-027",
-        "TASK-013"
-      ],
+      "dependencies": ["TASK-027", "TASK-013"],
       "createdAt": "2026-03-09T13:00:00.000Z",
       "updatedAt": "2026-03-09T13:00:00.000Z",
       "startedAt": null,
@@ -1443,9 +1237,7 @@
       "status": "done",
       "role": "api",
       "planId": "PLAN-002",
-      "dependencies": [
-        "TASK-026"
-      ],
+      "dependencies": ["TASK-026"],
       "createdAt": "2026-03-09T13:00:00.000Z",
       "updatedAt": "2026-03-09T13:00:00.000Z",
       "startedAt": null,
@@ -1457,9 +1249,7 @@
       "status": "done",
       "role": "planning",
       "planId": "PLAN-002",
-      "dependencies": [
-        "TASK-029"
-      ],
+      "dependencies": ["TASK-029"],
       "createdAt": "2026-03-09T13:00:00.000Z",
       "updatedAt": "2026-03-09T13:00:00.000Z",
       "startedAt": null,
@@ -1471,9 +1261,7 @@
       "status": "done",
       "role": "planning",
       "planId": "PLAN-002",
-      "dependencies": [
-        "TASK-030"
-      ],
+      "dependencies": ["TASK-030"],
       "createdAt": "2026-03-09T13:00:00.000Z",
       "updatedAt": "2026-03-09T13:00:00.000Z",
       "startedAt": null,
@@ -1497,9 +1285,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-003",
-      "dependencies": [
-        "TASK-032"
-      ],
+      "dependencies": ["TASK-032"],
       "createdAt": "2026-03-09T15:00:00.000Z",
       "updatedAt": "2026-03-10T00:30:00.000Z",
       "startedAt": "2026-03-10T00:00:00.000Z",
@@ -1511,9 +1297,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-003",
-      "dependencies": [
-        "TASK-032"
-      ],
+      "dependencies": ["TASK-032"],
       "createdAt": "2026-03-09T15:00:00.000Z",
       "updatedAt": "2026-03-10T00:30:00.000Z",
       "startedAt": "2026-03-10T00:00:00.000Z",
@@ -1537,9 +1321,7 @@
       "status": "done",
       "role": "planning",
       "planId": "PLAN-003",
-      "dependencies": [
-        "TASK-033"
-      ],
+      "dependencies": ["TASK-033"],
       "createdAt": "2026-03-09T15:00:00.000Z",
       "updatedAt": "2026-03-10T00:30:00.000Z",
       "startedAt": "2026-03-10T00:00:00.000Z",
@@ -1551,10 +1333,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-003",
-      "dependencies": [
-        "TASK-033",
-        "TASK-034"
-      ],
+      "dependencies": ["TASK-033", "TASK-034"],
       "createdAt": "2026-03-09T15:00:00.000Z",
       "updatedAt": "2026-03-10T00:30:00.000Z",
       "startedAt": "2026-03-10T00:00:00.000Z",
@@ -1566,10 +1345,7 @@
       "status": "done",
       "role": "planning",
       "planId": "PLAN-003",
-      "dependencies": [
-        "TASK-034",
-        "TASK-036"
-      ],
+      "dependencies": ["TASK-034", "TASK-036"],
       "createdAt": "2026-03-09T15:00:00.000Z",
       "updatedAt": "2026-03-10T00:30:00.000Z",
       "startedAt": "2026-03-10T00:00:00.000Z",
@@ -1593,9 +1369,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-004",
-      "dependencies": [
-        "TASK-039"
-      ],
+      "dependencies": ["TASK-039"],
       "createdAt": "2026-03-10T00:00:00.000Z",
       "updatedAt": "2026-03-10T00:30:00.000Z",
       "startedAt": "2026-03-10T00:30:00.000Z",
@@ -1607,9 +1381,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-004",
-      "dependencies": [
-        "TASK-039"
-      ],
+      "dependencies": ["TASK-039"],
       "createdAt": "2026-03-10T00:00:00.000Z",
       "updatedAt": "2026-03-10T00:30:00.000Z",
       "startedAt": "2026-03-10T00:30:00.000Z",
@@ -1621,9 +1393,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-004",
-      "dependencies": [
-        "TASK-039"
-      ],
+      "dependencies": ["TASK-039"],
       "createdAt": "2026-03-10T00:00:00.000Z",
       "updatedAt": "2026-03-10T00:30:00.000Z",
       "startedAt": "2026-03-10T00:30:00.000Z",
@@ -1635,12 +1405,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-004",
-      "dependencies": [
-        "TASK-039",
-        "TASK-040",
-        "TASK-041",
-        "TASK-042"
-      ],
+      "dependencies": ["TASK-039", "TASK-040", "TASK-041", "TASK-042"],
       "createdAt": "2026-03-10T00:00:00.000Z",
       "updatedAt": "2026-03-10T00:30:00.000Z",
       "startedAt": "2026-03-10T00:30:00.000Z",
@@ -1662,9 +1427,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-005",
-      "dependencies": [
-        "TASK-044"
-      ],
+      "dependencies": ["TASK-044"],
       "createdAt": "2026-03-10T06:00:00.000Z",
       "completedAt": "2026-03-10T08:30:00.000Z"
     },
@@ -1674,9 +1437,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-005",
-      "dependencies": [
-        "TASK-044"
-      ],
+      "dependencies": ["TASK-044"],
       "createdAt": "2026-03-10T06:00:00.000Z",
       "completedAt": "2026-03-10T08:30:00.000Z"
     },
@@ -1686,9 +1447,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-005",
-      "dependencies": [
-        "TASK-044"
-      ],
+      "dependencies": ["TASK-044"],
       "completedAt": "2026-03-10T08:30:00.000Z",
       "createdAt": "2026-03-10T06:00:00.000Z"
     },
@@ -1698,9 +1457,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-005",
-      "dependencies": [
-        "TASK-044"
-      ],
+      "dependencies": ["TASK-044"],
       "createdAt": "2026-03-10T06:00:00.000Z",
       "completedAt": "2026-03-10T08:30:00.000Z"
     },
@@ -1710,9 +1467,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-005",
-      "dependencies": [
-        "TASK-044"
-      ],
+      "dependencies": ["TASK-044"],
       "createdAt": "2026-03-10T06:00:00.000Z",
       "completedAt": "2026-03-10T08:30:00.000Z"
     },
@@ -1722,10 +1477,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-005",
-      "dependencies": [
-        "TASK-044",
-        "TASK-049"
-      ],
+      "dependencies": ["TASK-044", "TASK-049"],
       "createdAt": "2026-03-10T06:00:00.000Z",
       "completedAt": "2026-03-10T08:30:00.000Z"
     },
@@ -1735,12 +1487,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-005",
-      "dependencies": [
-        "TASK-047",
-        "TASK-048",
-        "TASK-049",
-        "TASK-050"
-      ],
+      "dependencies": ["TASK-047", "TASK-048", "TASK-049", "TASK-050"],
       "createdAt": "2026-03-10T06:00:00.000Z",
       "completedAt": "2026-03-10T08:30:00.000Z"
     },
@@ -1770,9 +1517,7 @@
       "completedAt": "2026-03-10T09:30:00.000Z",
       "role": "architecture",
       "planId": "PLAN-006",
-      "dependencies": [
-        "TASK-052"
-      ],
+      "dependencies": ["TASK-052"],
       "createdAt": "2026-03-10T09:00:00.000Z"
     },
     "TASK-054": {
@@ -1782,9 +1527,7 @@
       "completedAt": "2026-03-10T09:30:00.000Z",
       "role": "backend",
       "planId": "PLAN-006",
-      "dependencies": [
-        "TASK-053"
-      ],
+      "dependencies": ["TASK-053"],
       "createdAt": "2026-03-10T09:00:00.000Z"
     },
     "TASK-055": {
@@ -1794,9 +1537,7 @@
       "completedAt": "2026-03-10T09:30:00.000Z",
       "role": "api",
       "planId": "PLAN-006",
-      "dependencies": [
-        "TASK-053"
-      ],
+      "dependencies": ["TASK-053"],
       "createdAt": "2026-03-10T09:00:00.000Z"
     },
     "TASK-056": {
@@ -1806,9 +1547,7 @@
       "completedAt": "2026-03-10T09:30:00.000Z",
       "role": "api",
       "planId": "PLAN-006",
-      "dependencies": [
-        "TASK-055"
-      ],
+      "dependencies": ["TASK-055"],
       "createdAt": "2026-03-10T09:00:00.000Z"
     },
     "TASK-057": {
@@ -1818,10 +1557,7 @@
       "completedAt": "2026-03-10T09:30:00.000Z",
       "role": "devops",
       "planId": "PLAN-006",
-      "dependencies": [
-        "TASK-053",
-        "TASK-054"
-      ],
+      "dependencies": ["TASK-053", "TASK-054"],
       "createdAt": "2026-03-10T09:00:00.000Z"
     },
     "TASK-058": {
@@ -1831,11 +1567,7 @@
       "completedAt": "2026-03-10T09:30:00.000Z",
       "role": "qa",
       "planId": "PLAN-006",
-      "dependencies": [
-        "TASK-054",
-        "TASK-055",
-        "TASK-057"
-      ],
+      "dependencies": ["TASK-054", "TASK-055", "TASK-057"],
       "createdAt": "2026-03-10T09:00:00.000Z"
     },
     "TASK-059": {
@@ -1845,9 +1577,7 @@
       "completedAt": "2026-03-10T09:30:00.000Z",
       "role": "verify",
       "planId": "PLAN-006",
-      "dependencies": [
-        "TASK-058"
-      ],
+      "dependencies": ["TASK-058"],
       "createdAt": "2026-03-10T09:00:00.000Z"
     },
     "TASK-060": {
@@ -1922,9 +1652,7 @@
       "status": "done",
       "role": "api",
       "planId": "PLAN-007",
-      "dependencies": [
-        "TASK-061"
-      ],
+      "dependencies": ["TASK-061"],
       "createdAt": "2026-03-10T10:00:00.000Z",
       "startedAt": "2026-03-10T11:00:00.000Z",
       "completedAt": "2026-03-10T11:15:00.000Z"
@@ -1987,11 +1715,7 @@
       "status": "done",
       "role": "verify",
       "planId": "PLAN-008",
-      "dependencies": [
-        "TASK-068",
-        "TASK-069",
-        "TASK-070"
-      ],
+      "dependencies": ["TASK-068", "TASK-069", "TASK-070"],
       "createdAt": "2026-03-10T14:00:00.000Z",
       "startedAt": "2026-03-10T14:25:00.000Z",
       "completedAt": "2026-03-10T14:30:00.000Z"
@@ -2002,11 +1726,7 @@
       "status": "done",
       "role": "planning",
       "planId": "PLAN-008",
-      "dependencies": [
-        "TASK-068",
-        "TASK-069",
-        "TASK-070"
-      ],
+      "dependencies": ["TASK-068", "TASK-069", "TASK-070"],
       "createdAt": "2026-03-10T14:00:00.000Z",
       "startedAt": "2026-03-10T14:25:00.000Z",
       "completedAt": "2026-03-10T14:30:00.000Z"
@@ -2017,10 +1737,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-008",
-      "dependencies": [
-        "TASK-071",
-        "TASK-072"
-      ],
+      "dependencies": ["TASK-071", "TASK-072"],
       "createdAt": "2026-03-10T14:00:00.000Z",
       "startedAt": "2026-03-10T14:35:00.000Z",
       "completedAt": "2026-03-10T14:40:00.000Z"
@@ -2042,9 +1759,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-009",
-      "dependencies": [
-        "TASK-074"
-      ],
+      "dependencies": ["TASK-074"],
       "createdAt": "2026-03-10T15:00:00.000Z",
       "startedAt": "2026-03-10T15:05:00.000Z",
       "completedAt": "2026-03-10T15:15:00.000Z"
@@ -2055,9 +1770,7 @@
       "status": "done",
       "role": "api",
       "planId": "PLAN-009",
-      "dependencies": [
-        "TASK-074"
-      ],
+      "dependencies": ["TASK-074"],
       "createdAt": "2026-03-10T15:00:00.000Z",
       "startedAt": "2026-03-10T15:05:00.000Z",
       "completedAt": "2026-03-10T15:15:00.000Z"
@@ -2068,10 +1781,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-009",
-      "dependencies": [
-        "TASK-075",
-        "TASK-076"
-      ],
+      "dependencies": ["TASK-075", "TASK-076"],
       "createdAt": "2026-03-10T15:00:00.000Z",
       "startedAt": "2026-03-10T15:25:00.000Z",
       "completedAt": "2026-03-10T15:35:00.000Z"
@@ -2093,9 +1803,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-009",
-      "dependencies": [
-        "TASK-078"
-      ],
+      "dependencies": ["TASK-078"],
       "createdAt": "2026-03-10T15:00:00.000Z",
       "startedAt": "2026-03-10T15:05:00.000Z",
       "completedAt": "2026-03-10T15:15:00.000Z"
@@ -2106,9 +1814,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-009",
-      "dependencies": [
-        "TASK-078"
-      ],
+      "dependencies": ["TASK-078"],
       "createdAt": "2026-03-10T15:00:00.000Z",
       "startedAt": "2026-03-10T15:05:00.000Z",
       "completedAt": "2026-03-10T15:15:00.000Z"
@@ -2119,9 +1825,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-009",
-      "dependencies": [
-        "TASK-078"
-      ],
+      "dependencies": ["TASK-078"],
       "createdAt": "2026-03-10T15:00:00.000Z",
       "startedAt": "2026-03-10T15:05:00.000Z",
       "completedAt": "2026-03-10T15:15:00.000Z"
@@ -2132,11 +1836,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-009",
-      "dependencies": [
-        "TASK-079",
-        "TASK-080",
-        "TASK-081"
-      ],
+      "dependencies": ["TASK-079", "TASK-080", "TASK-081"],
       "createdAt": "2026-03-10T15:00:00.000Z",
       "startedAt": "2026-03-10T15:15:00.000Z",
       "completedAt": "2026-03-10T15:20:00.000Z"
@@ -2147,10 +1847,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-009",
-      "dependencies": [
-        "TASK-077",
-        "TASK-082"
-      ],
+      "dependencies": ["TASK-077", "TASK-082"],
       "createdAt": "2026-03-10T15:00:00.000Z",
       "startedAt": "2026-03-10T15:35:00.000Z",
       "completedAt": "2026-03-10T15:40:00.000Z"
@@ -2161,9 +1858,7 @@
       "status": "done",
       "role": "verify",
       "planId": "PLAN-009",
-      "dependencies": [
-        "TASK-083"
-      ],
+      "dependencies": ["TASK-083"],
       "createdAt": "2026-03-10T15:00:00.000Z",
       "startedAt": "2026-03-10T15:40:00.000Z",
       "completedAt": "2026-03-10T15:45:00.000Z"
@@ -2207,9 +1902,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-010",
-      "dependencies": [
-        "TASK-085"
-      ],
+      "dependencies": ["TASK-085"],
       "createdAt": "2026-03-10T16:00:00.000Z",
       "startedAt": "2026-03-10T16:10:00.000Z",
       "completedAt": "2026-03-10T16:30:00.000Z"
@@ -2220,9 +1913,7 @@
       "status": "done",
       "role": "frontend",
       "planId": "PLAN-010",
-      "dependencies": [
-        "TASK-086"
-      ],
+      "dependencies": ["TASK-086"],
       "createdAt": "2026-03-10T16:00:00.000Z",
       "startedAt": "2026-03-10T16:35:00.000Z",
       "completedAt": "2026-03-10T16:40:00.000Z"
@@ -2233,13 +1924,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-010",
-      "dependencies": [
-        "TASK-085",
-        "TASK-086",
-        "TASK-087",
-        "TASK-088",
-        "TASK-089"
-      ],
+      "dependencies": ["TASK-085", "TASK-086", "TASK-087", "TASK-088", "TASK-089"],
       "createdAt": "2026-03-10T16:00:00.000Z",
       "startedAt": "2026-03-10T16:45:00.000Z",
       "completedAt": "2026-03-10T17:00:00.000Z"
@@ -2316,14 +2001,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-011",
-      "dependencies": [
-        "TASK-091",
-        "TASK-092",
-        "TASK-093",
-        "TASK-094",
-        "TASK-095",
-        "TASK-096"
-      ],
+      "dependencies": ["TASK-091", "TASK-092", "TASK-093", "TASK-094", "TASK-095", "TASK-096"],
       "createdAt": "2026-03-10T18:00:00.000Z",
       "startedAt": "2026-03-10T18:35:00.000Z",
       "completedAt": "2026-03-10T19:00:00.000Z"
@@ -2356,9 +2034,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-012",
-      "dependencies": [
-        "TASK-099"
-      ],
+      "dependencies": ["TASK-099"],
       "createdAt": "2026-03-10T20:00:00.000Z",
       "startedAt": "2026-03-10T20:09:00.000Z",
       "completedAt": "2026-03-10T20:12:00.000Z"
@@ -2369,9 +2045,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-012",
-      "dependencies": [
-        "TASK-100"
-      ],
+      "dependencies": ["TASK-100"],
       "createdAt": "2026-03-10T20:00:00.000Z",
       "startedAt": "2026-03-10T20:12:00.000Z",
       "completedAt": "2026-03-10T20:14:00.000Z"
@@ -2382,9 +2056,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-012",
-      "dependencies": [
-        "TASK-098"
-      ],
+      "dependencies": ["TASK-098"],
       "createdAt": "2026-03-10T20:00:00.000Z",
       "startedAt": "2026-03-10T20:12:00.000Z",
       "completedAt": "2026-03-10T20:14:00.000Z"
@@ -2395,10 +2067,7 @@
       "status": "done",
       "role": "verify",
       "planId": "PLAN-012",
-      "dependencies": [
-        "TASK-101",
-        "TASK-102"
-      ],
+      "dependencies": ["TASK-101", "TASK-102"],
       "createdAt": "2026-03-10T20:00:00.000Z",
       "startedAt": "2026-03-10T20:15:00.000Z",
       "completedAt": "2026-03-10T20:20:00.000Z"
@@ -2436,11 +2105,7 @@
       "status": "done",
       "role": "verify",
       "planId": "PLAN-013",
-      "dependencies": [
-        "TASK-104",
-        "TASK-105",
-        "TASK-106"
-      ],
+      "dependencies": ["TASK-104", "TASK-105", "TASK-106"],
       "createdAt": "2026-03-10T21:00:00.000Z"
     },
     "TASK-108": {
@@ -2459,9 +2124,7 @@
       "status": "done",
       "role": "ui",
       "planId": "PLAN-014",
-      "dependencies": [
-        "TASK-108"
-      ],
+      "dependencies": ["TASK-108"],
       "createdAt": "2026-03-10T22:00:00.000Z",
       "completedAt": "2026-03-10T22:30:00.000Z"
     },
@@ -2471,9 +2134,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-014",
-      "dependencies": [
-        "TASK-108"
-      ],
+      "dependencies": ["TASK-108"],
       "createdAt": "2026-03-10T22:00:00.000Z",
       "completedAt": "2026-03-10T22:30:00.000Z"
     },
@@ -2483,10 +2144,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-014",
-      "dependencies": [
-        "TASK-109",
-        "TASK-110"
-      ],
+      "dependencies": ["TASK-109", "TASK-110"],
       "createdAt": "2026-03-10T22:00:00.000Z",
       "completedAt": "2026-03-10T22:35:00.000Z"
     },
@@ -2504,9 +2162,7 @@
       "title": "Implement action TypeScript source: installer, daemon, agents, submit, index",
       "role": "engineering",
       "status": "done",
-      "deps": [
-        "TASK-112"
-      ]
+      "deps": ["TASK-112"]
     },
     "TASK-114": {
       "id": "TASK-114",
@@ -2514,9 +2170,7 @@
       "title": "Write unit tests for agents.ts and submit.ts with jest/ts-jest",
       "role": "testing",
       "status": "done",
-      "deps": [
-        "TASK-113"
-      ]
+      "deps": ["TASK-113"]
     },
     "TASK-115": {
       "id": "TASK-115",
@@ -2524,9 +2178,7 @@
       "title": "Build dist/index.js via @vercel/ncc, update root action.yml to node20",
       "role": "engineering",
       "status": "done",
-      "deps": [
-        "TASK-113"
-      ]
+      "deps": ["TASK-113"]
     },
     "TASK-116": {
       "id": "TASK-116",
@@ -2534,9 +2186,7 @@
       "title": "Add .github/workflows/action-ci.yml \u2014 lint, typecheck, build-check CI",
       "role": "engineering",
       "status": "done",
-      "deps": [
-        "TASK-115"
-      ]
+      "deps": ["TASK-115"]
     },
     "TASK-117": {
       "id": "TASK-117",
@@ -2544,9 +2194,7 @@
       "title": "Update McpIntegrationView docs with agent input examples",
       "role": "frontend",
       "status": "done",
-      "deps": [
-        "TASK-115"
-      ]
+      "deps": ["TASK-115"]
     },
     "TASK-118": {
       "id": "TASK-118",
@@ -2584,11 +2232,7 @@
       "status": "done",
       "role": "planning",
       "planId": "PLAN-016",
-      "dependencies": [
-        "TASK-118",
-        "TASK-119",
-        "TASK-120"
-      ],
+      "dependencies": ["TASK-118", "TASK-119", "TASK-120"],
       "createdAt": "2026-03-11T00:00:00.000Z",
       "completedAt": "2026-03-11T00:00:00.000Z"
     },
@@ -2618,10 +2262,7 @@
       "status": "done",
       "role": "planning",
       "planId": "PLAN-017",
-      "dependencies": [
-        "TASK-122",
-        "TASK-123"
-      ],
+      "dependencies": ["TASK-122", "TASK-123"],
       "createdAt": "2026-03-11T01:00:00.000Z",
       "completedAt": "2026-03-11T01:00:00.000Z"
     },
@@ -2666,9 +2307,7 @@
       "completedAt": "2026-03-11T16:45:00.000Z",
       "role": "frontend",
       "planId": "PLAN-018",
-      "dependencies": [
-        "TASK-127"
-      ],
+      "dependencies": ["TASK-127"],
       "createdAt": "2026-03-11T16:10:00.000Z"
     },
     "TASK-129": {
@@ -2690,9 +2329,7 @@
       "completedAt": "2026-03-11T16:45:00.000Z",
       "role": "api",
       "planId": "PLAN-018",
-      "dependencies": [
-        "TASK-129"
-      ],
+      "dependencies": ["TASK-129"],
       "createdAt": "2026-03-11T16:10:00.000Z"
     },
     "TASK-131": {
@@ -2703,10 +2340,7 @@
       "completedAt": "2026-03-11T17:00:00.000Z",
       "role": "frontend",
       "planId": "PLAN-018",
-      "dependencies": [
-        "TASK-130",
-        "TASK-128"
-      ],
+      "dependencies": ["TASK-130", "TASK-128"],
       "createdAt": "2026-03-11T16:10:00.000Z"
     },
     "TASK-132": {
@@ -2728,9 +2362,7 @@
       "completedAt": "2026-03-11T16:45:00.000Z",
       "role": "devops",
       "planId": "PLAN-018",
-      "dependencies": [
-        "TASK-132"
-      ],
+      "dependencies": ["TASK-132"],
       "createdAt": "2026-03-11T16:10:00.000Z"
     },
     "TASK-134": {
@@ -2741,9 +2373,7 @@
       "completedAt": "2026-03-11T17:00:00.000Z",
       "role": "devops",
       "planId": "PLAN-018",
-      "dependencies": [
-        "TASK-133"
-      ],
+      "dependencies": ["TASK-133"],
       "createdAt": "2026-03-11T16:10:00.000Z"
     },
     "TASK-135": {
@@ -2754,9 +2384,7 @@
       "completedAt": "2026-03-11T17:00:00.000Z",
       "role": "devops",
       "planId": "PLAN-018",
-      "dependencies": [
-        "TASK-133"
-      ],
+      "dependencies": ["TASK-133"],
       "createdAt": "2026-03-11T16:10:00.000Z"
     },
     "TASK-136": {
@@ -2767,10 +2395,7 @@
       "completedAt": "2026-03-11T17:15:00.000Z",
       "role": "planning",
       "planId": "PLAN-018",
-      "dependencies": [
-        "TASK-134",
-        "TASK-135"
-      ],
+      "dependencies": ["TASK-134", "TASK-135"],
       "createdAt": "2026-03-11T16:10:00.000Z"
     },
     "TASK-137": {
@@ -2867,10 +2492,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-020",
-      "dependencies": [
-        "TASK-143",
-        "TASK-144"
-      ],
+      "dependencies": ["TASK-143", "TASK-144"],
       "createdAt": "2026-03-11T19:00:00.000Z",
       "startedAt": "2026-03-11T19:20:00.000Z",
       "completedAt": "2026-03-11T19:30:00.000Z"
@@ -2911,9 +2533,7 @@
       "status": "done",
       "role": "api",
       "planId": "PLAN-021",
-      "dependencies": [
-        "TASK-146"
-      ],
+      "dependencies": ["TASK-146"],
       "createdAt": "2026-03-12T10:00:00.000Z"
     },
     "TASK-150": {
@@ -2933,9 +2553,7 @@
       "status": "done",
       "role": "architecture",
       "planId": "PLAN-022",
-      "dependencies": [
-        "TASK-150"
-      ],
+      "dependencies": ["TASK-150"],
       "createdAt": "2026-03-12T11:00:00.000Z",
       "startedAt": "2026-03-11T23:06:49.000Z",
       "completedAt": "2026-03-11T23:08:16.000Z"
@@ -2946,9 +2564,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-022",
-      "dependencies": [
-        "TASK-151"
-      ],
+      "dependencies": ["TASK-151"],
       "createdAt": "2026-03-12T11:00:00.000Z",
       "startedAt": "2026-03-11T23:08:16.000Z",
       "completedAt": "2026-03-11T23:12:42.000Z"
@@ -2959,10 +2575,7 @@
       "status": "done",
       "role": "api",
       "planId": "PLAN-022",
-      "dependencies": [
-        "TASK-151",
-        "TASK-152"
-      ],
+      "dependencies": ["TASK-151", "TASK-152"],
       "createdAt": "2026-03-12T11:00:00.000Z",
       "startedAt": "2026-03-11T23:12:42.000Z",
       "completedAt": "2026-03-11T23:18:24.000Z"
@@ -2973,9 +2586,7 @@
       "status": "done",
       "role": "mcp",
       "planId": "PLAN-022",
-      "dependencies": [
-        "TASK-153"
-      ],
+      "dependencies": ["TASK-153"],
       "createdAt": "2026-03-12T11:00:00.000Z",
       "startedAt": "2026-03-11T23:18:24.000Z",
       "completedAt": "2026-03-11T23:27:29.000Z"
@@ -2986,9 +2597,7 @@
       "status": "done",
       "role": "frontend",
       "planId": "PLAN-022",
-      "dependencies": [
-        "TASK-153"
-      ],
+      "dependencies": ["TASK-153"],
       "createdAt": "2026-03-12T11:00:00.000Z",
       "startedAt": "2026-03-11T23:18:24.000Z",
       "completedAt": "2026-03-11T23:27:29.000Z"
@@ -2999,9 +2608,7 @@
       "status": "done",
       "role": "cli",
       "planId": "PLAN-022",
-      "dependencies": [
-        "TASK-153"
-      ],
+      "dependencies": ["TASK-153"],
       "createdAt": "2026-03-12T11:00:00.000Z",
       "startedAt": "2026-03-11T23:18:24.000Z",
       "completedAt": "2026-03-11T23:27:29.000Z"
@@ -3012,11 +2619,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-022",
-      "dependencies": [
-        "TASK-152",
-        "TASK-153",
-        "TASK-154"
-      ],
+      "dependencies": ["TASK-152", "TASK-153", "TASK-154"],
       "createdAt": "2026-03-12T11:00:00.000Z",
       "startedAt": "2026-03-11T23:27:29.000Z",
       "completedAt": "2026-03-11T23:29:15.000Z"
@@ -3027,9 +2630,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-022",
-      "dependencies": [
-        "TASK-157"
-      ],
+      "dependencies": ["TASK-157"],
       "createdAt": "2026-03-12T11:00:00.000Z",
       "startedAt": "2026-03-11T23:29:15.000Z",
       "completedAt": "2026-03-11T23:47:20.000Z"
@@ -3051,9 +2652,7 @@
       "status": "done",
       "role": "architecture",
       "planId": "PLAN-023",
-      "dependencies": [
-        "TASK-159"
-      ],
+      "dependencies": ["TASK-159"],
       "createdAt": "2026-03-11T21:00:00.000Z",
       "startedAt": "2026-03-11T21:20:21.340072+00:00",
       "completedAt": "2026-03-11T21:28:01.578240+00:00"
@@ -3064,9 +2663,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-023",
-      "dependencies": [
-        "TASK-160"
-      ],
+      "dependencies": ["TASK-160"],
       "createdAt": "2026-03-11T21:00:00.000Z",
       "startedAt": "2026-03-11T21:28:01.578240+00:00",
       "completedAt": "2026-03-11T21:47:00.257031+00:00"
@@ -3077,9 +2674,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-023",
-      "dependencies": [
-        "TASK-160"
-      ],
+      "dependencies": ["TASK-160"],
       "createdAt": "2026-03-11T21:00:00.000Z",
       "startedAt": "2026-03-11T21:28:01.578240+00:00",
       "completedAt": "2026-03-11T21:47:00.257031+00:00"
@@ -3090,9 +2685,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-023",
-      "dependencies": [
-        "TASK-159"
-      ],
+      "dependencies": ["TASK-159"],
       "createdAt": "2026-03-11T21:00:00.000Z",
       "startedAt": "2026-03-11T21:20:21.340072+00:00",
       "completedAt": "2026-03-11T21:28:01.578240+00:00"
@@ -3103,10 +2696,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-023",
-      "dependencies": [
-        "TASK-160",
-        "TASK-161"
-      ],
+      "dependencies": ["TASK-160", "TASK-161"],
       "createdAt": "2026-03-11T21:00:00.000Z",
       "startedAt": "2026-03-11T21:47:00.257031+00:00",
       "completedAt": "2026-03-11T21:53:12.394693+00:00"
@@ -3117,9 +2707,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-023",
-      "dependencies": [
-        "TASK-162"
-      ],
+      "dependencies": ["TASK-162"],
       "createdAt": "2026-03-11T21:00:00.000Z",
       "startedAt": "2026-03-11T21:47:00.257031+00:00",
       "completedAt": "2026-03-11T21:53:12.394693+00:00"
@@ -3130,9 +2718,7 @@
       "status": "done",
       "role": "api",
       "planId": "PLAN-023",
-      "dependencies": [
-        "TASK-164"
-      ],
+      "dependencies": ["TASK-164"],
       "createdAt": "2026-03-11T21:00:00.000Z",
       "startedAt": "2026-03-11T21:53:12.394693+00:00",
       "completedAt": "2026-03-11T22:00:16.488040+00:00"
@@ -3143,9 +2729,7 @@
       "status": "done",
       "role": "frontend",
       "planId": "PLAN-023",
-      "dependencies": [
-        "TASK-166"
-      ],
+      "dependencies": ["TASK-166"],
       "createdAt": "2026-03-11T21:00:00.000Z",
       "startedAt": "2026-03-11T22:00:16.488040+00:00",
       "completedAt": "2026-03-11T22:39:31.844896+00:00"
@@ -3156,9 +2740,7 @@
       "status": "done",
       "role": "frontend",
       "planId": "PLAN-023",
-      "dependencies": [
-        "TASK-163"
-      ],
+      "dependencies": ["TASK-163"],
       "createdAt": "2026-03-11T21:00:00.000Z",
       "startedAt": "2026-03-11T21:28:01.578240+00:00",
       "completedAt": "2026-03-11T21:47:00.257031+00:00"
@@ -3169,9 +2751,7 @@
       "status": "done",
       "role": "mcp",
       "planId": "PLAN-023",
-      "dependencies": [
-        "TASK-166"
-      ],
+      "dependencies": ["TASK-166"],
       "createdAt": "2026-03-11T21:00:00.000Z",
       "startedAt": "2026-03-11T22:00:16.488040+00:00",
       "completedAt": "2026-03-11T22:39:31.844896+00:00"
@@ -3182,13 +2762,7 @@
       "status": "done",
       "role": "devops",
       "planId": "PLAN-023",
-      "dependencies": [
-        "TASK-161",
-        "TASK-162",
-        "TASK-163",
-        "TASK-164",
-        "TASK-165"
-      ],
+      "dependencies": ["TASK-161", "TASK-162", "TASK-163", "TASK-164", "TASK-165"],
       "createdAt": "2026-03-11T21:00:00.000Z",
       "startedAt": "2026-03-11T21:53:12.394693+00:00",
       "completedAt": "2026-03-11T22:00:16.488040+00:00"
@@ -3199,9 +2773,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-023",
-      "dependencies": [
-        "TASK-170"
-      ],
+      "dependencies": ["TASK-170"],
       "createdAt": "2026-03-11T21:00:00.000Z",
       "startedAt": "2026-03-11T22:00:16.488040+00:00",
       "completedAt": "2026-03-11T22:39:31.844896+00:00"
@@ -3223,9 +2795,7 @@
       "status": "done",
       "role": "architecture",
       "planId": "PLAN-024",
-      "dependencies": [
-        "TASK-172"
-      ],
+      "dependencies": ["TASK-172"],
       "createdAt": "2026-03-12T12:00:00.000Z",
       "startedAt": "2026-03-12T12:10:00.000Z",
       "completedAt": "2026-03-12T12:20:00.000Z"
@@ -3236,9 +2806,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-024",
-      "dependencies": [
-        "TASK-173"
-      ],
+      "dependencies": ["TASK-173"],
       "createdAt": "2026-03-12T12:00:00.000Z",
       "startedAt": "2026-03-12T12:20:00.000Z",
       "completedAt": "2026-03-12T12:30:00.000Z"
@@ -3249,10 +2817,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-024",
-      "dependencies": [
-        "TASK-173",
-        "TASK-174"
-      ],
+      "dependencies": ["TASK-173", "TASK-174"],
       "createdAt": "2026-03-12T12:00:00.000Z",
       "startedAt": "2026-03-12T12:30:00.000Z",
       "completedAt": "2026-03-12T12:45:00.000Z"
@@ -3263,9 +2828,7 @@
       "status": "done",
       "role": "api",
       "planId": "PLAN-024",
-      "dependencies": [
-        "TASK-175"
-      ],
+      "dependencies": ["TASK-175"],
       "createdAt": "2026-03-12T12:00:00.000Z",
       "startedAt": "2026-03-12T12:45:00.000Z",
       "completedAt": "2026-03-12T13:00:00.000Z"
@@ -3276,9 +2839,7 @@
       "status": "done",
       "role": "mcp",
       "planId": "PLAN-024",
-      "dependencies": [
-        "TASK-176"
-      ],
+      "dependencies": ["TASK-176"],
       "createdAt": "2026-03-12T12:00:00.000Z",
       "startedAt": "2026-03-12T13:00:00.000Z",
       "completedAt": "2026-03-12T13:20:00.000Z"
@@ -3289,9 +2850,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-024",
-      "dependencies": [
-        "TASK-175"
-      ],
+      "dependencies": ["TASK-175"],
       "createdAt": "2026-03-12T12:00:00.000Z",
       "startedAt": "2026-03-12T12:45:00.000Z",
       "completedAt": "2026-03-12T13:00:00.000Z"
@@ -3302,9 +2861,7 @@
       "status": "done",
       "role": "frontend",
       "planId": "PLAN-024",
-      "dependencies": [
-        "TASK-176"
-      ],
+      "dependencies": ["TASK-176"],
       "createdAt": "2026-03-12T12:00:00.000Z",
       "startedAt": "2026-03-12T13:00:00.000Z",
       "completedAt": "2026-03-12T13:20:00.000Z"
@@ -3315,9 +2872,7 @@
       "status": "done",
       "role": "frontend",
       "planId": "PLAN-024",
-      "dependencies": [
-        "TASK-179"
-      ],
+      "dependencies": ["TASK-179"],
       "createdAt": "2026-03-12T12:00:00.000Z",
       "startedAt": "2026-03-12T13:20:00.000Z",
       "completedAt": "2026-03-12T13:40:00.000Z"
@@ -3328,9 +2883,7 @@
       "status": "done",
       "role": "frontend",
       "planId": "PLAN-024",
-      "dependencies": [
-        "TASK-179"
-      ],
+      "dependencies": ["TASK-179"],
       "createdAt": "2026-03-12T12:00:00.000Z",
       "startedAt": "2026-03-12T13:20:00.000Z",
       "completedAt": "2026-03-12T13:40:00.000Z"
@@ -3341,9 +2894,7 @@
       "status": "done",
       "role": "cli",
       "planId": "PLAN-024",
-      "dependencies": [
-        "TASK-176"
-      ],
+      "dependencies": ["TASK-176"],
       "createdAt": "2026-03-12T12:00:00.000Z",
       "startedAt": "2026-03-12T13:00:00.000Z",
       "completedAt": "2026-03-12T13:20:00.000Z"
@@ -3354,11 +2905,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-024",
-      "dependencies": [
-        "TASK-175",
-        "TASK-176",
-        "TASK-177"
-      ],
+      "dependencies": ["TASK-175", "TASK-176", "TASK-177"],
       "createdAt": "2026-03-12T12:00:00.000Z",
       "startedAt": "2026-03-12T13:20:00.000Z",
       "completedAt": "2026-03-12T13:40:00.000Z"
@@ -3389,10 +2936,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-032",
-      "dependencies": [
-        "TASK-230",
-        "TASK-231"
-      ],
+      "dependencies": ["TASK-230", "TASK-231"],
       "createdAt": "2026-03-13T00:36:00.000Z",
       "completedAt": "2026-03-13T01:00:00.000Z"
     },
@@ -3412,9 +2956,7 @@
       "status": "done",
       "role": "frontend",
       "planId": "PLAN-033",
-      "dependencies": [
-        "TASK-233"
-      ],
+      "dependencies": ["TASK-233"],
       "createdAt": "2026-03-13T01:10:00.000Z",
       "completedAt": "2026-03-13T01:50:00.000Z"
     },
@@ -3424,10 +2966,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-033",
-      "dependencies": [
-        "TASK-233",
-        "TASK-234"
-      ],
+      "dependencies": ["TASK-233", "TASK-234"],
       "createdAt": "2026-03-13T01:10:00.000Z",
       "completedAt": "2026-03-13T01:50:00.000Z"
     },
@@ -3447,9 +2986,7 @@
       "status": "done",
       "role": "frontend",
       "planId": "PLAN-034",
-      "dependencies": [
-        "TASK-236"
-      ],
+      "dependencies": ["TASK-236"],
       "createdAt": "2026-03-13T01:30:00.000Z",
       "completedAt": "2026-03-13T01:50:00.000Z"
     },
@@ -3459,10 +2996,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-034",
-      "dependencies": [
-        "TASK-236",
-        "TASK-237"
-      ],
+      "dependencies": ["TASK-236", "TASK-237"],
       "createdAt": "2026-03-13T01:30:00.000Z",
       "completedAt": "2026-03-13T01:50:00.000Z"
     },
@@ -3482,9 +3016,7 @@
       "status": "done",
       "role": "frontend",
       "planId": "PLAN-035",
-      "dependencies": [
-        "TASK-239"
-      ],
+      "dependencies": ["TASK-239"],
       "createdAt": "2026-03-13T02:00:00.000Z",
       "completedAt": "2026-03-13T08:31:20.000Z"
     },
@@ -3494,9 +3026,7 @@
       "status": "done",
       "role": "frontend",
       "planId": "PLAN-035",
-      "dependencies": [
-        "TASK-239"
-      ],
+      "dependencies": ["TASK-239"],
       "createdAt": "2026-03-13T02:00:00.000Z",
       "completedAt": "2026-03-13T08:31:20.000Z"
     },
@@ -3506,10 +3036,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-035",
-      "dependencies": [
-        "TASK-240",
-        "TASK-241"
-      ],
+      "dependencies": ["TASK-240", "TASK-241"],
       "createdAt": "2026-03-13T02:00:00.000Z",
       "completedAt": "2026-03-13T08:31:20.000Z"
     },
@@ -3529,9 +3056,7 @@
       "status": "done",
       "role": "verify",
       "planId": "PLAN-036",
-      "dependencies": [
-        "TASK-243"
-      ],
+      "dependencies": ["TASK-243"],
       "createdAt": "2026-03-13T09:59:36.000Z",
       "completedAt": "2026-03-13T09:59:36.000Z"
     },
@@ -3541,9 +3066,7 @@
       "status": "done",
       "role": "planning",
       "planId": "PLAN-036",
-      "dependencies": [
-        "TASK-244"
-      ],
+      "dependencies": ["TASK-244"],
       "createdAt": "2026-03-13T09:59:36.000Z",
       "completedAt": "2026-03-13T09:59:36.000Z"
     },
@@ -3553,9 +3076,7 @@
       "status": "done",
       "role": "planning",
       "planId": "PLAN-036",
-      "dependencies": [
-        "TASK-245"
-      ],
+      "dependencies": ["TASK-245"],
       "createdAt": "2026-03-13T09:59:36.000Z",
       "completedAt": "2026-03-13T09:59:36.000Z"
     },
@@ -3598,11 +3119,7 @@
       "status": "done",
       "role": "verify",
       "planId": "PLAN-037",
-      "dependencies": [
-        "TASK-247",
-        "TASK-248",
-        "TASK-249"
-      ],
+      "dependencies": ["TASK-247", "TASK-248", "TASK-249"],
       "createdAt": "2026-03-13T10:17:51.000Z",
       "completedAt": "2026-03-13T11:34:30.000Z"
     },
@@ -3623,9 +3140,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-038",
-      "dependencies": [
-        "TASK-251"
-      ],
+      "dependencies": ["TASK-251"],
       "createdAt": "2026-03-13T16:00:00.000Z",
       "startedAt": "2026-03-13T16:08:00.000Z",
       "completedAt": "2026-03-13T16:12:00.000Z"
@@ -3636,10 +3151,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-038",
-      "dependencies": [
-        "TASK-251",
-        "TASK-252"
-      ],
+      "dependencies": ["TASK-251", "TASK-252"],
       "createdAt": "2026-03-13T16:00:00.000Z",
       "startedAt": "2026-03-13T16:12:00.000Z",
       "completedAt": "2026-03-13T16:16:00.000Z"
@@ -3650,9 +3162,7 @@
       "status": "done",
       "role": "mcp",
       "planId": "PLAN-038",
-      "dependencies": [
-        "TASK-253"
-      ],
+      "dependencies": ["TASK-253"],
       "createdAt": "2026-03-13T16:00:00.000Z",
       "startedAt": "2026-03-13T16:18:00.000Z",
       "completedAt": "2026-03-13T16:22:00.000Z"
@@ -3663,9 +3173,7 @@
       "status": "done",
       "role": "api",
       "planId": "PLAN-038",
-      "dependencies": [
-        "TASK-253"
-      ],
+      "dependencies": ["TASK-253"],
       "createdAt": "2026-03-13T16:00:00.000Z",
       "startedAt": "2026-03-13T16:22:00.000Z",
       "completedAt": "2026-03-13T17:10:00.000Z"
@@ -3676,9 +3184,7 @@
       "status": "done",
       "role": "backend",
       "planId": "PLAN-038",
-      "dependencies": [
-        "TASK-255"
-      ],
+      "dependencies": ["TASK-255"],
       "createdAt": "2026-03-13T16:00:00.000Z",
       "startedAt": "2026-03-13T17:12:00.000Z",
       "completedAt": "2026-03-13T17:16:00.000Z"
@@ -3689,11 +3195,7 @@
       "status": "done",
       "role": "qa",
       "planId": "PLAN-038",
-      "dependencies": [
-        "TASK-253",
-        "TASK-254",
-        "TASK-255"
-      ],
+      "dependencies": ["TASK-253", "TASK-254", "TASK-255"],
       "createdAt": "2026-03-13T16:00:00.000Z",
       "startedAt": "2026-03-13T17:20:00.000Z",
       "completedAt": "2026-03-13T17:28:00.000Z"
@@ -3704,9 +3206,7 @@
       "status": "done",
       "role": "verify",
       "planId": "PLAN-038",
-      "dependencies": [
-        "TASK-257"
-      ],
+      "dependencies": ["TASK-257"],
       "createdAt": "2026-03-13T16:00:00.000Z",
       "startedAt": "2026-03-13T17:28:00.000Z",
       "completedAt": "2026-03-13T17:35:00.000Z"
@@ -3728,9 +3228,7 @@
       "completedAt": "2026-03-14T11:00:00.000Z",
       "role": "backend",
       "planId": "PLAN-042",
-      "dependencies": [
-        "TASK-259"
-      ],
+      "dependencies": ["TASK-259"],
       "createdAt": "2026-03-14T10:00:00.000Z"
     },
     "TASK-261": {
@@ -3740,10 +3238,7 @@
       "completedAt": "2026-03-14T11:00:00.000Z",
       "role": "qa",
       "planId": "PLAN-042",
-      "dependencies": [
-        "TASK-259",
-        "TASK-260"
-      ],
+      "dependencies": ["TASK-259", "TASK-260"],
       "createdAt": "2026-03-14T10:00:00.000Z"
     },
     "TASK-262": {
@@ -3753,9 +3248,7 @@
       "completedAt": "2026-03-14T11:00:00.000Z",
       "role": "backend",
       "planId": "PLAN-042",
-      "dependencies": [
-        "TASK-259"
-      ],
+      "dependencies": ["TASK-259"],
       "createdAt": "2026-03-14T10:00:00.000Z"
     },
     "TASK-272": {
@@ -3775,9 +3268,7 @@
       "completedAt": "2026-03-14T13:00:00.000Z",
       "role": "frontend",
       "planId": "PLAN-043",
-      "dependencies": [
-        "TASK-272"
-      ],
+      "dependencies": ["TASK-272"],
       "createdAt": "2026-03-14T12:00:00.000Z"
     },
     "TASK-274": {
@@ -3787,10 +3278,7 @@
       "completedAt": "2026-03-14T13:00:00.000Z",
       "role": "build",
       "planId": "PLAN-043",
-      "dependencies": [
-        "TASK-272",
-        "TASK-273"
-      ],
+      "dependencies": ["TASK-272", "TASK-273"],
       "createdAt": "2026-03-14T12:00:00.000Z"
     },
     "TASK-275": {
@@ -3800,9 +3288,7 @@
       "completedAt": "2026-03-14T13:00:00.000Z",
       "role": "qa",
       "planId": "PLAN-043",
-      "dependencies": [
-        "TASK-274"
-      ],
+      "dependencies": ["TASK-274"],
       "createdAt": "2026-03-14T12:00:00.000Z"
     },
     "TASK-276": {
@@ -3821,9 +3307,7 @@
       "status": "done",
       "role": "go-ports",
       "planId": "PLAN-044",
-      "dependencies": [
-        "TASK-276"
-      ],
+      "dependencies": ["TASK-276"],
       "createdAt": "2026-03-14T15:00:00.000Z",
       "completedAt": "2026-03-14T17:00:00.000Z"
     },
@@ -3833,9 +3317,7 @@
       "status": "done",
       "role": "go-outbound",
       "planId": "PLAN-044",
-      "dependencies": [
-        "TASK-276"
-      ],
+      "dependencies": ["TASK-276"],
       "createdAt": "2026-03-14T15:00:00.000Z",
       "completedAt": "2026-03-14T17:00:00.000Z"
     },
@@ -3845,9 +3327,7 @@
       "status": "done",
       "role": "go-sqlite",
       "planId": "PLAN-044",
-      "dependencies": [
-        "TASK-276"
-      ],
+      "dependencies": ["TASK-276"],
       "createdAt": "2026-03-14T15:00:00.000Z",
       "completedAt": "2026-03-14T17:00:00.000Z"
     },
@@ -3857,11 +3337,7 @@
       "status": "done",
       "role": "go-services",
       "planId": "PLAN-044",
-      "dependencies": [
-        "TASK-277",
-        "TASK-278",
-        "TASK-279"
-      ],
+      "dependencies": ["TASK-277", "TASK-278", "TASK-279"],
       "createdAt": "2026-03-14T15:00:00.000Z",
       "completedAt": "2026-03-14T17:00:00.000Z"
     },
@@ -3871,9 +3347,7 @@
       "status": "done",
       "role": "go-inbound",
       "planId": "PLAN-044",
-      "dependencies": [
-        "TASK-280"
-      ],
+      "dependencies": ["TASK-280"],
       "createdAt": "2026-03-14T15:00:00.000Z",
       "completedAt": "2026-03-14T17:00:00.000Z"
     },
@@ -3883,9 +3357,7 @@
       "status": "done",
       "role": "ts-extension",
       "planId": "PLAN-044",
-      "dependencies": [
-        "TASK-285"
-      ],
+      "dependencies": ["TASK-285"],
       "createdAt": "2026-03-14T15:00:00.000Z",
       "completedAt": "2026-03-14T17:00:00.000Z"
     },
@@ -3895,10 +3367,7 @@
       "status": "done",
       "role": "ts-extension",
       "planId": "PLAN-044",
-      "dependencies": [
-        "TASK-282",
-        "TASK-285"
-      ],
+      "dependencies": ["TASK-282", "TASK-285"],
       "createdAt": "2026-03-14T15:00:00.000Z",
       "completedAt": "2026-03-14T17:00:00.000Z"
     },
@@ -3908,10 +3377,7 @@
       "status": "done",
       "role": "ts-extension",
       "planId": "PLAN-044",
-      "dependencies": [
-        "TASK-282",
-        "TASK-285"
-      ],
+      "dependencies": ["TASK-282", "TASK-285"],
       "createdAt": "2026-03-14T15:00:00.000Z",
       "completedAt": "2026-03-14T17:00:00.000Z"
     },
@@ -3921,9 +3387,7 @@
       "status": "done",
       "role": "ts-extension",
       "planId": "PLAN-044",
-      "dependencies": [
-        "TASK-276"
-      ],
+      "dependencies": ["TASK-276"],
       "createdAt": "2026-03-14T15:00:00.000Z",
       "completedAt": "2026-03-14T17:00:00.000Z"
     },
@@ -3933,9 +3397,7 @@
       "status": "done",
       "role": "vue-frontend",
       "planId": "PLAN-044",
-      "dependencies": [
-        "TASK-281"
-      ],
+      "dependencies": ["TASK-281"],
       "createdAt": "2026-03-14T15:00:00.000Z",
       "completedAt": "2026-03-14T17:00:00.000Z"
     },
@@ -3945,9 +3407,7 @@
       "status": "done",
       "role": "vue-frontend",
       "planId": "PLAN-044",
-      "dependencies": [
-        "TASK-286"
-      ],
+      "dependencies": ["TASK-286"],
       "createdAt": "2026-03-14T15:00:00.000Z",
       "completedAt": "2026-03-14T17:00:00.000Z"
     },
@@ -3957,11 +3417,7 @@
       "status": "done",
       "role": "ts-extension",
       "planId": "PLAN-044",
-      "dependencies": [
-        "TASK-282",
-        "TASK-283",
-        "TASK-284"
-      ],
+      "dependencies": ["TASK-282", "TASK-283", "TASK-284"],
       "createdAt": "2026-03-14T15:00:00.000Z",
       "completedAt": "2026-03-14T17:00:00.000Z"
     },
@@ -3971,10 +3427,7 @@
       "status": "done",
       "role": "go-tests",
       "planId": "PLAN-044",
-      "dependencies": [
-        "TASK-278",
-        "TASK-280"
-      ],
+      "dependencies": ["TASK-278", "TASK-280"],
       "createdAt": "2026-03-14T15:00:00.000Z",
       "completedAt": "2026-03-14T17:00:00.000Z"
     },
@@ -3984,10 +3437,7 @@
       "status": "done",
       "role": "ts-tests",
       "planId": "PLAN-044",
-      "dependencies": [
-        "TASK-282",
-        "TASK-284"
-      ],
+      "dependencies": ["TASK-282", "TASK-284"],
       "createdAt": "2026-03-14T15:00:00.000Z",
       "completedAt": "2026-03-14T17:00:00.000Z"
     },
@@ -4030,10 +3480,7 @@
       "role": "devops",
       "planId": "PLAN-045",
       "status": "done",
-      "dependencies": [
-        "TASK-291",
-        "TASK-293"
-      ],
+      "dependencies": ["TASK-291", "TASK-293"],
       "createdAt": "2026-03-14T18:00:00.000Z",
       "description": "npm run package in vscode-extension/ to produce VSIX with AgentDetector, AISessionsTreeProvider, delegateToNexus command from PLAN-044.",
       "completedAt": "2026-03-14T18:30:00.000Z"
@@ -4193,9 +3640,7 @@
       "status": "done",
       "role": "testing",
       "planId": "PLAN-047",
-      "dependencies": [
-        "TASK-303"
-      ],
+      "dependencies": ["TASK-303"],
       "createdAt": "2026-03-25T00:00:00.000Z",
       "updatedAt": "2026-03-25T00:00:00.000Z",
       "completedAt": "2026-03-25T08:49:58Z"
@@ -4206,9 +3651,7 @@
       "status": "done",
       "role": "testing",
       "planId": "PLAN-047",
-      "dependencies": [
-        "TASK-304"
-      ],
+      "dependencies": ["TASK-304"],
       "createdAt": "2026-03-25T00:00:00.000Z",
       "updatedAt": "2026-03-25T00:00:00.000Z",
       "completedAt": "2026-03-25T08:49:58Z"
@@ -4219,9 +3662,7 @@
       "status": "done",
       "role": "testing",
       "planId": "PLAN-047",
-      "dependencies": [
-        "TASK-305"
-      ],
+      "dependencies": ["TASK-305"],
       "createdAt": "2026-03-25T00:00:00.000Z",
       "updatedAt": "2026-03-25T00:00:00.000Z",
       "completedAt": "2026-03-25T08:49:58Z"
@@ -4232,9 +3673,7 @@
       "status": "done",
       "role": "architecture",
       "planId": "PLAN-047",
-      "dependencies": [
-        "TASK-301"
-      ],
+      "dependencies": ["TASK-301"],
       "createdAt": "2026-03-25T00:00:00.000Z",
       "updatedAt": "2026-03-25T00:00:00.000Z",
       "completedAt": "2026-03-25T09:54:47Z"
@@ -4245,9 +3684,7 @@
       "status": "done",
       "role": "architecture",
       "planId": "PLAN-047",
-      "dependencies": [
-        "TASK-302"
-      ],
+      "dependencies": ["TASK-302"],
       "createdAt": "2026-03-25T00:00:00.000Z",
       "updatedAt": "2026-03-25T00:00:00.000Z",
       "completedAt": "2026-03-25T09:54:47Z"
@@ -4258,10 +3695,7 @@
       "status": "done",
       "role": "architecture",
       "planId": "PLAN-047",
-      "dependencies": [
-        "TASK-305",
-        "TASK-310"
-      ],
+      "dependencies": ["TASK-305", "TASK-310"],
       "createdAt": "2026-03-25T00:00:00.000Z",
       "updatedAt": "2026-03-25T00:00:00.000Z",
       "completedAt": "2026-03-25T09:54:47Z"
@@ -4272,10 +3706,7 @@
       "status": "done",
       "role": "architecture",
       "planId": "PLAN-047",
-      "dependencies": [
-        "TASK-303",
-        "TASK-308"
-      ],
+      "dependencies": ["TASK-303", "TASK-308"],
       "createdAt": "2026-03-25T00:00:00.000Z",
       "updatedAt": "2026-03-25T00:00:00.000Z",
       "completedAt": "2026-03-25T09:54:47Z"
@@ -4296,9 +3727,7 @@
       "status": "done",
       "title": "sys_scanner: ScanPlanFiles \u2014 detect 8+ plan file patterns (nexus/markdown/cursor/claude/mcp/crewai)",
       "role": "backend",
-      "dependencies": [
-        "TASK-315"
-      ],
+      "dependencies": ["TASK-315"],
       "createdAt": "2026-03-25T19:39:28Z",
       "completedAt": "2026-03-25T19:52:12Z"
     },
@@ -4308,9 +3737,7 @@
       "status": "done",
       "title": "sys_scanner: sub-agent enrichment from ~/.claude/projects JSONL + model/working-dir from process",
       "role": "backend",
-      "dependencies": [
-        "TASK-315"
-      ],
+      "dependencies": ["TASK-315"],
       "createdAt": "2026-03-25T19:39:28Z",
       "completedAt": "2026-03-25T19:55:18Z"
     },
@@ -4320,11 +3747,7 @@
       "status": "done",
       "title": "Ports + OrchestratorService + SQLite + HTTP API for plan-file discovery",
       "role": "backend",
-      "dependencies": [
-        "TASK-315",
-        "TASK-316",
-        "TASK-317"
-      ],
+      "dependencies": ["TASK-315", "TASK-316", "TASK-317"],
       "createdAt": "2026-03-25T19:39:28Z"
     },
     "TASK-319": {
@@ -4333,9 +3756,7 @@
       "status": "done",
       "title": "MCP tools: get_discovered_plans + enrich agent tools with sub-agents/model data",
       "role": "mcp",
-      "dependencies": [
-        "TASK-318"
-      ],
+      "dependencies": ["TASK-318"],
       "createdAt": "2026-03-25T19:39:28Z"
     },
     "TASK-320": {
@@ -4344,9 +3765,7 @@
       "status": "done",
       "title": "Frontend: DiscoveredPlansView \u2014 list plan files grouped by project with kind/format badges",
       "role": "frontend",
-      "dependencies": [
-        "TASK-318"
-      ],
+      "dependencies": ["TASK-318"],
       "createdAt": "2026-03-25T19:39:28Z"
     },
     "TASK-321": {
@@ -4355,9 +3774,7 @@
       "status": "done",
       "title": "Frontend: AIAgentsView sub-agent tree + model badge + workingDir on agent cards",
       "role": "frontend",
-      "dependencies": [
-        "TASK-318"
-      ],
+      "dependencies": ["TASK-318"],
       "createdAt": "2026-03-25T19:39:28Z"
     },
     "TASK-322": {
@@ -4366,9 +3783,7 @@
       "status": "done",
       "title": "VS Code extension: include modelId in registerSession + display modelId in session cards",
       "role": "vscode",
-      "dependencies": [
-        "TASK-315"
-      ],
+      "dependencies": ["TASK-315"],
       "createdAt": "2026-03-25T19:39:28Z",
       "completedAt": "2026-03-25T19:51:16Z"
     },
@@ -4408,9 +3823,7 @@
       "status": "done",
       "title": "Add watch on projectPath in useDiscoveredPlans to refetch when project filter changes",
       "role": "frontend",
-      "dependencies": [
-        "TASK-364"
-      ],
+      "dependencies": ["TASK-364"],
       "createdAt": "2026-03-28T18:00:00Z",
       "completedAt": "2026-03-28T18:10:00Z"
     },
@@ -4480,9 +3893,7 @@
       "status": "done",
       "title": "Add provider pre-flight warnings to PromoteTask",
       "role": "backend",
-      "dependencies": [
-        "TASK-373"
-      ],
+      "dependencies": ["TASK-373"],
       "createdAt": "2026-03-28T18:59:40Z",
       "completedAt": "2026-03-28T19:40:00Z"
     },
@@ -4502,9 +3913,7 @@
       "status": "done",
       "title": "Add workspace isolation tests for TaskQueueProvider",
       "role": "extension",
-      "dependencies": [
-        "TASK-375"
-      ],
+      "dependencies": ["TASK-375"],
       "createdAt": "2026-03-28T18:59:40Z",
       "completedAt": "2026-03-28T19:40:00Z"
     },
@@ -4514,9 +3923,7 @@
       "status": "done",
       "title": "Verify WorkspaceOrchView live tasks stay folder-scoped",
       "role": "extension",
-      "dependencies": [
-        "TASK-375"
-      ],
+      "dependencies": ["TASK-375"],
       "createdAt": "2026-03-28T18:59:40Z",
       "completedAt": "2026-03-28T19:40:00Z"
     },
@@ -4536,9 +3943,7 @@
       "status": "done",
       "title": "Move HistoryView task filtering to the server with projectPath queries",
       "role": "frontend",
-      "dependencies": [
-        "TASK-378"
-      ],
+      "dependencies": ["TASK-378"],
       "createdAt": "2026-03-28T18:59:40Z",
       "completedAt": "2026-03-28T19:40:00Z"
     },
@@ -4548,9 +3953,7 @@
       "status": "done",
       "title": "Add focused MCP tools_test.go RPC coverage",
       "role": "testing",
-      "dependencies": [
-        "TASK-374"
-      ],
+      "dependencies": ["TASK-374"],
       "createdAt": "2026-03-28T18:59:40Z",
       "completedAt": "2026-03-28T19:40:00Z"
     },
@@ -4560,10 +3963,7 @@
       "status": "done",
       "title": "Add HTTP handler tests for projectPath filtering and state transitions",
       "role": "testing",
-      "dependencies": [
-        "TASK-373",
-        "TASK-374"
-      ],
+      "dependencies": ["TASK-373", "TASK-374"],
       "createdAt": "2026-03-28T18:59:40Z",
       "completedAt": "2026-03-28T19:40:00Z"
     },
@@ -4573,10 +3973,7 @@
       "status": "done",
       "title": "Add frontend composable tests for project state and discovered plans",
       "role": "testing",
-      "dependencies": [
-        "TASK-378",
-        "TASK-379"
-      ],
+      "dependencies": ["TASK-378", "TASK-379"],
       "createdAt": "2026-03-28T18:59:40Z",
       "completedAt": "2026-03-28T19:40:00Z"
     },
@@ -4586,10 +3983,7 @@
       "status": "done",
       "title": "Add frontend view tests for HistoryView and LiveActivityView",
       "role": "testing",
-      "dependencies": [
-        "TASK-379",
-        "TASK-382"
-      ],
+      "dependencies": ["TASK-379", "TASK-382"],
       "createdAt": "2026-03-28T18:59:40Z",
       "completedAt": "2026-03-28T19:40:00Z"
     },
@@ -4599,10 +3993,7 @@
       "status": "done",
       "title": "Expand VS Code extension test coverage for workspace isolation",
       "role": "testing",
-      "dependencies": [
-        "TASK-375",
-        "TASK-376"
-      ],
+      "dependencies": ["TASK-375", "TASK-376"],
       "createdAt": "2026-03-28T18:59:40Z",
       "completedAt": "2026-03-28T19:40:00Z"
     },
@@ -4612,12 +4003,7 @@
       "status": "done",
       "title": "Add integration-tagged black-box HTTP and MCP coverage",
       "role": "testing",
-      "dependencies": [
-        "TASK-380",
-        "TASK-381",
-        "TASK-383",
-        "TASK-384"
-      ],
+      "dependencies": ["TASK-380", "TASK-381", "TASK-383", "TASK-384"],
       "createdAt": "2026-03-28T18:59:40Z",
       "completedAt": "2026-03-28T19:40:00Z"
     },
@@ -5417,9 +4803,7 @@
       "role": "backend",
       "wave": 1,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": [
-        "TASK-509"
-      ],
+      "dependencies": ["TASK-509"],
       "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-511": {
@@ -5430,9 +4814,7 @@
       "role": "backend",
       "wave": 2,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": [
-        "TASK-510"
-      ],
+      "dependencies": ["TASK-510"],
       "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-512": {
@@ -5443,9 +4825,7 @@
       "role": "qa",
       "wave": 2,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": [
-        "TASK-511"
-      ],
+      "dependencies": ["TASK-511"],
       "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-513": {
@@ -5456,9 +4836,7 @@
       "role": "backend",
       "wave": 3,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": [
-        "TASK-511"
-      ],
+      "dependencies": ["TASK-511"],
       "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-514": {
@@ -5469,9 +4847,7 @@
       "role": "qa",
       "wave": 3,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": [
-        "TASK-513"
-      ],
+      "dependencies": ["TASK-513"],
       "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-515": {
@@ -5482,9 +4858,7 @@
       "role": "mcp",
       "wave": 4,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": [
-        "TASK-513"
-      ],
+      "dependencies": ["TASK-513"],
       "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-516": {
@@ -5495,9 +4869,7 @@
       "role": "api",
       "wave": 4,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": [
-        "TASK-513"
-      ],
+      "dependencies": ["TASK-513"],
       "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-517": {
@@ -5508,9 +4880,7 @@
       "role": "cli",
       "wave": 4,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": [
-        "TASK-513"
-      ],
+      "dependencies": ["TASK-513"],
       "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-518": {
@@ -5521,11 +4891,7 @@
       "role": "backend",
       "wave": 5,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": [
-        "TASK-515",
-        "TASK-516",
-        "TASK-517"
-      ],
+      "dependencies": ["TASK-515", "TASK-516", "TASK-517"],
       "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-519": {
@@ -5536,9 +4902,7 @@
       "role": "qa",
       "wave": 6,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": [
-        "TASK-518"
-      ],
+      "dependencies": ["TASK-518"],
       "completedAt": "2026-04-13T00:00:00Z"
     },
     "TASK-520": {
@@ -5549,9 +4913,7 @@
       "role": "backend",
       "wave": 6,
       "createdAt": "2026-04-13T00:00:00Z",
-      "dependencies": [
-        "TASK-518"
-      ],
+      "dependencies": ["TASK-518"],
       "completedAt": "2026-04-13T00:00:00Z"
     }
   },
@@ -5572,12 +4934,7 @@
     "goal": "Complete downstream wiring of the Nexus Brain API into the Wails GUI App, frontend Vue Types, and Documentation.",
     "status": "completed",
     "createdAt": "2026-04-13T13:08:19Z",
-    "tasks": [
-      "TASK-521",
-      "TASK-522",
-      "TASK-523",
-      "TASK-524"
-    ]
+    "tasks": ["TASK-521", "TASK-522", "TASK-523", "TASK-524"]
   },
   "PLAN-068": {
     "id": "PLAN-068",
@@ -5586,12 +4943,7 @@
     "status": "completed",
     "createdAt": "2026-04-13T13:14:26Z",
     "completedAt": "2026-04-13T14:00:00Z",
-    "tasks": [
-      "TASK-525",
-      "TASK-526",
-      "TASK-527",
-      "TASK-528"
-    ]
+    "tasks": ["TASK-525", "TASK-526", "TASK-527", "TASK-528"]
   },
   "PLAN-069": {
     "id": "PLAN-069",
