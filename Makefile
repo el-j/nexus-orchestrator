@@ -67,7 +67,7 @@ UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 
 .DEFAULT_GOAL := help
 
-.PHONY: check-node help start start-bg stop dogfood status connect init-project build build-gui build-gui-windows-amd64 build-all test vet lint clean help \
+.PHONY: check-node web web-auto help start start-bg stop dogfood status connect init-project build build-gui build-gui-windows-amd64 build-all test vet lint clean help \
         build-linux-amd64 build-linux-arm64 \
         build-darwin-amd64 build-darwin-arm64 \
         build-windows-amd64 \
@@ -98,13 +98,14 @@ NEXUS_MCP     ?= http://localhost:63988/mcp
 # Build and run the daemon in the foreground with ONE database for every project.
 # (Without NEXUS_DB_PATH the daemon writes nexus.db into the current directory, so
 # starting it from different folders would give you different, empty queues.)
-start: build
+start: web-auto build
 	@mkdir -p $(NEXUS_HOME)
 	@echo "nexus-daemon → API $(NEXUS_API)  MCP $(NEXUS_MCP)  DB $(NEXUS_HOME)/nexus.db"
+	@if [ -f $(WEBUI_DIR)/index.html ]; then echo "full UI      → $(NEXUS_API)/app/   (light dashboard: $(NEXUS_API)/ui)"; else echo "dashboard    → $(NEXUS_API)/ui   (the full UI needs Node >= 22: nvm use; make start)"; fi
 	NEXUS_DB_PATH=$(NEXUS_HOME)/nexus.db $(DIST)/native/$(BINARY_DAEMON)
 
 # Same daemon, detached: log to $(NEXUS_HOME)/daemon.log, pid in $(NEXUS_HOME)/daemon.pid.
-start-bg: build
+start-bg: web-auto build
 	@mkdir -p $(NEXUS_HOME)
 	@if curl -fsS $(NEXUS_API)/api/health >/dev/null 2>&1; then echo "daemon already running at $(NEXUS_API)"; exit 0; fi; \
 	NEXUS_DB_PATH=$(NEXUS_HOME)/nexus.db nohup $(DIST)/native/$(BINARY_DAEMON) >> $(NEXUS_HOME)/daemon.log 2>&1 & echo $$! > $(NEXUS_HOME)/daemon.pid; \
@@ -156,6 +157,22 @@ init-project: build
 # deep inside Vite/husky with confusing errors, so say so up front.
 check-node:
 	@node -e 'process.exit(+process.versions.node.split(".")[0] >= 22 ? 0 : 1)' || { echo "Node >= 22 required (found $$(node -v 2>/dev/null || echo none)); run: nvm use  (see .nvmrc)"; exit 1; }
+
+# The full UI inside the daemon: build the Vite frontend and copy it where the daemon embeds it
+# (internal/adapters/inbound/webui/dist), so "make start" serves it at /app/ and the root goes there.
+WEBUI_DIR := internal/adapters/inbound/webui/dist
+web: build-frontend
+	@rm -rf $(WEBUI_DIR) && mkdir -p $(WEBUI_DIR)
+	@cp -R build/frontend/. $(WEBUI_DIR)/ && touch $(WEBUI_DIR)/.gitkeep
+	@echo "Embedded UI → $(WEBUI_DIR)"
+
+# Rebuild the embedded UI when the frontend changed; skip it (with a note) without Node >= 22.
+web-auto:
+	@if node -e 'process.exit(+process.versions.node.split(".")[0] >= 22 ? 0 : 1)' 2>/dev/null; then \
+		if [ ! -f $(WEBUI_DIR)/index.html ] || [ -n "$$(find frontend/src frontend/index.html frontend/package.json -type f -newer $(WEBUI_DIR)/index.html 2>/dev/null | head -1)" ]; then \
+			$(MAKE) --no-print-directory web; \
+		else echo "embedded UI is up to date"; fi; \
+	else echo "note: Node >= 22 not found, so the daemon will serve only the light dashboard at /ui (nvm use, then make web, for the full UI)"; fi
 
 # Build the Vite frontend into build/frontend/  (embedded by Wails at build time)
 build-frontend: check-node
@@ -513,7 +530,8 @@ help:
 	@echo "nexusOrchestrator — run 'make <target>'"
 	@echo ""
 	@echo "Use it (start here):"
-	@echo "  make start                  Build + run the daemon with one shared DB (~/.nexus/nexus.db)"
+	@echo "  make start                  Build + run the daemon with one shared DB (~/.nexus/nexus.db); full UI at /app/"
+	@echo "  make web                    Rebuild the full UI that the daemon embeds (Node >= 22)"
 	@echo "  make start-bg / make stop   Same daemon, detached (pid + log in ~/.nexus) / stop it"
 	@echo "  make dogfood                Start the daemon and load THIS repo's CLAUDE.md into it"
 	@echo "  make status                 Is the daemon running? Which providers does it see?"

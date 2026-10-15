@@ -11,7 +11,13 @@ make start      # builds, then runs the daemon with ONE shared database: ~/.nexu
 make status     # in another terminal: is it up, and which LLM providers does it see?
 ```
 
-- API and dashboard: <http://localhost:63987> (`/ui`), MCP endpoint: <http://localhost:63988/mcp>.
+- The full UI (Mission Control, agents, providers, plans, history, brain, settings) is at
+  <http://localhost:63987/app/>; the root redirects there. `make start` builds it when Node >= 22 is
+  active (`nvm use`); without Node it serves only the light dashboard at <http://localhost:63987/ui>
+  (queue and providers, nothing about agents or history). `make web` rebuilds the embedded UI by hand.
+  MCP endpoint: <http://localhost:63988/mcp>.
+- The same UI is the desktop app (`make build-gui`); the desktop app starts its own daemon, so do not run
+  it next to `make start`.
 - Every way of starting Nexus (`make start`, a bare `nexus-daemon`, the desktop app) now uses the
   same database, `~/.nexus/nexus.db`, unless `NEXUS_DB_PATH` says otherwise. (An older setup with a
   `nexus.db` in the current directory keeps using it until `~/.nexus/nexus.db` exists.)

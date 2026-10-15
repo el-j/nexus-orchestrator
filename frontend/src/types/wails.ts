@@ -235,7 +235,9 @@ export async function getServerAddr(): Promise<string> {
       return 'http://127.0.0.1:63987';
     }
   }
-  // Browser dev mode: respect VITE_SERVER_URL env or fall back to the default address.
+  // Served by the daemon itself (it puts a <base href> into index.html): its own origin, whatever
+  // host and port it was started on. Otherwise browser dev mode: VITE_SERVER_URL or the default.
+  if (document.querySelector('base')) return window.location.origin;
   return import.meta.env.VITE_SERVER_URL ?? 'http://127.0.0.1:63987';
 }
 
