@@ -1891,3 +1891,37 @@ func TestUpdateTaskStatus_NotProcessing(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
+
+// Registering the same provider twice (the VS Code extension re-registers its models after a
+// restart) must not leave two copies behind; a different model of the same vendor is a
+// different provider and stays.
+func TestOrchestrator_RegisterCloudProvider_ReplacesTheSameProvider(t *testing.T) {
+	orch := services.NewOrchestrator(services.NewDiscoveryService(), newMemRepo(), &noopWriter{}, nil)
+	defer orch.Stop()
+	orch.WithProviderFactory(func(cfg domain.ProviderConfig) (ports.LLMClient, error) {
+		return &mockLLMClient{alive: true, name: cfg.Name, activeModel: cfg.Model, baseURL: cfg.BaseURL}, nil
+	})
+	reg := func(name, model, url string) {
+		t.Helper()
+		if err := orch.RegisterCloudProvider(domain.ProviderConfig{Name: name, Model: model, BaseURL: url}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	reg("vscode-copilot-gpt", "gpt", "http://127.0.0.1:1/v1")
+	reg("vscode-copilot-gpt", "gpt", "http://127.0.0.1:1/v1") // again, same
+	reg("vscode-copilot-gpt", "gpt", "http://127.0.0.1:2/v1") // the bridge came back on another port: the new one wins
+	reg("Anthropic", "sonnet", "")
+	reg("Anthropic", "opus", "") // same vendor, other model: a separate provider
+
+	counts := map[string]int{}
+	providers, _ := orch.GetProviders()
+	for _, p := range providers {
+		counts[p.Name]++
+	}
+	if counts["vscode-copilot-gpt"] != 1 || counts["Anthropic"] != 2 {
+		t.Errorf("providers = %v; want one bridge provider and both Anthropic models", counts)
+	}
+	if c, ok := orch.GetClientForTest("vscode-copilot-gpt"); !ok || c.BaseURL() != "http://127.0.0.1:2/v1" {
+		t.Errorf("the latest registration must win, got %v", c)
+	}
+}

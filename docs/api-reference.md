@@ -623,15 +623,15 @@ Get file path map for a project, optionally filtered to a focus area.
 
 ### Provider discovery and configuration
 
-| Route                                 | Purpose                                                                                                               |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `GET /api/providers/discovered`       | Local and cloud backends found by the last scan.                                                                      |
-| `POST /api/providers/discovered/scan` | Run a fresh scan.                                                                                                     |
-| `POST /api/providers/promote/{id}`    | Turn a discovered provider into an active backend.                                                                    |
-| `GET /api/providers/config`           | Stored provider configurations.                                                                                       |
-| `POST /api/providers/config`          | Add a provider configuration (kind `lmstudio`, `ollama`, `openaicompat`, `anthropic`, `gemini`, `localai` or `vllm`). |
-| `PUT /api/providers/config/{id}`      | Update a configuration.                                                                                               |
-| `DELETE /api/providers/config/{id}`   | Remove a configuration.                                                                                               |
+| Route                                 | Purpose                                                                                                                                                                                      |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/providers/discovered`       | Local and cloud backends found by the last scan.                                                                                                                                             |
+| `POST /api/providers/discovered/scan` | Run a fresh scan.                                                                                                                                                                            |
+| `POST /api/providers/promote/{id}`    | Turn a discovered provider into an active backend.                                                                                                                                           |
+| `GET /api/providers/config`           | Stored provider configurations.                                                                                                                                                              |
+| `POST /api/providers/config`          | Add a provider configuration (kind `lmstudio`, `ollama`, `openaicompat`, `anthropic`, `gemini`, `localai`, `vllm` or `cli`, see [delegating-subscriptions.md](delegating-subscriptions.md)). |
+| `PUT /api/providers/config/{id}`      | Update a configuration.                                                                                                                                                                      |
+| `DELETE /api/providers/config/{id}`   | Remove a configuration.                                                                                                                                                                      |
 
 ### Task coordination (for AI agents)
 

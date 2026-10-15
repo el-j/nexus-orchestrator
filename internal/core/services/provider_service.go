@@ -29,7 +29,7 @@ func (o *OrchestratorService) RegisterCloudProvider(cfg domain.ProviderConfig) e
 	if err != nil {
 		return fmt.Errorf("orchestrator: register cloud provider: %w", err)
 	}
-	o.discovery.RegisterProvider(client)
+	o.discovery.ReplaceProvider(client)
 	return nil
 }
 
@@ -126,10 +126,15 @@ func (o *OrchestratorService) PromoteProvider(ctx context.Context, discoveredID 
 	if found == nil {
 		return fmt.Errorf("orchestrator: promote provider: %w", domain.ErrNotFound)
 	}
-	if found.Status != domain.DiscoveryStatusReachable {
+	baseURL := found.BaseURL
+	if found.Kind == domain.ProviderKindCLI && found.CLIPath != "" {
+		// A command-line AI tool has a path, not a URL; "-p" is the non-interactive print mode
+		// of claude, the tool this kind is for.
+		baseURL = found.CLIPath + " -p"
+	} else if found.Status != domain.DiscoveryStatusReachable {
 		return fmt.Errorf("orchestrator: promote provider: provider %q is not reachable (status: %s)", found.Name, found.Status)
 	}
-	if found.BaseURL == "" {
+	if baseURL == "" {
 		return fmt.Errorf("orchestrator: promote provider: discovered provider has no base URL")
 	}
 
@@ -137,7 +142,7 @@ func (o *OrchestratorService) PromoteProvider(ctx context.Context, discoveredID 
 		ID:      found.ID,
 		Name:    found.Name,
 		Kind:    found.Kind,
-		BaseURL: found.BaseURL,
+		BaseURL: baseURL,
 		Enabled: true,
 	}
 

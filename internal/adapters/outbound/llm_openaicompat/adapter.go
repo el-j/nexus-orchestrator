@@ -28,6 +28,10 @@ type Adapter struct {
 	cachedModels   []string
 	modelsCachedAt time.Time
 	modelsTTL      time.Duration
+
+	limitsMu  sync.Mutex
+	limits    map[string]int // context length per model, as the server reports it
+	limitsTry time.Time      // when /models was last asked for it, successful or not
 }
 
 // NewAdapter creates a generic OpenAI-compatible adapter.
@@ -56,13 +60,35 @@ func (a *Adapter) ActiveModel() string { return a.model }
 // BaseURL returns the API endpoint this adapter talks to.
 func (a *Adapter) BaseURL() string { return a.baseURL }
 
-// ContextLimit returns 131072 (128K) when a model is configured, 0 otherwise.
-// 128K is a conservative default for modern OpenAI-compatible endpoints.
-func (a *Adapter) ContextLimit(_ context.Context) int {
+// defaultContextLimit is assumed when the server does not report a context length.
+const (
+	defaultContextLimit = 131072
+	// limitsRetry throttles how often /models is asked for context lengths.
+	limitsRetry = 30 * time.Second
+)
+
+// ContextLimit returns the context length the server reports for the configured model (the
+// /models entry's context_length, context_window or max_model_len), 131072 (128K) when it
+// reports none, and 0 when no model is configured.
+func (a *Adapter) ContextLimit(ctx context.Context) int {
 	if a.model == "" {
 		return 0
 	}
-	return 131072
+	a.limitsMu.Lock()
+	due := time.Since(a.limitsTry) >= limitsRetry
+	if due {
+		a.limitsTry = time.Now()
+	}
+	a.limitsMu.Unlock()
+	if due {
+		_, _ = a.fetchModels(ctx, true) // a failure keeps the default limit
+	}
+	a.limitsMu.Lock()
+	defer a.limitsMu.Unlock()
+	if n := a.limits[a.model]; n > 0 {
+		return n
+	}
+	return defaultContextLimit
 }
 
 // Ping checks whether the provider is reachable by hitting the /models endpoint.
@@ -91,8 +117,17 @@ func (a *Adapter) GetAvailableModels(ctx context.Context) ([]string, error) {
 		return cached, nil
 	}
 	a.modelsMu.Unlock()
+	return a.fetchModels(ctx, false)
+}
 
-	// Fetch from API (no lock held during network request).
+// fetchModels reads /models (no lock held during the request), caches the IDs on success and
+// remembers the context length of every model that reports one.
+func (a *Adapter) fetchModels(ctx context.Context, quick bool) ([]string, error) {
+	if quick { // asked on the way to a prompt: do not stall it for long
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, a.baseURL+"/models", nil)
 	if err != nil {
 		return nil, fmt.Errorf("%s: build models request: %w", a.name, err)
@@ -108,15 +143,25 @@ func (a *Adapter) GetAvailableModels(ctx context.Context) ([]string, error) {
 	}
 	var result struct {
 		Data []struct {
-			ID string `json:"id"`
+			ID            string `json:"id"`
+			ContextLength int    `json:"context_length"`
+			ContextWindow int    `json:"context_window"`
+			MaxModelLen   int    `json:"max_model_len"`
 		} `json:"data"`
 	}
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
 		return nil, fmt.Errorf("%s: decode models: %w", a.name, err)
 	}
 	ids := make([]string, 0, len(result.Data))
+	limits := make(map[string]int, len(result.Data))
 	for _, m := range result.Data {
 		ids = append(ids, m.ID)
+		for _, n := range []int{m.ContextLength, m.ContextWindow, m.MaxModelLen} {
+			if n > 0 {
+				limits[m.ID] = n
+				break
+			}
+		}
 	}
 
 	// Cache on success only.
@@ -124,6 +169,9 @@ func (a *Adapter) GetAvailableModels(ctx context.Context) ([]string, error) {
 	a.cachedModels = ids
 	a.modelsCachedAt = time.Now()
 	a.modelsMu.Unlock()
+	a.limitsMu.Lock()
+	a.limits = limits
+	a.limitsMu.Unlock()
 
 	return ids, nil
 }

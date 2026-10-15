@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"nexus-orchestrator/internal/adapters/outbound/llm_anthropic"
+	"nexus-orchestrator/internal/adapters/outbound/llm_cli"
 	"nexus-orchestrator/internal/adapters/outbound/llm_gemini"
 	"nexus-orchestrator/internal/adapters/outbound/llm_lmstudio"
 	"nexus-orchestrator/internal/adapters/outbound/llm_ollama"
@@ -106,6 +107,13 @@ func BuildProviderFromConfig(cfg domain.ProviderConfig) (ports.LLMClient, error)
 			return nil, fmt.Errorf("provider %q (gemini): apiKey is required", cfg.Name)
 		}
 		return llm_gemini.NewAdapter(cfg.APIKey, cfg.Model, cfg.BaseURL), nil
+	case domain.ProviderKindCLI:
+		// BaseURL holds the command line, e.g. "claude -p": a logged-in subscription CLI.
+		a, err := llm_cli.NewAdapter(cfg.Name, cfg.BaseURL, cfg.Model)
+		if err != nil {
+			return nil, err // not "return a, err": that would be a non-nil interface around a nil pointer
+		}
+		return a, nil
 	case domain.ProviderKindDesktopApp, domain.ProviderKindLocalAI, domain.ProviderKindVLLM, domain.ProviderKindTextGenUI:
 		baseURL := cfg.BaseURL
 		if baseURL == "" {

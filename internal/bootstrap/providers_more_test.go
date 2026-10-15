@@ -137,7 +137,7 @@ func TestBuildProviderFromConfig_RejectsUnusableConfigs(t *testing.T) {
 		{domain.ProviderConfig{Kind: domain.ProviderKindAnthropic, Name: "NoKey"}, "apiKey is required"},
 		{domain.ProviderConfig{Kind: domain.ProviderKindGemini, Name: "NoKey"}, "apiKey is required"},
 		{domain.ProviderConfig{Kind: domain.ProviderKind("nope"), Name: "X"}, "unknown provider kind"},
-		{domain.ProviderConfig{Kind: domain.ProviderKindCLI, Name: "X"}, "unknown provider kind"},
+		{domain.ProviderConfig{Kind: domain.ProviderKindCLI, Name: "X"}, "a command is required"},
 	}
 	for _, tc := range bad {
 		if c, err := BuildProviderFromConfig(tc.cfg); err == nil || !strings.Contains(err.Error(), tc.want) || c != nil {

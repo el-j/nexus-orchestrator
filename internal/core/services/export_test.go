@@ -46,3 +46,8 @@ func (o *OrchestratorService) ResolveChain(task domain.Task) ([]string, error) {
 
 // PublishForTest sends a stream event the way the engine does, so tests can flood subscribers.
 func (o *OrchestratorService) PublishForTest(ev ports.TaskEvent) { o.publish(ev) }
+
+// GetClientForTest returns the registered client with the given name.
+func (o *OrchestratorService) GetClientForTest(name string) (ports.LLMClient, bool) {
+	return o.discovery.GetClientByName(name)
+}

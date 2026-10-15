@@ -49,6 +49,22 @@ func (s *DiscoveryService) RegisterProvider(c ports.LLMClient) {
 	s.availableClients = append(s.availableClients, c)
 }
 
+// ReplaceProvider registers c, first dropping any provider with the same name and active model:
+// registering the same backend again (a restarted bridge, a re-sent config) must not leave a
+// stale copy next to it. A different model under the same name is a different provider and stays.
+func (s *DiscoveryService) ReplaceProvider(c ports.LLMClient) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	kept := s.availableClients[:0:0]
+	for _, old := range s.availableClients {
+		if strings.EqualFold(old.ProviderName(), c.ProviderName()) && old.ActiveModel() == c.ActiveModel() {
+			continue
+		}
+		kept = append(kept, old)
+	}
+	s.availableClients = append(kept, c)
+}
+
 // RemoveProvider removes the first registered provider whose ProviderName()
 // matches name (case-insensitive). Returns true if a provider was removed.
 func (s *DiscoveryService) RemoveProvider(name string) bool {
