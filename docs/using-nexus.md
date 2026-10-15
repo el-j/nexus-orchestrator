@@ -26,17 +26,20 @@ make status     # in another terminal: is it up, and which LLM providers does it
 ## 2. Connect your agents once
 
 ```sh
-make connect    # prints the exact commands
+make connect                    # shows which agents on this machine can call Nexus (changes nothing)
+nexus-cli connect --write       # adds the nexus MCP server to Antigravity, Cursor and Claude Code
 ```
 
-For Claude Code, register it for every project (user scope):
+An agent that is not connected cannot use Nexus: it can only edit files and the database around it,
+which Nexus then shows as state it never ran. [how-work-reaches-nexus.md](how-work-reaches-nexus.md)
+explains what each way in does. The VS Code extension connects the editor's own agent (below); Claude Desktop
+uses `{"mcpServers": {"nexusOrchestrator": {"url": "http://localhost:63988/mcp"}}}`.
 
-```sh
-claude mcp add --transport http --scope user nexus http://localhost:63988/mcp
-```
-
-Claude Desktop uses the JSON snippet `make connect` prints; the VS Code extension registers the
-server itself. After this, every agent in every project sees the same tools.
+**With the VS Code extension installed** the editor's own agent is connected for you: in VS Code (1.101+)
+the extension registers the Nexus server with VS Code's MCP support (Chat → Configure Tools); in
+Antigravity it offers once to add the server to `~/.gemini/.../mcp_config.json` (setting
+`nexus.mcp.autoConnect`: `ask`, `always`, `never`; command _Nexus: Connect This Editor's Agent_).
+Reload the window afterwards.
 
 ## 3. Introduce each project once
 
@@ -44,7 +47,7 @@ server itself. After this, every agent in every project sees the same tools.
 make init-project PROJECT=/absolute/path/to/your/repo
 ```
 
-This reads the project's `CLAUDE.md` (or `.claude/CLAUDE.md`) and stores each `## Section` as
+This reads the project's `CLAUDE.md` (or `.claude/CLAUDE.md`), `AGENTS.md`, `GEMINI.md` and Copilot instructions and stores each `## Section` as
 knowledge, classified as architecture, file map, convention, learning or glossary. Notes:
 
 - Sections with fewer than 20 characters of body are skipped, so a very short `CLAUDE.md` can

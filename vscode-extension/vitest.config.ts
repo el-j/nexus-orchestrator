@@ -12,7 +12,14 @@ export default defineConfig({
       // Measure ALL extension source, not a hand-picked subset.
       include: ['src/**/*.ts'],
       // nexusTypes.ts holds only type declarations, so it has no runtime code to cover.
-      exclude: ['src/**/*.test.ts', 'src/**/*.d.ts', 'src/test/**', 'src/nexusTypes.ts'],
+      // mcpProxyEntry.ts only wires mcpProxy.ts to the process streams (the logic is tested there).
+      exclude: [
+        'src/**/*.test.ts',
+        'src/**/*.d.ts',
+        'src/test/**',
+        'src/nexusTypes.ts',
+        'src/mcpProxyEntry.ts',
+      ],
       // Ratchet: raise these when coverage rises, never lower them.
       thresholds: { statements: 100, lines: 100, functions: 100, branches: 100 },
     },

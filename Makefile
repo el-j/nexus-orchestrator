@@ -134,14 +134,12 @@ status:
 	@$(DIST)/native/$(BINARY_CLI) providers 2>/dev/null || true
 
 # Print the commands that register the MCP server once for every project/agent.
-connect:
-	@echo "Claude Code (all projects):"
-	@echo "  claude mcp add --transport http --scope user nexus $(NEXUS_MCP)"
+connect: build
+	@echo "Agents on this machine and whether they can call Nexus (nothing is changed):"
+	@$(DIST)/native/$(BINARY_CLI) connect
 	@echo ""
-	@echo "Claude Desktop (claude_desktop_config.json):"
-	@echo '  {"mcpServers": {"nexusOrchestrator": {"url": "$(NEXUS_MCP)"}}}'
-	@echo ""
-	@echo "VS Code: install the extension (make build-vscode); it registers the server itself."
+	@echo "Connect them:  $(DIST)/native/$(BINARY_CLI) connect --write   (merges the nexus server into each agent's MCP config)"
+	@echo "VS Code / Antigravity: install the extension (make build-vscode); it connects the editor's own agent (command: Nexus: Connect This Editor's Agent)."
 	@echo "Guide: docs/using-nexus.md"
 
 # Teach the orchestrator about a project once: make init-project PROJECT=/path/to/repo

@@ -71,6 +71,19 @@ are named `PLAN-n.md` / `TASK-n.md`; for any other layout run **Nexus: Choose Pl
 The daemon's onboarding context reads the same files, so a fresh session learns the active plan
 even without an `orchestrator.json`.
 
+### Connecting the editor's agent to Nexus
+
+An agent that cannot call the Nexus MCP tools can only work around them. The extension connects the
+agent of the editor it runs in:
+
+- **VS Code 1.101+**: registers the daemon's MCP server with VS Code's MCP support (nothing is written;
+  VS Code asks you to trust it the first time; see Chat → Configure Tools).
+- **Antigravity**: its agent reads `~/.gemini/.../mcp_config.json`. The extension offers once to add the
+  `nexus` server there (a bundled bridge, `dist/mcpProxy.js`, run with the editor's own Node) and keeps
+  the entry current across updates. Setting `nexus.mcp.autoConnect`: `ask` (default), `always`, `never`.
+  Existing servers stay and the old file is kept as a backup. Reload the window afterwards.
+- Any editor: **Nexus: Connect This Editor's Agent** does it on demand, or run `nexus-cli connect --write`.
+
 ### Status bar
 
 The bottom-left status bar item shows daemon connection status and active task count. Click it for quick actions.
