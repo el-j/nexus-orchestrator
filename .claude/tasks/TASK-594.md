@@ -4,7 +4,7 @@ planId: PLAN-074
 title: 'Context by relevance, not whole files'
 role: coder
 wave: 5
-status: todo
+status: done
 createdAt: 2026-10-16
 dependsOn: [TASK-585]
 ---

@@ -12,8 +12,10 @@ import (
 // prepareChatPrompt loads context files and session history once for the task.
 func (o *OrchestratorService) prepareChatPrompt(task domain.Task) (string, []domain.Message, error) {
 	prompt := task.Instruction
+	// A broken policy file is reported when the rules are applied; here it only means no budgets.
+	policy, _, _ := LoadProjectPolicy(task.ProjectPath)
 	if len(task.ContextFiles) > 0 && o.fileWriter != nil {
-		ctx, err := o.fileWriter.ReadContextFiles(task.ProjectPath, task.ContextFiles)
+		ctx, err := o.readContext(task, policy.ContextBudget)
 		if err != nil {
 			logEntry := fmt.Sprintf("failed reading context files: %v", err)
 			log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
@@ -46,6 +48,9 @@ func (o *OrchestratorService) prepareChatPrompt(task domain.Task) (string, []dom
 			return "", nil, fmt.Errorf("orchestrator: load session: %w", err)
 		}
 		sessionHistory = trimHistory(sess.Messages, MaxHistoryMessages)
+		if policy.HistoryBudget > 0 {
+			sessionHistory = trimHistoryTokens(sessionHistory, policy.HistoryBudget)
+		}
 	}
 
 	return prompt, sessionHistory, nil

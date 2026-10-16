@@ -4,7 +4,7 @@ planId: PLAN-074
 title: 'Verify before asking a frontier model again'
 role: coder
 wave: 5
-status: todo
+status: done
 createdAt: 2026-10-16
 dependsOn: [TASK-594]
 ---
@@ -14,3 +14,5 @@ dependsOn: [TASK-594]
 Run the verification command first; send only the failing output on retry.
 
 Done when: the failing test came first, `make test` and `make nice` pass, docs and surface matrix updated where an interface changed.
+
+Done by TASK-590: a failed verification goes to the next rung up and is sent only the latest output and the failing command output (`correctionPrompt`), so the expensive model is asked after the cheap one failed, not before.

@@ -5095,52 +5095,57 @@
     "TASK-594": {
       "id": "TASK-594",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Context by relevance, not whole files",
       "role": "coder",
       "wave": 5,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-585"]
+      "dependencies": ["TASK-585"],
+      "completedAt": "2026-10-16T00:00:00Z"
     },
     "TASK-595": {
       "id": "TASK-595",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "History capped by tokens, old turns summarized",
       "role": "coder",
       "wave": 5,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-594"]
+      "dependencies": ["TASK-594"],
+      "completedAt": "2026-10-16T00:00:00Z"
     },
     "TASK-596": {
       "id": "TASK-596",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "dropped",
       "title": "Prompt caching for the stable prefix",
       "role": "coder",
       "wave": 5,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-584"]
+      "dependencies": ["TASK-584"],
+      "completedAt": "2026-10-16T00:00:00Z"
     },
     "TASK-597": {
       "id": "TASK-597",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Verify before asking a frontier model again",
       "role": "coder",
       "wave": 5,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-594"]
+      "dependencies": ["TASK-594"],
+      "completedAt": "2026-10-16T00:00:00Z"
     },
     "TASK-598": {
       "id": "TASK-598",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Report: tokens saved against v0.10.0 behaviour",
       "role": "tester",
       "wave": 5,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-594", "TASK-595", "TASK-596", "TASK-597"]
+      "dependencies": ["TASK-594", "TASK-595", "TASK-596", "TASK-597"],
+      "completedAt": "2026-10-16T00:00:00Z"
     },
     "TASK-599": {
       "id": "TASK-599",

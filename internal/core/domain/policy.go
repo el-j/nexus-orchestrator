@@ -46,6 +46,13 @@ type ProjectPolicy struct {
 	// A task starts on the first rung that is available (not cooling down, under the quota threshold)
 	// and a failed verification asks the next rung up. The key "default" serves roles without an entry.
 	Ladder map[string][]string `json:"ladder,omitempty"`
+	// ContextBudget caps the tokens a task's context files may take in the prompt (0: no cap). Over
+	// the cap the largest files are sent as outlines (their top-level declarations) and, if that is
+	// not enough, shortened, each with a note saying so.
+	ContextBudget int `json:"contextBudget,omitempty"`
+	// HistoryBudget caps the tokens of session history sent with a task (0: only the newest
+	// MaxHistoryMessages messages are sent). Older messages are dropped first.
+	HistoryBudget int `json:"historyBudget,omitempty"`
 	// PlanFiles says where the project keeps its plan and task files; unset, they are found by themselves.
 	PlanFiles *PlanFilesPolicy `json:"planFiles,omitempty"`
 }
@@ -60,6 +67,9 @@ func (p ProjectPolicy) QuotaLimit() float64 {
 	}
 	return DefaultQuotaThreshold
 }
+
+// MaxTokenBudget is the largest ContextBudget or HistoryBudget a policy may set.
+const MaxTokenBudget = 200000
 
 // Limits of a ladder.
 const (
@@ -194,6 +204,9 @@ func (p ProjectPolicy) Validate() error {
 	}
 	if err := validateLadder(p.Ladder); err != nil {
 		return err
+	}
+	if p.ContextBudget < 0 || p.ContextBudget > MaxTokenBudget || p.HistoryBudget < 0 || p.HistoryBudget > MaxTokenBudget {
+		return fmt.Errorf("policy: contextBudget and historyBudget must be between 0 and %d tokens", MaxTokenBudget)
 	}
 	if p.QuotaThreshold < 0 || p.QuotaThreshold > 1 {
 		return fmt.Errorf("policy: quotaThreshold must be between 0 and 1")

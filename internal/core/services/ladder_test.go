@@ -203,3 +203,35 @@ func TestPreviewRouting_WithoutProvidersOrAPolicy(t *testing.T) {
 		t.Error("no live provider is an error")
 	}
 }
+
+func TestLadder_ACorrectionStaysPutWhenTheModelIsNotOnTheLadder(t *testing.T) {
+	opus, sonnet, local := ladderProviders()
+	local.errs = []error{limit("Ollama", time.Now().Add(time.Hour))}
+	sonnet.replies = []string{"s1", "s2"}
+	runner := &scriptedRunner{results: []runResult{{"e", errors.New("x")}, {"PASS", nil}}}
+	e := newEngine(t, &contextWriter{}, nil, runner, opus, sonnet, local)
+	dir := ladderProject(t, `{"ladder":{"coder":["Ollama/*"]}}`) // only the local model is a rung
+	id := e.queue(domain.Task{Instruction: "Foo", Role: "coder", ProjectPath: dir, TargetFile: "foo.go", VerificationCommand: "go test"})
+	e.runOne(id, domain.StatusCompleted)
+	if opus.calls+sonnet.calls != 2 || (opus.calls != 2 && sonnet.calls != 2) {
+		t.Errorf("a model outside the ladder corrects itself: sonnet=%d opus=%d", sonnet.calls, opus.calls)
+	}
+}
+
+func TestLadder_AStepUpSkipsARungThatIsCoolingDown(t *testing.T) {
+	opus, sonnet, local := ladderProviders()
+	local.errs = []error{limit("Ollama", time.Now().Add(40*time.Millisecond))}
+	sonnet.errs = []error{limit("Anthropic", time.Now().Add(time.Hour))}
+	opus.replies = []string{"opus ok", "opus fixed"}
+	runner := &scriptedRunner{results: []runResult{{"", nil}, {"e", errors.New("x")}, {"PASS", nil}}}
+	e := newEngine(t, &contextWriter{}, nil, runner, opus, sonnet, local)
+	dir := ladderProject(t, threeRungs)
+	// The first task finds the local and the sonnet rung limited and runs on opus; sonnet keeps cooling.
+	e.runOne(e.queue(domain.Task{Instruction: "warm", Role: "coder", ProjectPath: dir, TargetFile: "w.go", VerificationCommand: "go vet"}), domain.StatusCompleted)
+	time.Sleep(80 * time.Millisecond) // the local limit is over
+	id := e.queue(domain.Task{Instruction: "Foo", Role: "coder", ProjectPath: dir, TargetFile: "foo.go", VerificationCommand: "go test"})
+	e.runOne(id, domain.StatusCompleted)
+	if local.calls != 2 || sonnet.calls != 1 || opus.calls != 2 {
+		t.Errorf("local failed verification, the cooling sonnet rung is skipped: local=%d sonnet=%d opus=%d", local.calls, sonnet.calls, opus.calls)
+	}
+}

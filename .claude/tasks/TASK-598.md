@@ -4,7 +4,7 @@ planId: PLAN-074
 title: 'Report: tokens saved against v0.10.0 behaviour'
 role: tester
 wave: 5
-status: todo
+status: done
 createdAt: 2026-10-16
 dependsOn: [TASK-594, TASK-595, TASK-596, TASK-597]
 ---
@@ -14,3 +14,5 @@ dependsOn: [TASK-594, TASK-595, TASK-596, TASK-597]
 Measured with the ledger on the same tasks; decides whether 595/596 stay.
 
 Done when: the failing test came first, `make test` and `make nice` pass, docs and surface matrix updated where an interface changed.
+
+Done as docs/token-economy.md: what was measured (lean Claude calls, context budget in tests), what was not (ladder savings in a real project) and how to measure it with `nexus-cli usage`.

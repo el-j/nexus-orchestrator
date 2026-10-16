@@ -196,3 +196,14 @@ func TestRungMatch(t *testing.T) {
 		}
 	}
 }
+
+func TestTokenBudgetsInThePolicy(t *testing.T) {
+	for _, bad := range []domain.ProjectPolicy{{ContextBudget: -1}, {HistoryBudget: -5}, {ContextBudget: domain.MaxTokenBudget + 1}, {HistoryBudget: domain.MaxTokenBudget + 1}} {
+		if err := bad.Validate(); err == nil {
+			t.Errorf("%+v must be rejected", bad)
+		}
+	}
+	if err := (domain.ProjectPolicy{ContextBudget: 8000, HistoryBudget: 4000}).Validate(); err != nil {
+		t.Errorf("valid budgets: %v", err)
+	}
+}
