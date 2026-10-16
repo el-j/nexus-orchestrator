@@ -4975,12 +4975,13 @@
     "TASK-583": {
       "id": "TASK-583",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Claude CLI driver: stream-json, usage, rate-limit event",
       "role": "coder",
       "wave": 1,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-581"]
+      "dependencies": ["TASK-581"],
+      "completedAt": "2026-10-16T00:00:00Z"
     },
     "TASK-584": {
       "id": "TASK-584",

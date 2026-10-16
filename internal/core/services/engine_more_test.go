@@ -336,6 +336,7 @@ func TestPromoteProvider_AnInstalledCLIBecomesAProviderRunningItsPath(t *testing
 	})
 	orch.WithSystemScanner(&mockScanner{results: []domain.DiscoveredProvider{
 		{ID: "cli", Name: "Claude CLI", Kind: domain.ProviderKindCLI, Status: domain.DiscoveryStatusInstalled, CLIPath: "/usr/local/bin/claude"},
+		{ID: "aichat", Name: "aichat", Kind: domain.ProviderKindCLI, Status: domain.DiscoveryStatusInstalled, CLIPath: "/usr/local/bin/aichat"},
 		{ID: "bare", Name: "Installed but not a CLI kind", Kind: domain.ProviderKindOllama, Status: domain.DiscoveryStatusInstalled, CLIPath: "/usr/bin/ollama"},
 	}})
 	if _, err := orch.TriggerScan(bg); err != nil {
@@ -344,8 +345,11 @@ func TestPromoteProvider_AnInstalledCLIBecomesAProviderRunningItsPath(t *testing
 	if err := orch.PromoteProvider(bg, "cli"); err != nil {
 		t.Fatalf("promote CLI: %v", err)
 	}
-	if got.Kind != domain.ProviderKindCLI || got.BaseURL != "/usr/local/bin/claude -p" {
-		t.Errorf("config = %+v; want the claude path with -p", got)
+	if got.Kind != domain.ProviderKindCLI || got.BaseURL != "/usr/local/bin/claude -p --output-format stream-json" {
+		t.Errorf("config = %+v; want the claude path in print mode with stream-json (usage and quota)", got)
+	}
+	if err := orch.PromoteProvider(bg, "aichat"); err != nil || got.BaseURL != "/usr/local/bin/aichat -p" {
+		t.Errorf("another tool keeps plain -p: %v %+v", err, got)
 	}
 	if err := orch.PromoteProvider(bg, "bare"); err == nil {
 		t.Error("only a CLI-kind tool may be promoted from its path")

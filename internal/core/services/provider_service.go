@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -129,8 +131,12 @@ func (o *OrchestratorService) PromoteProvider(ctx context.Context, discoveredID 
 	baseURL := found.BaseURL
 	if found.Kind == domain.ProviderKindCLI && found.CLIPath != "" {
 		// A command-line AI tool has a path, not a URL; "-p" is the non-interactive print mode
-		// of claude, the tool this kind is for.
+		// of claude, the tool this kind is for. Claude also gets stream-json, which gives live
+		// text, token usage and the plan's own quota reading (see llm_cli).
 		baseURL = found.CLIPath + " -p"
+		if strings.TrimSuffix(strings.ToLower(filepath.Base(found.CLIPath)), ".exe") == "claude" {
+			baseURL += " --output-format stream-json"
+		}
 	} else if found.Status != domain.DiscoveryStatusReachable {
 		return fmt.Errorf("orchestrator: promote provider: provider %q is not reachable (status: %s)", found.Name, found.Status)
 	}

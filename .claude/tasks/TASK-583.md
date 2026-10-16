@@ -4,7 +4,7 @@ planId: PLAN-074
 title: 'Claude CLI driver: stream-json, usage, rate-limit event'
 role: coder
 wave: 1
-status: todo
+status: done
 createdAt: 2026-10-16
 dependsOn: [TASK-581]
 ---
