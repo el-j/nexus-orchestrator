@@ -18,7 +18,7 @@ Every stable release has a clean `vX.Y.Z` tag, never `v0.10.0-48`. Stable releas
 
 ## Making a release
 
-1. Open a pull request `develop` → `main` and merge it with a **merge commit** (not squash), so the
+1. Open a pull request `develop` → `main` and merge it with a **merge commit** (`main` allows it; do not squash), so the
    conventional commits stay visible.
 2. The Release workflow (`release-please.yml`) opens or updates **`chore(main): release X.Y.Z`**.
    The version follows the commits: `feat:` is a minor bump, `fix:` a patch, `!` or
@@ -26,7 +26,7 @@ Every stable release has a clean `vX.Y.Z` tag, never `v0.10.0-48`. Stable releas
 3. Merge that pull request. release-please creates the tag `vX.Y.Z` and the GitHub release.
 4. The Publish workflow is called with that tag, builds the CLI, desktop app and VS Code extension and
    attaches them to the release.
-5. A `main` → `develop` pull request is opened; merge it so betas continue from the new version.
+5. A `main` → `develop` pull request is opened; squash-merge it (`develop` requires linear history, so merge commits are blocked there) so betas continue from the new version.
 
 `CHANGELOG.md` is written by hand (Keep a Changelog); add the section for the version in the release
 pull request branch before merging. Configuration: `release-please-config.json` and
