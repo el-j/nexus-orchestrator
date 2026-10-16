@@ -1,8 +1,38 @@
 ---
 id: PLAN-074
 title: 'Quota-aware routing, a model ladder and a usage ledger (from the v0.10.0 audit)'
-status: proposed
-createdAt: 2026-10-15
+status: active
+createdAt: 2026-10-16
+tasks:
+  [
+    TASK-581,
+    TASK-582,
+    TASK-583,
+    TASK-584,
+    TASK-585,
+    TASK-586,
+    TASK-587,
+    TASK-588,
+    TASK-589,
+    TASK-590,
+    TASK-591,
+    TASK-592,
+    TASK-593,
+    TASK-594,
+    TASK-595,
+    TASK-596,
+    TASK-597,
+    TASK-598,
+    TASK-599,
+    TASK-600,
+    TASK-601,
+    TASK-602,
+    TASK-603,
+    TASK-604,
+    TASK-605,
+    TASK-606,
+    TASK-607,
+  ]
 ---
 
 # PLAN-074 — Do not run out of quota; spend fewer tokens
@@ -60,3 +90,7 @@ documentation (REST, MCP, CLI, surface matrix, changelog).
 | E5  | `httpapi_client.IngestKnowledge`: implement or remove from the port                                                      |
 
 Order: E1/E4 first (cheap, clean base), then A → B → C → D. D5 decides whether D2/D3 stay.
+
+## Task map
+
+Wave 1 TASK-581..585 (typed errors, cooldown, Claude driver, usage port and ledger), wave 2 586..588 (quota routing, WAITING, e2e), wave 3 589..591 (ladder), wave 4 592..593 (usage UI, budgets), wave 5 594..598 (fewer tokens), wave 6 599..602 (vendor drivers and status; 599 needs `agy` installed), wave 7 603..607 (audit gaps). Design for the vendor bridges: [docs/subscription-bridges.md](../../docs/subscription-bridges.md).
