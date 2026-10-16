@@ -4,7 +4,7 @@ planId: PLAN-074
 title: 'Quota threshold routing from the client's own reading'
 role: coder
 wave: 2
-status: todo
+status: done
 createdAt: 2026-10-16
 dependsOn: [TASK-582, TASK-583]
 ---

@@ -72,6 +72,13 @@ export interface ProviderInfo {
   rateLimitedUntil?: string;
   /** Why the provider cools down, for example "anthropic: rate limited (429)". */
   cooldownReason?: string;
+  /** The plan's own reading of its allowance, where the provider's client reports it. */
+  quota?: {
+    window: string;
+    status: string;
+    utilization: number;
+    resetsAt?: string;
+  };
 }
 
 /** A saved provider configuration. */

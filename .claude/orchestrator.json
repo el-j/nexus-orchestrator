@@ -5008,12 +5008,13 @@
     "TASK-586": {
       "id": "TASK-586",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Quota threshold routing from the client's own reading",
       "role": "coder",
       "wave": 2,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-582", "TASK-583"]
+      "dependencies": ["TASK-582", "TASK-583"],
+      "completedAt": "2026-10-16T00:00:00Z"
     },
     "TASK-587": {
       "id": "TASK-587",

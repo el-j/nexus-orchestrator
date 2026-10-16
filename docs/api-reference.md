@@ -203,6 +203,11 @@ Returns all registered LLM providers with their liveness status.
 ]
 ```
 
+`quota` is the plan's own reading of its allowance where the provider's client reports it (today the
+Claude command-line tool): `window` (`five_hour`, `seven_day`), `utilization` (share used, 0 to 1),
+`resetsAt`, `status`. It disappears once its window has reset. Routing tries a provider at or above the
+project policy's `quotaThreshold` (default 0.9) after the others.
+
 `rateLimited` is true while a provider cools down after a rate limit (HTTP 429), an exhausted quota (402,
 or a 429 that says so) or an overload (503, 529). The engine skips it until `rateLimitedUntil`: the time the
 provider gave in `Retry-After`, or a default (60 s rate limit, 30 s overload, 1 h quota). The cooldown is

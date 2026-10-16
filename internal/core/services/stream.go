@@ -68,6 +68,7 @@ func (o *OrchestratorService) liveChat(ctx context.Context, taskID string, llm p
 		onChunk(reply)
 		return reply, err
 	})
+	o.noteQuota(llm)
 	if err == nil {
 		o.recordUsage(taskID, llm)
 	}
@@ -86,6 +87,7 @@ func (o *OrchestratorService) liveGenerate(ctx context.Context, taskID string, l
 		onChunk(reply)
 		return reply, err
 	})
+	o.noteQuota(llm)
 	if err == nil {
 		o.recordUsage(taskID, llm)
 	}

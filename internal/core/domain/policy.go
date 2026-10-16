@@ -37,8 +37,23 @@ type ProjectPolicy struct {
 	Remember bool `json:"remember,omitempty"`
 	// Rules are free-text rules shown to the model verbatim.
 	Rules []string `json:"rules,omitempty"`
+	// QuotaThreshold is the share (0 to 1) of a provider's plan allowance at which routing prefers the
+	// other providers of the chain; 0 means DefaultQuotaThreshold. 1 only avoids a provider whose
+	// allowance is used up.
+	QuotaThreshold float64 `json:"quotaThreshold,omitempty"`
 	// PlanFiles says where the project keeps its plan and task files; unset, they are found by themselves.
 	PlanFiles *PlanFilesPolicy `json:"planFiles,omitempty"`
+}
+
+// DefaultQuotaThreshold is the allowance share at which routing starts to prefer other providers.
+const DefaultQuotaThreshold = 0.9
+
+// QuotaLimit returns the quota threshold routing uses: the policy's, or DefaultQuotaThreshold.
+func (p ProjectPolicy) QuotaLimit() float64 {
+	if p.QuotaThreshold > 0 {
+		return p.QuotaThreshold
+	}
+	return DefaultQuotaThreshold
 }
 
 // MaxPlanFolders bounds how many folders a policy may name for plans and for tasks each.
@@ -89,6 +104,9 @@ func (p ProjectPolicy) Validate() error {
 	}
 	if p.MaxFileLines < 0 {
 		return fmt.Errorf("policy: maxFileLines must not be negative")
+	}
+	if p.QuotaThreshold < 0 || p.QuotaThreshold > 1 {
+		return fmt.Errorf("policy: quotaThreshold must be between 0 and 1")
 	}
 	if strings.ContainsAny(p.Verify, "\r\n") || len(p.Verify) > MaxPolicyVerifyLen {
 		return fmt.Errorf("policy: verify must be a single line of at most %d characters", MaxPolicyVerifyLen)

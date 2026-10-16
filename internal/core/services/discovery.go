@@ -35,6 +35,7 @@ type DiscoveryService struct {
 	cacheMu          sync.Mutex
 	healthCache      map[string]*providerHealth
 	cooldowns        cooldownBook // providers that hit a limit; see cooldown.go
+	quotas           quotaBook    // the plans' own allowance readings; see quota.go
 }
 
 // NewDiscoveryService creates a DiscoveryService with the supplied LLM adapters.
@@ -199,6 +200,9 @@ func (s *DiscoveryService) ListProviders() []ports.ProviderInfo {
 			info.RateLimited = true
 			info.RateLimitedUntil = cd.until
 			info.CooldownReason = cd.reason
+		}
+		if q, ok := s.quotas.current(cooldownKey(c), now); ok {
+			info.Quota = &q
 		}
 		info.LastError = h.lastError
 		if h.alive {

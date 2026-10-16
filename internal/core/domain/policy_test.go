@@ -102,3 +102,22 @@ func TestPolicy_PlanFilesFoldersMustStayInsideTheProject(t *testing.T) {
 		t.Error("a task folder outside the project must be refused")
 	}
 }
+
+func TestQuotaThresholdPolicy(t *testing.T) {
+	if got := (domain.ProjectPolicy{}).QuotaLimit(); got != domain.DefaultQuotaThreshold {
+		t.Errorf("unset = %v, want the default %v", got, domain.DefaultQuotaThreshold)
+	}
+	if got := (domain.ProjectPolicy{QuotaThreshold: 0.75}).QuotaLimit(); got != 0.75 {
+		t.Errorf("set = %v", got)
+	}
+	for _, bad := range []float64{-0.1, 1.01, 7} {
+		if err := (domain.ProjectPolicy{QuotaThreshold: bad}).Validate(); err == nil {
+			t.Errorf("quotaThreshold %v must be rejected", bad)
+		}
+	}
+	for _, ok := range []float64{0, 0.5, 1} {
+		if err := (domain.ProjectPolicy{QuotaThreshold: ok}).Validate(); err != nil {
+			t.Errorf("quotaThreshold %v: %v", ok, err)
+		}
+	}
+}

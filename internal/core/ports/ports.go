@@ -127,7 +127,10 @@ type ProviderInfo struct {
 	RateLimited      bool      `json:"rateLimited,omitempty"`
 	RateLimitedUntil time.Time `json:"rateLimitedUntil,omitzero"`
 	CooldownReason   string    `json:"cooldownReason,omitempty"`
-	LastError        string    `json:"lastError,omitempty"`
+	// Quota is the plan's own reading of its allowance (window, share used, reset time), where the
+	// provider's client reports it; absent otherwise and once its window has reset.
+	Quota     *domain.QuotaReading `json:"quota,omitempty"`
+	LastError string               `json:"lastError,omitempty"`
 }
 
 // SessionRepository is the port for persisting per-project conversation history.

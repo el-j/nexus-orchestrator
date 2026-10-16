@@ -75,6 +75,14 @@ export const ProviderSchema = z
     rateLimited: z.boolean().optional(),
     rateLimitedUntil: z.string().optional(),
     cooldownReason: z.string().optional(),
+    quota: z
+      .object({
+        window: z.string(),
+        status: z.string(),
+        utilization: z.number(),
+        resetsAt: z.string().optional(),
+      })
+      .optional(),
   })
   .passthrough();
 

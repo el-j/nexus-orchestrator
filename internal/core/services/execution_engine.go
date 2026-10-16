@@ -90,6 +90,7 @@ func (o *OrchestratorService) processNext() bool {
 		o.emit(task.ID, domain.StatusNoProvider)
 		return true
 	}
+	chain = o.routeByQuota(chain, task)
 	o.emit(task.ID, domain.StatusProcessing)
 
 	prompt, sessionHistory, err := o.prepareChatPrompt(task)
