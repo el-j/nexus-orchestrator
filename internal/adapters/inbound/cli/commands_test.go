@@ -304,3 +304,55 @@ func TestUsageCmd(t *testing.T) {
 		t.Errorf("no ledger: %v", err)
 	}
 }
+
+type routingScripted struct {
+	scriptedOrch
+	preview       domain.RoutingPreview
+	err           error
+	project, role string
+}
+
+func (r *routingScripted) PreviewRouting(_ context.Context, project, role string) (domain.RoutingPreview, error) {
+	r.project, r.role = project, role
+	return r.preview, r.err
+}
+
+func TestRoutingCmd(t *testing.T) {
+	hot := 0.93
+	ready := 0.4
+	orch := &routingScripted{preview: domain.RoutingPreview{
+		Role: "coder", Ladder: []string{"Ollama/*", "Anthropic/*"}, QuotaThreshold: 0.9,
+		Order: []domain.RoutingEntry{
+			{Position: 1, Provider: "Ollama", Model: "qwen", Rung: 0, CoolingUntil: time.Now().Add(time.Hour), CooldownReason: "Ollama: rate limited (429)"},
+			{Position: 2, Provider: "Anthropic", Model: "claude-sonnet", Rung: 1, Utilization: &ready},
+			{Position: 3, Provider: "Gemini", Model: "gemini-x", Rung: -1, Utilization: &hot},
+			{Position: 4, Provider: "LM Studio", Rung: -1},
+		}}}
+	out, err := execute(orch, nil, "routing", "--project", "/p", "--role", "coder")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Role: coder", "Ladder (cheapest first)", "cooling down until", "rate limited (429)", "ready, plan 40% used", "plan 93% used: tried after the others", "LM Studio", "ready"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q:\n%s", want, out)
+		}
+	}
+	if orch.project != "/p" || orch.role != "coder" {
+		t.Errorf("arguments: %q %q", orch.project, orch.role)
+	}
+
+	orch.preview = domain.RoutingPreview{QuotaThreshold: 0.9}
+	if out, _ := execute(orch, nil, "routing", "--project", "/p"); !strings.Contains(out, "Ladder: none") || !strings.Contains(out, "Role: -") {
+		t.Errorf("no ladder: %s", out)
+	}
+	if _, err := execute(orch, nil, "routing"); err == nil {
+		t.Error("--project is required")
+	}
+	orch.err = errors.New("no provider")
+	if _, err := execute(orch, nil, "routing", "--project", "/p"); err == nil || !strings.Contains(err.Error(), "no provider") {
+		t.Errorf("backend error: %v", err)
+	}
+	if _, err := execute(&scriptedOrch{}, nil, "routing", "--project", "/p"); err == nil || !strings.Contains(err.Error(), "not available") {
+		t.Errorf("no previewer: %v", err)
+	}
+}

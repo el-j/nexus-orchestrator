@@ -287,6 +287,17 @@ func (r *Client) GetUsage(ctx context.Context, since time.Time) ([]domain.UsageS
 	return out.Usage, err
 }
 
+// PreviewRouting asks the daemon how it would order the providers for a task of role in the project.
+func (r *Client) PreviewRouting(ctx context.Context, projectPath, role string) (domain.RoutingPreview, error) {
+	var out domain.RoutingPreview
+	q := url.Values{"projectPath": {projectPath}}
+	if role != "" {
+		q.Set("role", role)
+	}
+	err := r.send(ctx, call{op: "preview routing", method: http.MethodGet, path: "/api/routing?" + q.Encode()}, &out)
+	return out, err
+}
+
 // RegisterCloudProvider registers an adapter for cfg at runtime.
 func (r *Client) RegisterCloudProvider(cfg domain.ProviderConfig) error {
 	return r.send(context.Background(), call{op: "register provider", method: http.MethodPost, path: "/api/providers", body: cfg, ok: statusCreated}, nil)

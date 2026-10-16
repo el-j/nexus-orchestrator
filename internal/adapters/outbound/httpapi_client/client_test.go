@@ -1127,3 +1127,23 @@ func TestClient_GetUsage(t *testing.T) {
 		t.Errorf("zero time asks for everything: since=%q err=%v", gotSince, err)
 	}
 }
+
+func TestClient_PreviewRouting(t *testing.T) {
+	var gotPath, gotProject, gotRole string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath, gotProject, gotRole = r.URL.Path, r.URL.Query().Get("projectPath"), r.URL.Query().Get("role")
+		fmt.Fprint(w, `{"role":"coder","quotaThreshold":0.9,"order":[{"position":1,"provider":"Ollama","model":"qwen","rung":0}]}`)
+	}))
+	defer srv.Close()
+	c := httpapi_client.NewClient(srv.URL)
+	got, err := c.PreviewRouting(context.Background(), "/my project", "coder")
+	if err != nil || len(got.Order) != 1 || got.Order[0].Provider != "Ollama" || got.QuotaThreshold != 0.9 {
+		t.Fatalf("%+v %v", got, err)
+	}
+	if gotPath != "/api/routing" || gotProject != "/my project" || gotRole != "coder" {
+		t.Errorf("request: %s project=%q role=%q", gotPath, gotProject, gotRole)
+	}
+	if _, err := c.PreviewRouting(context.Background(), "/p", ""); err != nil || gotRole != "" {
+		t.Errorf("no role: %v role=%q", err, gotRole)
+	}
+}

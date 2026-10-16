@@ -72,6 +72,12 @@ type UsageQuerier interface {
 	GetUsage(ctx context.Context, since time.Time) ([]domain.UsageSummary, error)
 }
 
+// RoutingPreviewer is what the inbound adapters need to show how routing would order the providers for a
+// role in a project (the ladder, cooldowns and quota readings applied).
+type RoutingPreviewer interface {
+	PreviewRouting(ctx context.Context, projectPath, role string) (domain.RoutingPreview, error)
+}
+
 // TaskRepository is the port for persisting and querying Tasks.
 type TaskRepository interface {
 	Save(ctx context.Context, t domain.Task) error

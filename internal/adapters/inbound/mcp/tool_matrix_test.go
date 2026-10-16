@@ -222,7 +222,7 @@ func allOrchOps() map[string]bool {
 		"ListProviderConfigs", "GetDiscoveredProviders", "TriggerScan", "PromoteProvider", "RegisterAISession",
 		"ListAISessions", "DeregisterAISession", "HeartbeatAISession", "HeartbeatTask", "ClaimTask", "UpdateTaskStatus",
 		"PurgeDisconnectedSessions", "GetDiscoveredAgents", "DelegateToNexus", "TerminateAISession",
-		"GetDiscoveredPlanFiles", "GetRuntimeConfig", "UpdateRuntimeConfig", "GetUsage"}
+		"GetDiscoveredPlanFiles", "GetRuntimeConfig", "UpdateRuntimeConfig", "GetUsage", "PreviewRouting"}
 	m := map[string]bool{}
 	for _, o := range ops {
 		m[o] = true

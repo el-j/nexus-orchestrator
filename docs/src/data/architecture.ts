@@ -170,7 +170,7 @@ export const inboundAdapters = [
   {
     adapter: 'MCP Server',
     pkg: 'mcp',
-    proto: 'JSON-RPC 2.0 (43 tools, wait_for_task streams progress)',
+    proto: 'JSON-RPC 2.0 (44 tools, wait_for_task streams progress)',
     port: ':63988',
   },
   {

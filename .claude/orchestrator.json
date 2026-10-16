@@ -5063,12 +5063,13 @@
     "TASK-591": {
       "id": "TASK-591",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Ladder in the UI and CLI",
       "role": "polish",
       "wave": 3,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-590"]
+      "dependencies": ["TASK-590"],
+      "completedAt": "2026-10-16T00:00:00Z"
     },
     "TASK-592": {
       "id": "TASK-592",

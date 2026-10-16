@@ -288,7 +288,7 @@ import CodeBlock from '../components/CodeBlock.vue';
 
 const stats = [
   { value: '10+', label: 'LLM Providers (local, API, subscriptions)' },
-  { value: '43', label: 'MCP tools' },
+  { value: '44', label: 'MCP tools' },
   { value: 'Live', label: 'Streamed output' },
   { value: '1', label: 'Project brain per repo' },
   { value: '0', label: 'Telemetry' },
@@ -327,7 +327,7 @@ const features = [
   },
   {
     icon: '🔌',
-    title: 'MCP server, 43 tools',
+    title: 'MCP server, 44 tools',
     desc: 'Claude Code, Claude Desktop, Cursor, Antigravity and VS Code Copilot all use the same tools; wait_for_task streams progress. nexus-cli connect wires up the agents on your machine.',
   },
   {

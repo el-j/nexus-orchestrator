@@ -42,7 +42,7 @@ Editing `.claude/orchestrator.json`, plan files or the database by hand is **not
 
 - Full web UI served by the daemon at `http://localhost:63987/app/` (Mission Control, Agents, Providers, Projects with Activity, Plans, History, Backlog and Brain tabs, Settings); a light dashboard stays at `/ui`
 - Desktop app (Wails) for macOS, Windows and Linux
-- REST API on `:63987` with an SSE event stream; MCP server on `:63988` (43 tools) for Claude Code, Claude Desktop, Cursor, Antigravity, VS Code Copilot; `nexus-mcp-stdio` for agents that start MCP servers as commands
+- REST API on `:63987` with an SSE event stream; MCP server on `:63988` (44 tools) for Claude Code, Claude Desktop, Cursor, Antigravity, VS Code Copilot; `nexus-mcp-stdio` for agents that start MCP servers as commands
 - CLI (`nexus-cli`, `nexus-submit`), GitHub Action
 - [VS Code extension](vscode-extension/README.md): task queue, live output, plan view, brain commands, editor models as providers, and it connects the editor's own agent to Nexus (VS Code 1.101+ through its MCP support; Antigravity through its MCP config)
 
@@ -120,7 +120,7 @@ Claude Desktop (`claude_desktop_config.json`):
 { "mcpServers": { "nexusOrchestrator": { "url": "http://localhost:63988/mcp" } } }
 ```
 
-### MCP tools (43)
+### MCP tools (44)
 
 | Group          | Tools                                                                                                                                                                                                                         |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

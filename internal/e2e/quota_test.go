@@ -3,9 +3,12 @@
 package e2e_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -96,5 +99,40 @@ func TestDaemonHoldsATaskUntilALimitedProviderIsBackAndThenCompletesIt(t *testin
 	}
 	if !strings.Contains(done.Logs, "wait is over") {
 		t.Errorf("the log must show the resume: %s", done.Logs)
+	}
+}
+
+// The routing preview answers on every surface with the project's ladder applied.
+func TestDaemonShowsHowItWouldRouteARoleWithTheProjectsLadder(t *testing.T) {
+	skipOnWindows(t)
+	llm := newFakeOllama(t)
+	d := startDaemon(t, llm, daemonOpts{})
+	d.waitHealthy()
+
+	project := t.TempDir()
+	mustWrite(t, filepath.Join(project, ".nexus", "policy.json"), `{"ladder":{"coder":["Ollama/*","Anthropic/*"]}}`)
+
+	var preview struct {
+		Ladder []string `json:"ladder"`
+		Order  []struct {
+			Provider string `json:"provider"`
+			Rung     int    `json:"rung"`
+		} `json:"order"`
+	}
+	if code := d.do(http.MethodGet, "/api/routing?role=coder&projectPath="+url.QueryEscape(project), nil, &preview); code != http.StatusOK {
+		t.Fatalf("GET /api/routing: HTTP %d\n%s", code, d.logs())
+	}
+	if len(preview.Ladder) != 2 || len(preview.Order) == 0 || preview.Order[0].Provider != "Ollama" || preview.Order[0].Rung != 0 {
+		t.Errorf("preview: %+v", preview)
+	}
+
+	out := runCLI(t, "nexus-cli", d.http, "routing", "--project", project, "--role", "coder")
+	if !contains(out, "Ladder (cheapest first)", "Ollama", "ready") {
+		t.Errorf("nexus-cli routing:\n%s", out)
+	}
+	code, resp := d.rpc("tools/call", map[string]any{"name": "get_routing", "arguments": map[string]any{"projectPath": project, "role": "coder"}})
+	raw, _ := json.Marshal(resp)
+	if code != http.StatusOK || !strings.Contains(string(raw), "Ollama") {
+		t.Errorf("MCP get_routing: HTTP %d %s", code, raw)
 	}
 }

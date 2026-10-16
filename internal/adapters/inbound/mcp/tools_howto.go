@@ -76,6 +76,7 @@ ALL AVAILABLE TOOLS
 - list_knowledge               list all knowledge entries for a project
 - delete_knowledge             delete a knowledge entry by ID
 - get_file_map                 get the project file path map
+- get_routing                  how providers would be ordered for a role in a project (ladder, cooldowns, quota)
 - get_usage                    tokens and cost per provider, model and role (since: 24h, 7d, all)
 
 CLIENT SETUP

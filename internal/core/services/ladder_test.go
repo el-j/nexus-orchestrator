@@ -147,3 +147,59 @@ func TestLadder_NoLadderMeansTheSameModelCorrectsItself(t *testing.T) {
 		t.Errorf("calls = %d", llm.calls)
 	}
 }
+
+func TestPreviewRouting_ShowsTheOrderTheLadderCooldownsAndQuotaGive(t *testing.T) {
+	opus, sonnet, local := ladderProviders()
+	hot := &quotaLLM{scriptLLM: &scriptLLM{name: "Gemini", model: "gemini-x", alive: true, replies: []string{"h"}}}
+	e := newEngine(t, &noopWriter{}, nil, nil, opus, sonnet, local, hot)
+	dir := ladderProject(t, `{"quotaThreshold":0.8,"ladder":{"coder":["Ollama/*","Gemini/*","Anthropic/claude-sonnet*"]}}`)
+	local.errs = []error{limit("Ollama", time.Now().Add(time.Hour))}
+	e.runOne(e.queue(domain.Task{Instruction: "limit the local one", Role: "coder", ProjectPath: dir}), domain.StatusCompleted)
+	warm(e, hot, reading(0.93, time.Now().Add(time.Hour)), "hot")
+
+	p, err := e.orch.PreviewRouting(t.Context(), dir, "coder")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.QuotaThreshold != 0.8 || len(p.Ladder) != 3 || p.Role != "coder" || len(p.Order) != 4 {
+		t.Fatalf("preview: %+v", p)
+	}
+	// Rung order is local, gemini, sonnet, then the one outside the ladder; the hot gemini goes behind the
+	// others, and the cooling local one is still listed (with its cooldown) in its rung place.
+	got := []string{}
+	for _, en := range p.Order {
+		got = append(got, en.Provider+"/"+en.Model)
+	}
+	want := []string{"Ollama/qwen", "Anthropic/claude-sonnet-5-5", "Anthropic/claude-opus-5-5", "Gemini/gemini-x"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("order = %v, want %v", got, want)
+		}
+	}
+	if p.Order[0].CoolingUntil.IsZero() || p.Order[0].Rung != 0 || p.Order[1].Rung != 2 || p.Order[2].Rung != -1 {
+		t.Errorf("entries: %+v", p.Order)
+	}
+	if hotEntry := p.Order[3]; hotEntry.Utilization == nil || *hotEntry.Utilization != 0.93 || hotEntry.Position != 4 {
+		t.Errorf("the hot provider shows its reading: %+v", hotEntry)
+	}
+	if p.Order[1].Utilization != nil {
+		t.Error("a provider that reports no quota shows none")
+	}
+}
+
+func TestPreviewRouting_WithoutProvidersOrAPolicy(t *testing.T) {
+	e := newEngine(t, &noopWriter{}, nil, nil, &scriptLLM{name: "P", alive: true, model: "m"})
+	p, err := e.orch.PreviewRouting(t.Context(), t.TempDir(), "")
+	if err != nil || len(p.Order) != 1 || p.Ladder != nil || p.QuotaThreshold != domain.DefaultQuotaThreshold {
+		t.Errorf("%+v %v", p, err)
+	}
+	// The ladder is shown also when only one provider is alive.
+	dir := ladderProject(t, `{"ladder":{"coder":["P/*"]}}`)
+	if p, err := e.orch.PreviewRouting(t.Context(), dir, "coder"); err != nil || len(p.Ladder) != 1 || p.Order[0].Rung != 0 {
+		t.Errorf("one provider: %+v %v", p, err)
+	}
+	none := newEngine(t, &noopWriter{}, nil, nil, &scriptLLM{name: "Down", alive: false})
+	if _, err := none.orch.PreviewRouting(t.Context(), t.TempDir(), "coder"); err == nil {
+		t.Error("no live provider is an error")
+	}
+}

@@ -257,6 +257,21 @@ time, or `all`; the default is 24 hours. Largest consumers come first. `503` whe
 
 ---
 
+### Routing preview
+
+```
+GET /api/routing?projectPath=/abs/project&role=coder
+```
+
+How the daemon would order the candidate providers for a task of `role` in the project right now, without
+running anything: the project's model ladder for the role (`ladder` in `.nexus/policy.json`, cheapest
+first), the order after the ladder, the cooldowns after limits and the plan quota readings
+(`quotaThreshold`), each provider with its `rung` (`-1` when the ladder does not list it), `coolingUntil`
+and `utilization`. `400` without `projectPath`, `503` when no provider is available. The same data is the
+MCP tool `get_routing` and `nexus-cli routing --project P --role coder`.
+
+---
+
 ### Register Provider
 
 ```
@@ -816,17 +831,18 @@ timeout the task comes back as it is with `"timedOut": true`.
 | `get_file_map`           | Retrieve cached file path map knowledge document for a project                                                                | `projectPath`                           |
 | `get_onboarding_context` | Token-budgeted (< 800 tokens) onboarding summary for agent bootstrap: stack, invariants, test commands, active plan and tasks | `projectPath`, `maxTokens?`             |
 
-#### Discovery & System (7)
+#### Discovery & System (8)
 
-| Tool                    | Description                                                                       | Parameters     |
-| ----------------------- | --------------------------------------------------------------------------------- | -------------- |
-| `get_discovered_agents` | Return AI agent tools detected on the local system (Claude CLI, Copilot, etc.)    | —              |
-| `delegate_to_nexus`     | Delegate an AI agent session to the nexus task queue                              | `session_id`   |
-| `get_discovered_plans`  | Scan for plan/task/orchestration files in a project directory                     | `projectPath?` |
-| `howto`                 | Return a complete integration guide — all tools, workflow patterns, and endpoints | —              |
-| `howto_brief`           | Ultra-compact integration guide (~200 tokens) for small-context models            | —              |
-| `health`                | Check daemon reachable and operational                                            | —              |
-| `get_usage`             | Tokens and cost per provider, model and role from the usage ledger                | `since?`       |
+| Tool                    | Description                                                                       | Parameters             |
+| ----------------------- | --------------------------------------------------------------------------------- | ---------------------- |
+| `get_discovered_agents` | Return AI agent tools detected on the local system (Claude CLI, Copilot, etc.)    | —                      |
+| `delegate_to_nexus`     | Delegate an AI agent session to the nexus task queue                              | `session_id`           |
+| `get_discovered_plans`  | Scan for plan/task/orchestration files in a project directory                     | `projectPath?`         |
+| `howto`                 | Return a complete integration guide — all tools, workflow patterns, and endpoints | —                      |
+| `howto_brief`           | Ultra-compact integration guide (~200 tokens) for small-context models            | —                      |
+| `health`                | Check daemon reachable and operational                                            | —                      |
+| `get_routing`           | How providers would be ordered for a role in a project: ladder, cooldowns, quota  | `projectPath`, `role?` |
+| `get_usage`             | Tokens and cost per provider, model and role from the usage ledger                | `since?`               |
 
 ### Example: Submit Task via MCP
 

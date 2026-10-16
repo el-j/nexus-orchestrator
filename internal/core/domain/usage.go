@@ -96,3 +96,29 @@ func ParseSince(v string, now time.Time) (time.Time, error) {
 	}
 	return time.Time{}, fmt.Errorf("invalid since %q: use a duration like 24h or 7d, an RFC 3339 time, or all", v)
 }
+
+// RoutingEntry is one candidate provider of a task, in the order routing would try it.
+type RoutingEntry struct {
+	// Position is the place in the chain, from 1.
+	Position int    `json:"position"`
+	Provider string `json:"provider"`
+	Model    string `json:"model,omitempty"`
+	// Rung is the index of the ladder rung that fits, or -1 when the ladder does not list it.
+	Rung int `json:"rung"`
+	// CoolingUntil is set while the provider is skipped after a limit, with the reason.
+	CoolingUntil   time.Time `json:"coolingUntil,omitzero"`
+	CooldownReason string    `json:"cooldownReason,omitempty"`
+	// Utilization is the plan's own reading of the share of its allowance used (0 to 1); nil when the
+	// provider's client does not report it.
+	Utilization *float64 `json:"utilization,omitempty"`
+}
+
+// RoutingPreview is what routing would do for a role in a project right now.
+type RoutingPreview struct {
+	Role string `json:"role,omitempty"`
+	// Ladder is the project's ladder for the role (cheapest first); empty without one.
+	Ladder []string `json:"ladder,omitempty"`
+	// QuotaThreshold is the share at which a provider is tried after the others.
+	QuotaThreshold float64        `json:"quotaThreshold"`
+	Order          []RoutingEntry `json:"order"`
+}
