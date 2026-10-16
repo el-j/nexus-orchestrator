@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"nexus-orchestrator/internal/adapters/outbound/httperr"
+	"nexus-orchestrator/internal/adapters/outbound/usagebox"
 	"sync"
 	"time"
 
@@ -19,11 +20,12 @@ import (
 // Adapter implements ports.LLMClient for any OpenAI-compatible REST API.
 // Use this for OpenAI, GitHub Copilot, Azure OpenAI, OpenRouter, etc.
 type Adapter struct {
-	name       string
-	baseURL    string
-	apiKey     string
-	model      string
-	httpClient *http.Client
+	name         string
+	baseURL      string
+	apiKey       string
+	model        string
+	httpClient   *http.Client
+	usagebox.Box // the usage of the last call, for ports.UsageReporter
 
 	modelsMu       sync.Mutex
 	cachedModels   []string
@@ -204,6 +206,25 @@ type chatCompletionRequest struct {
 	Messages    []map[string]string `json:"messages"`
 	Temperature float64             `json:"temperature"`
 	Stream      bool                `json:"stream,omitempty"`
+	// StreamOptions asks a streaming server to send the token usage in a last chunk.
+	StreamOptions *streamOptions `json:"stream_options,omitempty"`
+}
+
+type streamOptions struct {
+	IncludeUsage bool `json:"include_usage"`
+}
+
+// usageBlock is the usage object of a completion or of the last chunk of a stream.
+type usageBlock struct {
+	PromptTokens        int `json:"prompt_tokens"`
+	CompletionTokens    int `json:"completion_tokens"`
+	PromptTokensDetails struct {
+		CachedTokens int `json:"cached_tokens"`
+	} `json:"prompt_tokens_details"`
+}
+
+func (u usageBlock) toDomain(model string) domain.Usage {
+	return domain.Usage{Model: model, InputTokens: u.PromptTokens, OutputTokens: u.CompletionTokens, CachedTokens: u.PromptTokensDetails.CachedTokens}
 }
 
 func (a *Adapter) chat(ctx context.Context, messages []map[string]string) (string, error) {
@@ -238,15 +259,18 @@ func (a *Adapter) chat(ctx context.Context, messages []map[string]string) (strin
 // decodeCompletion reads a non-streamed chat completion and returns the first reply.
 func (a *Adapter) decodeCompletion(body io.Reader) (string, error) {
 	var result struct {
+		Model   string `json:"model"`
 		Choices []struct {
 			Message struct {
 				Content string `json:"content"`
 			} `json:"message"`
 		} `json:"choices"`
+		Usage usageBlock `json:"usage"`
 	}
 	if err := json.NewDecoder(io.LimitReader(body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("%s: decode response: %w", a.name, err)
 	}
+	a.Set(result.Usage.toDomain(firstNonEmpty(result.Model, a.model)))
 	if len(result.Choices) == 0 {
 		return "", fmt.Errorf("%s: no choices in response", a.name)
 	}
@@ -271,4 +295,13 @@ func (a *Adapter) setAuthHeader(req *http.Request) {
 	if a.apiKey != "" {
 		req.Header.Set("Authorization", "Bearer "+a.apiKey)
 	}
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }

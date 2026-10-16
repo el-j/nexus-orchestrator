@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"nexus-orchestrator/internal/adapters/outbound/usagebox"
 	"nexus-orchestrator/internal/core/domain"
 )
 
@@ -22,9 +23,10 @@ const DefaultBaseURL = "http://127.0.0.1:11434"
 
 // Adapter implements ports.LLMClient for Ollama's REST API.
 type Adapter struct {
-	baseURL    string
-	model      string
-	httpClient *http.Client
+	baseURL      string
+	model        string
+	httpClient   *http.Client
+	usagebox.Box // the usage of the last call, for ports.UsageReporter
 
 	infoMu       sync.Mutex
 	contextLimit int       // last successfully read value; 0 = unknown
@@ -154,10 +156,12 @@ func (a *Adapter) GenerateCode(ctx context.Context, prompt string) (string, erro
 
 	var result struct {
 		Response string `json:"response"`
+		counts
 	}
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("ollama: decode response: %w", err)
 	}
+	a.Set(result.usage(a.model))
 	if result.Response == "" {
 		return "", fmt.Errorf("ollama: empty response from model %q", a.model)
 	}
@@ -281,9 +285,21 @@ func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, 
 		Message struct {
 			Content string `json:"content"`
 		} `json:"message"`
+		counts
 	}
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("ollama: decode chat response: %w", err)
 	}
+	a.Set(result.usage(a.model))
 	return result.Message.Content, nil
+}
+
+// counts are the token counts Ollama puts on a finished generate or chat reply.
+type counts struct {
+	PromptEvalCount int `json:"prompt_eval_count"`
+	EvalCount       int `json:"eval_count"`
+}
+
+func (c counts) usage(model string) domain.Usage {
+	return domain.Usage{Model: model, InputTokens: c.PromptEvalCount, OutputTokens: c.EvalCount}
 }

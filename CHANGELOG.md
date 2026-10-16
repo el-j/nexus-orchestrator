@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Typed provider errors (`domain.ProviderError`: rate limited, quota exhausted, overloaded) from the Anthropic, Gemini and OpenAI-compatible adapters, with the time the provider said to come back (`Retry-After`). A provider that reports one is skipped by the next tasks until then, and `GET /api/providers` shows `rateLimited`, `rateLimitedUntil` and `cooldownReason` (the field existed but was never set). TASK-581, TASK-582 of PLAN-074
 - Claude subscription provider reads `claude -p --output-format stream-json`: live streaming, tokens and cost of every call, the plan's own quota reading (window, utilization, reset time) and typed limit errors; the API key is removed from the child's environment so the subscription, not the API, is billed. Promoting the discovered Claude CLI uses it. `domain.Usage` and `domain.QuotaReading` carry the numbers. TASK-583 of PLAN-074. Opt-in real check: `go test -tags realclaude ./internal/adapters/outbound/llm_cli/`
+- Usage ledger: the Anthropic, Gemini, OpenAI-compatible, Ollama and Claude adapters report the tokens (and cost, where the provider says) of every call; each successful call is stored (`llm_usage` table) and read with `GET /api/usage`, the MCP tool `get_usage` (43 tools now) and `nexus-cli usage --since 7d`: per provider, model and role. TASK-584, TASK-585 of PLAN-074. LM Studio does not report usage yet
 
 ## [0.10.0] — 2026-10-15
 

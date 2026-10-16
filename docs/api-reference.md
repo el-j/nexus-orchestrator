@@ -210,6 +210,48 @@ per provider and model and is cleared by the next successful call.
 
 ---
 
+### Usage ledger
+
+```
+GET /api/usage?since=24h
+```
+
+Tokens and cost the models consumed, added up per provider, model and role. Every successful model call
+whose provider reports its usage (Anthropic, Gemini, OpenAI-compatible, Ollama, and `claude` in
+`stream-json` mode) is one record. `since` is a duration back from now (`90m`, `24h`, `7d`), an RFC 3339
+time, or `all`; the default is 24 hours. Largest consumers come first. `503` when the daemon has no ledger,
+`400` for a bad `since`. The same data is the MCP tool `get_usage` and `nexus-cli usage --since 7d`.
+
+**Response:** `200 OK`
+
+```json
+{
+  "since": "2026-10-15T12:00:00Z",
+  "totals": {
+    "provider": "",
+    "calls": 3,
+    "inputTokens": 350,
+    "outputTokens": 125,
+    "cachedTokens": 30,
+    "costUSD": 0.75
+  },
+  "usage": [
+    {
+      "provider": "Anthropic",
+      "model": "claude-opus-5-5",
+      "role": "architect",
+      "calls": 2,
+      "inputTokens": 300,
+      "outputTokens": 120,
+      "cachedTokens": 30,
+      "costUSD": 0.75
+    }
+  ]
+}
+```
+
+---
+
 ### Register Provider
 
 ```
@@ -769,7 +811,7 @@ timeout the task comes back as it is with `"timedOut": true`.
 | `get_file_map`           | Retrieve cached file path map knowledge document for a project                                                                | `projectPath`                           |
 | `get_onboarding_context` | Token-budgeted (< 800 tokens) onboarding summary for agent bootstrap: stack, invariants, test commands, active plan and tasks | `projectPath`, `maxTokens?`             |
 
-#### Discovery & System (6)
+#### Discovery & System (7)
 
 | Tool                    | Description                                                                       | Parameters     |
 | ----------------------- | --------------------------------------------------------------------------------- | -------------- |
@@ -779,6 +821,7 @@ timeout the task comes back as it is with `"timedOut": true`.
 | `howto`                 | Return a complete integration guide — all tools, workflow patterns, and endpoints | —              |
 | `howto_brief`           | Ultra-compact integration guide (~200 tokens) for small-context models            | —              |
 | `health`                | Check daemon reachable and operational                                            | —              |
+| `get_usage`             | Tokens and cost per provider, model and role from the usage ledger                | `since?`       |
 
 ### Example: Submit Task via MCP
 

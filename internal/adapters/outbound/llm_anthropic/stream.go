@@ -48,7 +48,7 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 		return "", fmt.Errorf("anthropic: unexpected status %d%s", resp.StatusCode, errorDetail(resp.Body))
 	}
 	if !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/event-stream") {
-		reply, err := decodeMessage(resp.Body)
+		reply, err := a.decodeMessage(resp.Body)
 		if err == nil {
 			onChunk(reply)
 		}
@@ -57,9 +57,15 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 
 	var reply strings.Builder
 	finished := false
+	usage := domain.Usage{Model: a.model}
 	err = sse.Read(resp.Body, maxEventBytes, func(ev sse.Event) error {
 		var e struct {
-			Type  string `json:"type"`
+			Type    string `json:"type"`
+			Message struct {
+				Model string     `json:"model"`
+				Usage tokenUsage `json:"usage"`
+			} `json:"message"`
+			Usage tokenUsage `json:"usage"`
 			Delta struct {
 				Type string `json:"type"`
 				Text string `json:"text"`
@@ -72,6 +78,11 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 			return fmt.Errorf("anthropic: decode stream event: %w", err)
 		}
 		switch e.Type {
+		case "message_start": // the input side; the output side arrives with message_delta
+			usage = domain.Usage{Model: firstNonEmpty(e.Message.Model, a.model), InputTokens: e.Message.Usage.InputTokens,
+				OutputTokens: e.Message.Usage.OutputTokens, CachedTokens: e.Message.Usage.CacheCreated + e.Message.Usage.CacheRead}
+		case "message_delta":
+			usage.OutputTokens = e.Usage.OutputTokens
 		case "content_block_delta":
 			if e.Delta.Type == "text_delta" && e.Delta.Text != "" {
 				reply.WriteString(e.Delta.Text)
@@ -85,6 +96,7 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 		}
 		return nil
 	})
+	a.Set(usage)
 	if err != nil {
 		return reply.String(), err
 	}
@@ -92,4 +104,12 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 		return reply.String(), fmt.Errorf("anthropic: stream ended before message_stop")
 	}
 	return reply.String(), nil
+}
+
+// tokenUsage is the usage block of a Messages API event.
+type tokenUsage struct {
+	InputTokens  int `json:"input_tokens"`
+	OutputTokens int `json:"output_tokens"`
+	CacheCreated int `json:"cache_creation_input_tokens"`
+	CacheRead    int `json:"cache_read_input_tokens"`
 }

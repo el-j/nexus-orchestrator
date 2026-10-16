@@ -2,12 +2,14 @@ package cli_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"nexus-orchestrator/internal/adapters/inbound/cli"
 	"nexus-orchestrator/internal/core/domain"
@@ -254,5 +256,51 @@ func TestConnectCmd_ReportsWithoutWritingAndWritesOnRequest(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(cfg); !strings.Contains(string(b), "http://127.0.0.1:1/mcp") {
 		t.Errorf("the endpoint from NEXUS_MCP_URL must be used: %s", b)
+	}
+}
+
+type usageScripted struct {
+	scriptedOrch
+	sums  []domain.UsageSummary
+	err   error
+	since time.Time
+}
+
+func (u *usageScripted) GetUsage(_ context.Context, since time.Time) ([]domain.UsageSummary, error) {
+	u.since = since
+	return u.sums, u.err
+}
+
+func TestUsageCmd(t *testing.T) {
+	orch := &usageScripted{sums: []domain.UsageSummary{
+		{Provider: "Anthropic", Model: "opus", Role: "architect", Calls: 2, InputTokens: 300, OutputTokens: 120, CachedTokens: 30, CostUSD: 0.75},
+		{Provider: "Ollama", Model: "qwen", Calls: 1, InputTokens: 50, OutputTokens: 5},
+	}}
+	out, err := execute(orch, nil, "usage", "--since", "7d")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Provider", "Anthropic", "opus", "architect", "300", "0.7500", "Total", "350", "125"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q:\n%s", want, out)
+		}
+	}
+	if d := time.Since(orch.since); d < 7*24*time.Hour-time.Minute || d > 7*24*time.Hour+time.Minute {
+		t.Errorf("since = %v", orch.since)
+	}
+
+	orch.sums = nil
+	if out, _ := execute(orch, nil, "usage"); !strings.Contains(out, "No usage recorded") {
+		t.Errorf("empty ledger: %q", out)
+	}
+	if _, err := execute(orch, nil, "usage", "--since", "yesterday"); err == nil || !strings.Contains(err.Error(), "invalid since") {
+		t.Errorf("bad window: %v", err)
+	}
+	orch.err = errors.New("ledger down")
+	if _, err := execute(orch, nil, "usage"); err == nil || !strings.Contains(err.Error(), "ledger down") {
+		t.Errorf("ledger error: %v", err)
+	}
+	if _, err := execute(&scriptedOrch{}, nil, "usage"); err == nil || !strings.Contains(err.Error(), "not available") {
+		t.Errorf("no ledger: %v", err)
 	}
 }

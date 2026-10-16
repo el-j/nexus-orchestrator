@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"nexus-orchestrator/internal/adapters/outbound/httperr"
+	"nexus-orchestrator/internal/adapters/outbound/usagebox"
 	"strings"
 	"time"
 
@@ -25,10 +26,11 @@ const (
 // This uses the native Anthropic Messages API (/v1/messages), NOT an
 // OpenAI-compatible endpoint.
 type Adapter struct {
-	baseURL    string
-	apiKey     string
-	model      string
-	httpClient *http.Client
+	baseURL      string
+	apiKey       string
+	model        string
+	httpClient   *http.Client
+	usagebox.Box // the usage of the last call, for ports.UsageReporter
 }
 
 // NewAdapter creates an Anthropic Claude adapter.
@@ -200,26 +202,49 @@ func (a *Adapter) sendMessages(ctx context.Context, system string, messages []an
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("anthropic: unexpected status %d%s", resp.StatusCode, errorDetail(resp.Body))
 	}
-	return decodeMessage(resp.Body)
+	return a.decodeMessage(resp.Body)
 }
 
-// decodeMessage reads a non-streaming Messages API reply and returns its first text block.
-func decodeMessage(body io.Reader) (string, error) {
+// decodeMessage reads a non-streaming Messages API reply, records its usage and returns its first
+// text block.
+func (a *Adapter) decodeMessage(body io.Reader) (string, error) {
 	var result struct {
+		Model   string `json:"model"`
 		Content []struct {
 			Type string `json:"type"`
 			Text string `json:"text"`
 		} `json:"content"`
+		Usage struct {
+			InputTokens  int `json:"input_tokens"`
+			OutputTokens int `json:"output_tokens"`
+			CacheCreated int `json:"cache_creation_input_tokens"`
+			CacheRead    int `json:"cache_read_input_tokens"`
+		} `json:"usage"`
 	}
 	if err := json.NewDecoder(io.LimitReader(body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("anthropic: decode response: %w", err)
 	}
+	a.Set(domain.Usage{
+		Model:        firstNonEmpty(result.Model, a.model),
+		InputTokens:  result.Usage.InputTokens,
+		OutputTokens: result.Usage.OutputTokens,
+		CachedTokens: result.Usage.CacheCreated + result.Usage.CacheRead,
+	})
 	for _, block := range result.Content {
 		if block.Type == "text" {
 			return block.Text, nil
 		}
 	}
 	return "", fmt.Errorf("anthropic: no text content in response")
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 // errorDetail extracts ": <message>" from an Anthropic error body

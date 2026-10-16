@@ -23,10 +23,11 @@ const maxEventBytes = 4 << 20
 // "stream" and answers with a plain JSON completion is accepted: the reply arrives as one piece.
 func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onChunk func(string)) (string, error) {
 	reqBody, err := json.Marshal(chatCompletionRequest{
-		Model:       a.model,
-		Messages:    messagesToMaps(messages),
-		Temperature: 0.2,
-		Stream:      true,
+		Model:         a.model,
+		Messages:      messagesToMaps(messages),
+		Temperature:   0.2,
+		Stream:        true,
+		StreamOptions: &streamOptions{IncludeUsage: true},
 	})
 	if err != nil {
 		return "", fmt.Errorf("%s: marshal request: %w", a.name, err)
@@ -61,6 +62,8 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 
 	var reply strings.Builder
 	finished := false
+	usage := domain.Usage{Model: a.model}
+	defer func() { a.Set(usage) }()
 	scanner := bufio.NewScanner(resp.Body)
 	scanner.Buffer(make([]byte, 0, 64<<10), maxEventBytes)
 	for scanner.Scan() {
@@ -73,6 +76,8 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 			return reply.String(), nil
 		}
 		var ev struct {
+			Model   string      `json:"model"`
+			Usage   *usageBlock `json:"usage"`
 			Choices []struct {
 				Delta struct {
 					Content string `json:"content"`
@@ -88,6 +93,9 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 		}
 		if ev.Error != nil {
 			return reply.String(), fmt.Errorf("%s: stream error: %s", a.name, ev.Error.Message)
+		}
+		if ev.Usage != nil {
+			usage = ev.Usage.toDomain(firstNonEmpty(ev.Model, a.model))
 		}
 		if len(ev.Choices) == 0 {
 			continue

@@ -4986,22 +4986,24 @@
     "TASK-584": {
       "id": "TASK-584",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Usage on the LLM port",
       "role": "coder",
       "wave": 1,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-583"]
+      "dependencies": ["TASK-583"],
+      "completedAt": "2026-10-16T00:00:00Z"
     },
     "TASK-585": {
       "id": "TASK-585",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Usage ledger: store, REST, MCP, CLI",
       "role": "coder",
       "wave": 1,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-584"]
+      "dependencies": ["TASK-584"],
+      "completedAt": "2026-10-16T00:00:00Z"
     },
     "TASK-586": {
       "id": "TASK-586",
