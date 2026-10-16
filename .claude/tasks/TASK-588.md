@@ -4,7 +4,7 @@ planId: PLAN-074
 title: 'e2e: failover, cooldown and wait through the real daemon'
 role: tester
 wave: 2
-status: todo
+status: done
 createdAt: 2026-10-16
 dependsOn: [TASK-587]
 ---

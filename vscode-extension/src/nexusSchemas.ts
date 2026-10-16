@@ -8,6 +8,7 @@ import { z } from 'zod';
 
 export const TaskStatusSchema = z.enum([
   'QUEUED',
+  'WAITING',
   'PROCESSING',
   'COMPLETED',
   'FAILED',
@@ -41,6 +42,7 @@ export const TaskSchema = z
     claimedBy: z.string().optional(),
     claimedAt: z.string().optional(),
     retryCount: z.number().optional(),
+    waitUntil: z.string().optional(),
   })
   .passthrough();
 

@@ -45,7 +45,7 @@ func (r *memRepo) GetPending(context.Context) ([]domain.Task, error) {
 	defer r.mu.Unlock()
 	var out []domain.Task
 	for _, t := range r.tasks {
-		if t.Status == domain.StatusQueued || t.Status == domain.StatusProcessing {
+		if t.Status == domain.StatusQueued || t.Status == domain.StatusProcessing || t.Status == domain.StatusWaiting {
 			out = append(out, t)
 		}
 	}

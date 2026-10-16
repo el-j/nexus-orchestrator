@@ -263,9 +263,11 @@ const (
 	EventTaskCancelled  EventType = "task.cancelled"
 	EventTaskTooLarge   EventType = "task.too_large"
 	EventTaskNoProvider EventType = "task.no_provider"
-	EventTaskDraft      EventType = "task.draft"
-	EventTaskBacklog    EventType = "task.backlog"
-	EventTaskUpdated    EventType = "task.updated"
+	// EventTaskWaiting: every candidate provider is cooling down; the task waits until its reset.
+	EventTaskWaiting EventType = "task.waiting"
+	EventTaskDraft   EventType = "task.draft"
+	EventTaskBacklog EventType = "task.backlog"
+	EventTaskUpdated EventType = "task.updated"
 	// EventTaskChunk carries a piece of the model's reply while it is being generated.
 	EventTaskChunk EventType = "task.chunk"
 	// EventTaskRestart tells subscribers to discard the text received so far: a new attempt

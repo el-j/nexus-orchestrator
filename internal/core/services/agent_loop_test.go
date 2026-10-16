@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"nexus-orchestrator/internal/core/domain"
 )
@@ -336,5 +337,28 @@ func TestAgentLoop_EditFileReportsWriteFailures(t *testing.T) {
 	e.runOne(e.queue(agentTask(nil)), domain.StatusCompleted)
 	if h := llm.histories[1]; !strings.Contains(h[len(h)-1].Content, "edit_file failed: disk full") {
 		t.Errorf("observation = %q", h[len(h)-1].Content)
+	}
+}
+
+func TestAgentLoop_ALimitedProviderIsCooledDownAndEveryoneLimitedMakesTheTaskWait(t *testing.T) {
+	reset := time.Now().Add(time.Hour)
+	only := &scriptLLM{name: "Anthropic", alive: true, limit: 100000, errs: []error{limit("Anthropic", reset)}}
+	e := newEngine(t, newMemFS(map[string]string{}), nil, nil, only)
+	got := e.runOne(e.queue(agentTask(nil)), domain.StatusWaiting)
+	if !strings.Contains(got.Logs, "all providers are cooling down") || got.WaitUntil.Before(reset) {
+		t.Errorf("an agentic task waits too: wait=%v logs=%q", got.WaitUntil, got.Logs)
+	}
+}
+
+func TestAgentLoop_ACooledDownProviderIsSkippedForTheNextOne(t *testing.T) {
+	reset := time.Now().Add(time.Hour)
+	limited := &scriptLLM{name: "Anthropic", alive: true, limit: 100000, errs: []error{limit("Anthropic", reset)}}
+	good := &scriptLLM{name: "Ollama", alive: true, limit: 100000, replies: []string{tool(`{"tool":"finish","summary":"ok"}`)}}
+	e := newEngine(t, newMemFS(map[string]string{}), nil, nil, limited, good)
+	e.runOne(e.queue(agentTask(nil)), domain.StatusCompleted)
+	// The next agentic task does not even try the limited provider.
+	e.runOne(e.queue(agentTask(func(t *domain.Task) { t.Instruction = "second" })), domain.StatusCompleted)
+	if limited.calls != 1 {
+		t.Errorf("a provider in cooldown is not called again: %d", limited.calls)
 	}
 }

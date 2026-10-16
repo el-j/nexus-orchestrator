@@ -89,6 +89,7 @@ func migrate(db *sql.DB) error {
 		{"role", "TEXT NOT NULL DEFAULT ''"},
 		{"agentic", "INTEGER NOT NULL DEFAULT 0"},
 		{"max_agent_turns", "INTEGER NOT NULL DEFAULT 0"},
+		{"wait_until", "INTEGER NOT NULL DEFAULT 0"},
 	} {
 		_, _ = db.ExecContext(context.Background(), fmt.Sprintf("ALTER TABLE tasks ADD COLUMN %s %s", col.name, col.def))
 	}

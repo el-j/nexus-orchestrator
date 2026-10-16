@@ -83,18 +83,20 @@ The central entity representing a single unit of AI work:
     ▼          ▼          ▼            ▼
 COMPLETED   FAILED   TOO_LARGE   NO_PROVIDER
 
-              CANCELLED (from QUEUED only)
+   WAITING (all providers cooling down) → QUEUED at the reset
+              CANCELLED (from QUEUED or WAITING)
 ```
 
-| Status        | Description                               |
-| ------------- | ----------------------------------------- |
-| `QUEUED`      | Task is waiting in the queue              |
-| `PROCESSING`  | Task is being processed by an LLM         |
-| `COMPLETED`   | LLM generated output successfully         |
-| `FAILED`      | LLM call failed                           |
-| `CANCELLED`   | Cancelled before processing               |
-| `TOO_LARGE`   | Prompt exceeds model context window       |
-| `NO_PROVIDER` | No provider available for requested model |
+| Status        | Description                                                                                          |
+| ------------- | ---------------------------------------------------------------------------------------------------- |
+| `QUEUED`      | Task is waiting in the queue                                                                         |
+| `WAITING`     | Every provider is cooling down after a rate limit or an exhausted quota; queued again at `waitUntil` |
+| `PROCESSING`  | Task is being processed by an LLM                                                                    |
+| `COMPLETED`   | LLM generated output successfully                                                                    |
+| `FAILED`      | LLM call failed                                                                                      |
+| `CANCELLED`   | Cancelled before processing                                                                          |
+| `TOO_LARGE`   | Prompt exceeds model context window                                                                  |
+| `NO_PROVIDER` | No provider available for requested model                                                            |
 
 ### CommandType
 

@@ -12,6 +12,7 @@ export type TaskStatus =
   | 'FAILED'
   | 'CANCELLED'
   | 'TOO_LARGE'
+  | 'WAITING'
   | 'NO_PROVIDER'
   | 'DRAFT'
   | 'BACKLOG';

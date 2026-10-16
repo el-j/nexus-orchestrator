@@ -158,12 +158,12 @@ DELETE /api/tasks/{id}
 
 Cancel a task. Which states can be cancelled:
 
-| Task status                                     | What happens                                                                                                                                                                                 |
-| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `QUEUED`, `DRAFT`, `BACKLOG`, `NO_PROVIDER`     | Moved to `CANCELLED` immediately.                                                                                                                                                            |
-| `PROCESSING` (running in this daemon)           | The in-flight provider request is **aborted**; the task becomes `CANCELLED` a moment later (watch the `task.cancelled` event). It is not retried and does not fall back to another provider. |
-| `PROCESSING` (claimed by an external agent)     | Taken off the board as `CANCELLED`; the external agent cannot be interrupted.                                                                                                                |
-| `COMPLETED`, `FAILED`, `CANCELLED`, `TOO_LARGE` | Not cancellable.                                                                                                                                                                             |
+| Task status                                            | What happens                                                                                                                                                                                 |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `QUEUED`, `WAITING`, `DRAFT`, `BACKLOG`, `NO_PROVIDER` | Moved to `CANCELLED` immediately.                                                                                                                                                            |
+| `PROCESSING` (running in this daemon)                  | The in-flight provider request is **aborted**; the task becomes `CANCELLED` a moment later (watch the `task.cancelled` event). It is not retried and does not fall back to another provider. |
+| `PROCESSING` (claimed by an external agent)            | Taken off the board as `CANCELLED`; the external agent cannot be interrupted.                                                                                                                |
+| `COMPLETED`, `FAILED`, `CANCELLED`, `TOO_LARGE`        | Not cancellable.                                                                                                                                                                             |
 
 When the daemon shuts down, a task that was running goes back to `QUEUED` (it is not marked failed).
 
@@ -893,14 +893,18 @@ QUEUED → PROCESSING → COMPLETED
                     → FAILED
                     → TOO_LARGE (pre-flight)
                     → NO_PROVIDER (no backend)
-QUEUED → CANCELLED (user cancellation)
+                    → WAITING (every provider is cooling down) → QUEUED (at the reset time)
+QUEUED, WAITING → CANCELLED (user cancellation)
 ```
 
 A task moves through these states:
 
 1. **QUEUED**: Submitted and waiting in the queue
 2. **PROCESSING**: Picked up by the worker, LLM call in progress
-3. **Terminal state**: One of COMPLETED, FAILED, TOO_LARGE, NO_PROVIDER, or CANCELLED
+3. **WAITING**: Every candidate provider reported a rate limit or an exhausted quota. The task is held until
+   the earliest reset (`waitUntil`, a second after the time the provider gave) and then queued again by the
+   daemon, also after a restart. It is not a failure and uses up no retry. A `task.waiting` event is published.
+4. **Terminal state**: One of COMPLETED, FAILED, TOO_LARGE, NO_PROVIDER, or CANCELLED
 
 ---
 

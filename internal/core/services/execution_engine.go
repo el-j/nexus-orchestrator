@@ -36,6 +36,7 @@ var statusEventMap = map[domain.TaskStatus]ports.EventType{
 	domain.StatusCancelled:  ports.EventTaskCancelled,
 	domain.StatusTooLarge:   ports.EventTaskTooLarge,
 	domain.StatusNoProvider: ports.EventTaskNoProvider,
+	domain.StatusWaiting:    ports.EventTaskWaiting,
 	domain.StatusDraft:      ports.EventTaskDraft,
 	domain.StatusBacklog:    ports.EventTaskBacklog,
 }
@@ -277,6 +278,9 @@ func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task doma
 		return true
 	}
 
+	if o.holdUntilReset(task, chain) {
+		return true
+	}
 	if o.requeueForRetry(task) {
 		return true
 	}

@@ -229,6 +229,16 @@ func (o *OrchestratorService) runAgentLoop(run *runHandle, task domain.Task, cha
 		var reply string
 		for {
 			llm := chain[provider]
+			if _, cooling := o.discovery.Cooldown(llm, time.Now()); cooling {
+				if provider+1 < len(chain) {
+					o.appendTaskLog(task.ID, fmt.Sprintf("agent turn %d: %s is cooling down; skipped", turn, llm.ProviderName()))
+					provider++
+					continue
+				}
+				if o.holdUntilReset(a.task, chain) {
+					return true
+				}
+			}
 			if l := llm.ContextLimit(run.ctx); l > 0 && estimateTokens(msgs) > l-o.maxResponseTokens {
 				if provider+1 < len(chain) {
 					provider++
@@ -246,9 +256,13 @@ func (o *OrchestratorService) runAgentLoop(run *runHandle, task domain.Task, cha
 			}
 			if err != nil {
 				o.appendTaskLog(task.ID, fmt.Sprintf("agent turn %d: provider %s failed: %v", turn, llm.ProviderName(), err))
+				o.noteProviderError(llm, err)
 				if provider+1 < len(chain) {
 					provider++
 					continue
+				}
+				if o.holdUntilReset(a.task, chain) {
+					return true
 				}
 				return fail(fmt.Sprintf("agent turn %d: all providers failed (last: %v)", turn, err))
 			}

@@ -52,8 +52,12 @@ const (
 	// model available or all providers are unreachable.  The task is never sent
 	// to any LLM; the user should choose a different model or start a provider.
 	StatusNoProvider TaskStatus = "NO_PROVIDER"
-	StatusDraft      TaskStatus = "DRAFT"
-	StatusBacklog    TaskStatus = "BACKLOG"
+	// StatusWaiting is set when every candidate provider is cooling down after a rate limit or an
+	// exhausted quota: the task is held until the earliest reset (Task.WaitUntil) and then queued
+	// again by itself. It is not a failure and does not use up a retry.
+	StatusWaiting TaskStatus = "WAITING"
+	StatusDraft   TaskStatus = "DRAFT"
+	StatusBacklog TaskStatus = "BACKLOG"
 )
 
 // String returns the underlying string value of the TaskStatus.
@@ -114,14 +118,16 @@ type Task struct {
 	Tags []string `json:"tags,omitempty"`
 	// Command classifies the task as planning, execution, or auto-routed.
 	// Empty is treated as CommandAuto.
-	Command     CommandType `json:"command,omitempty"`
-	Status      TaskStatus  `json:"status"`
-	CreatedAt   time.Time   `json:"createdAt"`
-	UpdatedAt   time.Time   `json:"updatedAt"`
-	DurationMs  int64       `json:"durationMs,omitempty"`
-	RetryCount  int         `json:"retryCount,omitempty"`
-	Logs        string      `json:"logs,omitempty"`
-	AISessionID string      `json:"aiSessionId,omitempty"`
+	Command    CommandType `json:"command,omitempty"`
+	Status     TaskStatus  `json:"status"`
+	CreatedAt  time.Time   `json:"createdAt"`
+	UpdatedAt  time.Time   `json:"updatedAt"`
+	DurationMs int64       `json:"durationMs,omitempty"`
+	RetryCount int         `json:"retryCount,omitempty"`
+	// WaitUntil is when a WAITING task is queued again; zero for every other status.
+	WaitUntil   time.Time `json:"waitUntil,omitzero"`
+	Logs        string    `json:"logs,omitempty"`
+	AISessionID string    `json:"aiSessionId,omitempty"`
 	// RanBy is the provider that ran the task, read from its log; empty when Nexus did not run it
 	// (an agent reported it done, or it has not run yet). It is derived, never stored.
 	RanBy string `json:"ranBy,omitempty"`

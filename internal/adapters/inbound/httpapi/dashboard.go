@@ -118,6 +118,7 @@ const dashboardTemplateHTML = `<!DOCTYPE html>
     .badge-cancelled  { background: #27272a; color: #a1a1aa }
     .badge-toolarge   { background: #451a03; color: #fdba74 }
     .badge-noprovider { background: #2d1561; color: #c4b5fd }
+    .badge-waiting    { background: #083344; color: #67e8f9 }
     .mono { font-family: monospace; font-size: 0.75rem; color: var(--muted) }
     .empty { padding: 2rem; text-align: center; color: var(--muted); font-size: 0.85rem }
     #refresh-ts { font-size:0.7rem; color:var(--muted); margin-left:auto }
@@ -253,7 +254,7 @@ function badge(s) {
   const map = {
     QUEUED:'badge-queued', PROCESSING:'badge-processing', COMPLETED:'badge-completed',
     FAILED:'badge-failed', CANCELLED:'badge-cancelled',
-    TOO_LARGE:'badge-toolarge', NO_PROVIDER:'badge-noprovider'
+    TOO_LARGE:'badge-toolarge', NO_PROVIDER:'badge-noprovider', WAITING:'badge-waiting'
   }
   return '<span class="badge '+(map[s]||'badge-queued')+'">'+esc(s)+'</span>'
 }

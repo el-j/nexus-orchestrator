@@ -3,6 +3,7 @@ export type TaskStatus =
   | 'DRAFT'
   | 'BACKLOG'
   | 'QUEUED'
+  | 'WAITING'
   | 'PROCESSING'
   | 'COMPLETED'
   | 'FAILED'
@@ -27,6 +28,8 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   retryCount?: number;
+  /** When a WAITING task is queued again (ISO 8601): every provider is cooling down until then. */
+  waitUntil?: string;
   logs: string;
   providerName?: string;
   /** The provider Nexus ran the task on; absent when an agent set the status or it has not run. */

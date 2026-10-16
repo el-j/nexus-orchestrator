@@ -5019,22 +5019,24 @@
     "TASK-587": {
       "id": "TASK-587",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "WAITING state: hold when every candidate is cooled down",
       "role": "coder",
       "wave": 2,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-582", "TASK-586"]
+      "dependencies": ["TASK-582", "TASK-586"],
+      "completedAt": "2026-10-16T00:00:00Z"
     },
     "TASK-588": {
       "id": "TASK-588",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "e2e: failover, cooldown and wait through the real daemon",
       "role": "tester",
       "wave": 2,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-587"]
+      "dependencies": ["TASK-587"],
+      "completedAt": "2026-10-16T00:00:00Z"
     },
     "TASK-589": {
       "id": "TASK-589",

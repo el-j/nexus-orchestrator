@@ -320,5 +320,6 @@ const statusDiagram = `          ┌──────────┐
     ▼          ▼          ▼            ▼
 COMPLETED   FAILED   TOO_LARGE   NO_PROVIDER
 
-              CANCELLED (from QUEUED only)`;
+   WAITING (all providers cooling down) → QUEUED at the reset
+              CANCELLED (from QUEUED or WAITING)`;
 </script>

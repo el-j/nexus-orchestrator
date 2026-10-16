@@ -4,7 +4,7 @@ planId: PLAN-074
 title: 'WAITING state: hold when every candidate is cooled down'
 role: coder
 wave: 2
-status: todo
+status: done
 createdAt: 2026-10-16
 dependsOn: [TASK-582, TASK-586]
 ---

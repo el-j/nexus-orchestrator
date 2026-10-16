@@ -375,13 +375,14 @@ const activeProviderCount = computed(() => providers.value.filter((p) => p.activ
 const statusPriority: Record<string, number> = {
   PROCESSING: 0,
   QUEUED: 1,
-  DRAFT: 2,
-  BACKLOG: 3,
-  FAILED: 4,
-  COMPLETED: 5,
-  CANCELLED: 6,
-  TOO_LARGE: 7,
-  NO_PROVIDER: 8,
+  WAITING: 2,
+  DRAFT: 3,
+  BACKLOG: 4,
+  FAILED: 5,
+  COMPLETED: 6,
+  CANCELLED: 7,
+  TOO_LARGE: 8,
+  NO_PROVIDER: 9,
 };
 
 const sortedTasks = computed(() => {

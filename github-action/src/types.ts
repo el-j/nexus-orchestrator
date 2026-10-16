@@ -42,7 +42,14 @@ export interface NexusTask {
 
 /** Task lifecycle status as reported by the daemon. */
 export type TaskStatus =
-  'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'TOO_LARGE' | 'NO_PROVIDER';
+  | 'QUEUED'
+  | 'WAITING'
+  | 'PROCESSING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'TOO_LARGE'
+  | 'NO_PROVIDER';
 
 /** Statuses after which a task never changes again. */
 export const TERMINAL_STATUSES = new Set<TaskStatus>([
