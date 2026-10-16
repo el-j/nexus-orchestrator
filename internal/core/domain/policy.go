@@ -37,8 +37,120 @@ type ProjectPolicy struct {
 	Remember bool `json:"remember,omitempty"`
 	// Rules are free-text rules shown to the model verbatim.
 	Rules []string `json:"rules,omitempty"`
+	// QuotaThreshold is the share (0 to 1) of a provider's plan allowance at which routing prefers the
+	// other providers of the chain; 0 means DefaultQuotaThreshold. 1 only avoids a provider whose
+	// allowance is used up.
+	QuotaThreshold float64 `json:"quotaThreshold,omitempty"`
+	// Ladder orders the models a role may use, cheapest first, as "provider/model" patterns where *
+	// matches any text: {"coder": ["Ollama/*", "Anthropic/claude-sonnet*", "Anthropic/claude-opus*"]}.
+	// A task starts on the first rung that is available (not cooling down, under the quota threshold)
+	// and a failed verification asks the next rung up. The key "default" serves roles without an entry.
+	Ladder map[string][]string `json:"ladder,omitempty"`
+	// ContextBudget caps the tokens a task's context files may take in the prompt (0: no cap). Over
+	// the cap the largest files are sent as outlines (their top-level declarations) and, if that is
+	// not enough, shortened, each with a note saying so.
+	ContextBudget int `json:"contextBudget,omitempty"`
+	// HistoryBudget caps the tokens of session history sent with a task (0: only the newest
+	// MaxHistoryMessages messages are sent). Older messages are dropped first.
+	HistoryBudget int `json:"historyBudget,omitempty"`
 	// PlanFiles says where the project keeps its plan and task files; unset, they are found by themselves.
 	PlanFiles *PlanFilesPolicy `json:"planFiles,omitempty"`
+}
+
+// DefaultQuotaThreshold is the allowance share at which routing starts to prefer other providers.
+const DefaultQuotaThreshold = 0.9
+
+// QuotaLimit returns the quota threshold routing uses: the policy's, or DefaultQuotaThreshold.
+func (p ProjectPolicy) QuotaLimit() float64 {
+	if p.QuotaThreshold > 0 {
+		return p.QuotaThreshold
+	}
+	return DefaultQuotaThreshold
+}
+
+// MaxTokenBudget is the largest ContextBudget or HistoryBudget a policy may set.
+const MaxTokenBudget = 200000
+
+// Limits of a ladder.
+const (
+	// MaxLadderRoles is how many roles a policy may give a ladder.
+	MaxLadderRoles = 20
+	// MaxLadderRungs is how many rungs one ladder may have.
+	MaxLadderRungs = 10
+	// MaxRungLen is the length of one rung pattern in characters.
+	MaxRungLen = 128
+)
+
+// LadderFor returns the ladder of role (case-insensitive), the "default" ladder when the role has
+// none, or nil.
+func (p ProjectPolicy) LadderFor(role string) []string {
+	for _, key := range []string{strings.ToLower(strings.TrimSpace(role)), "default"} {
+		for k, rungs := range p.Ladder {
+			if key != "" && strings.EqualFold(k, key) {
+				return rungs
+			}
+		}
+	}
+	return nil
+}
+
+// RungMatches reports whether a ladder rung ("provider/model", * matches any text, case-insensitive)
+// fits the provider and model.
+func RungMatches(rung, provider, model string) bool {
+	rung = strings.ToLower(rung)
+	if !strings.Contains(rung, "/") {
+		return false
+	}
+	return globMatch(rung, strings.ToLower(provider)+"/"+strings.ToLower(model))
+}
+
+// globMatch matches s against a pattern in which * stands for any run of characters.
+func globMatch(pattern, s string) bool {
+	parts := strings.Split(pattern, "*")
+	if len(parts) == 1 {
+		return pattern == s
+	}
+	if !strings.HasPrefix(s, parts[0]) {
+		return false
+	}
+	s = s[len(parts[0]):]
+	last := parts[len(parts)-1]
+	for _, mid := range parts[1 : len(parts)-1] {
+		i := strings.Index(s, mid)
+		if i < 0 {
+			return false
+		}
+		s = s[i+len(mid):]
+	}
+	return strings.HasSuffix(s, last) && len(s) >= len(last)
+}
+
+func validateLadder(l map[string][]string) error {
+	if len(l) > MaxLadderRoles {
+		return fmt.Errorf("policy: ladders for at most %d roles are allowed, got %d", MaxLadderRoles, len(l))
+	}
+	for role, rungs := range l {
+		if strings.TrimSpace(role) == "" {
+			return fmt.Errorf("policy: a ladder has a blank role")
+		}
+		if len(rungs) == 0 || len(rungs) > MaxLadderRungs {
+			return fmt.Errorf("policy: the ladder of %q needs 1 to %d rungs, got %d", role, MaxLadderRungs, len(rungs))
+		}
+		seen := map[string]bool{}
+		for _, r := range rungs {
+			provider, model, ok := strings.Cut(strings.TrimSpace(r), "/")
+			switch {
+			case !ok || strings.TrimSpace(provider) == "" || strings.TrimSpace(model) == "":
+				return fmt.Errorf("policy: rung %q of %q must look like provider/model (* matches anything)", r, role)
+			case len(r) > MaxRungLen:
+				return fmt.Errorf("policy: a rung of %q is longer than %d characters", role, MaxRungLen)
+			case seen[strings.ToLower(r)]:
+				return fmt.Errorf("policy: rung %q appears twice in the ladder of %q", r, role)
+			}
+			seen[strings.ToLower(r)] = true
+		}
+	}
+	return nil
 }
 
 // MaxPlanFolders bounds how many folders a policy may name for plans and for tasks each.
@@ -89,6 +201,15 @@ func (p ProjectPolicy) Validate() error {
 	}
 	if p.MaxFileLines < 0 {
 		return fmt.Errorf("policy: maxFileLines must not be negative")
+	}
+	if err := validateLadder(p.Ladder); err != nil {
+		return err
+	}
+	if p.ContextBudget < 0 || p.ContextBudget > MaxTokenBudget || p.HistoryBudget < 0 || p.HistoryBudget > MaxTokenBudget {
+		return fmt.Errorf("policy: contextBudget and historyBudget must be between 0 and %d tokens", MaxTokenBudget)
+	}
+	if p.QuotaThreshold < 0 || p.QuotaThreshold > 1 {
+		return fmt.Errorf("policy: quotaThreshold must be between 0 and 1")
 	}
 	if strings.ContainsAny(p.Verify, "\r\n") || len(p.Verify) > MaxPolicyVerifyLen {
 		return fmt.Errorf("policy: verify must be a single line of at most %d characters", MaxPolicyVerifyLen)

@@ -60,6 +60,7 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 			} `json:"message"`
 			Done  bool   `json:"done"`
 			Error string `json:"error"`
+			counts
 		}
 		if err := json.Unmarshal(scanner.Bytes(), &ev); err != nil {
 			return reply.String(), fmt.Errorf("ollama: decode stream line: %w", err)
@@ -72,6 +73,7 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 			onChunk(ev.Message.Content)
 		}
 		if ev.Done {
+			a.Set(ev.usage(a.model))
 			return reply.String(), nil
 		}
 	}

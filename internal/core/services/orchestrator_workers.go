@@ -211,6 +211,9 @@ func (o *OrchestratorService) runTaskWatchdog() {
 		case <-o.stopCh:
 			return
 		case <-ticker.C:
+			if _, err := o.ResumeWaitingTasks(ctx, time.Now()); err != nil {
+				log.Printf("orchestrator: task watchdog: %v", err)
+			}
 			// 5 minutes timeout for processing tasks
 			tasks, err := o.repo.GetStaleProcessing(ctx, 5*time.Minute)
 			if err != nil {

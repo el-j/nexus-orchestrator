@@ -12,6 +12,7 @@ export type TaskStatus =
   | 'FAILED'
   | 'CANCELLED'
   | 'TOO_LARGE'
+  | 'WAITING'
   | 'NO_PROVIDER'
   | 'DRAFT'
   | 'BACKLOG';
@@ -50,6 +51,14 @@ export interface Provider {
   details?: string;
   error?: string;
   contextLimit?: number;
+  /** True while the provider cools down after a rate limit, an exhausted quota or an overload. */
+  rateLimited?: boolean;
+  /** When a cooling-down provider is tried again (ISO 8601). */
+  rateLimitedUntil?: string;
+  /** Why the provider cools down. */
+  cooldownReason?: string;
+  /** The plan's own reading of its allowance, where the provider's client reports it. */
+  quota?: { window: string; status: string; utilization: number; resetsAt?: string };
 }
 
 // ---- Request types ----

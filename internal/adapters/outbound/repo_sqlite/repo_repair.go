@@ -110,7 +110,7 @@ func (r *Repository) RepairForeignRows(ctx context.Context) (int, error) {
 func isKnownStatus(s domain.TaskStatus) bool {
 	switch domain.TaskStatus(strings.ToUpper(string(s))) {
 	case domain.StatusQueued, domain.StatusProcessing, domain.StatusCompleted, domain.StatusFailed,
-		domain.StatusCancelled, domain.StatusTooLarge, domain.StatusNoProvider, domain.StatusDraft, domain.StatusBacklog:
+		domain.StatusCancelled, domain.StatusTooLarge, domain.StatusNoProvider, domain.StatusWaiting, domain.StatusDraft, domain.StatusBacklog:
 		return true
 	}
 	return false

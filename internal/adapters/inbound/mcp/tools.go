@@ -101,6 +101,14 @@ func (s *Server) handleToolCall(w http.ResponseWriter, r *http.Request, req rpcR
 	case "delegate_to_nexus":
 		result, err = s.toolDelegateToNexus(r.Context(), p.Arguments)
 
+	// Routing preview
+	case "get_routing":
+		result, err = s.toolGetRouting(r.Context(), p.Arguments)
+
+	// Usage ledger
+	case "get_usage":
+		result, err = s.toolGetUsage(r.Context(), p.Arguments)
+
 	// Howto tools
 	case "howto":
 		result, err = s.toolHowto()
@@ -162,6 +170,8 @@ func toolList() []toolDef {
 	list = append(list, waitToolDefs()...)
 	list = append(list, providerToolDefs()...)
 	list = append(list, sessionToolDefs()...)
+	list = append(list, usageToolDefs()...)
+	list = append(list, routingToolDefs()...)
 	list = append(list, howtoToolDefs()...)
 	list = append(list, brainToolDefs()...)
 	return list

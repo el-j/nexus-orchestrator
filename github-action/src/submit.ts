@@ -45,8 +45,8 @@ export class NexusClient {
       }
       await sleep(5_000);
     }
-    // NO_PROVIDER is not terminal (a provider may appear), so a missing provider
-    // would otherwise surface only as a bare timeout.
+    // NO_PROVIDER and WAITING are not terminal (a provider may appear, a limit resets), so they
+    // would otherwise surface only as a bare timeout; the last status says why.
     throw new Error(
       `Task ${taskId} did not complete within ${timeoutMs / 1000}s (last status: ${lastStatus})`,
     );

@@ -3,6 +3,7 @@ package mcp_test
 import (
 	"context"
 	"sync"
+	"time"
 
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
@@ -82,6 +83,22 @@ func (f *failOrch) GetProviders() ([]ports.ProviderInfo, error) {
 		return nil, err
 	}
 	return []ports.ProviderInfo{{Name: "p"}}, nil
+}
+
+// PreviewRouting is the routing preview (ports.RoutingPreviewer), which the orchestrator offers next to the port.
+func (f *failOrch) PreviewRouting(_ context.Context, projectPath, role string) (domain.RoutingPreview, error) {
+	if err := f.op("PreviewRouting", projectPath, role); err != nil {
+		return domain.RoutingPreview{}, err
+	}
+	return domain.RoutingPreview{Role: role, QuotaThreshold: 0.9, Order: []domain.RoutingEntry{{Position: 1, Provider: "p", Rung: -1}}}, nil
+}
+
+// GetUsage is the usage ledger read (ports.UsageQuerier), which the orchestrator offers next to the port.
+func (f *failOrch) GetUsage(_ context.Context, _ time.Time) ([]domain.UsageSummary, error) {
+	if err := f.op("GetUsage"); err != nil {
+		return nil, err
+	}
+	return []domain.UsageSummary{{Provider: "p", Calls: 1, InputTokens: 10}}, nil
 }
 
 func (f *failOrch) CancelTask(id string) error {

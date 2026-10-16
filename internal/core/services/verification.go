@@ -79,11 +79,17 @@ func (o *OrchestratorService) writeAndVerifyTaskOutput(run *runHandle, task doma
 
 	if llm != nil {
 		latest := code // the most recent output the model produced; advances every turn
+		current := llm
 		for turn := 1; turn <= maxTurns; turn++ {
+			if next := o.stepUp(run, current); next != current {
+				o.appendTaskLog(task.ID, fmt.Sprintf("verification failed on %s/%s: asking %s/%s (next rung up)",
+					current.ProviderName(), current.ActiveModel(), next.ProviderName(), next.ActiveModel()))
+				current, providerName = next, next.ProviderName()
+			}
 			log.Printf("orchestrator: task %s: verification failed on turn %d/%d (%v), attempting self-healing correction", task.ID, turn, maxTurns, runErr)
 			feedbackPrompt := correctionPrompt(task, latest, output)
 
-			correctedCode, genErr := o.executeGeneration(run, task, llm, feedbackPrompt, sessionHistory)
+			correctedCode, genErr := o.executeGeneration(run, task, current, feedbackPrompt, sessionHistory)
 			if genErr != nil {
 				log.Printf("orchestrator: task %s: self-healing generation turn %d failed: %v", task.ID, turn, genErr)
 				return

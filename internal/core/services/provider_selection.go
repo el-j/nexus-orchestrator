@@ -150,18 +150,19 @@ func (o *OrchestratorService) resolveProviderWithFallback(ctx context.Context, t
 		}
 	}
 
-	// Deduplicate, ensuring preferred client is at index 0 if present
+	// Deduplicate, ensuring preferred client is at index 0 if present. A provider and model are one
+	// candidate: another model of the same provider is another candidate (the model ladder needs it).
 	var result []ports.LLMClient
 	seen := make(map[string]bool)
 	if preferred != nil {
 		result = append(result, preferred)
-		seen[strings.ToLower(preferred.ProviderName())] = true
+		seen[strings.ToLower(cooldownKey(preferred))] = true
 	}
 	for _, c := range ordered {
-		name := strings.ToLower(c.ProviderName())
-		if !seen[name] {
+		key := strings.ToLower(cooldownKey(c))
+		if !seen[key] {
 			result = append(result, c)
-			seen[name] = true
+			seen[key] = true
 		}
 	}
 

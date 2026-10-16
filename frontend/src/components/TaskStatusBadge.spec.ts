@@ -7,6 +7,7 @@ const COLOURS: Record<string, string> = {
   COMPLETED: 'emerald',
   PROCESSING: 'blue',
   QUEUED: 'violet',
+  WAITING: 'cyan',
   FAILED: 'red',
   CANCELLED: 'slate',
   TOO_LARGE: 'orange',

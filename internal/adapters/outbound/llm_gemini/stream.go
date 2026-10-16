@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"nexus-orchestrator/internal/adapters/outbound/httperr"
 	"strings"
+	"time"
 
 	"nexus-orchestrator/internal/adapters/outbound/sse"
 	"nexus-orchestrator/internal/core/domain"
@@ -36,15 +38,15 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 		return "", fmt.Errorf("gemini: request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return "", fmt.Errorf("gemini: rate limited (429)")
+	if err := httperr.FromResponse("gemini", resp, time.Now()); err != nil {
+		return "", err
 	}
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		return "", fmt.Errorf("gemini: unexpected status %d: %s", resp.StatusCode, string(respBytes))
 	}
 	if !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/event-stream") {
-		reply, err := decodeCandidate(resp.Body)
+		reply, err := a.decodeCandidate(resp.Body)
 		if err == nil {
 			onChunk(reply)
 		}
@@ -53,6 +55,8 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 
 	var reply strings.Builder
 	finished := false
+	usage := domain.Usage{Model: a.model}
+	defer func() { a.Set(usage) }()
 	err = sse.Read(resp.Body, maxEventBytes, func(ev sse.Event) error {
 		var chunk geminiCandidates
 		if err := json.Unmarshal([]byte(ev.Data), &chunk); err != nil {
@@ -60,6 +64,11 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 		}
 		if chunk.Error != nil {
 			return fmt.Errorf("gemini: stream error: %s", chunk.Error.Message)
+		}
+		if chunk.UsageMetadata != nil {
+			usage = chunk.usage(firstNonEmpty(chunk.ModelVersion, usage.Model)) // the last chunk carries the totals
+		} else if chunk.ModelVersion != "" {
+			usage.Model = chunk.ModelVersion
 		}
 		if len(chunk.Candidates) == 0 {
 			return nil
@@ -82,4 +91,13 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 		return reply.String(), fmt.Errorf("gemini: stream ended before finishReason")
 	}
 	return reply.String(), nil
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }

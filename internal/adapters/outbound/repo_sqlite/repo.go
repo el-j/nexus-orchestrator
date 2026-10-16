@@ -47,7 +47,7 @@ func New(dbPath string) (*Repository, error) {
 	return &Repository{db: db}, nil
 }
 
-const taskColumns = `id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id, verification_command, max_correction_turns, verification_output, role, agentic, max_agent_turns`
+const taskColumns = `id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id, verification_command, max_correction_turns, verification_output, role, agentic, max_agent_turns, wait_until`
 
 // Save inserts a new Task record.
 func (r *Repository) Save(ctx context.Context, t domain.Task) error {
@@ -56,14 +56,14 @@ func (r *Repository) Save(ctx context.Context, t domain.Task) error {
 	tagsJSON := marshalTags(t.Tags)
 	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO tasks (`+taskColumns+`)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		t.ID, t.ProjectPath, t.TargetFile, t.Instruction,
 		string(ctxJSON), string(t.Status),
 		t.CreatedAt.UnixMilli(), t.UpdatedAt.UnixMilli(),
 		t.Logs, t.ModelID, t.ProviderHint, string(t.Command),
 		t.ProviderName, t.Priority, string(tagsJSON), t.RetryCount, t.AISessionID,
 		t.VerificationCommand, t.MaxCorrectionTurns, t.VerificationOutput,
-		t.Role, t.Agentic, t.MaxAgentTurns,
+		t.Role, t.Agentic, t.MaxAgentTurns, waitMillis(t.WaitUntil),
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: insert task: %w", err)
@@ -85,7 +85,7 @@ func (r *Repository) GetByID(ctx context.Context, id string) (domain.Task, error
 // GetPending returns all tasks in QUEUED or PROCESSING state.
 func (r *Repository) GetPending(ctx context.Context) ([]domain.Task, error) {
 	rows, err := r.db.QueryContext(ctx,
-		`SELECT `+taskColumns+` FROM tasks WHERE status IN ('QUEUED','PROCESSING') ORDER BY created_at ASC`,
+		`SELECT `+taskColumns+` FROM tasks WHERE status IN ('QUEUED','PROCESSING','WAITING') ORDER BY created_at ASC`,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: query pending: %w", err)
@@ -246,8 +246,8 @@ func (r *Repository) Update(ctx context.Context, t domain.Task) error {
 		}
 	}
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE tasks SET instruction=?, target_file=?, provider_name=?, priority=?, tags=?, status=?, retry_count=?, ai_session_id=?, verification_command=?, max_correction_turns=?, verification_output=?, updated_at=? WHERE id=?`,
-		t.Instruction, t.TargetFile, t.ProviderName, t.Priority, string(tagsJSON), string(t.Status), t.RetryCount, t.AISessionID, t.VerificationCommand, t.MaxCorrectionTurns, t.VerificationOutput, t.UpdatedAt.UnixMilli(), t.ID,
+		`UPDATE tasks SET instruction=?, target_file=?, provider_name=?, priority=?, tags=?, status=?, retry_count=?, ai_session_id=?, verification_command=?, max_correction_turns=?, verification_output=?, wait_until=?, updated_at=? WHERE id=?`,
+		t.Instruction, t.TargetFile, t.ProviderName, t.Priority, string(tagsJSON), string(t.Status), t.RetryCount, t.AISessionID, t.VerificationCommand, t.MaxCorrectionTurns, t.VerificationOutput, waitMillis(t.WaitUntil), t.UpdatedAt.UnixMilli(), t.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: update task: %w", err)
@@ -302,13 +302,14 @@ func scanTask(s scanner) (domain.Task, error) {
 	var ctxJSON string
 	var tagsJSON string
 	var createdRaw, updatedRaw any
+	var waitRaw any
 
 	if err := s.Scan(
 		&t.ID, &t.ProjectPath, &t.TargetFile, &t.Instruction,
 		&ctxJSON, &status, &createdRaw, &updatedRaw, &t.Logs,
 		&t.ModelID, &t.ProviderHint, &command, &t.ProviderName, &t.Priority, &tagsJSON, &t.RetryCount, &t.AISessionID,
 		&t.VerificationCommand, &t.MaxCorrectionTurns, &t.VerificationOutput,
-		&t.Role, &t.Agentic, &t.MaxAgentTurns,
+		&t.Role, &t.Agentic, &t.MaxAgentTurns, &waitRaw,
 	); err != nil {
 		return t, fmt.Errorf("sqlite: scan task: %w", err)
 	}
@@ -326,6 +327,10 @@ func scanTask(s scanner) (domain.Task, error) {
 	t.RanBy = domain.RanBy(t.Logs)
 	t.CreatedAt = time.UnixMilli(createdMS)
 	t.UpdatedAt = time.UnixMilli(updatedMS)
+	// A wait time nobody can read (a hand-edited row) is dropped, it must not hide the task.
+	if ms, err := millisOf(waitRaw); err == nil && ms > 0 {
+		t.WaitUntil = time.UnixMilli(ms)
+	}
 
 	if err := json.Unmarshal([]byte(ctxJSON), &t.ContextFiles); err != nil {
 		return t, fmt.Errorf("sqlite: unmarshal context files: %w", err)
@@ -403,4 +408,12 @@ func normalizeStatus(s string) domain.TaskStatus {
 		return domain.TaskStatus(key)
 	}
 	return domain.TaskStatus(s)
+}
+
+// waitMillis stores a wait time as Unix milliseconds; the zero time is stored as 0.
+func waitMillis(t time.Time) int64 {
+	if t.IsZero() {
+		return 0
+	}
+	return t.UnixMilli()
 }

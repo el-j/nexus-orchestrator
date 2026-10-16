@@ -13,6 +13,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
@@ -269,6 +270,31 @@ func (r *Client) HeartbeatTask(ctx context.Context, taskID, sessionID string) er
 func (r *Client) GetProviders() ([]ports.ProviderInfo, error) {
 	var out []ports.ProviderInfo
 	err := r.send(context.Background(), call{op: "get providers", method: http.MethodGet, path: "/api/providers"}, &out)
+	return out, err
+}
+
+// GetUsage reads the usage ledger from the daemon: tokens and cost per provider, model and role for the
+// calls made at or after since (the zero time means everything).
+func (r *Client) GetUsage(ctx context.Context, since time.Time) ([]domain.UsageSummary, error) {
+	window := "all"
+	if !since.IsZero() {
+		window = since.UTC().Format(time.RFC3339)
+	}
+	var out struct {
+		Usage []domain.UsageSummary `json:"usage"`
+	}
+	err := r.send(ctx, call{op: "get usage", method: http.MethodGet, path: "/api/usage?since=" + url.QueryEscape(window)}, &out)
+	return out.Usage, err
+}
+
+// PreviewRouting asks the daemon how it would order the providers for a task of role in the project.
+func (r *Client) PreviewRouting(ctx context.Context, projectPath, role string) (domain.RoutingPreview, error) {
+	var out domain.RoutingPreview
+	q := url.Values{"projectPath": {projectPath}}
+	if role != "" {
+		q.Set("role", role)
+	}
+	err := r.send(ctx, call{op: "preview routing", method: http.MethodGet, path: "/api/routing?" + q.Encode()}, &out)
 	return out, err
 }
 

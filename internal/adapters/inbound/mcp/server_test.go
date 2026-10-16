@@ -309,7 +309,7 @@ func TestMCP_Initialize(t *testing.T) {
 	}
 }
 
-func TestMCP_ToolsList_Returns42Tools(t *testing.T) {
+func TestMCP_ToolsList_Returns44Tools(t *testing.T) {
 	srv := newServer(t, &mockOrch{})
 	r := postRPC(t, srv, map[string]any{
 		"jsonrpc": "2.0",
@@ -327,8 +327,8 @@ func TestMCP_ToolsList_Returns42Tools(t *testing.T) {
 	if err := json.Unmarshal(r.Result, &result); err != nil {
 		t.Fatalf("unmarshal result: %v", err)
 	}
-	if len(result.Tools) != 42 {
-		t.Errorf("expected 42 tools, got %d", len(result.Tools))
+	if len(result.Tools) != 44 {
+		t.Errorf("expected 44 tools, got %d", len(result.Tools))
 	}
 }
 

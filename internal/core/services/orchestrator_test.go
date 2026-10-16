@@ -45,7 +45,7 @@ func (r *memRepo) GetPending(context.Context) ([]domain.Task, error) {
 	defer r.mu.Unlock()
 	var out []domain.Task
 	for _, t := range r.tasks {
-		if t.Status == domain.StatusQueued || t.Status == domain.StatusProcessing {
+		if t.Status == domain.StatusQueued || t.Status == domain.StatusProcessing || t.Status == domain.StatusWaiting {
 			out = append(out, t)
 		}
 	}
@@ -148,6 +148,10 @@ func (r *memRepo) GetByProjectPathAndStatus(_ context.Context, projectPath strin
 func (r *memRepo) Update(_ context.Context, t domain.Task) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	// Like the SQL repository, Update does not write the log: UpdateLogs owns it.
+	if old, ok := r.tasks[t.ID]; ok {
+		t.Logs = old.Logs
+	}
 	r.tasks[t.ID] = t
 	return nil
 }

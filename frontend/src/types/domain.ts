@@ -3,6 +3,7 @@ export type TaskStatus =
   | 'DRAFT'
   | 'BACKLOG'
   | 'QUEUED'
+  | 'WAITING'
   | 'PROCESSING'
   | 'COMPLETED'
   | 'FAILED'
@@ -27,6 +28,8 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   retryCount?: number;
+  /** When a WAITING task is queued again (ISO 8601): every provider is cooling down until then. */
+  waitUntil?: string;
   logs: string;
   providerName?: string;
   /** The provider Nexus ran the task on; absent when an agent set the status or it has not run. */
@@ -66,6 +69,19 @@ export interface ProviderInfo {
   timeoutSec?: number;
   lastChecked?: string;
   consecutiveFails?: number;
+  /** True while the provider cools down after a rate limit, an exhausted quota or an overload. */
+  rateLimited?: boolean;
+  /** When a cooling-down provider is tried again (ISO 8601). */
+  rateLimitedUntil?: string;
+  /** Why the provider cools down, for example "anthropic: rate limited (429)". */
+  cooldownReason?: string;
+  /** The plan's own reading of its allowance, where the provider's client reports it. */
+  quota?: {
+    window: string;
+    status: string;
+    utilization: number;
+    resetsAt?: string;
+  };
 }
 
 /** A saved provider configuration. */

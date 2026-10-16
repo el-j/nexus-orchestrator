@@ -20,6 +20,8 @@ function statusEmoji(status: TaskStatus): string {
       return '⛔';
     case 'TOO_LARGE':
       return '📏';
+    case 'WAITING':
+      return '⏳';
     case 'NO_PROVIDER':
       return '🔌';
     case 'DRAFT':
@@ -45,6 +47,8 @@ function statusIcon(status: TaskStatus): vscode.ThemeIcon {
       return new vscode.ThemeIcon('circle-slash');
     case 'TOO_LARGE':
       return new vscode.ThemeIcon('file-binary');
+    case 'WAITING':
+      return new vscode.ThemeIcon('watch');
     case 'NO_PROVIDER':
       return new vscode.ThemeIcon('plug');
     case 'DRAFT':

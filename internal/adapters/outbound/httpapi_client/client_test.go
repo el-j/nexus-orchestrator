@@ -3,9 +3,11 @@ package httpapi_client_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"nexus-orchestrator/internal/adapters/outbound/httpapi_client"
 	"nexus-orchestrator/internal/core/domain"
@@ -1102,5 +1104,46 @@ func TestClient_GetDiscoveredPlanFiles(t *testing.T) {
 	defer srv2.Close()
 	if _, err := httpapi_client.NewClient(srv2.URL).GetDiscoveredPlanFiles(context.Background(), "/tmp/test"); err == nil {
 		t.Error("expected error on non-200, got nil")
+	}
+}
+
+func TestClient_GetUsage(t *testing.T) {
+	var gotPath, gotSince string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath, gotSince = r.URL.Path, r.URL.Query().Get("since")
+		fmt.Fprint(w, `{"since":"x","totals":{},"usage":[{"provider":"Anthropic","model":"opus","calls":2,"inputTokens":300,"outputTokens":120}]}`)
+	}))
+	defer srv.Close()
+	c := httpapi_client.NewClient(srv.URL)
+	since := time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC)
+	got, err := c.GetUsage(context.Background(), since)
+	if err != nil || len(got) != 1 || got[0].Provider != "Anthropic" || got[0].InputTokens != 300 {
+		t.Fatalf("%+v %v", got, err)
+	}
+	if gotPath != "/api/usage" || gotSince != "2026-10-16T12:00:00Z" {
+		t.Errorf("request: %s since=%s", gotPath, gotSince)
+	}
+	if _, err := c.GetUsage(context.Background(), time.Time{}); err != nil || gotSince != "all" {
+		t.Errorf("zero time asks for everything: since=%q err=%v", gotSince, err)
+	}
+}
+
+func TestClient_PreviewRouting(t *testing.T) {
+	var gotPath, gotProject, gotRole string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath, gotProject, gotRole = r.URL.Path, r.URL.Query().Get("projectPath"), r.URL.Query().Get("role")
+		fmt.Fprint(w, `{"role":"coder","quotaThreshold":0.9,"order":[{"position":1,"provider":"Ollama","model":"qwen","rung":0}]}`)
+	}))
+	defer srv.Close()
+	c := httpapi_client.NewClient(srv.URL)
+	got, err := c.PreviewRouting(context.Background(), "/my project", "coder")
+	if err != nil || len(got.Order) != 1 || got.Order[0].Provider != "Ollama" || got.QuotaThreshold != 0.9 {
+		t.Fatalf("%+v %v", got, err)
+	}
+	if gotPath != "/api/routing" || gotProject != "/my project" || gotRole != "coder" {
+		t.Errorf("request: %s project=%q role=%q", gotPath, gotProject, gotRole)
+	}
+	if _, err := c.PreviewRouting(context.Background(), "/p", ""); err != nil || gotRole != "" {
+		t.Errorf("no role: %v role=%q", err, gotRole)
 	}
 }

@@ -89,6 +89,7 @@ func migrate(db *sql.DB) error {
 		{"role", "TEXT NOT NULL DEFAULT ''"},
 		{"agentic", "INTEGER NOT NULL DEFAULT 0"},
 		{"max_agent_turns", "INTEGER NOT NULL DEFAULT 0"},
+		{"wait_until", "INTEGER NOT NULL DEFAULT 0"},
 	} {
 		_, _ = db.ExecContext(context.Background(), fmt.Sprintf("ALTER TABLE tasks ADD COLUMN %s %s", col.name, col.def))
 	}
@@ -167,6 +168,24 @@ func migrate(db *sql.DB) error {
 	`)
 	if err != nil {
 		return fmt.Errorf("sqlite: migrate runtime_config: %w", err)
+	}
+	_, err = db.ExecContext(context.Background(), `
+		CREATE TABLE IF NOT EXISTS llm_usage (
+			id            INTEGER PRIMARY KEY AUTOINCREMENT,
+			at            INTEGER NOT NULL,
+			task_id       TEXT    NOT NULL DEFAULT '',
+			provider      TEXT    NOT NULL,
+			model         TEXT    NOT NULL DEFAULT '',
+			role          TEXT    NOT NULL DEFAULT '',
+			input_tokens  INTEGER NOT NULL DEFAULT 0,
+			output_tokens INTEGER NOT NULL DEFAULT 0,
+			cached_tokens INTEGER NOT NULL DEFAULT 0,
+			cost_usd      REAL    NOT NULL DEFAULT 0
+		);
+		CREATE INDEX IF NOT EXISTS idx_llm_usage_at ON llm_usage(at);
+	`)
+	if err != nil {
+		return fmt.Errorf("sqlite: migrate llm_usage: %w", err)
 	}
 	if err := migrateKnowledge(db); err != nil {
 		return err

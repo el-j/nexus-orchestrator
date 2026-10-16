@@ -36,6 +36,7 @@ var statusEventMap = map[domain.TaskStatus]ports.EventType{
 	domain.StatusCancelled:  ports.EventTaskCancelled,
 	domain.StatusTooLarge:   ports.EventTaskTooLarge,
 	domain.StatusNoProvider: ports.EventTaskNoProvider,
+	domain.StatusWaiting:    ports.EventTaskWaiting,
 	domain.StatusDraft:      ports.EventTaskDraft,
 	domain.StatusBacklog:    ports.EventTaskBacklog,
 }
@@ -90,6 +91,8 @@ func (o *OrchestratorService) processNext() bool {
 		o.emit(task.ID, domain.StatusNoProvider)
 		return true
 	}
+	chain, run.ladder = o.routeChain(chain, task)
+	run.chain = chain
 	o.emit(task.ID, domain.StatusProcessing)
 
 	prompt, sessionHistory, err := o.prepareChatPrompt(task)
@@ -204,6 +207,14 @@ func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task doma
 			o.finishInterrupted(task, run)
 			return true
 		}
+		if cd, cooling := o.discovery.Cooldown(llm, time.Now()); cooling {
+			logEntry := fmt.Sprintf("%s is cooling down until %s (%s); skipped", llm.ProviderName(), cd.until.Local().Format("15:04:05"), cd.reason)
+			log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
+			o.appendTaskLog(task.ID, logEntry)
+			allTooLarge = false
+			lastErr = errors.New(logEntry)
+			continue
+		}
 		if limit := llm.ContextLimit(run.ctx); limit > 0 {
 			estHistory := make([]domain.Message, len(sessionHistory)+1)
 			copy(estHistory, sessionHistory)
@@ -229,6 +240,7 @@ func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task doma
 		if err != nil {
 			lastErr = err
 			tried = append(tried, llm.ProviderName())
+			o.noteProviderError(llm, err)
 			logEntry := fmt.Sprintf("provider %s failed: %v", llm.ProviderName(), err)
 			log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
 			o.appendTaskLog(task.ID, logEntry)
@@ -236,6 +248,7 @@ func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task doma
 		}
 
 		// Success!
+		o.discovery.ClearCooldown(llm)
 		if i > 0 {
 			failoverNote := fmt.Sprintf("[failover: primary provider failed, executed via %s]", llm.ProviderName())
 			log.Printf("orchestrator: task %s: %s", task.ID, failoverNote)
@@ -266,6 +279,9 @@ func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task doma
 		return true
 	}
 
+	if o.holdUntilReset(task, chain) {
+		return true
+	}
 	if o.requeueForRetry(task) {
 		return true
 	}
@@ -339,4 +355,16 @@ func (o *OrchestratorService) executeGeneration(run *runHandle, task domain.Task
 		return "", err
 	}
 	return code, nil
+}
+
+// noteProviderError puts a provider that reported a rate limit, an exhausted quota or an overload on
+// cooldown until the time it gave (or a default), so the next tasks do not try it again first.
+func (o *OrchestratorService) noteProviderError(llm ports.LLMClient, err error) {
+	pe, ok := domain.AsProviderError(err)
+	if !ok {
+		return
+	}
+	if until := pe.CooldownUntil(time.Now()); !until.IsZero() {
+		o.discovery.MarkCooldown(llm, until, pe.Kind, pe.Error())
+	}
 }

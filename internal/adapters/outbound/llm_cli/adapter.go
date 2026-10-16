@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -35,6 +36,12 @@ type Adapter struct {
 	exe     string
 	args    []string
 	model   string
+
+	mu        sync.Mutex // guards the last reading below
+	lastUsage domain.Usage
+	hasUsage  bool
+	lastQuota domain.QuotaReading
+	hasQuota  bool
 }
 
 // NewAdapter builds an adapter for a command line such as "claude -p --model sonnet". The first
@@ -169,6 +176,9 @@ func transcript(messages []domain.Message) string {
 }
 
 func (a *Adapter) run(ctx context.Context, prompt string, onChunk func(string)) (string, error) {
+	if isClaudeStream(a.exe, a.args) {
+		return a.runClaude(ctx, prompt, onChunk)
+	}
 	ctx, cancel := context.WithTimeout(ctx, runTimeout)
 	defer cancel()
 

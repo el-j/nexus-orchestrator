@@ -158,12 +158,12 @@ DELETE /api/tasks/{id}
 
 Cancel a task. Which states can be cancelled:
 
-| Task status                                     | What happens                                                                                                                                                                                 |
-| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `QUEUED`, `DRAFT`, `BACKLOG`, `NO_PROVIDER`     | Moved to `CANCELLED` immediately.                                                                                                                                                            |
-| `PROCESSING` (running in this daemon)           | The in-flight provider request is **aborted**; the task becomes `CANCELLED` a moment later (watch the `task.cancelled` event). It is not retried and does not fall back to another provider. |
-| `PROCESSING` (claimed by an external agent)     | Taken off the board as `CANCELLED`; the external agent cannot be interrupted.                                                                                                                |
-| `COMPLETED`, `FAILED`, `CANCELLED`, `TOO_LARGE` | Not cancellable.                                                                                                                                                                             |
+| Task status                                            | What happens                                                                                                                                                                                 |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `QUEUED`, `WAITING`, `DRAFT`, `BACKLOG`, `NO_PROVIDER` | Moved to `CANCELLED` immediately.                                                                                                                                                            |
+| `PROCESSING` (running in this daemon)                  | The in-flight provider request is **aborted**; the task becomes `CANCELLED` a moment later (watch the `task.cancelled` event). It is not retried and does not fall back to another provider. |
+| `PROCESSING` (claimed by an external agent)            | Taken off the board as `CANCELLED`; the external agent cannot be interrupted.                                                                                                                |
+| `COMPLETED`, `FAILED`, `CANCELLED`, `TOO_LARGE`        | Not cancellable.                                                                                                                                                                             |
 
 When the daemon shuts down, a task that was running goes back to `QUEUED` (it is not marked failed).
 
@@ -190,11 +190,85 @@ Returns all registered LLM providers with their liveness status.
     "models": ["codellama", "deepseek-coder"]
   },
   {
+    "name": "Anthropic",
+    "active": true,
+    "rateLimited": true,
+    "rateLimitedUntil": "2026-10-16T14:00:00Z",
+    "cooldownReason": "Anthropic: rate limited (429)"
+  },
+  {
     "name": "Ollama",
     "active": false
   }
 ]
 ```
+
+`quota` is the plan's own reading of its allowance where the provider's client reports it (today the
+Claude command-line tool): `window` (`five_hour`, `seven_day`), `utilization` (share used, 0 to 1),
+`resetsAt`, `status`. It disappears once its window has reset. Routing tries a provider at or above the
+project policy's `quotaThreshold` (default 0.9) after the others.
+
+`rateLimited` is true while a provider cools down after a rate limit (HTTP 429), an exhausted quota (402,
+or a 429 that says so) or an overload (503, 529). The engine skips it until `rateLimitedUntil`: the time the
+provider gave in `Retry-After`, or a default (60 s rate limit, 30 s overload, 1 h quota). The cooldown is
+per provider and model and is cleared by the next successful call.
+
+---
+
+### Usage ledger
+
+```
+GET /api/usage?since=24h
+```
+
+Tokens and cost the models consumed, added up per provider, model and role. Every successful model call
+whose provider reports its usage (Anthropic, Gemini, OpenAI-compatible, Ollama, and `claude` in
+`stream-json` mode) is one record. `since` is a duration back from now (`90m`, `24h`, `7d`), an RFC 3339
+time, or `all`; the default is 24 hours. Largest consumers come first. `503` when the daemon has no ledger,
+`400` for a bad `since`. The same data is the MCP tool `get_usage` and `nexus-cli usage --since 7d`.
+
+**Response:** `200 OK`
+
+```json
+{
+  "since": "2026-10-15T12:00:00Z",
+  "totals": {
+    "provider": "",
+    "calls": 3,
+    "inputTokens": 350,
+    "outputTokens": 125,
+    "cachedTokens": 30,
+    "costUSD": 0.75
+  },
+  "usage": [
+    {
+      "provider": "Anthropic",
+      "model": "claude-opus-5-5",
+      "role": "architect",
+      "calls": 2,
+      "inputTokens": 300,
+      "outputTokens": 120,
+      "cachedTokens": 30,
+      "costUSD": 0.75
+    }
+  ]
+}
+```
+
+---
+
+### Routing preview
+
+```
+GET /api/routing?projectPath=/abs/project&role=coder
+```
+
+How the daemon would order the candidate providers for a task of `role` in the project right now, without
+running anything: the project's model ladder for the role (`ladder` in `.nexus/policy.json`, cheapest
+first), the order after the ladder, the cooldowns after limits and the plan quota readings
+(`quotaThreshold`), each provider with its `rung` (`-1` when the ladder does not list it), `coolingUntil`
+and `utilization`. `400` without `projectPath`, `503` when no provider is available. The same data is the
+MCP tool `get_routing` and `nexus-cli routing --project P --role coder`.
 
 ---
 
@@ -757,16 +831,18 @@ timeout the task comes back as it is with `"timedOut": true`.
 | `get_file_map`           | Retrieve cached file path map knowledge document for a project                                                                | `projectPath`                           |
 | `get_onboarding_context` | Token-budgeted (< 800 tokens) onboarding summary for agent bootstrap: stack, invariants, test commands, active plan and tasks | `projectPath`, `maxTokens?`             |
 
-#### Discovery & System (6)
+#### Discovery & System (8)
 
-| Tool                    | Description                                                                       | Parameters     |
-| ----------------------- | --------------------------------------------------------------------------------- | -------------- |
-| `get_discovered_agents` | Return AI agent tools detected on the local system (Claude CLI, Copilot, etc.)    | —              |
-| `delegate_to_nexus`     | Delegate an AI agent session to the nexus task queue                              | `session_id`   |
-| `get_discovered_plans`  | Scan for plan/task/orchestration files in a project directory                     | `projectPath?` |
-| `howto`                 | Return a complete integration guide — all tools, workflow patterns, and endpoints | —              |
-| `howto_brief`           | Ultra-compact integration guide (~200 tokens) for small-context models            | —              |
-| `health`                | Check daemon reachable and operational                                            | —              |
+| Tool                    | Description                                                                       | Parameters             |
+| ----------------------- | --------------------------------------------------------------------------------- | ---------------------- |
+| `get_discovered_agents` | Return AI agent tools detected on the local system (Claude CLI, Copilot, etc.)    | —                      |
+| `delegate_to_nexus`     | Delegate an AI agent session to the nexus task queue                              | `session_id`           |
+| `get_discovered_plans`  | Scan for plan/task/orchestration files in a project directory                     | `projectPath?`         |
+| `howto`                 | Return a complete integration guide — all tools, workflow patterns, and endpoints | —                      |
+| `howto_brief`           | Ultra-compact integration guide (~200 tokens) for small-context models            | —                      |
+| `health`                | Check daemon reachable and operational                                            | —                      |
+| `get_routing`           | How providers would be ordered for a role in a project: ladder, cooldowns, quota  | `projectPath`, `role?` |
+| `get_usage`             | Tokens and cost per provider, model and role from the usage ledger                | `since?`               |
 
 ### Example: Submit Task via MCP
 
@@ -833,14 +909,18 @@ QUEUED → PROCESSING → COMPLETED
                     → FAILED
                     → TOO_LARGE (pre-flight)
                     → NO_PROVIDER (no backend)
-QUEUED → CANCELLED (user cancellation)
+                    → WAITING (every provider is cooling down) → QUEUED (at the reset time)
+QUEUED, WAITING → CANCELLED (user cancellation)
 ```
 
 A task moves through these states:
 
 1. **QUEUED**: Submitted and waiting in the queue
 2. **PROCESSING**: Picked up by the worker, LLM call in progress
-3. **Terminal state**: One of COMPLETED, FAILED, TOO_LARGE, NO_PROVIDER, or CANCELLED
+3. **WAITING**: Every candidate provider reported a rate limit or an exhausted quota. The task is held until
+   the earliest reset (`waitUntil`, a second after the time the provider gave) and then queued again by the
+   daemon, also after a restart. It is not a failure and uses up no retry. A `task.waiting` event is published.
+4. **Terminal state**: One of COMPLETED, FAILED, TOO_LARGE, NO_PROVIDER, or CANCELLED
 
 ---
 

@@ -44,6 +44,40 @@ type ChatStreamer interface {
 	ChatStream(ctx context.Context, messages []domain.Message, onChunk func(piece string)) (string, error)
 }
 
+// UsageReporter is the optional LLMClient capability of reporting what the last call consumed. The
+// numbers are the provider's own, taken from its response. LastUsage returns ok=false until a call
+// reported any. The engine reads it right after the call it made, one task at a time.
+type UsageReporter interface {
+	LastUsage() (domain.Usage, bool)
+}
+
+// QuotaReporter is the optional LLMClient capability of reporting the plan's own reading of how much of
+// its allowance is used (see domain.QuotaReading). It is only available where the provider's client says
+// so, today the Claude command-line tool.
+type QuotaReporter interface {
+	LastQuota() (domain.QuotaReading, bool)
+}
+
+// UsageRepository is the outbound port for the usage ledger: one record per model call.
+type UsageRepository interface {
+	// Record stores one call.
+	Record(ctx context.Context, r domain.UsageRecord) error
+	// Summarize adds the calls made at or after since up per provider, model and role,
+	// largest consumers (input plus output tokens) first.
+	Summarize(ctx context.Context, since time.Time) ([]domain.UsageSummary, error)
+}
+
+// UsageQuerier is what the inbound adapters need to read the ledger.
+type UsageQuerier interface {
+	GetUsage(ctx context.Context, since time.Time) ([]domain.UsageSummary, error)
+}
+
+// RoutingPreviewer is what the inbound adapters need to show how routing would order the providers for a
+// role in a project (the ladder, cooldowns and quota readings applied).
+type RoutingPreviewer interface {
+	PreviewRouting(ctx context.Context, projectPath, role string) (domain.RoutingPreview, error)
+}
+
 // TaskRepository is the port for persisting and querying Tasks.
 type TaskRepository interface {
 	Save(ctx context.Context, t domain.Task) error
@@ -94,8 +128,15 @@ type ProviderInfo struct {
 	LastChecked      time.Time `json:"lastChecked"`
 	ConsecutiveFails int       `json:"consecutiveFails,omitempty"`
 	LatencyMs        int64     `json:"latencyMs,omitempty"`
+	// RateLimited is true while the provider is cooling down after a rate limit, an exhausted quota or
+	// an overload; RateLimitedUntil says when it is tried again and CooldownReason why.
 	RateLimited      bool      `json:"rateLimited,omitempty"`
-	LastError        string    `json:"lastError,omitempty"`
+	RateLimitedUntil time.Time `json:"rateLimitedUntil,omitzero"`
+	CooldownReason   string    `json:"cooldownReason,omitempty"`
+	// Quota is the plan's own reading of its allowance (window, share used, reset time), where the
+	// provider's client reports it; absent otherwise and once its window has reset.
+	Quota     *domain.QuotaReading `json:"quota,omitempty"`
+	LastError string               `json:"lastError,omitempty"`
 }
 
 // SessionRepository is the port for persisting per-project conversation history.
@@ -228,9 +269,11 @@ const (
 	EventTaskCancelled  EventType = "task.cancelled"
 	EventTaskTooLarge   EventType = "task.too_large"
 	EventTaskNoProvider EventType = "task.no_provider"
-	EventTaskDraft      EventType = "task.draft"
-	EventTaskBacklog    EventType = "task.backlog"
-	EventTaskUpdated    EventType = "task.updated"
+	// EventTaskWaiting: every candidate provider is cooling down; the task waits until its reset.
+	EventTaskWaiting EventType = "task.waiting"
+	EventTaskDraft   EventType = "task.draft"
+	EventTaskBacklog EventType = "task.backlog"
+	EventTaskUpdated EventType = "task.updated"
 	// EventTaskChunk carries a piece of the model's reply while it is being generated.
 	EventTaskChunk EventType = "task.chunk"
 	// EventTaskRestart tells subscribers to discard the text received so far: a new attempt

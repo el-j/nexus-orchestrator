@@ -1,6 +1,7 @@
 package domain_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -100,5 +101,109 @@ func TestPolicy_PlanFilesFoldersMustStayInsideTheProject(t *testing.T) {
 	// the same rules apply to task folders
 	if err := (domain.ProjectPolicy{PlanFiles: &domain.PlanFilesPolicy{Tasks: []string{"../x"}}}).Validate(); err == nil {
 		t.Error("a task folder outside the project must be refused")
+	}
+}
+
+func TestQuotaThresholdPolicy(t *testing.T) {
+	if got := (domain.ProjectPolicy{}).QuotaLimit(); got != domain.DefaultQuotaThreshold {
+		t.Errorf("unset = %v, want the default %v", got, domain.DefaultQuotaThreshold)
+	}
+	if got := (domain.ProjectPolicy{QuotaThreshold: 0.75}).QuotaLimit(); got != 0.75 {
+		t.Errorf("set = %v", got)
+	}
+	for _, bad := range []float64{-0.1, 1.01, 7} {
+		if err := (domain.ProjectPolicy{QuotaThreshold: bad}).Validate(); err == nil {
+			t.Errorf("quotaThreshold %v must be rejected", bad)
+		}
+	}
+	for _, ok := range []float64{0, 0.5, 1} {
+		if err := (domain.ProjectPolicy{QuotaThreshold: ok}).Validate(); err != nil {
+			t.Errorf("quotaThreshold %v: %v", ok, err)
+		}
+	}
+}
+
+func TestLadderPolicy(t *testing.T) {
+	p := domain.ProjectPolicy{Ladder: map[string][]string{
+		"coder":   {"Ollama/*", "Anthropic/claude-sonnet*", "Anthropic/claude-opus*"},
+		"default": {"Ollama/*"},
+	}}
+	if err := p.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if got := p.LadderFor("Coder"); len(got) != 3 || got[0] != "Ollama/*" {
+		t.Errorf("a role's own ladder (case-insensitive): %v", got)
+	}
+	if got := p.LadderFor("tester"); len(got) != 1 || got[0] != "Ollama/*" {
+		t.Errorf("another role uses default: %v", got)
+	}
+	if got := (domain.ProjectPolicy{}).LadderFor("coder"); got != nil {
+		t.Errorf("no ladder: %v", got)
+	}
+	if got := (domain.ProjectPolicy{Ladder: map[string][]string{"coder": {"a/b"}}}).LadderFor("tester"); got != nil {
+		t.Errorf("no default and no entry: %v", got)
+	}
+
+	bad := map[string]map[string][]string{
+		"blank role":     {" ": {"a/b"}},
+		"empty ladder":   {"coder": {}},
+		"no slash":       {"coder": {"ollama"}},
+		"blank provider": {"coder": {"/model"}},
+		"blank model":    {"coder": {"ollama/"}},
+		"blank rung":     {"coder": {" "}},
+		"too long":       {"coder": {"a/" + strings.Repeat("x", 200)}},
+		"too many rungs": {"coder": {"a/1", "a/2", "a/3", "a/4", "a/5", "a/6", "a/7", "a/8", "a/9", "a/10", "a/11"}},
+		"duplicate rung": {"coder": {"a/b", "A/B"}},
+	}
+	for name, l := range bad {
+		if err := (domain.ProjectPolicy{Ladder: l}).Validate(); err == nil {
+			t.Errorf("%s must be rejected", name)
+		}
+	}
+	tooMany := map[string][]string{}
+	for i := range 21 {
+		tooMany[fmt.Sprintf("role%d", i)] = []string{"a/b"}
+	}
+	if err := (domain.ProjectPolicy{Ladder: tooMany}).Validate(); err == nil {
+		t.Error("more than 20 roles must be rejected")
+	}
+}
+
+func TestRungMatch(t *testing.T) {
+	cases := []struct {
+		rung, provider, model string
+		want                  bool
+	}{
+		{"Ollama/*", "Ollama", "qwen2.5-coder", true},
+		{"ollama/*", "Ollama", "", true},
+		{"Anthropic/claude-sonnet*", "Anthropic", "claude-sonnet-5-5", true},
+		{"Anthropic/claude-sonnet*", "Anthropic", "claude-opus-5-5", false},
+		{"*/gpt-4o", "vscode-copilot", "gpt-4o", true},
+		{"*/*", "anything", "any/thing", true},
+		{"Anthropic/claude-*-5-5", "Anthropic", "claude-opus-5-5", true},
+		{"Anthropic/claude-*-5-5", "Anthropic", "claude-opus-4", false},
+		{"Ollama/qwen", "Anthropic", "qwen", false},
+		{"vscode-*/*", "vscode-copilot-gpt-4o", "gpt-4o", true},
+		{"a/b", "a", "b", true},
+		{"a/b", "a", "bb", false},
+		{"noslash", "noslash", "x", false},
+		{"a/*mid*end", "a", "x-mid-end", true},
+		{"a/*mid*end", "a", "x-other-end", false},
+	}
+	for _, c := range cases {
+		if got := domain.RungMatches(c.rung, c.provider, c.model); got != c.want {
+			t.Errorf("%s vs %s/%s = %v, want %v", c.rung, c.provider, c.model, got, c.want)
+		}
+	}
+}
+
+func TestTokenBudgetsInThePolicy(t *testing.T) {
+	for _, bad := range []domain.ProjectPolicy{{ContextBudget: -1}, {HistoryBudget: -5}, {ContextBudget: domain.MaxTokenBudget + 1}, {HistoryBudget: domain.MaxTokenBudget + 1}} {
+		if err := bad.Validate(); err == nil {
+			t.Errorf("%+v must be rejected", bad)
+		}
+	}
+	if err := (domain.ProjectPolicy{ContextBudget: 8000, HistoryBudget: 4000}).Validate(); err != nil {
+		t.Errorf("valid budgets: %v", err)
 	}
 }

@@ -1,11 +1,11 @@
 {
   "version": "2",
-  "updatedAt": "2026-04-14T03:00:00Z",
+  "updatedAt": "2026-10-16T00:00:00Z",
   "counters": {
-    "nextTaskId": 581,
-    "nextPlanId": 74
+    "nextTaskId": 609,
+    "nextPlanId": 75
   },
-  "activePlanId": "PLAN-073",
+  "activePlanId": "PLAN-074",
   "notes": [
     "PLAN-072 completed (2026-09-25): Universal Control Plane & Context Broker Foundation \u2014 TASK-559..TASK-565 done across 4 waves. Wave 1: Decomposed monolithic mcp/tools.go into 4 domain submodules + Token-Budgeted Onboarding Handshake (get_onboarding_context, <800 tokens). Wave 2: Native Google Gemini LLM adapter (llm_gemini) + Smart Provider Fallback Chain (Role-driven routing: architect->Frontier, linter/test->Local with auto-failover and appendTaskLog trace preservation). Wave 3: Real-Time fsnotify workspace invalidation watcher with 300ms debounce. Wave 4: cmd/* entry point tests (cli, daemon, submit, mcp-stdio) + UI & Docs polish (Discovery provider promote pre-fill, SVG Mission Control card, README v0.10.0, 41 MCP tools). All 26 Go packages pass with -race, Vitest 64/64 pass, build clean.",
     "PLAN-072 started (2026-09-25): Universal Control Plane & Context Broker Foundation \u2014 TASK-559..TASK-565 created across 4 waves. Wave 1: Decompose monolithic mcp/tools.go (1,241 lines) into 4 domain submodules + Token-Budgeted Onboarding Handshake (get_onboarding_context). Wave 2: Native Google Gemini LLM adapter (llm_gemini) + Smart Provider Fallback Chain (Claude -> Gemini -> Local Ollama). Wave 3: Real-Time fsnotify workspace invalidation watcher. Wave 4: cmd/* entry point test coverage + UI & Docs polish.",
@@ -892,6 +892,41 @@
       "createdAt": "2026-09-25T10:05:00Z",
       "completedAt": "2026-09-25T10:44:00Z",
       "tasks": ["TASK-559", "TASK-560", "TASK-561", "TASK-562", "TASK-563", "TASK-564", "TASK-565"]
+    },
+    "PLAN-074": {
+      "id": "PLAN-074",
+      "title": "Quota-aware routing, a model ladder and a usage ledger (from the v0.10.0 audit)",
+      "status": "active",
+      "tasks": [
+        "TASK-581",
+        "TASK-582",
+        "TASK-583",
+        "TASK-584",
+        "TASK-585",
+        "TASK-586",
+        "TASK-587",
+        "TASK-588",
+        "TASK-589",
+        "TASK-590",
+        "TASK-591",
+        "TASK-592",
+        "TASK-593",
+        "TASK-594",
+        "TASK-595",
+        "TASK-596",
+        "TASK-597",
+        "TASK-598",
+        "TASK-599",
+        "TASK-600",
+        "TASK-601",
+        "TASK-602",
+        "TASK-603",
+        "TASK-604",
+        "TASK-605",
+        "TASK-606",
+        "TASK-607",
+        "TASK-608"
+      ]
     }
   },
   "tasks": {
@@ -4915,6 +4950,303 @@
       "createdAt": "2026-04-13T00:00:00Z",
       "dependencies": ["TASK-518"],
       "completedAt": "2026-04-13T00:00:00Z"
+    },
+    "TASK-581": {
+      "id": "TASK-581",
+      "planId": "PLAN-074",
+      "status": "done",
+      "title": "Typed provider errors: rate limit, quota exhausted, overloaded",
+      "role": "coder",
+      "wave": 1,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": [],
+      "completedAt": "2026-10-16T00:00:00Z"
+    },
+    "TASK-582": {
+      "id": "TASK-582",
+      "planId": "PLAN-074",
+      "status": "done",
+      "title": "Provider cooldown store; chain skips cooled-down providers",
+      "role": "coder",
+      "wave": 1,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-581"],
+      "completedAt": "2026-10-16T00:00:00Z"
+    },
+    "TASK-583": {
+      "id": "TASK-583",
+      "planId": "PLAN-074",
+      "status": "done",
+      "title": "Claude CLI driver: stream-json, usage, rate-limit event",
+      "role": "coder",
+      "wave": 1,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-581"],
+      "completedAt": "2026-10-16T00:00:00Z"
+    },
+    "TASK-584": {
+      "id": "TASK-584",
+      "planId": "PLAN-074",
+      "status": "done",
+      "title": "Usage on the LLM port",
+      "role": "coder",
+      "wave": 1,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-583"],
+      "completedAt": "2026-10-16T00:00:00Z"
+    },
+    "TASK-585": {
+      "id": "TASK-585",
+      "planId": "PLAN-074",
+      "status": "done",
+      "title": "Usage ledger: store, REST, MCP, CLI",
+      "role": "coder",
+      "wave": 1,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-584"],
+      "completedAt": "2026-10-16T00:00:00Z"
+    },
+    "TASK-586": {
+      "id": "TASK-586",
+      "planId": "PLAN-074",
+      "status": "done",
+      "title": "Quota threshold routing from the client's own reading",
+      "role": "coder",
+      "wave": 2,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-582", "TASK-583"],
+      "completedAt": "2026-10-16T00:00:00Z"
+    },
+    "TASK-587": {
+      "id": "TASK-587",
+      "planId": "PLAN-074",
+      "status": "done",
+      "title": "WAITING state: hold when every candidate is cooled down",
+      "role": "coder",
+      "wave": 2,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-582", "TASK-586"],
+      "completedAt": "2026-10-16T00:00:00Z"
+    },
+    "TASK-588": {
+      "id": "TASK-588",
+      "planId": "PLAN-074",
+      "status": "done",
+      "title": "e2e: failover, cooldown and wait through the real daemon",
+      "role": "tester",
+      "wave": 2,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-587"],
+      "completedAt": "2026-10-16T00:00:00Z"
+    },
+    "TASK-589": {
+      "id": "TASK-589",
+      "planId": "PLAN-074",
+      "status": "done",
+      "title": "Policy: model ladder per role",
+      "role": "coder",
+      "wave": 3,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-582"],
+      "completedAt": "2026-10-16T00:00:00Z"
+    },
+    "TASK-590": {
+      "id": "TASK-590",
+      "planId": "PLAN-074",
+      "status": "done",
+      "title": "Routing by ladder",
+      "role": "coder",
+      "wave": 3,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-589", "TASK-586"],
+      "completedAt": "2026-10-16T00:00:00Z"
+    },
+    "TASK-591": {
+      "id": "TASK-591",
+      "planId": "PLAN-074",
+      "status": "done",
+      "title": "Ladder in the UI and CLI",
+      "role": "polish",
+      "wave": 3,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-590"],
+      "completedAt": "2026-10-16T00:00:00Z"
+    },
+    "TASK-592": {
+      "id": "TASK-592",
+      "planId": "PLAN-074",
+      "status": "todo",
+      "title": "Usage card in Mission Control and the extension status",
+      "role": "polish",
+      "wave": 4,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-585"]
+    },
+    "TASK-593": {
+      "id": "TASK-593",
+      "planId": "PLAN-074",
+      "status": "todo",
+      "title": "Budgets per provider and day",
+      "role": "coder",
+      "wave": 4,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-585", "TASK-582"]
+    },
+    "TASK-594": {
+      "id": "TASK-594",
+      "planId": "PLAN-074",
+      "status": "done",
+      "title": "Context by relevance, not whole files",
+      "role": "coder",
+      "wave": 5,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-585"],
+      "completedAt": "2026-10-16T00:00:00Z"
+    },
+    "TASK-595": {
+      "id": "TASK-595",
+      "planId": "PLAN-074",
+      "status": "done",
+      "title": "History capped by tokens, old turns summarized",
+      "role": "coder",
+      "wave": 5,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-594"],
+      "completedAt": "2026-10-16T00:00:00Z"
+    },
+    "TASK-596": {
+      "id": "TASK-596",
+      "planId": "PLAN-074",
+      "status": "dropped",
+      "title": "Prompt caching for the stable prefix",
+      "role": "coder",
+      "wave": 5,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-584"],
+      "completedAt": "2026-10-16T00:00:00Z"
+    },
+    "TASK-597": {
+      "id": "TASK-597",
+      "planId": "PLAN-074",
+      "status": "done",
+      "title": "Verify before asking a frontier model again",
+      "role": "coder",
+      "wave": 5,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-594"],
+      "completedAt": "2026-10-16T00:00:00Z"
+    },
+    "TASK-598": {
+      "id": "TASK-598",
+      "planId": "PLAN-074",
+      "status": "done",
+      "title": "Report: tokens saved against v0.10.0 behaviour",
+      "role": "tester",
+      "wave": 5,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-594", "TASK-595", "TASK-596", "TASK-597"],
+      "completedAt": "2026-10-16T00:00:00Z"
+    },
+    "TASK-599": {
+      "id": "TASK-599",
+      "planId": "PLAN-074",
+      "status": "todo",
+      "title": "Antigravity driver (agy -p)",
+      "role": "coder",
+      "wave": 6,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-583"]
+    },
+    "TASK-600": {
+      "id": "TASK-600",
+      "planId": "PLAN-074",
+      "status": "todo",
+      "title": "Copilot CLI driver (copilot -p) and typed editor-bridge errors",
+      "role": "coder",
+      "wave": 6,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-583"]
+    },
+    "TASK-601": {
+      "id": "TASK-601",
+      "planId": "PLAN-074",
+      "status": "todo",
+      "title": "Honest per-vendor status screen",
+      "role": "polish",
+      "wave": 6,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-586"]
+    },
+    "TASK-602": {
+      "id": "TASK-602",
+      "planId": "PLAN-074",
+      "status": "todo",
+      "title": "Terms note in UI and docs",
+      "role": "polish",
+      "wave": 6,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-601"]
+    },
+    "TASK-603": {
+      "id": "TASK-603",
+      "planId": "PLAN-074",
+      "status": "todo",
+      "title": "Go coverage to 100 percent; macOS link warning",
+      "role": "tester",
+      "wave": 7,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": []
+    },
+    "TASK-604": {
+      "id": "TASK-604",
+      "planId": "PLAN-074",
+      "status": "todo",
+      "title": "e2e for connect, plan folders, delegation, discovered plans",
+      "role": "tester",
+      "wave": 7,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": []
+    },
+    "TASK-605": {
+      "id": "TASK-605",
+      "planId": "PLAN-074",
+      "status": "todo",
+      "title": "Mutation results per package",
+      "role": "tester",
+      "wave": 7,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": []
+    },
+    "TASK-606": {
+      "id": "TASK-606",
+      "planId": "PLAN-074",
+      "status": "todo",
+      "title": "Repository cleanup",
+      "role": "polish",
+      "wave": 7,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": []
+    },
+    "TASK-607": {
+      "id": "TASK-607",
+      "planId": "PLAN-074",
+      "status": "todo",
+      "title": "httpapi_client.IngestKnowledge: implement or remove from the port",
+      "role": "coder",
+      "wave": 7,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": []
+    },
+    "TASK-608": {
+      "id": "TASK-608",
+      "planId": "PLAN-074",
+      "status": "done",
+      "title": "Lean Claude calls: no settings, no MCP servers",
+      "role": "coder",
+      "wave": 5,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-583"],
+      "completedAt": "2026-10-16T00:00:00Z"
     }
   },
   "sessionNotes": [

@@ -184,6 +184,7 @@ func Start(ctx context.Context, cfg Config, logHub *httpapi.LogHub) (*Runtime, e
 	orch.SetAgentScanner(scanner)
 	orch.SetDiscoveredAgentRepo(repo_sqlite.NewDiscoveredAgentRepo(repo))
 	services.WithPlanFileRepo(repo_sqlite.NewPlanFileRepo(repo))(orch)
+	services.WithUsageRepo(repo_sqlite.NewUsageRepo(repo))(orch) // tokens and cost per call, GET /api/usage
 
 	// Register every persisted, enabled provider.
 	if cfgs, err := providerConfigRepo.ListProviderConfigs(runCtx); err != nil {

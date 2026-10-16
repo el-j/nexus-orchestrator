@@ -330,3 +330,19 @@ func TestWaitForTask_TheTimeoutIsClamped(t *testing.T) {
 		}
 	}
 }
+
+// A WAITING task is not finished: every provider is cooling down and the task is queued again at the
+// reset. wait_for_task must keep waiting through it, not hand the caller a task that has not run.
+func TestWaitForTask_KeepsWaitingWhileTheTaskWaitsForAQuotaReset(t *testing.T) {
+	old := *mcp.WaitPollInterval
+	*mcp.WaitPollInterval = 10 * time.Millisecond
+	defer func() { *mcp.WaitPollInterval = old }()
+
+	o := newWaitOrch(domain.StatusWaiting)
+	time.AfterFunc(60*time.Millisecond, func() { o.set(domain.StatusQueued, "") })
+	time.AfterFunc(120*time.Millisecond, func() { o.set(domain.StatusCompleted, "after the reset") })
+	msgs, _ := callWait(t, mcp.NewMcpServer(noEvents{o}, nil), map[string]any{"id": "t1"}, nil, "")
+	if task := taskFrom(t, msgs[0]); task["status"] != "COMPLETED" || task["logs"] != "after the reset" {
+		t.Errorf("it returned early: %v", task)
+	}
+}

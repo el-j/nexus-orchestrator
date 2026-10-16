@@ -210,4 +210,14 @@ export const tools = [
     name: 'health',
     desc: 'Check that the nexusOrchestrator daemon is reachable',
   },
+  {
+    category: 'Discovery & System',
+    name: 'get_routing',
+    desc: 'How providers would be ordered for a role in a project: model ladder, cooldowns and quota readings',
+  },
+  {
+    category: 'Discovery & System',
+    name: 'get_usage',
+    desc: 'Tokens and cost per provider, model and role from the usage ledger (since: 24h, 7d, an RFC 3339 time or all)',
+  },
 ];

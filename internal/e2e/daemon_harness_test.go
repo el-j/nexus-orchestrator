@@ -143,7 +143,7 @@ func newFakeOllama(t *testing.T) *fakeOllama {
 		if fn != nil {
 			out = fn(req.Prompt)
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"response": out})
+		_ = json.NewEncoder(w).Encode(map[string]any{"response": out, "prompt_eval_count": 11, "eval_count": 7})
 	})
 	mux.HandleFunc("/api/chat", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
@@ -167,7 +167,7 @@ func newFakeOllama(t *testing.T) *fakeOllama {
 			out = reply(last)
 		}
 		if !req.Stream {
-			_ = json.NewEncoder(w).Encode(map[string]any{"message": map[string]string{"content": out}})
+			_ = json.NewEncoder(w).Encode(map[string]any{"message": map[string]string{"content": out}, "prompt_eval_count": 11, "eval_count": 7})
 			return
 		}
 		// Like real Ollama: newline-delimited JSON, a few pieces, then a done line.
@@ -184,7 +184,7 @@ func newFakeOllama(t *testing.T) *fakeOllama {
 				}
 			}
 		}
-		_ = enc.Encode(map[string]any{"message": map[string]string{"content": ""}, "done": true})
+		_ = enc.Encode(map[string]any{"message": map[string]string{"content": ""}, "done": true, "prompt_eval_count": 11, "eval_count": 7})
 	})
 	f.Server = httptest.NewServer(mux)
 	t.Cleanup(f.Close)

@@ -24,7 +24,6 @@ type providerHealth struct {
 	checkedAt        time.Time
 	consecutiveFails int
 	latencyMs        int64  // last probe round-trip in ms
-	rateLimited      bool   // true if last error was 429 / rate-limit
 	lastError        string // last error message (empty when healthy)
 }
 
@@ -35,6 +34,8 @@ type DiscoveryService struct {
 	availableClients []ports.LLMClient
 	cacheMu          sync.Mutex
 	healthCache      map[string]*providerHealth
+	cooldowns        cooldownBook // providers that hit a limit; see cooldown.go
+	quotas           quotaBook    // the plans' own allowance readings; see quota.go
 }
 
 // NewDiscoveryService creates a DiscoveryService with the supplied LLM adapters.
@@ -182,6 +183,7 @@ func (s *DiscoveryService) ListProviders() []ports.ProviderInfo {
 	probeCtx, cancel := context.WithTimeout(context.Background(), probeTimeout)
 	defer cancel()
 
+	now := time.Now()
 	result := make([]ports.ProviderInfo, 0, len(clients))
 	for _, c := range clients {
 		h := s.cachedHealth(c)
@@ -194,7 +196,14 @@ func (s *DiscoveryService) ListProviders() []ports.ProviderInfo {
 			ConsecutiveFails: h.consecutiveFails,
 		}
 		info.LatencyMs = h.latencyMs
-		info.RateLimited = h.rateLimited
+		if cd, ok := s.cooldowns.active(cooldownKey(c), now); ok {
+			info.RateLimited = true
+			info.RateLimitedUntil = cd.until
+			info.CooldownReason = cd.reason
+		}
+		if q, ok := s.quotas.current(cooldownKey(c), now); ok {
+			info.Quota = &q
+		}
 		info.LastError = h.lastError
 		if h.alive {
 			info.ActiveModel = h.activeModel
@@ -286,12 +295,10 @@ func (s *DiscoveryService) cachedHealth(c ports.LLMClient) *providerHealth {
 			updated.models = models
 		}
 		updated.consecutiveFails = 0
-		updated.rateLimited = false
 		updated.lastError = ""
 	} else {
 		updated.consecutiveFails++
 		updated.lastError = name + " unreachable"
-		updated.rateLimited = false
 	}
 	s.healthCache[name] = updated
 	return updated

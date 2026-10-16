@@ -57,6 +57,11 @@ export const statusRows = [
     color: 'bg-sky-500/20 text-sky-300',
   },
   {
+    status: 'WAITING',
+    desc: 'Every provider is cooling down after a limit; queued again at the reset time',
+    color: 'bg-cyan-500/20 text-cyan-300',
+  },
+  {
     status: 'CANCELLED',
     desc: 'Cancelled before processing',
     color: 'bg-slate-500/20 text-slate-300',
@@ -165,7 +170,7 @@ export const inboundAdapters = [
   {
     adapter: 'MCP Server',
     pkg: 'mcp',
-    proto: 'JSON-RPC 2.0 (42 tools, wait_for_task streams progress)',
+    proto: 'JSON-RPC 2.0 (44 tools, wait_for_task streams progress)',
     port: ':63988',
   },
   {

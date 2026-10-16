@@ -59,6 +59,12 @@ func WithDisableBackgroundWorkers() Option {
 	return func(s *OrchestratorService) { s.disableWorkers = true }
 }
 
+// WithUsageRepo sets the usage ledger: after every successful model call that reported its token
+// usage, one record is stored (see GetUsage).
+func WithUsageRepo(r ports.UsageRepository) Option {
+	return func(o *OrchestratorService) { o.usageRepo = r }
+}
+
 // WithPlanFileRepo sets the repository used to persist discovered plan files.
 func WithPlanFileRepo(r ports.DiscoveredPlanFileRepo) Option {
 	return func(o *OrchestratorService) { o.planFileRepo = r }
@@ -79,6 +85,10 @@ type runHandle struct {
 	ctx           context.Context
 	cancel        context.CancelFunc
 	userCancelled atomic.Bool // true when CancelTask (not shutdown) caused the abort
+	// chain is the ordered candidate providers of the task and ladder the model ladder that applies
+	// (nil without one); a failed verification steps up the ladder (see stepUp).
+	chain  []ports.LLMClient
+	ladder []string
 }
 
 // OrchestratorService implements ports.Orchestrator and drives the worker loop.
@@ -110,7 +120,8 @@ type OrchestratorService struct {
 	agentRepo          discoveredAgentStore
 	planFileRepo       ports.DiscoveredPlanFileRepo
 	commandRunner      ports.CommandRunner
-	brain              ports.BrainService // optional: project briefing for prompts and task memory
+	usageRepo          ports.UsageRepository // optional: the usage ledger
+	brain              ports.BrainService    // optional: project briefing for prompts and task memory
 	lastAgentScan      time.Time
 	lastAgentScanMu    sync.Mutex
 	signalFn           func(pid int, force bool) error // test seam; nil = real os signals

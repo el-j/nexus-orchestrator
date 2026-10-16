@@ -57,18 +57,18 @@ func (o *OrchestratorService) GetTask(id string) (domain.Task, error) {
 	return t, nil
 }
 
-// GetQueue returns all pending (QUEUED or PROCESSING) tasks across every project.
+// GetQueue returns all pending (QUEUED, PROCESSING or WAITING) tasks across every project.
 // Use GetQueueForProject for external-agent or per-project views.
 func (o *OrchestratorService) GetQueue() ([]domain.Task, error) {
 	return o.repo.GetPending(o.dbCtx())
 }
 
-// GetQueueForProject returns QUEUED and PROCESSING tasks for a single project.
+// GetQueueForProject returns QUEUED, PROCESSING and WAITING tasks for a single project.
 // projectPath is normalised with filepath.Clean before the query.
 func (o *OrchestratorService) GetQueueForProject(projectPath string) ([]domain.Task, error) {
 	return o.repo.GetByProjectPathAndStatus(o.dbCtx(),
 		filepath.Clean(projectPath),
-		domain.StatusQueued, domain.StatusProcessing,
+		domain.StatusQueued, domain.StatusProcessing, domain.StatusWaiting,
 	)
 }
 
@@ -87,6 +87,15 @@ func (o *OrchestratorService) GetTasksForProject(projectPath string) ([]domain.T
 func (o *OrchestratorService) CancelTask(id string) error {
 	// First try QUEUED → CANCELLED
 	ok, err := o.repo.UpdateStatusIfCurrent(o.dbCtx(), id, domain.StatusQueued, domain.StatusCancelled)
+	if err != nil {
+		return fmt.Errorf("orchestrator: cancel task: %w", err)
+	}
+	if ok {
+		o.emit(id, domain.StatusCancelled)
+		return nil
+	}
+	// A task waiting for a quota reset can be cancelled like a queued one.
+	ok, err = o.repo.UpdateStatusIfCurrent(o.dbCtx(), id, domain.StatusWaiting, domain.StatusCancelled)
 	if err != nil {
 		return fmt.Errorf("orchestrator: cancel task: %w", err)
 	}

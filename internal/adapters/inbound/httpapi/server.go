@@ -238,6 +238,8 @@ func (s *Server) Handler() http.Handler {
 	// GET /api/events — SSE stream for task lifecycle and log events
 	r.Get("/api/events", s.handleEvents)
 	// Activity observatory endpoints
+	r.Get("/api/usage", s.handleUsage)
+	r.Get("/api/routing", s.handleRouting)
 	r.Get("/api/activities", s.handleListActivities)
 	r.Get("/api/activities/timeline", s.handleActivityTimeline)
 
