@@ -41,9 +41,9 @@ Each model appears as its own provider named `vscode-<vendor>-<model>` (for exam
 
 ## Antigravity and Claude Pro
 
-- Antigravity IDE is a VS Code fork (version 1.107.0 here), so the extension installs there, and
-  the bridge shares whatever models Antigravity's `vscode.lm` offers. Whether it offers any was
-  not verified; if the provider list stays empty, it offers none.
-- A Claude Pro login has no model API. The `cli` provider kind only labels a tool the scanner
-  found; the daemon has no adapter that runs it, so a Claude Pro login cannot be delegated to
-  today. Claude models are available through the bridge only if the editor lists them.
+- Antigravity IDE is a VS Code fork, so the extension installs there, but its bundled extensions contribute
+  no language models to `vscode.lm` (checked in version 2.5.5), so the bridge finds none from it. Use the
+  Antigravity CLI (`agy`) instead, see [subscription-bridges.md](subscription-bridges.md).
+- Claude Pro and Max have no model API. They are used through the `claude` command-line tool, which the
+  `cli` provider kind runs (see [delegating-subscriptions.md](delegating-subscriptions.md)). Claude models
+  appear in the bridge only if the editor lists them.
