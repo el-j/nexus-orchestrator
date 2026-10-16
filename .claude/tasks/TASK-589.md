@@ -4,7 +4,7 @@ planId: PLAN-074
 title: 'Policy: model ladder per role'
 role: coder
 wave: 3
-status: todo
+status: done
 createdAt: 2026-10-16
 dependsOn: [TASK-582]
 ---

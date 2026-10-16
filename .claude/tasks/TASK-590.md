@@ -4,7 +4,7 @@ planId: PLAN-074
 title: 'Routing by ladder'
 role: coder
 wave: 3
-status: todo
+status: done
 createdAt: 2026-10-16
 dependsOn: [TASK-589, TASK-586]
 ---

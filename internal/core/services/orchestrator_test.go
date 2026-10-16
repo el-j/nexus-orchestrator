@@ -148,6 +148,10 @@ func (r *memRepo) GetByProjectPathAndStatus(_ context.Context, projectPath strin
 func (r *memRepo) Update(_ context.Context, t domain.Task) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	// Like the SQL repository, Update does not write the log: UpdateLogs owns it.
+	if old, ok := r.tasks[t.ID]; ok {
+		t.Logs = old.Logs
+	}
 	r.tasks[t.ID] = t
 	return nil
 }

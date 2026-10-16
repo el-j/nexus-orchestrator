@@ -85,6 +85,10 @@ type runHandle struct {
 	ctx           context.Context
 	cancel        context.CancelFunc
 	userCancelled atomic.Bool // true when CancelTask (not shutdown) caused the abort
+	// chain is the ordered candidate providers of the task and ladder the model ladder that applies
+	// (nil without one); a failed verification steps up the ladder (see stepUp).
+	chain  []ports.LLMClient
+	ladder []string
 }
 
 // OrchestratorService implements ports.Orchestrator and drives the worker loop.

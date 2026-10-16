@@ -5041,22 +5041,24 @@
     "TASK-589": {
       "id": "TASK-589",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Policy: model ladder per role",
       "role": "coder",
       "wave": 3,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-582"]
+      "dependencies": ["TASK-582"],
+      "completedAt": "2026-10-16T00:00:00Z"
     },
     "TASK-590": {
       "id": "TASK-590",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Routing by ladder",
       "role": "coder",
       "wave": 3,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-589", "TASK-586"]
+      "dependencies": ["TASK-589", "TASK-586"],
+      "completedAt": "2026-10-16T00:00:00Z"
     },
     "TASK-591": {
       "id": "TASK-591",

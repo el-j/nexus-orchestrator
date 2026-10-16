@@ -47,17 +47,10 @@ func (o *OrchestratorService) noteQuota(llm ports.LLMClient) {
 	}
 }
 
-// routeByQuota moves providers whose plan allowance is used up to the threshold or beyond behind the
-// others, keeping the order within each group. It never removes a provider: when every candidate is
-// near its limit the order stands. A task that names its provider is left alone.
-func (o *OrchestratorService) routeByQuota(chain []ports.LLMClient, task domain.Task) []ports.LLMClient {
-	if task.ProviderName != "" || len(chain) < 2 {
-		return chain
-	}
-	threshold := domain.DefaultQuotaThreshold
-	if policy, ok, err := LoadProjectPolicy(task.ProjectPath); err == nil && ok {
-		threshold = policy.QuotaLimit()
-	}
+// partitionByQuota moves providers whose plan allowance is used up to the threshold or beyond behind
+// the others, keeping the order within each group. It never removes a provider: when every candidate
+// is near its limit the order stands.
+func (o *OrchestratorService) partitionByQuota(chain []ports.LLMClient, threshold float64) []ports.LLMClient {
 	now := time.Now()
 	hot := func(c ports.LLMClient) bool {
 		q, ok := o.discovery.quotas.current(cooldownKey(c), now)
