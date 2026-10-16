@@ -57,7 +57,7 @@ func TestClaudeStream_RealRunGivesTextChunksUsageAndQuota(t *testing.T) {
 		t.Errorf("quota: %+v %v", q, ok)
 	}
 	rec, _ := os.ReadFile(record)
-	for _, want := range []string{"--include-partial-messages", "--verbose", "--tools", "--no-session-persistence", "--disable-slash-commands", "--output-format stream-json", "--model haiku"} {
+	for _, want := range []string{"--include-partial-messages", "--verbose", "--tools", "--no-session-persistence", "--disable-slash-commands", "--setting-sources", "--strict-mcp-config", "--output-format stream-json", "--model haiku"} {
 		if !strings.Contains(string(rec), want) {
 			t.Errorf("arguments lack %q: %s", want, rec)
 		}
@@ -69,7 +69,7 @@ func TestClaudeStream_RealRunGivesTextChunksUsageAndQuota(t *testing.T) {
 
 func TestClaudeStream_DoesNotRepeatFlagsTheCommandAlreadyHas(t *testing.T) {
 	record := filepath.Join(t.TempDir(), "record")
-	cmd := streamCLI(t, fixture(t), record) + " -p --output-format stream-json --include-partial-messages --verbose --tools Read --no-session-persistence --disable-slash-commands"
+	cmd := streamCLI(t, fixture(t), record) + " -p --output-format stream-json --include-partial-messages --verbose --tools Read --no-session-persistence --disable-slash-commands --setting-sources user --strict-mcp-config"
 	a, err := NewAdapter("Claude", cmd, "")
 	if err != nil {
 		t.Fatal(err)
@@ -78,7 +78,7 @@ func TestClaudeStream_DoesNotRepeatFlagsTheCommandAlreadyHas(t *testing.T) {
 		t.Fatal(err)
 	}
 	rec, _ := os.ReadFile(record)
-	for _, flag := range []string{"--verbose", "--tools", "--no-session-persistence", "--disable-slash-commands", "--include-partial-messages"} {
+	for _, flag := range []string{"--verbose", "--tools", "--no-session-persistence", "--disable-slash-commands", "--include-partial-messages", "--setting-sources", "--strict-mcp-config"} {
 		if strings.Count(string(rec), flag) != 1 {
 			t.Errorf("%s must appear once: %s", flag, rec)
 		}

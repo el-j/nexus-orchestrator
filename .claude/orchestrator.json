@@ -2,7 +2,7 @@
   "version": "2",
   "updatedAt": "2026-10-16T00:00:00Z",
   "counters": {
-    "nextTaskId": 608,
+    "nextTaskId": 609,
     "nextPlanId": 75
   },
   "activePlanId": "PLAN-074",
@@ -924,7 +924,8 @@
         "TASK-604",
         "TASK-605",
         "TASK-606",
-        "TASK-607"
+        "TASK-607",
+        "TASK-608"
       ]
     }
   },
@@ -5230,6 +5231,17 @@
       "wave": 7,
       "createdAt": "2026-10-16T00:00:00Z",
       "dependencies": []
+    },
+    "TASK-608": {
+      "id": "TASK-608",
+      "planId": "PLAN-074",
+      "status": "done",
+      "title": "Lean Claude calls: no settings, no MCP servers",
+      "role": "coder",
+      "wave": 5,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "dependencies": ["TASK-583"],
+      "completedAt": "2026-10-16T00:00:00Z"
     }
   },
   "sessionNotes": [

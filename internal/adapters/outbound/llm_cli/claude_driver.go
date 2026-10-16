@@ -24,14 +24,19 @@ import (
 // and typed limit errors. Every other command line keeps the plain text-pipe behaviour.
 
 // claudeLeanFlags make a call to the claude client cheap: it is used as a completion engine (Nexus runs
-// its own tool loop), so no tools, no saved session and no slash commands are sent in its prompt.
-// `--verbose` and `--include-partial-messages` are what stream-json needs to stream text.
+// its own tool loop), so no tools, no saved session, no slash commands, no settings (hooks, plugins,
+// memory files and skills of the user's setup) and no MCP servers are loaded into its prompt. Measured
+// with claude 2.1.301: a one-word call read about 15 500 input tokens with a typical setup and about
+// 3 700 with these flags. `--verbose` and `--include-partial-messages` are what stream-json needs to
+// stream text. The login is not a setting, so the subscription still applies.
 var claudeLeanFlags = [][]string{
 	{"--include-partial-messages"},
 	{"--verbose"},
 	{"--tools", ""},
 	{"--no-session-persistence"},
 	{"--disable-slash-commands"},
+	{"--setting-sources", ""},
+	{"--strict-mcp-config"},
 }
 
 // childEnvDrop are removed from the environment of claude: with an API key set it bills the API, not

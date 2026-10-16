@@ -33,4 +33,8 @@ func TestRealClaude(t *testing.T) {
 	if !ok || u.OutputTokens == 0 {
 		t.Error("no usage reported")
 	}
+	// The lean flags keep the fixed prompt small (about 3 700 tokens measured, 15 500 without them).
+	if all := u.InputTokens + u.CachedTokens; all > 8000 {
+		t.Errorf("a one-word call read %d input tokens; the lean flags should keep it far below 15 000", all)
+	}
 }

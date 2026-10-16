@@ -32,9 +32,13 @@ Promoting the discovered Claude CLI now creates the command line
 - **Typed limit errors**: a refused call (limit reached) becomes a rate-limit or quota error with the reset
   time, so the engine skips the provider until then instead of failing every task.
 
-The call is made lean: no tools, no saved session, no slash commands (`--tools ""`,
-`--no-session-persistence`, `--disable-slash-commands`), because Nexus runs its own tool loop and uses
-Claude as a completion engine. Flags you already put in the command are not repeated. A command line
+The call is made lean: no tools, no saved session, no slash commands, no settings and no MCP servers
+(`--tools ""`, `--no-session-persistence`, `--disable-slash-commands`, `--setting-sources ""`,
+`--strict-mcp-config`), because Nexus runs its own tool loop and uses Claude as a completion engine. Your own
+hooks, plugins, memory files and skills would otherwise be loaded into every call: measured with claude
+2.1.301, a one-word call read about **15 500 input tokens** with a typical setup and about **3 700** with
+these flags (76 % fewer; cost per call about half). Your login is not a setting, so the subscription still
+applies. Flags you already put in the command are not repeated. A command line
 without `--output-format stream-json` keeps the old behaviour (plain text on stdout).
 
 The error shapes for a refused call are modelled on the fields the client prints for a successful one;
@@ -48,8 +52,7 @@ they have not been captured from a real refusal yet.
   still writes the result and runs your verification command itself.
 - `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` are removed from the environment of `claude` in
   stream-json mode: with an API key set, `claude` bills the API instead of your subscription.
-- Even a one-word call reads about 15 000 cached input tokens (the client's own system prompt). Subscription
-  limits apply; a call the client refuses fails the task and the fallback chain moves on.
+- Subscription limits apply; a call the client refuses fails the task and the fallback chain moves on.
 - Use this for your own work on your own machine, with the real `claude` program. Nexus never reads or
   copies the login; see [subscription-bridges.md](subscription-bridges.md) for the terms.
 
