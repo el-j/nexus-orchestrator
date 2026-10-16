@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"nexus-orchestrator/internal/adapters/outbound/httperr"
 	"strings"
+	"time"
 
 	"nexus-orchestrator/internal/adapters/outbound/sse"
 	"nexus-orchestrator/internal/core/domain"
@@ -39,8 +41,8 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 		return "", fmt.Errorf("anthropic: request: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return "", fmt.Errorf("anthropic: rate limited (429)")
+	if err := httperr.FromResponse("anthropic", resp, time.Now()); err != nil {
+		return "", err
 	}
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("anthropic: unexpected status %d%s", resp.StatusCode, errorDetail(resp.Body))

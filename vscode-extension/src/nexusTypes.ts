@@ -50,6 +50,12 @@ export interface Provider {
   details?: string;
   error?: string;
   contextLimit?: number;
+  /** True while the provider cools down after a rate limit, an exhausted quota or an overload. */
+  rateLimited?: boolean;
+  /** When a cooling-down provider is tried again (ISO 8601). */
+  rateLimitedUntil?: string;
+  /** Why the provider cools down. */
+  cooldownReason?: string;
 }
 
 // ---- Request types ----

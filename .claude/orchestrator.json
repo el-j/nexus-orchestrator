@@ -4953,22 +4953,24 @@
     "TASK-581": {
       "id": "TASK-581",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Typed provider errors: rate limit, quota exhausted, overloaded",
       "role": "coder",
       "wave": 1,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": []
+      "dependencies": [],
+      "completedAt": "2026-10-16T00:00:00Z"
     },
     "TASK-582": {
       "id": "TASK-582",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Provider cooldown store; chain skips cooled-down providers",
       "role": "coder",
       "wave": 1,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-581"]
+      "dependencies": ["TASK-581"],
+      "completedAt": "2026-10-16T00:00:00Z"
     },
     "TASK-583": {
       "id": "TASK-583",

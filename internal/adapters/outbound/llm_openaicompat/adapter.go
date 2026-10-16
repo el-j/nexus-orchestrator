@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"nexus-orchestrator/internal/adapters/outbound/httperr"
 	"sync"
 	"time"
 
@@ -225,8 +226,8 @@ func (a *Adapter) chat(ctx context.Context, messages []map[string]string) (strin
 		return "", fmt.Errorf("%s: request: %w", a.name, err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return "", fmt.Errorf("%s: rate limited (429)", a.name)
+	if err := httperr.FromResponse(a.name, resp, time.Now()); err != nil {
+		return "", err
 	}
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("%s: unexpected status %d%s", a.name, resp.StatusCode, errorDetail(resp.Body))

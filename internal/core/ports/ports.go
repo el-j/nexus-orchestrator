@@ -94,7 +94,11 @@ type ProviderInfo struct {
 	LastChecked      time.Time `json:"lastChecked"`
 	ConsecutiveFails int       `json:"consecutiveFails,omitempty"`
 	LatencyMs        int64     `json:"latencyMs,omitempty"`
+	// RateLimited is true while the provider is cooling down after a rate limit, an exhausted quota or
+	// an overload; RateLimitedUntil says when it is tried again and CooldownReason why.
 	RateLimited      bool      `json:"rateLimited,omitempty"`
+	RateLimitedUntil time.Time `json:"rateLimitedUntil,omitzero"`
+	CooldownReason   string    `json:"cooldownReason,omitempty"`
 	LastError        string    `json:"lastError,omitempty"`
 }
 

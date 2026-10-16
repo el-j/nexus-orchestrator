@@ -190,11 +190,23 @@ Returns all registered LLM providers with their liveness status.
     "models": ["codellama", "deepseek-coder"]
   },
   {
+    "name": "Anthropic",
+    "active": true,
+    "rateLimited": true,
+    "rateLimitedUntil": "2026-10-16T14:00:00Z",
+    "cooldownReason": "Anthropic: rate limited (429)"
+  },
+  {
     "name": "Ollama",
     "active": false
   }
 ]
 ```
+
+`rateLimited` is true while a provider cools down after a rate limit (HTTP 429), an exhausted quota (402,
+or a 429 that says so) or an overload (503, 529). The engine skips it until `rateLimitedUntil`: the time the
+provider gave in `Retry-After`, or a default (60 s rate limit, 30 s overload, 1 h quota). The cooldown is
+per provider and model and is cleared by the next successful call.
 
 ---
 

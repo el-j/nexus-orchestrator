@@ -4,7 +4,7 @@ planId: PLAN-074
 title: 'Provider cooldown store; chain skips cooled-down providers'
 role: coder
 wave: 1
-status: todo
+status: done
 createdAt: 2026-10-16
 dependsOn: [TASK-581]
 ---

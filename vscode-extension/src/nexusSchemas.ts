@@ -72,6 +72,9 @@ export const ProviderSchema = z
     details: z.string().optional(),
     error: z.string().optional(),
     contextLimit: z.number().optional(),
+    rateLimited: z.boolean().optional(),
+    rateLimitedUntil: z.string().optional(),
+    cooldownReason: z.string().optional(),
   })
   .passthrough();
 

@@ -4,7 +4,7 @@ planId: PLAN-074
 title: 'Typed provider errors: rate limit, quota exhausted, overloaded'
 role: coder
 wave: 1
-status: todo
+status: done
 createdAt: 2026-10-16
 ---
 

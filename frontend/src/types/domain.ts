@@ -66,6 +66,12 @@ export interface ProviderInfo {
   timeoutSec?: number;
   lastChecked?: string;
   consecutiveFails?: number;
+  /** True while the provider cools down after a rate limit, an exhausted quota or an overload. */
+  rateLimited?: boolean;
+  /** When a cooling-down provider is tried again (ISO 8601). */
+  rateLimitedUntil?: string;
+  /** Why the provider cools down, for example "anthropic: rate limited (429)". */
+  cooldownReason?: string;
 }
 
 /** A saved provider configuration. */

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Typed provider errors (`domain.ProviderError`: rate limited, quota exhausted, overloaded) from the Anthropic, Gemini and OpenAI-compatible adapters, with the time the provider said to come back (`Retry-After`). A provider that reports one is skipped by the next tasks until then, and `GET /api/providers` shows `rateLimited`, `rateLimitedUntil` and `cooldownReason` (the field existed but was never set). TASK-581, TASK-582 of PLAN-074
+
 ## [0.10.0] — 2026-10-15
 
 This release makes Nexus usable day to day: tasks stream while the model writes, your Claude and Copilot subscriptions can run them, the agents on your machine can call Nexus (`nexus-cli connect`, the VS Code extension), the app shows what is true (a task says who ran it, one repository is one project), plans and tasks are found in any folder, and the full UI is served by the daemon. The release pipeline, which had built nothing since #62, works again and the macOS desktop app starts when opened normally. Known limits: the macOS app is not notarized (use `scripts/install.sh --desktop`), the released daemon archives carry only the light dashboard, and the streaming and subscription providers are tested against fakes.

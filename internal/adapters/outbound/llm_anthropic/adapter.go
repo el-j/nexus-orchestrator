@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"nexus-orchestrator/internal/adapters/outbound/httperr"
 	"strings"
 	"time"
 
@@ -193,8 +194,8 @@ func (a *Adapter) sendMessages(ctx context.Context, system string, messages []an
 		return "", fmt.Errorf("anthropic: request: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return "", fmt.Errorf("anthropic: rate limited (429)")
+	if err := httperr.FromResponse("anthropic", resp, time.Now()); err != nil {
+		return "", err
 	}
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("anthropic: unexpected status %d%s", resp.StatusCode, errorDetail(resp.Body))

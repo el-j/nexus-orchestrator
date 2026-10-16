@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"nexus-orchestrator/internal/adapters/outbound/httperr"
 	"strings"
+	"time"
 
 	"nexus-orchestrator/internal/adapters/outbound/sse"
 	"nexus-orchestrator/internal/core/domain"
@@ -36,8 +38,8 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 		return "", fmt.Errorf("gemini: request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return "", fmt.Errorf("gemini: rate limited (429)")
+	if err := httperr.FromResponse("gemini", resp, time.Now()); err != nil {
+		return "", err
 	}
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
