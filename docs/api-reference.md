@@ -264,7 +264,7 @@ GET /api/routing?projectPath=/abs/project&role=coder
 ```
 
 How the daemon would order the candidate providers for a task of `role` in the project right now, without
-running anything: the project's model ladder for the role (`ladder` in `.nexus/policy.json`, cheapest
+running anything (a provider over its daily `budgets` entry is put on cooldown, as the next task would do): the project's model ladder for the role (`ladder` in `.nexus/policy.json`, cheapest
 first), the order after the ladder, the cooldowns after limits and the plan quota readings
 (`quotaThreshold`), each provider with its `rung` (`-1` when the ladder does not list it), `coolingUntil`
 and `utilization`. `400` without `projectPath`, `503` when no provider is available. The same data is the

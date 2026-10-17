@@ -207,3 +207,36 @@ func TestTokenBudgetsInThePolicy(t *testing.T) {
 		t.Errorf("valid budgets: %v", err)
 	}
 }
+
+func TestBudgetsInThePolicy(t *testing.T) {
+	p := domain.ProjectPolicy{Budgets: map[string]domain.ProviderBudget{"Claude (subscription)": {DailyTokens: 200000}}}
+	if err := p.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if b, ok := p.BudgetFor("claude (SUBSCRIPTION)"); !ok || b.DailyTokens != 200000 {
+		t.Errorf("lookup is case-insensitive: %+v %v", b, ok)
+	}
+	if _, ok := p.BudgetFor("Ollama"); ok {
+		t.Error("no budget for Ollama")
+	}
+	if _, ok := (domain.ProjectPolicy{}).BudgetFor("x"); ok {
+		t.Error("no budgets at all")
+	}
+	for name, bad := range map[string]map[string]domain.ProviderBudget{
+		"blank name":  {" ": {DailyTokens: 10}},
+		"zero tokens": {"p": {DailyTokens: 0}},
+		"negative":    {"p": {DailyTokens: -5}},
+		"absurd":      {"p": {DailyTokens: domain.MaxDailyTokens + 1}},
+	} {
+		if err := (domain.ProjectPolicy{Budgets: bad}).Validate(); err == nil {
+			t.Errorf("%s must be rejected", name)
+		}
+	}
+	many := map[string]domain.ProviderBudget{}
+	for i := range 21 {
+		many[fmt.Sprintf("p%d", i)] = domain.ProviderBudget{DailyTokens: 1}
+	}
+	if err := (domain.ProjectPolicy{Budgets: many}).Validate(); err == nil {
+		t.Error("more than 20 budgets must be rejected")
+	}
+}

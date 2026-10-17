@@ -5085,12 +5085,13 @@
     "TASK-593": {
       "id": "TASK-593",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Budgets per provider and day",
       "role": "coder",
       "wave": 4,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-585", "TASK-582"]
+      "dependencies": ["TASK-585", "TASK-582"],
+      "completedAt": "2026-10-17T00:00:00Z"
     },
     "TASK-594": {
       "id": "TASK-594",
