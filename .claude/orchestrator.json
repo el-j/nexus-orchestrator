@@ -5204,12 +5204,13 @@
     "TASK-604": {
       "id": "TASK-604",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "e2e for connect, plan folders, delegation, discovered plans",
       "role": "tester",
       "wave": 7,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": []
+      "dependencies": [],
+      "completedAt": "2026-10-17T00:00:00Z"
     },
     "TASK-605": {
       "id": "TASK-605",

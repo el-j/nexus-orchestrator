@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- An agent session can claim a task the engine had no provider for (`NO_PROVIDER`), not only a `QUEUED` one: with no model to run it, the agent is the way to do it (found while writing the end-to-end test of the agent flow).
+- New black-box end-to-end tests through the real daemon: `nexus connect` writing a working Cursor config (keeping other servers, with a backup), plan and task folders named in the policy reaching the onboarding, and an agent session registering, being delegated to, claiming and finishing a task. TASK-604 of PLAN-074.
+
 - Housekeeping (TASK-606): the two historical audits moved to `docs/archive/`, 221 task files planned before v0.10.0 and never started are `closed` (the Workspace Agents view and the onboarding no longer show them as open work), TASK-596 is `closed` (dropped).
 
 ### Added

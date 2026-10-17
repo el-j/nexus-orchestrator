@@ -319,8 +319,12 @@ func (o *OrchestratorService) ClaimTask(ctx context.Context, taskID string, sess
 			sess.ProjectPath, task.ProjectPath)
 	}
 
-	// Atomically transition QUEUED → PROCESSING.
+	// Atomically transition QUEUED → PROCESSING. A task the engine could not place on any provider
+	// (NO_PROVIDER) may also be taken by an agent: with no model to run it, the agent is the way to do it.
 	ok, err := repo.UpdateStatusIfCurrent(ctx, taskID, domain.StatusQueued, domain.StatusProcessing)
+	if err == nil && !ok {
+		ok, err = repo.UpdateStatusIfCurrent(ctx, taskID, domain.StatusNoProvider, domain.StatusProcessing)
+	}
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("orchestrator: claim task: %w", err)
 	}
