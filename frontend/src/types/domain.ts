@@ -84,6 +84,26 @@ export interface ProviderInfo {
   };
 }
 
+/** Tokens and cost the models consumed, added up for one provider, model and role. */
+export interface UsageSummary {
+  provider: string;
+  model?: string;
+  role?: string;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  cachedTokens?: number;
+  costUSD?: number;
+}
+
+/** The usage ledger answer of `GET /api/usage`. */
+export interface UsageReport {
+  /** Start of the window (ISO 8601). */
+  since: string;
+  totals: UsageSummary;
+  usage: UsageSummary[];
+}
+
 /** A saved provider configuration. */
 export interface ProviderConfig {
   id: string;

@@ -5075,12 +5075,13 @@
     "TASK-592": {
       "id": "TASK-592",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Usage card in Mission Control and the extension status",
       "role": "polish",
       "wave": 4,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-585"]
+      "dependencies": ["TASK-585"],
+      "completedAt": "2026-10-17T00:00:00Z"
     },
     "TASK-593": {
       "id": "TASK-593",
@@ -5171,22 +5172,24 @@
     "TASK-601": {
       "id": "TASK-601",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Honest per-vendor status screen",
       "role": "polish",
       "wave": 6,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-586"]
+      "dependencies": ["TASK-586"],
+      "completedAt": "2026-10-17T00:00:00Z"
     },
     "TASK-602": {
       "id": "TASK-602",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Terms note in UI and docs",
       "role": "polish",
       "wave": 6,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-601"]
+      "dependencies": ["TASK-601"],
+      "completedAt": "2026-10-17T00:00:00Z"
     },
     "TASK-603": {
       "id": "TASK-603",

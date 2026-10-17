@@ -543,3 +543,18 @@ describe('getServerAddr', () => {
     }
   });
 });
+
+describe('getUsage', () => {
+  it('reads the usage ledger over REST (there is no desktop binding), 24h by default', async () => {
+    const report = {
+      since: 's',
+      totals: { provider: '', calls: 0, inputTokens: 0, outputTokens: 0 },
+      usage: [],
+    };
+    fetchMock.mockImplementation(() => reply(200, report));
+    expect(await api.getUsage()).toEqual(report);
+    expect(lastCall()).toMatchObject({ path: '/api/usage?since=24h', method: 'GET' });
+    await api.getUsage('7d');
+    expect(lastCall().path).toBe('/api/usage?since=7d');
+  });
+});

@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `POST /api/brain/knowledge` stores one knowledge entry (kind, topic, content) without a file, and `BrainClient.IngestKnowledge` uses it; it was the one port method that returned "not supported" over HTTP. TASK-607 of PLAN-074
 - Daily token budgets per provider in `.nexus/policy.json` (`budgets`): a provider whose input plus output tokens since local midnight (from the usage ledger) reach its budget is skipped until the next local midnight, and a task waits when every candidate is out of budget. TASK-593 of PLAN-074
+- Mission Control shows the token usage of the last 24 hours (calls, input and output tokens, cost, per provider, model and role) and marks a provider that is cooling down (until when, why) or whose plan is nearly used up (share used, when the client reports it). TASK-592, TASK-601 of PLAN-074
 - The LM Studio adapter reports token usage, so a local fallback shows in the ledger too (found while running the daemon with Claude and a local model: [docs/switching-providers.md](docs/switching-providers.md))
 
 ### Changed
