@@ -3,15 +3,18 @@ id: TASK-177
 title: MCP — draft, backlog, promote, update tools
 role: mcp
 planId: PLAN-024
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-176]
 createdAt: 2026-03-11T22:00:00.000Z
 ---
 
 ## Context
+
 MCP clients (Claude Desktop, VS Code extension) need JSON-RPC 2.0 tools to create drafts, query backlogs, promote items, and update tasks — mirroring the new HTTP endpoints.
 
 ## Files to Read
+
 - `internal/adapters/inbound/mcp/server.go` — existing tool registration pattern
 - `internal/core/ports/ports.go` — updated Orchestrator interface
 
@@ -47,6 +50,7 @@ MCP clients (Claude Desktop, VS Code extension) need JSON-RPC 2.0 tools to creat
 6. Update MCP `initialize` response tool count.
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` exits 0
@@ -56,6 +60,7 @@ MCP clients (Claude Desktop, VS Code extension) need JSON-RPC 2.0 tools to creat
 - [ ] Existing MCP tools unchanged
 
 ## Anti-patterns to Avoid
+
 - NEVER import adapters from core services (hexagonal dependency rule)
 - NEVER skip `fmt.Errorf("mcp: operation: %w", err)` error wrapping
 - NEVER break existing MCP tool handlers

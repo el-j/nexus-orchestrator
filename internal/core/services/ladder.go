@@ -30,6 +30,7 @@ func (o *OrchestratorService) routeChain(chain []ports.LLMClient, task domain.Ta
 	if err != nil || !ok {
 		policy = domain.ProjectPolicy{}
 	}
+	o.enforceBudgets(chain, policy)
 	out := slices.Clone(chain)
 	ladder := policy.LadderFor(task.Role)
 	if len(ladder) > 0 {

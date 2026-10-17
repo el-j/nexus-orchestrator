@@ -5075,22 +5075,24 @@
     "TASK-592": {
       "id": "TASK-592",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Usage card in Mission Control and the extension status",
       "role": "polish",
       "wave": 4,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-585"]
+      "dependencies": ["TASK-585"],
+      "completedAt": "2026-10-17T00:00:00Z"
     },
     "TASK-593": {
       "id": "TASK-593",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Budgets per provider and day",
       "role": "coder",
       "wave": 4,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-585", "TASK-582"]
+      "dependencies": ["TASK-585", "TASK-582"],
+      "completedAt": "2026-10-17T00:00:00Z"
     },
     "TASK-594": {
       "id": "TASK-594",
@@ -5117,7 +5119,7 @@
     "TASK-596": {
       "id": "TASK-596",
       "planId": "PLAN-074",
-      "status": "dropped",
+      "status": "closed",
       "title": "Prompt caching for the stable prefix",
       "role": "coder",
       "wave": 5,
@@ -5170,22 +5172,24 @@
     "TASK-601": {
       "id": "TASK-601",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Honest per-vendor status screen",
       "role": "polish",
       "wave": 6,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-586"]
+      "dependencies": ["TASK-586"],
+      "completedAt": "2026-10-17T00:00:00Z"
     },
     "TASK-602": {
       "id": "TASK-602",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Terms note in UI and docs",
       "role": "polish",
       "wave": 6,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": ["TASK-601"]
+      "dependencies": ["TASK-601"],
+      "completedAt": "2026-10-17T00:00:00Z"
     },
     "TASK-603": {
       "id": "TASK-603",
@@ -5200,12 +5204,13 @@
     "TASK-604": {
       "id": "TASK-604",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "e2e for connect, plan folders, delegation, discovered plans",
       "role": "tester",
       "wave": 7,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": []
+      "dependencies": [],
+      "completedAt": "2026-10-17T00:00:00Z"
     },
     "TASK-605": {
       "id": "TASK-605",
@@ -5220,22 +5225,24 @@
     "TASK-606": {
       "id": "TASK-606",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Repository cleanup",
       "role": "polish",
       "wave": 7,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": []
+      "dependencies": [],
+      "completedAt": "2026-10-17T00:00:00Z"
     },
     "TASK-607": {
       "id": "TASK-607",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "httpapi_client.IngestKnowledge: implement or remove from the port",
       "role": "coder",
       "wave": 7,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": []
+      "dependencies": [],
+      "completedAt": "2026-10-17T00:00:00Z"
     },
     "TASK-608": {
       "id": "TASK-608",

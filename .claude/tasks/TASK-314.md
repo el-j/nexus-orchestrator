@@ -3,7 +3,8 @@ id: TASK-314
 title: Split httpapi/server.go into server.go + handlers_tasks.go + handlers_providers.go + handlers_sessions.go
 role: architecture
 planId: PLAN-047
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-303, TASK-308]
 createdAt: 2026-03-25T00:00:00.000Z
 ---

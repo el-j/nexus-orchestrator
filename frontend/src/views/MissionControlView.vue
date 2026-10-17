@@ -216,6 +216,11 @@
           </div>
         </section>
 
+        <!-- USAGE -->
+        <section>
+          <UsageCard />
+        </section>
+
         <!-- PROVIDERS PANEL -->
         <section>
           <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
@@ -245,6 +250,7 @@
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
                   <p class="text-sm text-white font-medium truncate">{{ provider.name }}</p>
+                  <ProviderLimitBadges :provider="provider" />
                   <span
                     v-if="provider.consecutiveFails && provider.consecutiveFails > 0"
                     class="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 font-semibold"
@@ -293,6 +299,8 @@ import type { Task, AISession } from '../types/domain';
 import TaskStatusBadge from '../components/TaskStatusBadge.vue';
 import TaskDetailDrawer from '../components/TaskDetailDrawer.vue';
 import TaskSubmitForm from '../components/TaskSubmitForm.vue';
+import UsageCard from '../components/UsageCard.vue';
+import ProviderLimitBadges from '../components/ProviderLimitBadges.vue';
 
 // --- Composables ---
 const toast = useToast();

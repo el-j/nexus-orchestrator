@@ -3,7 +3,8 @@ id: TASK-032
 title: Add JSON struct tags to domain.Task, domain.Message, domain.Session
 role: backend
 planId: PLAN-003
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-09T15:00:00.000Z
 ---
@@ -11,6 +12,7 @@ createdAt: 2026-03-09T15:00:00.000Z
 ## Context
 
 `domain.Task`, `domain.Message`, and `domain.Session` have **no `json:` struct tags**. JSON encoding therefore uses Go FieldName casing (PascalCase). This means:
+
 - The HTTP API returns `{"ID":"...","ProjectPath":"..."}` — non-standard for REST APIs
 - The web dashboard (TASK-034) cannot use standard camelCase field access in JS
 - `nexus-submit` (TASK-033) must hardcode PascalCase keys in POST bodies
@@ -78,21 +80,24 @@ type Session struct {
 
 ## Risk Analysis
 
-| Risk | Impact | Mitigation |
-|------|--------|-----------|
-| HTTP API request body format changes (camelCase) | HIGH | All callers updated |
-| CLI `nexus queue list` prints camelCase | LOW | Cosmetic only |
-| SQLite repo not affected (uses column scan) | NONE | Repo uses named column binding |
-| MCP server uses `json.Unmarshal` into typed structs | NONE | MCP uses its own input parsing |
+| Risk                                                | Impact | Mitigation                     |
+| --------------------------------------------------- | ------ | ------------------------------ |
+| HTTP API request body format changes (camelCase)    | HIGH   | All callers updated            |
+| CLI `nexus queue list` prints camelCase             | LOW    | Cosmetic only                  |
+| SQLite repo not affected (uses column scan)         | NONE   | Repo uses named column binding |
+| MCP server uses `json.Unmarshal` into typed structs | NONE   | MCP uses its own input parsing |
 
 ## Callers to Update
 
 The HTTP API `POST /api/tasks` handler decodes directly into `domain.Task`:
+
 ```go
 var req domain.Task
 json.NewDecoder(r.Body).Decode(&req)
 ```
+
 After adding json tags, POST bodies must use camelCase keys. All callers:
+
 1. MCP `submit_task` handler — builds `domain.Task` directly from parsed fields, NOT from JSON decode → **no change needed**
 2. `app.go` Wails SubmitTask — JS calls binding directly → **no JSON decode**, Wails handles marshalling → **no change needed**
 3. `httpapi` POST handler — decodes `domain.Task` from body → callers must use camelCase (they should already since this is fixing the API)

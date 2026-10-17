@@ -3,15 +3,18 @@ id: TASK-175
 title: OrchestratorService — backlog lifecycle and explicit provider routing
 role: backend
 planId: PLAN-024
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-173, TASK-174]
 createdAt: 2026-03-11T22:00:00.000Z
 ---
 
 ## Context
+
 The OrchestratorService needs real implementations for the new port methods: `CreateDraft`, `GetBacklog`, `PromoteTask`, `UpdateTask`. The `processNext` worker must also be updated to use `ProviderName` for explicit provider routing (short-circuit discovery when set).
 
 ## Files to Read
+
 - `internal/core/services/orchestrator.go` — SubmitTask, processNext, worker loop
 - `internal/core/services/discovery.go` — FindForModel, GetClientByName
 - `internal/core/ports/ports.go` — updated Orchestrator interface
@@ -66,6 +69,7 @@ The OrchestratorService needs real implementations for the new port methods: `Cr
    ```
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` exits 0
@@ -76,6 +80,7 @@ The OrchestratorService needs real implementations for the new port methods: `Cr
 - [ ] Worker loop still ignores DRAFT/BACKLOG tasks (only processes QUEUED)
 
 ## Anti-patterns to Avoid
+
 - NEVER import adapters from core services (hexagonal dependency rule)
 - NEVER use goroutines inside `internal/core/services/`
 - NEVER skip `fmt.Errorf("orchestrator: operation: %w", err)` error wrapping

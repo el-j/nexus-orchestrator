@@ -20,10 +20,11 @@ const maxEventBytes = 4 << 20
 // with a plain JSON completion instead of a stream is accepted: the reply arrives as one piece.
 func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onChunk func(string)) (string, error) {
 	reqBody, err := json.Marshal(chatCompletionRequest{
-		Model:       a.activeModelOrDefault(ctx),
-		Messages:    messagesToMaps(messages),
-		Temperature: 0.2,
-		Stream:      true,
+		Model:         a.activeModelOrDefault(ctx),
+		Messages:      messagesToMaps(messages),
+		Temperature:   0.2,
+		Stream:        true,
+		StreamOptions: &streamOptions{IncludeUsage: true},
 	})
 	if err != nil {
 		return "", fmt.Errorf("lmstudio: marshal chat request: %w", err)
@@ -37,7 +38,7 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 		return "", fmt.Errorf("lmstudio: chat: unexpected status %d", resp.StatusCode)
 	}
 	if !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/event-stream") {
-		reply, err := decodeChat(resp.Body)
+		reply, err := a.decodeChat(resp.Body)
 		if err == nil {
 			onChunk(reply)
 		}
@@ -46,12 +47,16 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 
 	var reply strings.Builder
 	finished := false
+	usage := domain.Usage{}
+	defer func() { a.Set(usage) }()
 	err = sse.Read(resp.Body, maxEventBytes, func(ev sse.Event) error {
 		if strings.TrimSpace(ev.Data) == "[DONE]" {
 			finished = true
 			return sse.ErrStop
 		}
 		var e struct {
+			Model   string      `json:"model"`
+			Usage   *usageBlock `json:"usage"`
 			Choices []struct {
 				Delta struct {
 					Content string `json:"content"`
@@ -67,6 +72,9 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 		}
 		if e.Error != nil {
 			return fmt.Errorf("lmstudio: stream error: %s", e.Error.Message)
+		}
+		if e.Usage != nil {
+			usage = e.Usage.toDomain(e.Model)
 		}
 		if len(e.Choices) == 0 {
 			return nil

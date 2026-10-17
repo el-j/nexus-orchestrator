@@ -53,6 +53,10 @@ type ProjectPolicy struct {
 	// HistoryBudget caps the tokens of session history sent with a task (0: only the newest
 	// MaxHistoryMessages messages are sent). Older messages are dropped first.
 	HistoryBudget int `json:"historyBudget,omitempty"`
+	// Budgets caps the tokens (input plus output) a provider may use per day, by provider name. A
+	// provider that reached its budget is treated like one that hit a limit: skipped until local
+	// midnight, and the task waits if every candidate is out of budget.
+	Budgets map[string]ProviderBudget `json:"budgets,omitempty"`
 	// PlanFiles says where the project keeps its plan and task files; unset, they are found by themselves.
 	PlanFiles *PlanFilesPolicy `json:"planFiles,omitempty"`
 }
@@ -66,6 +70,45 @@ func (p ProjectPolicy) QuotaLimit() float64 {
 		return p.QuotaThreshold
 	}
 	return DefaultQuotaThreshold
+}
+
+// ProviderBudget is the allowance of one provider.
+type ProviderBudget struct {
+	// DailyTokens is the input plus output tokens the provider may use per local day.
+	DailyTokens int `json:"dailyTokens"`
+}
+
+// Limits of the budgets.
+const (
+	// MaxBudgets is how many providers a policy may give a budget.
+	MaxBudgets = 20
+	// MaxDailyTokens is the largest daily budget a policy may set.
+	MaxDailyTokens = 1_000_000_000
+)
+
+// BudgetFor returns the budget of the provider (case-insensitive).
+func (p ProjectPolicy) BudgetFor(provider string) (ProviderBudget, bool) {
+	for name, b := range p.Budgets {
+		if strings.EqualFold(strings.TrimSpace(name), strings.TrimSpace(provider)) {
+			return b, true
+		}
+	}
+	return ProviderBudget{}, false
+}
+
+func validateBudgets(b map[string]ProviderBudget) error {
+	if len(b) > MaxBudgets {
+		return fmt.Errorf("policy: budgets for at most %d providers are allowed, got %d", MaxBudgets, len(b))
+	}
+	for name, v := range b {
+		if strings.TrimSpace(name) == "" {
+			return fmt.Errorf("policy: a budget has a blank provider name")
+		}
+		if v.DailyTokens <= 0 || v.DailyTokens > MaxDailyTokens {
+			return fmt.Errorf("policy: the budget of %q must be between 1 and %d tokens a day", name, MaxDailyTokens)
+		}
+	}
+	return nil
 }
 
 // MaxTokenBudget is the largest ContextBudget or HistoryBudget a policy may set.
@@ -203,6 +246,9 @@ func (p ProjectPolicy) Validate() error {
 		return fmt.Errorf("policy: maxFileLines must not be negative")
 	}
 	if err := validateLadder(p.Ladder); err != nil {
+		return err
+	}
+	if err := validateBudgets(p.Budgets); err != nil {
 		return err
 	}
 	if p.ContextBudget < 0 || p.ContextBudget > MaxTokenBudget || p.HistoryBudget < 0 || p.HistoryBudget > MaxTokenBudget {

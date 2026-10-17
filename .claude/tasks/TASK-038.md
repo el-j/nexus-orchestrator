@@ -3,7 +3,8 @@ id: TASK-038
 title: PLAN-003 verification + README update + task completion report
 role: planning
 planId: PLAN-003
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-034, TASK-036]
 createdAt: 2026-03-09T15:00:00.000Z
 ---
@@ -57,7 +58,7 @@ kill $(lsof -ti:63987) 2>/dev/null
 
 Add under a `## Dogfooding` heading after the Usage section:
 
-```markdown
+````markdown
 ## Dogfood — use nexusOrchestrator for its own development
 
 nexusOrchestrator can implement its own backlog tasks. This is the primary validation of the pipeline.
@@ -77,6 +78,7 @@ NEXUS_DB_PATH=/tmp/nexus-local.db /tmp/nexus-daemon &
 # Open the live dashboard
 open http://localhost:63987/ui
 ```
+````
 
 ### Submit a PLAN-002 task for LLM implementation
 
@@ -102,9 +104,11 @@ CGO_ENABLED=1 go build -o /tmp/nexus-submit ./cmd/nexus-submit
 ### Track via MCP (for AI editors)
 
 Use any MCP-compatible agent:
+
 ```json
-{"method": "tools/call", "params": {"name": "get_queue"}}
+{ "method": "tools/call", "params": { "name": "get_queue" } }
 ```
+
 ```
 
 ## Acceptance Criteria
@@ -119,3 +123,4 @@ Use any MCP-compatible agent:
 
 - NEVER mark PLAN-003 complete before running the full verification checklist
 - NEVER commit DB files or binary outputs
+```

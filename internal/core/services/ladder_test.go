@@ -235,3 +235,60 @@ func TestLadder_AStepUpSkipsARungThatIsCoolingDown(t *testing.T) {
 		t.Errorf("local failed verification, the cooling sonnet rung is skipped: local=%d sonnet=%d opus=%d", local.calls, sonnet.calls, opus.calls)
 	}
 }
+
+func TestBudget_AProviderOverItsDailyBudgetIsSkippedAndTheTaskWaitsWhenAllAre(t *testing.T) {
+	ledger := &memUsage{}
+	a := &scriptLLM{name: "anthropic-main", alive: true, replies: []string{"from a"}}
+	b := &scriptLLM{name: "ollama-backup", alive: true, replies: []string{"from b"}}
+	e := newEngine(t, &noopWriter{}, nil, nil, a, b)
+	services.WithUsageRepo(ledger)(e.orch)
+	dir := ladderProject(t, `{"budgets":{"anthropic-main":{"dailyTokens":1000}}}`)
+
+	// Under the budget: the normal order.
+	_ = ledger.Record(t.Context(), domain.UsageRecord{Provider: "anthropic-main", Usage: domain.Usage{InputTokens: 400, OutputTokens: 100}})
+	e.runOne(e.queue(domain.Task{Instruction: "under", Role: "architect", ProjectPath: dir}), domain.StatusCompleted)
+	if a.calls != 1 {
+		t.Fatalf("under budget the provider is used: %d", a.calls)
+	}
+	// Over the budget (input plus output; cached tokens do not count): skipped for the other provider.
+	_ = ledger.Record(t.Context(), domain.UsageRecord{Provider: "Anthropic-Main", Usage: domain.Usage{InputTokens: 300, OutputTokens: 300, CachedTokens: 999999}})
+	got := e.runOne(e.queue(domain.Task{Instruction: "over", Role: "architect", ProjectPath: dir}), domain.StatusCompleted)
+	if a.calls != 1 || b.calls != 1 || !strings.Contains(got.Logs, "daily budget of 1000 tokens") {
+		t.Errorf("a=%d b=%d logs=%s", a.calls, b.calls, got.Logs)
+	}
+	// Preview shows it, with the reason.
+	p, err := e.orch.PreviewRouting(t.Context(), dir, "architect")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var shown bool
+	for _, en := range p.Order {
+		if en.Provider == "anthropic-main" && !en.CoolingUntil.IsZero() && strings.Contains(en.CooldownReason, "daily budget") {
+			shown = true
+		}
+	}
+	if !shown {
+		t.Errorf("the preview shows the budget: %+v", p.Order)
+	}
+	// Both over budget: the task waits until the budget resets.
+	dir2 := ladderProject(t, `{"budgets":{"anthropic-main":{"dailyTokens":1000},"ollama-backup":{"dailyTokens":10}}}`)
+	_ = ledger.Record(t.Context(), domain.UsageRecord{Provider: "ollama-backup", Usage: domain.Usage{InputTokens: 50}})
+	w := e.runOne(e.queue(domain.Task{Instruction: "all over", Role: "architect", ProjectPath: dir2}), domain.StatusWaiting)
+	if w.WaitUntil.Before(time.Now()) || w.WaitUntil.After(time.Now().Add(25*time.Hour)) {
+		t.Errorf("waits until the next local midnight: %v", w.WaitUntil)
+	}
+}
+
+func TestBudget_ALedgerErrorOrNoLedgerMeansNoBudgetEnforcement(t *testing.T) {
+	a := &scriptLLM{name: "anthropic-main", alive: true}
+	b := &scriptLLM{name: "ollama-backup", alive: true}
+	dir := ladderProject(t, `{"budgets":{"anthropic-main":{"dailyTokens":1}}}`)
+	e := newEngine(t, &noopWriter{}, nil, nil, a, b)
+	e.runOne(e.queue(domain.Task{Instruction: "no ledger", Role: "architect", ProjectPath: dir}), domain.StatusCompleted)
+	if a.calls != 1 {
+		t.Errorf("without a ledger nothing is enforced: %d", a.calls)
+	}
+	e2 := newEngine(t, &noopWriter{}, nil, nil, a, b)
+	services.WithUsageRepo(&memUsage{err: errors.New("disk")})(e2.orch)
+	e2.runOne(e2.queue(domain.Task{Instruction: "broken ledger", Role: "architect", ProjectPath: dir}), domain.StatusCompleted)
+}

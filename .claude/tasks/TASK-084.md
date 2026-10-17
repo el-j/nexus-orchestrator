@@ -1,17 +1,20 @@
 ---
 id: TASK-084
-title: "Verify: Pages build + complete pipeline check"
+title: 'Verify: Pages build + complete pipeline check'
 role: verify
 planId: PLAN-009
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-083]
 createdAt: 2026-03-10T15:00:00.000Z
 ---
 
 ## Context
+
 Final verification that everything works end-to-end: the Go codebase compiles and passes all tests, the documentation site has proper structure, and the command-aware routing feature is fully functional.
 
 ## Files to Read
+
 - `.claude/orchestrator.json`
 - `docs/_config.yml`
 - `docs/index.md`
@@ -19,6 +22,7 @@ Final verification that everything works end-to-end: the Go codebase compiles an
 - `internal/core/services/orchestrator.go`
 
 ## Implementation Steps
+
 1. Run full build: `CGO_ENABLED=1 go build ./...`
 2. Run full test suite: `CGO_ENABLED=1 go test -race -count=1 ./...`
 3. Verify docs directory has all expected files using `find docs/ -name '*.md' | sort`
@@ -34,6 +38,7 @@ Final verification that everything works end-to-end: the Go codebase compiles an
    - Update notes
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` exits 0
@@ -42,5 +47,6 @@ Final verification that everything works end-to-end: the Go codebase compiles an
 - [ ] PLAN-009 marked completed in orchestrator.json
 
 ## Anti-patterns to Avoid
+
 - NEVER modify Go source files in verification
 - NEVER skip the -race flag

@@ -3,7 +3,8 @@ id: TASK-142
 title: Update docs/index.md with VS Code extension feature
 role: docs
 planId: PLAN-019
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-11T18:00:00.000Z
 ---
@@ -26,9 +27,11 @@ is important for developers who browse the repo directly on GitHub.
 1. Open `docs/index.md`. Find the "Features" or key highlights section.
 
 2. **Add a VS Code Extension bullet** to the features list:
+
    ```markdown
    - 🔌 **VS Code Extension** — submit tasks, monitor queue, and switch providers without leaving your editor ([download .vsix](https://github.com/el-j/nexus-orchestrator/releases/latest/download/nexus-orchestrator-vscode.vsix))
    ```
+
    Insert this bullet after the "Desktop GUI" or "Desktop App" bullet.
 
 3. If there is a "Interfaces" or "Client options" table/list, update it to include
@@ -38,7 +41,7 @@ is important for developers who browse the repo directly on GitHub.
    client interfaces, add a brief mention:
    ```markdown
    ### VS Code Extension
-   
+
    Download the [`.vsix`](https://github.com/el-j/nexus-orchestrator/releases/latest/download/nexus-orchestrator-vscode.vsix)
    and install via `code --install-extension nexus-orchestrator-vscode.vsix`.
    Configure the daemon URL under `Nexus > Daemon URL` in VS Code settings.

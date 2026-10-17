@@ -1,18 +1,21 @@
 ---
 id: TASK-047
-title: "New llm_openaicompat adapter: generic OpenAI-compatible provider"
+title: 'New llm_openaicompat adapter: generic OpenAI-compatible provider'
 role: backend
 planId: PLAN-005
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-044]
 createdAt: 2026-03-10T06:00:00.000Z
 ---
 
 ## Context
+
 Support any OpenAI-compatible cloud provider: OpenAI, GitHub Copilot, Azure OpenAI, OpenRouter, etc.
 A single generic adapter configured with (name, baseURL, apiKey, model) covers all of these.
 
 ## Files to Read
+
 - `internal/adapters/outbound/llm_lmstudio/adapter.go` (reference implementation)
 - `internal/core/ports/ports.go` (full interface after TASK-044)
 - `internal/core/domain/session.go` (for domain.Message)
@@ -181,6 +184,7 @@ func (a *Adapter) setAuthHeader(req *http.Request) {
 ```
 
 ## Acceptance Criteria
+
 - [ ] File `internal/adapters/outbound/llm_openaicompat/adapter.go` created
 - [ ] `go vet ./...` exits 0
 - [ ] `go build ./...` exits 0
@@ -190,6 +194,7 @@ func (a *Adapter) setAuthHeader(req *http.Request) {
 - [ ] `GetAvailableModels()` is cached via `sync.Once`
 
 ## Anti-patterns to Avoid
+
 - NEVER store the API key in logs
 - NEVER hardcode model names in the adapter; always use `a.model`
 - NEVER use `sync.Mutex` + bool when `sync.Once` is cleaner

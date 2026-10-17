@@ -37,7 +37,7 @@ func (m *memUsage) Summarize(_ context.Context, _ time.Time) ([]domain.UsageSumm
 	}
 	out := []domain.UsageSummary{}
 	for _, r := range m.recs {
-		out = append(out, domain.UsageSummary{Provider: r.Provider, Model: r.Model, Role: r.Role, Calls: 1, InputTokens: r.InputTokens})
+		out = append(out, domain.UsageSummary{Provider: r.Provider, Model: r.Model, Role: r.Role, Calls: 1, InputTokens: r.InputTokens, OutputTokens: r.OutputTokens, CachedTokens: r.CachedTokens})
 	}
 	return out, nil
 }

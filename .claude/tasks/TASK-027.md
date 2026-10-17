@@ -3,7 +3,8 @@ id: TASK-027
 title: Port + outbound adapter — WritebackClient (fs_writeback)
 role: backend
 planId: PLAN-002
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-026]
 createdAt: 2026-03-09T13:00:00.000Z
 ---
@@ -21,6 +22,7 @@ When the orchestrator completes a task that has `SourceProjectPath` set, it need
 ## Implementation Steps
 
 1. **Add `WritebackClient` port** to `internal/core/ports/ports.go`:
+
    ```go
    // WritebackClient writes task completion results back to the source project's
    // .claude/orchestrator.json and .claude/tasks/<SourceTaskID>.md.
@@ -41,6 +43,7 @@ When the orchestrator completes a task that has `SourceProjectPath` set, it need
    ```
 
 2. **Create `internal/adapters/outbound/fs_writeback/` directory** with `writeback.go`:
+
    ```go
    package fs_writeback
 
@@ -92,8 +95,8 @@ When the orchestrator completes a task that has `SourceProjectPath` set, it need
    - Read existing file with `os.ReadFile` (skip if file does not exist — not an error)
    - Append section:
      ```markdown
-
      ## Nexus Output
+
      <!-- Written by nexusOrchestrator on <timestamp> — NexusTaskID: <id> -->
 
      <output content>
@@ -107,6 +110,7 @@ When the orchestrator completes a task that has `SourceProjectPath` set, it need
    - All file operations use `filepath.Clean` on paths
 
 6. **No-op implementation for tests** — define `NoopWritebackClient` in the same package:
+
    ```go
    type NoopClient struct{}
    func (n *NoopClient) WriteBack(_ context.Context, _ ports.WritebackPayload) error { return nil }

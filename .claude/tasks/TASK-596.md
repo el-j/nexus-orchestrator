@@ -4,7 +4,7 @@ planId: PLAN-074
 title: 'Prompt caching for the stable prefix'
 role: coder
 wave: 5
-status: dropped
+status: closed
 createdAt: 2026-10-16
 dependsOn: [TASK-584]
 ---

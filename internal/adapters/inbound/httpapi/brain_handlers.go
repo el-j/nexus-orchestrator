@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"nexus-orchestrator/internal/core/domain"
 
@@ -350,4 +351,42 @@ func (s *Server) handleGetOnboardingContext(w http.ResponseWriter, r *http.Reque
 		"maxTokens":   maxTokens,
 		"content":     summary,
 	})
+}
+
+// handleUpsertKnowledge serves POST /api/brain/knowledge: it stores one knowledge entry (a lesson, a
+// convention, a glossary term) sent as JSON, without a file. Required: projectPath, kind, topic, content.
+func (s *Server) handleUpsertKnowledge(w http.ResponseWriter, r *http.Request) {
+	if s.brain == nil {
+		writeJSONError(w, "brain service not configured", http.StatusServiceUnavailable)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 2*domain.MaxIngestBytes+4096)
+	var k domain.ProjectKnowledge
+	if err := json.NewDecoder(r.Body).Decode(&k); err != nil {
+		var tooBig *http.MaxBytesError
+		if errors.As(err, &tooBig) {
+			writeJSONError(w, "content is too large", http.StatusRequestEntityTooLarge)
+			return
+		}
+		writeJSONError(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+	switch {
+	case strings.TrimSpace(k.ProjectPath) == "" || strings.TrimSpace(k.Topic) == "" || strings.TrimSpace(k.Content) == "":
+		writeJSONError(w, "projectPath, topic and content are required", http.StatusBadRequest)
+		return
+	case !k.Kind.IsValid():
+		writeJSONError(w, "kind must be one of architecture, convention, file_map, learning, glossary, task_summary", http.StatusBadRequest)
+		return
+	case len(k.Content) > domain.MaxIngestBytes:
+		writeJSONError(w, "content is too large", http.StatusRequestEntityTooLarge)
+		return
+	}
+	stored, err := s.brain.IngestKnowledge(r.Context(), k)
+	if err != nil {
+		log.Printf("httpapi: upsert knowledge %q: %v", k.Topic, err)
+		writeJSONError(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusCreated, stored)
 }

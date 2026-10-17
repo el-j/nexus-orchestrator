@@ -3,13 +3,16 @@ id: TASK-147
 title: Update CHANGELOG.md with PLAN-018/019/020 as v0.8.0
 role: planning
 planId: PLAN-021
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-12T10:00:00.000Z
 ---
 
 ## Context
+
 CHANGELOG.md has not been updated since PLAN-017. Three substantial feature releases have landed:
+
 - PLAN-018: Provider visibility (configurable URLs, SQLite-persisted CRUD, VS Code extension)
 - PLAN-019: VS Code extension VSIX added to release pipeline + docs updates
 - PLAN-020: GUI provider display fixed (TypeScript PascalCase→camelCase mismatch, routing wired, ProvidersView created)
@@ -17,6 +20,7 @@ CHANGELOG.md has not been updated since PLAN-017. Three substantial feature rele
 We follow "Keep a Changelog" format (https://keepachangelog.com/en/1.1.0/) and semantic versioning.
 
 ## Current top of CHANGELOG.md (for reference only — do NOT duplicate)
+
 ```markdown
 ## [Unreleased]
 
@@ -39,6 +43,7 @@ We follow "Keep a Changelog" format (https://keepachangelog.com/en/1.1.0/) and s
 ```
 
 ## Implementation Steps
+
 1. Add a new `## [0.8.0] - 2026-03-12` section **immediately after** the `## [Unreleased]` block
    (between `[Unreleased]` and `[0.2.0]`).
 2. The new section must contain exactly these subsections in this order:
@@ -70,12 +75,14 @@ We follow "Keep a Changelog" format (https://keepachangelog.com/en/1.1.0/) and s
    - Do NOT alter existing `[0.2.0]` or older sections
 
 ## Acceptance Criteria
+
 - [ ] `## [0.8.0] - 2026-03-12` section exists between `[Unreleased]` and `[0.2.0]`
 - [ ] Section has ### Added and ### Fixed subsections covering all three plans
 - [ ] Existing CHANGELOG content is preserved verbatim
 - [ ] Output is the complete file
 
 ## Anti-patterns to Avoid
+
 - Do NOT remove or alter the `[Unreleased]` section
 - Do NOT invent features that were not listed above
 - Do NOT use bullet styles other than `-` (no `*` no numbered lists in changelog entries)

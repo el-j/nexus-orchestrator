@@ -3,15 +3,18 @@ id: TASK-185
 title: VS Code extension contributes.mcpServers + nexus.mcpPort config
 role: architecture
 planId: PLAN-025
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-12T10:00:00.000Z
 ---
 
 ## Context
+
 Currently users must manually create `.vscode/mcp.json` to register the nexus-orchest MCP server — leading to the "Failed to validate tool mcp_nexus-orchest_submit_task" error until the file is created. VS Code 1.99+ supports `contributes.mcpServers` in `package.json`, which auto-registers the MCP server when the extension activates. Adding this makes setup zero-config.
 
 ## Files to Read
+
 - `vscode-extension/package.json` — current contributes section (engines: `"vscode": "^1.85.0"`)
 - `vscode-extension/src/extension.ts` — activation flow
 - `.vscode/mcp.json` — the manual file we created as a workaround
@@ -21,6 +24,7 @@ Currently users must manually create `.vscode/mcp.json` to register the nexus-or
 1. **Bump the minimum VS Code engine version** to `"^1.99.0"` in `package.json` to enable `contributes.mcpServers`.
 
 2. **Add `nexus.mcpPort` configuration property** to `contributes.configuration.properties`:
+
    ```json
    "nexus.mcpPort": {
      "type": "number",
@@ -30,6 +34,7 @@ Currently users must manually create `.vscode/mcp.json` to register the nexus-or
    ```
 
 3. **Add `contributes.mcpServers`** to the `contributes` object:
+
    ```json
    "mcpServers": {
      "nexus-orchest": {
@@ -39,6 +44,7 @@ Currently users must manually create `.vscode/mcp.json` to register the nexus-or
      }
    }
    ```
+
    This uses VS Code's `${config:...}` substitution to pick up the user's `nexus.mcpPort` setting.
 
 4. **Verify**: The `contributes.mcpServers` key must be at the same level as `contributes.commands`, `contributes.views`, etc. — NOT nested inside another key.
@@ -48,6 +54,7 @@ Currently users must manually create `.vscode/mcp.json` to register the nexus-or
 6. **Do NOT** modify `extension.ts` — the `contributes.mcpServers` mechanism is entirely declarative; no activation code is needed.
 
 ## Acceptance Criteria
+
 - [ ] `vscode-extension/package.json` has `contributes.mcpServers.nexus-orchest` with `type: "http"` and `url: "http://127.0.0.1:${config:nexus.mcpPort}/mcp"`
 - [ ] `contributes.configuration.properties` includes `nexus.mcpPort` with type `number` and default `63988`
 - [ ] `engines.vscode` is `"^1.99.0"` or higher
@@ -55,6 +62,7 @@ Currently users must manually create `.vscode/mcp.json` to register the nexus-or
 - [ ] `go vet ./...` exits 0 (Go project unaffected)
 
 ## Anti-patterns to Avoid
+
 - NEVER nest `mcpServers` inside `views` or `commands` — it must be a direct child of `contributes`
 - NEVER hardcode the port `63988` in the URL — use `${config:nexus.mcpPort}` for user configurability
 - NEVER change the server name from `nexus-orchest` — Copilot prefixes tools with this name (`mcp_nexus-orchest_*`)

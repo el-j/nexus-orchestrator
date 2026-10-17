@@ -3,7 +3,8 @@ id: TASK-118
 title: Delete superseded workflows version.yml and release.yml
 role: devops
 planId: PLAN-016
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-11T00:00:00.000Z
 ---
@@ -22,6 +23,7 @@ PLAN-014/TASK-108. They currently conflict with `publish.yml`:
 ## Action
 
 Delete both files:
+
 - `.github/workflows/version.yml`
 - `.github/workflows/release.yml`
 

@@ -2,6 +2,7 @@ import type {
   Task,
   TaskInput,
   ProviderInfo,
+  UsageReport,
   ProviderConfig,
   AISession,
   TaskStatus,
@@ -136,6 +137,11 @@ export async function getAllTasks(): Promise<Task[]> {
 export async function getProviders(): Promise<ProviderInfo[]> {
   if (isWails()) return window.go!.main!.App!.GetProviders();
   return request<ProviderInfo[]>('GET', '/api/providers');
+}
+
+/** Reads the usage ledger: tokens and cost per provider, model and role since `since` (24h, 7d, all). */
+export async function getUsage(since = '24h'): Promise<UsageReport> {
+  return request<UsageReport>('GET', `/api/usage?since=${q(since)}`);
 }
 
 /** Cancels a queued or running task. */

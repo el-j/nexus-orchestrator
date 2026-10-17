@@ -1,7 +1,8 @@
 ---
 id: TASK-190
-title: "GUI: Task History view (completed/failed/cancelled tasks + detail)"
-status: todo
+title: 'GUI: Task History view (completed/failed/cancelled tasks + detail)'
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 priority: medium
 role: frontend
 dependencies: none
@@ -24,9 +25,11 @@ Add a **Task History** page to the Web GUI so users can browse all completed, fa
 ## Scope
 
 ### Files to create
+
 - `frontend/src/views/HistoryView.vue` — page component
 
 ### Files to modify
+
 - `frontend/src/router/index.ts` (or equivalent) — add `/history` route
 - `frontend/src/components/AppSidebar.vue` — add History nav link
 
@@ -42,6 +45,7 @@ Add a **Task History** page to the Web GUI so users can browse all completed, fa
 3. Add "History" entry in `AppSidebar.vue` (after Backlog, before Providers).
 
 ## Acceptance Criteria
+
 - [ ] `HistoryView.vue` exists and is registered in the router
 - [ ] AppSidebar has a working "History" navigation link
 - [ ] Page shows tasks with status `completed`, `failed`, or `cancelled` (not draft/queued/processing)

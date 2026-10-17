@@ -3,7 +3,8 @@ id: TASK-029
 title: HTTP API + MCP — expose source writeback fields in submit endpoints
 role: api
 planId: PLAN-002
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-026]
 createdAt: 2026-03-09T13:00:00.000Z
 ---
@@ -22,10 +23,11 @@ The `POST /api/tasks` HTTP endpoint and the `submit_task` MCP tool currently acc
 ## Implementation Steps
 
 1. **Update `Orchestrator` port's `SubmitTask` method signature** to accept the full task spec:
-   
+
    Current: `SubmitTask(projectPath, prompt string) (string, error)`
-   
+
    Option A (preferred): pass a `domain.Task` (or `SubmitTaskRequest` struct):
+
    ```go
    type SubmitTaskRequest struct {
        ProjectPath       string `json:"projectPath"`
@@ -37,12 +39,13 @@ The `POST /api/tasks` HTTP endpoint and the `submit_task` MCP tool currently acc
    // Port:
    SubmitTask(req SubmitTaskRequest) (taskID string, err error)
    ```
-   
+
    Option B: Add a separate `SubmitTaskWithSource(projectPath, prompt, sourceProjectPath, sourceTaskID, sourcePlanID string) (string, error)` method — avoids breaking existing callers.
-   
+
    Choose **Option A** — cleaner, single method, callers just pass a struct with zero-value optional fields.
 
 2. **Update `httpapi/server.go` `handleCreateTask`**:
+
    ```go
    type createTaskRequest struct {
        ProjectPath       string `json:"projectPath"`
@@ -80,6 +83,7 @@ The `POST /api/tasks` HTTP endpoint and the `submit_task` MCP tool currently acc
    - Pass to `orch.SubmitTask(ports.SubmitTaskRequest{...})`.
 
 4. **Update `OrchestratorService.SubmitTask`** to accept the new request struct:
+
    ```go
    func (o *OrchestratorService) SubmitTask(req ports.SubmitTaskRequest) (string, error) {
        task := domain.Task{
@@ -98,11 +102,13 @@ The `POST /api/tasks` HTTP endpoint and the `submit_task` MCP tool currently acc
    ```
 
 5. **Update `app.go` `SubmitTask` Wails binding** to accept optional source fields (these are optional JS parameters — default to empty strings):
+
    ```go
    func (a *App) SubmitTask(projectPath, prompt string) string {
        // existing — no source fields needed for GUI direct submissions
    }
    ```
+
    The GUI never uses writeback fields (those are only set by CLI/MCP). No change needed to the Wails binding.
 
 6. **Update all callers** of `SubmitTask` (Wails `app.go`, old callers in tests) to use `ports.SubmitTaskRequest{...}`.
