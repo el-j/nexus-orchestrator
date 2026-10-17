@@ -3,15 +3,18 @@ id: TASK-169
 title: MCP tools for provider discovery
 role: mcp
 planId: PLAN-023
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-166]
 createdAt: 2026-03-11T21:00:00.000Z
 ---
 
 ## Context
+
 External MCP clients (Claude Desktop, VS Code extension, etc.) need to query and interact with the system-wide provider discovery via MCP JSON-RPC 2.0. Two new tools: `discover_providers` (trigger scan + return results) and `promote_provider` (make a discovered provider active).
 
 ## Files to Read
+
 - `internal/adapters/inbound/mcp/server.go` — existing MCP server, tool registration pattern
 - `internal/core/ports/ports.go` — `Orchestrator` interface with discovery methods
 - `internal/core/domain/provider.go` — `DiscoveredProvider` type
@@ -37,6 +40,7 @@ External MCP clients (Claude Desktop, VS Code extension, etc.) need to query and
 4. Update the MCP `initialize` response to include the 2 new tools in the capabilities list (total: 8 tools).
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` exits 0
@@ -46,6 +50,7 @@ External MCP clients (Claude Desktop, VS Code extension, etc.) need to query and
 - [ ] Error responses use correct JSON-RPC 2.0 error codes
 
 ## Anti-patterns to Avoid
+
 - NEVER import adapters from core services (hexagonal dependency rule)
 - NEVER skip `fmt.Errorf("package: operation: %w", err)` error wrapping
 - NEVER break existing MCP tool handlers — only add new ones

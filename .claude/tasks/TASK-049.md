@@ -1,20 +1,23 @@
 ---
 id: TASK-049
-title: "DiscoveryService: model-aware routing with FindForModel() and failover"
+title: 'DiscoveryService: model-aware routing with FindForModel() and failover'
 role: backend
 planId: PLAN-005
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-044]
 createdAt: 2026-03-10T06:00:00.000Z
 ---
 
 ## Context
+
 Currently `DiscoveryService.DetectActive()` just returns the first alive provider.
 We need `FindForModel(modelID string)` that selects a provider by model availability,
 respects `ProviderHint`, and `ListProviders()` must return the extended `ProviderInfo`
 (with `ActiveModel` and `Models` fields introduced in TASK-044).
 
 ## Files to Read
+
 - `internal/core/services/discovery.go`
 - `internal/core/ports/ports.go` (after TASK-044)
 
@@ -149,6 +152,7 @@ func equalFold(a, b string) bool {
 **Note**: Add `"strings"` to the import block.
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `go build ./...` exits 0
 - [ ] `FindForModel("", "")` returns first alive provider (same as `DetectActive`)
@@ -159,6 +163,7 @@ func equalFold(a, b string) bool {
 - [ ] Provider hint is tried first, then remaining providers in registration order
 
 ## Anti-patterns to Avoid
+
 - NEVER call `GetAvailableModels()` until Pass 1 fails (avoid unnecessary network calls)
 - NEVER hold mutex locks in DiscoveryService (it has no mutable shared state post-construction)
 - NEVER fail silently — return descriptive wrapped errors

@@ -3,15 +3,18 @@ id: TASK-072
 title: New .claude/commands/execute-via-nexus.md (self-dogfood command)
 role: planning
 planId: PLAN-008
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-068, TASK-069, TASK-070]
 createdAt: 2026-03-10T14:00:00.000Z
 ---
 
 ## Context
+
 Currently, `execute-plan.md` runs plan tasks locally via sub-agents. `push-to-nexus.md` and `sync-from-nexus.md` push/pull tasks to a running daemon individually. We need a **unified self-dogfood command** that orchestrates the full cycle: ensure daemon is running, push plan tasks in wave order, poll for completion via sync, and report results. This command lets the nexusOrchestrator process its own task backlog through its LLM pipeline.
 
 ## Files to Read
+
 - `.claude/commands/push-to-nexus.md`
 - `.claude/commands/sync-from-nexus.md`
 - `.claude/commands/execute-plan.md`
@@ -47,6 +50,7 @@ Currently, `execute-plan.md` runs plan tasks locally via sub-agents. `push-to-ne
 8. **Step 6 — Summary**: Print final summary (tasks completed, failed, timed out) and whether the plan is fully done.
 
 ## Acceptance Criteria
+
 - [ ] `.claude/commands/execute-via-nexus.md` exists
 - [ ] Command checks daemon health before pushing
 - [ ] Command respects task dependency waves
@@ -55,6 +59,7 @@ Currently, `execute-plan.md` runs plan tasks locally via sub-agents. `push-to-ne
 - [ ] Command can be interrupted without leaving orchestrator.json in corrupt state
 
 ## Anti-patterns to Avoid
+
 - NEVER modify any Go source files from this command
 - NEVER push tasks whose dependencies are not yet done
 - NEVER leave orphaned "pushed" status — always have a sync step

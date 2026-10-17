@@ -440,6 +440,34 @@ when the file does not exist, `400` when `projectPath` or `filePath` is missing.
 
 ---
 
+### Store One Knowledge Entry
+
+```
+POST /api/brain/knowledge
+```
+
+Stores a single knowledge entry sent as JSON, without a file: a lesson learned, a convention, a glossary term.
+
+**Request Body:**
+
+```json
+{
+  "projectPath": "/path/to/project",
+  "kind": "learning",
+  "topic": "Quota",
+  "content": "A 429 puts the provider on cooldown until its reset.",
+  "source": "agent"
+}
+```
+
+`kind` is one of `architecture`, `convention`, `file_map`, `learning`, `glossary`, `task_summary`. `projectPath`,
+`kind`, `topic` and `content` are required. The entry gets an id, a token count and timestamps.
+
+**Response:** `201 Created` with the stored entry. **Errors:** `400` for a missing field or an unknown kind, `413`
+when `content` is larger than 1 MiB.
+
+---
+
 ### Ingest Uploaded Content
 
 ```

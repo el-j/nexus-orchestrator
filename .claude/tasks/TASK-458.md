@@ -1,7 +1,8 @@
 ---
 id: TASK-458
 plan: PLAN-060
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 wave: 3
 priority: 3
 ---

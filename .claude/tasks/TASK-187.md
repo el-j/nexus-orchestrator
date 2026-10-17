@@ -3,15 +3,18 @@ id: TASK-187
 title: Update CHANGELOG for v0.9.1 distribution fixes
 role: planning
 planId: PLAN-025
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-184, TASK-185, TASK-186]
 createdAt: 2026-03-12T10:00:00.000Z
 ---
 
 ## Context
+
 PLAN-025 introduces distribution hardening and VS Code extension improvements that deserve a CHANGELOG entry under a new `[Unreleased]` section, and eventually a v0.9.1 patch release. This task also finalises the orchestrator.json with correct nextTaskId and nextPlanId.
 
 ## Files to Read
+
 - `CHANGELOG.md` — current top entries
 - `.claude/orchestrator.json` — plan metadata to update
 
@@ -43,10 +46,12 @@ PLAN-025 introduces distribution hardening and VS Code extension improvements th
 3. **Verify TASK-183 file status**: The `.claude/tasks/TASK-183.md` still says `status: todo` in the frontmatter (orchestrator.json says `done`). Update the file frontmatter to `status: done`.
 
 ## Acceptance Criteria
+
 - [ ] `CHANGELOG.md` has `[Unreleased]` section with PLAN-025 entries
 - [ ] `.claude/tasks/TASK-183.md` frontmatter `status: done`
 - [ ] `orchestrator.json` has `nextTaskId: 189`, `nextPlanId: 26`, `activePlanId: null`
 
 ## Anti-patterns to Avoid
+
 - NEVER skip updating `orchestrator.json` when a plan completes — the counters break the next session
 - NEVER use a version number in CHANGELOG before it is tagged — use `[Unreleased]` until `git tag v0.9.1`

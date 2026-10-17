@@ -3,7 +3,8 @@ id: TASK-036
 title: Dogfood scripts and .claude/commands/dogfood-plan002.md
 role: planning
 planId: PLAN-003
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-033]
 createdAt: 2026-03-09T15:00:00.000Z
 ---
@@ -11,6 +12,7 @@ createdAt: 2026-03-09T15:00:00.000Z
 ## Context
 
 The dogfood loop requires a reproducible script that:
+
 1. Builds the daemon and nexus-submit
 2. Starts the daemon with a fresh DB
 3. Submits each PLAN-002 implementation task as a nexus task (pointing to the correct Go source file)
@@ -26,23 +28,25 @@ This is both a `scripts/dogfood-plan002.sh` bash script and a `.claude/commands/
 ## scripts/dogfood-plan002.sh
 
 Key design points:
+
 - Must work on macOS (zsh/bash compatible)
 - Uses `CGO_ENABLED=1 go build` — requires gcc/clang
 - Starts daemon in background, captures PID, traps EXIT to kill it
 - Submits these PLAN-002 tasks with their target files and context files:
 
-| Task File | Target Go File | Context Files |
-|-----------|---------------|---------------|
-| TASK-013.md | internal/core/services/orchestrator.go | internal/core/services/orchestrator.go,internal/core/ports/ports.go |
-| TASK-014.md | internal/core/services/orchestrator.go | internal/core/services/orchestrator.go,internal/core/domain/task.go |
-| TASK-015.md | internal/adapters/inbound/httpapi/server.go | internal/adapters/inbound/httpapi/server.go,internal/core/ports/ports.go |
-| TASK-016.md | internal/adapters/inbound/cli/root.go | internal/adapters/inbound/cli/root.go |
-| TASK-026.md | internal/core/domain/task.go | internal/core/domain/task.go,internal/adapters/outbound/repo_sqlite/repo.go |
-| TASK-027.md | internal/adapters/outbound/fs_writeback/writeback.go | internal/core/ports/ports.go |
-| TASK-028.md | internal/core/services/orchestrator.go | internal/core/services/orchestrator.go,internal/core/ports/ports.go |
-| TASK-029.md | internal/adapters/inbound/httpapi/server.go | internal/adapters/inbound/httpapi/server.go,internal/adapters/inbound/mcp/server.go |
+| Task File   | Target Go File                                       | Context Files                                                                       |
+| ----------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| TASK-013.md | internal/core/services/orchestrator.go               | internal/core/services/orchestrator.go,internal/core/ports/ports.go                 |
+| TASK-014.md | internal/core/services/orchestrator.go               | internal/core/services/orchestrator.go,internal/core/domain/task.go                 |
+| TASK-015.md | internal/adapters/inbound/httpapi/server.go          | internal/adapters/inbound/httpapi/server.go,internal/core/ports/ports.go            |
+| TASK-016.md | internal/adapters/inbound/cli/root.go                | internal/adapters/inbound/cli/root.go                                               |
+| TASK-026.md | internal/core/domain/task.go                         | internal/core/domain/task.go,internal/adapters/outbound/repo_sqlite/repo.go         |
+| TASK-027.md | internal/adapters/outbound/fs_writeback/writeback.go | internal/core/ports/ports.go                                                        |
+| TASK-028.md | internal/core/services/orchestrator.go               | internal/core/services/orchestrator.go,internal/core/ports/ports.go                 |
+| TASK-029.md | internal/adapters/inbound/httpapi/server.go          | internal/adapters/inbound/httpapi/server.go,internal/adapters/inbound/mcp/server.go |
 
 Full script:
+
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
@@ -148,6 +152,7 @@ The script is designed to be run from the project root even though it lives in `
 ## .claude/commands/dogfood-plan002.md
 
 The Claude command is an interactive version that:
+
 1. Asks which PLAN-002 tasks to submit (default: all todo tasks)
 2. Checks if daemon is running (tries GET /api/health)
 3. Submits each task via HTTP POST

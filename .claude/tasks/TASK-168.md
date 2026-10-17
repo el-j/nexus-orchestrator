@@ -3,15 +3,18 @@ id: TASK-168
 title: Frontend LogPanel and useLogs composable
 role: frontend
 planId: PLAN-023
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-163]
 createdAt: 2026-03-11T21:00:00.000Z
 ---
 
 ## Context
+
 The user wants an in-app log console instead of a separate terminal window. The LogPanel appears at the bottom of the app (like VS Code's terminal panel), is collapsible/resizable, and streams live log entries via SSE. This replaces the need for the visible console window.
 
 ## Files to Read
+
 - `frontend/src/App.vue` — root layout to add LogPanel
 - `frontend/src/composables/useTasks.ts` — SSE pattern reference (EventSource + fallback)
 - `frontend/src/types/domain.ts` — existing type patterns
@@ -20,14 +23,15 @@ The user wants an in-app log console instead of a separate terminal window. The 
 ## Implementation Steps
 
 1. Add TypeScript types in `frontend/src/types/domain.ts`:
+
    ```typescript
-   export type LogLevel = 'info' | 'warn' | 'error' | 'debug'
+   export type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
    export interface LogEntry {
-     timestamp: string
-     level: LogLevel
-     source: string
-     message: string
+     timestamp: string;
+     level: LogLevel;
+     source: string;
+     message: string;
    }
    ```
 
@@ -58,6 +62,7 @@ The user wants an in-app log console instead of a separate terminal window. The 
    - LogPanel persists across route changes (it's at the app root level)
 
 ## Acceptance Criteria
+
 - [ ] LogPanel appears at the bottom of the app window
 - [ ] SSE connection streams live log entries
 - [ ] Log entries are color-coded by level
@@ -68,6 +73,7 @@ The user wants an in-app log console instead of a separate terminal window. The 
 - [ ] `GET /api/logs` loads initial buffer on mount
 
 ## Anti-patterns to Avoid
+
 - NEVER use polling for logs — SSE is required for real-time feel
 - NEVER render all 2000 log entries in DOM — use virtual scrolling or limit visible rows
 - NEVER block the main thread with log processing

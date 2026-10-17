@@ -5117,7 +5117,7 @@
     "TASK-596": {
       "id": "TASK-596",
       "planId": "PLAN-074",
-      "status": "dropped",
+      "status": "closed",
       "title": "Prompt caching for the stable prefix",
       "role": "coder",
       "wave": 5,
@@ -5220,22 +5220,24 @@
     "TASK-606": {
       "id": "TASK-606",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "Repository cleanup",
       "role": "polish",
       "wave": 7,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": []
+      "dependencies": [],
+      "completedAt": "2026-10-17T00:00:00Z"
     },
     "TASK-607": {
       "id": "TASK-607",
       "planId": "PLAN-074",
-      "status": "todo",
+      "status": "done",
       "title": "httpapi_client.IngestKnowledge: implement or remove from the port",
       "role": "coder",
       "wave": 7,
       "createdAt": "2026-10-16T00:00:00Z",
-      "dependencies": []
+      "dependencies": [],
+      "completedAt": "2026-10-17T00:00:00Z"
     },
     "TASK-608": {
       "id": "TASK-608",

@@ -1,22 +1,26 @@
 ---
 id: TASK-079
-title: "Pages: Landing page with hero + features"
+title: 'Pages: Landing page with hero + features'
 role: devops
 planId: PLAN-009
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-078]
 createdAt: 2026-03-10T15:00:00.000Z
 ---
 
 ## Context
+
 The landing page is the first thing visitors see. It must clearly communicate what nexusOrchestrator does, its key features, and how to get started — all in a compelling, well-structured layout.
 
 ## Files to Read
+
 - `README.md`
 - `docs/_config.yml` (from TASK-078)
 - `.github/copilot-instructions.md`
 
 ## Implementation Steps
+
 1. Write `docs/index.md` with Jekyll frontmatter:
    ```yaml
    ---
@@ -42,6 +46,7 @@ The landing page is the first thing visitors see. It must clearly communicate wh
 3. Ensure all markdown renders cleanly with just-the-docs theme.
 
 ## Acceptance Criteria
+
 - [ ] `docs/index.md` has complete landing page content
 - [ ] Hero section with clear tagline
 - [ ] At least 8 feature highlights
@@ -50,5 +55,6 @@ The landing page is the first thing visitors see. It must clearly communicate wh
 - [ ] No Go source files modified
 
 ## Anti-patterns to Avoid
+
 - NEVER modify any Go source files
 - NEVER use HTML unless absolutely needed — prefer clean markdown

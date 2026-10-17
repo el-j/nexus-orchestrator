@@ -1,40 +1,44 @@
 ---
 id: TASK-082
-title: "GitHub Actions workflow for Pages deployment"
+title: 'GitHub Actions workflow for Pages deployment'
 role: devops
 planId: PLAN-009
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-079, TASK-080, TASK-081]
 createdAt: 2026-03-10T15:00:00.000Z
 ---
 
 ## Context
+
 A GitHub Actions workflow is needed to automatically build and deploy the Jekyll-based documentation site to GitHub Pages whenever changes are pushed to the main branch.
 
 ## Files to Read
+
 - `docs/_config.yml` (from TASK-078)
 - `docs/Gemfile` (from TASK-078)
 
 ## Implementation Steps
+
 1. Create `.github/workflows/pages.yml`:
    ```yaml
    name: Deploy GitHub Pages
-   
+
    on:
      push:
-       branches: ["main"]
-       paths: ["docs/**"]
+       branches: ['main']
+       paths: ['docs/**']
      workflow_dispatch:
-   
+
    permissions:
      contents: read
      pages: write
      id-token: write
-   
+
    concurrency:
-     group: "pages"
+     group: 'pages'
      cancel-in-progress: false
-   
+
    jobs:
      build:
        runs-on: ubuntu-latest
@@ -50,7 +54,7 @@ A GitHub Actions workflow is needed to automatically build and deploy the Jekyll
              destination: ./_site
          - name: Upload artifact
            uses: actions/upload-pages-artifact@v3
-   
+
      deploy:
        environment:
          name: github-pages
@@ -66,6 +70,7 @@ A GitHub Actions workflow is needed to automatically build and deploy the Jekyll
 3. Ensure the `source: ./docs` path matches the actual docs directory.
 
 ## Acceptance Criteria
+
 - [ ] `.github/workflows/pages.yml` exists with correct workflow
 - [ ] Workflow triggers on push to main with docs/** changes
 - [ ] Workflow also has manual trigger (workflow_dispatch)
@@ -74,5 +79,6 @@ A GitHub Actions workflow is needed to automatically build and deploy the Jekyll
 - [ ] No Go source files modified
 
 ## Anti-patterns to Avoid
+
 - NEVER modify any Go source files
 - NEVER use third-party actions when official GitHub ones exist

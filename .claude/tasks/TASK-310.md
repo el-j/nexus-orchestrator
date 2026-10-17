@@ -3,7 +3,8 @@ id: TASK-310
 title: Add MCP tests for 9 new tools + update tool-count assertion
 role: testing
 planId: PLAN-047
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-305]
 createdAt: 2026-03-25T00:00:00.000Z
 ---

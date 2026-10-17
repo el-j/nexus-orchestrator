@@ -1,18 +1,21 @@
 ---
 id: TASK-052
-title: "QA: tests for model routing, FindForModel, StatusNoProvider, new adapters"
+title: 'QA: tests for model routing, FindForModel, StatusNoProvider, new adapters'
 role: qa
 planId: PLAN-005
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-044, TASK-045, TASK-046, TASK-047, TASK-048, TASK-049, TASK-050, TASK-051]
 createdAt: 2026-03-10T06:00:00.000Z
 ---
 
 ## Context
+
 PLAN-005 adds model-aware routing, StatusNoProvider, and new external provider adapters.
-These must be covered by tests.  Extend the existing mock infrastructure and add targeted tests.
+These must be covered by tests. Extend the existing mock infrastructure and add targeted tests.
 
 ## Files to Read
+
 - `internal/core/services/discovery_test.go`
 - `internal/core/services/orchestrator_test.go`
 - `internal/core/services/discovery.go` (after TASK-049)
@@ -21,7 +24,8 @@ These must be covered by tests.  Extend the existing mock infrastructure and add
 
 ### 1. Extend `mockLLMClient` in `discovery_test.go`
 
-Read the current struct first.  Add `activeModel string` field and update `ActiveModel()`:
+Read the current struct first. Add `activeModel string` field and update `ActiveModel()`:
+
 ```go
 type mockLLMClient struct {
     alive        bool
@@ -35,9 +39,11 @@ type mockLLMClient struct {
 func (m *mockLLMClient) ActiveModel() string                        { return m.activeModel }
 func (m *mockLLMClient) GetAvailableModels() ([]string, error)      { return m.models, nil }
 ```
+
 Keep the existing `ContextLimit()` method.
 
 ### 2. `TestDiscovery_FindForModel_ActiveModelMatch`
+
 ```go
 func TestDiscovery_FindForModel_ActiveModelMatch(t *testing.T) {
     a := &mockLLMClient{alive: true, name: "A", activeModel: "qwen3-coder"}
@@ -55,6 +61,7 @@ func TestDiscovery_FindForModel_ActiveModelMatch(t *testing.T) {
 ```
 
 ### 3. `TestDiscovery_FindForModel_ModelListFallback`
+
 ```go
 func TestDiscovery_FindForModel_ModelListFallback(t *testing.T) {
     a := &mockLLMClient{alive: true, name: "A", activeModel: "other", models: []string{"gpt-4o", "gpt-4"}}
@@ -71,6 +78,7 @@ func TestDiscovery_FindForModel_ModelListFallback(t *testing.T) {
 ```
 
 ### 4. `TestDiscovery_FindForModel_NoProvider`
+
 ```go
 func TestDiscovery_FindForModel_NoProvider(t *testing.T) {
     a := &mockLLMClient{alive: true, name: "A", activeModel: "codellama", models: []string{"codellama"}}
@@ -84,6 +92,7 @@ func TestDiscovery_FindForModel_NoProvider(t *testing.T) {
 ```
 
 ### 5. `TestDiscovery_FindForModel_ProviderHintFirst`
+
 ```go
 func TestDiscovery_FindForModel_ProviderHintFirst(t *testing.T) {
     a := &mockLLMClient{alive: true, name: "OpenAI", activeModel: "gpt-4o"}
@@ -102,6 +111,7 @@ func TestDiscovery_FindForModel_ProviderHintFirst(t *testing.T) {
 ```
 
 ### 6. `TestOrchestrator_StatusNoProvider`
+
 ```go
 func TestOrchestrator_StatusNoProvider(t *testing.T) {
     repo := newMemRepo()
@@ -135,6 +145,7 @@ func TestOrchestrator_StatusNoProvider(t *testing.T) {
 ```
 
 ### 7. `TestListProviders_IncludesActiveModel`
+
 ```go
 func TestListProviders_IncludesActiveModel(t *testing.T) {
     a := &mockLLMClient{alive: true, name: "LM Studio", activeModel: "qwen3-coder", models: []string{"qwen3-coder"}}
@@ -154,6 +165,7 @@ func TestListProviders_IncludesActiveModel(t *testing.T) {
 ```
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./internal/core/services/...` exits 0
 - [ ] `TestDiscovery_FindForModel_ActiveModelMatch` passes
@@ -165,6 +177,7 @@ func TestListProviders_IncludesActiveModel(t *testing.T) {
 - [ ] All pre-existing tests continue to pass (zero regressions)
 
 ## Anti-patterns to Avoid
+
 - NEVER add tests that depend on wall-clock time > 10s
 - NEVER share mutable mock state without sync.Mutex
 - Field `models []string` in mockLLMClient is only ever read (set at construction), so no mutex needed

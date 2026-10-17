@@ -1,33 +1,36 @@
 ---
 id: TASK-051
-title: "Entry-point wiring: env-var provider config for daemon + desktop"
+title: 'Entry-point wiring: env-var provider config for daemon + desktop'
 role: devops
 planId: PLAN-005
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-047, TASK-048, TASK-049, TASK-050]
 createdAt: 2026-03-10T06:00:00.000Z
 ---
 
 ## Context
+
 Wire the new `llm_openaicompat` and `llm_anthropic` adapters into both entry points
 (`cmd/nexus-daemon/main.go` and `main.go`) using environment variables for configuration.
 Providers are only registered when their required env vars are present.
 
 ## Files to Read
+
 - `cmd/nexus-daemon/main.go`
 - `main.go`
 
 ## Environment Variables
 
-| Variable | Required for | Description |
-|---|---|---|
-| `NEXUS_OPENAI_API_KEY` | OpenAI | API key |
-| `NEXUS_OPENAI_BASE_URL` | OpenAI | Base URL (default: `https://api.openai.com/v1`) |
-| `NEXUS_OPENAI_MODEL` | OpenAI | Model (default: `gpt-4o`) |
-| `NEXUS_GITHUBCOPILOT_TOKEN` | GitHub Copilot | Token (uses OpenAI-compat adapter) |
-| `NEXUS_GITHUBCOPILOT_MODEL` | GitHub Copilot | Model (default: `gpt-4o`) |
-| `NEXUS_ANTHROPIC_API_KEY` | Anthropic | API key |
-| `NEXUS_ANTHROPIC_MODEL` | Anthropic | Model (default: `claude-sonnet-4-5`) |
+| Variable                    | Required for   | Description                                     |
+| --------------------------- | -------------- | ----------------------------------------------- |
+| `NEXUS_OPENAI_API_KEY`      | OpenAI         | API key                                         |
+| `NEXUS_OPENAI_BASE_URL`     | OpenAI         | Base URL (default: `https://api.openai.com/v1`) |
+| `NEXUS_OPENAI_MODEL`        | OpenAI         | Model (default: `gpt-4o`)                       |
+| `NEXUS_GITHUBCOPILOT_TOKEN` | GitHub Copilot | Token (uses OpenAI-compat adapter)              |
+| `NEXUS_GITHUBCOPILOT_MODEL` | GitHub Copilot | Model (default: `gpt-4o`)                       |
+| `NEXUS_ANTHROPIC_API_KEY`   | Anthropic      | API key                                         |
+| `NEXUS_ANTHROPIC_MODEL`     | Anthropic      | Model (default: `claude-sonnet-4-5`)            |
 
 ## Implementation Steps
 
@@ -86,23 +89,30 @@ func buildProviders() []ports.LLMClient {
 ```
 
 ### 2. Update `discoverySvc := services.NewDiscoveryService(...)` in both files
+
 Replace the hardcoded adapter lines with:
+
 ```go
 discoverySvc := services.NewDiscoveryService(buildProviders()...)
 ```
+
 Remove the now-unused `lmStudio` and `ollama` variable declarations.
 
 ### 3. Add imports
+
 In both files add:
+
 ```go
 "nexus-orchestrator/internal/adapters/outbound/llm_openaicompat"
 "nexus-orchestrator/internal/adapters/outbound/llm_anthropic"
 "nexus-orchestrator/internal/core/ports"
 ```
+
 Remove direct `llm_lmstudio` and `llm_ollama` imports from the top-level wiring
 (they are only used inside `buildProviders()` now, so keep them).
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0
 - [ ] `go build .` exits 0 (desktop app)
@@ -112,6 +122,7 @@ Remove direct `llm_lmstudio` and `llm_ollama` imports from the top-level wiring
 - [ ] No provider credentials appear in log output
 
 ## Anti-patterns to Avoid
+
 - NEVER log API keys or tokens
 - NEVER panic when optional providers are absent
 - NEVER hardcode provider URLs outside `buildProviders()` / env-var defaults

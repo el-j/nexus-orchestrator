@@ -1,19 +1,22 @@
 ---
 id: TASK-048
-title: "New llm_anthropic adapter: Claude (Anthropic native API)"
+title: 'New llm_anthropic adapter: Claude (Anthropic native API)'
 role: backend
 planId: PLAN-005
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-044]
 createdAt: 2026-03-10T06:00:00.000Z
 ---
 
 ## Context
+
 Anthropic's Claude uses a native API (`/v1/messages`) that is NOT OpenAI-compatible.
-Request format, headers, and response shape are all different.  This adapter wraps the
+Request format, headers, and response shape are all different. This adapter wraps the
 Anthropic Messages API so Claude models can participate in the routing system.
 
 ## Files to Read
+
 - `internal/core/ports/ports.go` (full interface after TASK-044)
 - `internal/core/domain/session.go` (for domain.Message)
 
@@ -212,6 +215,7 @@ func (a *Adapter) newRequest(method, url string, body interface{ Read([]byte) (i
 
 **Note on `newRequest`**: The `body` parameter should be `io.Reader` not a custom interface.
 Simplify to:
+
 ```go
 import "io"
 func (a *Adapter) newRequest(method, url string, body io.Reader) (*http.Request, error) {
@@ -224,9 +228,11 @@ func (a *Adapter) newRequest(method, url string, body io.Reader) (*http.Request,
     return req, nil
 }
 ```
+
 And call as `a.newRequest(http.MethodPost, url, bytes.NewReader(reqBody))` and `a.newRequest(http.MethodGet, url, nil)`.
 
 ## Acceptance Criteria
+
 - [ ] File `internal/adapters/outbound/llm_anthropic/adapter.go` created
 - [ ] `go vet ./...` exits 0
 - [ ] `go build ./...` exits 0
@@ -237,6 +243,7 @@ And call as `a.newRequest(http.MethodPost, url, bytes.NewReader(reqBody))` and `
 - [ ] `io.Reader` used for request body, not custom interface
 
 ## Anti-patterns to Avoid
+
 - NEVER log the API key
 - NEVER use `Authorization: Bearer` for Anthropic (they use `x-api-key`)
 - NEVER assume OpenAI-compatible response shape

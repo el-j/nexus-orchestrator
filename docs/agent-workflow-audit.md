@@ -50,7 +50,7 @@ the state before this change.
 ## What is proven to work
 
 - Full Go suite, frontend (782 tests), docs (104) and the 11 e2e tests pass; Go merged coverage
-  97.9% locally; 41 MCP tools exposed (counted via `tools/list` on the running daemon).
+  97.9% locally; 41 MCP tools exposed at the time (counted via `tools/list` on the running daemon; 44 since v0.10.0).
 - Self-healing and agentic editing against a fake provider, with path confinement for writes.
 - One daemon, one database, many projects, restart-safe.
 

@@ -3,7 +3,8 @@ id: TASK-151
 title: Ports — AISessionRepository + AISessionMonitor interfaces
 role: architecture
 planId: PLAN-022
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-150]
 priority: critical
 estimated_effort: S
@@ -11,10 +12,13 @@ createdAt: 2026-03-12T11:00:00.000Z
 ---
 
 ## Goal
+
 Add two new port interfaces — `AISessionRepository` (outbound persistence) and `AISessionMonitor` (inbound discovery) — to `internal/core/ports/ports.go`, keeping the hexagonal dependency rule intact.
 
 ## Context
+
 `internal/core/ports/ports.go` is the single file containing all port interface contracts. The two new interfaces follow the exact same pattern as the existing `SessionRepository` and `TaskRepository`:
+
 - Pure Go interfaces, no concrete types, no framework imports
 - `AISessionRepository` is outbound (SQLite will implement it)
 - `AISessionMonitor` is inbound (VS Code extension / HTTP adapter will drive it via registration, not a persistent subscription — the monitor is a stateful adapter that the orchestrator calls to get the current snapshot)
@@ -24,9 +28,11 @@ Add two new port interfaces — `AISessionRepository` (outbound persistence) and
 ## Scope
 
 ### Files to modify
+
 - `internal/core/ports/ports.go` — append two new interface blocks after `ProviderConfigRepository`
 
 ## Implementation Steps
+
 1. Read the full current `internal/core/ports/ports.go` to understand existing style.
 2. Append after the `ProviderConfigRepository` interface (at end of file):
 
@@ -45,6 +51,7 @@ Add two new port interfaces — `AISessionRepository` (outbound persistence) and
 4. Add a brief `// AISessionRepository ...` doc comment above each interface, matching the style of existing comments.
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` exits 0
@@ -54,6 +61,7 @@ Add two new port interfaces — `AISessionRepository` (outbound persistence) and
 - [ ] Existing interfaces are not modified
 
 ## Anti-patterns to Avoid
+
 - NEVER add methods to the `Orchestrator` inbound port here — that is TASK-153's scope
 - NEVER create a constructor or struct in ports.go — interfaces only
 - NEVER use `interface{}` or untyped parameters

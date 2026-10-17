@@ -3,15 +3,18 @@ id: TASK-181
 title: Frontend — enhanced TaskSubmitForm with provider/model/priority/split-button
 role: frontend
 planId: PLAN-024
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-179]
 createdAt: 2026-03-11T22:00:00.000Z
 ---
 
 ## Context
+
 The task submission form needs provider selector, model selector, priority, tags, and a split-button for submit mode (Queue / Draft / Backlog). This enables per-task provider delegation and idea capture directly from the form.
 
 ## Files to Read
+
 - `frontend/src/components/TaskSubmitForm.vue` — existing form
 - `frontend/src/composables/useProviders.ts` — provider list with models
 - `frontend/src/types/domain.ts` — TaskInput type from TASK-179
@@ -45,6 +48,7 @@ The task submission form needs provider selector, model selector, priority, tags
 6. Form resets after submission. Toast confirms with status-specific message.
 
 ## Acceptance Criteria
+
 - [ ] Provider dropdown shows all active providers + "Auto" option
 - [ ] Model dropdown populates from selected provider's model list
 - [ ] Priority defaults to 2 (medium)
@@ -54,6 +58,7 @@ The task submission form needs provider selector, model selector, priority, tags
 - [ ] Form resets and shows toast on success
 
 ## Anti-patterns to Avoid
+
 - NEVER hardcode provider names — always fetch from `useProviders()`
 - NEVER allow model selection without a provider being selected first
 - NEVER send arbitrary status values — only QUEUED, DRAFT, BACKLOG

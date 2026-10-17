@@ -3,7 +3,8 @@ id: TASK-013
 title: Orchestrator startup recovery + Stop() idempotency
 role: backend
 planId: PLAN-002
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-09T12:00:00.000Z
 ---
@@ -11,6 +12,7 @@ createdAt: 2026-03-09T12:00:00.000Z
 ## Context
 
 Two CRITICAL failsafe issues make the orchestrator lose work on every daemon restart:
+
 - **A1 (CRITICAL):** Tasks in `PROCESSING` state when the daemon crashes are orphaned — they stay `PROCESSING` in the DB forever and are never retried.
 - **A2 (CRITICAL):** Tasks in `QUEUED` state in the DB are NOT loaded into the in-memory queue on startup — they are silently lost until someone re-submits them.
 - **E1 (HIGH):** `Stop()` calls `close(o.stopCh)` unconditionally — a second call panics with "close of closed channel".
@@ -28,6 +30,7 @@ Two CRITICAL failsafe issues make the orchestrator lose work on every daemon res
    - Returns all tasks with `StatusQueued` OR `StatusProcessing`.
 
 2. **Implement `GetPending()` in `repo_sqlite/repo.go`**:
+
    ```go
    func (r *Repository) GetPending() ([]domain.Task, error) {
        rows, err := r.db.Query(
@@ -39,6 +42,7 @@ Two CRITICAL failsafe issues make the orchestrator lose work on every daemon res
        // scan + return
    }
    ```
+
    Note: `retry_count`, `source_project_path`, `source_task_id`, `source_plan_id` columns are added by TASK-014 and TASK-026 respectively — add them to the schema migration so they exist with defaults when this task runs.
 
 3. **In `NewOrchestrator()` / startup**, after creating the service struct call `repo.GetPending()`:
@@ -49,6 +53,7 @@ Two CRITICAL failsafe issues make the orchestrator lose work on every daemon res
    - `NewOrchestrator()` must return `(*OrchestratorService, error)` — update all callers in `main.go`, `cmd/nexus-daemon/main.go`.
 
 4. **Make `Stop()` idempotent using `sync.Once`**:
+
    ```go
    type OrchestratorService struct {
        // ... existing fields ...
@@ -61,6 +66,7 @@ Two CRITICAL failsafe issues make the orchestrator lose work on every daemon res
    ```
 
 5. **Remove all `_ = o.repo.UpdateStatus(...)` patterns** — replace with proper error logging:
+
    ```go
    if err := o.repo.UpdateStatus(task.ID, domain.StatusProcessing); err != nil {
        log.Printf("orchestrator: update status processing: %v", err)

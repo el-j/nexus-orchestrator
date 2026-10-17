@@ -254,6 +254,7 @@ func (s *Server) Handler() http.Handler {
 	// Brain
 	r.Post("/api/brain/ingest", s.handleIngestKnowledge)
 	r.Post("/api/brain/ingest-content", s.handleIngestContent)
+	r.Post("/api/brain/knowledge", s.handleUpsertKnowledge)
 	r.Get("/api/brain/status", s.handleGetBrainStatus)
 	r.Post("/api/brain/context", s.handleGetProjectContext)
 	r.Post("/api/brain/focused-context", s.handleGetFocusedContext)

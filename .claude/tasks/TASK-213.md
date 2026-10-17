@@ -3,15 +3,18 @@ id: TASK-213
 title: Fix frontend circular dep + incomplete components
 role: backend
 planId: PLAN-030
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2025-07-25T00:00:00.000Z
 ---
 
 ## Context
+
 Three critical frontend issues: (1) Circular dependency between `useProjectFilter.ts` and `useTasks.ts` — they import each other, causing runtime module initialization failures. (2) `TaskSubmitForm.vue` has an incomplete `handleSubmit()` function — the file ends mid-implementation. (3) `HistoryView.vue` has cut-off helper functions (`shortId`, `projectName`, `fileName`).
 
 ## Files to Read
+
 - `frontend/src/composables/useProjectFilter.ts` — imports from useTasks
 - `frontend/src/composables/useTasks.ts` — imports from useProjectFilter
 - `frontend/src/components/TaskSubmitForm.vue` — incomplete handleSubmit at ~line 300
@@ -19,6 +22,7 @@ Three critical frontend issues: (1) Circular dependency between `useProjectFilte
 - `frontend/src/types/domain.ts` — Task type definition
 
 ## Implementation Steps
+
 1. Break the circular dependency between `useProjectFilter.ts` and `useTasks.ts`:
    - Option A: Extract shared state to a new `useTaskStore.ts` that both import
    - Option B: Move project filtering logic into `useTasks.ts` and remove `useProjectFilter.ts`
@@ -28,6 +32,7 @@ Three critical frontend issues: (1) Circular dependency between `useProjectFilte
 4. Run TypeScript type check to verify no type errors introduced
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` exits 0
@@ -37,6 +42,7 @@ Three critical frontend issues: (1) Circular dependency between `useProjectFilte
 - [ ] `cd frontend && npx vue-tsc --noEmit` exits 0
 
 ## Anti-patterns to Avoid
+
 - NEVER use `any` type in TypeScript — always define proper types
 - NEVER leave empty catch blocks — at minimum log the error
 - NEVER mutate reactive state outside composable functions

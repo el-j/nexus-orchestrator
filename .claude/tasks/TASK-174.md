@@ -3,15 +3,18 @@ id: TASK-174
 title: SQLite — add columns and repo methods for backlog fields
 role: backend
 planId: PLAN-024
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-173]
 createdAt: 2026-03-11T22:00:00.000Z
 ---
 
 ## Context
+
 The new Task fields (`ProviderName`, `Priority`, `Tags`) need SQLite columns, and the new `TaskRepository` methods (`GetByProjectPathAndStatus`, `Update`) need implementations.
 
 ## Files to Read
+
 - `internal/adapters/outbound/repo_sqlite/repo.go` — schema migration, scanTask, Save, existing queries
 - `internal/core/domain/task.go` — Task struct with new fields
 - `internal/core/ports/ports.go` — updated TaskRepository interface from TASK-173
@@ -19,6 +22,7 @@ The new Task fields (`ProviderName`, `Priority`, `Tags`) need SQLite columns, an
 ## Implementation Steps
 
 1. Add additive column migrations in `migrate()`:
+
    ```go
    {"provider_name", "TEXT NOT NULL DEFAULT ''"},
    {"priority", "INTEGER NOT NULL DEFAULT 2"},
@@ -40,6 +44,7 @@ The new Task fields (`ProviderName`, `Priority`, `Tags`) need SQLite columns, an
    - Return `domain.ErrNotFound` if no rows affected
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` exits 0
@@ -49,6 +54,7 @@ The new Task fields (`ProviderName`, `Priority`, `Tags`) need SQLite columns, an
 - [ ] Tags are stored as JSON array and deserialized correctly
 
 ## Anti-patterns to Avoid
+
 - NEVER import adapters from core services (hexagonal dependency rule)
 - NEVER skip `fmt.Errorf("sqlite: operation: %w", err)` error wrapping
 - NEVER use raw string formatting for SQL parameters — use `?` placeholders

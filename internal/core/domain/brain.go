@@ -36,6 +36,15 @@ type ProjectKnowledge struct {
 	UpdatedAt      time.Time     `json:"updatedAt"`
 }
 
+// IsValid reports whether k is one of the knowledge kinds the brain stores.
+func (k KnowledgeKind) IsValid() bool {
+	switch k {
+	case KnowledgeArchitecture, KnowledgeConvention, KnowledgeFileMap, KnowledgeLearning, KnowledgeGlossary, KnowledgeTaskSummary:
+		return true
+	}
+	return false
+}
+
 // ContextQuery is the input to BrainService context assembly methods.
 type ContextQuery struct {
 	ProjectPath string `json:"projectPath"`

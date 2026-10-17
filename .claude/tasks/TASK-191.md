@@ -1,7 +1,8 @@
 ---
 id: TASK-191
-title: "GUI: Settings view (provider URLs, queue cap, MCP addr)"
-status: todo
+title: 'GUI: Settings view (provider URLs, queue cap, MCP addr)'
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 priority: medium
 role: frontend
 dependencies: [TASK-189]
@@ -24,9 +25,11 @@ Add a **Settings** page to the Web GUI so users can view and adjust runtime conf
 ## Scope
 
 ### Files to create
+
 - `frontend/src/views/SettingsView.vue` — settings page
 
 ### Files to modify
+
 - `frontend/src/router/index.ts` (or equivalent) — add `/settings` route
 - `frontend/src/components/AppSidebar.vue` — add Settings nav link (last item, with gear icon)
 
@@ -40,6 +43,7 @@ Add a **Settings** page to the Web GUI so users can view and adjust runtime conf
 3. Add "Settings" entry in `AppSidebar.vue` with gear icon at the bottom of the nav list.
 
 ## Acceptance Criteria
+
 - [ ] `SettingsView.vue` exists and is registered at `/settings`
 - [ ] AppSidebar has a working "Settings" link with gear icon
 - [ ] Provider Connections section lists configured providers and allows adding/removing them

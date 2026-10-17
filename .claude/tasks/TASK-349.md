@@ -3,7 +3,8 @@ id: TASK-349
 title: MCP tool — get_project_context (compact project snapshot)
 role: mcp
 planId: PLAN-051
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-346]
 createdAt: 2026-03-28T00:00:00Z
 ---

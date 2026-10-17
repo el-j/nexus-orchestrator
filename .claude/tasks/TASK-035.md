@@ -3,7 +3,8 @@ id: TASK-035
 title: SSE events endpoint GET /api/events + OrchestratorService event fan-out
 role: backend
 planId: PLAN-003
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-09T15:00:00.000Z
 ---
@@ -132,6 +133,7 @@ func (h *Hub) ServeSSE(w http.ResponseWriter, r *http.Request) {
 ## OrchestratorService Changes
 
 Add field and broadcast calls:
+
 ```go
 type OrchestratorService struct {
     // ... existing fields ...
@@ -140,6 +142,7 @@ type OrchestratorService struct {
 ```
 
 In `processNext()`, after each `repo.UpdateStatus(...)`:
+
 ```go
 if o.broadcaster != nil {
     o.broadcaster.Broadcast(ports.TaskEvent{
@@ -153,14 +156,15 @@ if o.broadcaster != nil {
 ## Dashboard Update (TASK-034 integration)
 
 If SSE is available, dashboard switches from polling to EventSource:
+
 ```javascript
 // Attempt SSE; fall back to polling on error
-const es = new EventSource('/api/events')
+const es = new EventSource('/api/events');
 es.onmessage = (e) => {
-    const evt = JSON.parse(e.data)
-    if (evt.type !== 'connected') refresh()
-}
-es.onerror = () => es.close() // polling continues anyway
+  const evt = JSON.parse(e.data);
+  if (evt.type !== 'connected') refresh();
+};
+es.onerror = () => es.close(); // polling continues anyway
 ```
 
 ## Acceptance Criteria

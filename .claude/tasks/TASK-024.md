@@ -3,7 +3,8 @@ id: TASK-024
 title: QA — orchestrator hardening tests + GUI build smoke test
 role: qa
 planId: PLAN-002
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-013, TASK-014, TASK-019, TASK-020, TASK-021, TASK-022]
 createdAt: 2026-03-09T12:00:00.000Z
 ---
@@ -61,6 +62,7 @@ TASK-013 and TASK-014 harden the orchestrator with startup recovery, Stop() idem
 
 2. **Frontend smoke test documentation in `TASK-024.md`** (this file):
    The CI smoke test for the frontend is NOT a Go test — it is documented in TASK-025 as a build matrix step:
+
    ```sh
    cd frontend && npm ci && npm run build
    # Verify dist/index.html exists

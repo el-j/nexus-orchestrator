@@ -3,7 +3,8 @@ id: TASK-137
 title: Prepare vscode-extension for vsce packaging
 role: devops
 planId: PLAN-019
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-11T18:00:00.000Z
 ---
@@ -26,8 +27,8 @@ The extension also needs a `repository` field and a `LICENSE` file for vsce comp
    b. Add `"repository": { "type": "git", "url": "https://github.com/el-j/nexus-orchestrator" }` after `"categories"`.
    c. In `"devDependencies"`, add `"@vscode/vsce": "^3.4.0"`.
    d. Update the `"package"` script to:
-      `"package": "vsce package --no-dependencies"`
-      (avoids bundling the full `node_modules`, keeping the VSIX lean).
+   `"package": "vsce package --no-dependencies"`
+   (avoids bundling the full `node_modules`, keeping the VSIX lean).
 
 2. Run `npm install` inside `vscode-extension/` to regenerate `package-lock.json`.
 
