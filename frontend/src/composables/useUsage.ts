@@ -12,7 +12,11 @@ export function useUsage(since = '24h') {
 
   async function refresh() {
     try {
-      report.value = await getUsage(since);
+      const r = await getUsage(since);
+      // A daemon without the ledger, or a stand-in server, may answer with something else: show an error
+      // instead of failing to render.
+      if (!r || !r.totals || !Array.isArray(r.usage)) throw new Error('Unexpected usage answer');
+      report.value = r;
       error.value = null;
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to load usage';

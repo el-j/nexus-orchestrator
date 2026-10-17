@@ -55,6 +55,17 @@ describe('useUsage', () => {
     expect(api().error.value).toBeNull();
   });
 
+  it('treats an answer that is not a usage report as an error', async () => {
+    vi.mocked(wails.getUsage).mockResolvedValueOnce([] as never);
+    const { api } = host();
+    await flushPromises();
+    expect(api().error.value).toBe('Unexpected usage answer');
+    expect(api().report.value).toBeNull();
+    vi.mocked(wails.getUsage).mockResolvedValueOnce(null as never);
+    await api().refresh();
+    expect(api().error.value).toBe('Unexpected usage answer');
+  });
+
   it('describes an error that is not an Error', async () => {
     vi.mocked(wails.getUsage).mockRejectedValueOnce('boom');
     const { api } = host();

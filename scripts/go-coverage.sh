@@ -11,10 +11,15 @@
 set -euo pipefail
 
 profile="$(mktemp)"
-trap 'rm -f "$profile"' EXIT
-
-CGO_ENABLED=1 CGO_CFLAGS="${CGO_CFLAGS:--DSQLITE_ENABLE_FTS5}" CGO_LDFLAGS="${CGO_LDFLAGS:--lm}" \
-  go test -count=1 -coverpkg=./... -coverprofile="$profile" ./... >/dev/null
+log="$(mktemp)"
+trap 'rm -f "$profile" "$log"' EXIT
+# A failing test must say which one: the output is kept and its failures are printed.
+if ! CGO_ENABLED=1 CGO_CFLAGS="${CGO_CFLAGS:--DSQLITE_ENABLE_FTS5}" CGO_LDFLAGS="${CGO_LDFLAGS:--lm}" \
+  go test -count=1 -coverpkg=./... -coverprofile="$profile" ./... >"$log" 2>&1; then
+  grep -E '^(--- FAIL|FAIL|panic:)|_test\.go:[0-9]+:' "$log" | head -40 >&2
+  echo "go test failed (see above)" >&2
+  exit 1
+fi
 
 python3 - "$profile" "${MIN_COVERAGE:-0}" <<'PY'
 import re, sys, collections
