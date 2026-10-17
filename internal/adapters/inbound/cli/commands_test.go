@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -354,5 +355,75 @@ func TestRoutingCmd(t *testing.T) {
 	}
 	if _, err := execute(&scriptedOrch{}, nil, "routing", "--project", "/p"); err == nil || !strings.Contains(err.Error(), "not available") {
 		t.Errorf("no previewer: %v", err)
+	}
+}
+
+// The claude branch runs `claude mcp get/add`; here a stand-in `claude` on the PATH answers, and a stand-in
+// nexus-mcp-stdio on the PATH is what the Antigravity entry points at.
+func TestConnectCmd_ClaudeCodeAndTheStdioProxyFromThePath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell stand-ins")
+	}
+	bin := t.TempDir()
+	calls := filepath.Join(bin, "calls")
+	script := "#!/bin/sh\necho \"$@\" >> " + calls + "\nif [ \"$2\" = get ]; then exit 1; fi\nexit 0\n"
+	for _, name := range []string{"claude", "nexus-mcp-stdio"} {
+		if err := os.WriteFile(filepath.Join(bin, name), []byte(script), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("PATH", bin)
+	t.Setenv("NEXUS_MCP_URL", "")
+
+	run := func(args ...string) (string, error) {
+		var out bytes.Buffer
+		root := cli.NewRootCmd(&mockOrchestrator{}, &mockBrainService{})
+		root.SetOut(&out)
+		root.SetErr(&out)
+		root.SetArgs(append([]string{"connect"}, args...))
+		err := root.Execute()
+		return out.String(), err
+	}
+	if out, err := run("--agent", "claude"); err != nil || !strings.Contains(out, "not connected") {
+		t.Errorf("dry run: %v\n%s", err, out)
+	}
+	if out, err := run("--agent", "claude", "--write"); err != nil || !strings.Contains(out, "connected") {
+		t.Errorf("write: %v\n%s", err, out)
+	}
+	got, _ := os.ReadFile(calls)
+	if !strings.Contains(string(got), "mcp get nexus") || !strings.Contains(string(got), "mcp add") || !strings.Contains(string(got), "http://127.0.0.1:63988/mcp") {
+		t.Errorf("claude was asked: %q", got)
+	}
+	// Antigravity's entry points at the stdio proxy found on the PATH.
+	if err := os.MkdirAll(filepath.Join(home, ".gemini", "config"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".gemini", "config", "mcp_config.json"), []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := run("--agent", "antigravity", "--write"); err != nil {
+		t.Errorf("antigravity: %v\n%s", err, out)
+	}
+	if b, _ := os.ReadFile(filepath.Join(home, ".gemini", "config", "mcp_config.json")); !strings.Contains(string(b), filepath.Join(bin, "nexus-mcp-stdio")) {
+		t.Errorf("the stdio proxy from the PATH is used: %s", b)
+	}
+}
+
+func TestConnectCmd_NoHomeDirectoryIsAnError(t *testing.T) {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" || runtime.GOOS == "plan9" {
+		t.Skip("os.UserHomeDir falls back to the passwd entry here")
+	}
+	t.Setenv("HOME", "")
+	var out bytes.Buffer
+	root := cli.NewRootCmd(&mockOrchestrator{}, &mockBrainService{})
+	root.SetOut(&out)
+	root.SetErr(&out)
+	root.SilenceUsage, root.SilenceErrors = true, true
+	root.SetArgs([]string{"connect"})
+	if err := root.Execute(); err == nil || !strings.Contains(err.Error(), "home directory") {
+		t.Errorf("err = %v", err)
 	}
 }
