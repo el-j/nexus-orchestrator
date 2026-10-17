@@ -15,4 +15,4 @@ dependsOn: [TASK-583]
 
 Done when: the failing test came first, `make test` and `make nice` pass, docs and surface matrix updated where an interface changed.
 
-Note: LM Studio's own adapter does not report usage yet (local model, no quota); the other adapters do.
+Note: LM Studio's adapter now reports usage too (found while using the daemon with a real local model: the ledger showed only Claude).
