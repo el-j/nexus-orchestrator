@@ -71,7 +71,8 @@ func (o *OrchestratorService) holdUntilReset(task domain.Task, chain []ports.LLM
 }
 
 // ResumeWaitingTasks queues the WAITING tasks whose wait time is up at now (or that have none) and
-// returns how many it resumed. The task watchdog calls it on every tick and a timer calls it at the
+// returns how many it resumed; a task whose providers are no longer cooling down (a budget was raised) is
+// resumed before its wait time. The task watchdog calls it on every tick and a timer calls it at the
 // reset time, so a restart of the daemon does not strand a waiting task.
 func (o *OrchestratorService) ResumeWaitingTasks(ctx context.Context, now time.Time) (int, error) {
 	tasks, err := o.repo.GetAll(ctx)
@@ -80,7 +81,7 @@ func (o *OrchestratorService) ResumeWaitingTasks(ctx context.Context, now time.T
 	}
 	resumed := 0
 	for _, t := range tasks {
-		if t.Status != domain.StatusWaiting || t.WaitUntil.After(now) {
+		if t.Status != domain.StatusWaiting || (t.WaitUntil.After(now) && !o.holdReleased(ctx, t)) {
 			continue
 		}
 		moved, err := o.repo.UpdateStatusIfCurrent(ctx, t.ID, domain.StatusWaiting, domain.StatusQueued)
