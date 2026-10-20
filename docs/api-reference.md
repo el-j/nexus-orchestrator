@@ -344,18 +344,21 @@ The first frame is `{"type":"connected"}`.
 
 **Task events** (`{"type": "...", "taskId": "...", "status": "..."}`):
 
-| `type`             | Description                                            |
-| ------------------ | ------------------------------------------------------ |
-| `task.queued`      | Task was added to the queue                            |
-| `task.processing`  | Task is being processed by an LLM                      |
-| `task.completed`   | Task completed successfully                            |
-| `task.failed`      | Task processing failed                                 |
-| `task.cancelled`   | Task was cancelled (also after aborting a running one) |
-| `task.too_large`   | Task exceeded the context window                       |
-| `task.no_provider` | No provider available for the task                     |
-| `task.draft`       | A draft was created                                    |
-| `task.backlog`     | A task was moved to the backlog                        |
-| `task.updated`     | A task's fields were edited                            |
+| `type`             | Description                                                            |
+| ------------------ | ---------------------------------------------------------------------- |
+| `task.queued`      | Task was added to the queue                                            |
+| `task.processing`  | Task is being processed by an LLM                                      |
+| `task.completed`   | Task completed successfully                                            |
+| `task.failed`      | Task processing failed                                                 |
+| `task.cancelled`   | Task was cancelled (also after aborting a running one)                 |
+| `task.too_large`   | Task exceeded the context window                                       |
+| `task.no_provider` | No provider available for the task                                     |
+| `task.waiting`     | Every provider is cooling down: the task waits (`waitUntil`)           |
+| `task.chunk`       | A piece of the reply (`text`) while the model writes it                |
+| `task.restart`     | The attempt starts over (a fallback or a correction): clear the buffer |
+| `task.draft`       | A draft was created                                                    |
+| `task.backlog`     | A task was moved to the backlog                                        |
+| `task.updated`     | A task's fields were edited                                            |
 
 **Other events:**
 
@@ -922,7 +925,7 @@ timeout the task comes back as it is with `"timedOut": true`.
   "params": {
     "name": "get_task",
     "arguments": {
-      "taskId": "abc-123"
+      "id": "abc-123"
     }
   }
 }

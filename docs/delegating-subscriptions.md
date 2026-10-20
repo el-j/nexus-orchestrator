@@ -10,7 +10,7 @@ it for each task: the prompt goes to `claude -p` on stdin and the printed reply 
 
 - **From discovery**: the scan finds `claude` and `copilot` on the PATH (status `installed`). Promote
   them in the Discovery panel, or `promote_provider` over MCP, or
-  `POST /api/providers/discovered/{id}/promote`.
+  `POST /api/providers/promote/{id}`.
 - **In the UI**: open **Providers → Add Provider**, select **CLI Tool (Claude / Copilot subscription)**,
   and enter the command line (`claude -p --output-format stream-json` or `copilot -s --no-ask-user`).
 - **By hand**: add a provider config of kind `cli` whose `baseUrl` is the command line:

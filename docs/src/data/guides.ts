@@ -9,6 +9,9 @@ import streaming from '../../streaming.md?raw';
 import policy from '../../rulebased-workflow.md?raw';
 import planFiles from '../../plan-files.md?raw';
 import modelBridge from '../../vscode-model-bridge.md?raw';
+import tokenEconomy from '../../token-economy.md?raw';
+import switchingProviders from '../../switching-providers.md?raw';
+import subscriptionBridges from '../../subscription-bridges.md?raw';
 
 /** One guide: its page address, its title and summary, and its markdown source. */
 export interface Guide {
@@ -67,6 +70,26 @@ export const guides: Guide[] = [
     title: 'VS Code model bridge',
     summary: 'Share the models your editor offers (Copilot and others) with the orchestrator.',
     source: modelBridge,
+  },
+  {
+    slug: 'token-economy',
+    title: 'Token economy',
+    summary:
+      'Spend fewer tokens: lean Claude calls, outlines for big files, history limits, budgets per provider.',
+    source: tokenEconomy,
+  },
+  {
+    slug: 'switching-providers',
+    title: 'Switching providers at a limit',
+    summary:
+      'A real run: Claude hits its limit, the task moves to a local model, and the cooldown shows.',
+    source: switchingProviders,
+  },
+  {
+    slug: 'subscription-bridges',
+    title: 'Subscription bridges',
+    summary: 'Which of your Claude, Copilot and Antigravity subscriptions Nexus can use, and how.',
+    source: subscriptionBridges,
   },
 ];
 

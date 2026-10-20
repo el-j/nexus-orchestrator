@@ -69,23 +69,24 @@ Reload the VS Code window after saving the configuration.
 
 ## Available Tools
 
-### Tasks (13)
+### Tasks (14)
 
-| Tool                   | Description                                                                                           |
-| ---------------------- | ----------------------------------------------------------------------------------------------------- |
-| `submit_task`          | Submit a code-generation task with project path, target file, instruction, verification command, etc. |
-| `get_task`             | Retrieve the status and output of a task by its ID (`id`)                                             |
-| `get_queue`            | List all pending (QUEUED or PROCESSING) tasks                                                         |
-| `get_all_tasks`        | Return every task regardless of status                                                                |
-| `cancel_task`          | Cancel a pending task before it is processed (`id`)                                                   |
-| `update_task`          | Update mutable fields on an existing task (instruction, priority, provider, tags, status)             |
-| `create_draft`         | Create a draft idea for a project without entering the execution queue                                |
-| `get_backlog`          | List draft and backlog items for a project, ordered by priority                                       |
-| `promote_task`         | Promote a draft or backlog task to the execution queue (`id`)                                         |
-| `claim_task`           | Claim a QUEUED task for execution by an external AI session                                           |
-| `update_task_status`   | Report task completion or failure from the executing AI session                                       |
-| `heartbeat_task`       | Keep a PROCESSING task alive (prevents watchdog from marking it failed)                               |
-| `terminate_ai_session` | Terminate an external AI agent session (SIGTERM or SIGKILL)                                           |
+| Tool                   | Description                                                                                                 |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `submit_task`          | Submit a code-generation task with project path, target file, instruction, verification command, etc.       |
+| `get_task`             | Retrieve the status and output of a task by its ID (`id`)                                                   |
+| `wait_for_task`        | Wait until a task has finished and return it; streams the reply as progress notifications when asked (`id`) |
+| `get_queue`            | List all pending (QUEUED or PROCESSING) tasks                                                               |
+| `get_all_tasks`        | Return every task regardless of status                                                                      |
+| `cancel_task`          | Cancel a pending task before it is processed (`id`)                                                         |
+| `update_task`          | Update mutable fields on an existing task (instruction, priority, provider, tags, status)                   |
+| `create_draft`         | Create a draft idea for a project without entering the execution queue                                      |
+| `get_backlog`          | List draft and backlog items for a project, ordered by priority                                             |
+| `promote_task`         | Promote a draft or backlog task to the execution queue (`id`)                                               |
+| `claim_task`           | Claim a QUEUED task for execution by an external AI session                                                 |
+| `update_task_status`   | Report task completion or failure from the executing AI session                                             |
+| `heartbeat_task`       | Keep a PROCESSING task alive (prevents watchdog from marking it failed)                                     |
+| `terminate_ai_session` | Terminate an external AI agent session (SIGTERM or SIGKILL)                                                 |
 
 ### AI Sessions (5)
 
@@ -109,19 +110,27 @@ Reload the VS Code window after saving the configuration.
 | `update_provider_config` | Update an existing LLM provider configuration by ID              |
 | `remove_provider_config` | Delete a persisted provider configuration and deregister adapter |
 
-### Brain / Knowledge (9)
+### Brain / Knowledge (10)
 
-| Tool                  | Description                                                                                |
-| --------------------- | ------------------------------------------------------------------------------------------ |
-| `get_brain_status`    | Retrieve indexing status and entry count of project knowledge brain                        |
-| `ingest_knowledge`    | Parse and inject knowledge from markdown files into project brain storage                  |
-| `get_project_context` | Obtain macro context (Architectures, Conventions, File Maps) bounded by token budget       |
-| `get_focused_context` | Query task-specific micro context (Learning, Definitions, Gotchas) bounded by token budget |
-| `search_knowledge`    | Full-text search across the project's knowledge base via FTS5 BM25 matching                |
-| `init_project`        | Auto-ingest CLAUDE.md and initialize a project's knowledge base in one step                |
-| `list_knowledge`      | List all knowledge documents stored for a project, optionally filtered by kind             |
-| `delete_knowledge`    | Delete a knowledge document by ID from the project repository                              |
-| `get_file_map`        | Retrieve cached file path map knowledge document for a project                             |
+| Tool                     | Description                                                                                                       |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `get_brain_status`       | Retrieve indexing status and entry count of project knowledge brain                                               |
+| `ingest_knowledge`       | Parse and inject knowledge from markdown files into project brain storage                                         |
+| `get_onboarding_context` | Everything an agent needs on arrival: project rules, active plan, open tasks and stack, bounded by a token budget |
+| `get_project_context`    | Obtain macro context (Architectures, Conventions, File Maps) bounded by token budget                              |
+| `get_focused_context`    | Query task-specific micro context (Learning, Definitions, Gotchas) bounded by token budget                        |
+| `search_knowledge`       | Full-text search across the project's knowledge base via FTS5 BM25 matching                                       |
+| `init_project`           | Auto-ingest CLAUDE.md and initialize a project's knowledge base in one step                                       |
+| `list_knowledge`         | List all knowledge documents stored for a project, optionally filtered by kind                                    |
+| `delete_knowledge`       | Delete a knowledge document by ID from the project repository                                                     |
+| `get_file_map`           | Retrieve cached file path map knowledge document for a project                                                    |
+
+### Usage & routing (2)
+
+| Tool          | Description                                                                                                                                |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `get_usage`   | Tokens and cost the models consumed since a time (`since`, for example `24h`), per provider, model and role                                |
+| `get_routing` | The order in which providers would be tried for a role in a project: ladder rung, cooldown with reason, plan quota (`projectPath`, `role`) |
 
 ### Discovery & System (6)
 
@@ -186,7 +195,7 @@ Reload the VS Code window after saving the configuration.
   "params": {
     "name": "get_task",
     "arguments": {
-      "taskId": "abc-123"
+      "id": "abc-123"
     }
   }
 }

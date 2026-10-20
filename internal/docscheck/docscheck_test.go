@@ -230,3 +230,36 @@ func TestDockerfileAndReleaseConfigInvariants(t *testing.T) {
 		t.Error("publish.yml build-vscode must run scripts/version-sync.sh before npm run build")
 	}
 }
+
+// Every MCP tool of the catalogue on the site is described in the MCP guide and the API reference, and
+// the guides written for the quota-aware routing are on the site.
+func TestEveryMCPToolIsDocumentedAndTheRoutingGuidesAreOnTheSite(t *testing.T) {
+	tools := regexp.MustCompile(`name: '([a-z_]+)'`).FindAllStringSubmatch(read(t, "docs/src/data/mcpTools.ts"), -1)
+	if len(tools) < 44 {
+		t.Fatalf("the catalogue lists %d tools, want at least 44", len(tools))
+	}
+	for _, doc := range []string{"docs/mcp-integration.md", "docs/api-reference.md"} {
+		text := read(t, doc)
+		for _, m := range tools {
+			if !strings.Contains(text, "`"+m[1]+"`") {
+				t.Errorf("%s does not document the MCP tool %s", doc, m[1])
+			}
+		}
+	}
+	guides := read(t, "docs/src/data/guides.ts")
+	for _, slug := range []string{"token-economy", "switching-providers", "subscription-bridges"} {
+		if !strings.Contains(guides, "'"+slug+"'") {
+			t.Errorf("docs/src/data/guides.ts does not list the guide %s", slug)
+		}
+	}
+	for _, doc := range []string{"docs/mcp-integration.md", "docs/api-reference.md"} {
+		if strings.Contains(read(t, doc), `"taskId": "abc-123"
+    }
+  }`) {
+			t.Errorf("%s: get_task takes \"id\", not \"taskId\"", doc)
+		}
+	}
+	if strings.Contains(read(t, "docs/delegating-subscriptions.md"), "/discovered/{id}/promote") {
+		t.Error("the promote route is POST /api/providers/promote/{id}")
+	}
+}
