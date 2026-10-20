@@ -240,6 +240,8 @@ func (s *Server) Handler() http.Handler {
 	// Activity observatory endpoints
 	r.Get("/api/usage", s.handleUsage)
 	r.Get("/api/routing", s.handleRouting)
+	r.Get("/api/policy", s.handleGetPolicy)
+	r.Put("/api/policy", s.handlePutPolicy)
 	r.Get("/api/activities", s.handleListActivities)
 	r.Get("/api/activities/timeline", s.handleActivityTimeline)
 

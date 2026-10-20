@@ -298,6 +298,24 @@ func (r *Client) PreviewRouting(ctx context.Context, projectPath, role string) (
 	return out, err
 }
 
+// GetProjectPolicy reads the project's .nexus/policy.json from the daemon; the bool is false when the
+// project has none.
+func (r *Client) GetProjectPolicy(ctx context.Context, projectPath string) (domain.ProjectPolicy, bool, error) {
+	var out struct {
+		Found  bool                 `json:"found"`
+		Policy domain.ProjectPolicy `json:"policy"`
+	}
+	path := "/api/policy?" + url.Values{"projectPath": {projectPath}}.Encode()
+	err := r.send(ctx, call{op: "get policy", method: http.MethodGet, path: path}, &out)
+	return out.Policy, out.Found, err
+}
+
+// SetProjectPolicy asks the daemon to validate and write the project's .nexus/policy.json.
+func (r *Client) SetProjectPolicy(ctx context.Context, projectPath string, p domain.ProjectPolicy) error {
+	path := "/api/policy?" + url.Values{"projectPath": {projectPath}}.Encode()
+	return r.send(ctx, call{op: "set policy", method: http.MethodPut, path: path, body: p}, nil)
+}
+
 // RegisterCloudProvider registers an adapter for cfg at runtime.
 func (r *Client) RegisterCloudProvider(cfg domain.ProviderConfig) error {
 	return r.send(context.Background(), call{op: "register provider", method: http.MethodPost, path: "/api/providers", body: cfg, ok: statusCreated}, nil)

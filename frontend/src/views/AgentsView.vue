@@ -159,99 +159,15 @@
               Registered Sessions
             </h2>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div
+              <SessionCard
                 v-for="s in filteredSessions"
                 :key="s.id"
-                class="rounded-xl border bg-white/[0.03] p-3 transition-all border-l-4 cursor-pointer hover:bg-white/[0.05]"
-                :class="{
-                  'border-l-emerald-500/60': s.status === 'active',
-                  'border-l-yellow-500/60': s.status === 'idle',
-                  'border-l-slate-600/60': s.status === 'disconnected',
-                }"
-                @click="openDrawer(s.agentName)"
-              >
-                <!-- Header: status dot + agent name + status badge -->
-                <div class="flex items-center gap-2 mb-2">
-                  <span
-                    class="w-2 h-2 rounded-full flex-shrink-0"
-                    :class="{
-                      'bg-emerald-400': s.status === 'active',
-                      'bg-yellow-400': s.status === 'idle',
-                      'bg-slate-600': s.status === 'disconnected',
-                    }"
-                  ></span>
-                  <span class="font-semibold text-sm text-white truncate flex-1">{{
-                    s.agentName
-                  }}</span>
-                  <span
-                    class="text-[10px] px-1.5 py-0.5 rounded font-medium flex-shrink-0"
-                    :class="{
-                      'bg-emerald-500/20 text-emerald-300': s.status === 'active',
-                      'bg-yellow-500/20 text-yellow-300': s.status === 'idle',
-                      'bg-slate-700/50 text-slate-400': s.status === 'disconnected',
-                    }"
-                    >{{ s.status }}</span
-                  >
-                </div>
-
-                <!-- Source badge -->
-                <div class="flex items-center gap-2 mb-2">
-                  <span class="text-[11px] px-2 py-0.5 rounded bg-white/5 text-slate-400">
-                    <template v-if="s.source === 'mcp'">🤖 MCP</template>
-                    <template v-else-if="s.source === 'vscode'">🔵 VS Code</template>
-                    <template v-else>🌐 HTTP</template>
-                  </span>
-                  <span v-if="s.externalId" class="text-[10px] text-slate-600 font-mono truncate">{{
-                    s.externalId
-                  }}</span>
-                </div>
-
-                <!-- Project path -->
-                <div
-                  v-if="s.projectPath"
-                  class="text-[11px] text-slate-500 font-mono mb-2 truncate"
-                  :title="s.projectPath"
-                >
-                  {{ shortPath(s.projectPath) }}
-                </div>
-
-                <!-- Last activity -->
-                <div class="text-[11px] text-slate-600 mb-2">
-                  Last active: {{ relativeTime(s.lastActivity) }}
-                </div>
-
-                <!-- Actions -->
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span
-                    v-if="s.delegatedToNexus"
-                    class="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300"
-                    >Delegated</span
-                  >
-                  <button
-                    v-else-if="s.status !== 'disconnected'"
-                    class="text-xs text-violet-300 hover:text-violet-200 px-2.5 py-1 rounded-lg border border-violet-500/20 hover:border-violet-500/40 transition-all"
-                    title="Hand this agent's work to Nexus"
-                    @click.stop="onDelegate(s.id)"
-                  >
-                    Delegate
-                  </button>
-                  <button
-                    v-if="s.status !== 'disconnected'"
-                    class="text-xs text-red-400 hover:text-red-300 px-2.5 py-1 rounded-lg border border-red-500/20 hover:border-red-500/40 transition-all"
-                    @click.stop="deregister(s.id)"
-                  >
-                    Disconnect
-                  </button>
-                  <button
-                    v-if="s.status !== 'disconnected'"
-                    class="text-xs text-red-400 hover:text-red-300 px-2.5 py-1 rounded-lg border border-red-500/20 hover:border-red-500/40 transition-all"
-                    title="Stop the agent's process (only a process Nexus found itself is signalled)"
-                    @click.stop="terminate(s.id)"
-                  >
-                    Terminate
-                  </button>
-                </div>
-              </div>
+                :session="s"
+                @open="openDrawer(s.agentName)"
+                @disconnect="deregister(s.id)"
+                @delegate="onDelegate(s.id)"
+                @terminate="terminate(s.id)"
+              />
             </div>
           </section>
 
@@ -362,10 +278,10 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useAISessions } from '../composables/useAISessions';
 import AgentDetailDrawer from '../components/AgentDetailDrawer.vue';
 import AgentActivityTab from '../components/AgentActivityTab.vue';
+import SessionCard from '../components/SessionCard.vue';
 import type { DiscoveredAgent } from '../types/domain';
 import { resolveServerUrl } from '../composables/useServerUrl';
 import { relativeTime } from '../utils/time';
-import { shortPath } from '../utils/path';
 import { currentProject } from '../composables/useProjectState';
 
 const { sessions, loading, error, refresh, deregister, delegate, terminate, purgeDisconnected } =

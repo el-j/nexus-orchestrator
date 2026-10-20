@@ -148,6 +148,9 @@
       <!-- Routing Preview -->
       <RoutingPreviewCard />
 
+      <!-- Project policy: ladder, budgets, token caps -->
+      <PolicyCard />
+
       <DiscoveredToolsSection :sort-mode="sortMode" />
 
       <!-- Configuration (merged from Settings) -->
@@ -258,6 +261,7 @@ import { useProviders } from '../composables/useProviders';
 import { useDiscovery } from '../composables/useDiscovery';
 import ProviderLimitBadges from '../components/ProviderLimitBadges.vue';
 import RoutingPreviewCard from '../components/RoutingPreviewCard.vue';
+import PolicyCard from '../components/PolicyCard.vue';
 import DiscoveredProvidersPanel from '../components/DiscoveredProvidersPanel.vue';
 import ProviderConfigForm from '../components/ProviderConfigForm.vue';
 import DiscoveredToolsSection from '../components/DiscoveredToolsSection.vue';

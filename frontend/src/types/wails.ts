@@ -4,6 +4,8 @@ import type {
   ProviderInfo,
   UsageReport,
   RoutingPreview,
+  PolicyReply,
+  ProjectPolicy,
   ProviderConfig,
   AISession,
   TaskStatus,
@@ -174,6 +176,16 @@ export async function getUsage(since = '24h'): Promise<UsageReport> {
 export async function getRouting(projectPath: string, role = ''): Promise<RoutingPreview> {
   const query = `projectPath=${q(projectPath)}${role ? `&role=${q(role)}` : ''}`;
   return request<RoutingPreview>('GET', `/api/routing?${query}`);
+}
+
+/** Reads a project's `.nexus/policy.json`; `found` is false when the project has none. */
+export async function getPolicy(projectPath: string): Promise<PolicyReply> {
+  return request<PolicyReply>('GET', `/api/policy?projectPath=${q(projectPath)}`);
+}
+
+/** Validates and writes a project's `.nexus/policy.json`; it applies to the next task. */
+export async function setPolicy(projectPath: string, policy: ProjectPolicy): Promise<PolicyReply> {
+  return request<PolicyReply>('PUT', `/api/policy?projectPath=${q(projectPath)}`, policy);
 }
 
 /** Cancels a queued or running task. */

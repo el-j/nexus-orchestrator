@@ -641,3 +641,25 @@ describe('getRouting, delegateToNexus, terminateAISession', () => {
     });
   });
 });
+
+describe('getPolicy and setPolicy', () => {
+  it('reads GET /api/policy and writes PUT /api/policy for the project', async () => {
+    const reply1 = { found: true, policy: { quotaThreshold: 0.8 } };
+    fetchMock.mockImplementationOnce(() => reply(200, reply1));
+    expect(await api.getPolicy('/work/app')).toEqual(reply1);
+    expect(lastCall()).toMatchObject({
+      method: 'GET',
+      path: '/api/policy?projectPath=%2Fwork%2Fapp',
+    });
+
+    fetchMock.mockImplementationOnce(() =>
+      reply(200, { found: true, policy: { contextBudget: 4000 } }),
+    );
+    await api.setPolicy('/work/app', { contextBudget: 4000 });
+    expect(lastCall()).toMatchObject({
+      method: 'PUT',
+      path: '/api/policy?projectPath=%2Fwork%2Fapp',
+      body: { contextBudget: 4000 },
+    });
+  });
+});

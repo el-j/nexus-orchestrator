@@ -299,6 +299,12 @@ import { useTasks } from '../composables/useTasks';
 import { useProviders } from '../composables/useProviders';
 import { useAISessions } from '../composables/useAISessions';
 import { currentProject } from '../composables/useProjectState';
+import {
+  HISTORY_FILTERS,
+  HISTORY_STATUSES,
+  STATUS_PRIORITY,
+  type HistoryFilterValue,
+} from '../utils/taskStatus';
 import { getAllTasks } from '../types/wails';
 import type { Task, AISession } from '../types/domain';
 import TaskStatusBadge from '../components/TaskStatusBadge.vue';
@@ -353,25 +359,15 @@ const recentHistory = ref<Task[]>([]);
 const allHistory = ref<Task[]>([]);
 const showAllHistory = ref(false);
 
-type HistoryFilterValue =
-  'ALL' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'TOO_LARGE' | 'NO_PROVIDER';
-const historyFilters: { label: string; value: HistoryFilterValue }[] = [
-  { label: 'All', value: 'ALL' },
-  { label: 'Completed', value: 'COMPLETED' },
-  { label: 'Failed', value: 'FAILED' },
-  { label: 'Cancelled', value: 'CANCELLED' },
-  { label: 'Too Large', value: 'TOO_LARGE' },
-  { label: 'No Provider', value: 'NO_PROVIDER' },
-];
+const historyFilters = HISTORY_FILTERS;
 const historyFilter = ref<HistoryFilterValue>('ALL');
 
 let historyInterval: ReturnType<typeof setInterval> | undefined;
-const historyStatuses = new Set(['COMPLETED', 'FAILED', 'CANCELLED', 'TOO_LARGE', 'NO_PROVIDER']);
 
 async function refreshHistory() {
   try {
     const all = (await getAllTasks()) ?? [];
-    allHistory.value = all.filter((t) => historyStatuses.has(t.status));
+    allHistory.value = all.filter((t) => HISTORY_STATUSES.has(t.status));
     const oneHourAgo = Date.now() - 3_600_000;
     recentHistory.value = all.filter(
       (t) =>
@@ -402,18 +398,6 @@ const processingCount = computed(() => tasks.value.filter((t) => t.status === 'P
 const activeProviderCount = computed(() => providers.value.filter((p) => p.active).length);
 
 // --- Sorted task list (queue + recent history) ---
-const statusPriority: Record<string, number> = {
-  PROCESSING: 0,
-  QUEUED: 1,
-  WAITING: 2,
-  DRAFT: 3,
-  BACKLOG: 4,
-  FAILED: 5,
-  COMPLETED: 6,
-  CANCELLED: 7,
-  TOO_LARGE: 8,
-  NO_PROVIDER: 9,
-};
 
 const sortedTasks = computed(() => {
   const ids = new Set<string>();
@@ -429,7 +413,9 @@ const sortedTasks = computed(() => {
       merged.push(t);
     }
   }
-  return merged.sort((a, b) => (statusPriority[a.status] ?? 99) - (statusPriority[b.status] ?? 99));
+  return merged.sort(
+    (a, b) => (STATUS_PRIORITY[a.status] ?? 99) - (STATUS_PRIORITY[b.status] ?? 99),
+  );
 });
 
 // --- Filtered work tasks ---

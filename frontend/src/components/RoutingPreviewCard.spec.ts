@@ -93,5 +93,13 @@ describe('RoutingPreviewCard', () => {
     expect(h.getRouting).toHaveBeenCalledWith('/work/other', '');
     expect(w.text()).toContain('LM Studio');
     expect(w.text()).toContain('unlisted');
+
+    // Clearing the sidebar project falls back to the daemon's working directory.
+    h.getRouting.mockResolvedValueOnce({ quotaThreshold: 0.9, order: [] });
+    h.project.value = null;
+    await nextTick();
+    await flushPromises();
+    expect(h.getRouting).toHaveBeenLastCalledWith('.', '');
+    w.unmount();
   });
 });

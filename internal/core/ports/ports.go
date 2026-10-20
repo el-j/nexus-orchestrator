@@ -78,6 +78,15 @@ type RoutingPreviewer interface {
 	PreviewRouting(ctx context.Context, projectPath, role string) (domain.RoutingPreview, error)
 }
 
+// PolicyManager is what the inbound adapters need to read and change a project's .nexus/policy.json
+// (ladder, budgets, quota threshold, context and history budgets, rules).
+type PolicyManager interface {
+	// GetProjectPolicy returns the project's policy; the bool is false when it has none.
+	GetProjectPolicy(ctx context.Context, projectPath string) (domain.ProjectPolicy, bool, error)
+	// SetProjectPolicy validates and writes the project's policy.
+	SetProjectPolicy(ctx context.Context, projectPath string, p domain.ProjectPolicy) error
+}
+
 // TaskRepository is the port for persisting and querying Tasks.
 type TaskRepository interface {
 	Save(ctx context.Context, t domain.Task) error

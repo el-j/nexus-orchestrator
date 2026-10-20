@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Project policy over REST, CLI and the app: `GET/PUT /api/policy`, `nexus-cli policy show|set` and a **Project policy** card on the Providers view edit the ladder, daily token budgets, quota threshold and context and history caps of `.nexus/policy.json` without hand-editing the file (validated, written atomically, applies to the next task). TASK-622 of PLAN-075
 - Opt-in real-service streaming contract tests (`NEXUS_TEST_ANTHROPIC_KEY`, `NEXUS_TEST_GEMINI_KEY`, `NEXUS_TEST_LMSTUDIO_URL`) in `llm_anthropic`, `llm_gemini` and `llm_lmstudio`, documented in [docs/streaming.md](docs/streaming.md). TASK-572 of PLAN-073
 - Desktop Wails smoke test in `ci.yml` launches from a non-project directory (`$HOME`) and verifies CORS headers for both `http://wails.localhost` and `wails://wails`; `scripts/mutation.sh` runs `gremlins` with `--integration` and `--timeout-coefficient` across core and adapter packages. TASK-576 of PLAN-073, TASK-605 of PLAN-074
 - GitHub Copilot CLI driver (`copilot -s --no-ask-user --no-color [--model <model>]`, prompt on stdin; checked against the real `@github/copilot` 1.0.100 CLI, whose `-p` needs the prompt as a value): discovered `copilot` binaries on the `PATH` can be promoted to active providers, CLI quota/rate-limit/auth failures become typed `domain.ProviderError` values, and mid-stream SSE errors from the VS Code `vscode.lm` bridge carry their HTTP status (`429`, `403`) into the routing engine. TASK-600 of PLAN-074
