@@ -152,7 +152,7 @@ jobs:
         run: |
           CGO_ENABLED=0 go build ./cmd/nexus-cli/...
           CGO_ENABLED=0 go build ./cmd/nexus-submit/...
-          CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" go build ./cmd/nexus-daemon/...
+          CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" CGO_LDFLAGS="-lm" go build ./cmd/nexus-daemon/...
 
   frontend-test:
     name: Frontend Smoke Coverage
@@ -221,8 +221,8 @@ jobs:
         working-directory: docs
         run: |
           npm run build
-          # 120: the Guides section ships seven markdown guides (about 10 KiB gz) as site pages
-          node ../scripts/check-bundle-budget.mjs ../build/docs 120 10
+          # 128: the Guides section ships ten markdown guides (about 10 KiB gz) as site pages
+          node ../scripts/check-bundle-budget.mjs ../build/docs 128 10
 
   build-vscode:
     name: Build VS Code Extension

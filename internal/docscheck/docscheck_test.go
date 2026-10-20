@@ -180,7 +180,7 @@ func TestReleaseWorkflowEmbedsFullUIInCLIDaemonAndEnforcesCoverageGate(t *testin
 	}
 
 	ci := read(t, ".github/workflows/ci.yml")
-	for _, want := range []string{"http://wails.localhost", "wails://wails", `cd "$HOME"`, `CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" go build ./cmd/nexus-daemon/...`} {
+	for _, want := range []string{"http://wails.localhost", "wails://wails", `cd "$HOME"`, `CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" CGO_LDFLAGS="-lm" go build ./cmd/nexus-daemon/...`} {
 		if !strings.Contains(ci, want) {
 			t.Errorf("ci.yml must verify %s", want)
 		}
