@@ -412,7 +412,7 @@ function defaultCliCommand(cliPath: string): string {
     .toLowerCase()
     .replace(/\.exe$/, '');
   if (base === 'claude') return `${cliPath} -p --output-format stream-json`;
-  if (base === 'copilot') return `${cliPath} -p -s --no-ask-user`;
+  if (base === 'copilot') return `${cliPath} -s --no-ask-user`;
   return `${cliPath} -p`;
 }
 

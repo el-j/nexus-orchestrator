@@ -12,7 +12,7 @@ it for each task: the prompt goes to `claude -p` on stdin and the printed reply 
   them in the Discovery panel, or `promote_provider` over MCP, or
   `POST /api/providers/discovered/{id}/promote`.
 - **In the UI**: open **Providers → Add Provider**, select **CLI Tool (Claude / Copilot subscription)**,
-  and enter the command line (`claude -p --output-format stream-json` or `copilot -p -s --no-ask-user`).
+  and enter the command line (`claude -p --output-format stream-json` or `copilot -s --no-ask-user`).
 - **By hand**: add a provider config of kind `cli` whose `baseUrl` is the command line:
 
   ```sh
@@ -46,12 +46,15 @@ without `--output-format stream-json` keeps the old behaviour (plain text on std
 The error shapes for a refused call are modelled on the fields the client prints for a successful one;
 they have not been captured from a real refusal yet.
 
-## GitHub Copilot: through `copilot -p` or the VS Code bridge
+## GitHub Copilot: through the `copilot` CLI or the VS Code bridge
 
 - **Headless CLI (`copilot`)**: promoting a discovered `copilot` binary (or adding a `cli` provider for
-  `copilot`) runs `copilot -p -s --no-ask-user` (plus `--model <model>` when configured). Quota,
-  rate-limit and authentication errors printed by the CLI are classified as typed provider errors so
-  routing cools down or switches providers automatically.
+  `copilot`) runs `copilot -s --no-ask-user --no-color` with the prompt on stdin (plus `--model <model>`
+  when configured; `auto` lets Copilot pick). Do not add `-p`: Copilot's `-p` wants the prompt text as its
+  value and fails with "a value is required" when the prompt arrives on stdin, so Nexus drops a bare `-p`
+  from older configs. Tools that need approval stay denied. Quota, rate-limit and authentication errors
+  printed by the CLI are classified as typed provider errors so routing cools down or switches providers
+  automatically. Verified against `@github/copilot` 1.0.100.
 - **VS Code model bridge (`vscode.lm`)**: the VS Code extension can share whatever models your editor offers
   (Copilot and others) with Nexus. See [vscode-model-bridge.md](vscode-model-bridge.md). Each model shows up as
   a provider named `vscode-<vendor>-<model>`, with the context length the editor reports, and quota/rate-limit

@@ -126,7 +126,7 @@ type OrchestratorService struct {
 	lastScannedAgents  []domain.DiscoveredAgent
 	lastAgentScanMu    sync.Mutex
 	waitTimerMu        sync.Mutex
-	waitTimers         []*time.Timer
+	waitTimers         map[string]*time.Timer          // pending resume timers by task ID
 	signalFn           func(pid int, force bool) error // test seam; nil = real os signals
 	baseCtx            context.Context                 // cancelled by Stop: aborts every in-flight generation
 	baseCancel         context.CancelFunc

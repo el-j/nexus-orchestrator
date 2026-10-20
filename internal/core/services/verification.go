@@ -84,6 +84,20 @@ func (o *OrchestratorService) writeAndVerifyTaskOutput(run *runHandle, task doma
 			if policy, ok, _ := LoadProjectPolicy(task.ProjectPath); ok {
 				o.enforceBudgets(run.chain, policy)
 			}
+			if cd, cooling := o.discovery.Cooldown(current, time.Now()); cooling {
+				// The provider hit a limit or used up its budget during this task: ask another one,
+				// or wait for the reset when none is left, instead of spending past the limit.
+				next := o.firstAvailable(run.chain)
+				if next == nil {
+					if o.holdUntilReset(task, run.chain) {
+						return ""
+					}
+				} else {
+					o.appendTaskLog(task.ID, fmt.Sprintf("%s is cooling down (%s): the correction goes to %s/%s",
+						current.ProviderName(), cd.reason, next.ProviderName(), next.ActiveModel()))
+					current, providerName = next, next.ProviderName()
+				}
+			}
 			if next := o.stepUp(run, current); next != current {
 				o.appendTaskLog(task.ID, fmt.Sprintf("verification failed on %s/%s: asking %s/%s (next rung up)",
 					current.ProviderName(), current.ActiveModel(), next.ProviderName(), next.ActiveModel()))

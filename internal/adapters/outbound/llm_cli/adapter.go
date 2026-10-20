@@ -143,7 +143,7 @@ func (a *Adapter) GetAvailableModels(context.Context) ([]string, error) {
 	case "claude":
 		return []string{"sonnet", "opus", "haiku"}, nil
 	case "copilot":
-		return []string{"gpt-4o", "claude-sonnet-4.5"}, nil
+		return []string{"auto"}, nil // the CLI lists no models non-interactively; "auto" lets Copilot pick
 	}
 	return []string{"default"}, nil
 }
@@ -243,8 +243,10 @@ func (a *Adapter) run(ctx context.Context, prompt string, onChunk func(string)) 
 			msg = strings.TrimSpace(reply.String())
 		}
 		if msg != "" {
-			if pe := classifyCLIFailure(a.name, fmt.Sprintf("%v: %s", err, msg)); pe != nil {
-				return reply.String(), pe
+			if isCopilot(a.exe) {
+				if pe := classifyCLIFailure(a.name, fmt.Sprintf("%v: %s", err, msg)); pe != nil {
+					return reply.String(), pe
+				}
 			}
 			return reply.String(), fmt.Errorf("%s: %w: %s", a.name, err, msg)
 		}

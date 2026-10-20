@@ -349,8 +349,8 @@ func TestPromoteProvider_AnInstalledCLIBecomesAProviderRunningItsPath(t *testing
 	if got.Kind != domain.ProviderKindCLI || got.BaseURL != "/usr/local/bin/claude -p --output-format stream-json" {
 		t.Errorf("config = %+v; want the claude path in print mode with stream-json (usage and quota)", got)
 	}
-	if err := orch.PromoteProvider(bg, "copilot"); err != nil || got.BaseURL != "/usr/local/bin/copilot -p -s --no-ask-user" {
-		t.Errorf("copilot gets -p -s --no-ask-user: %v %+v", err, got)
+	if err := orch.PromoteProvider(bg, "copilot"); err != nil || got.BaseURL != "/usr/local/bin/copilot -s --no-ask-user" {
+		t.Errorf("copilot gets -s --no-ask-user and no -p: %v %+v", err, got)
 	}
 	if err := orch.PromoteProvider(bg, "aichat"); err != nil || got.BaseURL != "/usr/local/bin/aichat -p" {
 		t.Errorf("another tool keeps plain -p: %v %+v", err, got)

@@ -200,7 +200,7 @@ describe('ProvidersView', () => {
       {
         name: 'Copilot CLI',
         kind: 'cli',
-        baseUrl: '/usr/local/bin/copilot.exe -p -s --no-ask-user',
+        baseUrl: '/usr/local/bin/copilot.exe -s --no-ask-user',
       },
     );
 

@@ -42,3 +42,14 @@ func (o *OrchestratorService) enforceBudgets(chain []ports.LLMClient, policy dom
 			fmt.Sprintf("%s: daily budget of %d tokens used", c.ProviderName(), b.DailyTokens))
 	}
 }
+
+// firstAvailable returns the first candidate of the chain that is not cooling down, or nil.
+func (o *OrchestratorService) firstAvailable(chain []ports.LLMClient) ports.LLMClient {
+	now := time.Now()
+	for _, c := range chain {
+		if _, cooling := o.discovery.Cooldown(c, now); !cooling {
+			return c
+		}
+	}
+	return nil
+}

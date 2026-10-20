@@ -313,14 +313,14 @@ describe('ProviderConfigForm', () => {
     expect(w.text()).toContain('Command is required.');
     expect(onSave).not.toHaveBeenCalled();
 
-    await inputs(w)[URL].setValue('copilot -p -s --no-ask-user');
+    await inputs(w)[URL].setValue('copilot -s --no-ask-user');
     await w.find('form').trigger('submit');
     await flushPromises();
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
         kind: 'cli',
         name: 'Claude CLI',
-        baseUrl: 'copilot -p -s --no-ask-user',
+        baseUrl: 'copilot -s --no-ask-user',
       }),
     );
     w.unmount();

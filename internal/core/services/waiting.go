@@ -43,7 +43,19 @@ func (o *OrchestratorService) holdUntilReset(task domain.Task, chain []ports.LLM
 	o.appendTaskLog(task.ID, entry)
 	o.emit(task.ID, domain.StatusWaiting)
 	if d := time.Until(task.WaitUntil); d > 0 {
-		tm := time.AfterFunc(d, func() {
+		// One timer per task: a task held again replaces its old timer, and a fired timer removes itself,
+		// so the map holds only the timers still pending (Stop cancels those).
+		o.waitTimerMu.Lock()
+		if old := o.waitTimers[task.ID]; old != nil {
+			old.Stop()
+		}
+		if o.waitTimers == nil {
+			o.waitTimers = map[string]*time.Timer{}
+		}
+		o.waitTimers[task.ID] = time.AfterFunc(d, func() {
+			o.waitTimerMu.Lock()
+			delete(o.waitTimers, task.ID)
+			o.waitTimerMu.Unlock()
 			select {
 			case <-o.stopCh:
 				return
@@ -53,8 +65,6 @@ func (o *OrchestratorService) holdUntilReset(task domain.Task, chain []ports.LLM
 				log.Printf("orchestrator: resume waiting tasks: %v", err)
 			}
 		})
-		o.waitTimerMu.Lock()
-		o.waitTimers = append(o.waitTimers, tm)
 		o.waitTimerMu.Unlock()
 	}
 	return true

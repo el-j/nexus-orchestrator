@@ -19,7 +19,7 @@ answer. That is also the only form the vendors' terms allow.
 | ----------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Claude      | `claude -p` (`--output-format json` / `stream-json`)     | **verified** (v2.1.301 here): one call returned the reply, token usage, cost and a rate-limit event                                               |
 | Antigravity | `agy -p` / `--prompt` (Antigravity CLI)                  | **documented** (its changelog: headless runs, `--print-timeout`, `--model`, `--json-schema`, `stream-json`, exit codes 1/2/3); not installed here |
-| Copilot     | `copilot -p` (Copilot CLI) and `vscode.lm` in the editor | `vscode.lm` bridge exists in Nexus; `copilot -p` **documented** by GitHub, not installed here                                                     |
+| Copilot     | `copilot -s` (Copilot CLI) and `vscode.lm` in the editor | `vscode.lm` bridge exists in Nexus; `copilot` **verified** (1.0.100): prompt on stdin with `-s`, one call returned the reply                      |
 
 ## What each route can and cannot do
 
@@ -73,14 +73,15 @@ never the token.
   `report_task_status`, the delegation prompt in `delegate sessions`). Nexus cannot push into it; the agent has
   to call. Good for "let the agent that is already open do it", not for automatic routing.
 
-### 3. Copilot: `vscode.lm` and `copilot -p`
+### 3. Copilot: `vscode.lm` and the `copilot` CLI
 
 - `vscode.lm` already works (the model bridge): Nexus lists Copilot's models and sends prompts through the
   editor, with the editor's consent dialog. It only works while an editor window with the extension is open,
   and quota and context length are not reported (Nexus assumes 128K).
-- `copilot -p` (documented by GitHub) would work without an editor, with `--model`, `-s` for the answer only
-  and `--no-ask-user`. Premium-request accounting for non-interactive use is not documented in what was found;
-  test one call and watch the usage page.
+- `copilot` works without an editor (verified with 1.0.100): the prompt goes in on stdin, `-s` prints the
+  answer only, `--no-ask-user` stops it asking questions, `--model auto` (or a model your plan has) selects the
+  model. `-p` is not used: it needs the prompt as its value. Premium-request accounting for non-interactive use
+  is not documented in what was found; test one call and watch the usage page.
 
 ### 4. What cannot be done
 
