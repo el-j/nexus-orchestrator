@@ -4,7 +4,7 @@ planId: PLAN-075
 title: 'Expose project policy (.nexus/policy.json: ladder, budgets, quotaThreshold, contextBudget, historyBudget) over REST, CLI, Wails, and UI'
 role: coder
 wave: 4
-status: todo
+status: done
 createdAt: 2026-10-19
 dependsOn: [TASK-611, TASK-621]
 ---

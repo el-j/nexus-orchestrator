@@ -4,6 +4,7 @@
 
 import * as vscode from 'vscode';
 import type { NexusClient, Provider } from '../nexusClient';
+import { coolingNote, quotaNote } from '../providerLimits';
 
 export { sendCurrentContextCommand, submitTaskCommand } from './submitTask';
 export { selectProviderCommand } from './selectProvider';
@@ -43,6 +44,8 @@ export async function showProvidersCommand(client: NexusClient): Promise<void> {
       p.active ? '● active' : '○ inactive',
       p.kind ? `kind: ${p.kind}` : undefined,
       p.baseURL,
+      coolingNote(p),
+      quotaNote(p),
     ]
       .filter(Boolean)
       .join(' · '),

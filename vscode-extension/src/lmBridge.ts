@@ -136,9 +136,12 @@ async function complete(
   inflight.add(source);
   res.once('close', () => source.cancel()); // the daemon gave up: stop spending quota
   try {
-    const response = await model.sendRequest(toLmMessages(messages), {}, source.token);
+    const asked = toLmMessages(messages);
+    const response = await model.sendRequest(asked, {}, source.token);
     if (body.stream === true) {
-      await streamChunks(res, model.id, response.text);
+      await streamChunks(res, model.id, response.text, (reply) =>
+        countUsage(model, asked, promptText(messages), reply),
+      );
       return undefined;
     }
     let text = '';
@@ -147,6 +150,7 @@ async function complete(
       object: 'chat.completion',
       model: model.id,
       choices: [{ index: 0, finish_reason: 'stop', message: { role: 'assistant', content: text } }],
+      usage: await countUsage(model, asked, promptText(messages), text),
     };
   } finally {
     inflight.delete(source);
@@ -159,18 +163,65 @@ async function streamChunks(
   res: http.ServerResponse,
   modelId: string,
   parts: AsyncIterable<string>,
+  usageOf: (reply: string) => Promise<Usage>,
 ): Promise<void> {
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
-  const chunk = (delta: object, finish: string | null): void => {
+  const chunk = (delta: object, finish: string | null, usage?: Usage): void => {
     const data = { object: 'chat.completion.chunk', model: modelId };
     res.write(
-      `data: ${JSON.stringify({ ...data, choices: [{ index: 0, delta, finish_reason: finish }] })}\n\n`,
+      `data: ${JSON.stringify({ ...data, choices: [{ index: 0, delta, finish_reason: finish }], ...(usage ? { usage } : {}) })}\n\n`,
     );
   };
   chunk({ role: 'assistant' }, null);
-  for await (const part of parts) chunk({ content: part }, null);
-  chunk({}, 'stop');
+  let reply = '';
+  for await (const part of parts) {
+    reply += part;
+    chunk({ content: part }, null);
+  }
+  chunk({}, 'stop', await usageOf(reply)); // the daemon's ledger reads usage from the last chunk
   res.end('data: [DONE]\n\n');
+}
+
+/** Token counts in the shape of an OpenAI response. */
+interface Usage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
+/**
+ * What a call used: the editor model's own token counts (`countTokens`), or a length-based estimate of
+ * four characters per token when the model cannot count, so the daemon's ledger and budgets see calls
+ * made through the editor too.
+ */
+async function countUsage(
+  model: vscode.LanguageModelChat,
+  asked: vscode.LanguageModelChatMessage[],
+  promptSent: string,
+  reply: string,
+): Promise<Usage> {
+  const estimate = (text: string): number => Math.ceil(text.length / 4);
+  let prompt = 0;
+  let completion = 0;
+  try {
+    for (const m of asked) prompt += await model.countTokens(m);
+    completion = await model.countTokens(reply);
+  } catch {
+    prompt = estimate(promptSent);
+    completion = estimate(reply);
+  }
+  return {
+    prompt_tokens: prompt,
+    completion_tokens: completion,
+    total_tokens: prompt + completion,
+  };
+}
+
+/** The text the daemon sent, for the length-based estimate. */
+function promptText(messages: ChatMessage[]): string {
+  return messages
+    .map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content ?? '')))
+    .join('');
 }
 
 /**

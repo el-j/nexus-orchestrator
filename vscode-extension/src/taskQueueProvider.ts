@@ -6,6 +6,7 @@
 import * as vscode from 'vscode';
 import { NexusClient, Task, TaskStatus } from './nexusClient';
 import { getKnownTaskSource } from './activityLog';
+import { clock } from './providerLimits';
 
 function statusEmoji(status: TaskStatus): string {
   switch (status) {
@@ -88,6 +89,8 @@ export class TaskItem extends vscode.TreeItem {
     if (source) parts.push(source);
     if (task.providerHint) parts.push(task.providerHint);
     if (task.modelId) parts.push(task.modelId);
+    if (task.status === 'WAITING' && task.waitUntil)
+      parts.push(`waits until ${clock(task.waitUntil)}`);
     this.description = parts.join(' / ');
 
     const tooltipLines = [
@@ -103,6 +106,7 @@ export class TaskItem extends vscode.TreeItem {
       `**Created:** ${task.createdAt}`,
       `**Updated:** ${task.updatedAt}`,
     ];
+    if (task.waitUntil) tooltipLines.push(`**Resumes:** ${task.waitUntil}`);
     if (task.logs) {
       const safeLogs =
         task.logs.slice(0, 500).replace(/[<>&]/g, '') + (task.logs.length > 500 ? '...' : '');
@@ -181,10 +185,10 @@ export class TaskQueueProvider implements vscode.TreeDataProvider<
           ? tasks.filter((t) => t.projectPath === this.workspacePath)
           : tasks;
       const active = filtered
-        .filter((t) => t.status === 'QUEUED' || t.status === 'PROCESSING')
+        .filter((t) => t.status === 'QUEUED' || t.status === 'WAITING' || t.status === 'PROCESSING')
         .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       const recent = filtered
-        .filter((t) => t.status !== 'QUEUED' && t.status !== 'PROCESSING')
+        .filter((t) => t.status !== 'QUEUED' && t.status !== 'WAITING' && t.status !== 'PROCESSING')
         .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
       return [...active, ...recent].map((t) => new TaskItem(t));
     } catch (err) {

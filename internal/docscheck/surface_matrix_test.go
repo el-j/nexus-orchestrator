@@ -57,7 +57,7 @@ var matrix = []row{
 	{"usage ledger (tokens and cost per provider, model, role)", has(`"/api/usage"`), has("'get_usage'"), has("newUsageCmd"),
 		without("served over HTTP by the same daemon; the desktop UI reads the ledger through the REST client"),
 		has("getUsage"),
-		without("the extension shows provider state in its status bar; usage is read in the Mission Control card, REST, MCP and the CLI")},
+		has("getUsage")},
 	{"routing preview (provider order for a role)", has(`"/api/routing"`), has("'get_routing'"), has("newRoutingCmd"),
 		without("served over HTTP by the same daemon; the desktop UI reaches it through the REST client"),
 		without("the Mission Control provider cards show each provider's cooldown and quota from /api/providers; the full order is for agents (MCP) and the CLI"),

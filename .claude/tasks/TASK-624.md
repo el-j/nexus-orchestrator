@@ -4,7 +4,7 @@ planId: PLAN-075
 title: 'Fix MCP tool list in docs/mcp-integration.md, route typos in api-reference.md, missing guides in docs site, and tighten docscheck'
 role: docs
 wave: 5
-status: todo
+status: done
 createdAt: 2026-10-19
 ---
 
@@ -24,3 +24,5 @@ createdAt: 2026-10-19
    - Parse markdown `**Status:** <status>` fallback in `plan_scanner.go` (or normalize the 97 legacy task files in `.claude/tasks/` to YAML frontmatter `status: done`/`closed`) and mark completed prior plans (`PLAN-003`..`PLAN-074`) as `status: completed` so `get_onboarding_context` reports `Active Plan: PLAN-075` and the exact open task count.
 
 Done when: the failing test came first, 100% docs site coverage and `make test` / `make nice` pass.
+
+Progress: items 1 to 3 are done (MCP guide, API reference, SSE events, guides on the site, `docscheck` for the tool list). Not done: item 4 (markdown `**Status:**` fallback in `plan_scanner.go` and marking old plans completed), so `get_onboarding_context` still reports the plan that was active when the files were written.

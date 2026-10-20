@@ -91,3 +91,22 @@ func TestPolicyAdmin_AFileThatCannotBeReadIsReportedOnGet(t *testing.T) {
 		t.Error("a broken policy file must be an error, not an empty policy")
 	}
 }
+
+func TestPolicyAdmin_WhenTheNexusFolderCannotBeMadeTheErrorIsReported(t *testing.T) {
+	o := newPolicyAdmin(t)
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, ".nexus"), []byte("a file, not a folder"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := o.SetProjectPolicy(t.Context(), dir, domain.ProjectPolicy{Verify: "x"}); err == nil {
+		t.Error("a file where the .nexus folder belongs must be an error")
+	}
+	// A directory where the policy file belongs cannot be replaced by the rename either.
+	dir2 := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir2, services.PolicyFile, "inner"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := o.SetProjectPolicy(t.Context(), dir2, domain.ProjectPolicy{Verify: "x"}); err == nil {
+		t.Error("a non-empty directory at the policy path must be an error")
+	}
+}

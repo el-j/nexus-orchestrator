@@ -4,7 +4,7 @@ planId: PLAN-075
 title: 'Add ProviderLimitBadges & routing preview to ProvidersView, wire Delegate/Terminate in AgentsView, fix LiveActivityView scan, and sync currentProject'
 role: coder
 wave: 4
-status: todo
+status: done
 createdAt: 2026-10-19
 dependsOn: [TASK-611, TASK-620]
 ---

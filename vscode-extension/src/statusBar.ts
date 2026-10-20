@@ -6,11 +6,18 @@
  *  - Reachable, no active tasks → $(zap) Nexus  (tooltip: N providers active)
  *  - QUEUED/PROCESSING tasks → $(sync~spin) Nexus: N tasks
  *  - FAILED tasks in last hour → $(error) Nexus: N failed
+ *  - WAITING tasks (every provider is at a limit) are counted as W; the tooltip names the providers that
+ *    cool down, the plans that are nearly used up and the tokens of the last 24 hours
  */
 
 import * as vscode from 'vscode';
 import { NexusClient, AISession, AIActivity } from './nexusClient';
 import { getActivitySnapshot } from './activityLog';
+import { coolingNote, quotaNote } from './providerLimits';
+
+function compact(n: number): string {
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+}
 
 /** Status bar item showing daemon connectivity and queue depth. */
 export class NexusStatusBar {
@@ -45,12 +52,14 @@ export class NexusStatusBar {
         return;
       }
 
-      const [providersResult, tasksResult, aiSessionsResult, activitiesResult] =
+      const [providersResult, tasksResult, aiSessionsResult, activitiesResult, usageResult] =
         await Promise.allSettled([
           this.client.getProviders(),
           this.client.getTasks(),
           this.client.getAISessions(),
           this.client.getActivities({ limit: 50 }),
+          // An older daemon has no usage ledger: that is not a degraded state.
+          Promise.resolve().then(() => this.client.getUsage('24h')),
         ]);
 
       const providers = providersResult.status === 'fulfilled' ? providersResult.value : [];
@@ -90,6 +99,11 @@ export class NexusStatusBar {
       const oneHourAgo = Date.now() - 60 * 60 * 1000;
 
       const activeTasks = tasks.filter((t) => t.status === 'QUEUED' || t.status === 'PROCESSING');
+      const waitingCount = tasks.filter((t) => t.status === 'WAITING').length;
+      const waitTag = waitingCount > 0 ? ` W${waitingCount}` : '';
+      const cooling = activeProviders.filter((p) => p.rateLimited && p.rateLimitedUntil);
+      const everyProviderCools =
+        activeProviders.length > 0 && cooling.length === activeProviders.length;
       const failedTasks = tasks.filter(
         (t) => t.status === 'FAILED' && new Date(t.updatedAt).getTime() >= oneHourAgo,
       );
@@ -103,6 +117,23 @@ export class NexusStatusBar {
         `HTTP sessions: ${httpSessions}`,
         `AI sessions total: ${activeSessionCount}`,
       ];
+      if (waitingCount > 0) {
+        tooltipLines.push(`${waitingCount} task(s) waiting for a provider limit to reset`);
+      }
+      for (const p of activeProviders) {
+        const note = coolingNote(p);
+        if (note) tooltipLines.push(`${p.name}: ${note}`);
+      }
+      for (const p of activeProviders) {
+        const note = quotaNote(p);
+        if (note) tooltipLines.push(`${p.name}: ${note}`);
+      }
+      const totals = usageResult.status === 'fulfilled' ? usageResult.value.totals : undefined;
+      if (totals && totals.calls > 0) {
+        tooltipLines.push(
+          `Tokens (24h): ${compact(totals.inputTokens)} in · ${compact(totals.outputTokens)} out`,
+        );
+      }
       if (lastQueuedTaskId) {
         tooltipLines.push(
           `Last queued by extension: #${lastQueuedTaskId.replace(/-/g, '').slice(0, 8)}`,
@@ -114,17 +145,23 @@ export class NexusStatusBar {
       tooltipLines.push('Click to open Nexus actions');
       const tooltip = tooltipLines.join('\n');
 
-      if (failedTasks.length > 0) {
-        this.item.text = `$(error) Nexus Q${activeTasks.length} M${mcpSessions} V${vscodeSessions}`;
+      if (everyProviderCools) {
+        this.item.text = '$(watch) Nexus: every provider is cooling down';
+        this.item.tooltip = tooltip;
+      } else if (failedTasks.length > 0) {
+        this.item.text = `$(error) Nexus Q${activeTasks.length}${waitTag} M${mcpSessions} V${vscodeSessions}`;
         this.item.tooltip = tooltip;
       } else if (activeAgentCount > 0) {
         this.item.text = `🤖 ${activeAgentCount} agent(s) · ${generatingCount} generating`;
         this.item.tooltip = tooltip;
       } else if (activeTasks.length > 0) {
-        this.item.text = `$(sync~spin) Nexus Q${activeTasks.length} M${mcpSessions} V${vscodeSessions}${isDegraded ? ' ~' : ''}`;
+        this.item.text = `$(sync~spin) Nexus Q${activeTasks.length}${waitTag} M${mcpSessions} V${vscodeSessions}${isDegraded ? ' ~' : ''}`;
         this.item.tooltip = tooltip;
       } else if (isDegraded) {
         this.item.text = '$(warning) Nexus: degraded';
+        this.item.tooltip = tooltip;
+      } else if (waitingCount > 0) {
+        this.item.text = `$(watch) Nexus Q0${waitTag} M${mcpSessions} V${vscodeSessions}`;
         this.item.tooltip = tooltip;
       } else {
         this.item.text = `$(zap) Nexus Q0 M${mcpSessions} V${vscodeSessions}`;

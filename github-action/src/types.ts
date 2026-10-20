@@ -18,6 +18,8 @@ export interface ActionInputs {
   readonly systemPrompt: string; // manual system prompt override
   // Daemon
   readonly daemonUrl: string;
+  /** Bearer token for a daemon that runs with an API token (`NEXUS_API_TOKEN`); empty for none. */
+  readonly apiToken: string;
   readonly startDaemon: boolean;
   readonly nexusVersion: string;
   readonly timeoutSeconds: number;
@@ -38,6 +40,8 @@ export interface NexusTask {
   readonly projectPath: string;
   readonly targetFile: string;
   readonly instruction: string;
+  /** For a WAITING task: when the providers it waits for are expected back (ISO 8601). */
+  readonly waitUntil?: string;
 }
 
 /** Task lifecycle status as reported by the daemon. */

@@ -4,7 +4,7 @@ planId: PLAN-075
 title: 'Complete VS Code extension (cooldowns, quota, usage, WAITING tasks, lmBridge usage) and GitHub Action (NO_PROVIDER, waitUntil, api_token)'
 role: coder
 wave: 5
-status: todo
+status: done
 createdAt: 2026-10-19
 ---
 
