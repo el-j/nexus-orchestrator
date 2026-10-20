@@ -1,10 +1,10 @@
 # TASK-285 — VS Code: `NexusClient` additions
 
 **Plan:** PLAN-044  
-**Status:** TODO  
+**Status:** done  
 **Layer:** TypeScript · VS Code extension  
 **Depends on:** TASK-281 (HTTP endpoints must exist)  
-**File:** `vscode-extension/src/nexusClient.ts`  
+**File:** `vscode-extension/src/nexusClient.ts`
 
 ## Objective
 
@@ -35,6 +35,7 @@ export interface DelegateResponse {
 ## Extend `AISession` interface
 
 Add optional fields:
+
 ```typescript
 delegatedToNexus?: boolean;
 delegationTimestamp?: string;

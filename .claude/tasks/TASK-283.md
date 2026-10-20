@@ -1,10 +1,10 @@
 # TASK-283 — VS Code: `AISessionsTreeProvider`
 
 **Plan:** PLAN-044  
-**Status:** TODO  
+**Status:** done  
 **Layer:** TypeScript · VS Code extension  
 **Depends on:** TASK-285  
-**New file:** `vscode-extension/src/aiSessionsTreeProvider.ts`  
+**New file:** `vscode-extension/src/aiSessionsTreeProvider.ts`
 
 ## Objective
 
@@ -25,12 +25,13 @@ export class AISessionItem extends vscode.TreeItem {
 ```
 
 Status → VS Code theme colour mappings:
-| Condition | ThemeIcon color |
-|---|---|
-| `active` + `delegatedToNexus` | `charts.green` |
-| `active` | `charts.yellow` |
-| `idle` | `charts.orange` |
-| `disconnected` | `disabledForeground` |
+
+| Condition                     | ThemeIcon color      |
+| ----------------------------- | -------------------- |
+| `active` + `delegatedToNexus` | `charts.green`       |
+| `active`                      | `charts.yellow`      |
+| `idle`                        | `charts.orange`      |
+| `disconnected`                | `disabledForeground` |
 
 Description: `[${source}] ${last 2 path segments of projectPath}` (if projectPath set)
 Tooltip: full `projectPath`, `id`, `lastActivity`, capabilities list.
@@ -38,7 +39,9 @@ Tooltip: full `projectPath`, `id`, `lastActivity`, capabilities list.
 ## `AISessionsTreeProvider` class
 
 ```typescript
-export class AISessionsTreeProvider implements vscode.TreeDataProvider<AISessionItem>, vscode.Disposable {
+export class AISessionsTreeProvider
+  implements vscode.TreeDataProvider<AISessionItem>, vscode.Disposable
+{
   private readonly _onDidChangeTreeData = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
   private sessions: AISession[] = [];
@@ -46,10 +49,10 @@ export class AISessionsTreeProvider implements vscode.TreeDataProvider<AISession
 
   constructor(private readonly client: NexusClient) {}
 
-  refresh(): void           // fires _onDidChangeTreeData
-  startPolling(ms: number): vscode.Disposable
-  getTreeItem(element: AISessionItem): vscode.TreeItem
-  getChildren(): Promise<AISessionItem[]>   // fetches /api/ai-sessions
+  refresh(): void; // fires _onDidChangeTreeData
+  startPolling(ms: number): vscode.Disposable;
+  getTreeItem(element: AISessionItem): vscode.TreeItem;
+  getChildren(): Promise<AISessionItem[]>; // fetches /api/ai-sessions
 }
 ```
 
@@ -58,6 +61,7 @@ export class AISessionsTreeProvider implements vscode.TreeDataProvider<AISession
 ## `package.json` additions
 
 Under `contributes.views.nexus`:
+
 ```json
 {
   "id": "nexus.aiSessions",
@@ -68,6 +72,7 @@ Under `contributes.views.nexus`:
 ```
 
 Under `contributes.menus["view/title"]`:
+
 ```json
 {
   "command": "nexus.refreshAISessions",
@@ -77,6 +82,7 @@ Under `contributes.menus["view/title"]`:
 ```
 
 Under `contributes.menus["view/item/context"]`:
+
 ```json
 {
   "command": "nexus.delegateToNexus",

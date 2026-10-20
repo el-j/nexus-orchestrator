@@ -1,7 +1,7 @@
 ---
 id: PLAN-013
 title: Update CI to latest GitHub Action versions
-status: active
+status: completed
 createdAt: 2026-03-10T21:00:00.000Z
 ---
 
@@ -17,11 +17,11 @@ Fix the broken GitVersion CI workflow and update all outdated tool versions acro
 
 ## Changes Required
 
-| Component | Current | Target | File |
-|-----------|---------|--------|------|
-| gittools/actions setup+execute | v3.1.11 | v4.3.3 | version.yml |
-| GitVersion.yml config | v5-era schema | v6-compatible schema | GitVersion.yml |
-| Zig | 0.13.0 (Jun 2024) | 0.14.0 (Mar 2025) | release.yml |
+| Component                      | Current           | Target               | File           |
+| ------------------------------ | ----------------- | -------------------- | -------------- |
+| gittools/actions setup+execute | v3.1.11           | v4.3.3               | version.yml    |
+| GitVersion.yml config          | v5-era schema     | v6-compatible schema | GitVersion.yml |
+| Zig                            | 0.13.0 (Jun 2024) | 0.14.0 (Mar 2025)    | release.yml    |
 
 ## NOT Changing (and why)
 
@@ -31,16 +31,16 @@ Fix the broken GitVersion CI workflow and update all outdated tool versions acro
 
 ## Execution Waves
 
-| Wave | Tasks | Description |
-|------|-------|-------------|
-| 1 | TASK-104, TASK-105, TASK-106 (parallel) | Update version.yml, GitVersion.yml, release.yml |
-| 2 | TASK-107 (sequential) | QA verification |
+| Wave | Tasks                                   | Description                                     |
+| ---- | --------------------------------------- | ----------------------------------------------- |
+| 1    | TASK-104, TASK-105, TASK-106 (parallel) | Update version.yml, GitVersion.yml, release.yml |
+| 2    | TASK-107 (sequential)                   | QA verification                                 |
 
 ## Task Index
 
-| ID | Title | Deps |
-|----|-------|------|
-| TASK-104 | Update gittools/actions from v3.1.11 to v4.3.3 | — |
-| TASK-105 | Update GitVersion.yml for v6.x compatibility | — |
-| TASK-106 | Update zig from 0.13.0 to 0.14.0 in release.yml | — |
-| TASK-107 | QA verify all workflow changes | TASK-104, TASK-105, TASK-106 |
+| ID       | Title                                           | Deps                         |
+| -------- | ----------------------------------------------- | ---------------------------- |
+| TASK-104 | Update gittools/actions from v3.1.11 to v4.3.3  | —                            |
+| TASK-105 | Update GitVersion.yml for v6.x compatibility    | —                            |
+| TASK-106 | Update zig from 0.13.0 to 0.14.0 in release.yml | —                            |
+| TASK-107 | QA verify all workflow changes                  | TASK-104, TASK-105, TASK-106 |

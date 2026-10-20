@@ -25,4 +25,4 @@ createdAt: 2026-10-19
 
 Done when: the failing test came first, 100% docs site coverage and `make test` / `make nice` pass.
 
-Progress: items 1 to 3 are done (MCP guide, API reference, SSE events, guides on the site, `docscheck` for the tool list). Not done: item 4 (markdown `**Status:**` fallback in `plan_scanner.go` and marking old plans completed), so `get_onboarding_context` still reports the plan that was active when the files were written.
+Progress: all four items are done. The `**Status:**` fallback already existed in `internal/core/services/planfiles.go` (`planStatusLn`); what was wrong was the data: `activePlanId` pointed at PLAN-074, 26 old plans still said `active`, and 22 tasks of PLAN-006 and PLAN-044 said `todo`. They are now `completed` / `done`, `activePlanId` is PLAN-075 and the counters are 625 / 76.

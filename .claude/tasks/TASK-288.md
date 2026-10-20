@@ -1,9 +1,9 @@
 # TASK-288 — Extension wiring: integrate AgentDetector into extension.ts
 
 **Plan:** PLAN-044  
-**Status:** TODO  
+**Status:** done  
 **Layer:** TypeScript · VS Code extension  
-**Depends on:** TASK-282, TASK-283, TASK-284  
+**Depends on:** TASK-282, TASK-283, TASK-284
 
 ## Objective
 
@@ -14,6 +14,7 @@ Connect all PLAN-044 components into the extension activation lifecycle and decl
 ### `vscode-extension/src/extension.ts`
 
 Add imports:
+
 ```typescript
 import { AgentDetector } from './agentDetector';
 import { AISessionsTreeProvider } from './aiSessionsTreeProvider';
@@ -31,7 +32,7 @@ context.subscriptions.push(agentDetector);
 // ── AI Sessions tree view ───────────────────────────────────────────────────
 const aiSessionsProvider = new AISessionsTreeProvider(getClient());
 context.subscriptions.push(
-  vscode.window.registerTreeDataProvider('nexus.aiSessions', aiSessionsProvider)
+  vscode.window.registerTreeDataProvider('nexus.aiSessions', aiSessionsProvider),
 );
 // Refresh tree whenever AgentDetector detects changes
 agentDetector.onDidChange(() => aiSessionsProvider.refresh());
@@ -42,31 +43,32 @@ context.subscriptions.push(
   vscode.commands.registerCommand('nexus.refreshAISessions', () => {
     aiSessionsProvider.refresh();
     void agentDetector.detectAll();
-  })
+  }),
 );
 
 // ── nexus.delegateToNexus ───────────────────────────────────────────────────
 context.subscriptions.push(
   vscode.commands.registerCommand('nexus.delegateToNexus', (item?: AISessionItem) =>
-    delegateToNexusCommand(getClient(), item)
-  )
+    delegateToNexusCommand(getClient(), item),
+  ),
 );
 
 // ── nexus.delegateAllSessions ───────────────────────────────────────────────
 context.subscriptions.push(
   vscode.commands.registerCommand('nexus.delegateAllSessions', async () => {
     const sessions = await getClient().listAISessions();
-    const active = sessions.filter(s => s.status === 'active' && !s.delegatedToNexus);
+    const active = sessions.filter((s) => s.status === 'active' && !s.delegatedToNexus);
     for (const s of active) {
       await delegateToNexusCommand(getClient(), s);
     }
-  })
+  }),
 );
 ```
 
 ### `vscode-extension/package.json` additions
 
 Under `contributes.commands`:
+
 ```json
 { "command": "nexus.delegateToNexus",      "title": "Send to Nexus Orchestrator", "icon": "$(arrow-up)" },
 { "command": "nexus.refreshAISessions",    "title": "Refresh AI Agents",          "icon": "$(refresh)" },
@@ -74,18 +76,25 @@ Under `contributes.commands`:
 ```
 
 Under `contributes.views.nexus` (add after existing views):
+
 ```json
 { "id": "nexus.aiSessions", "name": "AI Agents", "icon": "$(robot)" }
 ```
 
 Under `contributes.menus["view/title"]`:
+
 ```json
 { "command": "nexus.refreshAISessions", "when": "view == nexus.aiSessions", "group": "navigation" }
 ```
 
 Under `contributes.menus["view/item/context"]`:
+
 ```json
-{ "command": "nexus.delegateToNexus", "when": "view == nexus.aiSessions && viewItem == aiSession", "group": "inline" }
+{
+  "command": "nexus.delegateToNexus",
+  "when": "view == nexus.aiSessions && viewItem == aiSession",
+  "group": "inline"
+}
 ```
 
 ### `vscode-extension/package.json` — new configuration property

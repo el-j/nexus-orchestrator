@@ -1,7 +1,7 @@
 ---
 id: PLAN-003
 title: Dogfood — implement PLAN-002 using nexusOrchestrator itself
-status: active
+status: completed
 createdAt: 2026-03-09T15:00:00.000Z
 ---
 
@@ -13,15 +13,15 @@ Use nexusOrchestrator to implement its own PLAN-002 backlog. This directly valid
 
 ## Prerequisite Audit
 
-| Item | Status | Notes |
-|------|--------|-------|
-| `CGO_ENABLED=1 go build ./...` | ✅ passes | No blocking issues |
-| daemon starts on :63987/:63988 | ✅ works | session isolation, MCP |
-| LM Studio / Ollama | ⚠️ required | provider must be online |
-| JSON struct tags on domain types | ❌ missing | breaks web UI + nexus-submit |
-| Web dashboard | ❌ missing | needed for live progress |
-| nexus-submit tool | ❌ missing | needed to feed TASK files to daemon |
-| SSE events | ❌ missing | needed for live dashboard |
+| Item                             | Status      | Notes                               |
+| -------------------------------- | ----------- | ----------------------------------- |
+| `CGO_ENABLED=1 go build ./...`   | ✅ passes   | No blocking issues                  |
+| daemon starts on :63987/:63988   | ✅ works    | session isolation, MCP              |
+| LM Studio / Ollama               | ⚠️ required | provider must be online             |
+| JSON struct tags on domain types | ❌ missing  | breaks web UI + nexus-submit        |
+| Web dashboard                    | ❌ missing  | needed for live progress            |
+| nexus-submit tool                | ❌ missing  | needed to feed TASK files to daemon |
+| SSE events                       | ❌ missing  | needed for live dashboard           |
 
 ## Tech Decisions
 
@@ -32,24 +32,24 @@ Use nexusOrchestrator to implement its own PLAN-002 backlog. This directly valid
 
 ## Execution Waves
 
-| Wave | Tasks | Description |
-|------|-------|-------------|
-| 1 | TASK-032, TASK-033 (parallel) | JSON tags + nexus-submit tool |
-| 2 | TASK-034, TASK-035 (parallel) | Web dashboard + SSE events |
-| 3 | TASK-036, TASK-037 (parallel) | Dogfood scripts + integration tests |
-| 4 | TASK-038 | Verification + final README |
+| Wave | Tasks                         | Description                         |
+| ---- | ----------------------------- | ----------------------------------- |
+| 1    | TASK-032, TASK-033 (parallel) | JSON tags + nexus-submit tool       |
+| 2    | TASK-034, TASK-035 (parallel) | Web dashboard + SSE events          |
+| 3    | TASK-036, TASK-037 (parallel) | Dogfood scripts + integration tests |
+| 4    | TASK-038                      | Verification + final README         |
 
 ## Task Index
 
-| ID | Title | Deps |
-|----|-------|------|
-| TASK-032 | JSON struct tags on domain types | — |
-| TASK-033 | cmd/nexus-submit: feed TASK-NNN.md files to daemon | TASK-032 |
-| TASK-034 | Embedded web dashboard at GET /ui | TASK-032 |
-| TASK-035 | SSE events endpoint + OrchestratorService event fan-out | — |
-| TASK-036 | Dogfood scripts + .claude/commands/dogfood-plan002.md | TASK-033 |
-| TASK-037 | Integration tests: daemon + mock LLM + real SQLite | TASK-033, TASK-034 |
-| TASK-038 | PLAN-003 verification + README update | TASK-034, TASK-036 |
+| ID       | Title                                                   | Deps               |
+| -------- | ------------------------------------------------------- | ------------------ |
+| TASK-032 | JSON struct tags on domain types                        | —                  |
+| TASK-033 | cmd/nexus-submit: feed TASK-NNN.md files to daemon      | TASK-032           |
+| TASK-034 | Embedded web dashboard at GET /ui                       | TASK-032           |
+| TASK-035 | SSE events endpoint + OrchestratorService event fan-out | —                  |
+| TASK-036 | Dogfood scripts + .claude/commands/dogfood-plan002.md   | TASK-033           |
+| TASK-037 | Integration tests: daemon + mock LLM + real SQLite      | TASK-033, TASK-034 |
+| TASK-038 | PLAN-003 verification + README update                   | TASK-034, TASK-036 |
 
 ## Dogfood Loop
 

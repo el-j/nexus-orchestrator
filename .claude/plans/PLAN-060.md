@@ -1,6 +1,6 @@
 # PLAN-060 — Vue Router Migration
 
-**Status:** active
+**Status:** completed
 **Created:** 2026-03-29
 **Author:** copilot
 

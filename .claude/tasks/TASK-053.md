@@ -2,7 +2,7 @@
 
 **Plan:** PLAN-006  
 **Role:** architecture  
-**Status:** todo  
+**Status:** done  
 **Dependencies:** TASK-052
 
 ## Goal

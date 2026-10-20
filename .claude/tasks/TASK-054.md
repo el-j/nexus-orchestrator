@@ -2,7 +2,7 @@
 
 **Plan:** PLAN-006  
 **Role:** backend  
-**Status:** todo  
+**Status:** done  
 **Dependencies:** TASK-053
 
 ## Goal
@@ -30,6 +30,7 @@ func (o *OrchestratorService) GetProviderModels(providerName string) ([]string, 
 ### `RegisterCloudProvider` implementation details
 
 Switch on `cfg.Kind`:
+
 - `"lmstudio"` → `llm_lmstudio.NewLMStudioAdapter(cfg.BaseURL)`
 - `"ollama"` → `llm_ollama.NewOllamaAdapter(cfg.BaseURL, cfg.Model)`
 - `"openaicompat"` → `llm_openaicompat.NewAdapter(cfg.Name, cfg.BaseURL, cfg.APIKey, cfg.Model)`
@@ -43,6 +44,7 @@ After constructing, call `o.discovery.RegisterProvider(client)`.
 Actually — to keep hexagonal purity, **do NOT import adapters in services**. Instead, expose a `ProviderFactory func(domain.ProviderConfig) (ports.LLMClient, error)` field on `OrchestratorService` and inject the factory at construction time (from the entry points). This keeps the service package free of adapter imports.
 
 Revised plan:
+
 1. Add `providerFactory func(domain.ProviderConfig) (ports.LLMClient, error)` field to `OrchestratorService`
 2. Add `WithProviderFactory(fn func(domain.ProviderConfig) (ports.LLMClient, error)) *OrchestratorService` option setter
 3. `RegisterCloudProvider` calls `o.providerFactory(cfg)` — returns `fmt.Errorf("orchestrator: no provider factory configured")` if nil

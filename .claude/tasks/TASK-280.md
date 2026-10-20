@@ -1,9 +1,9 @@
 # TASK-280 — OrchestratorService: `DelegateToNexus` + `GetDiscoveredAgents`
 
 **Plan:** PLAN-044  
-**Status:** TODO  
+**Status:** done  
 **Layer:** Go · services (`internal/core/services/`)  
-**Depends on:** TASK-277, TASK-279  
+**Depends on:** TASK-277, TASK-279
 
 ## Objective
 
@@ -14,6 +14,7 @@ Add `DelegateToNexus` and `GetDiscoveredAgents` to `OrchestratorService`, satisf
 ### `internal/core/services/orchestrator.go`
 
 **New private interface (local, avoids importing repo_sqlite):**
+
 ```go
 type discoveredAgentStore interface {
     UpsertDiscoveredAgent(ctx context.Context, a domain.DiscoveredAgent) error
@@ -22,6 +23,7 @@ type discoveredAgentStore interface {
 ```
 
 **New fields on `OrchestratorService`:**
+
 ```go
 agentScanner       ports.AgentScanner
 agentRepo          discoveredAgentStore
@@ -30,12 +32,14 @@ lastAgentScanMu    sync.Mutex
 ```
 
 **New setters (consistent with `SetAISessionRepo` pattern):**
+
 ```go
 func (o *OrchestratorService) SetAgentScanner(s ports.AgentScanner)
 func (o *OrchestratorService) SetDiscoveredAgentRepo(r discoveredAgentStore)
 ```
 
 **`GetDiscoveredAgents(ctx context.Context) ([]domain.DiscoveredAgent, error)`:**
+
 ```
 1. Lock lastAgentScanMu.
 2. If agentScanner != nil AND (lastAgentScan.IsZero() OR time.Since(lastAgentScan) > 30s):
@@ -48,6 +52,7 @@ func (o *OrchestratorService) SetDiscoveredAgentRepo(r discoveredAgentStore)
 ```
 
 **`DelegateToNexus(ctx context.Context, sessionID string) (string, error)`:**
+
 ```
 1. aiSessionRepo.GetAISessionByID(ctx, sessionID) → ErrNotFound passthrough.
 2. Compose instruction string using delegationInstructionTemplate (unexported const/func).
@@ -58,6 +63,7 @@ func (o *OrchestratorService) SetDiscoveredAgentRepo(r discoveredAgentStore)
 ```
 
 **Delegation instruction template** (unexported `delegationInstruction(session domain.AISession) string`):
+
 ```
 You are now operating under nexusOrchestrator coordination.
 

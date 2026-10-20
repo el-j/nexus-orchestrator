@@ -2,7 +2,7 @@
 
 **Plan:** PLAN-006  
 **Role:** api  
-**Status:** todo  
+**Status:** done  
 **Dependencies:** TASK-053
 
 ## Goal
