@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
 
 	"nexus-orchestrator/internal/adapters/outbound/llm_gemini"
@@ -231,4 +233,29 @@ func TestAdapter_Chat_Errors(t *testing.T) {
 			t.Error("expected error on empty candidates, got nil")
 		}
 	})
+}
+
+func TestGemini_ChatStream_RealContract(t *testing.T) {
+	key := os.Getenv("NEXUS_TEST_GEMINI_KEY")
+	if key == "" {
+		t.Skip("set NEXUS_TEST_GEMINI_KEY to run real Gemini streaming contract check")
+	}
+	model := os.Getenv("NEXUS_TEST_GEMINI_MODEL")
+	if model == "" {
+		model = "gemini-2.5-flash"
+	}
+	a := llm_gemini.NewAdapter(key, model)
+	var chunks []string
+	out, err := a.ChatStream(context.Background(), []domain.Message{{Role: domain.RoleUser, Content: "Reply with the single word pong."}}, func(s string) {
+		chunks = append(chunks, s)
+	})
+	if err != nil {
+		t.Fatalf("real Gemini ChatStream failed: %v", err)
+	}
+	if strings.TrimSpace(out) == "" || len(chunks) == 0 {
+		t.Errorf("out=%q chunks=%v", out, chunks)
+	}
+	if usage, ok := a.LastUsage(); !ok || usage.InputTokens <= 0 || usage.OutputTokens <= 0 {
+		t.Errorf("usage = %+v (ok=%v), want positive input/output tokens", usage, ok)
+	}
 }

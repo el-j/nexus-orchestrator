@@ -34,8 +34,9 @@
             ]"
           ></span>
           <div class="flex flex-col min-w-0">
-            <div class="flex items-center gap-1">
+            <div class="flex items-center gap-1 flex-wrap">
               <span>{{ p.name }}</span>
+              <ProviderLimitBadges :provider="p" />
               <span
                 v-if="p.active && p.activeModel"
                 class="text-slate-500 font-mono text-[10px] max-w-[80px] truncate"
@@ -162,6 +163,7 @@ import {
   removeProviderConfig,
 } from '../types/wails';
 import ProviderConfigForm from './ProviderConfigForm.vue';
+import ProviderLimitBadges from './ProviderLimitBadges.vue';
 import AppConfirmDialog from './AppConfirmDialog.vue';
 
 // ── Confirm dialog state ───────────────────────────────────────────────

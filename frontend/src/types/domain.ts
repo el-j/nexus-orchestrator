@@ -104,11 +104,30 @@ export interface UsageReport {
   usage: UsageSummary[];
 }
 
+/** One candidate provider of a task, in the order routing would try it. */
+export interface RoutingEntry {
+  position: number;
+  provider: string;
+  model?: string;
+  rung: number;
+  coolingUntil?: string;
+  cooldownReason?: string;
+  utilization?: number;
+}
+
+/** What routing would do for a role in a project right now (`GET /api/routing`). */
+export interface RoutingPreview {
+  role?: string;
+  ladder?: string[];
+  quotaThreshold: number;
+  order: RoutingEntry[];
+}
+
 /** A saved provider configuration. */
 export interface ProviderConfig {
   id: string;
   name: string;
-  kind: 'lmstudio' | 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'openaicompat';
+  kind: 'lmstudio' | 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'openaicompat' | 'cli';
   baseUrl: string;
   apiKey: string;
   model: string;

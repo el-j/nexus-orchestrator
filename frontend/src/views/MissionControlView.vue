@@ -87,10 +87,14 @@
                   {{ task.instruction }}
                 </td>
                 <td class="px-4 py-2.5 text-slate-400 text-xs">
-                  {{ task.providerName || '—' }}
+                  {{ task.ranBy || task.providerName || task.providerHint || '—' }}
                 </td>
                 <td class="px-4 py-2.5 text-slate-400 text-xs font-mono">
-                  {{ formatDuration(task.durationMs) || '—' }}
+                  {{
+                    task.status === 'WAITING' && task.waitUntil
+                      ? formatRelativeTime(task.waitUntil)
+                      : formatDuration(task.durationMs) || '—'
+                  }}
                 </td>
                 <td class="px-4 py-2.5" @click.stop>
                   <button
@@ -294,6 +298,7 @@ import { useToast } from '../composables/useToast';
 import { useTasks } from '../composables/useTasks';
 import { useProviders } from '../composables/useProviders';
 import { useAISessions } from '../composables/useAISessions';
+import { currentProject } from '../composables/useProjectState';
 import { getAllTasks } from '../types/wails';
 import type { Task, AISession } from '../types/domain';
 import TaskStatusBadge from '../components/TaskStatusBadge.vue';
@@ -304,9 +309,18 @@ import ProviderLimitBadges from '../components/ProviderLimitBadges.vue';
 
 // --- Composables ---
 const toast = useToast();
-const { tasks, loading: tasksLoading, refresh: refreshTasks, promoteTask } = useTasks();
+const { tasks: allTasks, loading: tasksLoading, refresh: refreshTasks, promoteTask } = useTasks();
 const { providers, loading: providersLoading } = useProviders();
-const { sessions, loading: sessionsLoading } = useAISessions();
+const { sessions: allSessions, loading: sessionsLoading } = useAISessions();
+
+// The sidebar project narrows tasks, history and sessions alike (no project = everything).
+function inProject<T extends { projectPath?: string }>(list: T[]): T[] {
+  return currentProject.value === null
+    ? list
+    : list.filter((x) => x.projectPath === currentProject.value);
+}
+const tasks = computed(() => inProject(allTasks.value));
+const sessions = computed(() => inProject(allSessions.value));
 
 // --- Work filter (Active Work section) ---
 type WorkFilterValue = 'all' | 'active' | 'drafts';
@@ -322,7 +336,10 @@ async function handlePromote(id: string) {
   if (promoting.value) return;
   promoting.value = id;
   try {
-    await promoteTask(id);
+    const res = await promoteTask(id);
+    if (res?.warning) {
+      toast.add({ severity: 'warn', summary: 'Not Promoted', detail: res.warning, life: 5000 });
+    }
     await refreshHistory();
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Promote Failed', detail: String(e), life: 5000 });
@@ -336,17 +353,20 @@ const recentHistory = ref<Task[]>([]);
 const allHistory = ref<Task[]>([]);
 const showAllHistory = ref(false);
 
-type HistoryFilterValue = 'ALL' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+type HistoryFilterValue =
+  'ALL' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'TOO_LARGE' | 'NO_PROVIDER';
 const historyFilters: { label: string; value: HistoryFilterValue }[] = [
   { label: 'All', value: 'ALL' },
   { label: 'Completed', value: 'COMPLETED' },
   { label: 'Failed', value: 'FAILED' },
   { label: 'Cancelled', value: 'CANCELLED' },
+  { label: 'Too Large', value: 'TOO_LARGE' },
+  { label: 'No Provider', value: 'NO_PROVIDER' },
 ];
 const historyFilter = ref<HistoryFilterValue>('ALL');
 
 let historyInterval: ReturnType<typeof setInterval> | undefined;
-const historyStatuses = new Set(['COMPLETED', 'FAILED', 'CANCELLED']);
+const historyStatuses = new Set(['COMPLETED', 'FAILED', 'CANCELLED', 'TOO_LARGE', 'NO_PROVIDER']);
 
 async function refreshHistory() {
   try {
@@ -375,7 +395,9 @@ onUnmounted(() => {
 const activeAgentCount = computed(
   () => sessions.value.filter((s) => s.status === 'active' || s.status === 'idle').length,
 );
-const queuedCount = computed(() => tasks.value.filter((t) => t.status === 'QUEUED').length);
+const queuedCount = computed(
+  () => tasks.value.filter((t) => t.status === 'QUEUED' || t.status === 'WAITING').length,
+);
 const processingCount = computed(() => tasks.value.filter((t) => t.status === 'PROCESSING').length);
 const activeProviderCount = computed(() => providers.value.filter((p) => p.active).length);
 
@@ -402,7 +424,7 @@ const sortedTasks = computed(() => {
     merged.push(t);
   }
   // Add recent history not already in queue
-  for (const t of recentHistory.value) {
+  for (const t of inProject(recentHistory.value)) {
     if (!ids.has(t.id)) {
       merged.push(t);
     }
@@ -413,7 +435,9 @@ const sortedTasks = computed(() => {
 // --- Filtered work tasks ---
 const filteredWorkTasks = computed(() => {
   if (workFilter.value === 'active') {
-    return sortedTasks.value.filter((t) => t.status === 'PROCESSING' || t.status === 'QUEUED');
+    return sortedTasks.value.filter(
+      (t) => t.status === 'PROCESSING' || t.status === 'QUEUED' || t.status === 'WAITING',
+    );
   }
   if (workFilter.value === 'drafts') {
     return sortedTasks.value.filter((t) => t.status === 'DRAFT' || t.status === 'BACKLOG');
@@ -424,10 +448,11 @@ const filteredWorkTasks = computed(() => {
 // --- History display ---
 const displayedHistory = computed(() => {
   if (!showAllHistory.value) {
-    return recentHistory.value.slice(0, 10);
+    return inProject(recentHistory.value).slice(0, 10);
   }
-  if (historyFilter.value === 'ALL') return allHistory.value;
-  return allHistory.value.filter((t) => t.status === historyFilter.value);
+  const history = inProject(allHistory.value);
+  if (historyFilter.value === 'ALL') return history;
+  return history.filter((t) => t.status === historyFilter.value);
 });
 
 // --- Detail drawer ---

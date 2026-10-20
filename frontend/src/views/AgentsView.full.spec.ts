@@ -7,7 +7,10 @@ import type { AIActivity, AISession, DiscoveredAgent } from '../types/domain';
 const h = vi.hoisted(() => ({
   refresh: vi.fn(),
   deregister: vi.fn(),
+  delegate: vi.fn(),
+  terminate: vi.fn(),
   purge: vi.fn(),
+  project: { value: null as string | null },
   s: {
     sessions: [] as unknown[],
     loading: false,
@@ -19,6 +22,12 @@ const h = vi.hoisted(() => ({
 vi.mock('../composables/useServerUrl', () => ({
   resolveServerUrl: () => Promise.resolve('http://d'),
 }));
+vi.mock('../composables/useProjectState', async () => {
+  const { ref } = await import('vue');
+  const currentProject = ref<string | null>(null);
+  h.project = currentProject as unknown as { value: string | null };
+  return { currentProject };
+});
 vi.mock('../composables/useAISessions', () => ({
   useAISessions: () => ({
     sessions: ref(h.s.sessions),
@@ -26,6 +35,8 @@ vi.mock('../composables/useAISessions', () => ({
     error: ref(h.s.error),
     refresh: h.refresh,
     deregister: h.deregister,
+    delegate: h.delegate,
+    terminate: h.terminate,
     purgeDisconnected: h.purge,
   }),
 }));
@@ -99,7 +110,10 @@ beforeEach(() => {
   n = 0;
   h.refresh.mockReset();
   h.deregister.mockReset();
+  h.delegate.mockReset();
+  h.terminate.mockReset();
   h.purge.mockReset();
+  h.project.value = null;
   h.s = { sessions: [], loading: false, error: null, activities: [], actLoading: false };
   vi.stubGlobal('fetch', fetchMock);
 });
@@ -190,12 +204,41 @@ describe('AgentsView — sessions', () => {
     expect(w.text()).toContain('No matches found');
   });
 
-  it('disconnecting a session does not also open its detail drawer (regression)', async () => {
-    h.s.sessions = [sess({ id: 's-x' })];
+  it('disconnecting, delegating or terminating a session does not open its detail drawer, and filters by currentProject', async () => {
+    h.s.sessions = [
+      sess({ id: 's-x', projectPath: '/work/app' }),
+      sess({ id: 's-y', projectPath: '/work/other', delegatedToNexus: true }),
+    ];
     const w = await mountView();
     await btn(w, 'Disconnect').trigger('click');
     expect(h.deregister).toHaveBeenCalledWith('s-x');
+    await btn(w, 'Delegate').trigger('click');
+    expect(h.delegate).toHaveBeenCalledWith('s-x');
+    await btn(w, 'Terminate').trigger('click');
+    expect(h.terminate).toHaveBeenCalledWith('s-x');
     expect(w.findComponent(Drawer).props('modelVisible')).toBe(false);
+    expect(w.find('[data-testid="delegation-note"]').exists()).toBe(false);
+
+    h.project.value = '/work/other';
+    await flush();
+    expect(cards(w)).toHaveLength(1);
+    expect(cards(w)[0].text()).toContain('Delegated');
+  });
+
+  it('shows the instruction a delegation returns until it is dismissed', async () => {
+    h.s.sessions = [sess({ id: 's-d' })];
+    h.delegate.mockResolvedValueOnce({
+      instruction: 'Submit your work through nexus',
+      sessionId: 's-d',
+    });
+    const w = await mountView();
+    await btn(w, 'Delegate').trigger('click');
+    await flush();
+    expect(w.find('[data-testid="delegation-note"]').text()).toContain(
+      'Submit your work through nexus',
+    );
+    await btn(w, 'Dismiss').trigger('click');
+    expect(w.find('[data-testid="delegation-note"]').exists()).toBe(false);
   });
 
   it('opens the drawer for the clicked session and closes it on request', async () => {

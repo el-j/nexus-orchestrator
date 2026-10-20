@@ -83,7 +83,7 @@ async function handle(
     throw new BridgeError(404, 'not found');
   } catch (err) {
     const failure = toBridgeError(err);
-    const body = { error: { message: failure.message } };
+    const body = { error: { message: failure.message, status: failure.status } };
     if (res.headersSent) {
       res.end(`data: ${JSON.stringify(body)}\n\n`); // mid-stream: the status line is gone
     } else {

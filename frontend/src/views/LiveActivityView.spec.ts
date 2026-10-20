@@ -8,16 +8,28 @@ const h = vi.hoisted(() => ({
   route: { query: {} as Record<string, unknown> },
   rows: { value: [] as unknown[] },
   loading: { value: false },
+  refresh: vi.fn(),
   scanNow: vi.fn(),
   scanning: { value: false },
+  project: { value: null as string | null },
 }));
 vi.mock('vue-router', () => ({ useRoute: () => h.route }));
 vi.mock('../composables/useActivities', () => ({
-  useActivities: () => ({ activities: ref(h.rows.value), loading: ref(h.loading.value) }),
+  useActivities: () => ({
+    activities: ref(h.rows.value),
+    loading: ref(h.loading.value),
+    refresh: h.refresh,
+  }),
 }));
 vi.mock('../composables/useDiscovery', () => ({
   useDiscovery: () => ({ scanning: ref(h.scanning.value), scanNow: h.scanNow }),
 }));
+vi.mock('../composables/useProjectState', async () => {
+  const { ref } = await import('vue');
+  const currentProject = ref<string | null>(null);
+  h.project = currentProject as unknown as { value: string | null };
+  return { currentProject };
+});
 
 const NOW = new Date('2026-06-01T12:00:00Z').getTime();
 let n = 0;
@@ -47,7 +59,9 @@ beforeEach(() => {
   h.rows.value = [];
   h.loading.value = false;
   h.scanning.value = false;
+  h.refresh.mockReset();
   h.scanNow.mockReset();
+  h.project.value = null;
 });
 afterEach(() => vi.useRealTimers());
 
@@ -68,10 +82,11 @@ describe('LiveActivityView — states', () => {
     expect(t).toContain('3 activities');
   });
 
-  it('scans from the header and shows progress while scanning', async () => {
+  it('scans from the header, refreshes activities, and shows progress while scanning', async () => {
     const w = mountView();
     await w.find('header button').trigger('click');
     expect(h.scanNow).toHaveBeenCalledTimes(1);
+    expect(h.refresh).toHaveBeenCalledTimes(1);
     h.scanning.value = true;
     const busy = mountView().find('header button');
     expect(busy.text()).toContain('Scanning');
@@ -175,7 +190,7 @@ describe('LiveActivityView — deep links', () => {
     expect(w.text()).toContain('B1');
   });
 
-  it('follows the query when navigating within the page, and resets when it is cleared', async () => {
+  it('follows the query when navigating within the page, resets when cleared, and syncs with currentProject', async () => {
     const w = mountView();
     h.route.query = { agent: 'claude' };
     await nextTick();
@@ -183,6 +198,11 @@ describe('LiveActivityView — deep links', () => {
     h.route.query = {};
     await nextTick();
     expect(w.text()).toContain('B1');
+
+    h.project.value = '/work/a';
+    await nextTick();
+    expect(w.text()).toContain('A1');
+    expect(w.text()).not.toContain('B1');
   });
 });
 

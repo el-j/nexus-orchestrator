@@ -113,11 +113,12 @@ func agentTurnLimit(task domain.Task) int {
 
 // agentRun is the mutable state of one loop.
 type agentRun struct {
-	o         *OrchestratorService
-	task      domain.Task
-	policy    domain.ProjectPolicy
-	written   []string
-	wroteTest bool // a test file has been written in this run (tests-first rule)
+	o            *OrchestratorService
+	task         domain.Task
+	policy       domain.ProjectPolicy
+	written      []string
+	wroteTest    bool // a test file has been written in this run (tests-first rule)
+	verifyFailed bool
 }
 
 // noteWrite records a successful write for the final report and the tests-first rule.
@@ -139,6 +140,7 @@ func (a *agentRun) verify(run *runHandle) (string, bool) {
 	out, err := a.o.commandRunner.Run(ctx, a.task.ProjectPath, a.task.VerificationCommand)
 	a.task.VerificationOutput = out
 	if err != nil {
+		a.verifyFailed = true
 		return fmt.Sprintf("verification FAILED (%v):\n%s", err, truncateObservation(out)), false
 	}
 	return "verification passed:\n" + truncateObservation(out), true
@@ -225,6 +227,7 @@ func (o *OrchestratorService) runAgentLoop(run *runHandle, task domain.Task, cha
 			o.finishInterrupted(a.task, run)
 			return true
 		}
+		o.enforceBudgets(chain, policy)
 
 		var reply string
 		for {
@@ -299,6 +302,19 @@ func (o *OrchestratorService) runAgentLoop(run *runHandle, task domain.Task, cha
 				return true
 			}
 			results = append(results, fmt.Sprintf("[%s %s]\n%s", c.Tool, c.Path, obs))
+		}
+		if a.verifyFailed {
+			a.verifyFailed = false
+			if next := o.stepUp(run, chain[provider]); next != chain[provider] {
+				for idx, cand := range chain {
+					if cand == next {
+						o.appendTaskLog(task.ID, fmt.Sprintf("agent turn %d: verification failed on %s/%s: asking %s/%s (next rung up)",
+							turn, chain[provider].ProviderName(), chain[provider].ActiveModel(), next.ProviderName(), next.ActiveModel()))
+						provider = idx
+						break
+					}
+				}
+			}
 		}
 		msgs = append(msgs, domain.Message{Role: domain.RoleUser, Content: strings.Join(results, "\n\n")})
 	}

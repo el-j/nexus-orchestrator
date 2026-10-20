@@ -138,6 +138,21 @@
             <p class="text-xs text-slate-600 mt-1">Try adjusting your search or filters</p>
           </div>
 
+          <!-- Instruction returned by Delegate: the agent has to be told to follow it -->
+          <div
+            v-if="delegationInstruction"
+            data-testid="delegation-note"
+            class="mb-4 rounded-xl border border-violet-500/30 bg-violet-500/5 p-3 text-xs text-violet-100"
+          >
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-semibold">Give this to the agent</span>
+              <button class="text-slate-400 hover:text-white" @click="delegationInstruction = ''">
+                Dismiss
+              </button>
+            </div>
+            <pre class="whitespace-pre-wrap font-mono text-[11px]">{{ delegationInstruction }}</pre>
+          </div>
+
           <!-- Registered Sessions -->
           <section v-if="filteredSessions.length > 0" class="mb-6">
             <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
@@ -205,14 +220,37 @@
                   Last active: {{ relativeTime(s.lastActivity) }}
                 </div>
 
-                <!-- Disconnect button -->
-                <button
-                  v-if="s.status !== 'disconnected'"
-                  class="text-xs text-red-400 hover:text-red-300 px-2.5 py-1 rounded-lg border border-red-500/20 hover:border-red-500/40 transition-all"
-                  @click.stop="deregister(s.id)"
-                >
-                  Disconnect
-                </button>
+                <!-- Actions -->
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span
+                    v-if="s.delegatedToNexus"
+                    class="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300"
+                    >Delegated</span
+                  >
+                  <button
+                    v-else-if="s.status !== 'disconnected'"
+                    class="text-xs text-violet-300 hover:text-violet-200 px-2.5 py-1 rounded-lg border border-violet-500/20 hover:border-violet-500/40 transition-all"
+                    title="Hand this agent's work to Nexus"
+                    @click.stop="onDelegate(s.id)"
+                  >
+                    Delegate
+                  </button>
+                  <button
+                    v-if="s.status !== 'disconnected'"
+                    class="text-xs text-red-400 hover:text-red-300 px-2.5 py-1 rounded-lg border border-red-500/20 hover:border-red-500/40 transition-all"
+                    @click.stop="deregister(s.id)"
+                  >
+                    Disconnect
+                  </button>
+                  <button
+                    v-if="s.status !== 'disconnected'"
+                    class="text-xs text-red-400 hover:text-red-300 px-2.5 py-1 rounded-lg border border-red-500/20 hover:border-red-500/40 transition-all"
+                    title="Stop the agent's process (only a process Nexus found itself is signalled)"
+                    @click.stop="terminate(s.id)"
+                  >
+                    Terminate
+                  </button>
+                </div>
               </div>
             </div>
           </section>
@@ -328,8 +366,17 @@ import type { DiscoveredAgent } from '../types/domain';
 import { resolveServerUrl } from '../composables/useServerUrl';
 import { relativeTime } from '../utils/time';
 import { shortPath } from '../utils/path';
+import { currentProject } from '../composables/useProjectState';
 
-const { sessions, loading, error, refresh, deregister, purgeDisconnected } = useAISessions();
+const { sessions, loading, error, refresh, deregister, delegate, terminate, purgeDisconnected } =
+  useAISessions();
+
+const delegationInstruction = ref('');
+
+async function onDelegate(id: string) {
+  const res = await delegate(id);
+  delegationInstruction.value = res?.instruction ?? '';
+}
 
 // --- Sort ---
 const sortMode = ref<'active' | 'recent' | 'name'>('active');
@@ -414,6 +461,9 @@ const sortedAgentRoots = computed(() => {
 
 const filteredSessions = computed(() => {
   let list = sortedSessions.value;
+  if (currentProject.value !== null) {
+    list = list.filter((s) => s.projectPath === currentProject.value);
+  }
   if (sessionStatusFilter.value) {
     list = list.filter((s) => s.status === sessionStatusFilter.value);
   }

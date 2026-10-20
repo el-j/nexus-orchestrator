@@ -36,6 +36,7 @@ type mockOrch struct {
 	backlogTasks   []domain.Task
 	backlogErr     error
 	promoteErr     error
+	updateArg      domain.Task
 	updateResult   domain.Task
 	updateErr      error
 
@@ -101,7 +102,8 @@ func (m *mockOrch) GetBacklog(_ string) ([]domain.Task, error) { return m.backlo
 func (m *mockOrch) PromoteTask(_ string) (ports.PromoteResult, error) {
 	return ports.PromoteResult{Promoted: m.promoteErr == nil}, m.promoteErr
 }
-func (m *mockOrch) UpdateTask(_ string, _ domain.Task) (domain.Task, error) {
+func (m *mockOrch) UpdateTask(_ string, t domain.Task) (domain.Task, error) {
+	m.updateArg = t
 	return m.updateResult, m.updateErr
 }
 func (m *mockOrch) RegisterAISession(_ context.Context, s domain.AISession) (domain.AISession, error) {

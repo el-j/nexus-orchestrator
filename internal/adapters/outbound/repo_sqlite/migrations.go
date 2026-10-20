@@ -46,6 +46,7 @@ func migrate(db *sql.DB) error {
 			status           TEXT NOT NULL DEFAULT 'active',
 			last_activity    DATETIME NOT NULL,
 			routed_task_ids  TEXT NOT NULL DEFAULT '[]',
+			pid              INTEGER NOT NULL DEFAULT 0,
 			created_at       DATETIME NOT NULL,
 			updated_at       DATETIME NOT NULL
 		);
@@ -59,6 +60,7 @@ func migrate(db *sql.DB) error {
 			config_path      TEXT NOT NULL DEFAULT '',
 			mcp_endpoint     TEXT NOT NULL DEFAULT '',
 			is_running       INTEGER NOT NULL DEFAULT 0,
+			pid              INTEGER NOT NULL DEFAULT 0,
 			last_seen        DATETIME NOT NULL
 		);
 		CREATE INDEX IF NOT EXISTS idx_discovered_agents_kind ON discovered_agents(kind);
@@ -103,6 +105,8 @@ func migrate(db *sql.DB) error {
 		{"ai_sessions", "message_count", "INTEGER NOT NULL DEFAULT 0"},
 		{"ai_sessions", "tokens_used", "INTEGER NOT NULL DEFAULT 0"},
 		{"ai_sessions", "last_message", "TEXT NOT NULL DEFAULT ''"},
+		{"ai_sessions", "pid", "INTEGER NOT NULL DEFAULT 0"},
+		{"discovered_agents", "pid", "INTEGER NOT NULL DEFAULT 0"},
 	} {
 		_, _ = db.ExecContext(context.Background(), fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", col.table, col.name, col.def))
 	}

@@ -152,7 +152,7 @@ jobs:
         run: CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" CGO_LDFLAGS="-lm" go test -race -count=1 ./...
 
       - name: Go coverage gate (merged, ratchet)
-        run: MIN_COVERAGE=95 ./scripts/go-coverage.sh
+        run: MIN_COVERAGE=96 ./scripts/go-coverage.sh
 
   frontend-test:
     needs: version
@@ -317,6 +317,21 @@ jobs:
           cache: true
           check-latest: true
 
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build and embed full UI
+        shell: bash
+        run: |
+          cd frontend && npm ci && npm run build
+          cd ..
+          rm -rf internal/adapters/inbound/webui/dist && mkdir -p internal/adapters/inbound/webui/dist
+          cp -R build/frontend/. internal/adapters/inbound/webui/dist/
+          touch internal/adapters/inbound/webui/dist/.gitkeep
+
       - name: Install zig
         if: matrix.runner == 'ubuntu-latest'
         shell: bash
@@ -336,6 +351,7 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
+          MACOSX_DEPLOYMENT_TARGET: "13.0"
           # zig cc enables UBSan by default and its runtime is not linked on
           # windows-gnu (undefined __ubsan_handle_*). Disabling it makes Go's own
           # runtime/cgo compile fail on an unused -fno-rtlib-defaultlib argument
@@ -433,6 +449,22 @@ jobs:
           cache: true
           check-latest: true
 
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Sync version and embed full UI
+        shell: bash
+        run: |
+          bash scripts/version-sync.sh "${{ needs.version.outputs.semVer }}"
+          cd frontend && npm ci && npm run build
+          cd ..
+          rm -rf internal/adapters/inbound/webui/dist && mkdir -p internal/adapters/inbound/webui/dist
+          cp -R build/frontend/. internal/adapters/inbound/webui/dist/
+          touch internal/adapters/inbound/webui/dist/.gitkeep
+
       - name: Install Linux dependencies
         if: matrix.os == 'linux'
         shell: bash
@@ -451,6 +483,7 @@ jobs:
           CGO_ENABLED: "1"
           CGO_CFLAGS: "-DSQLITE_ENABLE_FTS5"
           CGO_LDFLAGS: ${{ matrix.cgo_ldflags }}
+          MACOSX_DEPLOYMENT_TARGET: "13.0"
         run: |
           VERSION="${{ needs.version.outputs.tag }}"
           COMMIT=$(git rev-parse --short HEAD)
@@ -577,14 +610,14 @@ jobs:
         working-directory: vscode-extension
         run: npm run test:coverage
 
-      - name: Build extension
-        working-directory: vscode-extension
-        run: npm run build
-
       - name: Sync version into package manifests
         shell: bash
         run: bash scripts/version-sync.sh "${{ needs.version.outputs.semVer }}"
         working-directory: ${{ github.workspace }}
+
+      - name: Build extension
+        working-directory: vscode-extension
+        run: npm run build
 
       - name: Package VSIX
         shell: bash
@@ -669,15 +702,6 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
-
-      - name: Sync version into package manifests
-        shell: bash
-        run: |
-          bash scripts/version-sync.sh "${{ needs.version.outputs.semVer }}"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add frontend/package.json vscode-extension/package.json wails.json
-          git diff --cached --quiet || git commit -m "chore: bump manifests to ${{ needs.version.outputs.semVer }} [skip ci]"
 
       - name: Create and push tag
         shell: bash

@@ -26,7 +26,7 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 	if len(turns) == 0 {
 		return "", fmt.Errorf("anthropic: no user message to send")
 	}
-	reqBody, err := json.Marshal(anthropicRequest{Model: a.model, MaxTokens: defaultMaxTokens, System: system, Messages: turns, Stream: true})
+	reqBody, err := json.Marshal(anthropicRequest{Model: a.model, MaxTokens: defaultMaxTokens, System: systemBlocks(system), Messages: turns, Stream: true})
 	if err != nil {
 		return "", fmt.Errorf("anthropic: marshal request: %w", err)
 	}

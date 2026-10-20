@@ -23,14 +23,14 @@ func rungOf(ladder []string, c ports.LLMClient) int {
 // allowance is nearly used up behind the others (see routeByQuota). It never removes a candidate. A
 // task that names its provider is left alone. It returns the chain and the ladder that applies.
 func (o *OrchestratorService) routeChain(chain []ports.LLMClient, task domain.Task) ([]ports.LLMClient, []string) {
-	if task.ProviderName != "" {
-		return chain, nil
-	}
 	policy, ok, err := LoadProjectPolicy(task.ProjectPath)
 	if err != nil || !ok {
 		policy = domain.ProjectPolicy{}
 	}
 	o.enforceBudgets(chain, policy)
+	if task.ProviderName != "" {
+		return chain, nil
+	}
 	out := slices.Clone(chain)
 	ladder := policy.LadderFor(task.Role)
 	if len(ladder) > 0 {

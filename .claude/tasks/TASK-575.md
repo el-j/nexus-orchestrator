@@ -3,7 +3,7 @@ id: TASK-575
 planId: PLAN-073
 title: 'UI option for CLI providers'
 role: polish
-status: todo
+status: done
 createdAt: 2026-10-15
 ---
 

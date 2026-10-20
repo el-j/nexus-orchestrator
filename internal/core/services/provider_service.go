@@ -131,11 +131,14 @@ func (o *OrchestratorService) PromoteProvider(ctx context.Context, discoveredID 
 	baseURL := found.BaseURL
 	if found.Kind == domain.ProviderKindCLI && found.CLIPath != "" {
 		// A command-line AI tool has a path, not a URL; "-p" is the non-interactive print mode
-		// of claude, the tool this kind is for. Claude also gets stream-json, which gives live
-		// text, token usage and the plan's own quota reading (see llm_cli).
+		// of claude and copilot. Claude gets stream-json (live text, token usage and the plan's
+		// own quota reading); Copilot gets -s (answer only) and --no-ask-user (see llm_cli).
 		baseURL = found.CLIPath + " -p"
-		if strings.TrimSuffix(strings.ToLower(filepath.Base(found.CLIPath)), ".exe") == "claude" {
+		switch strings.TrimSuffix(strings.ToLower(filepath.Base(found.CLIPath)), ".exe") {
+		case "claude":
 			baseURL += " --output-format stream-json"
+		case "copilot":
+			baseURL += " -s --no-ask-user"
 		}
 	} else if found.Status != domain.DiscoveryStatusReachable {
 		return fmt.Errorf("orchestrator: promote provider: provider %q is not reachable (status: %s)", found.Name, found.Status)

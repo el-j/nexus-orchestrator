@@ -57,7 +57,9 @@ func NewActivityService(
 
 // SetBroadcaster wires an ActivityBroadcaster for SSE event delivery.
 func (s *ActivityService) SetBroadcaster(b ports.ActivityBroadcaster) {
+	s.mu.Lock()
 	s.broadcaster = b
+	s.mu.Unlock()
 }
 
 // Start launches the background polling and purge goroutines.
@@ -149,8 +151,11 @@ func (s *ActivityService) poll() {
 				continue
 			}
 			s.bridgeSession(ctx, a)
-			if s.broadcaster != nil {
-				s.broadcaster.BroadcastActivityEvent(a)
+			s.mu.Lock()
+			b := s.broadcaster
+			s.mu.Unlock()
+			if b != nil {
+				b.BroadcastActivityEvent(a)
 			}
 		}
 	}

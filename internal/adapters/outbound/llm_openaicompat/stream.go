@@ -86,12 +86,24 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 			} `json:"choices"`
 			Error *struct {
 				Message string `json:"message"`
+				Status  int    `json:"status"`
 			} `json:"error"`
 		}
 		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			return reply.String(), fmt.Errorf("%s: decode stream event: %w", a.name, err)
 		}
 		if ev.Error != nil {
+			status := ev.Error.Status
+			if status == 0 {
+				low := strings.ToLower(ev.Error.Message)
+				if strings.Contains(low, "quota") || strings.Contains(low, "rate limit") || strings.Contains(low, "429") {
+					status = http.StatusTooManyRequests
+				}
+			}
+			if pe := domain.ClassifyHTTP(a.name, status, "", ev.Error.Message, time.Now()); pe != nil {
+				pe.Msg = fmt.Sprintf("%s: %s", pe.Msg, ev.Error.Message)
+				return reply.String(), pe
+			}
 			return reply.String(), fmt.Errorf("%s: stream error: %s", a.name, ev.Error.Message)
 		}
 		if ev.Usage != nil {

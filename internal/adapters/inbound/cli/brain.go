@@ -51,12 +51,31 @@ func newBrainStatusCmd(brain ports.BrainService) *cobra.Command {
 }
 
 func newBrainIngestCmd(brain ports.BrainService) *cobra.Command {
-	var project string
-	var file string
+	var project, file, kind, topic, content string
 	cmd := &cobra.Command{
 		Use:   "ingest",
-		Short: "Ingest a markdown file (CLAUDE.md) into the project knowledge repository",
+		Short: "Ingest a markdown file or a single knowledge entry into the project knowledge repository",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if file == "" && content != "" {
+				k := domain.KnowledgeKind(kind)
+				if k == "" {
+					k = domain.KnowledgeLearning
+				}
+				entry, err := brain.IngestKnowledge(context.Background(), domain.ProjectKnowledge{
+					ProjectPath: project,
+					Kind:        k,
+					Topic:       topic,
+					Content:     content,
+				})
+				if err != nil {
+					return fmt.Errorf("cli: brain ingest: %w", err)
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "Ingested knowledge entry %q (%s) into project %s\n", entry.Topic, entry.Kind, project)
+				return nil
+			}
+			if file == "" {
+				return fmt.Errorf("cli: brain ingest: --file or --content is required")
+			}
 			count, err := brain.IngestFromFile(context.Background(), project, file)
 			if err != nil {
 				return fmt.Errorf("cli: brain ingest: %w", err)
@@ -66,9 +85,11 @@ func newBrainIngestCmd(brain ports.BrainService) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&project, "project", "", "Project path (required)")
-	cmd.Flags().StringVar(&file, "file", "", "Markdown file path to ingest (required)")
+	cmd.Flags().StringVar(&file, "file", "", "Markdown file path to ingest")
+	cmd.Flags().StringVar(&kind, "kind", "", "Knowledge kind (for single entry ingest)")
+	cmd.Flags().StringVar(&topic, "topic", "", "Topic title (for single entry ingest)")
+	cmd.Flags().StringVar(&content, "content", "", "Markdown content (for single entry ingest)")
 	_ = cmd.MarkFlagRequired("project")
-	_ = cmd.MarkFlagRequired("file")
 	return cmd
 }
 
@@ -160,16 +181,26 @@ func newBrainDeleteCmd(brain ports.BrainService) *cobra.Command {
 }
 
 func newBrainContextCmd(brain ports.BrainService) *cobra.Command {
-	var project string
+	var project, question string
 	var maxTokens int
 	cmd := &cobra.Command{
 		Use:   "context",
 		Short: "Assemble a token-budget-constrained context response for a project",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			resp, err := brain.GetContext(context.Background(), domain.ContextQuery{
+			q := domain.ContextQuery{
 				ProjectPath: project,
+				Question:    question,
 				MaxTokens:   maxTokens,
-			})
+			}
+			var (
+				resp domain.ContextResponse
+				err  error
+			)
+			if question != "" {
+				resp, err = brain.GetFocusedContext(context.Background(), q)
+			} else {
+				resp, err = brain.GetContext(context.Background(), q)
+			}
 			if err != nil {
 				return fmt.Errorf("cli: brain context: %w", err)
 			}
@@ -179,6 +210,7 @@ func newBrainContextCmd(brain ports.BrainService) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&project, "project", "", "Project path (required)")
+	cmd.Flags().StringVarP(&question, "question", "q", "", "Focused question to rank knowledge entries by relevance (optional)")
 	cmd.Flags().IntVar(&maxTokens, "max-tokens", 800, "Maximum tokens to include in context")
 	_ = cmd.MarkFlagRequired("project")
 	return cmd

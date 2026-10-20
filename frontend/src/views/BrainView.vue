@@ -237,7 +237,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, shallowRef, computed, onMounted } from 'vue';
+import { ref, shallowRef, computed, onMounted, watch } from 'vue';
 import { useBrain } from '../composables/useBrain';
 import { currentProject } from '../composables/useProjectState';
 
@@ -324,6 +324,14 @@ async function onFilesSelected(e: Event) {
   // Reset input
   if (fileInputRef.value) fileInputRef.value.value = '';
 }
+
+// Picking another project in the sidebar switches the brain to it.
+watch(currentProject, (val) => {
+  if (val) {
+    projectPath.value = val;
+    onPathChange();
+  }
+});
 
 onMounted(() => {
   // Seed project path from localStorage, then fall back to the global

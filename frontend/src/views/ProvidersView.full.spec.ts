@@ -20,6 +20,7 @@ const h = vi.hoisted(() => ({
     addProviderConfig: vi.fn(),
     updateProviderConfig: vi.fn(),
     removeProviderConfig: vi.fn(),
+    getRouting: vi.fn().mockResolvedValue({ quotaThreshold: 0.9, order: [] }),
   },
 }));
 vi.mock('vue-router', () => ({ useRoute: () => h.route }));
@@ -134,6 +135,7 @@ const cards = (w: W) => w.findAll('section')[0].findAll('.rounded-xl.border.p-3'
 
 beforeEach(() => {
   Object.values(h.api).forEach((f) => f.mockReset());
+  h.api.getRouting.mockResolvedValue({ quotaThreshold: 0.9, order: [] });
   h.refresh.mockReset();
   h.discoveryRefresh.mockReset();
   h.scanNow.mockReset();

@@ -120,12 +120,32 @@ func (s *Server) toolIngestKnowledge(ctx context.Context, args json.RawMessage) 
 	var p struct {
 		ProjectPath string `json:"projectPath"`
 		FilePath    string `json:"filePath"`
+		Kind        string `json:"kind"`
+		Topic       string `json:"topic"`
+		Content     string `json:"content"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: ingest_knowledge: invalid args: %w", err)
 	}
 	if s.brain == nil {
 		return callToolResult{}, fmt.Errorf("brain service not configured")
+	}
+	if p.FilePath == "" && (p.Content != "" || p.Topic != "") {
+		kind := domain.KnowledgeKind(p.Kind)
+		if kind == "" {
+			kind = domain.KnowledgeLearning
+		}
+		entry, err := s.brain.IngestKnowledge(ctx, domain.ProjectKnowledge{
+			ProjectPath: p.ProjectPath,
+			Kind:        kind,
+			Topic:       p.Topic,
+			Content:     p.Content,
+		})
+		if err != nil {
+			return callToolResult{}, fmt.Errorf("mcp: ingest_knowledge: %w", err)
+		}
+		b, _ := json.Marshal(entry)
+		return textResult(string(b)), nil
 	}
 	count, err := s.brain.IngestFromFile(ctx, p.ProjectPath, p.FilePath)
 	if err != nil {
@@ -296,14 +316,17 @@ func brainToolDefs() []toolDef {
 		},
 		{
 			Name:        "ingest_knowledge",
-			Description: "Parse and ingest a markdown file (often CLAUDE.md) into the project knowledge repository.",
+			Description: "Ingest either a markdown file (filePath) or a single structured knowledge entry (kind, topic, content) into the project knowledge repository.",
 			InputSchema: inputSchema{
 				Type: "object",
 				Properties: map[string]property{
 					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
-					"filePath":    {Type: "string", Description: "Path to the markdown file to ingest"},
+					"filePath":    {Type: "string", Description: "Path to the markdown file to ingest (when ingesting a file)"},
+					"kind":        {Type: "string", Description: "Knowledge kind: architecture, convention, learning, glossary, decision, file_map (when ingesting a single entry)"},
+					"topic":       {Type: "string", Description: "Topic title for a single knowledge entry"},
+					"content":     {Type: "string", Description: "Markdown content for a single knowledge entry"},
 				},
-				Required: []string{"projectPath", "filePath"},
+				Required: []string{"projectPath"},
 			},
 		},
 		{

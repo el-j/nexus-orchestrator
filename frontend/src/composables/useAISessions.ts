@@ -1,6 +1,12 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import type { AISession } from '../types/domain';
-import { listAISessions, deregisterAISession, purgeDisconnectedSessions } from '../types/wails';
+import {
+  listAISessions,
+  deregisterAISession,
+  purgeDisconnectedSessions,
+  delegateToNexus,
+  terminateAISession,
+} from '../types/wails';
 import { useGlobalSSE } from './useGlobalSSE';
 
 /** Reactive list of AI sessions with register/deregister/purge actions, refreshed on SSE events. */
@@ -31,6 +37,19 @@ export function useAISessions() {
     await refresh();
   }
 
+  /** Marks a session as delegated to Nexus and returns the instruction its agent should follow. */
+  async function delegate(id: string) {
+    const res = await delegateToNexus(id);
+    await refresh();
+    return res;
+  }
+
+  /** Asks the daemon to stop a session's agent process (force kills it) and refreshes the list. */
+  async function terminate(id: string, force = false) {
+    await terminateAISession(id, force);
+    await refresh();
+  }
+
   async function purgeDisconnected() {
     await purgeDisconnectedSessions();
     await refresh();
@@ -51,5 +70,5 @@ export function useAISessions() {
     if (interval) clearInterval(interval);
   });
 
-  return { sessions, loading, error, refresh, deregister, purgeDisconnected };
+  return { sessions, loading, error, refresh, deregister, delegate, terminate, purgeDisconnected };
 }

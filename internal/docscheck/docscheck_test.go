@@ -161,3 +161,72 @@ func TestReadmeNamesTheReleaseFilesThatExist(t *testing.T) {
 		}
 	}
 }
+
+func TestReleaseWorkflowEmbedsFullUIInCLIDaemonAndEnforcesCoverageGate(t *testing.T) {
+	wf := read(t, ".github/workflows/publish.yml")
+	buildCLIIdx := strings.Index(wf, "  build-cli:")
+	if buildCLIIdx < 0 {
+		t.Fatal("publish.yml has no build-cli job")
+	}
+	buildSection := wf[buildCLIIdx:]
+	if nextJob := strings.Index(buildSection, "\n  build-desktop:"); nextJob > 0 {
+		buildSection = buildSection[:nextJob]
+	}
+	if !strings.Contains(buildSection, "internal/adapters/inbound/webui/dist") {
+		t.Error("publish.yml build-cli job must copy built frontend into internal/adapters/inbound/webui/dist before building nexus-daemon")
+	}
+	if !strings.Contains(wf, "MIN_COVERAGE=96 ./scripts/go-coverage.sh") {
+		t.Error("publish.yml must enforce MIN_COVERAGE=96 to match ci.yml")
+	}
+
+	ci := read(t, ".github/workflows/ci.yml")
+	for _, want := range []string{"http://wails.localhost", "wails://wails", `cd "$HOME"`, `CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" go build ./cmd/nexus-daemon/...`} {
+		if !strings.Contains(ci, want) {
+			t.Errorf("ci.yml must verify %s", want)
+		}
+	}
+}
+
+func TestDockerfileAndReleaseConfigInvariants(t *testing.T) {
+	dockerfile := read(t, "Dockerfile")
+	for _, want := range []string{"-DSQLITE_ENABLE_FTS5", "internal/adapters/inbound/webui/dist"} {
+		if !strings.Contains(dockerfile, want) {
+			t.Errorf("Dockerfile must include %s", want)
+		}
+	}
+
+	rpCfg := read(t, "release-please-config.json")
+	if strings.Contains(rpCfg, `"release-as"`) {
+		t.Error("release-please-config.json must not pin release-as")
+	}
+	for _, want := range []string{"frontend/package.json", "vscode-extension/package.json", "github-action/package.json", "docs/package.json", "wails.json"} {
+		if !strings.Contains(rpCfg, want) {
+			t.Errorf("release-please-config.json must include %s in extra-files", want)
+		}
+	}
+
+	vsync := read(t, "scripts/version-sync.sh")
+	for _, want := range []string{"frontend/package.json", "vscode-extension/package.json", "github-action/package.json", "docs/package.json", "wails.json"} {
+		if !strings.Contains(vsync, want) {
+			t.Errorf("scripts/version-sync.sh must stamp %s", want)
+		}
+	}
+
+	wf := read(t, ".github/workflows/publish.yml")
+	desktopIdx := strings.Index(wf, "  build-desktop:")
+	vscodeIdx := strings.Index(wf, "\n  build-vscode:")
+	smokeIdx := strings.Index(wf, "\n  smoke-test:")
+	if desktopIdx < 0 || vscodeIdx < 0 || smokeIdx < 0 {
+		t.Fatal("publish.yml missing build-desktop, build-vscode, or smoke-test job")
+	}
+	desktopJob := wf[desktopIdx:vscodeIdx]
+	if !strings.Contains(desktopJob, "scripts/version-sync.sh") {
+		t.Error("publish.yml build-desktop must run scripts/version-sync.sh before wails build")
+	}
+	vscodeJob := wf[vscodeIdx:smokeIdx]
+	syncPos := strings.Index(vscodeJob, "scripts/version-sync.sh")
+	buildPos := strings.Index(vscodeJob, "npm run build")
+	if syncPos < 0 || buildPos < 0 || syncPos > buildPos {
+		t.Error("publish.yml build-vscode must run scripts/version-sync.sh before npm run build")
+	}
+}

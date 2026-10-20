@@ -259,3 +259,19 @@ func TestActivityService_StopIdempotent(t *testing.T) {
 		t.Fatal("second Stop() call panicked")
 	}
 }
+
+func TestActivityService_ConcurrentSetBroadcasterAndStart(t *testing.T) {
+	repo := &actMemActivityRepo{}
+	reader := &mockReader{
+		name: "claude",
+		activities: []domain.AIActivity{
+			{ID: "c1", AgentName: "claude", ProjectPath: t.TempDir(), Summary: "work", Timestamp: time.Now()},
+		},
+	}
+	svc := services.NewActivityService(repo, newMemAISessionRepo(), reader)
+	svc.Start()
+	defer svc.Stop()
+	for i := 0; i < 20; i++ {
+		svc.SetBroadcaster(&stubBroadcaster{})
+	}
+}

@@ -16,9 +16,15 @@ scope="${1:-all}"
 shift || true
 go_paths=("$@")
 if [ "${#go_paths[@]}" -eq 0 ]; then
-  go_paths=(internal/core/domain internal/core/services)
+  go_paths=(
+    internal/core/domain
+    internal/core/services
+    internal/adapters/outbound/fs_writer
+    internal/adapters/outbound/llm_cli
+  )
 fi
 efficacy="${MUTATION_MIN_EFFICACY:-70}"
+timeout_coeff="${MUTATION_TIMEOUT_COEFF:-3}"
 
 run_go() {
   command -v gremlins >/dev/null || {
@@ -26,9 +32,12 @@ run_go() {
     exit 1
   }
   for path in "${go_paths[@]}"; do
-    echo "==> gremlins ./$path (min efficacy ${efficacy}%)"
+    echo "==> gremlins ./$path (min efficacy ${efficacy}%, timeout-coefficient ${timeout_coeff})"
     CGO_ENABLED=1 CGO_CFLAGS="${CGO_CFLAGS:--DSQLITE_ENABLE_FTS5}" \
-      gremlins unleash "./$path" --threshold-efficacy "$efficacy"
+      gremlins unleash "./$path" \
+      --integration \
+      --timeout-coefficient "$timeout_coeff" \
+      --threshold-efficacy "$efficacy"
   done
 }
 

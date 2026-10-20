@@ -221,6 +221,12 @@ func (o *OrchestratorService) runTaskWatchdog() {
 				continue
 			}
 			for _, t := range tasks {
+				o.runMu.Lock()
+				_, inProcess := o.running[t.ID]
+				o.runMu.Unlock()
+				if inProcess {
+					continue
+				}
 				log.Printf("orchestrator: task watchdog: task %s stuck in PROCESSING, failing", t.ID)
 				t.Status = domain.StatusFailed
 				t.Logs += "\n\n[System] Task timed out while PROCESSING. Marked as FAILED by watchdog."
@@ -228,6 +234,7 @@ func (o *OrchestratorService) runTaskWatchdog() {
 					log.Printf("orchestrator: task watchdog: update task %s fail: %v", t.ID, err)
 					continue
 				}
+				_ = o.repo.UpdateLogs(o.dbCtx(), t.ID, t.Logs)
 				// emit already publishes the task.failed event (under the lock that
 				// guards o.broadcaster); broadcasting again would duplicate it.
 				o.emit(t.ID, domain.StatusFailed)

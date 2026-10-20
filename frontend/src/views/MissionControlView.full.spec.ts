@@ -9,6 +9,7 @@ const h = vi.hoisted(() => ({
   promoteTask: vi.fn(),
   getAllTasks: vi.fn(),
   toastAdd: vi.fn(),
+  project: { value: null as string | null },
   s: {
     tasks: [] as unknown[],
     tasksLoading: false,
@@ -34,6 +35,12 @@ vi.mock('../composables/useAISessions', () => ({
 }));
 vi.mock('../types/wails', () => ({ getAllTasks: h.getAllTasks }));
 vi.mock('../composables/useToast', () => ({ useToast: () => ({ add: h.toastAdd }) }));
+vi.mock('../composables/useProjectState', async () => {
+  const { ref } = await import('vue');
+  const currentProject = ref<string | null>(null);
+  h.project = currentProject as unknown as { value: string | null };
+  return { currentProject };
+});
 
 const NOW = new Date('2026-06-01T12:00:00Z').getTime();
 let n = 0;
@@ -99,6 +106,7 @@ beforeEach(() => {
   h.promoteTask.mockReset().mockResolvedValue(undefined);
   h.getAllTasks.mockReset().mockResolvedValue([]);
   h.toastAdd.mockReset();
+  h.project.value = null;
   h.s = {
     tasks: [],
     tasksLoading: false,
@@ -166,19 +174,27 @@ describe('MissionControlView — active work', () => {
     expect(ids).toEqual(['p', 'q', 'f', 'c']);
   });
 
-  it('filters Active and Drafts/Backlog with matching empty states', async () => {
+  it('filters Active and Drafts/Backlog with matching empty states, including WAITING and ranBy/providerHint', async () => {
     h.s.tasks = [
-      task({ id: 'q' }),
+      task({ id: 'q', ranBy: 'Claude' }),
+      task({
+        id: 'w',
+        status: 'WAITING',
+        providerHint: 'anthropic',
+        waitUntil: new Date(NOW + 120_000).toISOString(),
+      }),
       task({ id: 'd', status: 'DRAFT' }),
       task({ id: 'b', status: 'BACKLOG' }),
     ];
     const w = await mountView();
+    expect(w.text()).toContain('Claude');
+    expect(w.text()).toContain('anthropic');
     await btn(w, 'Active').trigger('click');
-    expect(w.findAll('tbody tr')).toHaveLength(1);
+    expect(w.findAll('tbody tr')).toHaveLength(2);
     await btn(w, 'Drafts/Backlog').trigger('click');
     expect(w.findAll('tbody tr')).toHaveLength(2);
     await btn(w, 'All').trigger('click');
-    expect(w.findAll('tbody tr')).toHaveLength(3);
+    expect(w.findAll('tbody tr')).toHaveLength(4);
 
     h.s.tasks = [task({ id: 'q' })];
     const only = await mountView();
@@ -189,7 +205,7 @@ describe('MissionControlView — active work', () => {
     expect(only.text()).toContain('No draft/backlog tasks');
   });
 
-  it('offers Promote for drafts and backlog only, refreshing history afterwards', async () => {
+  it('offers Promote for drafts and backlog only, refreshing history afterwards and warning when not promoted', async () => {
     h.s.tasks = [task({ id: 'd', status: 'DRAFT' }), task({ id: 'q' })];
     const w = await mountView();
     expect(w.findAll('button').filter((b) => b.text().includes('Promote'))).toHaveLength(1);
@@ -198,6 +214,13 @@ describe('MissionControlView — active work', () => {
     await flush();
     expect(h.promoteTask).toHaveBeenCalledWith('d');
     expect(h.getAllTasks).toHaveBeenCalled();
+
+    h.promoteTask.mockResolvedValueOnce({ promoted: false, warning: 'quota exceeded' });
+    await btn(w, 'Promote ↑').trigger('click');
+    await flush();
+    expect(h.toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ severity: 'warn', detail: 'quota exceeded' }),
+    );
   });
 
   it('does not open the drawer when Promote is clicked, and ignores a second promote in flight', async () => {
@@ -294,11 +317,29 @@ describe('MissionControlView — history', () => {
     expect(historyRows(await mountView())).toHaveLength(10);
   });
 
-  it('opens a history row in the drawer', async () => {
-    h.getAllTasks.mockResolvedValue([task({ id: 'c', status: 'COMPLETED' })]);
+  it('opens a history row in the drawer and filters tasks, history and sessions by currentProject', async () => {
+    h.s.tasks = [
+      task({ id: 't-a', projectPath: '/work/a' }),
+      task({ id: 't-b', projectPath: '/work/b' }),
+    ];
+    h.s.sessions = [
+      session({ id: 's-a', agentName: 'AgA', projectPath: '/work/a' }),
+      session({ id: 's-b', agentName: 'AgB', projectPath: '/work/b' }),
+    ];
+    h.getAllTasks.mockResolvedValue([
+      task({ id: 'c', status: 'COMPLETED', projectPath: '/work/a' }),
+      task({ id: 'c2', status: 'COMPLETED', projectPath: '/work/b' }),
+    ]);
     const w = await mountView();
     await historyRows(w)[0].trigger('click');
     expect(w.findComponent(Drawer).props('task')).toMatchObject({ id: 'c' });
+
+    h.project.value = '/work/a';
+    await flush();
+    expect(w.findAll('tbody tr').map((r) => r.findAll('td')[1].text())).toEqual(['t-a', 'c']);
+    expect(historyRows(w)).toHaveLength(1);
+    expect(w.text()).toContain('AgA');
+    expect(w.text()).not.toContain('AgB');
   });
 
   it('keeps going when history cannot be loaded, treats null as empty, and polls every 30s', async () => {

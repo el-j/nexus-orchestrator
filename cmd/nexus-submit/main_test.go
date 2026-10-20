@@ -129,3 +129,44 @@ func TestApplyRouting(t *testing.T) {
 		t.Errorf("body = %s, want %s", got, exp)
 	}
 }
+
+func TestSubmitTask_SendsBearerTokenWhenEnvSet(t *testing.T) {
+	t.Setenv("NEXUS_API_TOKEN", "secret-token-xyz")
+	var gotAuth string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`{"task_id":"task-auth-1","status":"QUEUED"}`))
+	}))
+	defer server.Close()
+
+	_, _, err := SubmitTask(context.Background(), server.URL, map[string]interface{}{"instruction": "hi"})
+	if err != nil {
+		t.Fatalf("SubmitTask: %v", err)
+	}
+	if gotAuth != "Bearer secret-token-xyz" {
+		t.Errorf("Authorization header = %q, want %q", gotAuth, "Bearer secret-token-xyz")
+	}
+}
+
+func TestWaitForCompletion_LogsWaitingUntilAndCompletes(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if calls == 1 {
+			w.Write([]byte(`{"status":"WAITING","waitUntil":"2026-10-20T15:00:00Z"}`))
+			return
+		}
+		w.Write([]byte(`{"status":"COMPLETED","logs":"done"}`))
+	}))
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	code := waitForCompletion(context.Background(), &stdout, &stderr, server.URL, "task-wait-1", 0)
+	if code != exitOK {
+		t.Fatalf("code = %d, want %d (stderr: %s)", code, exitOK, stderr.String())
+	}
+	if !bytes.Contains(stdout.Bytes(), []byte("waiting until 2026-10-20T15:00:00Z")) {
+		t.Errorf("stdout should include waiting until timestamp, got: %s", stdout.String())
+	}
+}

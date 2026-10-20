@@ -23,11 +23,11 @@ func NewDiscoveredAgentRepo(r *Repository) *DiscoveredAgentRepo {
 func (d *DiscoveredAgentRepo) UpsertDiscoveredAgent(ctx context.Context, a domain.DiscoveredAgent) error {
 	_, err := d.db.ExecContext(ctx, `
 		INSERT OR REPLACE INTO discovered_agents
-			(id, kind, name, detection_method, process_name, cli_path, config_path, mcp_endpoint, is_running, last_seen)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			(id, kind, name, detection_method, process_name, cli_path, config_path, mcp_endpoint, is_running, pid, last_seen)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		a.ID, string(a.Kind), a.Name, a.DetectionMethod,
 		a.ProcessName, a.CLIPath, a.ConfigPath, a.MCPEndpoint,
-		boolToInt(a.IsRunning), a.LastSeen.UTC().Format(time.RFC3339),
+		boolToInt(a.IsRunning), a.PID, a.LastSeen.UTC().Format(time.RFC3339),
 	)
 	return err
 }
@@ -35,7 +35,7 @@ func (d *DiscoveredAgentRepo) UpsertDiscoveredAgent(ctx context.Context, a domai
 // ListDiscoveredAgents returns all discovered agent records ordered by last_seen descending.
 func (d *DiscoveredAgentRepo) ListDiscoveredAgents(ctx context.Context) ([]domain.DiscoveredAgent, error) {
 	rows, err := d.db.QueryContext(ctx, `
-		SELECT id, kind, name, detection_method, process_name, cli_path, config_path, mcp_endpoint, is_running, last_seen
+		SELECT id, kind, name, detection_method, process_name, cli_path, config_path, mcp_endpoint, is_running, pid, last_seen
 		FROM discovered_agents ORDER BY last_seen DESC`)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func (d *DiscoveredAgentRepo) ListDiscoveredAgents(ctx context.Context) ([]domai
 		var isRunningInt int
 		if err := rows.Scan(&a.ID, (*string)(&a.Kind), &a.Name, &a.DetectionMethod,
 			&a.ProcessName, &a.CLIPath, &a.ConfigPath, &a.MCPEndpoint,
-			&isRunningInt, &lastSeenStr); err != nil {
+			&isRunningInt, &a.PID, &lastSeenStr); err != nil {
 			return nil, err
 		}
 		a.IsRunning = isRunningInt != 0

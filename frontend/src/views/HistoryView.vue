@@ -206,18 +206,26 @@ function syncPolling(isConnected: boolean) {
   startPolling();
 }
 
-type FilterValue = 'ALL' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+type FilterValue = 'ALL' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'TOO_LARGE' | 'NO_PROVIDER';
 
 const filters: { label: string; value: FilterValue }[] = [
   { label: 'All', value: 'ALL' },
   { label: 'Completed', value: 'COMPLETED' },
   { label: 'Failed', value: 'FAILED' },
   { label: 'Cancelled', value: 'CANCELLED' },
+  { label: 'Too Large', value: 'TOO_LARGE' },
+  { label: 'No Provider', value: 'NO_PROVIDER' },
 ];
 
 const selectedFilter = ref<TaskStatus | 'ALL'>('ALL');
 
-const historyStatuses = new Set<TaskStatus>(['COMPLETED', 'FAILED', 'CANCELLED']);
+const historyStatuses = new Set<TaskStatus>([
+  'COMPLETED',
+  'FAILED',
+  'CANCELLED',
+  'TOO_LARGE',
+  'NO_PROVIDER',
+]);
 
 const projectTasks = computed(() =>
   currentProject.value === null
@@ -227,10 +235,13 @@ const projectTasks = computed(() =>
 
 const statusColorMap: Record<string, { color: string; label: string }> = {
   QUEUED: { color: 'bg-slate-500/20 text-slate-400', label: 'Queued' },
+  WAITING: { color: 'bg-purple-500/20 text-purple-300', label: 'Waiting' },
   PROCESSING: { color: 'bg-yellow-500/20 text-yellow-300', label: 'Processing' },
   COMPLETED: { color: 'bg-emerald-500/20 text-emerald-300', label: 'Completed' },
   FAILED: { color: 'bg-red-500/20 text-red-300', label: 'Failed' },
   CANCELLED: { color: 'bg-orange-500/20 text-orange-300', label: 'Cancelled' },
+  TOO_LARGE: { color: 'bg-amber-500/20 text-amber-300', label: 'Too Large' },
+  NO_PROVIDER: { color: 'bg-rose-500/20 text-rose-300', label: 'No Provider' },
   BACKLOG: { color: 'bg-violet-500/20 text-violet-300', label: 'Backlog' },
   DRAFT: { color: 'bg-blue-500/20 text-blue-300', label: 'Draft' },
 };

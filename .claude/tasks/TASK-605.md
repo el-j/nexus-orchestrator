@@ -4,7 +4,7 @@ planId: PLAN-074
 title: 'Mutation results per package'
 role: tester
 wave: 7
-status: todo
+status: done
 createdAt: 2026-10-16
 ---
 

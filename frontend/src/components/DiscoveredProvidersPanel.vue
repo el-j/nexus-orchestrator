@@ -104,7 +104,7 @@
 
         <!-- Action -->
         <button
-          v-if="p.status === 'reachable'"
+          v-if="p.status === 'reachable' || p.kind === 'cli'"
           @click="$emit('promote', p)"
           class="w-full text-xs font-medium py-1.5 rounded-lg border transition-all border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/50"
         >

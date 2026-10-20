@@ -43,7 +43,7 @@ func (o *OrchestratorService) holdUntilReset(task domain.Task, chain []ports.LLM
 	o.appendTaskLog(task.ID, entry)
 	o.emit(task.ID, domain.StatusWaiting)
 	if d := time.Until(task.WaitUntil); d > 0 {
-		time.AfterFunc(d, func() {
+		tm := time.AfterFunc(d, func() {
 			select {
 			case <-o.stopCh:
 				return
@@ -53,6 +53,9 @@ func (o *OrchestratorService) holdUntilReset(task domain.Task, chain []ports.LLM
 				log.Printf("orchestrator: resume waiting tasks: %v", err)
 			}
 		})
+		o.waitTimerMu.Lock()
+		o.waitTimers = append(o.waitTimers, tm)
+		o.waitTimerMu.Unlock()
 	}
 	return true
 }

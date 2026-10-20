@@ -97,8 +97,13 @@ describe('TaskDetailDrawer', () => {
     expect(mountDrawer(task({ logs: 'line 1' })).text()).toContain('line 1');
   });
 
-  it('offers Cancel for queued and Interrupt for processing tasks only', () => {
+  it('offers Cancel for queued and waiting tasks, and Interrupt for processing tasks only', () => {
     expect(mountDrawer(task({ status: 'QUEUED' })).text()).toContain('Cancel Task');
+    const waiting = mountDrawer(
+      task({ status: 'WAITING', waitUntil: '2026-01-01T00:05:00Z' }),
+    ).text();
+    expect(waiting).toContain('Cancel Task');
+    expect(waiting).toContain('Resumes');
     const processing = mountDrawer(task({ status: 'PROCESSING' })).text();
     expect(processing).toContain('Interrupt');
     expect(processing).not.toContain('Cancel Task');

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -1145,5 +1146,43 @@ func TestClient_PreviewRouting(t *testing.T) {
 	}
 	if _, err := c.PreviewRouting(context.Background(), "/p", ""); err != nil || gotRole != "" {
 		t.Errorf("no role: %v role=%q", err, gotRole)
+	}
+}
+
+func TestClient_GetRecentActivities_And_GetTimeline(t *testing.T) {
+	var lastURL string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lastURL = r.URL.String()
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `[{"id":"act-1","agentName":"claude","projectPath":"/proj","activityType":"message"}]`)
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewClient(srv.URL)
+	since := time.Date(2026, 10, 19, 8, 0, 0, 0, time.UTC)
+	acts, err := c.GetRecentActivities(context.Background(), domain.ActivityFilter{
+		AgentName:   "claude",
+		ProjectPath: "/proj",
+		Type:        domain.ActivityTypeMessage,
+		Since:       since,
+		Limit:       25,
+	})
+	if err != nil || len(acts) != 1 || acts[0].ID != "act-1" {
+		t.Fatalf("GetRecentActivities: %+v %v", acts, err)
+	}
+	for _, want := range []string{"/api/activities?", "agent=claude", "project=%2Fproj", "type=message", "since=2026-10-19T08%3A00%3A00Z", "limit=25"} {
+		if !strings.Contains(lastURL, want) {
+			t.Errorf("GetRecentActivities URL %q missing %q", lastURL, want)
+		}
+	}
+
+	tl, err := c.GetTimeline(context.Background(), since, 50)
+	if err != nil || len(tl) != 1 || tl[0].ID != "act-1" {
+		t.Fatalf("GetTimeline: %+v %v", tl, err)
+	}
+	for _, want := range []string{"/api/activities/timeline?", "since=2026-10-19T08%3A00%3A00Z", "limit=50"} {
+		if !strings.Contains(lastURL, want) {
+			t.Errorf("GetTimeline URL %q missing %q", lastURL, want)
+		}
 	}
 }
