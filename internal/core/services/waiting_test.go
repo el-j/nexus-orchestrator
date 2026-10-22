@@ -81,7 +81,7 @@ func TestResumeWaitingTasksOnlyTouchesDueWaitingTasks(t *testing.T) {
 	now := time.Now()
 	for _, tk := range []domain.Task{
 		{ID: "due", Status: domain.StatusWaiting, WaitUntil: now.Add(-time.Minute)},
-		{ID: "later", Status: domain.StatusWaiting, WaitUntil: now.Add(time.Hour)},
+		{ID: "later", Status: domain.StatusWaiting, WaitUntil: now.Add(time.Hour), ProviderName: "p"}, // a named provider is never released early
 		{ID: "plain", Status: domain.StatusQueued},
 		{ID: "no-time", Status: domain.StatusWaiting},
 	} {

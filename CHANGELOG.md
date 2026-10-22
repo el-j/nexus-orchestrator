@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mission Control shows the token usage of the last 24 hours (calls, input and output tokens, cost, per provider, model and role) and marks a provider that is cooling down (until when, why) or whose plan is nearly used up (share used, when the client reports it). TASK-592, TASK-601 of PLAN-074
 - The LM Studio adapter reports token usage, so a local fallback shows in the ledger too (found while running the daemon with Claude and a local model: [docs/switching-providers.md](docs/switching-providers.md))
 
+### Fixed
+
+- A task that waits for a daily token budget starts again as soon as the budget is raised or removed in `.nexus/policy.json` (found on the v0.11.0 beta: it stayed parked until midnight). The budget's cooldown is lifted, and the watchdog resumes a waiting task whose providers are no longer cooling down.
+
 ### Changed
 
 - An agent session can claim a task the engine had no provider for (`NO_PROVIDER`), not only a `QUEUED` one: with no model to run it, the agent is the way to do it (found while writing the end-to-end test of the agent flow).
