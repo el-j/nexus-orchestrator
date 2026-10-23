@@ -1,0 +1,168 @@
+<!DOCTYPE html><html lang="en" class="dark"><head>
+    <meta charset="utf-8">
+    <link rel="icon" type="image/svg+xml" href="/nexus-orchestrator/favicon.svg">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="nexus-orchestrator — run coding tasks on any model (local, API, your Claude and Copilot subscriptions), stream the result, and give every project a memory. MCP server, REST API, full UI, VS Code extension.">
+    <title>nexus-orchestrator — Local AI Task Orchestrator</title>
+    <script type="module" crossorigin="" src="/nexus-orchestrator/beta/assets/app-BLWndB4G.js"></script>
+    <link rel="stylesheet" crossorigin="" href="/nexus-orchestrator/beta/assets/app-WG19Q932.css">
+  <link rel="modulepreload" crossorigin="" href="/nexus-orchestrator/beta/assets/GuideView-D6j2AW8h.js"><link rel="stylesheet" href="/nexus-orchestrator/beta/assets/GuideView-mAvDHKUW.css"></head>
+  <body>
+    <div id="app" data-server-rendered="true"><div class="min-h-screen bg-[#050508] text-[#f0f0f8]"><!--[--><div class="fixed top-0 left-0 right-0 z-[60] flex items-center justify-center gap-3 px-4 py-1.5 text-xs font-medium bg-amber-500/10 border-b border-amber-500/30 text-amber-300"><svg class="inline-block shrink-0 align-[-0.125em] text-amber-400" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon="exclamation-triangle" aria-hidden="true" focusable="false"><!--[--><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4M12 17h.01"></path><!--]--></svg> You're viewing <strong class="text-amber-200">beta / develop</strong> docs — features may change. <a href="/nexus-orchestrator/" class="underline underline-offset-2 hover:text-white transition-colors">View stable docs →</a></div><nav class="top-8 fixed left-0 right-0 z-50 backdrop-blur-md bg-[#050508]/80 border-b border-white/5"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"><div class="flex items-center justify-between h-16"><a href="/nexus-orchestrator/beta/" class="flex items-center gap-2 text-lg font-bold"><img src="/nexus-orchestrator/beta/favicon.svg" alt="nexusOrchestrator" class="w-8 h-8"><span class="text-white">nexus-</span><span class="gradient-text">orchestrator</span></a><ul class="hidden lg:flex items-center gap-6 text-sm font-medium list-none"><!--[--><li><a href="/nexus-orchestrator/beta/" class="text-slate-400 hover:text-white transition-colors">Home</a></li><li><a href="/nexus-orchestrator/beta/architecture" class="text-slate-400 hover:text-white transition-colors">Architecture</a></li><li><a href="/nexus-orchestrator/beta/downloads" class="text-slate-400 hover:text-white transition-colors">Downloads</a></li><li><a href="/nexus-orchestrator/beta/api-reference" class="text-slate-400 hover:text-white transition-colors">API Reference</a></li><li><a href="/nexus-orchestrator/beta/getting-started" class="text-slate-400 hover:text-white transition-colors">Getting Started</a></li><li><a href="/nexus-orchestrator/beta/guides" class="text-slate-400 hover:text-white transition-colors">Guides</a></li><li><a href="/nexus-orchestrator/beta/mcp-integration" class="text-slate-400 hover:text-white transition-colors">MCP Integration</a></li><!--]--></ul><div class="flex items-center gap-3"><a href="/nexus-orchestrator/" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-xs border border-violet-500/30 rounded-md text-violet-400 hover:border-violet-400 hover:text-violet-300 transition-all" title="Switch to stable docs"><svg class="inline-block shrink-0 align-[-0.125em] text-xs" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon="check-circle" aria-hidden="true" focusable="false"><!--[--><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"></path><path d="m9 12 2 2 4-4"></path><!--]--></svg> stable </a><a href="https://github.com/el-j/nexus-orchestrator" target="_blank" rel="noopener" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm border border-white/10 rounded-lg text-slate-300 hover:border-violet-500/50 hover:text-white transition-all"><svg class="inline-block shrink-0 align-[-0.125em] text-xs" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon="github" aria-hidden="true" focusable="false"><!--[--><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path><path d="M9 18c-4.51 2-5-2-7-2"></path><!--]--></svg> GitHub </a><a href="/nexus-orchestrator/beta/downloads" class="px-3 py-1.5 text-sm font-semibold rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors"> Download </a><button class="lg:hidden p-2 text-slate-400 hover:text-white" aria-label="Open menu"><svg class="inline-block shrink-0 align-[-0.125em]" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon="bars" aria-hidden="true" focusable="false"><!--[--><path d="M4 6h16M4 12h16M4 18h16"></path><!--]--></svg></button></div></div></div><!--teleport start--><!--teleport end--></nav><div class="h-24"></div><!--]--><main><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16"><div class="grid grid-cols-1 lg:grid-cols-4 gap-12"><aside class="lg:col-span-1"><div class="sticky top-24 space-y-1 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2"><a href="/nexus-orchestrator/beta/guides" class="block text-xs text-violet-400 hover:underline mb-4">← All guides</a><h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-4"> On this page </h4><nav class="space-y-1" aria-label="On this page"><!--[--><a href="#the-one-rule-that-makes-this-possible" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-300 font-semibold mt-3">The one rule that makes this possible</a><a href="#what-each-route-can-and-cannot-do" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-300 font-semibold mt-3">What each route can and cannot do</a><a href="#1-claude-claude-p-works-today-can-be-much-better" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3">1. Claude: claude -p (works today, can be much better)</a><a href="#2-antigravity-agy-p-not-the-ide" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3">2. Antigravity: agy -p, not the IDE</a><a href="#3-copilot-vscodelm-and-the-copilot-cli" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3">3. Copilot: vscode.lm and the copilot CLI</a><a href="#4-what-cannot-be-done" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-500 pl-3">4. What cannot be done</a><a href="#design" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-300 font-semibold mt-3">Design</a><a href="#plan-extends-plan-074-the-f-items-are-described-here-they-are-added-to-the-plan-once-plan-074-is-on-develop" class="block text-sm transition-colors py-0.5 cursor-pointer hover:text-violet-400 text-slate-300 font-semibold mt-3">Plan (extends PLAN-074 (the F items are described here; they are added to the plan once PLAN-074 is on develop))</a><!--]--></nav></div></aside><main class="lg:col-span-3"><div class="mb-10"><div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-sm text-violet-300 mb-4"><svg class="inline-block shrink-0 align-[-0.125em] text-xs" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon="book" aria-hidden="true" focusable="false"><!--[--><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path><!--]--></svg> Guide </div><h1 class="text-4xl font-black mb-4"><span class="gradient-text">Subscription bridges</span></h1><p class="text-lg text-slate-400">Which of your Claude, Copilot and Antigravity subscriptions Nexus can use, and how.</p><p class="mt-4 text-sm text-slate-500"> Rendered from <a class="text-violet-400 hover:underline" href="https://github.com/el-j/nexus-orchestrator/blob/main/docs/subscription-bridges.md" target="_blank" rel="noopener">docs/subscription-bridges.md</a> in the repository, so it cannot drift from it. </p></div><article class="md-doc" data-testid="md-doc" data-v-81e56477=""><h1 id="using-your-subscriptions-together-the-bridge-design">Using your subscriptions together: the bridge design</h1>
+<p>Goal: one orchestrator that can hand a task to <strong>Claude Pro/Max</strong>, <strong>GitHub Copilot</strong> and <strong>Google
+Antigravity</strong> with the logins you already have, so no separate API subscriptions are needed, and that
+switches between them when a quota runs out. This page is what was investigated on 2026-10-16, what is
+verified and what is not, and the plan. It extends <a href="/nexus-orchestrator/beta/guides/delegating-subscriptions/">delegating-subscriptions.md</a>.</p>
+<p>Legend: <strong>verified</strong> = run on this machine; <strong>documented</strong> = in the vendor's own docs or changelog, not run
+here; <strong>unverified</strong> = assumed, must be tested before it is built on.</p>
+<h2 id="the-one-rule-that-makes-this-possible">The one rule that makes this possible</h2>
+<p>A subscription has no API. What every vendor does offer is its <strong>own official client</strong>, and each client can
+run without a person at the keyboard. Nexus therefore never touches the login (no token copying, no replaying
+OAuth, no private protocols). It starts the vendor's program, the same one you would start, and reads its
+answer. That is also the only form the vendors' terms allow.</p>
+<table>
+<thead>
+<tr>
+<th>Vendor</th>
+<th>Official headless client</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Claude</td>
+<td><code>claude -p</code> (<code>--output-format json</code> / <code>stream-json</code>)</td>
+<td><strong>verified</strong> (v2.1.301 here): one call returned the reply, token usage, cost and a rate-limit event</td>
+</tr>
+<tr>
+<td>Antigravity</td>
+<td><code>agy -p</code> / <code>--prompt</code> (Antigravity CLI)</td>
+<td><strong>documented</strong> (its changelog: headless runs, <code>--print-timeout</code>, <code>--model</code>, <code>--json-schema</code>, <code>stream-json</code>, exit codes 1/2/3); not installed here</td>
+</tr>
+<tr>
+<td>Copilot</td>
+<td><code>copilot -s</code> (Copilot CLI) and <code>vscode.lm</code> in the editor</td>
+<td><code>vscode.lm</code> bridge exists in Nexus; <code>copilot</code> <strong>verified</strong> (1.0.100): prompt on stdin with <code>-s</code>, one call returned the reply</td>
+</tr>
+</tbody></table>
+<h2 id="what-each-route-can-and-cannot-do">What each route can and cannot do</h2>
+<h3 id="1-claude-claude-p-works-today-can-be-much-better">1. Claude: <code>claude -p</code> (works today, can be much better)</h3>
+<p>Nexus already runs it (<code>llm_cli</code>, kind <code>cli</code>). It treats the CLI as a text pipe: one invocation per request,
+the whole conversation re-sent as one transcript, the reply read from stdout. What the real output gives that
+Nexus throws away (<strong>verified</strong>, <code>--output-format json</code>, one tiny call):</p>
+<ul>
+<li><code>rate_limit_event</code>: <code>status</code> (<code>allowed_warning</code>), <code>rateLimitType</code> (<code>seven_day</code>), <code>utilization</code> (<strong>0.93</strong>),
+<code>resetsAt</code> (epoch seconds), overage state. This is the live quota reading that PLAN-074 A and B need, for
+free, with no API key. On this account the weekly limit was at 93 % and resets 2026-10-17 06:00 CEST.</li>
+<li><code>usage</code> (input, output, cache read/created tokens) and <code>total_cost_usd</code> per call, per model.</li>
+<li><code>terminal_reason</code> and <code>api_error_status</code>, so a limit is a typed error and not a string in stderr.</li>
+<li><code>stream-json</code> with <code>--include-partial-messages</code> gives real token streaming (today the reply arrives as one
+chunk).</li>
+</ul>
+<p>Costs and limits to design for:</p>
+<ul>
+<li>A trivial call still read ~15 000 cached input tokens, the client's own system prompt and tools. Use
+<code>--tools ""</code>, <code>--no-session-persistence</code>, <code>--disable-slash-commands</code>, a minimal <code>--setting-sources</code>, and an
+empty working directory (Nexus already uses a temp dir). <code>--bare</code> is <strong>not</strong> an option: it never reads the
+subscription login.</li>
+<li><code>ANTHROPIC_API_KEY</code> in the environment silently switches billing to the API. The adapter must remove it
+from the child's environment (and say so in the provider status).</li>
+<li>The CLI is an agent, not a model endpoint. Nexus keeps its own tool loop, so tools stay off and the CLI is
+used as a completion engine.</li>
+</ul>
+<p><strong>Terms.</strong> Anthropic's documentation says subscription OAuth tokens are for Claude Code and claude.ai only
+and that other products must use API keys (reported by several outlets in February 2026; check Anthropic's
+current usage policy before relying on this). Running the real <code>claude</code> binary yourself, on your own machine,
+for your own work is the use that policy describes. Reading its token, serving other people through it, or
+running unattended bulk jobs is not. Nexus must stay on the right side: local, single user, official binary,
+never the token.</p>
+<h3 id="2-antigravity-agy-p-not-the-ide">2. Antigravity: <code>agy -p</code>, not the IDE</h3>
+<ul>
+<li><strong>Verified (read from the installed app):</strong> Antigravity IDE 2.5.5 bundles no extension that contributes
+language models (<code>languageModelChatProviders</code>) and its product config has no model API for extensions. So
+the <code>vscode.lm</code> bridge cannot reach Antigravity's models, even with the Nexus extension installed. The
+extension can reach the editor, not the agent inside it.</li>
+<li><strong>Documented:</strong> the Antigravity CLI (<code>agy</code>) runs the same agent engine with shared settings and Google
+sign-in, and has a headless mode. That is the equivalent of <code>claude -p</code> and the route to use. Open
+questions to test first: whether <code>agy -p</code> draws on the same quota as the IDE for the same Google account,
+what its JSON output contains (usage, limit, reset time), and whether it can be run as a plain completion
+without tools.</li>
+<li><strong>Not recommended:</strong> the IDE's language server speaks a private gRPC API (<code>LanguageServerService</code>, seen in
+its logs). Driving it is reverse engineering of an undocumented, changing interface and is outside what
+Google's terms allow for the subscription. Nexus will not do it.</li>
+<li><strong>Pull route, available now:</strong> the connected IDE agent can pull work itself over MCP (<code>claim_task</code>,
+<code>report_task_status</code>, the delegation prompt in <code>delegate sessions</code>). Nexus cannot push into it; the agent has
+to call. Good for "let the agent that is already open do it", not for automatic routing.</li>
+</ul>
+<h3 id="3-copilot-vscodelm-and-the-copilot-cli">3. Copilot: <code>vscode.lm</code> and the <code>copilot</code> CLI</h3>
+<ul>
+<li><code>vscode.lm</code> already works (the model bridge): Nexus lists Copilot's models and sends prompts through the
+editor, with the editor's consent dialog. It only works while an editor window with the extension is open,
+and quota and context length are not reported (Nexus assumes 128K).</li>
+<li><code>copilot</code> works without an editor (verified with 1.0.100): the prompt goes in on stdin, <code>-s</code> prints the
+answer only, <code>--no-ask-user</code> stops it asking questions, <code>--model auto</code> (or a model your plan has) selects the
+model. <code>-p</code> is not used: it needs the prompt as its value. Premium-request accounting for non-interactive use
+is not documented in what was found; test one call and watch the usage page.</li>
+</ul>
+<h3 id="4-what-cannot-be-done">4. What cannot be done</h3>
+<ul>
+<li>Nexus cannot read a vendor's balance from outside the vendor's client. Only the Claude CLI reports it per
+call; for the others the usage ledger and observed errors are the only signal (cooldown after the first
+limit error, with the reset time if the client prints one).</li>
+<li>A subscription is for one person. Nexus is for one person's machine. Nothing here shares a login.</li>
+</ul>
+<h2 id="design">Design</h2>
+<p>One new idea, <strong>provider transports</strong>, and two reused ones:</p>
+<table>
+<thead>
+<tr>
+<th>Transport</th>
+<th>Provider kinds</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>cli</code></td>
+<td><code>claude</code>, <code>agy</code>, <code>copilot</code> (and <code>gemini</code>, <code>codex</code>)</td>
+<td>headless client per request; one <strong>driver</strong> per tool parses its output</td>
+</tr>
+<tr>
+<td><code>editor</code></td>
+<td><code>vscode-&lt;vendor&gt;-&lt;model&gt;</code></td>
+<td>exists; only while the editor is open</td>
+</tr>
+<tr>
+<td><code>pull</code></td>
+<td>any MCP-connected agent</td>
+<td>exists; the agent claims tasks</td>
+</tr>
+</tbody></table>
+<p>The change is inside <code>cli</code>: replace the single text-pipe adapter with a small <strong>driver</strong> per tool, each
+answering the same questions: how to build the command line (model, no tools, no persistence), how to read the
+stream (text deltas, final text), what usage the call reported, whether the call hit a limit and until when,
+which environment variables to drop. The core only sees the existing <code>LLMClient</code> port plus the two things
+PLAN-074 adds: typed errors with a reset time (A1) and usage (C1). New vendors then cost one driver, not a
+new adapter.</p>
+<p>Allow-list: add <code>agy</code> and <code>copilot</code> to the known tools (today <code>claude</code>, <code>aichat</code>, <code>llm</code>, <code>gemini</code>, <code>codex</code>;
+the <code>NEXUS_CLI_PROVIDERS</code> variable already extends it). Discovery already finds installed tools; it should
+report installed, signed in (from a cheap <code>--version</code> / status call) and, for Claude, the last seen limit.</p>
+<h2 id="plan-extends-plan-074-the-f-items-are-described-here-they-are-added-to-the-plan-once-plan-074-is-on-develop">Plan (extends PLAN-074 (the F items are described here; they are added to the plan once PLAN-074 is on develop))</h2>
+<ol>
+<li><strong>F1 Claude driver</strong>: <code>--output-format stream-json --include-partial-messages</code>, parse reply, usage, cost,
+<code>rate_limit_event</code>, <code>terminal_reason</code>; drop <code>ANTHROPIC_API_KEY</code>; minimal-overhead flags. Tests against a
+recorded real output (kept as a fixture) and a fake CLI. Feeds A1, A2, C1.</li>
+<li><strong>F2 Quota from the client</strong>: store <code>utilization</code> and <code>resetsAt</code> per provider; show them in Providers,
+Mission Control and the extension; route away at a configurable threshold (default 0.9) before the limit is
+hit, and wait for <code>resetsAt</code> when every candidate is above it (A4).</li>
+<li><strong>F3 Antigravity driver</strong>: install <code>agy</code>, record its real headless output, then write the driver. Gate: the
+open questions above, answered by running it.</li>
+<li><strong>F4 Copilot CLI driver</strong>, plus the editor bridge reporting quota errors as typed errors (A1).</li>
+<li><strong>F5 Honest status</strong>: one screen that says, per vendor, which route is live, what was last seen (limit,
+reset, last error) and what is not possible, so a missing capability is visible instead of silent.</li>
+<li><strong>F6 Terms note in the UI and docs</strong>: local, single user, official binary, no token handling.</li>
+</ol>
+<p>Order: F1, F2 first (the only part verified end to end, and it unlocks quota-aware routing for Claude, the
+account that is at 93 % today); then F3 (needs the CLI installed), F4, F5, F6.</p>
+</article></main></div></div></main><footer class="border-t border-white/5 bg-[#050508] mt-24 py-12"><div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"><div class="grid grid-cols-1 md:grid-cols-4 gap-8"><div class="md:col-span-1"><div class="text-lg font-bold mb-2"><span class="text-white">nexus-</span><span class="gradient-text">orchestrator</span></div><p class="text-sm text-slate-500"> Local AI task orchestration with multi-provider routing and MCP support. </p></div><!--[--><div class="space-y-3"><h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Docs</h4><ul class="space-y-2 list-none p-0"><!--[--><li><a href="/nexus-orchestrator/beta/getting-started" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Getting Started</a></li><li><a href="/nexus-orchestrator/beta/guides" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Guides</a></li><li><a href="/nexus-orchestrator/beta/architecture" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Architecture</a></li><li><a href="/nexus-orchestrator/beta/api-reference" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">API Reference</a></li><li><a href="/nexus-orchestrator/beta/mcp-integration" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">MCP Integration</a></li><!--]--></ul></div><div class="space-y-3"><h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Download</h4><ul class="space-y-2 list-none p-0"><!--[--><li><a href="/nexus-orchestrator/beta/downloads" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Desktop App</a></li><li><a href="/nexus-orchestrator/beta/downloads" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">CLI + Daemon</a></li><li><a href="https://github.com/el-j/nexus-orchestrator/releases" target="_blank" rel="noopener" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">GitHub Releases</a></li><!--]--></ul></div><div class="space-y-3"><h4 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Community</h4><ul class="space-y-2 list-none p-0"><!--[--><li><a href="https://github.com/el-j/nexus-orchestrator" target="_blank" rel="noopener" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">GitHub</a></li><li><a href="https://github.com/el-j/nexus-orchestrator/issues" target="_blank" rel="noopener" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Issues</a></li><li><a href="https://github.com/el-j/nexus-orchestrator/releases" target="_blank" rel="noopener" class="text-sm text-slate-400 hover:text-violet-400 transition-colors">Releases</a></li><!--]--></ul></div><!--]--></div><div class="mt-10 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4"><p class="text-xs text-slate-600"> Built with Go 🔷 + Wails · MIT License · © 2026 nexus-orchestrator contributors </p><a href="https://github.com/el-j/nexus-orchestrator"><svg class="inline-block shrink-0 align-[-0.125em]" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon="github" aria-hidden="true" focusable="false"><!--[--><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path><path d="M9 18c-4.51 2-5-2-7-2"></path><!--]--></svg> View on GitHub </a></div></div></footer></div></div>
+  
+
+</body></html>
