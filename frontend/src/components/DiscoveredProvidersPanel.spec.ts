@@ -69,15 +69,29 @@ describe('DiscoveredProvidersPanel', () => {
     expect(w.text()).not.toContain('more');
   });
 
-  it('offers no promote button for an installed CLI and explains why', () => {
+  it('offers no promote button for a server CLI (ollama) and explains why, but lets a subscription CLI (kind cli) be promoted', async () => {
     const w = mountPanel([
-      prov({ status: 'installed', method: 'cli', cliPath: '/usr/bin/ollama' }),
+      prov({ status: 'installed', method: 'cli', kind: 'ollama', cliPath: '/usr/bin/ollama' }),
     ]);
     expect(w.text()).toContain('Installed');
     expect(w.text()).toContain('/usr/bin/ollama');
     expect(w.text()).toContain('CLI found — start the server to activate');
     expect(w.text()).not.toContain('Promote to Active');
     expect(w.find('[data-icon=\"terminal\"]').exists()).toBe(true);
+
+    const cliProv = prov({
+      id: 'cli-claude',
+      name: 'Claude CLI',
+      kind: 'cli',
+      status: 'installed',
+      method: 'cli',
+      cliPath: '/usr/local/bin/claude',
+    });
+    const wCli = mountPanel([cliProv]);
+    const promote = wCli.findAll('button').find((b) => b.text().includes('Promote to Active'))!;
+    expect(promote).toBeDefined();
+    await promote.trigger('click');
+    expect(wCli.emitted('promote')![0]).toEqual([cliProv]);
   });
 
   it('flags a bare process as having no API endpoint', () => {

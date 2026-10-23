@@ -24,7 +24,7 @@ import (
 // knownCLIs are the executables a provider config may name. A provider config can be written
 // through the REST API and MCP, so it must not be a way to run arbitrary programs; add more
 // with NEXUS_CLI_PROVIDERS (comma-separated executable names).
-var knownCLIs = map[string]bool{"claude": true, "aichat": true, "llm": true, "gemini": true, "codex": true}
+var knownCLIs = map[string]bool{"claude": true, "copilot": true, "aichat": true, "llm": true, "gemini": true, "codex": true}
 
 // runTimeout bounds one invocation; a CLI that never answers must not hold a task forever.
 const runTimeout = 10 * time.Minute
@@ -56,7 +56,7 @@ func NewAdapter(name, commandLine, model string) (*Adapter, error) {
 		return nil, fmt.Errorf("cli provider %q: a command is required (for example \"claude -p\")", name)
 	}
 	if !allowed(filepath.Base(fields[0])) {
-		return nil, fmt.Errorf("cli provider %q: %q is not a known AI CLI (claude, aichat, llm, gemini, codex; extend with NEXUS_CLI_PROVIDERS)", name, filepath.Base(fields[0]))
+		return nil, fmt.Errorf("cli provider %q: %q is not a known AI CLI (claude, copilot, aichat, llm, gemini, codex; extend with NEXUS_CLI_PROVIDERS)", name, filepath.Base(fields[0]))
 	}
 	return &Adapter{name: name, command: commandLine, exe: fields[0], args: fields[1:], model: model}, nil
 }
@@ -120,10 +120,13 @@ func (a *Adapter) ActiveModel() string { return a.model }
 // BaseURL returns the command line this adapter runs.
 func (a *Adapter) BaseURL() string { return a.command }
 
-// ContextLimit is 200000 for claude and 0 (unknown) for other tools.
+// ContextLimit is 200000 for claude, 128000 for copilot, and 0 (unknown) for other tools.
 func (a *Adapter) ContextLimit(context.Context) int {
-	if strings.TrimSuffix(strings.ToLower(filepath.Base(a.exe)), ".exe") == "claude" {
+	switch strings.TrimSuffix(strings.ToLower(filepath.Base(a.exe)), ".exe") {
+	case "claude":
 		return 200000
+	case "copilot":
+		return 128000
 	}
 	return 0
 }
@@ -134,10 +137,13 @@ func (a *Adapter) Ping(context.Context) bool {
 	return err == nil
 }
 
-// GetAvailableModels lists the aliases claude accepts, and "default" for other tools.
+// GetAvailableModels lists the aliases claude or copilot accepts, and "default" for other tools.
 func (a *Adapter) GetAvailableModels(context.Context) ([]string, error) {
-	if a.ContextLimit(context.Background()) > 0 {
+	switch strings.TrimSuffix(strings.ToLower(filepath.Base(a.exe)), ".exe") {
+	case "claude":
 		return []string{"sonnet", "opus", "haiku"}, nil
+	case "copilot":
+		return []string{"auto"}, nil // the CLI lists no models non-interactively; "auto" lets Copilot pick
 	}
 	return []string{"default"}, nil
 }
@@ -182,7 +188,11 @@ func (a *Adapter) run(ctx context.Context, prompt string, onChunk func(string)) 
 	ctx, cancel := context.WithTimeout(ctx, runTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, a.exe, a.args...)
+	args := a.args
+	if isCopilot(a.exe) {
+		args = withCopilotFlags(args, a.model)
+	}
+	cmd := exec.CommandContext(ctx, a.exe, args...)
 	cmd.Dir = os.TempDir()
 	cmd.Stdin = strings.NewReader(prompt)
 	cmd.WaitDelay = 2 * time.Second // children that keep the pipe open must not hang Wait
@@ -229,7 +239,15 @@ func (a *Adapter) run(ctx context.Context, prompt string, onChunk func(string)) 
 	}
 	if err != nil {
 		msg := strings.TrimSpace(stderr.String())
+		if msg == "" {
+			msg = strings.TrimSpace(reply.String())
+		}
 		if msg != "" {
+			if isCopilot(a.exe) {
+				if pe := classifyCLIFailure(a.name, fmt.Sprintf("%v: %s", err, msg)); pe != nil {
+					return reply.String(), pe
+				}
+			}
 			return reply.String(), fmt.Errorf("%s: %w: %s", a.name, err, msg)
 		}
 		return reply.String(), fmt.Errorf("%s: %w", a.name, err)

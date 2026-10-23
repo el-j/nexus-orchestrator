@@ -292,3 +292,74 @@ func TestBudget_ALedgerErrorOrNoLedgerMeansNoBudgetEnforcement(t *testing.T) {
 	services.WithUsageRepo(&memUsage{err: errors.New("disk")})(e2.orch)
 	e2.runOne(e2.queue(domain.Task{Instruction: "broken ledger", Role: "architect", ProjectPath: dir}), domain.StatusCompleted)
 }
+
+func TestBudget_PinnedProviderStillEnforcesDailyBudget(t *testing.T) {
+	ledger := &memUsage{}
+	a := &scriptLLM{name: "anthropic-main", alive: true, replies: []string{"from a"}}
+	e := newEngine(t, &noopWriter{}, nil, nil, a)
+	services.WithUsageRepo(ledger)(e.orch)
+	dir := ladderProject(t, `{"budgets":{"anthropic-main":{"dailyTokens":100}}}`)
+	_ = ledger.Record(t.Context(), domain.UsageRecord{Provider: "anthropic-main", Usage: domain.Usage{InputTokens: 150}})
+
+	got := e.runOne(e.queue(domain.Task{
+		Instruction:  "pinned over budget",
+		ProjectPath:  dir,
+		ProviderName: "anthropic-main",
+	}), domain.StatusWaiting)
+	if a.calls != 0 || !strings.Contains(got.Logs, "all providers are cooling down") {
+		t.Errorf("pinned provider over budget must wait, calls=%d logs=%q", a.calls, got.Logs)
+	}
+}
+
+func TestVerification_SelfHealingDoesNotPolluteSessionHistoryWithFailedDrafts(t *testing.T) {
+	sess := newMemSessionRepo()
+	llm := &scriptLLM{name: "Anthropic", alive: true, replies: []string{"broken draft 1", "broken draft 2", "working final code"}}
+	runner := &scriptedRunner{results: []runResult{
+		{"fail 1", errors.New("exit 1")},
+		{"fail 2", errors.New("exit 1")},
+		{"PASS", nil},
+	}}
+	e := newEngine(t, &contextWriter{}, sess, runner, llm)
+	dir := t.TempDir()
+	e.runOne(e.queue(domain.Task{
+		Instruction:         "Write clean code",
+		ProjectPath:         dir,
+		TargetFile:          "main.go",
+		VerificationCommand: "go test ./...",
+		MaxCorrectionTurns:  3,
+	}), domain.StatusCompleted)
+
+	stored, err := sess.GetByProjectPath(t.Context(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stored.Messages) != 2 {
+		t.Fatalf("session history should contain only the original user prompt and final assistant code (2 messages), got %d: %+v", len(stored.Messages), stored.Messages)
+	}
+	if stored.Messages[1].Content != "working final code" {
+		t.Errorf("stored assistant message = %q, want %q", stored.Messages[1].Content, "working final code")
+	}
+}
+
+func TestVerification_BoundsVerificationOutputInCorrectionPrompt(t *testing.T) {
+	huge := strings.Repeat("E", 32<<10)
+	llm := &scriptLLM{name: "Anthropic", alive: true, replies: []string{"draft 1", "fixed"}}
+	runner := &scriptedRunner{results: []runResult{
+		{huge, errors.New("exit 1")},
+		{"PASS", nil},
+	}}
+	e := newEngine(t, &contextWriter{}, nil, runner, llm)
+	e.runOne(e.queue(domain.Task{
+		Instruction:         "Fix",
+		ProjectPath:         t.TempDir(),
+		TargetFile:          "main.go",
+		VerificationCommand: "go test",
+	}), domain.StatusCompleted)
+
+	if len(llm.prompts) < 2 {
+		t.Fatalf("expected 2 prompts, got %d", len(llm.prompts))
+	}
+	if len(llm.prompts[1]) >= len(huge) {
+		t.Errorf("correction prompt was not bounded: len=%d (huge=%d)", len(llm.prompts[1]), len(huge))
+	}
+}

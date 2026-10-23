@@ -229,9 +229,12 @@ func (s *Server) toolUpdateTask(args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ID           string   `json:"id"`
 		Instruction  string   `json:"instruction"`
+		TargetFile   string   `json:"targetFile"`
 		Priority     int      `json:"priority"`
 		ProviderName string   `json:"providerName"`
+		ProviderHint string   `json:"providerHint"`
 		ModelID      string   `json:"modelId"`
+		Status       string   `json:"status"`
 		Tags         []string `json:"tags"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
@@ -239,9 +242,12 @@ func (s *Server) toolUpdateTask(args json.RawMessage) (callToolResult, error) {
 	}
 	updates := domain.Task{
 		Instruction:  p.Instruction,
+		TargetFile:   p.TargetFile,
 		Priority:     p.Priority,
 		ProviderName: p.ProviderName,
+		ProviderHint: p.ProviderHint,
 		ModelID:      p.ModelID,
+		Status:       domain.TaskStatus(p.Status),
 		Tags:         p.Tags,
 	}
 	updated, err := s.orch.UpdateTask(p.ID, updates)
@@ -365,15 +371,18 @@ func taskToolDefs() []toolDef {
 		},
 		{
 			Name:        "update_task",
-			Description: "Update mutable fields on an existing task (instruction, priority, provider, tags, status).",
+			Description: "Update mutable fields on an existing task (instruction, targetFile, priority, provider, providerHint, tags, status).",
 			InputSchema: inputSchema{
 				Type: "object",
 				Properties: map[string]property{
 					"id":           {Type: "string", Description: "Task ID to update."},
 					"instruction":  {Type: "string", Description: "Updated instruction."},
+					"targetFile":   {Type: "string", Description: "Updated target file."},
 					"priority":     {Type: "integer", Description: "Updated priority."},
 					"providerName": {Type: "string", Description: "Updated provider name."},
+					"providerHint": {Type: "string", Description: "Updated provider hint."},
 					"modelId":      {Type: "string", Description: "Updated model ID."},
+					"status":       {Type: "string", Description: "Updated status (DRAFT or BACKLOG)."},
 					"tags":         {Type: "array", Description: "Updated tags.", Items: &propertyItems{Type: "string"}},
 				},
 				Required: []string{"id"},

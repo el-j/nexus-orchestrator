@@ -1,14 +1,19 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
-  "bootstrap-sha": "41ac63fe85508e25d5a0a26a021dc4203acbf3f3",
   "release-type": "simple",
   "include-component-in-tag": false,
   "include-v-in-tag": true,
   "skip-changelog": true,
-  "release-as": "0.10.0",
   "packages": {
     ".": {
-      "package-name": "nexus-orchestrator"
+      "package-name": "nexus-orchestrator",
+      "extra-files": [
+        { "type": "json", "path": "frontend/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "vscode-extension/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "github-action/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "docs/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "wails.json", "jsonpath": "$.info.productVersion" }
+      ]
     }
   }
 }

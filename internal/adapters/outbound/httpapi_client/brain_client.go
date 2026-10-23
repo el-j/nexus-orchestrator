@@ -59,6 +59,17 @@ func (r *BrainClient) IngestFromFile(ctx context.Context, projectPath, filePath 
 	return out.IngestedSections, err
 }
 
+// IngestContent asks the daemon to ingest markdown supplied in memory (POST /api/brain/ingest-content)
+// and returns the number of sections stored.
+func (r *BrainClient) IngestContent(ctx context.Context, projectPath, name, content string) (int, error) {
+	var out struct {
+		IngestedSections int `json:"ingestedSections"`
+	}
+	body := map[string]string{"projectPath": projectPath, "name": name, "content": content}
+	err := r.c.send(ctx, call{op: "brain ingest content", method: http.MethodPost, path: "/api/brain/ingest-content", body: body}, &out)
+	return out.IngestedSections, err
+}
+
 // SearchKnowledge runs a full-text search and returns at most limit sections.
 func (r *BrainClient) SearchKnowledge(ctx context.Context, projectPath, query string, limit int) ([]domain.ContextSection, error) {
 	q := url.Values{"projectPath": {projectPath}, "q": {query}, "limit": {strconv.Itoa(limit)}}

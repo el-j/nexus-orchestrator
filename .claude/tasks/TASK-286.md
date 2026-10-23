@@ -1,9 +1,9 @@
 # TASK-286 — Frontend: "AI Agents" dashboard section
 
 **Plan:** PLAN-044  
-**Status:** TODO  
+**Status:** done  
 **Layer:** Vue · frontend (`frontend/src/`)  
-**Depends on:** TASK-281  
+**Depends on:** TASK-281
 
 ## Objective
 
@@ -16,6 +16,7 @@ Add an "AI Agents" view to the Wails/browser dashboard showing registered sessio
 Route: `/agents` (add to `frontend/src/router/index.ts`).
 
 **Template structure:**
+
 ```
 <section class="ai-agents">
   <header>
@@ -36,6 +37,7 @@ Route: `/agents` (add to `frontend/src/router/index.ts`).
 ```
 
 **Data fetching:**
+
 - `GET /api/ai-sessions` every 10 s (use existing `useInterval` composable or inline `setInterval`)
 - `GET /api/ai-sessions/discovered` every 30 s
 
@@ -44,16 +46,18 @@ Route: `/agents` (add to `frontend/src/router/index.ts`).
 Props: `session: AISession`.
 
 Status dot colour (CSS variable or inline style):
+
 ```typescript
 function statusColour(session: AISession): string {
   if (session.status === 'active' && session.delegatedToNexus) return '#4ade80'; // green
-  if (session.status === 'active') return '#facc15';                              // yellow
-  if (session.status === 'idle')   return '#fb923c';                              // orange
-  return '#6b7280';                                                               // gray (disconnected)
+  if (session.status === 'active') return '#facc15'; // yellow
+  if (session.status === 'idle') return '#fb923c'; // orange
+  return '#6b7280'; // gray (disconnected)
 }
 ```
 
 Card content:
+
 - Agent name (bold)
 - Source badge (`vscode`, `mcp`, `http`, `vscode-discovered`)
 - Last two segments of `projectPath`
@@ -63,9 +67,12 @@ Card content:
 - If `delegatedToNexus`: green "✓ Delegated" badge
 
 **`delegate(session)` handler in `AIAgentsView.vue`:**
+
 ```typescript
 async function delegate(session: AISession) {
-  const resp = await fetch(`${daemonUrl}/api/ai-sessions/${session.id}/delegate`, { method: 'POST' });
+  const resp = await fetch(`${daemonUrl}/api/ai-sessions/${session.id}/delegate`, {
+    method: 'POST',
+  });
   const data = await resp.json();
   // Show instruction in a modal or copy to clipboard
   await navigator.clipboard.writeText(data.instruction);

@@ -13,6 +13,8 @@ const { mockGetRuntimeConfig, mockUpdateRuntimeConfig } = vi.hoisted(() => ({
 vi.mock('../types/wails', () => ({
   getRuntimeConfig: mockGetRuntimeConfig,
   updateRuntimeConfig: mockUpdateRuntimeConfig,
+  getApiToken: vi.fn().mockReturnValue(''),
+  setApiToken: vi.fn(),
   getServerAddr: vi.fn().mockResolvedValue('http://127.0.0.1:63987'),
 }));
 

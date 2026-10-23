@@ -54,6 +54,12 @@ func (s *Scanner) ScanAgents(ctx context.Context) ([]domain.DiscoveredAgent, err
 				if a.CLIPath != "" {
 					existing.CLIPath = a.CLIPath
 				}
+				if a.PID > 0 {
+					existing.PID = a.PID
+				}
+				if a.ProcessName != "" {
+					existing.ProcessName = a.ProcessName
+				}
 				merged[a.ID] = existing
 			} else {
 				a.LastSeen = time.Now()

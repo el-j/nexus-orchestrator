@@ -1,9 +1,9 @@
 # TASK-276 — Domain: `DiscoveredAgent` type + `AISession` field extensions
 
 **Plan:** PLAN-044  
-**Status:** TODO  
+**Status:** done  
 **Layer:** Go · domain (`internal/core/domain/`)  
-**Depends on:** —  
+**Depends on:** —
 
 ## Objective
 
@@ -50,11 +50,13 @@ type DiscoveredAgent struct {
 ### Modifications to `internal/core/domain/ai_session.go`
 
 Add to source constants:
+
 ```go
 SessionSourceVSCodeDiscovered AISessionSource = "vscode-discovered"
 ```
 
 Add to `AISession` struct:
+
 ```go
 DelegatedToNexus    bool       `json:"delegatedToNexus"`
 DelegationTimestamp *time.Time `json:"delegationTimestamp,omitempty"`

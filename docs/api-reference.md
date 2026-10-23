@@ -272,6 +272,28 @@ MCP tool `get_routing` and `nexus-cli routing --project P --role coder`.
 
 ---
 
+### Project policy
+
+```
+GET /api/policy?projectPath=/abs/project
+PUT /api/policy?projectPath=/abs/project
+```
+
+Reads and writes the project's `.nexus/policy.json`: the model `ladder` per role, the daily token `budgets`
+per provider, `quotaThreshold`, `contextBudget`, `historyBudget`, and the rest of the file (`verify`, `rules`,
+`maxFileLines`, `testsFirst`, `remember`, `planFiles`; see [rulebased-workflow.md](rulebased-workflow.md)).
+`GET` answers `{"found": bool, "policy": {...}}` (`found` is false when the project has no file yet).
+`PUT` takes the whole policy as the body, validates it and replaces the file (written atomically; a symbolic
+link at that place is replaced, not followed); unknown fields and invalid values give `400` and leave the
+file as it was. The daemon reads the file on every task, so a change applies to the next one, and a task
+waiting for a budget that was raised starts again. `400` without `projectPath` or when it is not an absolute
+path of a directory, `503` when the backend has no policy management. The policy is not an MCP tool:
+agents read its effect through `get_routing` and `get_usage`. The same data is `nexus-cli policy show --project P`
+and `nexus-cli policy set --project P --budget "Claude=300000" --ladder coder=Ollama/*,Anthropic/claude-sonnet*`,
+and the **Project policy** card of the Providers view.
+
+---
+
 ### Register Provider
 
 ```
@@ -344,18 +366,21 @@ The first frame is `{"type":"connected"}`.
 
 **Task events** (`{"type": "...", "taskId": "...", "status": "..."}`):
 
-| `type`             | Description                                            |
-| ------------------ | ------------------------------------------------------ |
-| `task.queued`      | Task was added to the queue                            |
-| `task.processing`  | Task is being processed by an LLM                      |
-| `task.completed`   | Task completed successfully                            |
-| `task.failed`      | Task processing failed                                 |
-| `task.cancelled`   | Task was cancelled (also after aborting a running one) |
-| `task.too_large`   | Task exceeded the context window                       |
-| `task.no_provider` | No provider available for the task                     |
-| `task.draft`       | A draft was created                                    |
-| `task.backlog`     | A task was moved to the backlog                        |
-| `task.updated`     | A task's fields were edited                            |
+| `type`             | Description                                                            |
+| ------------------ | ---------------------------------------------------------------------- |
+| `task.queued`      | Task was added to the queue                                            |
+| `task.processing`  | Task is being processed by an LLM                                      |
+| `task.completed`   | Task completed successfully                                            |
+| `task.failed`      | Task processing failed                                                 |
+| `task.cancelled`   | Task was cancelled (also after aborting a running one)                 |
+| `task.too_large`   | Task exceeded the context window                                       |
+| `task.no_provider` | No provider available for the task                                     |
+| `task.waiting`     | Every provider is cooling down: the task waits (`waitUntil`)           |
+| `task.chunk`       | A piece of the reply (`text`) while the model writes it                |
+| `task.restart`     | The attempt starts over (a fallback or a correction): clear the buffer |
+| `task.draft`       | A draft was created                                                    |
+| `task.backlog`     | A task was moved to the backlog                                        |
+| `task.updated`     | A task's fields were edited                                            |
 
 **Other events:**
 
@@ -922,7 +947,7 @@ timeout the task comes back as it is with `"timedOut": true`.
   "params": {
     "name": "get_task",
     "arguments": {
-      "taskId": "abc-123"
+      "id": "abc-123"
     }
   }
 }

@@ -255,9 +255,10 @@ func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task doma
 			o.appendTaskLog(task.ID, failoverNote)
 		}
 
-		if o.sessionRepo != nil {
+		finalCode := o.writeAndVerifyTaskOutput(run, task, code, llm, sessionHistory)
+		if finalCode != "" && o.sessionRepo != nil {
 			userMsg := domain.Message{Role: domain.RoleUser, Content: prompt, CreatedAt: time.Now()}
-			assistantMsg := domain.Message{Role: domain.RoleAssistant, Content: code, CreatedAt: time.Now()}
+			assistantMsg := domain.Message{Role: domain.RoleAssistant, Content: finalCode, CreatedAt: time.Now()}
 			if err := o.sessionRepo.AppendMessage(o.dbCtx(), task.ProjectPath, userMsg); err != nil {
 				log.Printf("orchestrator: append user message for task %s: %v", task.ID, err)
 			}
@@ -265,8 +266,6 @@ func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task doma
 				log.Printf("orchestrator: append assistant message for task %s: %v", task.ID, err)
 			}
 		}
-
-		o.writeAndVerifyTaskOutput(run, task, code, llm, sessionHistory)
 		return true
 	}
 
@@ -322,14 +321,6 @@ func (o *OrchestratorService) executeGeneration(run *runHandle, task domain.Task
 			}
 			o.emit(task.ID, domain.StatusFailed)
 			return "", err
-		}
-		// Only persist messages after a successful response.
-		assistantMsg := domain.Message{Role: domain.RoleAssistant, Content: code, CreatedAt: time.Now()}
-		if err := o.sessionRepo.AppendMessage(o.dbCtx(), task.ProjectPath, userMsg); err != nil {
-			log.Printf("orchestrator: append user message for task %s: %v", task.ID, err)
-		}
-		if err := o.sessionRepo.AppendMessage(o.dbCtx(), task.ProjectPath, assistantMsg); err != nil {
-			log.Printf("orchestrator: append assistant message for task %s: %v", task.ID, err)
 		}
 		return code, nil
 	}

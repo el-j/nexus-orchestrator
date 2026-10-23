@@ -3,7 +3,7 @@ id: TASK-576
 planId: PLAN-073
 title: 'Windows and Linux desktop smoke'
 role: polish
-status: todo
+status: done
 createdAt: 2026-10-15
 ---
 

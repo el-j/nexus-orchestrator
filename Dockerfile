@@ -20,6 +20,17 @@ ARG GO_VERSION=1.27
 ARG ALPINE_VERSION=3.21
 
 # ---------------------------------------------------------------------------
+# Stage 0 — webui (Vite frontend embedded into nexus-daemon)
+# ---------------------------------------------------------------------------
+FROM node:22-alpine AS webui
+
+WORKDIR /app/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+# ---------------------------------------------------------------------------
 # Stage 1 — builder
 # ---------------------------------------------------------------------------
 FROM golang:${GO_VERSION}-alpine AS builder
@@ -32,12 +43,13 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+COPY --from=webui /app/build/frontend/. internal/adapters/inbound/webui/dist/
 
 ARG VERSION=dev
 ARG COMMIT=unknown
 ARG BUILD_DATE=unknown
 
-RUN CGO_ENABLED=1 go build -trimpath \
+RUN CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" go build -trimpath \
       -ldflags "-s -w \
         -X 'main.version=${VERSION}' \
         -X 'main.commit=${COMMIT}' \

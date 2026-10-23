@@ -316,3 +316,44 @@ func TestQueueCapOptionIsEnforcedAtSubmission(t *testing.T) {
 		t.Errorf("want ErrQueueFull, got %v", err)
 	}
 }
+
+func TestUpdateTaskStatus_RecordsOutcomeInBrainAndNotifiesSubscribers(t *testing.T) {
+	dir := projectWith(t, `{"remember":true}`)
+	know := &mockKnowledgeRepo{}
+	orch := services.NewOrchestrator(services.NewDiscoveryService(), newMemRepo(), &noopWriter{}, nil, services.WithDisableBackgroundWorkers())
+	defer orch.Stop()
+	orch.SetAISessionRepo(newMemAISessionRepo())
+	orch.WithBrain(services.NewBrainService(know, nil))
+	ch, unsub := orch.SubscribeTaskEvents()
+	defer unsub()
+
+	sess, err := orch.RegisterAISession(bg, domain.AISession{AgentName: "claude", ProjectPath: dir, Source: domain.SessionSourceMCP})
+	if err != nil {
+		t.Fatal(err)
+	}
+	taskID, err := orch.SubmitTask(domain.Task{ProjectPath: dir, Instruction: "Implement feature X", TargetFile: "x.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Drain queued event
+	<-ch
+	if _, err := orch.ClaimTask(bg, taskID, sess.ID); err != nil {
+		t.Fatal(err)
+	}
+	// Drain processing event
+	<-ch
+	if _, err := orch.UpdateTaskStatus(bg, taskID, sess.ID, domain.StatusCompleted, "all tests pass"); err != nil {
+		t.Fatal(err)
+	}
+	if len(know.entries) == 0 {
+		t.Fatal("UpdateTaskStatus(COMPLETED) must record outcome in brain when policy.Remember is true")
+	}
+	select {
+	case ev := <-ch:
+		if ev.TaskID != taskID || ev.Status != domain.StatusCompleted {
+			t.Errorf("got tap event %+v, want taskID=%s status=COMPLETED", ev, taskID)
+		}
+	default:
+		t.Error("UpdateTaskStatus must notify Subscribe() tap channels via o.emit")
+	}
+}

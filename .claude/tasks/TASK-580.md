@@ -3,7 +3,7 @@ id: TASK-580
 planId: PLAN-073
 title: 'Ship the full UI inside the released daemon binaries'
 role: coder
-status: todo
+status: done
 createdAt: 2026-10-15
 ---
 

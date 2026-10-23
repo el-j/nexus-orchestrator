@@ -3,7 +3,7 @@ id: TASK-579
 planId: PLAN-073
 title: 'Desktop app next to a running daemon'
 role: coder
-status: todo
+status: done
 createdAt: 2026-10-15
 ---
 

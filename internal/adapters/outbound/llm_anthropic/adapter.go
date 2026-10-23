@@ -164,13 +164,36 @@ func toAnthropicMessages(msgs []domain.Message) (system string, out []anthropicM
 	return strings.Join(systemParts, "\n\n"), out
 }
 
+// anthropicCacheControl marks a content block for Anthropic ephemeral prompt caching.
+type anthropicCacheControl struct {
+	Type string `json:"type"`
+}
+
+// anthropicSystemBlock is a structured system prompt block supporting cache_control.
+type anthropicSystemBlock struct {
+	Type         string                 `json:"type"`
+	Text         string                 `json:"text"`
+	CacheControl *anthropicCacheControl `json:"cache_control,omitempty"`
+}
+
+func systemBlocks(system string) []anthropicSystemBlock {
+	if strings.TrimSpace(system) == "" {
+		return nil
+	}
+	return []anthropicSystemBlock{{
+		Type:         "text",
+		Text:         system,
+		CacheControl: &anthropicCacheControl{Type: "ephemeral"},
+	}}
+}
+
 // anthropicRequest is the request body for the Anthropic /v1/messages endpoint.
 type anthropicRequest struct {
-	Model     string             `json:"model"`
-	MaxTokens int                `json:"max_tokens"`
-	System    string             `json:"system,omitempty"`
-	Messages  []anthropicMessage `json:"messages"`
-	Stream    bool               `json:"stream,omitempty"`
+	Model     string                 `json:"model"`
+	MaxTokens int                    `json:"max_tokens"`
+	System    []anthropicSystemBlock `json:"system,omitempty"`
+	Messages  []anthropicMessage     `json:"messages"`
+	Stream    bool                   `json:"stream,omitempty"`
 }
 
 func (a *Adapter) sendMessages(ctx context.Context, system string, messages []anthropicMessage) (string, error) {
@@ -180,7 +203,7 @@ func (a *Adapter) sendMessages(ctx context.Context, system string, messages []an
 	reqBody, err := json.Marshal(anthropicRequest{
 		Model:     a.model,
 		MaxTokens: defaultMaxTokens,
-		System:    system,
+		System:    systemBlocks(system),
 		Messages:  messages,
 	})
 	if err != nil {

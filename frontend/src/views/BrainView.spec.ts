@@ -93,11 +93,16 @@ describe('BrainView — project selection', () => {
     expect(last().fetchStatus).toHaveBeenCalledTimes(1);
   });
 
-  it('falls back to the sidebar project when nothing was saved', async () => {
+  it('falls back to the sidebar project when nothing was saved, and updates when currentProject changes', async () => {
     h.project.value = '/sidebar';
     const w = await mountView();
     expect((pathInput(w).element as HTMLInputElement).value).toBe('/sidebar');
     expect(last().path).toBe('/sidebar');
+
+    h.project.value = '/switched';
+    await flushPromises();
+    expect((pathInput(w).element as HTMLInputElement).value).toBe('/switched');
+    expect(last().path).toBe('/switched');
   });
 
   it('switches project on Enter, persists it and loads status', async () => {

@@ -32,6 +32,7 @@ func NewRootCmd(orch ports.Orchestrator, brain ports.BrainService) *cobra.Comman
 	root.AddCommand(newConnectCmd())
 	root.AddCommand(newUsageCmd(orch))
 	root.AddCommand(newRoutingCmd(orch))
+	root.AddCommand(newPolicyCmd(orch))
 
 	return root
 }
@@ -206,7 +207,7 @@ func newPromoteCmd(orch ports.Orchestrator) *cobra.Command {
 
 // newUpdateCmd returns the `nexus update` command which patches mutable task fields.
 func newUpdateCmd(orch ports.Orchestrator) *cobra.Command {
-	var instruction, provider, model, tags string
+	var instruction, target, provider, providerHint, model, status, tags string
 	var priority int
 
 	cmd := &cobra.Command{
@@ -219,11 +220,20 @@ func newUpdateCmd(orch ports.Orchestrator) *cobra.Command {
 			if cmd.Flags().Changed("instruction") {
 				updates.Instruction = instruction
 			}
+			if cmd.Flags().Changed("target") {
+				updates.TargetFile = target
+			}
 			if cmd.Flags().Changed("provider") {
 				updates.ProviderName = provider
 			}
+			if cmd.Flags().Changed("provider-hint") {
+				updates.ProviderHint = providerHint
+			}
 			if cmd.Flags().Changed("model") {
 				updates.ModelID = model
+			}
+			if cmd.Flags().Changed("status") {
+				updates.Status = domain.TaskStatus(status)
 			}
 			if cmd.Flags().Changed("priority") {
 				updates.Priority = priority
@@ -243,8 +253,11 @@ func newUpdateCmd(orch ports.Orchestrator) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&instruction, "instruction", "", "New instruction")
+	cmd.Flags().StringVar(&target, "target", "", "Target file")
 	cmd.Flags().StringVar(&provider, "provider", "", "Provider name")
+	cmd.Flags().StringVar(&providerHint, "provider-hint", "", "Preferred provider when several serve the model")
 	cmd.Flags().StringVar(&model, "model", "", "Model ID")
+	cmd.Flags().StringVar(&status, "status", "", "Status (DRAFT or BACKLOG)")
 	cmd.Flags().IntVar(&priority, "priority", 0, "Priority (1=highest, 2=medium, 3+=low)")
 	cmd.Flags().StringVar(&tags, "tags", "", "Comma-separated tags")
 

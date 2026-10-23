@@ -8,20 +8,22 @@ routes.
 If `claude` is installed and logged in on this machine (`claude` once, then `/login`), Nexus can run
 it for each task: the prompt goes to `claude -p` on stdin and the printed reply is the result.
 
-- **From discovery**: the scan finds `claude` on the PATH (provider "Claude CLI", status
-  installed). Promote it in the Discovery view, or `promote_provider` over MCP, or
-  `POST /api/providers/discovered/{id}/promote`.
+- **From discovery**: the scan finds `claude` and `copilot` on the PATH (status `installed`). Promote
+  them in the Discovery panel, or `promote_provider` over MCP, or
+  `POST /api/providers/promote/{id}`.
+- **In the UI**: open **Providers → Add Provider**, select **CLI Tool (Claude / Copilot subscription)**,
+  and enter the command line (`claude -p --output-format stream-json` or `copilot -s --no-ask-user`).
 - **By hand**: add a provider config of kind `cli` whose `baseUrl` is the command line:
 
   ```sh
   curl -X POST localhost:63987/api/providers/config -H 'Content-Type: application/json' -d '{
-    "kind": "cli", "name": "Claude (subscription)", "baseUrl": "claude -p --model sonnet",
+    "kind": "cli", "name": "Claude (subscription)", "baseUrl": "claude -p --output-format stream-json",
     "model": "sonnet", "enabled": true }'
   ```
 
 ### Usage and quota: `--output-format stream-json`
 
-Promoting the discovered Claude CLI now creates the command line
+Promoting the discovered Claude CLI creates the command line
 `claude -p --output-format stream-json`. In that mode Nexus reads more than the text:
 
 - **Live text**: the reply streams as the model writes it, instead of arriving as one chunk.
@@ -44,23 +46,31 @@ without `--output-format stream-json` keeps the old behaviour (plain text on std
 The error shapes for a refused call are modelled on the fields the client prints for a successful one;
 they have not been captured from a real refusal yet.
 
+## GitHub Copilot: through the `copilot` CLI or the VS Code bridge
+
+- **Headless CLI (`copilot`)**: promoting a discovered `copilot` binary (or adding a `cli` provider for
+  `copilot`) runs `copilot -s --no-ask-user --no-color` with the prompt on stdin (plus `--model <model>`
+  when configured; `auto` lets Copilot pick). Do not add `-p`: Copilot's `-p` wants the prompt text as its
+  value and fails with "a value is required" when the prompt arrives on stdin, so Nexus drops a bare `-p`
+  from older configs. Tools that need approval stay denied. Quota, rate-limit and authentication errors
+  printed by the CLI are classified as typed provider errors so routing cools down or switches providers
+  automatically. Verified against `@github/copilot` 1.0.100.
+- **VS Code model bridge (`vscode.lm`)**: the VS Code extension can share whatever models your editor offers
+  (Copilot and others) with Nexus. See [vscode-model-bridge.md](vscode-model-bridge.md). Each model shows up as
+  a provider named `vscode-<vendor>-<model>`, with the context length the editor reports, and quota/rate-limit
+  or auth errors returned mid-stream carry their HTTP status (`429`, `403`) into the routing engine.
+- **Antigravity IDE note**: Antigravity IDE 2.5.5 bundles no `languageModelChatProviders` extension and does
+  not expose `vscode.lm` models to extensions; use MCP pull delegation (`claim_task` / `update_task_status`)
+  for Antigravity sessions (see [subscription-bridges.md](subscription-bridges.md)).
+
 ### Things to know
 
-- Only known tools may run: `claude`, `aichat`, `llm`, `gemini`, `codex`. Add more executable names
+- Only known tools may run: `claude`, `copilot`, `aichat`, `llm`, `gemini`, `codex`. Add more executable names
   with `NEXUS_CLI_PROVIDERS=mytool,other` (the config API must not become a way to run any program).
 - The tool runs in an empty temporary directory, so an agentic CLI cannot touch a project; Nexus
   still writes the result and runs your verification command itself.
 - `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` are removed from the environment of `claude` in
   stream-json mode: with an API key set, `claude` bills the API instead of your subscription.
 - Subscription limits apply; a call the client refuses fails the task and the fallback chain moves on.
-- Use this for your own work on your own machine, with the real `claude` program. Nexus never reads or
+- Use this for your own work on your own machine, with the real vendor program. Nexus never reads or
   copies the login; see [subscription-bridges.md](subscription-bridges.md) for the terms.
-
-## GitHub Copilot, Antigravity and other editor models: through the VS Code bridge
-
-The VS Code extension can share whatever models your editor offers (`vscode.lm`: Copilot and
-others) with Nexus. See [vscode-model-bridge.md](vscode-model-bridge.md). Each model shows up as a
-provider named `vscode-<vendor>-<model>`, with the context length the editor reports. Whether
-Antigravity exposes its models to `vscode.lm` depends on the Antigravity build: open the extension's
-"Share editor models" command and see which providers appear; if none from Antigravity do, it does
-not expose them to extensions.

@@ -1,7 +1,7 @@
 ---
 id: PLAN-074
 title: 'Quota-aware routing, a model ladder and a usage ledger (from the v0.10.0 audit)'
-status: active
+status: completed
 createdAt: 2026-10-16
 tasks:
   [

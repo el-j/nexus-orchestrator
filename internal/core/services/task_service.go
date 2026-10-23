@@ -394,21 +394,17 @@ func (o *OrchestratorService) UpdateTaskStatus(ctx context.Context, taskID strin
 	task.Status = status
 	task.Logs = logs
 
-	evtType := ports.EventTaskFailed
-	if status == domain.StatusCompleted {
-		evtType = ports.EventTaskCompleted
-	}
-	o.dispatch(ports.TaskEvent{
-		Type:   evtType,
-		TaskID: taskID,
-		Status: status,
-	})
+	o.emit(taskID, status)
 	return task, nil
 }
 
 // HeartbeatTask keeps a PROCESSING task alive, preventing the watchdog from failing it.
 func (o *OrchestratorService) HeartbeatTask(ctx context.Context, taskID string, sessionID string) error {
-	task, err := o.repo.GetByID(ctx, taskID)
+	o.mu.Lock()
+	repo := o.repo
+	o.mu.Unlock()
+
+	task, err := repo.GetByID(ctx, taskID)
 	if err != nil {
 		return fmt.Errorf("heartbeat task: %w", err)
 	}
@@ -419,7 +415,7 @@ func (o *OrchestratorService) HeartbeatTask(ctx context.Context, taskID string, 
 		return fmt.Errorf("heartbeat task: not claimed by session %s", sessionID)
 	}
 	// UpdateStatusIfCurrent touches UpdatedAt
-	ok, err := o.repo.UpdateStatusIfCurrent(ctx, task.ID, domain.StatusProcessing, domain.StatusProcessing)
+	ok, err := repo.UpdateStatusIfCurrent(ctx, task.ID, domain.StatusProcessing, domain.StatusProcessing)
 	if err != nil {
 		return fmt.Errorf("heartbeat task: update status: %w", err)
 	}

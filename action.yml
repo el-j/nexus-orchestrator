@@ -168,6 +168,11 @@ inputs:
     required: false
     default: ''
 
+  api_token:
+    description: 'Bearer token for a daemon that runs with NEXUS_API_TOKEN (use with daemon_url and start_daemon: false). Masked in logs.'
+    required: false
+    default: ''
+
   github_copilot_token:
     description: 'GitHub Copilot token — enables GPT-4o via Copilot on the local daemon.'
     required: false

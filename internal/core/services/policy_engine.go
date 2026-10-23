@@ -64,7 +64,8 @@ func (o *OrchestratorService) applyProjectRules(ctx context.Context, task domain
 	}
 
 	var parts []string
-	if brief := o.briefing(ctx, task, chain); brief != "" {
+	brief := o.briefing(ctx, task, chain)
+	if brief != "" {
 		parts = append(parts, strings.TrimSpace(brief))
 	}
 	if hasPolicy {
@@ -72,10 +73,46 @@ func (o *OrchestratorService) applyProjectRules(ctx context.Context, task domain
 			parts = append(parts, strings.TrimSpace(rules))
 		}
 	}
+	if focused := o.focusedKnowledge(ctx, task, chain, brief); focused != "" {
+		parts = append(parts, strings.TrimSpace(focused))
+	}
 	if len(parts) == 0 {
 		return task, policy, prompt, nil
 	}
 	return task, policy, strings.Join(parts, "\n\n") + "\n\n## Task\n" + prompt, nil
+}
+
+// focusedKnowledge queries the project brain for knowledge entries matching the task instruction
+// that are not already covered by the static briefing.
+func (o *OrchestratorService) focusedKnowledge(ctx context.Context, task domain.Task, chain []ports.LLMClient, brief string) string {
+	b := o.brainService()
+	if b == nil || strings.TrimSpace(task.ProjectPath) == "" || strings.TrimSpace(task.Instruction) == "" {
+		return ""
+	}
+	if len(chain) > 0 {
+		if limit := chain[0].ContextLimit(ctx); limit > 0 && limit < minBriefingCtx {
+			return ""
+		}
+	}
+	resp, err := b.GetFocusedContext(ctx, domain.ContextQuery{
+		ProjectPath: task.ProjectPath,
+		Question:    task.Instruction,
+		MaxTokens:   400,
+	})
+	if err != nil || len(resp.Sections) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	for _, s := range resp.Sections {
+		if brief != "" && strings.Contains(brief, strings.TrimSpace(s.Content)) {
+			continue
+		}
+		if sb.Len() == 0 {
+			sb.WriteString("## Relevant Project Knowledge\n")
+		}
+		fmt.Fprintf(&sb, "- **%s (%s):** %s\n", s.Topic, s.Kind, strings.TrimSpace(s.Content))
+	}
+	return sb.String()
 }
 
 // briefing returns the project briefing sized for the first model of the chain, or "".

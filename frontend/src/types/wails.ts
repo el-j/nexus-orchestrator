@@ -3,6 +3,9 @@ import type {
   TaskInput,
   ProviderInfo,
   UsageReport,
+  RoutingPreview,
+  PolicyReply,
+  ProjectPolicy,
   ProviderConfig,
   AISession,
   TaskStatus,
@@ -79,6 +82,28 @@ declare global {
 // Safe wrappers that fall back gracefully when not in Wails (browser dev mode)
 const isWails = (): boolean => !!window.go?.main?.App;
 
+const API_TOKEN_KEY = 'nexus:apiToken';
+
+/** Reads the saved HTTP API bearer token from localStorage. */
+export function getApiToken(): string {
+  return localStorage.getItem(API_TOKEN_KEY) ?? '';
+}
+
+/** Saves or clears the HTTP API bearer token in localStorage. */
+export function setApiToken(token: string): void {
+  const trimmed = token.trim();
+  if (trimmed) localStorage.setItem(API_TOKEN_KEY, trimmed);
+  else localStorage.removeItem(API_TOKEN_KEY);
+}
+
+/** Builds request headers with Authorization: Bearer <token> when an API token is stored. */
+export function authHeaders(extra?: Record<string, string>): Record<string, string> {
+  const token = getApiToken();
+  const headers: Record<string, string> = { ...(extra ?? {}) };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
 /**
  * Calls the daemon's REST API (browser dev mode) and returns the parsed JSON body.
  * A non-2xx response throws an Error carrying the server's `{"error": "..."}`
@@ -86,11 +111,14 @@ const isWails = (): boolean => !!window.go?.main?.App;
  * success. An empty body (204) yields undefined.
  */
 async function request<T = void>(method: string, path: string, body?: unknown): Promise<T> {
-  const r = await fetch(path, {
+  const url = isWails() && path.startsWith('/') ? `${await getServerAddr()}${path}` : path;
+  const headers = authHeaders(
+    body === undefined ? undefined : { 'Content-Type': 'application/json' },
+  );
+  const r = await fetch(url, {
     method,
-    ...(body === undefined
-      ? {}
-      : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+    ...(Object.keys(headers).length > 0 ? { headers } : {}),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   if (!r.ok) {
     let detail = `HTTP ${r.status}`;
@@ -142,6 +170,22 @@ export async function getProviders(): Promise<ProviderInfo[]> {
 /** Reads the usage ledger: tokens and cost per provider, model and role since `since` (24h, 7d, all). */
 export async function getUsage(since = '24h'): Promise<UsageReport> {
   return request<UsageReport>('GET', `/api/usage?since=${q(since)}`);
+}
+
+/** Previews how routing would order candidate providers for a role in a project right now. */
+export async function getRouting(projectPath: string, role = ''): Promise<RoutingPreview> {
+  const query = `projectPath=${q(projectPath)}${role ? `&role=${q(role)}` : ''}`;
+  return request<RoutingPreview>('GET', `/api/routing?${query}`);
+}
+
+/** Reads a project's `.nexus/policy.json`; `found` is false when the project has none. */
+export async function getPolicy(projectPath: string): Promise<PolicyReply> {
+  return request<PolicyReply>('GET', `/api/policy?projectPath=${q(projectPath)}`);
+}
+
+/** Validates and writes a project's `.nexus/policy.json`; it applies to the next task. */
+export async function setPolicy(projectPath: string, policy: ProjectPolicy): Promise<PolicyReply> {
+  return request<PolicyReply>('PUT', `/api/policy?projectPath=${q(projectPath)}`, policy);
 }
 
 /** Cancels a queued or running task. */
@@ -261,6 +305,21 @@ export async function heartbeatAISession(id: string): Promise<void> {
 export async function deregisterAISession(id: string): Promise<void> {
   if (isWails()) return window.go!.main!.App!.DeregisterAISession(id);
   await request('DELETE', `/api/ai-sessions/${q(id)}`);
+}
+
+/** Marks an AI session as delegated to Nexus and returns the delegation instruction. */
+export async function delegateToNexus(
+  id: string,
+): Promise<{ instruction: string; sessionId: string }> {
+  return request<{ instruction: string; sessionId: string }>(
+    'POST',
+    `/api/ai-sessions/${q(id)}/delegate`,
+  );
+}
+
+/** Terminates an external AI session process. */
+export async function terminateAISession(id: string, force = false): Promise<void> {
+  await request('POST', `/api/ai-sessions/${q(id)}/terminate`, { force });
 }
 
 /** Deletes sessions that disconnected, returning how many. */

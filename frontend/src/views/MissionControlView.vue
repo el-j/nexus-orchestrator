@@ -87,10 +87,14 @@
                   {{ task.instruction }}
                 </td>
                 <td class="px-4 py-2.5 text-slate-400 text-xs">
-                  {{ task.providerName || '—' }}
+                  {{ task.ranBy || task.providerName || task.providerHint || '—' }}
                 </td>
                 <td class="px-4 py-2.5 text-slate-400 text-xs font-mono">
-                  {{ formatDuration(task.durationMs) || '—' }}
+                  {{
+                    task.status === 'WAITING' && task.waitUntil
+                      ? formatRelativeTime(task.waitUntil)
+                      : formatDuration(task.durationMs) || '—'
+                  }}
                 </td>
                 <td class="px-4 py-2.5" @click.stop>
                   <button
@@ -294,6 +298,13 @@ import { useToast } from '../composables/useToast';
 import { useTasks } from '../composables/useTasks';
 import { useProviders } from '../composables/useProviders';
 import { useAISessions } from '../composables/useAISessions';
+import { currentProject } from '../composables/useProjectState';
+import {
+  HISTORY_FILTERS,
+  HISTORY_STATUSES,
+  STATUS_PRIORITY,
+  type HistoryFilterValue,
+} from '../utils/taskStatus';
 import { getAllTasks } from '../types/wails';
 import type { Task, AISession } from '../types/domain';
 import TaskStatusBadge from '../components/TaskStatusBadge.vue';
@@ -304,9 +315,18 @@ import ProviderLimitBadges from '../components/ProviderLimitBadges.vue';
 
 // --- Composables ---
 const toast = useToast();
-const { tasks, loading: tasksLoading, refresh: refreshTasks, promoteTask } = useTasks();
+const { tasks: allTasks, loading: tasksLoading, refresh: refreshTasks, promoteTask } = useTasks();
 const { providers, loading: providersLoading } = useProviders();
-const { sessions, loading: sessionsLoading } = useAISessions();
+const { sessions: allSessions, loading: sessionsLoading } = useAISessions();
+
+// The sidebar project narrows tasks, history and sessions alike (no project = everything).
+function inProject<T extends { projectPath?: string }>(list: T[]): T[] {
+  return currentProject.value === null
+    ? list
+    : list.filter((x) => x.projectPath === currentProject.value);
+}
+const tasks = computed(() => inProject(allTasks.value));
+const sessions = computed(() => inProject(allSessions.value));
 
 // --- Work filter (Active Work section) ---
 type WorkFilterValue = 'all' | 'active' | 'drafts';
@@ -322,7 +342,10 @@ async function handlePromote(id: string) {
   if (promoting.value) return;
   promoting.value = id;
   try {
-    await promoteTask(id);
+    const res = await promoteTask(id);
+    if (res?.warning) {
+      toast.add({ severity: 'warn', summary: 'Not Promoted', detail: res.warning, life: 5000 });
+    }
     await refreshHistory();
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Promote Failed', detail: String(e), life: 5000 });
@@ -336,22 +359,15 @@ const recentHistory = ref<Task[]>([]);
 const allHistory = ref<Task[]>([]);
 const showAllHistory = ref(false);
 
-type HistoryFilterValue = 'ALL' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
-const historyFilters: { label: string; value: HistoryFilterValue }[] = [
-  { label: 'All', value: 'ALL' },
-  { label: 'Completed', value: 'COMPLETED' },
-  { label: 'Failed', value: 'FAILED' },
-  { label: 'Cancelled', value: 'CANCELLED' },
-];
+const historyFilters = HISTORY_FILTERS;
 const historyFilter = ref<HistoryFilterValue>('ALL');
 
 let historyInterval: ReturnType<typeof setInterval> | undefined;
-const historyStatuses = new Set(['COMPLETED', 'FAILED', 'CANCELLED']);
 
 async function refreshHistory() {
   try {
     const all = (await getAllTasks()) ?? [];
-    allHistory.value = all.filter((t) => historyStatuses.has(t.status));
+    allHistory.value = all.filter((t) => HISTORY_STATUSES.has(t.status));
     const oneHourAgo = Date.now() - 3_600_000;
     recentHistory.value = all.filter(
       (t) =>
@@ -375,23 +391,13 @@ onUnmounted(() => {
 const activeAgentCount = computed(
   () => sessions.value.filter((s) => s.status === 'active' || s.status === 'idle').length,
 );
-const queuedCount = computed(() => tasks.value.filter((t) => t.status === 'QUEUED').length);
+const queuedCount = computed(
+  () => tasks.value.filter((t) => t.status === 'QUEUED' || t.status === 'WAITING').length,
+);
 const processingCount = computed(() => tasks.value.filter((t) => t.status === 'PROCESSING').length);
 const activeProviderCount = computed(() => providers.value.filter((p) => p.active).length);
 
 // --- Sorted task list (queue + recent history) ---
-const statusPriority: Record<string, number> = {
-  PROCESSING: 0,
-  QUEUED: 1,
-  WAITING: 2,
-  DRAFT: 3,
-  BACKLOG: 4,
-  FAILED: 5,
-  COMPLETED: 6,
-  CANCELLED: 7,
-  TOO_LARGE: 8,
-  NO_PROVIDER: 9,
-};
 
 const sortedTasks = computed(() => {
   const ids = new Set<string>();
@@ -402,18 +408,22 @@ const sortedTasks = computed(() => {
     merged.push(t);
   }
   // Add recent history not already in queue
-  for (const t of recentHistory.value) {
+  for (const t of inProject(recentHistory.value)) {
     if (!ids.has(t.id)) {
       merged.push(t);
     }
   }
-  return merged.sort((a, b) => (statusPriority[a.status] ?? 99) - (statusPriority[b.status] ?? 99));
+  return merged.sort(
+    (a, b) => (STATUS_PRIORITY[a.status] ?? 99) - (STATUS_PRIORITY[b.status] ?? 99),
+  );
 });
 
 // --- Filtered work tasks ---
 const filteredWorkTasks = computed(() => {
   if (workFilter.value === 'active') {
-    return sortedTasks.value.filter((t) => t.status === 'PROCESSING' || t.status === 'QUEUED');
+    return sortedTasks.value.filter(
+      (t) => t.status === 'PROCESSING' || t.status === 'QUEUED' || t.status === 'WAITING',
+    );
   }
   if (workFilter.value === 'drafts') {
     return sortedTasks.value.filter((t) => t.status === 'DRAFT' || t.status === 'BACKLOG');
@@ -424,10 +434,11 @@ const filteredWorkTasks = computed(() => {
 // --- History display ---
 const displayedHistory = computed(() => {
   if (!showAllHistory.value) {
-    return recentHistory.value.slice(0, 10);
+    return inProject(recentHistory.value).slice(0, 10);
   }
-  if (historyFilter.value === 'ALL') return allHistory.value;
-  return allHistory.value.filter((t) => t.status === historyFilter.value);
+  const history = inProject(allHistory.value);
+  if (historyFilter.value === 'ALL') return history;
+  return history.filter((t) => t.status === historyFilter.value);
 });
 
 // --- Detail drawer ---

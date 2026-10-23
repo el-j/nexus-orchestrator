@@ -91,7 +91,7 @@
             "
           >
             <div class="flex items-start justify-between gap-2 mb-2">
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 flex-wrap">
                 <span
                   :class="[
                     'w-2 h-2 rounded-full flex-shrink-0 mt-0.5',
@@ -99,6 +99,7 @@
                   ]"
                 ></span>
                 <span class="font-semibold text-sm text-white">{{ p.name }}</span>
+                <ProviderLimitBadges :provider="p" />
               </div>
               <span
                 class="text-[10px] px-1.5 py-0.5 rounded font-medium"
@@ -144,13 +145,11 @@
         />
       </section>
 
-      <!-- Configured providers (CRUD) -->
-      <section>
-        <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-          Configured Providers
-        </h2>
-        <ProviderStatus :providers="providers" :refresh="refresh" :hide-discovered="true" />
-      </section>
+      <!-- Routing Preview -->
+      <RoutingPreviewCard />
+
+      <!-- Project policy: ladder, budgets, token caps -->
+      <PolicyCard />
 
       <DiscoveredToolsSection :sort-mode="sortMode" />
 
@@ -260,7 +259,9 @@ import { ref, computed, onMounted, reactive } from 'vue';
 import { useRoute } from 'vue-router';
 import { useProviders } from '../composables/useProviders';
 import { useDiscovery } from '../composables/useDiscovery';
-import ProviderStatus from '../components/ProviderStatus.vue';
+import ProviderLimitBadges from '../components/ProviderLimitBadges.vue';
+import RoutingPreviewCard from '../components/RoutingPreviewCard.vue';
+import PolicyCard from '../components/PolicyCard.vue';
 import DiscoveredProvidersPanel from '../components/DiscoveredProvidersPanel.vue';
 import ProviderConfigForm from '../components/ProviderConfigForm.vue';
 import DiscoveredToolsSection from '../components/DiscoveredToolsSection.vue';
@@ -409,13 +410,26 @@ function handleDeleteConfig(cfg: ProviderConfig) {
   );
 }
 
+function defaultCliCommand(cliPath: string): string {
+  const base = cliPath
+    .replace(/^.*[\\/]/, '')
+    .toLowerCase()
+    .replace(/\.exe$/, '');
+  if (base === 'claude') return `${cliPath} -p --output-format stream-json`;
+  if (base === 'copilot') return `${cliPath} -s --no-ask-user`;
+  return `${cliPath} -p`;
+}
+
 function handlePromote(provider: DiscoveredProvider) {
   // Pre-fill the configured provider form with discovered data
+  const baseUrl =
+    provider.baseUrl ||
+    (provider.kind === 'cli' && provider.cliPath ? defaultCliCommand(provider.cliPath) : '');
   editingConfig.value = {
     id: '',
     name: provider.name,
     kind: (provider.kind as ProviderConfig['kind']) || 'openaicompat',
-    baseUrl: provider.baseUrl || '',
+    baseUrl,
     apiKey: '',
     model: '',
     enabled: true,

@@ -3,7 +3,7 @@ id: TASK-572
 planId: PLAN-073
 title: 'Contract checks of the streaming adapters against the real services'
 role: polish
-status: todo
+status: done
 createdAt: 2026-10-15
 ---
 

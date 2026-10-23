@@ -1,7 +1,7 @@
 ---
 id: PLAN-016
 title: Release pipeline finalization + CHANGELOG
-status: active
+status: completed
 createdAt: 2026-03-11T00:00:00.000Z
 ---
 
@@ -29,31 +29,31 @@ following Keep-a-Changelog convention.
 
 ## Solution
 
-| # | Action | Effect |
-|---|--------|--------|
-| 1 | Delete `.github/workflows/version.yml` | Removes conflicting tag creator |
-| 2 | Delete `.github/workflows/release.yml` | Removes duplicate release trigger |
-| 3 | Fix `docs/downloads.md` Desktop links | Aligns with publish.yml artifact names |
-| 4 | Create `CHANGELOG.md` | Comprehensive history in Keep-a-Changelog format |
-| 5 | Mark TASK-108..111 done in orchestrator.json | Close out PLAN-014 |
+| #   | Action                                       | Effect                                           |
+| --- | -------------------------------------------- | ------------------------------------------------ |
+| 1   | Delete `.github/workflows/version.yml`       | Removes conflicting tag creator                  |
+| 2   | Delete `.github/workflows/release.yml`       | Removes duplicate release trigger                |
+| 3   | Fix `docs/downloads.md` Desktop links        | Aligns with publish.yml artifact names           |
+| 4   | Create `CHANGELOG.md`                        | Comprehensive history in Keep-a-Changelog format |
+| 5   | Mark TASK-108..111 done in orchestrator.json | Close out PLAN-014                               |
 
 After this plan, `push: branches: [main]` triggers **only** `publish.yml`, which owns the
 full lifecycle: version → test → build-cli → build-desktop → release.
 
 ## Execution Waves
 
-| Wave | Tasks (parallel) | Blocking on |
-|------|------------------|-------------|
-| 1 | TASK-118, TASK-119, TASK-120 | — |
-| 2 | TASK-121 | TASK-118, TASK-119, TASK-120 done |
+| Wave | Tasks (parallel)             | Blocking on                       |
+| ---- | ---------------------------- | --------------------------------- |
+| 1    | TASK-118, TASK-119, TASK-120 | —                                 |
+| 2    | TASK-121                     | TASK-118, TASK-119, TASK-120 done |
 
 ## Task Index
 
-| ID | Title | Role | Dependencies |
-|----|-------|------|--------------|
-| TASK-118 | Delete version.yml + release.yml | devops | — |
-| TASK-119 | Fix docs/downloads.md Desktop section links | devops | — |
-| TASK-120 | Create CHANGELOG.md | devops | — |
+| ID       | Title                                            | Role     | Dependencies                 |
+| -------- | ------------------------------------------------ | -------- | ---------------------------- |
+| TASK-118 | Delete version.yml + release.yml                 | devops   | —                            |
+| TASK-119 | Fix docs/downloads.md Desktop section links      | devops   | —                            |
+| TASK-120 | Create CHANGELOG.md                              | devops   | —                            |
 | TASK-121 | Update orchestrator.json + orchestrator-index.md | planning | TASK-118, TASK-119, TASK-120 |
 
 ## Definition of Done

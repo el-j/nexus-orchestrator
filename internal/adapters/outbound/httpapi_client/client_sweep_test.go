@@ -41,6 +41,10 @@ func sweepCases() []sweepCase {
 		{"HeartbeatTask", func(c *httpapi_client.Client) error { return c.HeartbeatTask(ctx, "t", "s") }, 204, false},
 		{"GetProviders", func(c *httpapi_client.Client) error { _, err := c.GetProviders(); return err }, 200, true},
 		{"PreviewRouting", func(c *httpapi_client.Client) error { _, err := c.PreviewRouting(ctx, "/p", "coder"); return err }, 200, true},
+		{"GetProjectPolicy", func(c *httpapi_client.Client) error { _, _, err := c.GetProjectPolicy(ctx, "/p"); return err }, 200, true},
+		{"SetProjectPolicy", func(c *httpapi_client.Client) error {
+			return c.SetProjectPolicy(ctx, "/p", domain.ProjectPolicy{QuotaThreshold: 0.5})
+		}, 200, false},
 		{"GetUsage", func(c *httpapi_client.Client) error { _, err := c.GetUsage(ctx, time.Now()); return err }, 200, true},
 		{"RegisterCloudProvider", func(c *httpapi_client.Client) error { return c.RegisterCloudProvider(domain.ProviderConfig{}) }, 201, false},
 		{"RemoveProvider", func(c *httpapi_client.Client) error { return c.RemoveProvider("p") }, 204, false},

@@ -350,7 +350,7 @@ func (b *BrainServiceImpl) buildOnboarding(ctx context.Context, projectPath stri
 		fmt.Fprintf(&sb, "- **Plan files:** %s, read from %s\n", summary, strings.Join(scan.Folders, ", "))
 	}
 
-	if b.taskRepo != nil {
+	if b.taskRepo != nil && withRules {
 		tasks, _ := b.taskRepo.GetByProjectPath(ctx, clean)
 		var queued, processing, completed, failed int
 		var activeTaskDesc string

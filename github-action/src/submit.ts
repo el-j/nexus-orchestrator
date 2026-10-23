@@ -11,11 +11,13 @@ export class NexusClient {
   private readonly client: HttpClient;
   private readonly baseUrl: string;
 
-  constructor(baseUrl: string) {
+  /** `apiToken` is sent as a bearer token to a daemon that runs with `NEXUS_API_TOKEN`. */
+  constructor(baseUrl: string, apiToken?: string) {
     this.baseUrl = baseUrl.replace(/\/$/, '');
     this.client = new HttpClient('nexus-orchestrator-action/1.0', [], {
       allowRetries: true,
       maxRetries: 3,
+      ...(apiToken ? { headers: { Authorization: `Bearer ${apiToken}` } } : {}),
     });
   }
 
@@ -35,11 +37,16 @@ export class NexusClient {
   async waitForTask(taskId: string, timeoutMs: number): Promise<NexusTask> {
     const deadline = Date.now() + timeoutMs;
     let lastStatus = 'unknown';
+    let resumes = '';
     while (Date.now() < deadline) {
       const task = await this.getTask(taskId);
       lastStatus = task.status;
+      resumes = task.status === 'WAITING' && task.waitUntil ? task.waitUntil : '';
       const ts = new Date().toISOString().slice(11, 19);
-      core.info(`  [${ts}] task=${taskId} status=${task.status}`);
+      core.info(
+        `  [${ts}] task=${taskId} status=${task.status}` +
+          (resumes ? ` (every provider is at a limit: waiting until ${resumes})` : ''),
+      );
       if (TERMINAL_STATUSES.has(task.status)) {
         return task;
       }
@@ -48,7 +55,7 @@ export class NexusClient {
     // NO_PROVIDER and WAITING are not terminal (a provider may appear, a limit resets), so they
     // would otherwise surface only as a bare timeout; the last status says why.
     throw new Error(
-      `Task ${taskId} did not complete within ${timeoutMs / 1000}s (last status: ${lastStatus})`,
+      `Task ${taskId} did not complete within ${timeoutMs / 1000}s (last status: ${lastStatus}${resumes ? `, resumes ${resumes}` : ''})`,
     );
   }
 

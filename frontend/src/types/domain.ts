@@ -104,11 +104,55 @@ export interface UsageReport {
   usage: UsageSummary[];
 }
 
+/** One candidate provider of a task, in the order routing would try it. */
+export interface RoutingEntry {
+  position: number;
+  provider: string;
+  model?: string;
+  rung: number;
+  coolingUntil?: string;
+  cooldownReason?: string;
+  utilization?: number;
+}
+
+/** What routing would do for a role in a project right now (`GET /api/routing`). */
+export interface RoutingPreview {
+  role?: string;
+  ladder?: string[];
+  quotaThreshold: number;
+  order: RoutingEntry[];
+}
+
+/** A project's `.nexus/policy.json`: routing, token and rule settings (`GET/PUT /api/policy`). */
+export interface ProjectPolicy {
+  version?: number;
+  verify?: string;
+  maxFileLines?: number;
+  testsFirst?: boolean;
+  remember?: boolean;
+  rules?: string[];
+  /** Share (0 to 1) of a plan's allowance at which routing prefers the other providers. */
+  quotaThreshold?: number;
+  /** Models a role may use, cheapest first, as `provider/model` patterns. */
+  ladder?: Record<string, string[]>;
+  contextBudget?: number;
+  historyBudget?: number;
+  /** Daily token budget per provider name. */
+  budgets?: Record<string, { dailyTokens: number }>;
+  planFiles?: { plans?: string[]; tasks?: string[] };
+}
+
+/** The answer of `GET /api/policy`: the policy and whether the project has a policy file. */
+export interface PolicyReply {
+  found: boolean;
+  policy: ProjectPolicy;
+}
+
 /** A saved provider configuration. */
 export interface ProviderConfig {
   id: string;
   name: string;
-  kind: 'lmstudio' | 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'openaicompat';
+  kind: 'lmstudio' | 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'openaicompat' | 'cli';
   baseUrl: string;
   apiKey: string;
   model: string;

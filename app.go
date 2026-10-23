@@ -8,8 +8,14 @@ import (
 	"nexus-orchestrator/internal/adapters/outbound/fs_watcher"
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
-	"nexus-orchestrator/internal/core/services"
 )
+
+// activityQuerier is satisfied by both *services.ActivityService (embedded mode)
+// and *httpapi_client.Client (attached-daemon mode).
+type activityQuerier interface {
+	GetRecentActivities(ctx context.Context, f domain.ActivityFilter) ([]domain.AIActivity, error)
+	GetTimeline(ctx context.Context, since time.Time, limit int) ([]domain.AIActivity, error)
+}
 
 // App is the Wails application struct. Its exported methods are bound to the
 // JavaScript frontend.
@@ -17,7 +23,7 @@ type App struct {
 	orchestrator ports.Orchestrator
 	brainSvc     ports.BrainService
 	httpAddr     string
-	activitySvc  *services.ActivityService
+	activitySvc  activityQuerier
 	fsWatcher    *fs_watcher.Watcher
 }
 
@@ -225,7 +231,7 @@ func (a *App) UpdateTaskStatus(taskID string, sessionID string, status string, l
 }
 
 // withActivityService injects an ActivityService into the App for observatory bindings.
-func (a *App) withActivityService(svc *services.ActivityService) *App {
+func (a *App) withActivityService(svc activityQuerier) *App {
 	a.activitySvc = svc
 	return a
 }

@@ -99,3 +99,33 @@ export const ProviderConfigSchema = z
     enabled: z.boolean(),
   })
   .passthrough();
+
+/** Runtime shape of the usage report (`GET /api/usage`); a shape other than this is an error. */
+export const UsageReportSchema = z
+  .object({
+    since: z.string().optional().default(''),
+    totals: z
+      .object({
+        calls: z.number(),
+        inputTokens: z.number(),
+        outputTokens: z.number(),
+        costUSD: z.number().optional(),
+      })
+      .passthrough(),
+    usage: z
+      .array(
+        z
+          .object({
+            provider: z.string(),
+            model: z.string().optional().default(''),
+            role: z.string().optional().default(''),
+            calls: z.number(),
+            inputTokens: z.number(),
+            outputTokens: z.number(),
+          })
+          .passthrough(),
+      )
+      .nullish()
+      .transform((v) => v ?? []),
+  })
+  .passthrough();

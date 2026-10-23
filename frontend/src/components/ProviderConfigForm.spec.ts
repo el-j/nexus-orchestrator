@@ -299,4 +299,38 @@ describe('ProviderConfigForm', () => {
     expect(onSave).toHaveBeenCalled();
     w.unmount();
   });
+
+  it('offers CLI tool (subscription) preset, accepts a command line, and rejects a blank command', async () => {
+    const { w, onSave } = mountForm();
+    await w.find('[data-testid="provider-type"]').setValue('cli');
+    expect((inputs(w)[URL].element as HTMLInputElement).value).toBe(
+      'claude -p --output-format stream-json',
+    );
+    await inputs(w)[NAME].setValue('Claude CLI');
+    await inputs(w)[URL].setValue('   ');
+    await w.find('form').trigger('submit');
+    await flushPromises();
+    expect(w.text()).toContain('Command is required.');
+    expect(onSave).not.toHaveBeenCalled();
+
+    await inputs(w)[URL].setValue('copilot -s --no-ask-user');
+    await w.find('form').trigger('submit');
+    await flushPromises();
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'cli',
+        name: 'Claude CLI',
+        baseUrl: 'copilot -s --no-ask-user',
+      }),
+    );
+    w.unmount();
+
+    const edited = mountForm(
+      existing({ kind: 'cli', baseUrl: 'claude -p --output-format stream-json' }),
+    );
+    expect(
+      (edited.w.find('[data-testid="provider-type"]').element as HTMLSelectElement).value,
+    ).toBe('cli');
+    edited.w.unmount();
+  });
 });

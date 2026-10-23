@@ -37,6 +37,8 @@ export interface Task {
   updatedAt: string;
   logs?: string;
   aiSessionId?: string;
+  /** For a WAITING task: when the providers it waits for are expected back (ISO 8601). */
+  waitUntil?: string;
 }
 
 // ---- Provider type (mirrors ports.ProviderInfo) ----
@@ -59,6 +61,20 @@ export interface Provider {
   cooldownReason?: string;
   /** The plan's own reading of its allowance, where the provider's client reports it. */
   quota?: { window: string; status: string; utilization: number; resetsAt?: string };
+}
+
+/** What the models used since a time, from the daemon's usage ledger (`GET /api/usage`). */
+export interface UsageReport {
+  since: string;
+  totals: { calls: number; inputTokens: number; outputTokens: number; costUSD?: number };
+  usage: {
+    provider: string;
+    model: string;
+    role: string;
+    calls: number;
+    inputTokens: number;
+    outputTokens: number;
+  }[];
 }
 
 // ---- Request types ----

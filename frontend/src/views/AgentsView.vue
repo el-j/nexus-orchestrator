@@ -138,82 +138,36 @@
             <p class="text-xs text-slate-600 mt-1">Try adjusting your search or filters</p>
           </div>
 
+          <!-- Instruction returned by Delegate: the agent has to be told to follow it -->
+          <div
+            v-if="delegationInstruction"
+            data-testid="delegation-note"
+            class="mb-4 rounded-xl border border-violet-500/30 bg-violet-500/5 p-3 text-xs text-violet-100"
+          >
+            <div class="flex items-center justify-between mb-1">
+              <span class="font-semibold">Give this to the agent</span>
+              <button class="text-slate-400 hover:text-white" @click="delegationInstruction = ''">
+                Dismiss
+              </button>
+            </div>
+            <pre class="whitespace-pre-wrap font-mono text-[11px]">{{ delegationInstruction }}</pre>
+          </div>
+
           <!-- Registered Sessions -->
           <section v-if="filteredSessions.length > 0" class="mb-6">
             <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
               Registered Sessions
             </h2>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div
+              <SessionCard
                 v-for="s in filteredSessions"
                 :key="s.id"
-                class="rounded-xl border bg-white/[0.03] p-3 transition-all border-l-4 cursor-pointer hover:bg-white/[0.05]"
-                :class="{
-                  'border-l-emerald-500/60': s.status === 'active',
-                  'border-l-yellow-500/60': s.status === 'idle',
-                  'border-l-slate-600/60': s.status === 'disconnected',
-                }"
-                @click="openDrawer(s.agentName)"
-              >
-                <!-- Header: status dot + agent name + status badge -->
-                <div class="flex items-center gap-2 mb-2">
-                  <span
-                    class="w-2 h-2 rounded-full flex-shrink-0"
-                    :class="{
-                      'bg-emerald-400': s.status === 'active',
-                      'bg-yellow-400': s.status === 'idle',
-                      'bg-slate-600': s.status === 'disconnected',
-                    }"
-                  ></span>
-                  <span class="font-semibold text-sm text-white truncate flex-1">{{
-                    s.agentName
-                  }}</span>
-                  <span
-                    class="text-[10px] px-1.5 py-0.5 rounded font-medium flex-shrink-0"
-                    :class="{
-                      'bg-emerald-500/20 text-emerald-300': s.status === 'active',
-                      'bg-yellow-500/20 text-yellow-300': s.status === 'idle',
-                      'bg-slate-700/50 text-slate-400': s.status === 'disconnected',
-                    }"
-                    >{{ s.status }}</span
-                  >
-                </div>
-
-                <!-- Source badge -->
-                <div class="flex items-center gap-2 mb-2">
-                  <span class="text-[11px] px-2 py-0.5 rounded bg-white/5 text-slate-400">
-                    <template v-if="s.source === 'mcp'">🤖 MCP</template>
-                    <template v-else-if="s.source === 'vscode'">🔵 VS Code</template>
-                    <template v-else>🌐 HTTP</template>
-                  </span>
-                  <span v-if="s.externalId" class="text-[10px] text-slate-600 font-mono truncate">{{
-                    s.externalId
-                  }}</span>
-                </div>
-
-                <!-- Project path -->
-                <div
-                  v-if="s.projectPath"
-                  class="text-[11px] text-slate-500 font-mono mb-2 truncate"
-                  :title="s.projectPath"
-                >
-                  {{ shortPath(s.projectPath) }}
-                </div>
-
-                <!-- Last activity -->
-                <div class="text-[11px] text-slate-600 mb-2">
-                  Last active: {{ relativeTime(s.lastActivity) }}
-                </div>
-
-                <!-- Disconnect button -->
-                <button
-                  v-if="s.status !== 'disconnected'"
-                  class="text-xs text-red-400 hover:text-red-300 px-2.5 py-1 rounded-lg border border-red-500/20 hover:border-red-500/40 transition-all"
-                  @click.stop="deregister(s.id)"
-                >
-                  Disconnect
-                </button>
-              </div>
+                :session="s"
+                @open="openDrawer(s.agentName)"
+                @disconnect="deregister(s.id)"
+                @delegate="onDelegate(s.id)"
+                @terminate="terminate(s.id)"
+              />
             </div>
           </section>
 
@@ -324,12 +278,21 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useAISessions } from '../composables/useAISessions';
 import AgentDetailDrawer from '../components/AgentDetailDrawer.vue';
 import AgentActivityTab from '../components/AgentActivityTab.vue';
+import SessionCard from '../components/SessionCard.vue';
 import type { DiscoveredAgent } from '../types/domain';
 import { resolveServerUrl } from '../composables/useServerUrl';
 import { relativeTime } from '../utils/time';
-import { shortPath } from '../utils/path';
+import { currentProject } from '../composables/useProjectState';
 
-const { sessions, loading, error, refresh, deregister, purgeDisconnected } = useAISessions();
+const { sessions, loading, error, refresh, deregister, delegate, terminate, purgeDisconnected } =
+  useAISessions();
+
+const delegationInstruction = ref('');
+
+async function onDelegate(id: string) {
+  const res = await delegate(id);
+  delegationInstruction.value = res?.instruction ?? '';
+}
 
 // --- Sort ---
 const sortMode = ref<'active' | 'recent' | 'name'>('active');
@@ -414,6 +377,9 @@ const sortedAgentRoots = computed(() => {
 
 const filteredSessions = computed(() => {
   let list = sortedSessions.value;
+  if (currentProject.value !== null) {
+    list = list.filter((s) => s.projectPath === currentProject.value);
+  }
   if (sessionStatusFilter.value) {
     list = list.filter((s) => s.status === sessionStatusFilter.value);
   }

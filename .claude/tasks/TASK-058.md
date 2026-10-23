@@ -2,7 +2,7 @@
 
 **Plan:** PLAN-006  
 **Role:** qa  
-**Status:** todo  
+**Status:** done  
 **Dependencies:** TASK-054, TASK-055, TASK-057
 
 ## Goal
@@ -42,6 +42,7 @@ Existing test file already stubs out `ports.Orchestrator`. Add:
 ## Mock updates
 
 The `mockOrchestrator` in `server_test.go` must be updated to implement the three new `ports.Orchestrator` methods:
+
 ```go
 RegisterCloudProvider(cfg domain.ProviderConfig) error
 RemoveProvider(name string) error

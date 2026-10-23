@@ -4,7 +4,7 @@ planId: PLAN-074
 title: 'Copilot CLI driver (copilot -p) and typed editor-bridge errors'
 role: coder
 wave: 6
-status: todo
+status: done
 createdAt: 2026-10-16
 dependsOn: [TASK-583]
 ---

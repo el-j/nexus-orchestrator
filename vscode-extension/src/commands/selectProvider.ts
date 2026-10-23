@@ -6,6 +6,7 @@
 
 import * as vscode from 'vscode';
 import { NexusClient } from '../nexusClient';
+import { coolingNote, quotaNote } from '../providerLimits';
 
 interface ProviderPickItem extends vscode.QuickPickItem {
   providerName: string;
@@ -44,6 +45,8 @@ export async function selectProviderCommand(client: NexusClient): Promise<void> 
       items.push({
         label: `${p.name} / ${m}`,
         description: p.name,
+        // A provider at a limit stays selectable (a task pinned to it waits), but says why it may be skipped.
+        detail: coolingNote(p) ?? quotaNote(p),
         providerName: p.name,
         modelName: m,
       });

@@ -205,3 +205,44 @@ func TestBrainCLI_Context_OK(t *testing.T) {
 		t.Errorf("expected output to contain %q; got: %q", "Hexagonal", out)
 	}
 }
+
+func TestBrainCLI_Ingest_StructuredEntry_OK(t *testing.T) {
+	brain := &mockBrainService{}
+	root := cli.NewRootCmd(&mockOrchestrator{}, brain)
+	root.SetArgs([]string{"brain", "ingest", "--project", "/proj", "--kind", "learning", "--topic", "Auth", "--content", "Use constant time"})
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+
+	var execErr error
+	out := captureStdout(t, func() { execErr = root.Execute() })
+	if execErr != nil {
+		t.Fatalf("unexpected error: %v", execErr)
+	}
+	if !strings.Contains(out, "Auth") {
+		t.Errorf("expected output to mention topic Auth; got: %q", out)
+	}
+}
+
+func TestBrainCLI_Context_FocusedQuestion_OK(t *testing.T) {
+	brain := &mockBrainService{
+		getContextResult: domain.ContextResponse{
+			ProjectPath: "/proj",
+			Sections: []domain.ContextSection{
+				{Topic: "Auth", Kind: domain.KnowledgeLearning, Content: "Focused answer"},
+			},
+		},
+	}
+	root := cli.NewRootCmd(&mockOrchestrator{}, brain)
+	root.SetArgs([]string{"brain", "context", "--project", "/proj", "--question", "how does auth work?"})
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+
+	var execErr error
+	out := captureStdout(t, func() { execErr = root.Execute() })
+	if execErr != nil {
+		t.Fatalf("unexpected error: %v", execErr)
+	}
+	if !strings.Contains(out, "Focused answer") {
+		t.Errorf("expected output to contain focused answer; got: %q", out)
+	}
+}

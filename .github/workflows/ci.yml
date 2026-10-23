@@ -152,7 +152,7 @@ jobs:
         run: |
           CGO_ENABLED=0 go build ./cmd/nexus-cli/...
           CGO_ENABLED=0 go build ./cmd/nexus-submit/...
-          CGO_ENABLED=1 go build ./cmd/nexus-daemon/...
+          CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" CGO_LDFLAGS="-lm" go build ./cmd/nexus-daemon/...
 
   frontend-test:
     name: Frontend Smoke Coverage
@@ -221,8 +221,8 @@ jobs:
         working-directory: docs
         run: |
           npm run build
-          # 120: the Guides section ships seven markdown guides (about 10 KiB gz) as site pages
-          node ../scripts/check-bundle-budget.mjs ../build/docs 120 10
+          # 128: the Guides section ships ten markdown guides (about 10 KiB gz) as site pages
+          node ../scripts/check-bundle-budget.mjs ../build/docs 128 10
 
   build-vscode:
     name: Build VS Code Extension
@@ -321,15 +321,17 @@ jobs:
           CGO_LDFLAGS: "-lm"
         run: wails build -platform linux/amd64 -tags webkit2_41
 
-      # The binary embeds the daemon: launching it under a virtual display must
-      # bring up the REST API and the MCP server it advertises.
+      # The binary embeds the daemon: launching it under a virtual display from a
+      # non-project directory must bring up the REST API (with CORS for Linux/Windows
+      # WebView origins) and the MCP server it advertises.
       - name: Launch the app and probe its API
         run: |
           export HOME="$(mktemp -d)"
-          xvfb-run -a ./build/bin/nexusOrchestrator > app.log 2>&1 &
+          (cd "$HOME" && xvfb-run -a "$GITHUB_WORKSPACE/build/bin/nexusOrchestrator" > "$GITHUB_WORKSPACE/app.log" 2>&1) &
           APP=$!
           curl -sf --retry 40 --retry-delay 1 --retry-connrefused http://127.0.0.1:63987/api/health
-          curl -sf http://127.0.0.1:63987/api/providers > /dev/null
+          curl -sf -i -H 'Origin: http://wails.localhost' http://127.0.0.1:63987/api/providers | grep -qi 'Access-Control-Allow-Origin: http://wails.localhost'
+          curl -sf -i -H 'Origin: wails://wails' http://127.0.0.1:63987/api/providers | grep -qi 'Access-Control-Allow-Origin: wails://wails'
           curl -sf -X POST -H 'Content-Type: application/json' \
             -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' http://127.0.0.1:63988/mcp | grep -q submit_task
           kill "$APP" || true

@@ -32,18 +32,35 @@
           Queue Settings
         </h2>
         <div class="rounded-xl border border-white/5 bg-white/[0.02] p-4">
-          <div class="flex items-center gap-4 mb-2">
-            <span class="text-sm text-slate-300">Queue Cap</span>
-            <span class="text-xl font-bold text-violet-300 tabular-nums">{{
-              runtimeConfig?.queueCap ?? 50
-            }}</span>
+          <div class="flex items-center justify-between gap-4 mb-2">
+            <div class="flex items-center gap-4">
+              <span class="text-sm text-slate-300">Queue Cap</span>
+              <span class="text-xl font-bold text-violet-300 tabular-nums">{{
+                runtimeConfig?.queueCap ?? 50
+              }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <input
+                v-model.number="queueCapInput"
+                data-testid="queue-cap-input"
+                type="number"
+                min="1"
+                class="w-24 px-2.5 py-1 text-xs font-mono text-white bg-black/30 border border-white/10 rounded-lg focus:outline-none focus:border-violet-500/50"
+              />
+              <button
+                class="text-[10px] px-2.5 py-1 rounded border border-violet-500/30 text-violet-400 hover:bg-violet-500/10 transition-colors"
+                @click="saveQueueCap"
+              >
+                Save
+              </button>
+            </div>
           </div>
           <p class="text-xs text-slate-500">
-            Maximum tasks held in queue. Change with the
+            Maximum tasks held in queue. Can also be configured with the
             <code class="font-mono text-slate-400 bg-white/5 px-1 py-0.5 rounded"
               >NEXUS_QUEUE_CAP</code
             >
-            environment variable and daemon restart.
+            environment variable.
           </p>
         </div>
       </section>
@@ -147,6 +164,36 @@
               </template>
             </div>
           </div>
+          <!-- Browser Client API Token row -->
+          <div
+            class="flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-white/5 bg-white/[0.02]"
+          >
+            <div>
+              <span class="text-sm font-medium text-white">Browser Client Token</span>
+              <p class="text-xs text-slate-500 mt-0.5">
+                Stored in browser
+                <code class="font-mono bg-white/5 px-1 rounded">localStorage</code> for
+                <code class="font-mono bg-white/5 px-1 rounded">Authorization: Bearer</code>
+                requests
+              </p>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <input
+                v-model="browserApiToken"
+                data-testid="browser-api-token-input"
+                type="password"
+                placeholder="Paste API token…"
+                class="w-44 px-2.5 py-1 text-xs font-mono text-white bg-black/30 border border-white/10 rounded-lg focus:outline-none focus:border-violet-500/50"
+              />
+              <button
+                data-testid="browser-api-token-save"
+                class="text-[10px] px-2.5 py-1 rounded border border-violet-500/30 text-violet-400 hover:bg-violet-500/10 transition-colors"
+                @click="saveBrowserApiToken"
+              >
+                Use Token
+              </button>
+            </div>
+          </div>
           <!-- One-time token display -->
           <div
             v-if="newToken"
@@ -236,7 +283,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, reactive } from 'vue';
 import type { RuntimeConfig } from '../types/domain';
-import { getRuntimeConfig, updateRuntimeConfig } from '../types/wails';
+import { getRuntimeConfig, updateRuntimeConfig, getApiToken, setApiToken } from '../types/wails';
 import { resolveServerUrl } from '../composables/useServerUrl';
 import AppConfirmDialog from '../components/AppConfirmDialog.vue';
 
@@ -260,14 +307,33 @@ function showConfirm(title: string, message: string, onConfirm: () => void) {
 
 const runtimeConfig = ref<RuntimeConfig | null>(null);
 const configError = ref<string | null>(null);
+const queueCapInput = ref<number>(50);
+const browserApiToken = ref<string>(getApiToken());
 
 async function loadConfig() {
   try {
     runtimeConfig.value = await getRuntimeConfig();
+    queueCapInput.value = runtimeConfig.value.queueCap;
     configError.value = null;
   } catch (e) {
     configError.value = e instanceof Error ? e.message : 'Failed to load configuration';
   }
+}
+
+async function saveQueueCap() {
+  try {
+    const cfg = await updateRuntimeConfig({ queueCap: queueCapInput.value });
+    runtimeConfig.value = cfg;
+    queueCapInput.value = cfg.queueCap;
+    configError.value = null;
+  } catch (e) {
+    configError.value = e instanceof Error ? e.message : 'Failed to update queue cap';
+  }
+}
+
+function saveBrowserApiToken() {
+  setApiToken(browserApiToken.value);
+  loadConfig();
 }
 
 // ── Security / Token Management ───────────────────────────────────────────────
@@ -289,7 +355,13 @@ async function rotateToken(kind: 'api' | 'mcp') {
   try {
     const cfg = await updateRuntimeConfig(update);
     const val = kind === 'api' ? cfg.apiToken : cfg.mcpToken;
-    if (val) newToken.value = { kind, value: val };
+    if (val) {
+      newToken.value = { kind, value: val };
+      if (kind === 'api') {
+        setApiToken(val);
+        browserApiToken.value = val;
+      }
+    }
     await loadConfig();
   } catch (e) {
     tokenError.value = e instanceof Error ? e.message : 'Failed to rotate token';
@@ -308,6 +380,10 @@ async function disableToken(kind: 'api' | 'mcp') {
       tokenOperation.value = { kind, action: 'disable' };
       try {
         await updateRuntimeConfig(update);
+        if (kind === 'api') {
+          setApiToken('');
+          browserApiToken.value = '';
+        }
         newToken.value = null;
         tokenError.value = null;
         await loadConfig();

@@ -70,11 +70,14 @@ describe('ProviderStatus — live providers', () => {
     expect(w.text()).toContain('No providers detected');
   });
 
-  it('shows active providers with model and base URL', async () => {
-    const w = await mountStatus({ providers: [info({ baseURL: 'http://127.0.0.1:1234' })] });
+  it('shows active providers with model, base URL and limit badges', async () => {
+    const w = await mountStatus({
+      providers: [info({ baseURL: 'http://127.0.0.1:1234', rateLimited: true })],
+    });
     expect(w.text()).toContain('LM Studio');
     expect(w.text()).toContain('qwen');
     expect(w.text()).toContain('http://127.0.0.1:1234');
+    expect(w.text()).toContain('cooling down');
     expect(w.find('.animate-pulse').exists()).toBe(true);
   });
 

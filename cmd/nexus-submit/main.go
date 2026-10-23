@@ -186,6 +186,7 @@ func SubmitTask(ctx context.Context, addr string, body map[string]interface{}) (
 		return "", "", fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	setAuthHeader(req)
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return "", "", fmt.Errorf("POST /api/tasks: %w", err)
@@ -223,6 +224,7 @@ func waitForCompletion(ctx context.Context, stdout, stderr io.Writer, addr, task
 			fmt.Fprintln(stderr, "error:", err)
 			return exitFailure
 		}
+		setAuthHeader(req)
 		resp, err := httpClient.Do(req)
 		if err != nil {
 			if ctx.Err() == nil {
@@ -231,13 +233,18 @@ func waitForCompletion(ctx context.Context, stdout, stderr io.Writer, addr, task
 			continue
 		}
 		var t struct {
-			Status string `json:"status"`
-			Logs   string `json:"logs"`
+			Status    string `json:"status"`
+			Logs      string `json:"logs"`
+			WaitUntil string `json:"waitUntil"`
 		}
 		_ = json.NewDecoder(resp.Body).Decode(&t)
 		resp.Body.Close()
 
-		fmt.Fprintf(stdout, "  [%s] status=%s\n", time.Now().Format("15:04:05"), t.Status)
+		if t.Status == "WAITING" && t.WaitUntil != "" {
+			fmt.Fprintf(stdout, "  [%s] status=%s (waiting until %s)\n", time.Now().Format("15:04:05"), t.Status, t.WaitUntil)
+		} else {
+			fmt.Fprintf(stdout, "  [%s] status=%s\n", time.Now().Format("15:04:05"), t.Status)
+		}
 		switch t.Status {
 		case "COMPLETED":
 			if t.Logs != "" {
@@ -259,6 +266,12 @@ func waitForCompletion(ctx context.Context, stdout, stderr io.Writer, addr, task
 			fmt.Fprintln(stderr, "Task failed: no LLM provider available")
 			return exitNoProvider
 		}
+	}
+}
+
+func setAuthHeader(req *http.Request) {
+	if tok := strings.TrimSpace(os.Getenv("NEXUS_API_TOKEN")); tok != "" {
+		req.Header.Set("Authorization", "Bearer "+tok)
 	}
 }
 

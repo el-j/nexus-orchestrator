@@ -5,16 +5,21 @@ package main
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log"
+	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 
 	"nexus-orchestrator/internal/adapters/inbound/httpapi"
+	"nexus-orchestrator/internal/adapters/outbound/httpapi_client"
 	"nexus-orchestrator/internal/bootstrap"
 )
 
@@ -22,6 +27,8 @@ var version = "dev"
 
 //go:embed all:build/frontend
 var assets embed.FS
+
+var probeClient = &http.Client{Timeout: 500 * time.Millisecond}
 
 func main() {
 	if err := run(); err != nil {
@@ -37,20 +44,67 @@ func run() error {
 	logHub := httpapi.NewLogHub()
 	log.SetOutput(logHub)
 
-	rt, err := bootstrap.Start(context.Background(), bootstrap.ConfigFromEnv(), logHub)
+	cfg := bootstrap.ConfigFromEnv()
+	app, cleanup, err := attachOrStart(context.Background(), cfg, logHub)
 	if err != nil {
 		return fmt.Errorf("fatal: %w", err)
 	}
-	defer rt.Close()
+	defer cleanup()
 
-	app := newApp(rt)
 	log.Printf("nexusOrchestrator %s started — closing the window hides it to the dock/taskbar", version)
-	fmt.Print(bootstrap.FormatBanner("— ready (GUI)", rt.Config.ListenAddr, rt.Config.MCPAddr))
+	fmt.Print(bootstrap.FormatBanner("— ready (GUI)", cfg.ListenAddr, cfg.MCPAddr))
 
 	if err := wails.Run(windowOptions(app, assets)); err != nil {
 		return fmt.Errorf("wails: %w", err)
 	}
 	return nil
+}
+
+// attachOrStart connects the desktop app to an already-running Nexus daemon on
+// cfg.ListenAddr when one responds to /api/health, or starts an embedded runtime.
+func attachOrStart(ctx context.Context, cfg bootstrap.Config, logHub *httpapi.LogHub) (*App, func(), error) {
+	if cfg.ListenAddr == "" {
+		cfg.ListenAddr = bootstrap.DefaultListenAddr
+	}
+	if cfg.MCPAddr == "" {
+		cfg.MCPAddr = bootstrap.DefaultMCPAddr
+	}
+	if daemonHealthy(ctx, cfg.ListenAddr) {
+		baseURL := "http://" + cfg.ListenAddr
+		log.Printf("startup: attaching to running nexus-daemon at %s", baseURL)
+		client := httpapi_client.NewClient(baseURL)
+		app := NewApp(client, cfg.ListenAddr).
+			withActivityService(client).
+			withBrainService(httpapi_client.NewBrainClient(baseURL))
+		return app, func() {}, nil
+	}
+	rt, err := bootstrap.Start(ctx, cfg, logHub)
+	if err != nil {
+		return nil, nil, err
+	}
+	return newApp(rt), rt.Close, nil
+}
+
+func daemonHealthy(ctx context.Context, listenAddr string) bool {
+	if strings.HasSuffix(listenAddr, ":0") {
+		return false
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://"+listenAddr+"/api/health", nil)
+	if err != nil {
+		return false
+	}
+	resp, err := probeClient.Do(req)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return false
+	}
+	var body struct {
+		Status string `json:"status"`
+	}
+	return json.NewDecoder(resp.Body).Decode(&body) == nil && body.Status == "ok"
 }
 
 // newApp builds the Wails binding object over the running services.

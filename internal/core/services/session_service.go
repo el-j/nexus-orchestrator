@@ -237,20 +237,25 @@ func (o *OrchestratorService) PurgeDisconnectedSessions(ctx context.Context) (in
 // GetDiscoveredAgents returns known AI agent processes, triggering a fresh scan
 // if the last scan was more than 30 seconds ago.
 func (o *OrchestratorService) GetDiscoveredAgents(ctx context.Context) ([]domain.DiscoveredAgent, error) {
+	o.mu.Lock()
+	scanner := o.agentScanner
+	repo := o.agentRepo
+	o.mu.Unlock()
+
 	o.lastAgentScanMu.Lock()
-	shouldScan := o.agentScanner != nil && (o.lastAgentScan.IsZero() || time.Since(o.lastAgentScan) > 30*time.Second)
+	shouldScan := scanner != nil && (o.lastAgentScan.IsZero() || time.Since(o.lastAgentScan) > 30*time.Second)
+	cached := append([]domain.DiscoveredAgent(nil), o.lastScannedAgents...)
 	o.lastAgentScanMu.Unlock()
 
-	var scanned []domain.DiscoveredAgent
 	if shouldScan {
-		agents, err := o.agentScanner.ScanAgents(ctx)
+		agents, err := scanner.ScanAgents(ctx)
 		if err != nil {
 			log.Printf("orchestrator: scan agents: %v", err)
 		} else {
-			scanned = agents
-			if o.agentRepo != nil {
+			cached = agents
+			if repo != nil {
 				for _, a := range agents {
-					if err := o.agentRepo.UpsertDiscoveredAgent(ctx, a); err != nil {
+					if err := repo.UpsertDiscoveredAgent(ctx, a); err != nil {
 						log.Printf("orchestrator: upsert discovered agent %s: %v", a.ID, err)
 					}
 				}
@@ -258,44 +263,52 @@ func (o *OrchestratorService) GetDiscoveredAgents(ctx context.Context) ([]domain
 		}
 		o.lastAgentScanMu.Lock()
 		o.lastAgentScan = time.Now()
+		if err == nil {
+			o.lastScannedAgents = append([]domain.DiscoveredAgent(nil), agents...)
+		}
 		o.lastAgentScanMu.Unlock()
 	}
 
-	if o.agentRepo != nil {
-		return o.agentRepo.ListDiscoveredAgents(ctx)
+	if repo != nil {
+		return repo.ListDiscoveredAgents(ctx)
 	}
-	return scanned, nil
+	return cached, nil
 }
 
 // GetDiscoveredPlanFiles scans for plan/task/orchestration files near projectPath,
 // persists results to SQLite, and returns the stored list for the project.
 // If projectPath is empty, returns all stored plan files without scanning.
 func (o *OrchestratorService) GetDiscoveredPlanFiles(ctx context.Context, projectPath string) ([]domain.DiscoveredPlanFile, error) {
-	if o.agentScanner == nil && o.planFileRepo == nil {
+	o.mu.Lock()
+	scanner := o.agentScanner
+	planRepo := o.planFileRepo
+	o.mu.Unlock()
+
+	if scanner == nil && planRepo == nil {
 		return nil, domain.ErrSubsystemNotConfigured
 	}
 	// When no project specified, return all persisted plan files.
 	if projectPath == "" {
-		if o.planFileRepo != nil {
-			return o.planFileRepo.ListPlanFiles(ctx, "")
+		if planRepo != nil {
+			return planRepo.ListPlanFiles(ctx, "")
 		}
 		return nil, domain.ErrSubsystemNotConfigured
 	}
 	var files []domain.DiscoveredPlanFile
-	if o.agentScanner != nil {
+	if scanner != nil {
 		var err error
-		files, err = o.agentScanner.ScanPlanFiles(ctx, []string{projectPath})
+		files, err = scanner.ScanPlanFiles(ctx, []string{projectPath})
 		if err != nil {
 			return nil, err
 		}
-		if o.planFileRepo != nil {
+		if planRepo != nil {
 			for _, f := range files {
-				_ = o.planFileRepo.UpsertPlanFile(ctx, f)
+				_ = planRepo.UpsertPlanFile(ctx, f)
 			}
 		}
 	}
-	if o.planFileRepo != nil {
-		return o.planFileRepo.ListPlanFiles(ctx, projectPath)
+	if planRepo != nil {
+		return planRepo.ListPlanFiles(ctx, projectPath)
 	}
 	if files != nil {
 		return files, nil
@@ -306,17 +319,21 @@ func (o *OrchestratorService) GetDiscoveredPlanFiles(ctx context.Context, projec
 // DelegateToNexus marks the AI session as delegated to the nexus orchestrator
 // and returns a formatted instruction string for the agent.
 func (o *OrchestratorService) DelegateToNexus(ctx context.Context, sessionID string) (string, error) {
-	if o.aiSessionRepo == nil {
+	o.mu.Lock()
+	aiRepo := o.aiSessionRepo
+	o.mu.Unlock()
+
+	if aiRepo == nil {
 		return "", fmt.Errorf("orchestrator: delegate to nexus: session repo not configured")
 	}
-	session, err := o.aiSessionRepo.GetAISessionByID(ctx, sessionID)
+	session, err := aiRepo.GetAISessionByID(ctx, sessionID)
 	if err != nil {
 		return "", fmt.Errorf("orchestrator: delegate to nexus: %w", err)
 	}
 	now := time.Now()
 	session.DelegatedToNexus = true
 	session.DelegationTimestamp = &now
-	if err := o.aiSessionRepo.SaveAISession(ctx, session); err != nil {
+	if err := aiRepo.SaveAISession(ctx, session); err != nil {
 		return "", fmt.Errorf("orchestrator: delegate to nexus: save: %w", err)
 	}
 	return o.delegationInstruction(session, now), nil

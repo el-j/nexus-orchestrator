@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { shallowMount, flushPromises } from '@vue/test-utils';
 import AgentsView from './AgentsView.vue';
+import SessionCard from '../components/SessionCard.vue';
 
 // Mock wails bindings
 vi.mock('../types/wails', () => ({
@@ -80,7 +81,9 @@ describe('AgentsView', () => {
     await flushPromises();
 
     const html = wrapper.html();
-    expect(html).toContain('copilot-vscode');
+    expect(wrapper.findComponent(SessionCard).props('session')).toMatchObject({
+      agentName: 'copilot-vscode',
+    });
     expect(html).toContain('Registered Sessions');
   });
 

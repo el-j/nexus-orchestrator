@@ -14,7 +14,11 @@ profile="$(mktemp)"
 log="$(mktemp)"
 trap 'rm -f "$profile" "$log"' EXIT
 # A failing test must say which one: the output is kept and its failures are printed.
-if ! CGO_ENABLED=1 CGO_CFLAGS="${CGO_CFLAGS:--DSQLITE_ENABLE_FTS5}" CGO_LDFLAGS="${CGO_LDFLAGS:--lm}" \
+default_ldflags="-lm"
+if [ "$(uname -s 2>/dev/null)" = "Darwin" ]; then
+  default_ldflags="-lm -Wl,-no_warn_duplicate_libraries"
+fi
+if ! CGO_ENABLED=1 CGO_CFLAGS="${CGO_CFLAGS:--DSQLITE_ENABLE_FTS5}" CGO_LDFLAGS="${CGO_LDFLAGS:-$default_ldflags}" \
   go test -count=1 -coverpkg=./... -coverprofile="$profile" ./... >"$log" 2>&1; then
   grep -E '^(--- FAIL|FAIL|panic:)|_test\.go:[0-9]+:' "$log" | head -40 >&2
   echo "go test failed (see above)" >&2

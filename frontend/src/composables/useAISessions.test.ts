@@ -9,12 +9,16 @@ const {
   mockListAISessions,
   mockDeregisterAISession,
   mockPurgeDisconnectedSessions,
+  mockDelegateToNexus,
+  mockTerminateAISession,
   mockOn,
   mockOff,
 } = vi.hoisted(() => ({
   mockListAISessions: vi.fn(),
   mockDeregisterAISession: vi.fn(),
   mockPurgeDisconnectedSessions: vi.fn(),
+  mockDelegateToNexus: vi.fn(),
+  mockTerminateAISession: vi.fn(),
   mockOn: vi.fn(),
   mockOff: vi.fn(),
 }));
@@ -23,6 +27,8 @@ vi.mock('../types/wails', () => ({
   listAISessions: mockListAISessions,
   deregisterAISession: mockDeregisterAISession,
   purgeDisconnectedSessions: mockPurgeDisconnectedSessions,
+  delegateToNexus: mockDelegateToNexus,
+  terminateAISession: mockTerminateAISession,
 }));
 
 vi.mock('./useGlobalSSE', () => ({
@@ -64,6 +70,8 @@ describe('useAISessions', () => {
     mockListAISessions.mockResolvedValue([]);
     mockDeregisterAISession.mockResolvedValue(undefined);
     mockPurgeDisconnectedSessions.mockResolvedValue(2);
+    mockDelegateToNexus.mockResolvedValue({ instruction: 'ok', sessionId: 's-1' });
+    mockTerminateAISession.mockResolvedValue(undefined);
   });
 
   it('populates sessions on mount; loading transitions to false', async () => {
@@ -164,5 +172,21 @@ describe('useAISessions', () => {
     wrapper.unmount();
 
     expect(mockOff).toHaveBeenCalledWith('ai_session_changed', expect.any(Function));
+  });
+
+  it('delegate() and terminate() call their wails helpers and refresh sessions', async () => {
+    const { wrapper, get } = mountUseAISessions();
+    await flushPromises();
+
+    mockListAISessions.mockClear();
+    await get().delegate('s-1');
+    expect(mockDelegateToNexus).toHaveBeenCalledWith('s-1');
+    expect(mockListAISessions).toHaveBeenCalledTimes(1);
+
+    await get().terminate('s-1', true);
+    expect(mockTerminateAISession).toHaveBeenCalledWith('s-1', true);
+    expect(mockListAISessions).toHaveBeenCalledTimes(2);
+
+    wrapper.unmount();
   });
 });

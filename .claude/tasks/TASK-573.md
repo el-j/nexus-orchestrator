@@ -3,7 +3,7 @@ id: TASK-573
 planId: PLAN-073
 title: 'Find out whether Antigravity exposes vscode.lm models'
 role: polish
-status: todo
+status: done
 createdAt: 2026-10-15
 ---
 

@@ -60,6 +60,7 @@ var portTargets = []portTarget{
 
 var cliTargets = []cliTarget{
 	{"claude", "Claude CLI", domain.ProviderKindCLI},
+	{"copilot", "GitHub Copilot CLI", domain.ProviderKindCLI},
 	{"ollama", "Ollama CLI", domain.ProviderKindOllama},
 	{"lms", "LM Studio CLI", domain.ProviderKindLMStudio},
 	{"aichat", "aichat", domain.ProviderKindCLI},

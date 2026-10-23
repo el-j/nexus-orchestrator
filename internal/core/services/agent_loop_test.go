@@ -362,3 +362,27 @@ func TestAgentLoop_ACooledDownProviderIsSkippedForTheNextOne(t *testing.T) {
 		t.Errorf("a provider in cooldown is not called again: %d", limited.calls)
 	}
 }
+
+func TestAgentLoop_StepsUpLadderWhenVerifyFails(t *testing.T) {
+	opus, sonnet, local := ladderProviders()
+	local.limit = 100000
+	sonnet.limit = 100000
+	opus.limit = 100000
+	local.replies = []string{tool(`{"tool":"finish","summary":"tried local"}`)}
+	sonnet.replies = []string{tool(`{"tool":"finish","summary":"fixed on sonnet"}`)}
+	runner := &scriptedRunner{results: []runResult{
+		{"compile error", errors.New("exit 1")},
+		{"PASS", nil},
+	}}
+	e := newEngine(t, newMemFS(map[string]string{}), nil, runner, opus, sonnet, local)
+	dir := ladderProject(t, threeRungs)
+	id := e.queue(agentTask(func(tk *domain.Task) {
+		tk.ProjectPath = dir
+		tk.Role = "coder"
+		tk.VerificationCommand = "go test"
+	}))
+	e.runOne(id, domain.StatusCompleted)
+	if local.calls != 1 || sonnet.calls != 1 {
+		t.Errorf("failed finish verification in agent loop must step up ladder: local=%d sonnet=%d opus=%d", local.calls, sonnet.calls, opus.calls)
+	}
+}

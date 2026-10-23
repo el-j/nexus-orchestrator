@@ -68,6 +68,17 @@ func (o *OrchestratorService) liftBudgetCooldowns(chain, keep []ports.LLMClient)
 	}
 }
 
+// firstAvailable returns the first candidate of the chain that is not cooling down, or nil.
+func (o *OrchestratorService) firstAvailable(chain []ports.LLMClient) ports.LLMClient {
+	now := time.Now()
+	for _, c := range chain {
+		if _, cooling := o.discovery.Cooldown(c, now); !cooling {
+			return c
+		}
+	}
+	return nil
+}
+
 // holdReleased reports whether a WAITING task that has not reached its wait time can run again because
 // the cooldowns it waited for are gone, for example a budget that was raised. A task that names its
 // provider, or whose providers cannot be resolved, stays put.

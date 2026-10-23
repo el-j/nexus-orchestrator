@@ -123,7 +123,10 @@ type OrchestratorService struct {
 	usageRepo          ports.UsageRepository // optional: the usage ledger
 	brain              ports.BrainService    // optional: project briefing for prompts and task memory
 	lastAgentScan      time.Time
+	lastScannedAgents  []domain.DiscoveredAgent
 	lastAgentScanMu    sync.Mutex
+	waitTimerMu        sync.Mutex
+	waitTimers         map[string]*time.Timer          // pending resume timers by task ID
 	signalFn           func(pid int, force bool) error // test seam; nil = real os signals
 	baseCtx            context.Context                 // cancelled by Stop: aborts every in-flight generation
 	baseCancel         context.CancelFunc
@@ -198,6 +201,12 @@ func (o *OrchestratorService) Stop() {
 		o.mu.Lock()
 		o.stopped = true
 		o.mu.Unlock()
+		o.waitTimerMu.Lock()
+		for _, tm := range o.waitTimers {
+			tm.Stop()
+		}
+		o.waitTimers = nil
+		o.waitTimerMu.Unlock()
 		// Abort in-flight generations first: without this Stop would wait out a
 		// provider request that can legitimately run for minutes.
 		o.baseCancel()

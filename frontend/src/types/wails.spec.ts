@@ -15,6 +15,7 @@ beforeEach(() => {
   fetchMock.mockReset();
   vi.stubGlobal('fetch', fetchMock);
   delete (window as { go?: unknown }).go;
+  localStorage.clear();
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -545,16 +546,120 @@ describe('getServerAddr', () => {
 });
 
 describe('getUsage', () => {
+  const report = {
+    since: 's',
+    totals: { provider: '', calls: 0, inputTokens: 0, outputTokens: 0 },
+    usage: [],
+  };
+
   it('reads the usage ledger over REST (there is no desktop binding), 24h by default', async () => {
-    const report = {
-      since: 's',
-      totals: { provider: '', calls: 0, inputTokens: 0, outputTokens: 0 },
-      usage: [],
-    };
     fetchMock.mockImplementation(() => reply(200, report));
     expect(await api.getUsage()).toEqual(report);
     expect(lastCall()).toMatchObject({ path: '/api/usage?since=24h', method: 'GET' });
     await api.getUsage('7d');
     expect(lastCall().path).toBe('/api/usage?since=7d');
+  });
+
+  it('prepends the embedded daemon URL when called inside the Wails desktop WebView', async () => {
+    wails('GetServerAddr', 'http://127.0.0.1:63987');
+    fetchMock.mockImplementation(() => reply(200, report));
+    expect(await api.getUsage('24h')).toEqual(report);
+    expect(lastCall()).toMatchObject({
+      path: 'http://127.0.0.1:63987/api/usage?since=24h',
+      method: 'GET',
+    });
+  });
+});
+
+describe('API token persistence (getApiToken / setApiToken / authHeaders)', () => {
+  it('stores and clears the API token in localStorage and builds authHeaders', () => {
+    expect(api.getApiToken()).toBe('');
+    expect(api.authHeaders()).toEqual({});
+
+    api.setApiToken('  my-secret-token  ');
+    expect(api.getApiToken()).toBe('my-secret-token');
+    expect(localStorage.getItem('nexus:apiToken')).toBe('my-secret-token');
+    expect(api.authHeaders({ 'X-Custom': '1' })).toEqual({
+      'X-Custom': '1',
+      Authorization: 'Bearer my-secret-token',
+    });
+
+    api.setApiToken('');
+    expect(api.getApiToken()).toBe('');
+    expect(localStorage.getItem('nexus:apiToken')).toBeNull();
+  });
+
+  it('attaches Authorization: Bearer <token> on request() with and without a JSON body', async () => {
+    api.setApiToken('tok-123');
+    fetchMock.mockImplementation(() => reply(200, []));
+    await api.getQueue();
+    expect(lastCall().init.headers).toEqual({ Authorization: 'Bearer tok-123' });
+
+    fetchMock.mockImplementation(() => reply(200, { queueCap: 25 }));
+    await api.updateRuntimeConfig({ queueCap: 25 });
+    expect(lastCall().init.headers).toEqual({
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer tok-123',
+    });
+  });
+});
+
+describe('getRouting, delegateToNexus, terminateAISession', () => {
+  it('calls GET /api/routing with projectPath and optional role', async () => {
+    const preview = { quotaThreshold: 0.9, order: [] };
+    fetchMock.mockImplementation(() => reply(200, preview));
+    expect(await api.getRouting('/work/app')).toEqual(preview);
+    expect(lastCall().path).toBe('/api/routing?projectPath=%2Fwork%2Fapp');
+    await api.getRouting('/work/app', 'coder');
+    expect(lastCall().path).toBe('/api/routing?projectPath=%2Fwork%2Fapp&role=coder');
+  });
+
+  it('calls POST /api/ai-sessions/{id}/delegate and POST /api/ai-sessions/{id}/terminate', async () => {
+    fetchMock.mockImplementationOnce(() =>
+      reply(200, { instruction: 'use nexus', sessionId: 's1' }),
+    );
+    expect(await api.delegateToNexus('s1')).toEqual({
+      instruction: 'use nexus',
+      sessionId: 's1',
+    });
+    expect(lastCall()).toMatchObject({ method: 'POST', path: '/api/ai-sessions/s1/delegate' });
+
+    fetchMock.mockImplementationOnce(() => reply(204));
+    await api.terminateAISession('s1');
+    expect(lastCall()).toMatchObject({
+      method: 'POST',
+      path: '/api/ai-sessions/s1/terminate',
+      body: { force: false },
+    });
+
+    fetchMock.mockImplementationOnce(() => reply(204));
+    await api.terminateAISession('s1', true);
+    expect(lastCall()).toMatchObject({
+      method: 'POST',
+      path: '/api/ai-sessions/s1/terminate',
+      body: { force: true },
+    });
+  });
+});
+
+describe('getPolicy and setPolicy', () => {
+  it('reads GET /api/policy and writes PUT /api/policy for the project', async () => {
+    const reply1 = { found: true, policy: { quotaThreshold: 0.8 } };
+    fetchMock.mockImplementationOnce(() => reply(200, reply1));
+    expect(await api.getPolicy('/work/app')).toEqual(reply1);
+    expect(lastCall()).toMatchObject({
+      method: 'GET',
+      path: '/api/policy?projectPath=%2Fwork%2Fapp',
+    });
+
+    fetchMock.mockImplementationOnce(() =>
+      reply(200, { found: true, policy: { contextBudget: 4000 } }),
+    );
+    await api.setPolicy('/work/app', { contextBudget: 4000 });
+    expect(lastCall()).toMatchObject({
+      method: 'PUT',
+      path: '/api/policy?projectPath=%2Fwork%2Fapp',
+      body: { contextBudget: 4000 },
+    });
   });
 });

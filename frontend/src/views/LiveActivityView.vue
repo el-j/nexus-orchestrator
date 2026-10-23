@@ -124,16 +124,19 @@ import AIActivityCard from '../components/AIActivityCard.vue';
 import RefreshIndicator from '../components/RefreshIndicator.vue';
 import { useActivities } from '../composables/useActivities';
 import { useDiscovery } from '../composables/useDiscovery';
+import { currentProject } from '../composables/useProjectState';
 import type { AIActivity, ActivityType } from '../types/domain';
 import { timeAgo } from '../utils/time';
 
 const { scanning, scanNow: originalScan } = useDiscovery();
-const { activities, loading } = useActivities({ limit: 100 });
+const { activities, loading, refresh } = useActivities({ limit: 100 });
 
 const lastRefreshed = ref<Date | null>(null);
 
+// A scan finds new agents and their activity: reload the feed afterwards.
 async function triggerScan() {
   await originalScan();
+  await refresh();
   lastRefreshed.value = new Date();
 }
 
@@ -154,6 +157,10 @@ watch(
     selectedProject.value = queryText(q.project);
   },
 );
+// Picking a project in the sidebar narrows the feed to it (clearing it shows every project again).
+watch(currentProject, (p) => {
+  selectedProject.value = p ?? '';
+});
 const selectedTypes = ref<ActivityType[]>([]);
 
 const typeOptions: { type: ActivityType; emoji: string }[] = [

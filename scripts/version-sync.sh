@@ -38,6 +38,26 @@ node -e "
 "
 echo "  ✓ vscode-extension/package.json"
 
+# --- github-action/package.json ---
+node -e "
+  const fs = require('fs');
+  const p = '${ROOT}/github-action/package.json';
+  const pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
+  pkg.version = '${VERSION}';
+  fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
+"
+echo "  ✓ github-action/package.json"
+
+# --- docs/package.json ---
+node -e "
+  const fs = require('fs');
+  const p = '${ROOT}/docs/package.json';
+  const pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
+  pkg.version = '${VERSION}';
+  fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
+"
+echo "  ✓ docs/package.json"
+
 # --- wails.json ---
 node -e "
   const fs = require('fs');
