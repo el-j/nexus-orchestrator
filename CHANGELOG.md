@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - The editor model bridge no longer registers the editor's own helper models (`copilot-utility*`, `copilot-dictation-cleanup-*`) as providers, so routing cannot pick one for a coding task.
-
+- Discovery no longer offers a terminal-shim path for a CLI (cmux puts a per-session folder first on PATH, so a promoted `claude` or `agy` stopped working when that terminal closed); it takes the real binary and uses the shim only when it is the sole copy.
 - Test suites of the frontend, the extension and the docs site allow 20 s per test instead of 5 s: the first test that loads many modules timed out on a busy machine and failed CI at random
 - Security: `go.mod` pins the Go toolchain to 1.27.3, which fixes the 13 standard-library advisories `govulncheck` reported for 1.27.1 (`net/http`, `crypto/x509`, `html/template`, …); the GitHub Action forces `undici` 6.29.1, which clears the high-severity `@fastify/busboy` advisories in its dependency tree (`npm audit` reports none). Moving the Action to the ESM-only `@actions/*` 3.x packages needs a bundler change and is left for later
 - macOS signing: the entitlements file is tracked (`packaging/macos/entitlements.plist`); the signing step referenced an ignored path and would have failed once an Apple certificate was added. `docs/releasing.md` lists the secrets. TASK-574

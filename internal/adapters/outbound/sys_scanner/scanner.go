@@ -325,7 +325,7 @@ func (s *Scanner) probeCLI(ctx context.Context, t cliTarget) ([]domain.Discovere
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	path, err := exec.LookPath(t.binary)
+	path, err := lookPathReal(t.binary)
 	if err != nil {
 		return nil, nil
 	}
