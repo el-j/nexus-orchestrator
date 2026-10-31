@@ -1,6 +1,7 @@
 # TASK-361: Fix .continue MCP config file
 
 **Plan:** PLAN-052 | **Wave:** 6 | **Status:** done
+**Status:** done
 
 ## Description
 

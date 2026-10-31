@@ -1,7 +1,7 @@
 # TASK-327: Validate `make dev` full-stack startup
 
 **Plan:** PLAN-049
-**Status:** DONE — validated via `make nice` (exits 0) and `make dev` (health-check + Vite starts after daemon ready)
+**Status:** done
 
 ## Description
 

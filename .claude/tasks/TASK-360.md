@@ -1,6 +1,7 @@
 # TASK-360: Add stdio transport binary
 
 **Plan:** PLAN-052 | **Wave:** 5 | **Status:** done
+**Status:** done
 
 ## Description
 

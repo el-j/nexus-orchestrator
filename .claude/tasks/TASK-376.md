@@ -1,6 +1,7 @@
 # TASK-376: Add workspace isolation tests to taskQueueProvider.test.ts
 
 **Plan:** PLAN-055 | **Wave:** 2 | **Status:** done | **Role:** extension
+**Status:** done
 
 ## Goal
 

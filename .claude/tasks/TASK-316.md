@@ -1,6 +1,7 @@
 # TASK-316: sys_scanner ScanPlanFiles — detect 8+ plan file patterns
 
 **Plan:** PLAN-048
+**Status:** done
 **Role:** backend
 **Dependencies:** TASK-315
 

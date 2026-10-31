@@ -1,6 +1,7 @@
 # TASK-374: Add provider pre-flight soft-check to PromoteTask
 
 **Plan:** PLAN-055 | **Wave:** 1 | **Status:** done | **Role:** backend
+**Status:** done
 
 ## Problem
 
