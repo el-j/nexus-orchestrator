@@ -7,7 +7,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -40,22 +42,54 @@ func withAgyFlags(args []string, model string) []string {
 	return out
 }
 
-// agyModels asks `agy models` for the model ids, or returns "default" when it cannot.
+// agyModelsTTL is how long a model list read from `agy models` is reused. The command asks
+// Google's servers and takes about two seconds; the daemon asks for the list every 30 seconds
+// and models change rarely.
+const agyModelsTTL = 10 * time.Minute
+
+var (
+	agyModelsMu    sync.Mutex
+	agyModelsCache = map[string]agyModelList{}
+)
+
+// agyModelList is a model list and when it was read.
+type agyModelList struct {
+	ids []string
+	at  time.Time
+}
+
+// agyModels returns the model ids of the agy at exe: the list read in the last agyModelsTTL, or
+// else the output of `agy models`. A failed lookup returns "default" and is not remembered.
 func agyModels(ctx context.Context, exe string) []string {
+	agyModelsMu.Lock()
+	cached, ok := agyModelsCache[exe]
+	agyModelsMu.Unlock()
+	if ok && time.Since(cached.at) < agyModelsTTL {
+		return slices.Clone(cached.ids)
+	}
+	ids := readAgyModels(ctx, exe)
+	if ids == nil {
+		return []string{"default"}
+	}
+	agyModelsMu.Lock()
+	agyModelsCache[exe] = agyModelList{ids: ids, at: time.Now()}
+	agyModelsMu.Unlock()
+	return slices.Clone(ids)
+}
+
+// readAgyModels runs `agy models` and returns the ids it prints, or nil when it fails or prints none.
+func readAgyModels(ctx context.Context, exe string) []string {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, exe, "models").Output()
 	if err != nil {
-		return []string{"default"}
+		return nil
 	}
 	var ids []string
 	for _, line := range strings.Split(string(out), "\n") {
 		if id, _, found := strings.Cut(line, "\t"); found && strings.TrimSpace(id) != "" {
 			ids = append(ids, strings.TrimSpace(id))
 		}
-	}
-	if len(ids) == 0 {
-		return []string{"default"}
 	}
 	return ids
 }

@@ -27,15 +27,22 @@ type providerHealth struct {
 	lastError        string // last error message (empty when healthy)
 }
 
+// probeCall is one liveness probe in flight; callers that need the same provider wait on done.
+type probeCall struct {
+	done chan struct{}
+	h    *providerHealth
+}
+
 // DiscoveryService probes registered LLM clients and returns the first active one.
 // All exported methods are safe for concurrent use.
 type DiscoveryService struct {
 	mu               sync.RWMutex
 	availableClients []ports.LLMClient
-	cacheMu          sync.Mutex
+	cacheMu          sync.Mutex // guards healthCache and probing; never held while a provider is probed
 	healthCache      map[string]*providerHealth
-	cooldowns        cooldownBook // providers that hit a limit; see cooldown.go
-	quotas           quotaBook    // the plans' own allowance readings; see quota.go
+	probing          map[string]*probeCall // probes in flight, so concurrent callers share one
+	cooldowns        cooldownBook          // providers that hit a limit; see cooldown.go
+	quotas           quotaBook             // the plans' own allowance readings; see quota.go
 }
 
 // NewDiscoveryService creates a DiscoveryService with the supplied LLM adapters.
@@ -110,8 +117,11 @@ func (s *DiscoveryService) DetectActive() ports.LLMClient {
 	copy(clients, s.availableClients)
 	s.mu.RUnlock()
 
-	for _, c := range clients {
-		if s.cachedHealth(c).alive {
+	// Every stale provider is probed at once; the answer is the first alive one in order, and
+	// a slow or hung provider behind it is not waited for.
+	pending := s.probeAll(clients)
+	for i, c := range clients {
+		if (<-pending[i]).alive {
 			return c
 		}
 	}
@@ -143,8 +153,9 @@ func (s *DiscoveryService) FindForModel(modelID, providerHint string) (ports.LLM
 		health *providerHealth
 	}
 	snapshots := make([]candidateHealth, 0, len(candidates))
-	for _, c := range candidates {
-		snapshots = append(snapshots, candidateHealth{c, s.cachedHealth(c)})
+	pending := s.probeAll(candidates)
+	for i, c := range candidates {
+		snapshots = append(snapshots, candidateHealth{c, <-pending[i]})
 	}
 
 	// Pass 1: provider with the model already loaded / active.
@@ -185,8 +196,9 @@ func (s *DiscoveryService) ListProviders() []ports.ProviderInfo {
 
 	now := time.Now()
 	result := make([]ports.ProviderInfo, 0, len(clients))
-	for _, c := range clients {
-		h := s.cachedHealth(c)
+	pending := s.probeAll(clients)
+	for i, c := range clients {
+		h := <-pending[i]
 		info := ports.ProviderInfo{
 			Name:             c.ProviderName(),
 			Active:           h.alive,
@@ -256,36 +268,73 @@ func staleTTL(h *providerHealth) time.Duration {
 	return d
 }
 
-// cachedHealth returns the providerHealth for c, re-probing only when the cache
-// entry is absent or has exceeded its TTL. Thread-safe via s.cacheMu.
+// probeAll starts cachedHealth for every client at once and returns one channel per client, in
+// order, that yields its health. Reading the channels in order gives the first answers first.
+func (s *DiscoveryService) probeAll(clients []ports.LLMClient) []<-chan *providerHealth {
+	out := make([]<-chan *providerHealth, len(clients))
+	for i, c := range clients {
+		ch := make(chan *providerHealth, 1)
+		out[i] = ch
+		go func() { ch <- s.cachedHealth(c) }()
+	}
+	return out
+}
+
+// cachedHealth returns the providerHealth for c, re-probing only when the cache entry is absent
+// or has exceeded its TTL. The probe runs without holding cacheMu (it can take seconds: a model
+// list fetched over the network, a host that does not answer), and callers that arrive while a
+// probe of the same provider is in flight wait for that probe instead of starting another.
 func (s *DiscoveryService) cachedHealth(c ports.LLMClient) *providerHealth {
 	name := c.ProviderName()
 
 	s.cacheMu.Lock()
-	defer s.cacheMu.Unlock()
-
 	if s.healthCache == nil {
 		s.healthCache = make(map[string]*providerHealth)
 	}
-
 	h, ok := s.healthCache[name]
 	if ok && time.Since(h.checkedAt) < staleTTL(h) {
+		s.cacheMu.Unlock()
 		return h // cache is fresh — no network call
 	}
+	if call, running := s.probing[name]; running {
+		s.cacheMu.Unlock()
+		<-call.done
+		return call.h
+	}
+	if s.probing == nil {
+		s.probing = make(map[string]*probeCall)
+	}
+	call := &probeCall{done: make(chan struct{})}
+	s.probing[name] = call
+	s.cacheMu.Unlock()
 
-	// Cache is stale or missing — probe now, but never wait on a hung provider forever.
+	updated := probeProvider(c, h)
+
+	s.cacheMu.Lock()
+	s.healthCache[name] = updated
+	delete(s.probing, name)
+	call.h = updated
+	s.cacheMu.Unlock()
+	close(call.done)
+	return updated
+}
+
+// probeProvider pings c and, when it answers, reads its models. prev is the earlier result
+// (nil the first time) and carries the count of consecutive failures.
+func probeProvider(c ports.LLMClient, prev *providerHealth) *providerHealth {
+	name := c.ProviderName()
+	// Never wait on a hung provider forever.
 	ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
 	defer cancel()
 	start := time.Now()
 	alive := c.Ping(ctx)
-	latMs := time.Since(start).Milliseconds()
 	updated := &providerHealth{
 		alive:     alive,
 		checkedAt: time.Now(),
-		latencyMs: latMs,
+		latencyMs: time.Since(start).Milliseconds(),
 	}
-	if ok {
-		updated.consecutiveFails = h.consecutiveFails
+	if prev != nil {
+		updated.consecutiveFails = prev.consecutiveFails
 	}
 	if alive {
 		updated.activeModel = c.ActiveModel()
@@ -300,7 +349,6 @@ func (s *DiscoveryService) cachedHealth(c ports.LLMClient) *providerHealth {
 		updated.consecutiveFails++
 		updated.lastError = name + " unreachable"
 	}
-	s.healthCache[name] = updated
 	return updated
 }
 

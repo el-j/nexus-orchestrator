@@ -4,6 +4,7 @@ package llm_cli
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -123,4 +124,36 @@ func TestAgyDriver_FailuresAreTypedAndTheResetTimeIsRead(t *testing.T) {
 			t.Errorf("not a quota or auth failure: %v", err)
 		}
 	})
+}
+
+func TestAgyModels_AreCachedBecauseTheCommandTakesSecondsAndTheDaemonAsksEvery30s(t *testing.T) {
+	counter := filepath.Join(t.TempDir(), "calls")
+	cli := fakeCLI(t, "agy", `if [ "$1" = models ]; then
+echo x >> `+counter+`
+printf 'gemini-a\tA\ngemini-b\tB\n'
+fi`)
+	a, _ := NewAdapter("agy", cli, "gemini-a")
+	for i := 0; i < 3; i++ {
+		if m, _ := a.GetAvailableModels(context.Background()); !slices.Equal(m, []string{"gemini-a", "gemini-b"}) {
+			t.Fatalf("call %d: %v", i, m)
+		}
+	}
+	if n := len(recordedArgs(t, counter)); n != 1 {
+		t.Errorf("`agy models` ran %d times for 3 requests, want 1", n)
+	}
+}
+
+func TestAgyModels_AFailedLookupIsNotRemembered(t *testing.T) {
+	flag := filepath.Join(t.TempDir(), "ok")
+	cli := fakeCLI(t, "agy", `if [ -f `+flag+` ]; then printf 'gemini-a\tA\n'; else exit 1; fi`)
+	a, _ := NewAdapter("agy", cli, "")
+	if m, _ := a.GetAvailableModels(context.Background()); !slices.Equal(m, []string{"default"}) {
+		t.Fatalf("failing: %v", m)
+	}
+	if err := os.WriteFile(flag, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if m, _ := a.GetAvailableModels(context.Background()); !slices.Equal(m, []string{"gemini-a"}) {
+		t.Errorf("after the CLI recovers the list must be read again, got %v", m)
+	}
 }
