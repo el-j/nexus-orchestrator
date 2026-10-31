@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The daemon log keeps what matters: `accessLog` writes changes, failures (status 400 and up) and requests slower than 1 s, not every successful read and session heartbeat (65 % of a 20 MB log in 11 hours); `make start-bg` moves `daemon.log` to `daemon.log.1` above 10 MB. TASK-626 of PLAN-076
+- `npm audit fix` in `frontend` and `docs` (esbuild advisory, lockfiles only). TASK-627 of PLAN-076
 - The editor model bridge no longer registers the editor's own helper models (`copilot-utility*`, `copilot-dictation-cleanup-*`) as providers, so routing cannot pick one for a coding task.
 - Discovery no longer offers a terminal-shim path for a CLI (cmux puts a per-session folder first on PATH, so a promoted `claude` or `agy` stopped working when that terminal closed); it takes the real binary and uses the shim only when it is the sole copy.
 - Test suites of the frontend, the extension and the docs site allow 20 s per test instead of 5 s: the first test that loads many modules timed out on a busy machine and failed CI at random
