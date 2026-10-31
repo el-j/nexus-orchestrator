@@ -66,5 +66,8 @@
         "branches": 100
       }
     }
+  },
+  "overrides": {
+    "undici": "6.29.1"
   }
 }

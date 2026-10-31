@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Security: `go.mod` pins the Go toolchain to 1.27.3, which fixes the 13 standard-library advisories `govulncheck` reported for 1.27.1 (`net/http`, `crypto/x509`, `html/template`, …); the GitHub Action forces `undici` 6.29.1, which clears the high-severity `@fastify/busboy` advisories in its dependency tree (`npm audit` reports none). Moving the Action to the ESM-only `@actions/*` 3.x packages needs a bundler change and is left for later
 - macOS signing: the entitlements file is tracked (`packaging/macos/entitlements.plist`); the signing step referenced an ignored path and would have failed once an Apple certificate was added. `docs/releasing.md` lists the secrets. TASK-574
 - Release build on Windows: `scripts/version-sync.sh` changes into the repository directory instead of building absolute paths, which Git Bash turned into `D:\d\a\…` and made the Publish workflow fail on `Build Desktop windows-amd64`
 - Plan and task files: every finished plan and task is marked done, so `get_onboarding_context` names PLAN-075 as the active plan and counts the open tasks correctly
