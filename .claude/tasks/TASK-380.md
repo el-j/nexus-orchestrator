@@ -1,6 +1,7 @@
 # TASK-380: Create mcp/tools_test.go — table-driven tests for all 31 MCP tool handlers
 
 **Plan:** PLAN-055 | **Wave:** 4 | **Status:** done | **Role:** testing
+**Status:** done
 
 ## Goal
 

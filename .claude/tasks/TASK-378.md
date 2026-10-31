@@ -1,6 +1,7 @@
 # TASK-378: Fix useActivities.ts — wire projectFilter option to API query param
 
 **Plan:** PLAN-055 | **Wave:** 3 | **Status:** done | **Role:** frontend
+**Status:** done
 
 ## Problem
 

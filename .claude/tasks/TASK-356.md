@@ -1,6 +1,7 @@
 # TASK-356: Add missing standard MCP protocol methods
 
 **Plan:** PLAN-052 | **Wave:** 1 | **Status:** done
+**Status:** done
 
 ## Description
 

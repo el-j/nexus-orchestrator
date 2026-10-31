@@ -1,6 +1,7 @@
 # TASK-377: Fix WorkspaceOrchView — LiveTasksGroupNode filter by project path
 
 **Plan:** PLAN-055 | **Wave:** 2 | **Status:** done | **Role:** extension
+**Status:** done
 
 ## Problem
 

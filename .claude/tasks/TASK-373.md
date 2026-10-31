@@ -1,6 +1,7 @@
 # TASK-373: Fix CancelTask — allow NO_PROVIDER → CANCELLED transition
 
 **Plan:** PLAN-055 | **Wave:** 1 | **Status:** done | **Role:** backend
+**Status:** done
 
 ## Problem
 

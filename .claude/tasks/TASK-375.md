@@ -1,6 +1,7 @@
 # TASK-375: VS Code extension — TaskQueueProvider workspace isolation + toggle
 
 **Plan:** PLAN-055 | **Wave:** 2 | **Status:** done | **Role:** extension
+**Status:** done
 
 ## Problem
 
