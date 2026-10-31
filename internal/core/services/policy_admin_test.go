@@ -110,3 +110,36 @@ func TestPolicyAdmin_WhenTheNexusFolderCannotBeMadeTheErrorIsReported(t *testing
 		t.Error("a non-empty directory at the policy path must be an error")
 	}
 }
+
+func TestPolicyAdmin_ARefusedWriteNamesTheCauseAndLeavesNoTempFile(t *testing.T) {
+	o := newPolicyAdmin(t)
+
+	t.Run("the policy path is a directory, so the rename fails", func(t *testing.T) {
+		dir := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(dir, filepath.FromSlash(services.PolicyFile), "inner"), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := o.SetProjectPolicy(t.Context(), dir, domain.ProjectPolicy{Verify: "go test ./..."}); err == nil {
+			t.Fatal("renaming a file over a directory must fail")
+		}
+		left, _ := filepath.Glob(filepath.Join(dir, ".nexus", ".policy-*.tmp"))
+		if len(left) != 0 {
+			t.Fatalf("temp files left behind: %v", left)
+		}
+	})
+
+	t.Run("the folder cannot be written to", func(t *testing.T) {
+		if os.Geteuid() == 0 {
+			t.Skip("root can write anywhere")
+		}
+		dir := t.TempDir()
+		nexus := filepath.Join(dir, ".nexus")
+		if err := os.Mkdir(nexus, 0o500); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(nexus, 0o750) })
+		if err := o.SetProjectPolicy(t.Context(), dir, domain.ProjectPolicy{Verify: "x"}); err == nil {
+			t.Fatal("a read-only folder must fail")
+		}
+	})
+}
