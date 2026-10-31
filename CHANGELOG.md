@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- macOS signing: the entitlements file is tracked (`packaging/macos/entitlements.plist`); the signing step referenced an ignored path and would have failed once an Apple certificate was added. `docs/releasing.md` lists the secrets. TASK-574
 - A task that waits for a daily token budget starts again as soon as the budget is raised or removed in `.nexus/policy.json` (found on the v0.11.0 beta: it stayed parked until midnight). The budget's cooldown is lifted, and the watchdog resumes a waiting task whose providers are no longer cooling down.
 
 ### Changed

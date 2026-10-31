@@ -518,7 +518,7 @@ jobs:
             security set-key-partition-list -S apple-tool:,apple: -k "" build.keychain
 
             codesign --deep --force --options runtime \
-              --entitlements build/darwin/entitlements.plist \
+              --entitlements packaging/macos/entitlements.plist \
               --sign "Developer ID Application: $APPLE_DEVELOPER_NAME" \
               build/desktop/nexusOrchestrator.app
 
