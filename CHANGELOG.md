@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Provider health probes no longer hold a global lock or run one after another: stale providers are probed at once, callers share a probe in flight, and `DetectActive` stops at the first healthy provider, so a slow or unreachable provider cannot delay routing to another (cold `/api/providers` took 0.95 s with 20 providers). The `agy models` list is reused for 10 minutes instead of a 2 s call every 30 s. TASK-629, TASK-630 of PLAN-076
+- Provider health probes no longer hold a global lock or run one after another: stale providers are probed at once, callers share a probe in flight, and `DetectActive` stops at the first healthy provider, so a slow or unreachable provider cannot delay routing to another (cold `/api/providers` took 0.95 s with 20 providers). After each scan the health cache is refilled in the background, so the next request is not the one that pays for the probes. The `agy models` list is reused for 10 minutes instead of a 2 s call every 30 s. TASK-629, TASK-630 of PLAN-076
 - A flaky test of `wait_for_task` progress (it raced the handler's first read) is deterministic. TASK-628 of PLAN-076
 - The daemon log keeps what matters: `accessLog` writes changes, failures (status 400 and up) and requests slower than 1 s, not every successful read and session heartbeat (65 % of a 20 MB log in 11 hours); `make start-bg` moves `daemon.log` to `daemon.log.1` above 10 MB. TASK-626 of PLAN-076
 - `npm audit fix` in `frontend` and `docs` (esbuild advisory, lockfiles only). TASK-627 of PLAN-076

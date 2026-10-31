@@ -93,6 +93,8 @@ func (o *OrchestratorService) TriggerScan(ctx context.Context) ([]domain.Discove
 	o.scanMu.Unlock()
 
 	o.discovery.InvalidateHealthCache()
+	// Refill the cache in the background, so the next request does not pay for every probe.
+	go o.discovery.ListProviders()
 
 	// Tell connected UIs so they refresh now instead of at their next poll.
 	o.mu.Lock()

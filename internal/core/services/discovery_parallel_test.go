@@ -93,3 +93,20 @@ func TestDetectActive_AProbeInFlightOnOneProviderDoesNotBlockRoutingToAnother(t 
 		t.Fatal("a probe in flight on one provider blocked routing to another")
 	}
 }
+
+func TestTriggerScan_RefillsTheHealthCacheInTheBackground(t *testing.T) {
+	orch, disc := newProviderOrch(t, nil, nil)
+	c := &slowClient{mockLLMClient: mockLLMClient{alive: true, name: "p"}}
+	disc.RegisterProvider(c)
+	orch.WithSystemScanner(&mockScanner{})
+	if _, err := orch.TriggerScan(bg); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for c.pings.Load() == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("the cache was cleared but nothing probed the provider again")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
