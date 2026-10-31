@@ -45,9 +45,6 @@ func (o *OrchestratorService) SetProjectPolicy(_ context.Context, projectPath st
 		return fmt.Errorf("policy: encode: %w", err)
 	}
 	data = append(data, '\n')
-	if len(data) > maxPolicyBytes {
-		return fmt.Errorf("policy: larger than the %d bytes the daemon reads", maxPolicyBytes)
-	}
 	dest := filepath.Join(projectPath, filepath.FromSlash(PolicyFile))
 	if err := os.MkdirAll(filepath.Dir(dest), 0o750); err != nil {
 		return fmt.Errorf("policy: %w", err)
