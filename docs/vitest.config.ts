@@ -6,6 +6,8 @@ export default defineConfig({
   plugins: [vue()],
   resolve: { alias: { '@': resolve(__dirname, './src') } },
   test: {
+    // Cold module transforms on a busy machine or CI runner can pass 5 s; a slow test is not a failing one.
+    testTimeout: 20000,
     environment: 'jsdom',
     globals: true,
     include: ['src/**/*.spec.ts'],

@@ -10,6 +10,8 @@ export default defineConfig({
     },
   },
   test: {
+    // Cold module transforms on a busy machine or CI runner can pass 5 s; a slow test is not a failing one.
+    testTimeout: 20000,
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Antigravity CLI driver (`agy`): the prompt goes on stdin with `--model` from the provider's model, `agy models` fills the model list, and a quota, rate-limit, auth or overload failure is typed from agy's `AGY_ERROR` line, with the reset time read from "Resets in 43h54m", so routing cools the provider until then. `agy` is a known CLI, is found by discovery and promoted as its plain path (its `-p` wants the prompt as a value). Opt-in real test: `go test -tags realagy`. TASK-599
 - VS Code extension shows the limits: the status bar counts `WAITING` tasks (`W`), says when every provider is cooling down, and its tooltip lists the cooling providers (until when, why), plans that are nearly used up and the tokens of the last 24 hours (`getUsage`); the queue view lists `WAITING` tasks with when they resume; the provider pickers mark a provider at a limit. The editor model bridge (`vscode.lm`) now reports token usage (the model's own count, or four characters per token) so editor models appear in the usage ledger and under budgets. TASK-623 of PLAN-075
 - GitHub Action: the `api_token` input sends a bearer token to a daemon that runs with `NEXUS_API_TOKEN` (masked in logs), and a `WAITING` task logs when it resumes and names that time in the timeout error. TASK-623 of PLAN-075
 - All 44 MCP tools are documented in the MCP guide, the SSE table lists `task.waiting`, `task.chunk` and `task.restart`, and the guides for token economy, switching providers and subscription bridges are on the docs site; `docscheck` fails when a tool is missing from the guides. TASK-624 of PLAN-075
@@ -26,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Test suites of the frontend, the extension and the docs site allow 20 s per test instead of 5 s: the first test that loads many modules timed out on a busy machine and failed CI at random
 - Security: `go.mod` pins the Go toolchain to 1.27.3, which fixes the 13 standard-library advisories `govulncheck` reported for 1.27.1 (`net/http`, `crypto/x509`, `html/template`, …); the GitHub Action forces `undici` 6.29.1, which clears the high-severity `@fastify/busboy` advisories in its dependency tree (`npm audit` reports none). Moving the Action to the ESM-only `@actions/*` 3.x packages needs a bundler change and is left for later
 - macOS signing: the entitlements file is tracked (`packaging/macos/entitlements.plist`); the signing step referenced an ignored path and would have failed once an Apple certificate was added. `docs/releasing.md` lists the secrets. TASK-574
 - Release build on Windows: `scripts/version-sync.sh` changes into the repository directory instead of building absolute paths, which Git Bash turned into `D:\d\a\…` and made the Publish workflow fail on `Build Desktop windows-amd64`

@@ -36,6 +36,7 @@ func isFrontierProvider(p ports.LLMClient) bool {
 		strings.Contains(name, "gemini") ||
 		strings.Contains(name, "openai") ||
 		strings.Contains(name, "copilot") ||
+		strings.Contains(name, "antigravity") ||
 		strings.Contains(name, "claude")
 }
 

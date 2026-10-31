@@ -15,11 +15,11 @@ run without a person at the keyboard. Nexus therefore never touches the login (n
 OAuth, no private protocols). It starts the vendor's program, the same one you would start, and reads its
 answer. That is also the only form the vendors' terms allow.
 
-| Vendor      | Official headless client                                 | Status                                                                                                                                            |
-| ----------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Claude      | `claude -p` (`--output-format json` / `stream-json`)     | **verified** (v2.1.301 here): one call returned the reply, token usage, cost and a rate-limit event                                               |
-| Antigravity | `agy -p` / `--prompt` (Antigravity CLI)                  | **documented** (its changelog: headless runs, `--print-timeout`, `--model`, `--json-schema`, `stream-json`, exit codes 1/2/3); not installed here |
-| Copilot     | `copilot -s` (Copilot CLI) and `vscode.lm` in the editor | `vscode.lm` bridge exists in Nexus; `copilot` **verified** (1.0.100): prompt on stdin with `-s`, one call returned the reply                      |
+| Vendor      | Official headless client                                 | Status                                                                                                                                       |
+| ----------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Claude      | `claude -p` (`--output-format json` / `stream-json`)     | **verified** (v2.1.301 here): one call returned the reply, token usage, cost and a rate-limit event                                          |
+| Antigravity | `agy` (Antigravity CLI), prompt on stdin                 | **verified** (1.4.12): `echo hi \| agy --model <id>` answers on stdout; a used-up model exits 3 with `AGY_ERROR` JSON and "Resets in 43h54m" |
+| Copilot     | `copilot -s` (Copilot CLI) and `vscode.lm` in the editor | `vscode.lm` bridge exists in Nexus; `copilot` **verified** (1.0.100): prompt on stdin with `-s`, one call returned the reply                 |
 
 ## What each route can and cannot do
 
@@ -61,11 +61,19 @@ never the token.
   language models (`languageModelChatProviders`) and its product config has no model API for extensions. So
   the `vscode.lm` bridge cannot reach Antigravity's models, even with the Nexus extension installed. The
   extension can reach the editor, not the agent inside it.
-- **Documented:** the Antigravity CLI (`agy`) runs the same agent engine with shared settings and Google
-  sign-in, and has a headless mode. That is the equivalent of `claude -p` and the route to use. Open
-  questions to test first: whether `agy -p` draws on the same quota as the IDE for the same Google account,
-  what its JSON output contains (usage, limit, reset time), and whether it can be run as a plain completion
-  without tools.
+- **Verified (agy 1.4.12, `brew install --cask antigravity-cli`):** the Antigravity CLI runs the same agent
+  engine with the Google sign-in. Headless use is the equivalent of `claude -p`:
+  - The prompt goes on stdin (`echo "say pong" | agy --model gemini-3.8-flash-low` prints `pong`, exit 0).
+    `-p` / `--print` / `--prompt` want the prompt as their value (`-p=text`) and swallow the next flag, so
+    Nexus does not use them. `agy models` lists the ids, one per line, id first.
+  - The allowance is counted per model: with the default model used up the same account still answered on
+    `gemini-3.8-flash-low`. Nexus therefore passes the configured model as `--model`.
+  - A used-up model exits 3 with nothing on stdout and on stderr `error: <text>` and
+    `AGY_ERROR: {"status":"RESOURCE_EXHAUSTED","error_code":429,"short_error":"... Resets in 43h54m17s."}`.
+    The driver types it (quota, rate limit, auth, overloaded) and reads the reset time, so routing cools the
+    provider until then.
+  - Still unknown: the shape of `--output-format json` / `stream-json` (a call that succeeds on a model
+    with allowance was only recorded as text), and whether the same quota is drawn as by the IDE.
 - **Not recommended:** the IDE's language server speaks a private gRPC API (`LanguageServerService`, seen in
   its logs). Driving it is reverse engineering of an undocumented, changing interface and is outside what
   Google's terms allow for the subscription. Nexus will not do it.
@@ -107,7 +115,7 @@ which environment variables to drop. The core only sees the existing `LLMClient`
 PLAN-074 adds: typed errors with a reset time (A1) and usage (C1). New vendors then cost one driver, not a
 new adapter.
 
-Allow-list: add `agy` and `copilot` to the known tools (today `claude`, `aichat`, `llm`, `gemini`, `codex`;
+Allow-list: `agy` and `copilot` are known tools next to `claude`, `aichat`, `llm`, `gemini` and `codex` (
 the `NEXUS_CLI_PROVIDERS` variable already extends it). Discovery already finds installed tools; it should
 report installed, signed in (from a cheap `--version` / status call) and, for Claude, the last seen limit.
 
@@ -119,8 +127,9 @@ report installed, signed in (from a cheap `--version` / status call) and, for Cl
 2. **F2 Quota from the client**: store `utilization` and `resetsAt` per provider; show them in Providers,
    Mission Control and the extension; route away at a configurable threshold (default 0.9) before the limit is
    hit, and wait for `resetsAt` when every candidate is above it (A4).
-3. **F3 Antigravity driver**: install `agy`, record its real headless output, then write the driver. Gate: the
-   open questions above, answered by running it.
+3. **F3 Antigravity driver** (done, TASK-599): `agy` installed, its real headless output recorded, driver in
+   `llm_cli/agy_driver.go` with a typed-failure test from the recorded output and an opt-in real test
+   (`-tags realagy`).
 4. **F4 Copilot CLI driver**, plus the editor bridge reporting quota errors as typed errors (A1).
 5. **F5 Honest status**: one screen that says, per vendor, which route is live, what was last seen (limit,
    reset, last error) and what is not possible, so a missing capability is visible instead of silent.
