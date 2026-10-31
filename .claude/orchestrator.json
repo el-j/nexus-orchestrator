@@ -2,10 +2,10 @@
   "version": "2",
   "updatedAt": "2026-10-20T00:00:00Z",
   "counters": {
-    "nextTaskId": 625,
-    "nextPlanId": 76
+    "nextTaskId": 632,
+    "nextPlanId": 77
   },
-  "activePlanId": "PLAN-075",
+  "activePlanId": "PLAN-076",
   "notes": [
     "PLAN-072 completed (2026-09-25): Universal Control Plane & Context Broker Foundation \u2014 TASK-559..TASK-565 done across 4 waves. Wave 1: Decomposed monolithic mcp/tools.go into 4 domain submodules + Token-Budgeted Onboarding Handshake (get_onboarding_context, <800 tokens). Wave 2: Native Google Gemini LLM adapter (llm_gemini) + Smart Provider Fallback Chain (Role-driven routing: architect->Frontier, linter/test->Local with auto-failover and appendTaskLog trace preservation). Wave 3: Real-Time fsnotify workspace invalidation watcher with 300ms debounce. Wave 4: cmd/* entry point tests (cli, daemon, submit, mcp-stdio) + UI & Docs polish (Discovery provider promote pre-fill, SVG Mission Control card, README v0.10.0, 41 MCP tools). All 26 Go packages pass with -race, Vitest 64/64 pass, build clean.",
     "PLAN-072 started (2026-09-25): Universal Control Plane & Context Broker Foundation \u2014 TASK-559..TASK-565 created across 4 waves. Wave 1: Decompose monolithic mcp/tools.go (1,241 lines) into 4 domain submodules + Token-Budgeted Onboarding Handshake (get_onboarding_context). Wave 2: Native Google Gemini LLM adapter (llm_gemini) + Smart Provider Fallback Chain (Claude -> Gemini -> Local Ollama). Wave 3: Real-Time fsnotify workspace invalidation watcher. Wave 4: cmd/* entry point test coverage + UI & Docs polish.",

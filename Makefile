@@ -111,10 +111,11 @@ start: web-auto build
 	@if [ -f $(WEBUI_DIR)/index.html ]; then echo "full UI      → $(NEXUS_API)/app/   (light dashboard: $(NEXUS_API)/ui)"; else echo "dashboard    → $(NEXUS_API)/ui   (the full UI needs Node >= 22: nvm use; make start)"; fi
 	NEXUS_DB_PATH=$(NEXUS_HOME)/nexus.db $(DIST)/native/$(BINARY_DAEMON)
 
-# Same daemon, detached: log to $(NEXUS_HOME)/daemon.log, pid in $(NEXUS_HOME)/daemon.pid.
+# Same daemon, detached: log to $(NEXUS_HOME)/daemon.log (moved to daemon.log.1 above 10 MB), pid in $(NEXUS_HOME)/daemon.pid.
 start-bg: web-auto build
 	@mkdir -p $(NEXUS_HOME)
 	@if curl -fsS $(NEXUS_API)/api/health >/dev/null 2>&1; then echo "daemon already running at $(NEXUS_API)"; exit 0; fi; \
+	if [ -f $(NEXUS_HOME)/daemon.log ] && [ "$$(wc -c < $(NEXUS_HOME)/daemon.log)" -gt 10485760 ]; then mv -f $(NEXUS_HOME)/daemon.log $(NEXUS_HOME)/daemon.log.1; fi; \
 	NEXUS_DB_PATH=$(NEXUS_HOME)/nexus.db nohup $(DIST)/native/$(BINARY_DAEMON) >> $(NEXUS_HOME)/daemon.log 2>&1 & echo $$! > $(NEXUS_HOME)/daemon.pid; \
 	for i in $$(seq 1 30); do curl -fsS $(NEXUS_API)/api/health >/dev/null 2>&1 && { echo "daemon started (pid $$(cat $(NEXUS_HOME)/daemon.pid)), log $(NEXUS_HOME)/daemon.log"; exit 0; }; sleep 1; done; \
 	echo "daemon did not become healthy; see $(NEXUS_HOME)/daemon.log"; exit 1

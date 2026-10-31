@@ -31,6 +31,8 @@ type waitOrch struct {
 	once       sync.Once
 	subscribed chan struct{} // closed on the first subscription
 	subOnce    sync.Once
+	firstRead  chan struct{} // closed when the handler has read the task once
+	readOnce   sync.Once
 }
 
 func newWaitOrch(status domain.TaskStatus) *waitOrch {
@@ -40,13 +42,16 @@ func newWaitOrch(status domain.TaskStatus) *waitOrch {
 		events:     make(chan ports.TaskEvent, 16),
 		cancelled:  make(chan struct{}),
 		subscribed: make(chan struct{}),
+		firstRead:  make(chan struct{}),
 	}
 }
 
 func (w *waitOrch) GetTask(string) (domain.Task, error) {
 	w.mu.Lock()
-	defer w.mu.Unlock()
-	return w.task, w.getErr
+	task, err := w.task, w.getErr
+	w.mu.Unlock()
+	w.readOnce.Do(func() { close(w.firstRead) })
+	return task, err
 }
 
 func (w *waitOrch) set(status domain.TaskStatus, logs string) {
@@ -136,7 +141,7 @@ func TestWaitForTask_StreamsProgressWhenAskedAndEndsWithTheResult(t *testing.T) 
 	defer srv.Close()
 
 	go func() {
-		<-o.subscribed // the handler listens before the first read, so nothing below can be missed
+		<-o.firstRead // the handler has subscribed and seen the task still running; a task already done would end the wait before any event
 		o.events <- ports.TaskEvent{Type: ports.EventTaskRestart, TaskID: "t1"}
 		o.events <- ports.TaskEvent{Type: ports.EventTaskChunk, TaskID: "other", Text: "NOT MINE", Seq: 1}
 		o.events <- ports.TaskEvent{Type: ports.EventTaskChunk, TaskID: "t1", Text: "Hel", Seq: 1}

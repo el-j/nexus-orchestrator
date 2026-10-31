@@ -159,7 +159,7 @@ func (s *Server) tokenAuthMiddleware(next http.Handler) http.Handler {
 // Handler returns the server's root http.Handler, with every middleware applied.
 func (s *Server) Handler() http.Handler {
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
+	r.Use(accessLog)
 	r.Use(middleware.Recoverer)
 	guard := s.guard
 	if guard == nil {
