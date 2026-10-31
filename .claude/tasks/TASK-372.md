@@ -1,6 +1,7 @@
 # TASK-372: Plan scanner — Enrich nexus-kind summary with project stats from orchestrator.json
 
 **Plan:** PLAN-054 | **Wave:** 1 | **Status:** done | **Role:** backend
+**Status:** done
 
 ## Goal
 

@@ -1,6 +1,7 @@
 # TASK-362: Add comprehensive MCP transport tests
 
 **Plan:** PLAN-052 | **Wave:** 6 | **Status:** done
+**Status:** done
 
 ## Description
 

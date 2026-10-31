@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - macOS signing: the entitlements file is tracked (`packaging/macos/entitlements.plist`); the signing step referenced an ignored path and would have failed once an Apple certificate was added. `docs/releasing.md` lists the secrets. TASK-574
+- Release build on Windows: `scripts/version-sync.sh` changes into the repository directory instead of building absolute paths, which Git Bash turned into `D:\d\a\…` and made the Publish workflow fail on `Build Desktop windows-amd64`
+- Plan and task files: every finished plan and task is marked done, so `get_onboarding_context` names PLAN-075 as the active plan and counts the open tasks correctly
+
 - A task that waits for a daily token budget starts again as soon as the budget is raised or removed in `.nexus/policy.json` (found on the v0.11.0 beta: it stayed parked until midnight). The budget's cooldown is lifted, and the watchdog resumes a waiting task whose providers are no longer cooling down.
 
 ### Changed

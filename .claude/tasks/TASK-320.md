@@ -1,6 +1,7 @@
 # TASK-320: Frontend — DiscoveredPlansView with kind/format badges
 
 **Plan:** PLAN-048
+**Status:** done
 **Role:** frontend
 **Dependencies:** TASK-318
 
@@ -55,13 +56,7 @@ Add TypeScript types:
 
 ```ts
 export type PlanFileKind =
-  | 'nexus'
-  | 'claude-task'
-  | 'markdown'
-  | 'cursor'
-  | 'mcp-config'
-  | 'crewai'
-  | 'claude';
+  'nexus' | 'claude-task' | 'markdown' | 'cursor' | 'mcp-config' | 'crewai' | 'claude';
 export interface DiscoveredPlanFile {
   id: string;
   path: string;

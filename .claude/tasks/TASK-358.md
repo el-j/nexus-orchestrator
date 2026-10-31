@@ -1,6 +1,7 @@
 # TASK-358: Add Streamable HTTP transport support
 
 **Plan:** PLAN-052 | **Wave:** 3 | **Status:** done
+**Status:** done
 
 ## Description
 

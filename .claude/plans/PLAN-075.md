@@ -1,7 +1,7 @@
 ---
 id: PLAN-075
 title: 'v0.11.0 Perfection: Closing Every Audit Gap across Engine, Surfaces, UI, Extension, Docker & Docs'
-status: active
+status: completed
 createdAt: 2026-10-19
 tasks:
   [

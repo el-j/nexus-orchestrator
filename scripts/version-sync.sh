@@ -14,14 +14,14 @@ if [[ -z "$VERSION" ]]; then
   exit 1
 fi
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$(dirname "$0")/.."
 
 echo "→ Syncing version ${VERSION} into all package manifests"
 
 # --- frontend/package.json ---
 node -e "
   const fs = require('fs');
-  const p = '${ROOT}/frontend/package.json';
+  const p = 'frontend/package.json';
   const pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
   pkg.version = '${VERSION}';
   fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
@@ -31,7 +31,7 @@ echo "  ✓ frontend/package.json"
 # --- vscode-extension/package.json ---
 node -e "
   const fs = require('fs');
-  const p = '${ROOT}/vscode-extension/package.json';
+  const p = 'vscode-extension/package.json';
   const pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
   pkg.version = '${VERSION}';
   fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
@@ -41,7 +41,7 @@ echo "  ✓ vscode-extension/package.json"
 # --- github-action/package.json ---
 node -e "
   const fs = require('fs');
-  const p = '${ROOT}/github-action/package.json';
+  const p = 'github-action/package.json';
   const pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
   pkg.version = '${VERSION}';
   fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
@@ -51,7 +51,7 @@ echo "  ✓ github-action/package.json"
 # --- docs/package.json ---
 node -e "
   const fs = require('fs');
-  const p = '${ROOT}/docs/package.json';
+  const p = 'docs/package.json';
   const pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
   pkg.version = '${VERSION}';
   fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
@@ -61,7 +61,7 @@ echo "  ✓ docs/package.json"
 # --- wails.json ---
 node -e "
   const fs = require('fs');
-  const p = '${ROOT}/wails.json';
+  const p = 'wails.json';
   const cfg = JSON.parse(fs.readFileSync(p, 'utf8'));
   cfg.info = cfg.info || {};
   cfg.info.productVersion = '${VERSION}';

@@ -1,6 +1,7 @@
 # TASK-322: VS Code extension — modelId in registerSession + display
 
 **Plan:** PLAN-048
+**Status:** done
 **Role:** vscode
 **Dependencies:** TASK-315
 

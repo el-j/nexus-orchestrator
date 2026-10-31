@@ -1,6 +1,7 @@
 # TASK-319: MCP tools — get_discovered_plans + enrich agent tools
 
 **Plan:** PLAN-048
+**Status:** done
 **Role:** mcp
 **Dependencies:** TASK-318
 
