@@ -205,6 +205,20 @@ describe('ProvidersView', () => {
     );
 
     panel.vm.$emit('promote', {
+      id: 'cli-agy',
+      name: 'Google Antigravity CLI',
+      kind: 'cli',
+      method: 'cli',
+      status: 'installed',
+      cliPath: '/opt/homebrew/bin/agy',
+      lastSeen: new Date().toISOString(),
+    });
+    await flushPromises();
+    expect(wrapper.findComponent({ name: 'ProviderConfigForm' }).props('modelValue')).toMatchObject(
+      { name: 'Google Antigravity CLI', kind: 'cli', baseUrl: '/opt/homebrew/bin/agy' },
+    );
+
+    panel.vm.$emit('promote', {
       id: 'cli-aichat',
       name: 'aichat',
       kind: 'cli',

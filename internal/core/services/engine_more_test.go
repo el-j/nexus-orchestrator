@@ -337,6 +337,7 @@ func TestPromoteProvider_AnInstalledCLIBecomesAProviderRunningItsPath(t *testing
 	orch.WithSystemScanner(&mockScanner{results: []domain.DiscoveredProvider{
 		{ID: "cli", Name: "Claude CLI", Kind: domain.ProviderKindCLI, Status: domain.DiscoveryStatusInstalled, CLIPath: "/usr/local/bin/claude"},
 		{ID: "copilot", Name: "GitHub Copilot CLI", Kind: domain.ProviderKindCLI, Status: domain.DiscoveryStatusInstalled, CLIPath: "/usr/local/bin/copilot"},
+		{ID: "agy", Name: "Google Antigravity CLI", Kind: domain.ProviderKindCLI, Status: domain.DiscoveryStatusInstalled, CLIPath: "/opt/homebrew/bin/agy"},
 		{ID: "aichat", Name: "aichat", Kind: domain.ProviderKindCLI, Status: domain.DiscoveryStatusInstalled, CLIPath: "/usr/local/bin/aichat"},
 		{ID: "bare", Name: "Installed but not a CLI kind", Kind: domain.ProviderKindOllama, Status: domain.DiscoveryStatusInstalled, CLIPath: "/usr/bin/ollama"},
 	}})
@@ -351,6 +352,9 @@ func TestPromoteProvider_AnInstalledCLIBecomesAProviderRunningItsPath(t *testing
 	}
 	if err := orch.PromoteProvider(bg, "copilot"); err != nil || got.BaseURL != "/usr/local/bin/copilot -s --no-ask-user" {
 		t.Errorf("copilot gets -s --no-ask-user and no -p: %v %+v", err, got)
+	}
+	if err := orch.PromoteProvider(bg, "agy"); err != nil || got.BaseURL != "/opt/homebrew/bin/agy" {
+		t.Errorf("agy takes the prompt on stdin and needs no flag (its -p wants the text as a value): %v %+v", err, got)
 	}
 	if err := orch.PromoteProvider(bg, "aichat"); err != nil || got.BaseURL != "/usr/local/bin/aichat -p" {
 		t.Errorf("another tool keeps plain -p: %v %+v", err, got)

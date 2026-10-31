@@ -417,6 +417,7 @@ function defaultCliCommand(cliPath: string): string {
     .replace(/\.exe$/, '');
   if (base === 'claude') return `${cliPath} -p --output-format stream-json`;
   if (base === 'copilot') return `${cliPath} -s --no-ask-user`;
+  if (base === 'agy') return cliPath; // the prompt goes on stdin; agy's -p wants the text as a value
   return `${cliPath} -p`;
 }
 

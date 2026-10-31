@@ -24,7 +24,7 @@ import (
 // knownCLIs are the executables a provider config may name. A provider config can be written
 // through the REST API and MCP, so it must not be a way to run arbitrary programs; add more
 // with NEXUS_CLI_PROVIDERS (comma-separated executable names).
-var knownCLIs = map[string]bool{"claude": true, "copilot": true, "aichat": true, "llm": true, "gemini": true, "codex": true}
+var knownCLIs = map[string]bool{"claude": true, "copilot": true, "agy": true, "aichat": true, "llm": true, "gemini": true, "codex": true}
 
 // runTimeout bounds one invocation; a CLI that never answers must not hold a task forever.
 const runTimeout = 10 * time.Minute
@@ -56,7 +56,7 @@ func NewAdapter(name, commandLine, model string) (*Adapter, error) {
 		return nil, fmt.Errorf("cli provider %q: a command is required (for example \"claude -p\")", name)
 	}
 	if !allowed(filepath.Base(fields[0])) {
-		return nil, fmt.Errorf("cli provider %q: %q is not a known AI CLI (claude, copilot, aichat, llm, gemini, codex; extend with NEXUS_CLI_PROVIDERS)", name, filepath.Base(fields[0]))
+		return nil, fmt.Errorf("cli provider %q: %q is not a known AI CLI (claude, copilot, agy, aichat, llm, gemini, codex; extend with NEXUS_CLI_PROVIDERS)", name, filepath.Base(fields[0]))
 	}
 	return &Adapter{name: name, command: commandLine, exe: fields[0], args: fields[1:], model: model}, nil
 }
@@ -137,13 +137,15 @@ func (a *Adapter) Ping(context.Context) bool {
 	return err == nil
 }
 
-// GetAvailableModels lists the aliases claude or copilot accepts, and "default" for other tools.
-func (a *Adapter) GetAvailableModels(context.Context) ([]string, error) {
+// GetAvailableModels lists the aliases claude or copilot accepts, the ids `agy models` prints, and "default" for other tools.
+func (a *Adapter) GetAvailableModels(ctx context.Context) ([]string, error) {
 	switch strings.TrimSuffix(strings.ToLower(filepath.Base(a.exe)), ".exe") {
 	case "claude":
 		return []string{"sonnet", "opus", "haiku"}, nil
 	case "copilot":
 		return []string{"auto"}, nil // the CLI lists no models non-interactively; "auto" lets Copilot pick
+	case "agy":
+		return agyModels(ctx, a.exe), nil
 	}
 	return []string{"default"}, nil
 }
@@ -189,8 +191,11 @@ func (a *Adapter) run(ctx context.Context, prompt string, onChunk func(string)) 
 	defer cancel()
 
 	args := a.args
-	if isCopilot(a.exe) {
+	switch {
+	case isCopilot(a.exe):
 		args = withCopilotFlags(args, a.model)
+	case isAgy(a.exe):
+		args = withAgyFlags(args, a.model)
 	}
 	cmd := exec.CommandContext(ctx, a.exe, args...)
 	cmd.Dir = os.TempDir()
@@ -243,8 +248,14 @@ func (a *Adapter) run(ctx context.Context, prompt string, onChunk func(string)) 
 			msg = strings.TrimSpace(reply.String())
 		}
 		if msg != "" {
-			if isCopilot(a.exe) {
-				if pe := classifyCLIFailure(a.name, fmt.Sprintf("%v: %s", err, msg)); pe != nil {
+			detail := fmt.Sprintf("%v: %s", err, msg)
+			switch {
+			case isCopilot(a.exe):
+				if pe := classifyCLIFailure(a.name, detail); pe != nil {
+					return reply.String(), pe
+				}
+			case isAgy(a.exe):
+				if pe := classifyAgyFailure(a.name, detail, time.Now()); pe != nil {
 					return reply.String(), pe
 				}
 			}
