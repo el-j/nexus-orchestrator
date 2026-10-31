@@ -15,6 +15,8 @@ like any other provider, and the project rules from `.nexus/policy.json` apply a
    Empty shares every vendor the editor offers.
 4. VS Code may ask for your consent the first time a model is used.
 
+The editor's own helper models (`copilot-utility*`, `copilot-dictation-cleanup-*`) are never shared.
+
 Each model appears as its own provider named `vscode-<vendor>-<model>` (for example
 `vscode-copilot-gpt-4o`). Pick it with `providerHint` on a task, in the task form, or by role.
 
