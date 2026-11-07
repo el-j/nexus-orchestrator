@@ -61,6 +61,8 @@ func NewAdapter(name, commandLine, model string) (*Adapter, error) {
 	return &Adapter{name: name, command: commandLine, exe: fields[0], args: fields[1:], model: model}, nil
 }
 
+// allowed reports whether a command may be run as a provider: one of the known clients, or one the user
+// named in NEXUS_CLI_PROVIDERS.
 func allowed(exe string) bool {
 	exe = strings.TrimSuffix(strings.ToLower(exe), ".exe")
 	if knownCLIs[exe] {
@@ -183,6 +185,8 @@ func transcript(messages []domain.Message) string {
 	return b.String()
 }
 
+// run runs the command for one request, with the claude stream driver when the command is claude in
+// stream-json mode, and returns what it printed.
 func (a *Adapter) run(ctx context.Context, prompt string, onChunk func(string)) (string, error) {
 	if isClaudeStream(a.exe, a.args) {
 		return a.runClaude(ctx, prompt, onChunk)
@@ -303,6 +307,8 @@ type limitedWriter struct {
 	left int
 }
 
+// Write passes the first bytes to the underlying writer and drops the rest, so a noisy stderr cannot
+// fill memory; it always reports the whole input as written.
 func (l *limitedWriter) Write(p []byte) (int, error) {
 	n := len(p)
 	if l.left > 0 {

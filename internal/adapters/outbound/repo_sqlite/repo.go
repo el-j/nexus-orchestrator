@@ -300,6 +300,7 @@ type scanner interface {
 	Scan(dest ...interface{}) error
 }
 
+// scanTask reads one task row.
 func scanTask(s scanner) (domain.Task, error) {
 	var t domain.Task
 	var status string

@@ -111,6 +111,7 @@ func existing(file, dir string) string {
 	return ""
 }
 
+// tilde shows a path inside the home directory as ~/relative.
 func tilde(home, p string) string {
 	if rel, err := filepath.Rel(home, p); err == nil && !strings.HasPrefix(rel, "..") {
 		return "~/" + filepath.ToSlash(rel)

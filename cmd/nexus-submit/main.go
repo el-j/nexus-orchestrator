@@ -36,6 +36,7 @@ var httpClient = &http.Client{Timeout: 30 * time.Second}
 // getwd names the working directory; tests replace it to make that fail.
 var getwd = os.Getwd
 
+// main runs the submit command and exits with its status.
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, 3*time.Second))
 }
@@ -272,12 +273,14 @@ func waitForCompletion(ctx context.Context, stdout, stderr io.Writer, addr, task
 	}
 }
 
+// setAuthHeader adds the bearer token from NEXUS_API_TOKEN when it is set.
 func setAuthHeader(req *http.Request) {
 	if tok := strings.TrimSpace(os.Getenv("NEXUS_API_TOKEN")); tok != "" {
 		req.Header.Set("Authorization", "Bearer "+tok)
 	}
 }
 
+// getEnv returns an environment variable or the fallback when it is empty.
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v

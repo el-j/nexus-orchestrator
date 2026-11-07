@@ -291,6 +291,7 @@ type counts struct {
 	EvalCount       int `json:"eval_count"`
 }
 
+// usage converts the token counts of a reply to the domain type.
 func (c counts) usage(model string) domain.Usage {
 	return domain.Usage{Model: model, InputTokens: c.PromptEvalCount, OutputTokens: c.EvalCount}
 }

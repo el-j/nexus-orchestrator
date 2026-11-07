@@ -75,6 +75,7 @@ func DefaultDBPath() string {
 	return shared
 }
 
+// withDefaults fills every empty field of the configuration with its default.
 func (c Config) withDefaults() Config {
 	if c.DBPath == "" {
 		c.DBPath = DefaultDBPath()
@@ -223,6 +224,7 @@ func Start(ctx context.Context, cfg Config, logHub *httpapi.LogHub) (*Runtime, e
 	return rt, nil
 }
 
+// goRun starts fn in a goroutine that Close waits for.
 func (r *Runtime) goRun(fn func()) { r.wg.Go(fn) }
 
 // fail records the first server failure; later ones are dropped.

@@ -11,12 +11,15 @@ var dashboardTmpl = template.Must(template.New("dashboard").Parse(dashboardTempl
 
 type dashboardData struct{ Nonce string }
 
+// generateNonce makes the random value that lets the dashboard's inline script pass the content
+// security policy once.
 func generateNonce() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b) // crypto/rand.Read never returns an error: it ends the program if the system has no randomness
 	return base64.StdEncoding.EncodeToString(b)
 }
 
+// handleUI serves the dashboard page with a fresh nonce in its security headers.
 func (s *Server) handleUI(w http.ResponseWriter, _ *http.Request) {
 	nonce := generateNonce()
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

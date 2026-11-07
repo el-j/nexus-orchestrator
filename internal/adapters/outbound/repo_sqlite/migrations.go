@@ -6,6 +6,8 @@ import (
 	"fmt"
 )
 
+// migrate brings the database to the current schema: it creates the tables and adds the columns later
+// versions introduced.
 func migrate(db *sql.DB) error {
 	_, err := db.ExecContext(context.Background(), `
 		CREATE TABLE IF NOT EXISTS tasks (

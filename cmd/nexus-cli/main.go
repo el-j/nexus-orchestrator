@@ -24,6 +24,7 @@ var (
 // defaultAddr is the daemon address used when NEXUS_ADDR is unset.
 const defaultAddr = "http://127.0.0.1:63987"
 
+// main runs the CLI and exits with its status.
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, daemonAddr()))
 }

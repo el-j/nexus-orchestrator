@@ -48,6 +48,8 @@ func NewNetworkProbeReaderWithURLs(lmStudioURL, ollamaURL, antigravityURL string
 	return newWithURLs(lmStudioURL, ollamaURL, antigravityURL)
 }
 
+// newWithURLs builds a reader for the given endpoints; the exported constructor passes the default
+// local ports, tests pass test servers.
 func newWithURLs(lmStudioURL, ollamaURL, antigravityURL string) *NetworkProbeReader {
 	return &NetworkProbeReader{
 		lmStudioURL:    lmStudioURL,

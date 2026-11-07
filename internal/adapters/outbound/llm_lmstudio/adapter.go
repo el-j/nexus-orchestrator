@@ -214,6 +214,7 @@ type usageBlock struct {
 	CompletionTokens int `json:"completion_tokens"`
 }
 
+// toDomain converts the usage block of a reply to the domain type.
 func (u usageBlock) toDomain(model string) domain.Usage {
 	return domain.Usage{Model: model, InputTokens: u.PromptTokens, OutputTokens: u.CompletionTokens}
 }
