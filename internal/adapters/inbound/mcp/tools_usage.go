@@ -26,6 +26,7 @@ func usageToolDefs() []toolDef {
 	}
 }
 
+// toolGetUsage serves get_usage: tokens and cost per provider since a given time.
 func (s *Server) toolGetUsage(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		Since string `json:"since"`
@@ -45,9 +46,5 @@ func (s *Server) toolGetUsage(ctx context.Context, args json.RawMessage) (callTo
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_usage: %w", err)
 	}
-	b, err := json.Marshal(map[string]any{"since": since, "totals": domain.UsageTotals(sums), "usage": sums})
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: get_usage: marshal: %w", err)
-	}
-	return textResult(string(b)), nil
+	return jsonResult("get_usage", map[string]any{"since": since, "totals": domain.UsageTotals(sums), "usage": sums})
 }

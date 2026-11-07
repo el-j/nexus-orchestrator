@@ -287,6 +287,8 @@ func (b *BrainServiceImpl) GetProjectBrief(ctx context.Context, projectPath stri
 	return b.buildOnboarding(ctx, projectPath, maxTokens, false)
 }
 
+// buildOnboarding writes the onboarding text of a project within a token budget; withRules adds the
+// project's policy.
 func (b *BrainServiceImpl) buildOnboarding(ctx context.Context, projectPath string, maxTokens int, withRules bool) (string, error) {
 	if maxTokens <= 0 {
 		maxTokens = 800

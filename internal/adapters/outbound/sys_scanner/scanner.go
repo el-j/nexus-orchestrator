@@ -4,10 +4,8 @@ package sys_scanner
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -122,15 +120,22 @@ func (s *Scanner) Scan(ctx context.Context) ([]domain.DiscoveredProvider, error)
 		}()
 	}
 	go func() { wg.Wait(); close(resultCh) }()
-	rawByName := make(map[string]domain.DiscoveredProvider)
+	var found [][]domain.DiscoveredProvider
 	for r := range resultCh {
 		if r.err != nil {
-			if !errors.Is(r.err, context.Canceled) && !errors.Is(r.err, context.DeadlineExceeded) {
-				log.Printf("sys_scanner: probe error: %v", r.err)
-			}
-			continue
+			continue // a probe that failed (or was cancelled) reports nothing: the others still count
 		}
-		for _, p := range r.providers {
+		found = append(found, r.providers)
+	}
+	return mergeByName(found), nil
+}
+
+// mergeByName joins what the probes found: one entry per provider name, the entries of a name merged
+// (see mergeProviders), sorted by name.
+func mergeByName(found [][]domain.DiscoveredProvider) []domain.DiscoveredProvider {
+	rawByName := make(map[string]domain.DiscoveredProvider)
+	for _, list := range found {
+		for _, p := range list {
 			if ex, ok := rawByName[p.Name]; ok {
 				rawByName[p.Name] = mergeProviders(ex, p)
 			} else {
@@ -143,9 +148,11 @@ func (s *Scanner) Scan(ctx context.Context) ([]domain.DiscoveredProvider, error)
 		providers = append(providers, p)
 	}
 	sort.Slice(providers, func(i, j int) bool { return providers[i].Name < providers[j].Name })
-	return providers, nil
+	return providers
 }
 
+// mergeProviders joins two sightings of one provider, keeping the better status and filling in what the
+// first lacks.
 func mergeProviders(a, b domain.DiscoveredProvider) domain.DiscoveredProvider {
 	out := a
 	if statusRank(b.Status) > statusRank(out.Status) {
@@ -169,6 +176,7 @@ func mergeProviders(a, b domain.DiscoveredProvider) domain.DiscoveredProvider {
 	return out
 }
 
+// statusRank orders discovery statuses so the most certain one wins when sightings are merged.
 func statusRank(s domain.DiscoveryStatus) int {
 	switch s {
 	case domain.DiscoveryStatusReachable:
@@ -181,6 +189,7 @@ func statusRank(s domain.DiscoveryStatus) int {
 	return 0
 }
 
+// probePort checks one local port and, when something listens, asks it for its models.
 func (s *Scanner) probePort(ctx context.Context, t portTarget) ([]domain.DiscoveredProvider, error) {
 	addr := fmt.Sprintf("127.0.0.1:%d", t.port)
 	dialCtx, dialCancel := context.WithTimeout(ctx, 2*time.Second)
@@ -191,10 +200,7 @@ func (s *Scanner) probePort(ctx context.Context, t portTarget) ([]domain.Discove
 	}
 	conn.Close()
 	url := fmt.Sprintf("http://127.0.0.1:%d%s", t.port, t.endpoint)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("sys_scanner: build request for %s: %w", t.name, err)
-	}
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil) // the URL is built from a port number: it always parses
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return nil, nil // something listens there, but it does not speak HTTP
@@ -226,10 +232,7 @@ func (s *Scanner) probePort(ctx context.Context, t portTarget) ([]domain.Discove
 // loaded in memory and whether any generation is actively in progress.
 func (s *Scanner) probeOllamaPS(ctx context.Context, port int) (activeModels []string, generating bool) {
 	url := fmt.Sprintf("http://127.0.0.1:%d/api/ps", port)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, false
-	}
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil) // the URL is built from a port number: it always parses
 	resp, err := s.httpClient.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		if resp != nil {
@@ -262,6 +265,7 @@ func (s *Scanner) probeOllamaPS(ctx context.Context, port int) (activeModels []s
 	return activeModels, generating
 }
 
+// makePortProvider describes a provider found on a local port.
 func makePortProvider(t portTarget, models []string, activeModels []string, generating bool) domain.DiscoveredProvider {
 	return domain.DiscoveredProvider{
 		ID: fmt.Sprintf("port-%d", t.port), Name: t.name, Kind: t.kind,
@@ -297,9 +301,7 @@ func parseModelList(body []byte) (models []string, ok bool) {
 		return nil, false
 	}
 	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(body, &raw); err != nil {
-		return nil, false
-	}
+	_ = json.Unmarshal(body, &raw) // the struct decode above succeeded, so the body is a JSON object (or null)
 	_, hasData := raw["data"]
 	_, hasModels := raw["models"]
 	if !hasData && !hasModels {
@@ -321,6 +323,7 @@ func parseModelList(body []byte) (models []string, ok bool) {
 	return models, true
 }
 
+// probeCLI looks for a client program on the search path and reports it.
 func (s *Scanner) probeCLI(ctx context.Context, t cliTarget) ([]domain.DiscoveredProvider, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
@@ -336,6 +339,7 @@ func (s *Scanner) probeCLI(ctx context.Context, t cliTarget) ([]domain.Discovere
 	}}, nil
 }
 
+// probeProcess reports a provider whose process is running.
 func (s *Scanner) probeProcess(ctx context.Context, p processPattern) ([]domain.DiscoveredProvider, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
@@ -377,6 +381,7 @@ var (
 	}
 )
 
+// detectProcess looks for a running process by name with the tool of the operating system.
 func detectProcess(ctx context.Context, pattern string) (bool, string, int, error) {
 	if goos == "windows" {
 		return detectProcessWindows(ctx, pattern)
@@ -384,6 +389,7 @@ func detectProcess(ctx context.Context, pattern string) (bool, string, int, erro
 	return detectProcessPgrep(ctx, pattern)
 }
 
+// detectProcessPgrep looks for a process with pgrep; no match is not an error.
 func detectProcessPgrep(ctx context.Context, pattern string) (bool, string, int, error) {
 	out, err := runPgrep(ctx, pattern)
 	if err != nil {
@@ -414,6 +420,7 @@ func parsePgrep(out, pattern string) (found bool, name string, pid int) {
 	return true, name, pid
 }
 
+// detectProcessWindows looks for a process in the output of tasklist.
 func detectProcessWindows(ctx context.Context, pattern string) (bool, string, int, error) {
 	out, err := runTasklist(ctx)
 	if err != nil {

@@ -20,6 +20,8 @@ type callToolParams struct {
 	Meta      progressMeta    `json:"_meta"`
 }
 
+// handleToolCall runs one tools/call: it decodes the call, dispatches on the tool name and turns the
+// result or error into the JSON-RPC response.
 func (s *Server) handleToolCall(w http.ResponseWriter, r *http.Request, req rpcRequest) {
 	var p callToolParams
 	if err := json.Unmarshal(req.Params, &p); err != nil {
@@ -158,12 +160,14 @@ func (s *Server) handleToolCall(w http.ResponseWriter, r *http.Request, req rpcR
 
 // ----- Helpers -----
 
+// textResult wraps a string as the single text item of a tool result.
 func textResult(text string) callToolResult {
 	return callToolResult{Content: []contentItem{{Type: "text", Text: text}}}
 }
 
 // ----- Composite Tool Catalogue -----
 
+// toolList is the catalogue of all tools the server offers, in the order of the groups below.
 func toolList() []toolDef {
 	var list []toolDef
 	list = append(list, taskToolDefs()...)
