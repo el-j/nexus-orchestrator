@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker/master/packages/core/schema/stryker-schema.json",
+  "testRunner": "vitest",
+  "mutate": [
+    "src/**/*.ts",
+    "!src/**/*.spec.ts",
+    "!src/**/*.d.ts",
+    "!src/test/**",
+    "!src/vite-env.d.ts",
+    "!src/data/architecture.ts",
+    "!src/data/downloads.ts",
+    "!src/data/mcpTools.ts",
+    "!src/data/mcpIntegration.ts"
+  ],
+  "reporters": ["clear-text", "progress", "json"],
+  "jsonReporter": {
+    "fileName": "reports/mutation/mutation.json"
+  },
+  "coverageAnalysis": "perTest",
+  "concurrency": 4,
+  "thresholds": {
+    "high": 80,
+    "low": 60,
+    "break": 90
+  }
+}
