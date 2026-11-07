@@ -10,8 +10,8 @@ import (
 func TestMergeAgents_KeepsWhatEveryProbeLearnedAndLinksSubAgentsToTheirParent(t *testing.T) {
 	now := time.Date(2026, 11, 7, 12, 0, 0, 0, time.UTC)
 	found := [][]domain.DiscoveredAgent{
-		{{ID: "claude", Name: "Claude", ConfigPath: "/c/settings.json"}},
-		{{ID: "claude", IsRunning: true, MCPEndpoint: "http://x/mcp", CLIPath: "/bin/claude", PID: 42, ProcessName: "claude"}},
+		{{ID: "claude", Name: "Claude"}},
+		{{ID: "claude", IsRunning: true, MCPEndpoint: "http://x/mcp", ConfigPath: "/c/settings.json", CLIPath: "/bin/claude", PID: 42, ProcessName: "claude"}},
 		{{ID: "sub-1", ParentAgentID: "claude"}, {ID: "orphan", ParentAgentID: "missing"}},
 	}
 	byID := map[string]domain.DiscoveredAgent{}
