@@ -12,6 +12,10 @@ import (
 	"nexus-orchestrator/internal/core/domain"
 )
 
+// absPath makes a root absolute; tests replace it to make that fail (it only can when the working
+// directory is gone).
+var absPath = filepath.Abs
+
 // ScanPlanFiles scans rootPaths and their well-known subdirectories for plan/task/orchestration files.
 func (s *Scanner) ScanPlanFiles(_ context.Context, rootPaths []string) ([]domain.DiscoveredPlanFile, error) {
 	home := userHome()
@@ -19,7 +23,7 @@ func (s *Scanner) ScanPlanFiles(_ context.Context, rootPaths []string) ([]domain
 	var results []domain.DiscoveredPlanFile
 
 	for _, root := range rootPaths {
-		absRoot, err := filepath.Abs(root)
+		absRoot, err := absPath(root)
 		if err != nil {
 			continue
 		}
@@ -78,10 +82,7 @@ func scanRecursiveInstructionFiles(base, home string, seen map[string]bool, maxD
 			}
 			return nil
 		}
-		if depth > maxDepth {
-			return nil
-		}
-
+		// Folders at maxDepth are skipped above, so no file lies deeper than maxDepth.
 		name := d.Name()
 		if !strings.HasSuffix(name, ".instructions.md") && !strings.HasSuffix(name, ".prompt.md") {
 			return nil
@@ -310,7 +311,7 @@ func findProjectPath(dir, home string) string {
 		if _, err := os.Stat(gitPath); err == nil {
 			return current
 		}
-		if current == home || current == "/" {
+		if current == home {
 			return dir
 		}
 		parent := filepath.Dir(current)

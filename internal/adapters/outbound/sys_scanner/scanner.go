@@ -4,10 +4,8 @@ package sys_scanner
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -122,15 +120,22 @@ func (s *Scanner) Scan(ctx context.Context) ([]domain.DiscoveredProvider, error)
 		}()
 	}
 	go func() { wg.Wait(); close(resultCh) }()
-	rawByName := make(map[string]domain.DiscoveredProvider)
+	var found [][]domain.DiscoveredProvider
 	for r := range resultCh {
 		if r.err != nil {
-			if !errors.Is(r.err, context.Canceled) && !errors.Is(r.err, context.DeadlineExceeded) {
-				log.Printf("sys_scanner: probe error: %v", r.err)
-			}
-			continue
+			continue // a probe that failed (or was cancelled) reports nothing: the others still count
 		}
-		for _, p := range r.providers {
+		found = append(found, r.providers)
+	}
+	return mergeByName(found), nil
+}
+
+// mergeByName joins what the probes found: one entry per provider name, the entries of a name merged
+// (see mergeProviders), sorted by name.
+func mergeByName(found [][]domain.DiscoveredProvider) []domain.DiscoveredProvider {
+	rawByName := make(map[string]domain.DiscoveredProvider)
+	for _, list := range found {
+		for _, p := range list {
 			if ex, ok := rawByName[p.Name]; ok {
 				rawByName[p.Name] = mergeProviders(ex, p)
 			} else {
@@ -143,7 +148,7 @@ func (s *Scanner) Scan(ctx context.Context) ([]domain.DiscoveredProvider, error)
 		providers = append(providers, p)
 	}
 	sort.Slice(providers, func(i, j int) bool { return providers[i].Name < providers[j].Name })
-	return providers, nil
+	return providers
 }
 
 func mergeProviders(a, b domain.DiscoveredProvider) domain.DiscoveredProvider {
@@ -191,10 +196,7 @@ func (s *Scanner) probePort(ctx context.Context, t portTarget) ([]domain.Discove
 	}
 	conn.Close()
 	url := fmt.Sprintf("http://127.0.0.1:%d%s", t.port, t.endpoint)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("sys_scanner: build request for %s: %w", t.name, err)
-	}
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil) // the URL is built from a port number: it always parses
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return nil, nil // something listens there, but it does not speak HTTP
@@ -226,10 +228,7 @@ func (s *Scanner) probePort(ctx context.Context, t portTarget) ([]domain.Discove
 // loaded in memory and whether any generation is actively in progress.
 func (s *Scanner) probeOllamaPS(ctx context.Context, port int) (activeModels []string, generating bool) {
 	url := fmt.Sprintf("http://127.0.0.1:%d/api/ps", port)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, false
-	}
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil) // the URL is built from a port number: it always parses
 	resp, err := s.httpClient.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		if resp != nil {
@@ -297,9 +296,7 @@ func parseModelList(body []byte) (models []string, ok bool) {
 		return nil, false
 	}
 	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(body, &raw); err != nil {
-		return nil, false
-	}
+	_ = json.Unmarshal(body, &raw) // the struct decode above succeeded, so the body is a JSON object (or null)
 	_, hasData := raw["data"]
 	_, hasModels := raw["models"]
 	if !hasData && !hasModels {
