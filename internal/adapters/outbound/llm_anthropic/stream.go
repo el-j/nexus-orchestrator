@@ -26,10 +26,7 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 	if len(turns) == 0 {
 		return "", fmt.Errorf("anthropic: no user message to send")
 	}
-	reqBody, err := json.Marshal(anthropicRequest{Model: a.model, MaxTokens: defaultMaxTokens, System: systemBlocks(system), Messages: turns, Stream: true})
-	if err != nil {
-		return "", fmt.Errorf("anthropic: marshal request: %w", err)
-	}
+	reqBody, _ := json.Marshal(anthropicRequest{Model: a.model, MaxTokens: defaultMaxTokens, System: systemBlocks(system), Messages: turns, Stream: true}) // a request of strings and numbers always encodes
 	req, err := a.newRequest(ctx, http.MethodPost, a.baseURL+"/v1/messages", bytes.NewReader(reqBody))
 	if err != nil {
 		return "", fmt.Errorf("anthropic: build request: %w", err)

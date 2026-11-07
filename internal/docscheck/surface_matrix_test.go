@@ -15,12 +15,18 @@ type cell struct{ needle, reason string }
 func has(needle string) cell  { return cell{needle: needle} }
 func without(why string) cell { return cell{reason: why} }
 
+// restSource is the text of the REST server: its handler setup and the route table.
+func restSource(t *testing.T) string {
+	t.Helper()
+	return read(t, "internal/adapters/inbound/httpapi/server.go") + read(t, "internal/adapters/inbound/httpapi/routes.go")
+}
+
 // surfaces maps a column name to the source text its needles are searched in.
 func surfaceSources(t *testing.T) map[string]string {
 	t.Helper()
 	cli := read(t, "internal/adapters/inbound/cli/root.go") + read(t, "internal/adapters/inbound/cli/brain.go")
 	return map[string]string{
-		"rest":      read(t, "internal/adapters/inbound/httpapi/server.go"),
+		"rest":      restSource(t),
 		"mcp":       read(t, "docs/src/data/mcpTools.ts"),
 		"cli":       cli + read(t, "cmd/nexus-submit/main.go"),
 		"wails":     read(t, "app.go"),
@@ -159,7 +165,7 @@ var routeDecl = regexp.MustCompile(`r\.(Get|Post|Put|Delete)\("(/api/[^"]+)"`)
 // The REST reference must document every registered route.
 func TestAPIReferenceDocumentsEveryRoute(t *testing.T) {
 	doc := read(t, "docs/api-reference.md")
-	for _, m := range routeDecl.FindAllStringSubmatch(read(t, "internal/adapters/inbound/httpapi/server.go"), -1) {
+	for _, m := range routeDecl.FindAllStringSubmatch(restSource(t), -1) {
 		verb, path := strings.ToUpper(m[1]), m[2]
 		if !strings.Contains(doc, path) {
 			t.Errorf("docs/api-reference.md does not mention %s %s", verb, path)

@@ -90,6 +90,7 @@ func maxBodySize(next http.Handler) http.Handler {
 	})
 }
 
+// securityHeaders sets the headers that keep the dashboard from being framed or sniffed.
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Frame-Options", "DENY")
@@ -116,6 +117,8 @@ func corsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// tokenAuthMiddleware requires the bearer token when one is set in the environment or the settings;
+// without one the API is open on the loopback.
 func (s *Server) tokenAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := os.Getenv("NEXUS_API_TOKEN")
@@ -171,101 +174,12 @@ func (s *Server) Handler() http.Handler {
 	r.Use(maxBodySize)
 	r.Use(securityHeaders)
 
-	// The root goes to the full UI when this binary has it, else to the built-in dashboard,
-	// which stays available at /ui either way.
-	home := "/ui"
-	if s.ui != nil {
-		home = "/app/"
-		r.Get("/app", func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/app/", http.StatusFound) })
-		r.Handle("/app/*", s.ui)
-	}
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, home, http.StatusFound)
-	})
-	r.Get("/ui", s.handleUI)
-
-	// Task endpoints — literal segments must be registered before wildcard {id}
-	r.Post("/api/tasks", s.handleCreateTask)
-	r.Get("/api/tasks", s.handleListTasks)
-	r.Get("/api/tasks/all", s.handleGetAllTasks)
-	r.Post("/api/tasks/draft", s.handleCreateDraft)
-	r.Get("/api/tasks/backlog", s.handleGetBacklog)
-	r.Get("/api/tasks/{id}", s.handleGetTask)
-	r.Delete("/api/tasks/{id}", s.handleCancelTask)
-	r.Post("/api/tasks/{id}/promote", s.handlePromoteTask)
-	r.Put("/api/tasks/{id}", s.handleUpdateTask)
-
-	// Provider + health
-	r.Get("/api/providers", s.handleProviders)
-	r.Post("/api/providers", s.handleRegisterProvider)
-
-	// Provider discovery — literal segments registered before wildcard {name}
-	r.Get("/api/providers/discovered", s.handleGetDiscoveredProviders)
-	r.Post("/api/providers/discovered/scan", s.handleTriggerScan)
-	r.Post("/api/providers/promote/{id}", s.handlePromoteProvider)
-
-	r.Delete("/api/providers/{name}", s.handleRemoveProvider)
-	r.Get("/api/providers/{name}/models", s.handleProviderModels)
-
-	// Provider config CRUD (persistent, with API-key masking in responses)
-	r.Post("/api/providers/config", s.handleAddProviderConfig)
-	r.Get("/api/providers/config", s.handleListProviderConfigs)
-	r.Put("/api/providers/config/{id}", s.handleUpdateProviderConfig)
-	r.Delete("/api/providers/config/{id}", s.handleRemoveProviderConfig)
-
-	// AI session endpoints — literal segment before wildcard {id}
-	r.Post("/api/ai-sessions", s.handleRegisterAISession)
-	r.Get("/api/ai-sessions", s.handleListAISessions)
-	r.Delete("/api/ai-sessions", s.handlePurgeDisconnectedSessions)
-	r.Get("/api/ai-sessions/discovered", s.handleGetDiscoveredAgents)
-	r.Delete("/api/ai-sessions/{id}", s.handleDeregisterAISession)
-	r.Post("/api/ai-sessions/{id}/heartbeat", s.handleHeartbeatAISession)
-	r.Post("/api/ai-sessions/{id}/terminate", s.handleTerminateAISession)
-	r.Get("/api/ai-sessions/{id}/tasks", s.handleGetSessionTasks)
-	r.Post("/api/ai-sessions/{id}/delegate", s.handleDelegateToNexus)
-
-	// Task claim + external status update
-	r.Post("/api/tasks/{id}/claim", s.handleClaimTask)
-	r.Put("/api/tasks/{id}/status", s.handleUpdateTaskStatus)
-	r.Post("/api/tasks/{id}/heartbeat", s.handleHeartbeatTask)
-
-	r.Get("/api/health", s.handleHealth)
-	r.Get("/api/logs", s.handleGetLogs)
-	// Runtime config
-	r.Get("/api/config", s.handleGetConfig)
-	r.Put("/api/config", s.handlePutConfig)
-
-	// GET /api/events — SSE stream for task lifecycle and log events
-	r.Get("/api/events", s.handleEvents)
-	// Activity observatory endpoints
-	r.Get("/api/usage", s.handleUsage)
-	r.Get("/api/routing", s.handleRouting)
-	r.Get("/api/policy", s.handleGetPolicy)
-	r.Put("/api/policy", s.handlePutPolicy)
-	r.Get("/api/activities", s.handleListActivities)
-	r.Get("/api/activities/timeline", s.handleActivityTimeline)
-
-	// Plan file discovery endpoints
-	r.Get("/api/plans/discovered", s.handleGetDiscoveredPlanFiles)
-	r.Post("/api/plans/discovered/scan", s.handleScanPlanFiles)
-
-	// Discovery + how-to
-	r.Get("/api/howto", s.handleHowto)
-	r.Get("/.well-known/nexus.json", s.handleWellKnownNexus)
-
-	// Brain
-	r.Post("/api/brain/ingest", s.handleIngestKnowledge)
-	r.Post("/api/brain/ingest-content", s.handleIngestContent)
-	r.Post("/api/brain/knowledge", s.handleUpsertKnowledge)
-	r.Get("/api/brain/status", s.handleGetBrainStatus)
-	r.Post("/api/brain/context", s.handleGetProjectContext)
-	r.Post("/api/brain/focused-context", s.handleGetFocusedContext)
-	r.Get("/api/brain/search", s.handleSearchKnowledge)
-	r.Post("/api/brain/init", s.handleInitProject)
-	r.Get("/api/brain/knowledge", s.handleListKnowledge)
-	r.Delete("/api/brain/knowledge/{id}", s.handleDeleteKnowledge)
-	r.Get("/api/brain/file-map", s.handleGetFileMap)
-	r.Get("/api/brain/onboarding", s.handleGetOnboardingContext)
+	s.routeUI(r)
+	s.routeTasks(r)
+	s.routeProviders(r)
+	s.routeSessions(r)
+	s.routeSystem(r)
+	s.routeBrain(r)
 
 	return r
 }
@@ -286,6 +200,12 @@ func StartServer(ctx context.Context, orch ports.Orchestrator, brain ports.Brain
 	if len(logHub) > 0 && logHub[0] != nil {
 		s.WithLogHub(logHub[0])
 	}
+	return runHTTP(ctx, addr, s.Handler(), shutdownGrace)
+}
+
+// runHTTP serves handler on addr until ctx is cancelled, then gives in-flight requests grace to
+// finish before closing the rest.
+func runHTTP(ctx context.Context, addr string, handler http.Handler, grace time.Duration) error {
 	// Cancelled when shutdown starts so long-lived /api/events streams end
 	// promptly (http.Server.Shutdown does not cancel request contexts itself).
 	baseCtx, cancelBase := context.WithCancel(context.Background())
@@ -293,16 +213,18 @@ func StartServer(ctx context.Context, orch ports.Orchestrator, brain ports.Brain
 	srv := &http.Server{
 		Addr:         addr,
 		BaseContext:  func(net.Listener) context.Context { return baseCtx },
-		Handler:      s.Handler(),
+		Handler:      handler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 0, // no write timeout — required for long-lived SSE connections
 		IdleTimeout:  60 * time.Second,
 	}
 
+	drained := make(chan struct{})
 	go func() {
+		defer close(drained)
 		<-ctx.Done()
 		cancelBase()
-		shutCtx, cancel := context.WithTimeout(context.Background(), shutdownGrace)
+		shutCtx, cancel := context.WithTimeout(context.Background(), grace)
 		defer cancel()
 		if err := srv.Shutdown(shutCtx); err != nil {
 			log.Printf("httpapi: shutdown grace period elapsed, closing remaining connections: %v", err)
@@ -311,9 +233,10 @@ func StartServer(ctx context.Context, orch ports.Orchestrator, brain ports.Brain
 	}()
 
 	log.Printf("httpapi: listening on %s", addr)
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return err
+	if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+		return err // the address could not be served; nothing is shutting down
 	}
+	<-drained // ListenAndServe returns as soon as Shutdown starts: wait until the in-flight requests are done
 	return nil
 }
 
@@ -360,38 +283,9 @@ func StartServerWith(ctx context.Context, orch ports.Orchestrator, brain ports.B
 	if actSvc != nil {
 		s.WithActivityService(actSvc)
 	}
-	// Cancelled when shutdown starts so long-lived /api/events streams end
-	// promptly (http.Server.Shutdown does not cancel request contexts itself).
-	baseCtx, cancelBase := context.WithCancel(context.Background())
-	defer cancelBase()
-	srv := &http.Server{
-		Addr:         addr,
-		BaseContext:  func(net.Listener) context.Context { return baseCtx },
-		Handler:      s.Handler(),
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 0, // no write timeout — required for long-lived SSE connections
-		IdleTimeout:  60 * time.Second,
-	}
-
 	// Start periodic background plan discovery scans.
 	StartPlanScanWorker(ctx, orch, 5*time.Minute)
-
-	go func() {
-		<-ctx.Done()
-		cancelBase()
-		shutCtx, cancel := context.WithTimeout(context.Background(), shutdownGrace)
-		defer cancel()
-		if err := srv.Shutdown(shutCtx); err != nil {
-			log.Printf("httpapi: shutdown grace period elapsed, closing remaining connections: %v", err)
-			_ = srv.Close()
-		}
-	}()
-
-	log.Printf("httpapi: listening on %s", addr)
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return err
-	}
-	return nil
+	return runHTTP(ctx, addr, s.Handler(), shutdownGrace)
 }
 
 // writeJSONError sets Content-Type to application/json, writes the HTTP status
@@ -421,6 +315,7 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 	}
 }
 
+// handleHealth answers the liveness probe with the service name.
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{
 		"status":  "ok",
