@@ -217,19 +217,10 @@ func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task doma
 			lastErr = errors.New(logEntry)
 			continue
 		}
-		if limit := llm.ContextLimit(run.ctx); limit > 0 {
-			estHistory := make([]domain.Message, len(sessionHistory)+1)
-			copy(estHistory, sessionHistory)
-			estHistory[len(sessionHistory)] = domain.Message{Role: domain.RoleUser, Content: prompt}
-			if estimated := estimateTokens(estHistory); estimated > limit-o.maxResponseTokens {
-				logEntry := fmt.Sprintf(
-					"context too large for %s: ~%d tokens estimated, model limit is %d (headroom %d)",
-					llm.ProviderName(), estimated, limit, o.maxResponseTokens,
-				)
-				log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
-				lastErr = errContextTooLarge
-				continue
-			}
+		if logEntry, tooLarge := o.contextTooLarge(run.ctx, llm, prompt, sessionHistory); tooLarge {
+			log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
+			lastErr = errContextTooLarge
+			continue
 		}
 		allTooLarge = false
 
@@ -258,15 +249,8 @@ func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task doma
 		}
 
 		finalCode := o.writeAndVerifyTaskOutput(run, task, code, llm, sessionHistory)
-		if finalCode != "" && o.sessionRepo != nil {
-			userMsg := domain.Message{Role: domain.RoleUser, Content: prompt, CreatedAt: time.Now()}
-			assistantMsg := domain.Message{Role: domain.RoleAssistant, Content: finalCode, CreatedAt: time.Now()}
-			if err := o.sessionRepo.AppendMessage(o.dbCtx(), task.ProjectPath, userMsg); err != nil {
-				log.Printf("orchestrator: append user message for task %s: %v", task.ID, err)
-			}
-			if err := o.sessionRepo.AppendMessage(o.dbCtx(), task.ProjectPath, assistantMsg); err != nil {
-				log.Printf("orchestrator: append assistant message for task %s: %v", task.ID, err)
-			}
+		if finalCode != "" {
+			o.recordExchange(task, prompt, finalCode)
 		}
 		return true
 	}
@@ -279,21 +263,55 @@ func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task doma
 		o.emit(task.ID, domain.StatusTooLarge)
 		return true
 	}
-
-	if o.holdUntilReset(task, chain) {
+	if o.holdUntilReset(task, chain) || o.requeueForRetry(task) {
 		return true
 	}
-	if o.requeueForRetry(task) {
-		return true
-	}
+	o.failAllProviders(task, tried, lastErr)
+	return true
+}
 
+// contextTooLarge reports whether the history plus the prompt would not fit the provider's model with
+// room left for the answer, and says so in a log line. A provider that does not state a limit fits all.
+func (o *OrchestratorService) contextTooLarge(ctx context.Context, llm ports.LLMClient, prompt string, history []domain.Message) (string, bool) {
+	limit := llm.ContextLimit(ctx)
+	if limit <= 0 {
+		return "", false
+	}
+	est := make([]domain.Message, len(history)+1)
+	copy(est, history)
+	est[len(history)] = domain.Message{Role: domain.RoleUser, Content: prompt}
+	estimated := estimateTokens(est)
+	if estimated <= limit-o.maxResponseTokens {
+		return "", false
+	}
+	return fmt.Sprintf("context too large for %s: ~%d tokens estimated, model limit is %d (headroom %d)",
+		llm.ProviderName(), estimated, limit, o.maxResponseTokens), true
+}
+
+// recordExchange appends the prompt and the answer to the project's chat session, when there is one.
+func (o *OrchestratorService) recordExchange(task domain.Task, prompt, answer string) {
+	if o.sessionRepo == nil {
+		return
+	}
+	userMsg := domain.Message{Role: domain.RoleUser, Content: prompt, CreatedAt: time.Now()}
+	assistantMsg := domain.Message{Role: domain.RoleAssistant, Content: answer, CreatedAt: time.Now()}
+	if err := o.sessionRepo.AppendMessage(o.dbCtx(), task.ProjectPath, userMsg); err != nil {
+		log.Printf("orchestrator: append user message for task %s: %v", task.ID, err)
+	}
+	if err := o.sessionRepo.AppendMessage(o.dbCtx(), task.ProjectPath, assistantMsg); err != nil {
+		log.Printf("orchestrator: append assistant message for task %s: %v", task.ID, err)
+	}
+}
+
+// failAllProviders fails the task after every provider of its chain failed, naming the ones that were
+// tried and the last error.
+func (o *OrchestratorService) failAllProviders(task domain.Task, tried []string, lastErr error) {
 	failLog := fmt.Sprintf("all candidate providers failed: %s (last error: %v)", strings.Join(tried, ", "), lastErr)
 	_ = o.repo.UpdateLogs(o.dbCtx(), task.ID, failLog)
 	if err := o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusFailed); err != nil {
 		log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
 	}
 	o.emit(task.ID, domain.StatusFailed)
-	return true
 }
 
 // executeGeneration dispatches to Chat (when sessionRepo is set) or GenerateCode,
