@@ -15,21 +15,21 @@ type Writer struct{}
 // New returns a new Writer.
 func New() *Writer { return &Writer{} }
 
+// absPath makes a path absolute; tests replace it to make that fail (it only can when the working
+// directory is gone, which not every operating system reports).
+var absPath = filepath.Abs
+
 // safePath resolves rel inside projectPath and returns the absolute path,
 // or an error if the result escapes the project root.
 func safePath(projectPath, rel string) (string, error) {
 	if filepath.IsAbs(rel) {
 		return "", fmt.Errorf("fs_writer: path traversal blocked: %q escapes project root", rel)
 	}
-	absProject, err := filepath.Abs(projectPath)
+	absProject, err := absPath(projectPath)
 	if err != nil {
 		return "", fmt.Errorf("fs_writer: abs project path: %w", err)
 	}
-	joined := filepath.Join(absProject, rel)
-	absResult, err := filepath.Abs(joined)
-	if err != nil {
-		return "", fmt.Errorf("fs_writer: abs result path: %w", err)
-	}
+	absResult := filepath.Join(absProject, rel) // absProject is absolute, so the result is too
 	if !within(absProject, absResult) {
 		return "", fmt.Errorf("fs_writer: path traversal blocked: %q escapes project root", rel)
 	}
@@ -60,12 +60,9 @@ func within(root, path string) bool {
 func evalDeepestExisting(path string) (string, error) {
 	existing, rest := path, ""
 	for {
-		if _, err := os.Lstat(existing); err == nil {
-			break
-		}
 		parent := filepath.Dir(existing)
-		if parent == existing {
-			return path, nil // nothing exists (cannot happen for an absolute path on a real FS)
+		if _, err := os.Lstat(existing); err == nil || parent == existing {
+			break // found it, or reached the root, which EvalSymlinks then reports on
 		}
 		rest = filepath.Join(filepath.Base(existing), rest)
 		existing = parent
