@@ -49,5 +49,5 @@ reaches it. TASK-578 (progress rendering in three MCP clients) stays with the ow
 | TASK-642 | e2e for the CLI-driver path and the browser views    | testing     | done   |
 | TASK-643 | Mutation testing to the whole core and tighter gates | testing     | done   |
 | TASK-644 | Frontend lint and the nilerr design                  | quality     | done   |
-| TASK-645 | Bound the history and add benchmarks                 | performance | todo   |
+| TASK-645 | Bound the history and add benchmarks                 | performance | done   |
 | TASK-646 | Mark the historical audits superseded                | docs        | done   |
