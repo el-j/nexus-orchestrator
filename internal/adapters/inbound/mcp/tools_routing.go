@@ -46,9 +46,5 @@ func (s *Server) toolGetRouting(ctx context.Context, args json.RawMessage) (call
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_routing: %w", err)
 	}
-	b, err := json.Marshal(preview)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: get_routing: marshal: %w", err)
-	}
-	return textResult(string(b)), nil
+	return jsonResult("get_routing", preview)
 }
