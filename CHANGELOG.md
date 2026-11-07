@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `docs/audit-2026-10-31.md`: a measured check of the project against the definition of done (coverage, documentation, mutation, e2e, boss files, dead code, performance) and PLAN-077 with TASK-632 to TASK-646 to close every gap.
 - Antigravity CLI driver (`agy`): the prompt goes on stdin with `--model` from the provider's model, `agy models` fills the model list, and a quota, rate-limit, auth or overload failure is typed from agy's `AGY_ERROR` line, with the reset time read from "Resets in 43h54m", so routing cools the provider until then. `agy` is a known CLI, is found by discovery and promoted as its plain path (its `-p` wants the prompt as a value). Opt-in real test: `go test -tags realagy`. TASK-599
 - VS Code extension shows the limits: the status bar counts `WAITING` tasks (`W`), says when every provider is cooling down, and its tooltip lists the cooling providers (until when, why), plans that are nearly used up and the tokens of the last 24 hours (`getUsage`); the queue view lists `WAITING` tasks with when they resume; the provider pickers mark a provider at a limit. The editor model bridge (`vscode.lm`) now reports token usage (the model's own count, or four characters per token) so editor models appear in the usage ledger and under budgets. TASK-623 of PLAN-075
 - GitHub Action: the `api_token` input sends a bearer token to a daemon that runs with `NEXUS_API_TOKEN` (masked in logs), and a `WAITING` task logs when it resumes and names that time in the timeout error. TASK-623 of PLAN-075
@@ -27,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Removed five frontend components and views that nothing imported (`DiscoveryView`, `AISessionsView`, `TaskQueue`, `AISessionCard`, `ProviderStatus`) with their specs; the five `as any` casts and three `catch (e: any)` are typed, and a docscheck test now rejects `any` in application code. TASK-632, TASK-633 of PLAN-077
 - Provider health probes no longer hold a global lock or run one after another: stale providers are probed at once, callers share a probe in flight, and `DetectActive` stops at the first healthy provider, so a slow or unreachable provider cannot delay routing to another (cold `/api/providers` took 0.95 s with 20 providers). After each scan the health cache is refilled in the background, so the next request is not the one that pays for the probes. The `agy models` list is reused for 10 minutes instead of a 2 s call every 30 s. TASK-629, TASK-630 of PLAN-076
 - A flaky test of `wait_for_task` progress (it raced the handler's first read) is deterministic. TASK-628 of PLAN-076
 - The daemon log keeps what matters: `accessLog` writes changes, failures (status 400 and up) and requests slower than 1 s, not every successful read and session heartbeat (65 % of a 20 MB log in 11 hours); `make start-bg` moves `daemon.log` to `daemon.log.1` above 10 MB. TASK-626 of PLAN-076
