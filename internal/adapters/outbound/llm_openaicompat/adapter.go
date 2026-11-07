@@ -223,19 +223,19 @@ type usageBlock struct {
 	} `json:"prompt_tokens_details"`
 }
 
+// toDomain converts the usage block of a reply, including cached prompt tokens, to the domain type.
 func (u usageBlock) toDomain(model string) domain.Usage {
 	return domain.Usage{Model: model, InputTokens: u.PromptTokens, OutputTokens: u.CompletionTokens, CachedTokens: u.PromptTokensDetails.CachedTokens}
 }
 
+// chat posts a chat-completion request and returns the text of the first choice, or the typed error of
+// a failed call.
 func (a *Adapter) chat(ctx context.Context, messages []map[string]string) (string, error) {
-	reqBody, err := json.Marshal(chatCompletionRequest{
+	reqBody, _ := json.Marshal(chatCompletionRequest{
 		Model:       a.model,
 		Messages:    messages,
 		Temperature: 0.2,
-	})
-	if err != nil {
-		return "", fmt.Errorf("%s: marshal request: %w", a.name, err)
-	}
+	}) // a request of strings and numbers always encodes
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.baseURL+"/chat/completions", bytes.NewReader(reqBody))
 	if err != nil {
 		return "", fmt.Errorf("%s: build request: %w", a.name, err)
@@ -291,12 +291,14 @@ func errorDetail(body io.Reader) string {
 	return ": " + e.Error.Message
 }
 
+// setAuthHeader adds the bearer key when one is configured; local servers need none.
 func (a *Adapter) setAuthHeader(req *http.Request) {
 	if a.apiKey != "" {
 		req.Header.Set("Authorization", "Bearer "+a.apiKey)
 	}
 }
 
+// firstNonEmpty returns the first value that is not empty.
 func firstNonEmpty(vals ...string) string {
 	for _, v := range vals {
 		if v != "" {

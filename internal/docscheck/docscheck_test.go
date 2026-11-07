@@ -175,8 +175,8 @@ func TestReleaseWorkflowEmbedsFullUIInCLIDaemonAndEnforcesCoverageGate(t *testin
 	if !strings.Contains(buildSection, "internal/adapters/inbound/webui/dist") {
 		t.Error("publish.yml build-cli job must copy built frontend into internal/adapters/inbound/webui/dist before building nexus-daemon")
 	}
-	if !strings.Contains(wf, "MIN_COVERAGE=96 ./scripts/go-coverage.sh") {
-		t.Error("publish.yml must enforce MIN_COVERAGE=96 to match ci.yml")
+	if !strings.Contains(wf, "MIN_COVERAGE=100 ./scripts/go-coverage.sh") {
+		t.Error("publish.yml must enforce MIN_COVERAGE=100 to match ci.yml")
 	}
 
 	ci := read(t, ".github/workflows/ci.yml")

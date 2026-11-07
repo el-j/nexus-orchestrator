@@ -47,6 +47,8 @@ func New(listenAddr string) *Policy {
 	}
 }
 
+// envSet reads a comma-separated environment variable as a set of lower-case entries without trailing
+// slashes.
 func envSet(name string) map[string]bool {
 	set := map[string]bool{}
 	for _, v := range strings.Split(os.Getenv(name), ",") {
@@ -124,6 +126,7 @@ func (p *Policy) HostAllowed(hostHeader string) bool {
 	return net.ParseIP(host) != nil
 }
 
+// isLoopbackIP reports whether the host is a loopback IP address (not a name).
 func isLoopbackIP(host string) bool {
 	ip := net.ParseIP(host)
 	return ip != nil && ip.IsLoopback()

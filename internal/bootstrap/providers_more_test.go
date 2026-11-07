@@ -145,3 +145,19 @@ func TestBuildProviderFromConfig_RejectsUnusableConfigs(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildProviders_GeminiWithoutAModelUsesTheDefaultModel(t *testing.T) {
+	for _, k := range []string{"NEXUS_GEMINI_MODEL", "GEMINI_MODEL", "NEXUS_GEMINI_API_KEY"} {
+		t.Setenv(k, "")
+	}
+	t.Setenv("GEMINI_API_KEY", "key")
+	var model string
+	for _, p := range BuildProviders() {
+		if strings.Contains(strings.ToLower(p.ProviderName()), "gemini") {
+			model = p.ActiveModel()
+		}
+	}
+	if model != "gemini-2.5-pro" {
+		t.Errorf("model = %q, want the default gemini-2.5-pro", model)
+	}
+}

@@ -30,6 +30,7 @@ var assets embed.FS
 
 var probeClient = &http.Client{Timeout: 500 * time.Millisecond}
 
+// main starts the desktop app and reports a failure on stderr.
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -85,6 +86,8 @@ func attachOrStart(ctx context.Context, cfg bootstrap.Config, logHub *httpapi.Lo
 	return newApp(rt), rt.Close, nil
 }
 
+// daemonHealthy reports whether a daemon already answers on the address, so the app attaches to it
+// instead of starting a second one.
 func daemonHealthy(ctx context.Context, listenAddr string) bool {
 	if strings.HasSuffix(listenAddr, ":0") {
 		return false

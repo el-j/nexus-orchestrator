@@ -75,6 +75,13 @@ func (f *faultyAIRepo) UpdateAISessionStatus(ctx context.Context, id string, st 
 	return f.memAISessionRepo.UpdateAISessionStatus(ctx, id, st, at)
 }
 
+func (f *faultyAIRepo) DeleteAISession(ctx context.Context, id string) error {
+	if err := f.err("Delete"); err != nil {
+		return err
+	}
+	return f.memAISessionRepo.DeleteAISession(ctx, id)
+}
+
 func (f *faultyAIRepo) PurgeDisconnected(ctx context.Context, d time.Duration) (int, error) {
 	if err := f.err("Purge"); err != nil {
 		return 0, err

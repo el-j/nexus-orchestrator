@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// handleRegisterAISession registers an agent session so Nexus can show and orchestrate it.
 func (s *Server) handleRegisterAISession(w http.ResponseWriter, r *http.Request) {
 	var session domain.AISession
 	if err := json.NewDecoder(r.Body).Decode(&session); err != nil {
@@ -34,6 +35,7 @@ func (s *Server) handleRegisterAISession(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusCreated, created)
 }
 
+// handleListAISessions lists the registered sessions.
 func (s *Server) handleListAISessions(w http.ResponseWriter, r *http.Request) {
 	sessions, err := s.orch.ListAISessions(r.Context())
 	if err != nil {
@@ -47,6 +49,7 @@ func (s *Server) handleListAISessions(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, sessions)
 }
 
+// handleDeregisterAISession removes a session its agent has finished with.
 func (s *Server) handleDeregisterAISession(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := s.orch.DeregisterAISession(r.Context(), id); err != nil {
@@ -73,6 +76,7 @@ func (s *Server) handlePurgeDisconnectedSessions(w http.ResponseWriter, r *http.
 	writeJSON(w, http.StatusOK, map[string]int{"deleted": n})
 }
 
+// handleHeartbeatAISession marks a session as alive.
 func (s *Server) handleHeartbeatAISession(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := s.orch.HeartbeatAISession(r.Context(), id); err != nil {
@@ -87,6 +91,7 @@ func (s *Server) handleHeartbeatAISession(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleTerminateAISession ends a session; force kills a process that does not stop.
 func (s *Server) handleTerminateAISession(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var body struct {
@@ -110,6 +115,7 @@ func (s *Server) handleTerminateAISession(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleGetDiscoveredAgents lists the agents found on this machine.
 func (s *Server) handleGetDiscoveredAgents(w http.ResponseWriter, r *http.Request) {
 	agents, err := s.orch.GetDiscoveredAgents(r.Context())
 	if err != nil {
@@ -161,6 +167,8 @@ func (s *Server) handleScanPlanFiles(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, files)
 }
 
+// handleDelegateToNexus hands a session's open work to the orchestrator and returns the instruction
+// that was queued.
 func (s *Server) handleDelegateToNexus(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	instruction, err := s.orch.DelegateToNexus(r.Context(), id)

@@ -61,6 +61,8 @@ func NewAdapter(name, commandLine, model string) (*Adapter, error) {
 	return &Adapter{name: name, command: commandLine, exe: fields[0], args: fields[1:], model: model}, nil
 }
 
+// allowed reports whether a command may be run as a provider: one of the known clients, or one the user
+// named in NEXUS_CLI_PROVIDERS.
 func allowed(exe string) bool {
 	exe = strings.TrimSuffix(strings.ToLower(exe), ".exe")
 	if knownCLIs[exe] {
@@ -183,6 +185,8 @@ func transcript(messages []domain.Message) string {
 	return b.String()
 }
 
+// run runs the command for one request, with the claude stream driver when the command is claude in
+// stream-json mode, and returns what it printed.
 func (a *Adapter) run(ctx context.Context, prompt string, onChunk func(string)) (string, error) {
 	if isClaudeStream(a.exe, a.args) {
 		return a.runClaude(ctx, prompt, onChunk)
@@ -203,29 +207,50 @@ func (a *Adapter) run(ctx context.Context, prompt string, onChunk func(string)) 
 	cmd.WaitDelay = 2 * time.Second // children that keep the pipe open must not hang Wait
 	var stderr bytes.Buffer
 	cmd.Stderr = &limitedWriter{w: &stderr, left: 8192}
-	out, err := cmd.StdoutPipe()
-	if err != nil {
-		return "", fmt.Errorf("%s: %w", a.name, err)
-	}
+	out, _ := cmd.StdoutPipe() // cannot fail: Stdout has not been set
 	if err := cmd.Start(); err != nil {
 		return "", fmt.Errorf("%s: start %s: %w", a.name, a.exe, err)
 	}
 
+	reply, err := pumpReply(out, onChunk)
+	if ctx.Err() != nil { // a cancelled run reports the cancel below, not the broken pipe it caused
+		err = nil
+	}
+	waitErr := cmd.Wait()
+	if ctx.Err() != nil {
+		return reply, fmt.Errorf("%s: %w", a.name, ctx.Err())
+	}
+	if err == nil {
+		err = waitErr
+	}
+	if err != nil {
+		return reply, a.failure(err, strings.TrimSpace(stderr.String()), reply)
+	}
+	if strings.TrimSpace(reply) == "" {
+		return "", fmt.Errorf("%s: the command printed nothing", a.name)
+	}
+	return strings.TrimSpace(reply), nil
+}
+
+// pumpReply copies the tool's output to onChunk as it is written and returns all of it. Pieces end on
+// a character boundary: a multibyte character cut in half by a read belongs to the next piece. It
+// returns what it read together with the first read error other than the end of the output.
+func pumpReply(r io.Reader, onChunk func(string)) (string, error) {
 	var reply strings.Builder
 	var carry []byte
 	buf := make([]byte, 4096)
+	var err error
 	for {
-		n, rerr := out.Read(buf)
+		n, rerr := r.Read(buf)
 		carry = append(carry, buf[:n]...)
-		cut := completePrefix(carry) // whole characters only; keep an incomplete tail for the next read
-		if cut > 0 {
+		if cut := completePrefix(carry); cut > 0 {
 			piece := string(carry[:cut])
 			reply.WriteString(piece)
 			onChunk(piece)
 			carry = append(carry[:0], carry[cut:]...)
 		}
 		if rerr != nil {
-			if !errors.Is(rerr, io.EOF) && ctx.Err() == nil {
+			if !errors.Is(rerr, io.EOF) {
 				err = rerr
 			}
 			break
@@ -235,38 +260,31 @@ func (a *Adapter) run(ctx context.Context, prompt string, onChunk func(string)) 
 		reply.Write(carry)
 		onChunk(string(carry))
 	}
-	waitErr := cmd.Wait()
-	if ctx.Err() != nil {
-		return reply.String(), fmt.Errorf("%s: %w", a.name, ctx.Err())
+	return reply.String(), err
+}
+
+// failure builds the error for a command that failed: its stderr (or, without one, what it printed)
+// says why, and a Copilot or Antigravity failure is typed so routing can react to a quota or a limit.
+func (a *Adapter) failure(err error, stderr, reply string) error {
+	msg := stderr
+	if msg == "" {
+		msg = strings.TrimSpace(reply)
 	}
-	if err == nil {
-		err = waitErr
+	if msg == "" {
+		return fmt.Errorf("%s: %w", a.name, err)
 	}
-	if err != nil {
-		msg := strings.TrimSpace(stderr.String())
-		if msg == "" {
-			msg = strings.TrimSpace(reply.String())
+	detail := fmt.Sprintf("%v: %s", err, msg)
+	switch {
+	case isCopilot(a.exe):
+		if pe := classifyCLIFailure(a.name, detail); pe != nil {
+			return pe
 		}
-		if msg != "" {
-			detail := fmt.Sprintf("%v: %s", err, msg)
-			switch {
-			case isCopilot(a.exe):
-				if pe := classifyCLIFailure(a.name, detail); pe != nil {
-					return reply.String(), pe
-				}
-			case isAgy(a.exe):
-				if pe := classifyAgyFailure(a.name, detail, time.Now()); pe != nil {
-					return reply.String(), pe
-				}
-			}
-			return reply.String(), fmt.Errorf("%s: %w: %s", a.name, err, msg)
+	case isAgy(a.exe):
+		if pe := classifyAgyFailure(a.name, detail, time.Now()); pe != nil {
+			return pe
 		}
-		return reply.String(), fmt.Errorf("%s: %w", a.name, err)
 	}
-	if strings.TrimSpace(reply.String()) == "" {
-		return "", fmt.Errorf("%s: the command printed nothing", a.name)
-	}
-	return strings.TrimSpace(reply.String()), nil
+	return fmt.Errorf("%s: %w: %s", a.name, err, msg)
 }
 
 // completePrefix returns how many leading bytes of b end on a character boundary: a multibyte
@@ -289,6 +307,8 @@ type limitedWriter struct {
 	left int
 }
 
+// Write passes the first bytes to the underlying writer and drops the rest, so a noisy stderr cannot
+// fill memory; it always reports the whole input as written.
 func (l *limitedWriter) Write(p []byte) (int, error) {
 	n := len(p)
 	if l.left > 0 {
