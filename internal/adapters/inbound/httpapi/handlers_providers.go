@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// handleProviders lists the providers the daemon knows with their models and health.
 func (s *Server) handleProviders(w http.ResponseWriter, r *http.Request) {
 	providers, err := s.orch.GetProviders()
 	if err != nil {
@@ -25,6 +26,7 @@ func (s *Server) handleProviders(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, providers)
 }
 
+// handleRegisterProvider registers a provider for the running daemon from a posted configuration.
 func (s *Server) handleRegisterProvider(w http.ResponseWriter, r *http.Request) {
 	var cfg domain.ProviderConfig
 	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
@@ -46,6 +48,7 @@ func (s *Server) handleRegisterProvider(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusCreated, map[string]string{"name": cfg.Name, "kind": string(cfg.Kind)})
 }
 
+// handleRemoveProvider unregisters a running provider by name.
 func (s *Server) handleRemoveProvider(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
 	if err := s.orch.RemoveProvider(name); err != nil {
@@ -60,6 +63,7 @@ func (s *Server) handleRemoveProvider(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleProviderModels lists the models one provider offers.
 func (s *Server) handleProviderModels(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
 	models, err := s.orch.GetProviderModels(name)
@@ -78,23 +82,15 @@ func (s *Server) handleProviderModels(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, models)
 }
 
-// maskAPIKey returns a masked representation of an API key:
-// if longer than 4 characters, the last 4 are preserved; otherwise "****".
-func maskAPIKey(key string) string {
-	if key == "" {
-		return domain.MaskedSecretPrefix
-	}
-	return domain.MaskSecret(key)
-}
-
 // maskedProviderConfig returns a copy of cfg with the APIKey field masked.
 func maskedProviderConfig(cfg domain.ProviderConfig) domain.ProviderConfig {
 	if cfg.APIKey != "" {
-		cfg.APIKey = maskAPIKey(cfg.APIKey)
+		cfg.APIKey = domain.MaskSecret(cfg.APIKey)
 	}
 	return cfg
 }
 
+// handleAddProviderConfig stores a new provider configuration.
 func (s *Server) handleAddProviderConfig(w http.ResponseWriter, r *http.Request) {
 	var cfg domain.ProviderConfig
 	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
@@ -114,6 +110,7 @@ func (s *Server) handleAddProviderConfig(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusCreated, maskedProviderConfig(created))
 }
 
+// handleListProviderConfigs lists the stored provider configurations with the API keys masked.
 func (s *Server) handleListProviderConfigs(w http.ResponseWriter, r *http.Request) {
 	cfgs, err := s.orch.ListProviderConfigs(r.Context())
 	if err != nil {
@@ -128,6 +125,7 @@ func (s *Server) handleListProviderConfigs(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, masked)
 }
 
+// handleUpdateProviderConfig changes a stored configuration; an omitted key keeps the stored one.
 func (s *Server) handleUpdateProviderConfig(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var cfg domain.ProviderConfig
@@ -149,6 +147,7 @@ func (s *Server) handleUpdateProviderConfig(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusOK, maskedProviderConfig(updated))
 }
 
+// handleRemoveProviderConfig deletes a stored configuration; 404 when it does not exist.
 func (s *Server) handleRemoveProviderConfig(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := s.orch.RemoveProviderConfig(r.Context(), id); err != nil {
@@ -163,6 +162,7 @@ func (s *Server) handleRemoveProviderConfig(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleGetDiscoveredProviders lists what the last scan found on this machine, without scanning again.
 func (s *Server) handleGetDiscoveredProviders(w http.ResponseWriter, r *http.Request) {
 	providers, err := s.orch.GetDiscoveredProviders()
 	if err != nil {
@@ -172,6 +172,7 @@ func (s *Server) handleGetDiscoveredProviders(w http.ResponseWriter, r *http.Req
 	writeJSON(w, http.StatusOK, providers)
 }
 
+// handleTriggerScan scans the machine for providers now and returns the result.
 func (s *Server) handleTriggerScan(w http.ResponseWriter, r *http.Request) {
 	providers, err := s.orch.TriggerScan(r.Context())
 	if err != nil {
@@ -181,6 +182,7 @@ func (s *Server) handleTriggerScan(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, providers)
 }
 
+// handlePromoteProvider turns a discovered provider into a stored configuration.
 func (s *Server) handlePromoteProvider(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	err := s.orch.PromoteProvider(r.Context(), id)

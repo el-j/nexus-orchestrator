@@ -16,6 +16,7 @@ type quotaBook struct {
 	m  map[string]domain.QuotaReading
 }
 
+// set stores the latest allowance reading of a provider.
 func (b *quotaBook) set(key string, q domain.QuotaReading) {
 	b.mu.Lock()
 	defer b.mu.Unlock()

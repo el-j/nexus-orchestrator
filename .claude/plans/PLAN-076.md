@@ -1,7 +1,7 @@
 ---
 id: PLAN-076
 title: 'Audit round 2 (2026-10-31): functionality and performance of the released daemon'
-status: active
+status: completed
 createdAt: 2026-10-31
 tasks: [TASK-626, TASK-627, TASK-628, TASK-629, TASK-630, TASK-631]
 ---

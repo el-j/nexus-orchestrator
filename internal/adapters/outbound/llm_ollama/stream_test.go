@@ -152,3 +152,14 @@ func TestChatStream_BrokenSingleJSONReplyIsAnError(t *testing.T) {
 		t.Error("want an error")
 	}
 }
+
+func TestChatStream_IgnoresBlankLinesBetweenEvents(t *testing.T) {
+	body := "\n{\"message\":{\"content\":\"Hel\"}}\n\n{\"message\":{\"content\":\"lo\"},\"done\":true}\n"
+	srv := ndjsonServer(t, 200, body, nil)
+	defer srv.Close()
+	a := NewOllamaAdapter(srv.URL, "m")
+	reply, err := a.ChatStream(context.Background(), nil, func(string) {})
+	if err != nil || reply != "Hello" {
+		t.Errorf("reply=%q err=%v", reply, err)
+	}
+}

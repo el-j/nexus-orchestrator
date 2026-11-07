@@ -27,6 +27,8 @@ func routingToolDefs() []toolDef {
 	}
 }
 
+// toolGetRouting serves get_routing: which provider and model a task of the given role would use in a
+// project.
 func (s *Server) toolGetRouting(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -46,9 +48,5 @@ func (s *Server) toolGetRouting(ctx context.Context, args json.RawMessage) (call
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_routing: %w", err)
 	}
-	b, err := json.Marshal(preview)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: get_routing: marshal: %w", err)
-	}
-	return textResult(string(b)), nil
+	return jsonResult("get_routing", preview)
 }

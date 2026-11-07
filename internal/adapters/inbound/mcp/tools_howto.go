@@ -150,6 +150,7 @@ SMALL-CONTEXT TIPS:
 
 // ----- Howto Schema Definitions -----
 
+// howtoToolDefs lists the two guide tools, howto and howto_brief.
 func howtoToolDefs() []toolDef {
 	return []toolDef{
 		{

@@ -23,6 +23,7 @@ type sseSession struct {
 	flusher http.Flusher
 }
 
+// sendEvent writes one server-sent event to the session; a lock keeps events from interleaving.
 func (s *sseSession) sendEvent(event, data string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -39,6 +40,7 @@ type sseManager struct {
 	sessions map[string]*sseSession
 }
 
+// add registers a new SSE session under its id.
 func (m *sseManager) add(id string, w http.ResponseWriter, f http.Flusher) *sseSession {
 	s := &sseSession{
 		id:      id,
@@ -51,6 +53,7 @@ func (m *sseManager) add(id string, w http.ResponseWriter, f http.Flusher) *sseS
 	return s
 }
 
+// get looks up an SSE session by id.
 func (m *sseManager) get(id string) (*sseSession, bool) {
 	m.mu.RLock()
 	s, ok := m.sessions[id]
@@ -58,6 +61,7 @@ func (m *sseManager) get(id string) (*sseSession, bool) {
 	return s, ok
 }
 
+// remove forgets an SSE session once its stream has closed.
 func (m *sseManager) remove(id string) {
 	m.mu.Lock()
 	delete(m.sessions, id)
@@ -82,6 +86,7 @@ func (c *captureWriter) Header() http.Header {
 	return c.header
 }
 
+// Write collects the response body in memory so the answer can be sent as an event.
 func (c *captureWriter) Write(b []byte) (int, error) {
 	c.body = append(c.body, b...)
 	return len(b), nil
@@ -94,6 +99,7 @@ func (c *captureWriter) WriteHeader(code int) {
 
 // ----- SSE HTTP handlers -----
 
+// handleSSE serves the legacy SSE transport: GET opens an event stream, POST delivers a message to it.
 func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		s.handleSSEMessage(w, r)
@@ -152,6 +158,8 @@ loop:
 	log.Printf("mcp: sse session %s disconnected", sessionID)
 }
 
+// handleSSEMessage takes a POSTed JSON-RPC message of the legacy SSE transport, runs it and sends the
+// answer down the session's event stream.
 func (s *Server) handleSSEMessage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)

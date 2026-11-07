@@ -29,6 +29,7 @@ type putRuntimeConfigRequest struct {
 	RotateMCPToken bool `json:"rotateMcpToken,omitempty"`
 }
 
+// handleGetConfig returns the daemon settings.
 func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	if s.orch == nil {
 		writeJSONError(w, "orchestrator unavailable", http.StatusServiceUnavailable)
@@ -48,6 +49,7 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// handlePutConfig validates and saves the daemon settings.
 func (s *Server) handlePutConfig(w http.ResponseWriter, r *http.Request) {
 	if s.orch == nil {
 		writeJSONError(w, "orchestrator unavailable", http.StatusServiceUnavailable)
