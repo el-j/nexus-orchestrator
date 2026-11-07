@@ -162,7 +162,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if s.requiresAuth(r.Context(), r.URL.Path) && !s.isAuthorized(r.Context(), r.Header.Get("Authorization")) {
+	if !s.authorized(r.Context(), r.URL.Path, r.Header.Get("Authorization")) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -194,21 +194,20 @@ func (s *Server) writeCORSHeaders(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Expose-Headers", "Mcp-Session-Id")
 }
 
-func (s *Server) requiresAuth(ctx context.Context, path string) bool {
-	if s.effectiveAuthToken(ctx) == "" {
-		return false
-	}
+// protectedPath reports whether path serves MCP traffic and so needs the bearer token.
+func protectedPath(path string) bool {
 	switch path {
 	case "/mcp", "/sse", "/messages":
 		return true
-	default:
-		return false
 	}
+	return false
 }
 
-func (s *Server) isAuthorized(ctx context.Context, authHeader string) bool {
+// authorized reports whether the request may proceed: always when no token is configured or the path
+// is not an MCP endpoint, otherwise only with the matching bearer token.
+func (s *Server) authorized(ctx context.Context, path, authHeader string) bool {
 	expected := s.effectiveAuthToken(ctx)
-	if expected == "" {
+	if expected == "" || !protectedPath(path) {
 		return true
 	}
 	if len(authHeader) < len("Bearer ")+1 {
@@ -217,10 +216,7 @@ func (s *Server) isAuthorized(ctx context.Context, authHeader string) bool {
 	if !strings.EqualFold(authHeader[:len("Bearer ")], "Bearer ") {
 		return false
 	}
-	token := strings.TrimSpace(authHeader[len("Bearer "):])
-	if token == "" {
-		return false
-	}
+	token := strings.TrimSpace(authHeader[len("Bearer "):]) // an empty token never equals the configured one
 	return subtle.ConstantTimeCompare([]byte(token), []byte(expected)) == 1
 }
 
@@ -240,7 +236,7 @@ func (s *Server) effectiveAuthToken(ctx context.Context) string {
 
 // shutdownGrace is how long in-flight requests get to finish on shutdown before
 // the remaining connections are closed.
-const shutdownGrace = 2 * time.Second
+var shutdownGrace = 2 * time.Second
 
 // StartMCPServer runs an HTTP server serving the MCP JSON-RPC 2.0 endpoint.
 // It blocks until ctx is cancelled, then shuts down gracefully.

@@ -27,6 +27,8 @@ type mockBrainService struct {
 	getContextErr       error
 	getFileMapResult    []string
 	getFileMapErr       error
+	ingestKnowledgeErr  error
+	ingested            domain.ProjectKnowledge // the entry the last IngestKnowledge call received
 }
 
 func (m *mockBrainService) GetStatus(_ context.Context, _ string) (domain.BrainStatus, error) {
@@ -62,7 +64,8 @@ func (m *mockBrainService) GetFocusedContext(_ context.Context, _ domain.Context
 }
 
 func (m *mockBrainService) IngestKnowledge(_ context.Context, k domain.ProjectKnowledge) (domain.ProjectKnowledge, error) {
-	return k, nil
+	m.ingested = k
+	return k, m.ingestKnowledgeErr
 }
 
 func (m *mockBrainService) GetFileMap(_ context.Context, _, _ string) ([]string, error) {
