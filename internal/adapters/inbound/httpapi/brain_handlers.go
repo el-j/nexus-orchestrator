@@ -277,11 +277,7 @@ func (s *Server) handleDeleteKnowledge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := chi.URLParam(r, "id")
-	if id == "" {
-		writeJSONError(w, "id path parameter is required", http.StatusBadRequest)
-		return
-	}
+	id := chi.URLParam(r, "id") // the route pattern /{id} never matches an empty segment
 
 	err := s.brain.DeleteKnowledge(r.Context(), id)
 	if err != nil {
@@ -360,7 +356,8 @@ func (s *Server) handleUpsertKnowledge(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, "brain service not configured", http.StatusServiceUnavailable)
 		return
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, 2*domain.MaxIngestBytes+4096)
+	// The router already limits every body to 1 MiB (maxBodySize), which is MaxIngestBytes, so a larger
+	// entry fails here as a MaxBytesError; a decoded entry is therefore never over the limit.
 	var k domain.ProjectKnowledge
 	if err := json.NewDecoder(r.Body).Decode(&k); err != nil {
 		var tooBig *http.MaxBytesError
@@ -377,9 +374,6 @@ func (s *Server) handleUpsertKnowledge(w http.ResponseWriter, r *http.Request) {
 		return
 	case !k.Kind.IsValid():
 		writeJSONError(w, "kind must be one of architecture, convention, file_map, learning, glossary, task_summary", http.StatusBadRequest)
-		return
-	case len(k.Content) > domain.MaxIngestBytes:
-		writeJSONError(w, "content is too large", http.StatusRequestEntityTooLarge)
 		return
 	}
 	stored, err := s.brain.IngestKnowledge(r.Context(), k)

@@ -3,7 +3,6 @@ package repo_sqlite
 import (
 	"context"
 	"database/sql"
-	"log"
 	"time"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -45,21 +44,13 @@ func (d *DiscoveredAgentRepo) ListDiscoveredAgents(ctx context.Context) ([]domai
 	var agents []domain.DiscoveredAgent
 	for rows.Next() {
 		var a domain.DiscoveredAgent
-		var lastSeenStr string
 		var isRunningInt int
 		if err := rows.Scan(&a.ID, (*string)(&a.Kind), &a.Name, &a.DetectionMethod,
 			&a.ProcessName, &a.CLIPath, &a.ConfigPath, &a.MCPEndpoint,
-			&isRunningInt, &a.PID, &lastSeenStr); err != nil {
+			&isRunningInt, &a.PID, &a.LastSeen); err != nil {
 			return nil, err
 		}
 		a.IsRunning = isRunningInt != 0
-		if lastSeenStr != "" {
-			if parsed, err := time.Parse(time.RFC3339, lastSeenStr); err != nil {
-				log.Printf("repo_sqlite: discovered_agent %s: parse last_seen %q: %v", a.ID, lastSeenStr, err)
-			} else {
-				a.LastSeen = parsed
-			}
-		}
 		agents = append(agents, a)
 	}
 	return agents, rows.Err()

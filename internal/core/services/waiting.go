@@ -12,7 +12,7 @@ import (
 
 // waitGrace is added to the reset time a provider gave, so the first retry does not land a moment too
 // early and run into the same limit.
-const waitGrace = time.Second
+var waitGrace = time.Second
 
 // chainKeys returns the cooldown keys of every candidate in the chain.
 func chainKeys(chain []ports.LLMClient) []string {

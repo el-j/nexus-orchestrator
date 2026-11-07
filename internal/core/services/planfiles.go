@@ -61,22 +61,6 @@ var (
 	planNumEnd   = regexp.MustCompile(`(\d+)\s*$`)
 )
 
-const (
-	// maxPlanFileBytes: a bigger file is not a plan or task document.
-	maxPlanFileBytes = 256 << 10
-	// maxPlanWalkDepth and maxPlanWalkEntries bound the search of a whole project.
-	maxPlanWalkDepth   = 6
-	maxPlanWalkEntries = 20000
-	// maxPlanFolderDepth is how deep below a plan or task folder files are read.
-	maxPlanFolderDepth = 3
-)
-
-// planSkipDirs are never searched for plan files.
-var planSkipDirs = map[string]bool{
-	"node_modules": true, "vendor": true, "build": true, "dist": true, "target": true,
-	"__pycache__": true, "coverage": true, "out": true, "tmp": true,
-}
-
 // planFrontMatter returns the simple "key: value" pairs of a leading --- block (a list may be
 // inline [a, b] or a "- item" block) and the text after it.
 func planFrontMatter(text string) (map[string]string, map[string][]string, string) {

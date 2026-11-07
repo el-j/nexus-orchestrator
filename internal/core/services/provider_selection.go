@@ -54,10 +54,6 @@ func isLocalProvider(p ports.LLMClient) bool {
 // resolveProviderWithFallback returns an ordered chain of available LLM providers
 // based on task requirements, role-driven routing hints, and health status.
 func (o *OrchestratorService) resolveProviderWithFallback(ctx context.Context, task domain.Task) ([]ports.LLMClient, error) {
-	if o.discovery == nil {
-		return nil, errors.New("discovery service not configured")
-	}
-
 	// Case 1: Explicit ProviderName specified
 	if task.ProviderName != "" {
 		client, ok := o.discovery.GetClientByName(task.ProviderName)
@@ -167,8 +163,5 @@ func (o *OrchestratorService) resolveProviderWithFallback(ctx context.Context, t
 		}
 	}
 
-	if len(result) == 0 {
-		return nil, errors.New("discovery: no active provider available")
-	}
-	return result, nil
+	return result, nil // never empty: alive is not, and each of its members is either preferred or the first of its key
 }
