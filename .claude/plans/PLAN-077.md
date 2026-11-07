@@ -45,7 +45,7 @@ reaches it. TASK-578 (progress rendering in three MCP clients) stays with the ow
 | TASK-638 | Document every Go function, enforce it               | docs        | done   |
 | TASK-639 | Split the oversized functions                        | refactor    | done   |
 | TASK-640 | Split the boss files                                 | refactor    | done   |
-| TASK-641 | e2e for the 16 untouched REST routes                 | testing     | todo   |
+| TASK-641 | e2e for the 16 untouched REST routes                 | testing     | done   |
 | TASK-642 | e2e for the CLI-driver path and the browser views    | testing     | todo   |
 | TASK-643 | Mutation testing to the whole core and tighter gates | testing     | todo   |
 | TASK-644 | Frontend lint and the nilerr design                  | quality     | todo   |
