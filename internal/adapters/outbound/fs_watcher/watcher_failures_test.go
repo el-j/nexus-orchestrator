@@ -128,3 +128,14 @@ func TestNewWatchAndUnwatch_ReportTheSystemFailingUnderThem(t *testing.T) {
 		_ = w.Close()
 	})
 }
+
+func TestHandleEvent_IgnoresEventsThatAreNeitherWritesNorCreates(t *testing.T) {
+	w, _, _ := manualWatcher(t)
+	defer close(w.stopCh)
+	for _, op := range []fsnotify.Op{fsnotify.Remove, fsnotify.Rename, fsnotify.Chmod} {
+		w.handleEvent(fsnotify.Event{Name: "notes.md", Op: op})
+	}
+	if len(w.timers) != 0 {
+		t.Errorf("%d timers scheduled for events that change no content", len(w.timers))
+	}
+}

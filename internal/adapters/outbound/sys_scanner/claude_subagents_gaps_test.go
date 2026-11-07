@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func skipIfModesDoNotApply(t *testing.T) {
@@ -85,5 +86,20 @@ func TestClaudeSubAgents_UnreadableSessionFilesAreSkippedAndLongIDsGetAShortLabe
 	long, ok := got["claude-agent-0123456789abcdef"]
 	if !ok || !strings.HasSuffix(long.Name, "01234567") {
 		t.Errorf("a sub-agent without a slug is labelled by the first 8 characters of its id: %+v", long)
+	}
+}
+
+func TestClaudeSubAgents_ProjectAgentTakesTheFolderAndModelFromAnOlderSessionWhenTheNewestHasNone(t *testing.T) {
+	home := t.TempDir()
+	proj := filepath.Join(home, ".claude", "projects", "-work-app")
+	old := filepath.Join(proj, "old.jsonl")
+	writeFile(t, old, mainSessionLines("old", "/work/app", "claude-opus"))
+	touch(t, old, claudeActiveThreshold+time.Minute)
+	fresh := filepath.Join(proj, "fresh.jsonl")
+	writeFile(t, fresh, `{"type":"mode","mode":"normal","sessionId":"fresh"}`+"\n") // too new to have recorded a cwd or model
+	got := byID(probeClaudeSubAgentsDir(context.Background(), home))
+	rep, ok := got["claude-cli--work-app"]
+	if !ok || rep.WorkingDir != "/work/app" || rep.ModelID != "claude-opus" {
+		t.Errorf("project agent = %+v", rep)
 	}
 }
