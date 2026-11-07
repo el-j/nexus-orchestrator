@@ -200,29 +200,21 @@ func looksLikePlanMarkdown(path string) bool {
 		return true
 	}
 	for _, line := range strings.Split(sample, "\n") {
-		trimmed := strings.TrimSpace(strings.ToUpper(line))
-		if strings.HasPrefix(trimmed, "# PLAN") ||
-			strings.HasPrefix(trimmed, "## PLAN") ||
-			strings.HasPrefix(trimmed, "# TASK") ||
-			strings.HasPrefix(trimmed, "## TASK") ||
-			strings.HasPrefix(trimmed, "# ROADMAP") ||
-			strings.HasPrefix(trimmed, "## ROADMAP") ||
-			strings.HasPrefix(trimmed, "# TODO") ||
-			strings.HasPrefix(trimmed, "## TODO") ||
-			strings.HasPrefix(trimmed, "# WORKFLOW") ||
-			strings.HasPrefix(trimmed, "## WORKFLOW") ||
-			strings.HasPrefix(trimmed, "# SPRINT") ||
-			strings.HasPrefix(trimmed, "## SPRINT") ||
-			strings.HasPrefix(trimmed, "# EPIC") ||
-			strings.HasPrefix(trimmed, "## EPIC") ||
-			strings.HasPrefix(trimmed, "# MILESTONE") ||
-			strings.HasPrefix(trimmed, "## MILESTONE") ||
-			strings.HasPrefix(trimmed, "# BACKLOG") ||
-			strings.HasPrefix(trimmed, "## BACKLOG") ||
-			strings.HasPrefix(trimmed, "# OBJECTIVES") ||
-			strings.HasPrefix(trimmed, "## OBJECTIVES") ||
-			strings.HasPrefix(trimmed, "# IMPLEMENTATION") ||
-			strings.HasPrefix(trimmed, "## IMPLEMENTATION") {
+		if hasPlanHeading(strings.TrimSpace(strings.ToUpper(line))) {
+			return true
+		}
+	}
+	return false
+}
+
+// planHeadingWords are the words after "# " or "## " that mark a document as a plan.
+var planHeadingWords = []string{"PLAN", "TASK", "ROADMAP", "TODO", "WORKFLOW", "SPRINT", "EPIC", "MILESTONE", "BACKLOG", "OBJECTIVES", "IMPLEMENTATION"}
+
+// hasPlanHeading reports whether an upper-cased, trimmed line is a level 1 or 2 heading that starts with
+// one of planHeadingWords.
+func hasPlanHeading(line string) bool {
+	for _, w := range planHeadingWords {
+		if strings.HasPrefix(line, "# "+w) || strings.HasPrefix(line, "## "+w) {
 			return true
 		}
 	}

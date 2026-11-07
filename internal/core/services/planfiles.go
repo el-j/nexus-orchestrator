@@ -339,89 +339,94 @@ func planOrder(id string) int {
 	return 1 << 30
 }
 
+// sortByPlanOrder sorts files by the number at the end of their id, then by id.
+func sortByPlanOrder(files []PlanFile) {
+	sort.SliceStable(files, func(i, j int) bool {
+		a, b := planOrder(files[i].ID), planOrder(files[j].ID)
+		if a != b {
+			return a < b
+		}
+		return files[i].ID < files[j].ID
+	})
+}
+
+// planIndexByRef is the index of the plan whose id or file stem is ref, or -1.
+func planIndexByRef(plans []PlanFile, ref string) int {
+	for i, p := range plans {
+		if ref != "" && (strings.EqualFold(p.ID, ref) || strings.EqualFold(p.stem, ref)) {
+			return i
+		}
+	}
+	return -1
+}
+
+// planIndexListing is the index of the first plan whose list (Listed or Mentioned, chosen by pick) names
+// the task id, or -1.
+func planIndexListing(plans []PlanFile, id string, pick func(PlanFile) []string) int {
+	for i, p := range plans {
+		for _, l := range pick(p) {
+			if strings.EqualFold(l, id) {
+				return i
+			}
+		}
+	}
+	return -1
+}
+
+// planFor finds the plan a task belongs to, trying in turn: the plan it names, the plan that lists it,
+// the plan its folder is named after, the plan its body links to and the plan that mentions it. -1 means
+// it has none.
+func planFor(plans []PlanFile, t PlanFile) int {
+	candidates := []func() int{
+		func() int { return planIndexByRef(plans, t.PlanRef) },
+		func() int { return planIndexListing(plans, t.ID, func(p PlanFile) []string { return p.Listed }) },
+		func() int { return planIndexByRef(plans, path.Base(path.Dir(t.Rel))) },
+		func() int { return planIndexByRef(plans, t.BodyPlan) },
+		func() int { return planIndexListing(plans, t.ID, func(p PlanFile) []string { return p.Mentioned }) },
+	}
+	for _, find := range candidates {
+		if at := find(); at >= 0 {
+			return at
+		}
+	}
+	return -1
+}
+
+// addUnfiledTasks adds the tasks a plan lists or mentions that have no file, as tasks of unknown status.
+func addUnfiledTasks(node *PlanNode, tasks []PlanFile) {
+	have := map[string]bool{}
+	for _, t := range node.Tasks {
+		have[strings.ToUpper(t.ID)] = true
+	}
+	missing := append(append([]string{}, node.Listed...), node.Mentioned...)
+	for _, id := range missing {
+		if key := strings.ToUpper(id); !have[key] && !taskHasFile(tasks, id) {
+			have[key] = true
+			node.Tasks = append(node.Tasks, PlanFile{ID: id, Title: id, Status: "unknown"})
+		}
+	}
+	sort.SliceStable(node.Tasks, func(a, b int) bool { return planOrder(node.Tasks[a].ID) < planOrder(node.Tasks[b].ID) })
+}
+
 // linkPlanFiles assigns every task to at most one plan.
 func linkPlanFiles(plans, tasks []PlanFile) PlanScan {
-	sort.SliceStable(plans, func(i, j int) bool {
-		a, b := planOrder(plans[i].ID), planOrder(plans[j].ID)
-		if a != b {
-			return a < b
-		}
-		return plans[i].ID < plans[j].ID
-	})
-	sort.SliceStable(tasks, func(i, j int) bool {
-		a, b := planOrder(tasks[i].ID), planOrder(tasks[j].ID)
-		if a != b {
-			return a < b
-		}
-		return tasks[i].ID < tasks[j].ID
-	})
+	sortByPlanOrder(plans)
+	sortByPlanOrder(tasks)
 	nodes := make([]PlanNode, len(plans))
 	for i, p := range plans {
 		nodes[i].PlanFile = p
 	}
-	byRef := func(ref string) int {
-		for i, p := range plans {
-			if ref != "" && (strings.EqualFold(p.ID, ref) || strings.EqualFold(p.stem, ref)) {
-				return i
-			}
-		}
-		return -1
-	}
-	listedBy := func(id string) int {
-		for i, p := range plans {
-			for _, l := range p.Listed {
-				if strings.EqualFold(l, id) {
-					return i
-				}
-			}
-		}
-		return -1
-	}
-	mentionedBy := func(id string) int {
-		for i, p := range plans {
-			for _, m := range p.Mentioned {
-				if strings.EqualFold(m, id) {
-					return i
-				}
-			}
-		}
-		return -1
-	}
 	var orphans []PlanFile
 	for _, t := range tasks {
-		at := byRef(t.PlanRef)
-		if at < 0 {
-			at = listedBy(t.ID)
-		}
-		if at < 0 {
-			at = byRef(path.Base(path.Dir(t.Rel)))
-		}
-		if at < 0 {
-			at = byRef(t.BodyPlan)
-		}
-		if at < 0 {
-			at = mentionedBy(t.ID)
-		}
+		at := planFor(plans, t)
 		if at < 0 {
 			orphans = append(orphans, t)
 			continue
 		}
 		nodes[at].Tasks = append(nodes[at].Tasks, t)
 	}
-	// A task a plan lists or mentions but that has no file is still part of the plan.
 	for i := range nodes {
-		have := map[string]bool{}
-		for _, t := range nodes[i].Tasks {
-			have[strings.ToUpper(t.ID)] = true
-		}
-		missing := append(append([]string{}, nodes[i].Listed...), nodes[i].Mentioned...)
-		for _, id := range missing {
-			if key := strings.ToUpper(id); !have[key] && !taskHasFile(tasks, id) {
-				have[key] = true
-				nodes[i].Tasks = append(nodes[i].Tasks, PlanFile{ID: id, Title: id, Status: "unknown"})
-			}
-		}
-		sort.SliceStable(nodes[i].Tasks, func(a, b int) bool { return planOrder(nodes[i].Tasks[a].ID) < planOrder(nodes[i].Tasks[b].ID) })
+		addUnfiledTasks(&nodes[i], tasks)
 	}
 	folders := map[string]bool{}
 	for _, f := range append(append([]PlanFile{}, plans...), tasks...) {

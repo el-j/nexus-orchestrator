@@ -310,3 +310,14 @@ func TestWithBrainOption_GivesTheEngineTheKnowledgeStoreItRemembersFinishedTasks
 		t.Errorf("entries = %+v, want one memory of the finished task", know.entries)
 	}
 }
+
+func TestResolveChain_ALiveProviderWhoseModelListFailsIsLeftOutOfAModelRequest(t *testing.T) {
+	broken := &scriptLLM{name: "broken", alive: true, model: "small", modelErr: errInjected}
+	serving := &scriptLLM{name: "serving", alive: true, model: "big", models: []string{"big"}}
+	orch := services.NewOrchestrator(services.NewDiscoveryService(broken, serving), newFaultyRepo(), &noopWriter{}, nil, services.WithDisableBackgroundWorkers())
+	t.Cleanup(orch.Stop)
+	got, err := orch.ResolveChain(domain.Task{ModelID: "big"})
+	if err != nil || len(got) != 1 || got[0] != "serving" {
+		t.Errorf("chain = %v, err = %v; want only the provider that serves the model", got, err)
+	}
+}
