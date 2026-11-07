@@ -84,7 +84,7 @@ func newMCPTestStack(t *testing.T) *mcpTestStack {
 	}
 }
 
-// --- JSON-RPC helpers (rpcResp / postRPC are in server_test.go) ---
+// --- JSON-RPC helpers (rpcResp / postRPC are in server_helpers_test.go) ---
 
 func callTool(t *testing.T, srv *httptest.Server, id int, tool string, args map[string]any) rpcResp {
 	t.Helper()
