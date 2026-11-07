@@ -276,3 +276,68 @@ func TestHandleUpdateTask_Returns200(t *testing.T) {
 		t.Errorf("instruction: want %q, got %q", "new instruction", result.Instruction)
 	}
 }
+
+// The history is paged: the newest tasks come first, limit and offset choose the page, the total is in a
+// header, an absurd limit is capped and a bad one is refused.
+func TestHandleGetAllTasks_PagesTheHistory(t *testing.T) {
+	var tasks []domain.Task
+	for i := 0; i < 12; i++ {
+		tasks = append(tasks, domain.Task{ID: fmt.Sprintf("t%02d", i), Status: domain.StatusCompleted})
+	}
+	srv := httpapi.NewServer(&mockOrchestrator{getQueueResult: tasks}, nil, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	get := func(query string) (*http.Response, []domain.Task) {
+		resp, err := http.Get(ts.URL + "/api/tasks/all" + query)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		var out []domain.Task
+		_ = json.NewDecoder(resp.Body).Decode(&out)
+		return resp, out
+	}
+
+	resp, page := get("?limit=5&offset=3")
+	if len(page) != 5 || page[0].ID != "t03" || page[4].ID != "t07" {
+		t.Errorf("page = %v", page)
+	}
+	if resp.Header.Get("X-Total-Count") != "12" {
+		t.Errorf("X-Total-Count = %q, want 12", resp.Header.Get("X-Total-Count"))
+	}
+	if _, page = get("?limit=5&offset=10"); len(page) != 2 {
+		t.Errorf("the last page holds the 2 that are left, got %d", len(page))
+	}
+	if _, page = get("?offset=99"); len(page) != 0 {
+		t.Errorf("an offset past the end is an empty page, got %d", len(page))
+	}
+	if _, page = get(""); len(page) != 12 {
+		t.Errorf("without limit all 12 (under the default) come back, got %d", len(page))
+	}
+	if _, page = get("?limit=999999"); len(page) != 12 {
+		t.Errorf("a limit above the cap is capped, not refused: got %d", len(page))
+	}
+	for _, bad := range []string{"?limit=0", "?limit=-1", "?limit=x", "?offset=-1", "?offset=y"} {
+		if resp, _ = get(bad); resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("%s: HTTP %d, want 400", bad, resp.StatusCode)
+		}
+	}
+}
+
+func TestHandleGetAllTasks_DefaultLimitBoundsALongHistory(t *testing.T) {
+	tasks := make([]domain.Task, httpapi.DefaultTaskPage+10)
+	srv := httpapi.NewServer(&mockOrchestrator{getQueueResult: tasks}, nil, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+	resp, err := http.Get(ts.URL + "/api/tasks/all")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var out []domain.Task
+	_ = json.NewDecoder(resp.Body).Decode(&out)
+	if len(out) != httpapi.DefaultTaskPage || resp.Header.Get("X-Total-Count") != fmt.Sprint(len(tasks)) {
+		t.Errorf("got %d tasks, total header %q", len(out), resp.Header.Get("X-Total-Count"))
+	}
+}

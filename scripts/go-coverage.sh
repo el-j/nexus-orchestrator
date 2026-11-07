@@ -6,7 +6,7 @@
 #
 # Each package's tests also exercise code in other packages (-coverpkg), and a
 # block counts as covered when ANY test binary executed it. Excluded from the
-# denominator: internal/testutil (test doubles) and the repository-root main.go
+# denominator: internal/testutil (test doubles), node_modules (Go sources of npm packages) and the repository-root main.go
 # (its only uncovered code is the call into the Wails GUI runtime), and the one-line
 # `os.Exit(run(...))` bodies of func main in cmd/*/main.go (everything they call is tested; the
 # binaries themselves are exercised by internal/e2e as separate processes).
@@ -38,7 +38,7 @@ for line in open(profile).read().splitlines()[1:]:
     blocks[key] = (stmts, max(prev[1], count))
 
 def excluded(path):
-    return '/internal/testutil/' in path or path.endswith('nexus-orchestrator/main.go')
+    return '/internal/testutil/' in path or '/node_modules/' in path or path.endswith('nexus-orchestrator/main.go')
 
 def is_main_exit(key):
     """A block that is just os.Exit(...) in func main of a cmd/*/main.go."""

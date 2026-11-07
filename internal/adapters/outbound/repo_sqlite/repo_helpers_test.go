@@ -9,6 +9,15 @@ import (
 	"nexus-orchestrator/internal/core/domain"
 )
 
+func newBenchRepo(b *testing.B) *repo_sqlite.Repository {
+	b.Helper()
+	r, err := repo_sqlite.New(filepath.Join(b.TempDir(), "bench.db"))
+	if err != nil {
+		b.Fatalf("newBenchRepo: %v", err)
+	}
+	return r
+}
+
 func newTestRepo(t *testing.T) *repo_sqlite.Repository {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "test.db")

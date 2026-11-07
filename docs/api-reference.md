@@ -740,13 +740,13 @@ Get file path map for a project, optionally filtered to a focus area.
 
 ### Backlog and planning
 
-| Route                                 | Purpose                                                                 |
-| ------------------------------------- | ----------------------------------------------------------------------- |
-| `GET /api/tasks/all`                  | Every task, drafts and cancelled ones included. Optional `projectPath`. |
-| `POST /api/tasks/draft`               | Create a backlog draft that does not enter the execution queue.         |
-| `GET /api/tasks/backlog?projectPath=` | Drafts and backlog items for a project, by priority.                    |
-| `POST /api/tasks/{id}/promote`        | Move a draft into the active queue.                                     |
-| `PUT /api/tasks/{id}`                 | Update a task's instruction, priority, provider, tags or status.        |
+| Route                                 | Purpose                                                                                                                                                                        |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/tasks/all`                  | Tasks newest first, drafts and cancelled ones included. Optional `projectPath`, `limit` (default 1000, at most 5000) and `offset`; the total is in the `X-Total-Count` header. |
+| `POST /api/tasks/draft`               | Create a backlog draft that does not enter the execution queue.                                                                                                                |
+| `GET /api/tasks/backlog?projectPath=` | Drafts and backlog items for a project, by priority.                                                                                                                           |
+| `POST /api/tasks/{id}/promote`        | Move a draft into the active queue.                                                                                                                                            |
+| `PUT /api/tasks/{id}`                 | Update a task's instruction, priority, provider, tags or status.                                                                                                               |
 
 ### Provider discovery and configuration
 
