@@ -175,6 +175,10 @@ jobs:
         working-directory: frontend
         run: npm run typecheck
 
+      - name: Lint frontend
+        working-directory: frontend
+        run: npm run lint
+
       - name: Exported declarations are documented
         working-directory: frontend
         run: npm run check:docs
@@ -208,6 +212,10 @@ jobs:
       - name: Install dependencies
         working-directory: docs
         run: npm ci
+
+      - name: Lint docs site
+        working-directory: docs
+        run: npm run lint
 
       - name: Exported declarations and components are documented
         working-directory: docs

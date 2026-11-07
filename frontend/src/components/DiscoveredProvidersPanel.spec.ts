@@ -50,7 +50,7 @@ describe('DiscoveredProvidersPanel', () => {
     expect(w.text()).toContain('API Reachable');
     expect(w.text()).toContain('http://127.0.0.1:1234/v1');
     expect(w.text()).toContain('just now');
-    expect(w.find('[data-icon=\"wifi\"]').exists()).toBe(true);
+    expect(w.find('[data-icon="wifi"]').exists()).toBe(true);
 
     const promote = w.findAll('button').find((b) => b.text().includes('Promote to Active'))!;
     await promote.trigger('click');
@@ -77,7 +77,7 @@ describe('DiscoveredProvidersPanel', () => {
     expect(w.text()).toContain('/usr/bin/ollama');
     expect(w.text()).toContain('CLI found — start the server to activate');
     expect(w.text()).not.toContain('Promote to Active');
-    expect(w.find('[data-icon=\"terminal\"]').exists()).toBe(true);
+    expect(w.find('[data-icon="terminal"]').exists()).toBe(true);
 
     const cliProv = prov({
       id: 'cli-claude',
@@ -108,7 +108,7 @@ describe('DiscoveredProvidersPanel', () => {
       status: 'weird' as DiscoveredProvider['status'],
     });
     const w = mountPanel([odd]);
-    expect(w.find('[data-icon=\"question-circle\"]').exists()).toBe(true);
+    expect(w.find('[data-icon="question-circle"]').exists()).toBe(true);
     expect(w.text()).toContain('weird');
     expect(w.text()).toContain('Process detected — no API endpoint found');
   });

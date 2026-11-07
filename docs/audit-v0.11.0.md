@@ -1,5 +1,7 @@
 # Audit of v0.11.0 (Pre-Release Full Code Review & Gap Analysis)
 
+> **Status: superseded** by [the audit of 2026-10-31](audit-2026-10-31.md). The figures and verdicts below were true on the date measured and are kept as history; the current state and the open work are in that audit and PLAN-077.
+
 Measured on `feature/plan074-finish` on 2026-10-19 after completing the initial `PLAN-073` and
 `PLAN-074` waves. Every source file across the Go backend (`internal/core`, `internal/adapters`,
 `internal/bootstrap`, `cmd/*`, `main.go`, `app.go`), the Vue 3 frontend (`frontend/src`), the VS
