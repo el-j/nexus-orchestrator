@@ -54,84 +54,91 @@ func probeClaudeSubAgentsDir(_ context.Context, homeDir string) []domain.Discove
 		return nil
 	}
 	for _, projectEntry := range projectDirs {
-		if !projectEntry.IsDir() {
-			continue
+		if projectEntry.IsDir() {
+			results = append(results, probeClaudeProject(filepath.Join(projectsDir, projectEntry.Name()), projectEntry.Name(), now)...)
 		}
-		dirName := projectEntry.Name()
-		projectPath := filepath.Join(projectsDir, dirName)
-		entries, err := os.ReadDir(projectPath)
-		if err != nil {
-			continue
-		}
-
-		parentID := "claude-cli-" + dirName
-		var sessions []domain.DiscoveredAgent
-		var subAgents []domain.DiscoveredAgent
-		var latest time.Time
-
-		for _, entry := range entries {
-			switch {
-			case entry.IsDir():
-				subAgents = append(subAgents, claudeSubAgents(filepath.Join(projectPath, entry.Name(), "subagents"), parentID, now)...)
-			case strings.HasSuffix(entry.Name(), ".jsonl"):
-				info, err := entry.Info()
-				if err != nil || now.Sub(info.ModTime()) > claudeStaleThreshold {
-					continue
-				}
-				agent := parseClaudeSessionFile(filepath.Join(projectPath, entry.Name()), claudeMaxLines)
-				if agent == nil {
-					continue
-				}
-				agent.IsRunning = now.Sub(info.ModTime()) < claudeActiveThreshold
-				agent.Kind = domain.AgentKindClaudeCLI
-				agent.DetectionMethod = "claude-session-file"
-				agent.LastSeen = info.ModTime()
-				sessions = append(sessions, *agent)
-				if info.ModTime().After(latest) {
-					latest = info.ModTime()
-				}
-			}
-		}
-
-		if len(sessions) > 0 {
-			// The most recently active session represents the project.
-			var rep domain.DiscoveredAgent
-			for _, sess := range sessions {
-				if sess.LastSeen.Equal(latest) {
-					rep = sess
-					break
-				}
-			}
-			rep.ID = parentID // stable per project directory, not per session file
-			// The newest session may be too fresh to have recorded a cwd or model yet;
-			// the project's other sessions share them.
-			for _, sess := range sessions {
-				if rep.WorkingDir == "" {
-					rep.WorkingDir = sess.WorkingDir
-				}
-				if rep.ModelID == "" {
-					rep.ModelID = sess.ModelID
-				}
-			}
-			name := "Claude Code"
-			if rep.WorkingDir != "" {
-				name = "Claude Code " + filepath.Base(rep.WorkingDir)
-			}
-			if len(sessions) > 1 {
-				name += " (" + strconv.Itoa(len(sessions)) + " sessions)"
-			}
-			rep.Name = name
-			results = append(results, rep)
-		}
-
-		// Newest sub-agents first, bounded per project.
-		sort.Slice(subAgents, func(i, j int) bool { return subAgents[i].LastSeen.After(subAgents[j].LastSeen) })
-		if len(subAgents) > claudeMaxSubAgents {
-			subAgents = subAgents[:claudeMaxSubAgents]
-		}
-		results = append(results, subAgents...)
 	}
 	return results
+}
+
+// probeClaudeProject reads one project directory: its main sessions give one agent (the most recently
+// active one, named for the project) and its sub-agent files give child agents, newest first and
+// bounded by claudeMaxSubAgents.
+func probeClaudeProject(projectPath, dirName string, now time.Time) []domain.DiscoveredAgent {
+	entries, err := os.ReadDir(projectPath)
+	if err != nil {
+		return nil
+	}
+	parentID := "claude-cli-" + dirName
+	var sessions, subAgents []domain.DiscoveredAgent
+	var latest time.Time
+
+	for _, entry := range entries {
+		switch {
+		case entry.IsDir():
+			subAgents = append(subAgents, claudeSubAgents(filepath.Join(projectPath, entry.Name(), "subagents"), parentID, now)...)
+		case strings.HasSuffix(entry.Name(), ".jsonl"):
+			info, err := entry.Info()
+			if err != nil || now.Sub(info.ModTime()) > claudeStaleThreshold {
+				continue
+			}
+			agent := parseClaudeSessionFile(filepath.Join(projectPath, entry.Name()), claudeMaxLines)
+			if agent == nil {
+				continue
+			}
+			agent.IsRunning = now.Sub(info.ModTime()) < claudeActiveThreshold
+			agent.Kind = domain.AgentKindClaudeCLI
+			agent.DetectionMethod = "claude-session-file"
+			agent.LastSeen = info.ModTime()
+			sessions = append(sessions, *agent)
+			if info.ModTime().After(latest) {
+				latest = info.ModTime()
+			}
+		}
+	}
+
+	var results []domain.DiscoveredAgent
+	if len(sessions) > 0 {
+		results = append(results, representSessions(sessions, latest, parentID))
+	}
+	sort.Slice(subAgents, func(i, j int) bool { return subAgents[i].LastSeen.After(subAgents[j].LastSeen) })
+	if len(subAgents) > claudeMaxSubAgents {
+		subAgents = subAgents[:claudeMaxSubAgents]
+	}
+	return append(results, subAgents...)
+}
+
+// representSessions makes the one agent that stands for a project: its most recently active session
+// (the one last seen at latest), under the stable parent id, named for the working directory and the
+// number of sessions.
+func representSessions(sessions []domain.DiscoveredAgent, latest time.Time, parentID string) domain.DiscoveredAgent {
+	var rep domain.DiscoveredAgent
+	for _, sess := range sessions {
+		if sess.LastSeen.Equal(latest) {
+			rep = sess
+			break
+		}
+	}
+	rep.ID = parentID // stable per project directory, not per session file
+	// The newest session may be too fresh to have recorded a cwd or model yet;
+	// the project's other sessions share them.
+	for _, sess := range sessions {
+		if rep.WorkingDir == "" {
+			rep.WorkingDir = sess.WorkingDir
+		}
+		if rep.ModelID == "" {
+			rep.ModelID = sess.ModelID
+		}
+	}
+	name := "Claude Code"
+	if rep.WorkingDir != "" {
+		name = "Claude Code " + filepath.Base(rep.WorkingDir)
+	}
+	if len(sessions) > 1 {
+		name += " (" + strconv.Itoa(len(sessions)) + " sessions)"
+	}
+	rep.Name = name
+	return rep
 }
 
 // claudeSubAgents reads the agent-*.jsonl files of one session's subagents

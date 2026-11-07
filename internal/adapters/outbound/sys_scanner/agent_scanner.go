@@ -37,34 +37,45 @@ func (s *Scanner) ScanAgents(ctx context.Context) ([]domain.DiscoveredAgent, err
 		}()
 	}
 
-	merged := map[string]domain.DiscoveredAgent{}
+	found := make([][]domain.DiscoveredAgent, 0, len(probes))
 	for range probes {
-		agents := <-ch
+		found = append(found, <-ch)
+	}
+	return mergeAgents(found, time.Now()), nil
+}
+
+// mergeAgents joins what the probes found into one list without duplicates: an agent seen by several
+// probes keeps everything any of them learned (it is running if one saw it running), a newly seen
+// agent is stamped with now, and each sub-agent is added to the SubAgentIDs of its parent.
+func mergeAgents(found [][]domain.DiscoveredAgent, now time.Time) []domain.DiscoveredAgent {
+	merged := map[string]domain.DiscoveredAgent{}
+	for _, agents := range found {
 		for _, a := range agents {
-			if existing, ok := merged[a.ID]; ok {
-				if a.IsRunning {
-					existing.IsRunning = true
-				}
-				if a.MCPEndpoint != "" {
-					existing.MCPEndpoint = a.MCPEndpoint
-				}
-				if a.ConfigPath != "" {
-					existing.ConfigPath = a.ConfigPath
-				}
-				if a.CLIPath != "" {
-					existing.CLIPath = a.CLIPath
-				}
-				if a.PID > 0 {
-					existing.PID = a.PID
-				}
-				if a.ProcessName != "" {
-					existing.ProcessName = a.ProcessName
-				}
-				merged[a.ID] = existing
-			} else {
-				a.LastSeen = time.Now()
+			existing, ok := merged[a.ID]
+			if !ok {
+				a.LastSeen = now
 				merged[a.ID] = a
+				continue
 			}
+			if a.IsRunning {
+				existing.IsRunning = true
+			}
+			if a.MCPEndpoint != "" {
+				existing.MCPEndpoint = a.MCPEndpoint
+			}
+			if a.ConfigPath != "" {
+				existing.ConfigPath = a.ConfigPath
+			}
+			if a.CLIPath != "" {
+				existing.CLIPath = a.CLIPath
+			}
+			if a.PID > 0 {
+				existing.PID = a.PID
+			}
+			if a.ProcessName != "" {
+				existing.ProcessName = a.ProcessName
+			}
+			merged[a.ID] = existing
 		}
 	}
 
@@ -85,9 +96,11 @@ func (s *Scanner) ScanAgents(ctx context.Context) ([]domain.DiscoveredAgent, err
 	for _, a := range merged {
 		out = append(out, a)
 	}
-	return out, nil
+	return out
 }
 
+// probeClaudeConfig reports Claude Code (settings in ~/.claude) and the Claude desktop app (its application
+// support folder) when their configuration exists in the user's home.
 func (s *Scanner) probeClaudeConfig(ctx context.Context) []domain.DiscoveredAgent {
 	var results []domain.DiscoveredAgent
 	home := userHome()
@@ -141,6 +154,7 @@ var vscodeExtMap = map[string]struct {
 	"github.copilot":                {domain.AgentKindCopilot, "GitHub Copilot"},
 }
 
+// probeVSCodeExtensionsDir reports the agent extensions installed in one VS Code extensions directory.
 func probeVSCodeExtensionsDir(_ context.Context, extDir string) []domain.DiscoveredAgent {
 	entries, err := os.ReadDir(extDir)
 	if err != nil {
@@ -170,6 +184,7 @@ func probeVSCodeExtensionsDir(_ context.Context, extDir string) []domain.Discove
 	return results
 }
 
+// probeVSCodeExtensions looks for agent extensions in the user's VS Code extensions directory.
 func (s *Scanner) probeVSCodeExtensions(ctx context.Context) []domain.DiscoveredAgent {
 	home := userHome()
 	if home == "" {
@@ -178,6 +193,8 @@ func (s *Scanner) probeVSCodeExtensions(ctx context.Context) []domain.Discovered
 	return probeVSCodeExtensionsDir(ctx, filepath.Join(home, ".vscode", "extensions"))
 }
 
+// probeMCPPortList sends an MCP initialize request to each local port and reports those that answer as
+// MCP servers.
 func probeMCPPortList(ctx context.Context, ports []int) []domain.DiscoveredAgent {
 	initReq := `{"jsonrpc":"2.0","method":"initialize","id":1,"params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"nexus-probe","version":"1"}}}`
 	var results []domain.DiscoveredAgent
@@ -225,11 +242,13 @@ func probeMCPPortList(ctx context.Context, ports []int) []domain.DiscoveredAgent
 	return results
 }
 
+// probeMCPPorts probes the usual local MCP ports.
 func (s *Scanner) probeMCPPorts(ctx context.Context) []domain.DiscoveredAgent {
 	mcpPorts := []int{3000, 3001, 3100, 5100, 6006, 7007, 8008, 9009}
 	return probeMCPPortList(ctx, mcpPorts)
 }
 
+// probeProcessFlags finds running processes started with an MCP flag; it does nothing on Windows.
 func (s *Scanner) probeProcessFlags(ctx context.Context) []domain.DiscoveredAgent {
 	if goos == "windows" {
 		return nil
@@ -263,6 +282,7 @@ func (s *Scanner) probeProcessFlags(ctx context.Context) []domain.DiscoveredAgen
 	return results
 }
 
+// probeAgentProcesses finds running agent programs by their process names.
 func (s *Scanner) probeAgentProcesses(ctx context.Context) []domain.DiscoveredAgent {
 	type patternDef struct {
 		pattern string

@@ -43,50 +43,34 @@ func (h *Hub) Unsubscribe(ch chan []byte) {
 
 // Broadcast sends event to all active subscribers. Slow clients are skipped
 // (non-blocking channel send) to prevent one slow browser from stalling others.
-func (h *Hub) Broadcast(event ports.TaskEvent) {
-	data, err := json.Marshal(event)
-	if err != nil {
-		return
-	}
-	msg := []byte(fmt.Sprintf("data: %s\n\n", data))
-
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	for ch := range h.clients {
-		select {
-		case ch <- msg:
-		default: // slow client — drop this event rather than blocking
-		}
-	}
-}
+func (h *Hub) Broadcast(event ports.TaskEvent) { h.broadcastJSON(event) }
 
 // BroadcastAISessionEvent sends an AI session lifecycle event to all active
 // subscribers. Slow clients are skipped to prevent blocking.
-func (h *Hub) BroadcastAISessionEvent(event domain.AISessionEvent) {
-	data, err := json.Marshal(event)
-	if err != nil {
-		return
-	}
-	msg := []byte(fmt.Sprintf("data: %s\n\n", data))
-
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	for ch := range h.clients {
-		select {
-		case ch <- msg:
-		default: // slow client — drop this event rather than blocking
-		}
-	}
-}
+func (h *Hub) BroadcastAISessionEvent(event domain.AISessionEvent) { h.broadcastJSON(event) }
 
 // BroadcastProviderDiscovered announces that a provider scan finished, so
 // connected UIs can refresh their provider lists immediately. count is the
 // number of providers the scan found.
 func (h *Hub) BroadcastProviderDiscovered(count int) {
-	data, err := json.Marshal(struct {
+	h.broadcastJSON(struct {
 		Type  string `json:"type"`
 		Count int    `json:"count"`
 	}{"provider_discovered", count})
+}
+
+// BroadcastActivityEvent sends an AI activity event to all active SSE subscribers.
+func (h *Hub) BroadcastActivityEvent(a domain.AIActivity) {
+	h.broadcastJSON(struct {
+		Type     string            `json:"type"`
+		Activity domain.AIActivity `json:"activity"`
+	}{"ai_activity_new", a})
+}
+
+// broadcastJSON encodes v as one server-sent event and fans it out. A value that cannot be encoded
+// (a time outside the years JSON can write) is dropped: there is nothing a subscriber could read.
+func (h *Hub) broadcastJSON(v any) {
+	data, err := json.Marshal(v)
 	if err != nil {
 		return
 	}
@@ -101,28 +85,6 @@ func (h *Hub) broadcastRaw(msg string) {
 		select {
 		case ch <- []byte(msg):
 		default: // slow client — drop this event rather than blocking
-		}
-	}
-}
-
-// BroadcastActivityEvent sends an AI activity event to all active SSE subscribers.
-func (h *Hub) BroadcastActivityEvent(a domain.AIActivity) {
-	type activityEvent struct {
-		Type     string            `json:"type"`
-		Activity domain.AIActivity `json:"activity"`
-	}
-	data, err := json.Marshal(activityEvent{Type: "ai_activity_new", Activity: a})
-	if err != nil {
-		return
-	}
-	msg := []byte(fmt.Sprintf("data: %s\n\n", data))
-
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	for ch := range h.clients {
-		select {
-		case ch <- msg:
-		default:
 		}
 	}
 }

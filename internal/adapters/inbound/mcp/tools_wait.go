@@ -171,6 +171,7 @@ func (e *eventWriter) Write(p []byte) (int, error) {
 
 // ----- Schema -----
 
+// waitToolDefs lists wait_for_task for tools/list.
 func waitToolDefs() []toolDef {
 	return []toolDef{{
 		Name: "wait_for_task",

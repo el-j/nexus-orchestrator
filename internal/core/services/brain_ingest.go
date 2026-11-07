@@ -12,31 +12,29 @@ import (
 	"github.com/google/uuid"
 )
 
+// sectionKinds are the heading keywords of each kind, tried in order; a heading that matches none (for
+// example "Conventions", "Style" or "Error handling") is a convention.
+var sectionKinds = []struct {
+	kind     domain.KnowledgeKind
+	keywords []string
+}{
+	{domain.KnowledgeArchitecture, []string{"architecture", "design", "hexagonal", "layer"}},
+	{domain.KnowledgeFileMap, []string{"file", "structure", "directory", "map", "path", "layout"}},
+	{domain.KnowledgeLearning, []string{"learning", "lesson", "discovered", "pitfall", "avoid"}},
+	{domain.KnowledgeGlossary, []string{"glossary", "term", "definition", "vocabulary"}},
+}
+
 // classifySection maps a markdown heading to the most appropriate KnowledgeKind.
 func classifySection(heading string) domain.KnowledgeKind {
 	h := strings.ToLower(heading)
-	switch {
-	case strings.Contains(h, "architecture") || strings.Contains(h, "design") ||
-		strings.Contains(h, "hexagonal") || strings.Contains(h, "layer"):
-		return domain.KnowledgeArchitecture
-	case strings.Contains(h, "file") || strings.Contains(h, "structure") ||
-		strings.Contains(h, "directory") || strings.Contains(h, "map") ||
-		strings.Contains(h, "path") || strings.Contains(h, "layout"):
-		return domain.KnowledgeFileMap
-	case strings.Contains(h, "learning") || strings.Contains(h, "lesson") ||
-		strings.Contains(h, "discovered") || strings.Contains(h, "pitfall") ||
-		strings.Contains(h, "avoid"):
-		return domain.KnowledgeLearning
-	case strings.Contains(h, "glossary") || strings.Contains(h, "term") ||
-		strings.Contains(h, "definition") || strings.Contains(h, "vocabulary"):
-		return domain.KnowledgeGlossary
-	case strings.Contains(h, "convention") || strings.Contains(h, "style") ||
-		strings.Contains(h, "rule") || strings.Contains(h, "pattern") ||
-		strings.Contains(h, "standard") || strings.Contains(h, "error"):
-		return domain.KnowledgeConvention
-	default:
-		return domain.KnowledgeConvention
+	for _, sk := range sectionKinds {
+		for _, kw := range sk.keywords {
+			if strings.Contains(h, kw) {
+				return sk.kind
+			}
+		}
 	}
+	return domain.KnowledgeConvention
 }
 
 // IngestKnowledge stores a knowledge entry, computing token count and setting timestamps.

@@ -96,6 +96,7 @@ func (p ProjectPolicy) BudgetFor(provider string) (ProviderBudget, bool) {
 	return ProviderBudget{}, false
 }
 
+// validateBudgets checks the provider budgets: their number and each value.
 func validateBudgets(b map[string]ProviderBudget) error {
 	if len(b) > MaxBudgets {
 		return fmt.Errorf("policy: budgets for at most %d providers are allowed, got %d", MaxBudgets, len(b))
@@ -168,6 +169,7 @@ func globMatch(pattern, s string) bool {
 	return strings.HasSuffix(s, last) && len(s) >= len(last)
 }
 
+// validateLadder checks the model ladders: the number of roles, and each rung list.
 func validateLadder(l map[string][]string) error {
 	if len(l) > MaxLadderRoles {
 		return fmt.Errorf("policy: ladders for at most %d roles are allowed, got %d", MaxLadderRoles, len(l))

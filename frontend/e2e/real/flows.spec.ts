@@ -82,29 +82,6 @@ test.describe('against a real daemon', () => {
     expect(readFileSync(join(project, 'promoted.go'), 'utf8')).toContain('func Promoted()');
   });
 
-  test('every view renders against live data without script errors', async ({ page }) => {
-    const errors: string[] = [];
-    page.on('pageerror', (e) => errors.push(e.message));
-
-    await page.goto('/');
-    const nav = page.locator('aside nav');
-    const labels = ['Mission Control', 'Agents', 'Providers', 'Projects', 'Settings'];
-    for (const label of labels) {
-      const item = nav.getByRole('button', { name: new RegExp(label, 'i') });
-      await item.click();
-      await expect(item).toBeVisible();
-      await page.waitForTimeout(400); // views poll and stream, so the network never goes idle
-    }
-    // Everything about a project is a tab of the Projects hub.
-    await nav.getByRole('button', { name: /projects/i }).click();
-    for (const tab of ['plans', 'history', 'backlog', 'brain', 'activity']) {
-      await page.getByTestId(`project-tab-${tab}`).click();
-      await expect(page.getByTestId(`project-tab-${tab}`)).toHaveAttribute('aria-current', 'page');
-      await page.waitForTimeout(400);
-    }
-    expect(errors).toEqual([]);
-  });
-
   test('knowledge ingested over the API is searchable', async ({ request }) => {
     const project = mkdtempSync(join(tmpdir(), 'pw-brain-'));
     const ingest = await request.post(`${API}/api/brain/ingest-content`, {

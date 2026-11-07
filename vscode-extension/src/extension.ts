@@ -26,6 +26,7 @@ import { LmShare } from './lmShare';
 import { LiveOutput } from './liveOutput';
 import { registerPlanFolders } from './planFolders';
 import { McpConnect } from './mcpConnect';
+import { errorText } from './errorText';
 
 let client: NexusClient | undefined;
 let statusBar: NexusStatusBar | undefined;
@@ -390,8 +391,8 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showInformationMessage(
           `Brain: ${status.entryCount} entries, ${status.totalTokens} tokens`,
         );
-      } catch (e: any) {
-        vscode.window.showErrorMessage(`Brain status failed: ${e.message}`);
+      } catch (e) {
+        vscode.window.showErrorMessage(`Brain status failed: ${errorText(e)}`);
       }
     }),
   );
@@ -407,8 +408,8 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showInformationMessage(
           `Brain initialized: ${status.entryCount} entries ingested`,
         );
-      } catch (e: any) {
-        vscode.window.showErrorMessage(`Brain init failed: ${e.message}`);
+      } catch (e) {
+        vscode.window.showErrorMessage(`Brain init failed: ${errorText(e)}`);
       }
     }),
   );
@@ -436,8 +437,8 @@ export function activate(context: vscode.ExtensionContext): void {
         await vscode.window.showQuickPick(items, {
           placeHolder: `${results.length} results for "${query}"`,
         });
-      } catch (e: any) {
-        vscode.window.showErrorMessage(`Brain search failed: ${e.message}`);
+      } catch (e) {
+        vscode.window.showErrorMessage(`Brain search failed: ${errorText(e)}`);
       }
     }),
   );

@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// signalWorker wakes a worker without blocking when one is already awake.
 func (o *OrchestratorService) signalWorker() {
 	select {
 	case o.workCh <- struct{}{}:
@@ -15,6 +16,7 @@ func (o *OrchestratorService) signalWorker() {
 	}
 }
 
+// validateQueueAdmission refuses a new task when the service has stopped or the queue is full.
 func (o *OrchestratorService) validateQueueAdmission(task domain.Task) error {
 	o.mu.Lock()
 	stopped := o.stopped
@@ -192,6 +194,8 @@ func (o *OrchestratorService) runSessionCleanup() {
 	}
 }
 
+// runTaskWatchdog is the worker that, on a timer until the service stops, resumes waiting tasks whose limit
+// has reset and fails tasks that have been PROCESSING for five minutes without a run in this process.
 func (o *OrchestratorService) runTaskWatchdog() {
 	defer o.workerWg.Done()
 	ctx, cancel := context.WithCancel(context.Background())

@@ -66,3 +66,5 @@ frontend/test-results/
 # The frontend the daemon embeds (make web); only the placeholder is tracked
 internal/adapters/inbound/webui/dist/*
 !internal/adapters/inbound/webui/dist/.gitkeep
+
+frontend/playwright-report/
