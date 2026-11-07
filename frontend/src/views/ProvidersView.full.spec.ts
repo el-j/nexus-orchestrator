@@ -393,6 +393,20 @@ describe('ProvidersView — promote and deep links create, not update (regressio
     expect(h.api.updateProviderConfig).not.toHaveBeenCalled();
   });
 
+  it('does not send the empty id and timestamps of the pre-filled form (the daemon cannot parse "")', async () => {
+    const w = await mountView();
+    w.findComponent(Panel).vm.$emit('promote', { id: 'd1', name: 'Ollama', kind: 'ollama' });
+    await flushPromises();
+    await w.findComponent(Form).props('onSave')({
+      id: '',
+      name: 'Ollama',
+      kind: 'ollama',
+      createdAt: '',
+      updatedAt: '',
+    });
+    expect(h.api.addProviderConfig).toHaveBeenCalledWith({ name: 'Ollama', kind: 'ollama' });
+  });
+
   it('defaults an unknown discovered kind to openaicompat and a missing URL to empty', async () => {
     const w = await mountView();
     w.findComponent(Panel).vm.$emit('promote', { id: 'd', name: 'X', kind: '' });

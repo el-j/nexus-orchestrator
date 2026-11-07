@@ -395,7 +395,10 @@ async function handleSave(cfg: Partial<ProviderConfig>) {
   if (editingConfig.value?.id) {
     await updateProviderConfig({ ...editingConfig.value, ...cfg } as ProviderConfig);
   } else {
-    await addProviderConfig(cfg);
+    // The pre-filled form carries an empty id and empty timestamps; the daemon assigns all three, and
+    // cannot parse "" as a time.
+    const { id: _id, createdAt: _created, updatedAt: _updated, ...fresh } = cfg;
+    await addProviderConfig(fresh);
   }
   closeForm();
   await loadConfigs();

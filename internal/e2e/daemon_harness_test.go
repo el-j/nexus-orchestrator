@@ -207,6 +207,7 @@ type daemon struct {
 
 type daemonOpts struct {
 	db, home, httpAddr, mcpAddr string
+	pathDir                     string // put first on the daemon's PATH, so programs in it are found before the real ones
 }
 
 func startDaemon(t *testing.T, llm *fakeOllama, o daemonOpts) *daemon {
@@ -234,6 +235,9 @@ func startDaemon(t *testing.T, llm *fakeOllama, o daemonOpts) *daemon {
 		"NEXUS_LMSTUDIO_URL=http://127.0.0.1:1",
 		"NEXUS_SCAN_INTERVAL=1h",
 	)
+	if o.pathDir != "" {
+		cmd.Env = append(cmd.Env, "PATH="+o.pathDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	}
 	if llm != nil {
 		cmd.Env = append(cmd.Env, "NEXUS_OLLAMA_URL="+llm.URL)
 		d.llmURL = llm.URL
