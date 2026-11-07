@@ -143,10 +143,7 @@ func (a *Adapter) GenerateCode(ctx context.Context, prompt string) (string, erro
 
 // Chat sends a multi-turn conversation to the Gemini generateContent endpoint.
 func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, error) {
-	reqBody, err := a.buildGenerateRequest(messages)
-	if err != nil {
-		return "", fmt.Errorf("gemini: marshal request: %w", err)
-	}
+	reqBody := a.buildGenerateRequest(messages)
 
 	url := fmt.Sprintf("%s/v1beta/models/%s:generateContent", a.baseURL, a.model)
 	req, err := a.newRequest(ctx, http.MethodPost, url, bytes.NewReader(reqBody))
@@ -241,7 +238,7 @@ type geminiGenerateRequest struct {
 	SystemInstruction *geminiSystemInstruction `json:"systemInstruction,omitempty"`
 }
 
-func (a *Adapter) buildGenerateRequest(messages []domain.Message) ([]byte, error) {
+func (a *Adapter) buildGenerateRequest(messages []domain.Message) []byte {
 	var systemParts []geminiPart
 	var contents []geminiContent
 
@@ -275,7 +272,8 @@ func (a *Adapter) buildGenerateRequest(messages []domain.Message) ([]byte, error
 		req.SystemInstruction = &geminiSystemInstruction{Parts: systemParts}
 	}
 
-	return json.Marshal(req)
+	body, _ := json.Marshal(req) // a request of strings always encodes
+	return body
 }
 
 func (a *Adapter) newRequest(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {

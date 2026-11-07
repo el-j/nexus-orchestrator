@@ -200,15 +200,12 @@ func (a *Adapter) sendMessages(ctx context.Context, system string, messages []an
 	if len(messages) == 0 {
 		return "", fmt.Errorf("anthropic: no user message to send")
 	}
-	reqBody, err := json.Marshal(anthropicRequest{
+	reqBody, _ := json.Marshal(anthropicRequest{
 		Model:     a.model,
 		MaxTokens: defaultMaxTokens,
 		System:    systemBlocks(system),
 		Messages:  messages,
-	})
-	if err != nil {
-		return "", fmt.Errorf("anthropic: marshal request: %w", err)
-	}
+	}) // a request of strings and numbers always encodes
 	req, err := a.newRequest(ctx, http.MethodPost, a.baseURL+"/v1/messages", bytes.NewReader(reqBody))
 	if err != nil {
 		return "", fmt.Errorf("anthropic: build request: %w", err)
