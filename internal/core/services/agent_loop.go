@@ -223,10 +223,8 @@ func (o *OrchestratorService) runAgentLoop(run *runHandle, task domain.Task, cha
 	}
 
 	for turn := 1; turn <= limit; turn++ {
-		if run.ctx.Err() != nil {
-			o.finishInterrupted(a.task, run)
-			return true
-		}
+		// No check of run.ctx here: every tool call is followed by one, and a cancel that lands later
+		// makes the next model call fail at once, which is checked right after it.
 		o.enforceBudgets(chain, policy)
 
 		var reply string

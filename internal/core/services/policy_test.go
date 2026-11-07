@@ -182,3 +182,35 @@ func TestPolicyWriteViolation(t *testing.T) {
 		t.Errorf("an empty policy allows everything, got %q", v)
 	}
 }
+
+func TestCutUTF8_ReturnsAShortStringUnchanged(t *testing.T) {
+	if got := cutUTF8("héllo", 100); got != "héllo" {
+		t.Errorf("got %q", got)
+	}
+	if got := cutUTF8("héllo", 2); got != "h" { // the cut would fall inside é
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestTrimHistory_DropsLeadingAssistantTurns(t *testing.T) {
+	msgs := []domain.Message{
+		{Role: domain.RoleUser, Content: "u1"}, {Role: domain.RoleAssistant, Content: "a1"},
+		{Role: domain.RoleUser, Content: "u2"}, {Role: domain.RoleAssistant, Content: "a2"},
+	}
+	got := trimHistory(msgs, 3) // the cut leaves a1 first: it must go, so the history starts with the user
+	if len(got) != 2 || got[0].Content != "u2" {
+		t.Errorf("got %+v", got)
+	}
+	if got := trimHistory(msgs, 10); len(got) != 4 {
+		t.Errorf("a short history is kept whole: %+v", got)
+	}
+}
+
+func TestLastLine_TakesTheLastLineOfAMultiLineLog(t *testing.T) {
+	if got := lastLine("first\nsecond\nthird  \n"); got != "third" {
+		t.Errorf("got %q", got)
+	}
+	if got := lastLine("only"); got != "only" {
+		t.Errorf("got %q", got)
+	}
+}

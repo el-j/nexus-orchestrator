@@ -102,15 +102,9 @@ func EnsureProjectPolicy(projectPath string) (bool, error) {
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return false, fmt.Errorf("policy: %w", err)
 	}
-	data, err := json.MarshalIndent(DefaultPolicy(projectPath), "", "  ")
-	if err != nil {
-		return false, fmt.Errorf("policy: %w", err)
-	}
-	if err := os.MkdirAll(filepath.Dir(p), 0o750); err != nil {
-		return false, fmt.Errorf("policy: %w", err)
-	}
-	if err := os.WriteFile(p, append(data, '\n'), 0o644); err != nil {
-		return false, fmt.Errorf("policy: %w", err)
+	data, _ := json.MarshalIndent(DefaultPolicy(projectPath), "", "  ") // a struct of strings and numbers always encodes
+	if err := writePolicyFile(p, append(data, '\n')); err != nil {
+		return false, err
 	}
 	return true, nil
 }
