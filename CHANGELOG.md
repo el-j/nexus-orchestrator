@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `internal/core/services` reaches 100 % test coverage; one `writePolicyFile` now serves both policy writers (atomic, written beside the target), and guards that could never fire were removed from the router, the agent loop and the ingest path. TASK-636 of PLAN-077
 - The REST API's shutdown now waits for in-flight requests before `StartServer` returns (it returned as soon as shutdown began), `Start` keeps only the first server failure, and the inbound adapters, bootstrap and `connect` gained failure-path tests; branches that could never run were removed and three copies of the event broadcast, of the HTTP serve loop and of the MCP auth check were merged. TASK-635 of PLAN-077
 - `repo_sqlite`, `fs_watcher` and `fs_writer` reach 100 % test coverage through fault-injection tests; `RepairForeignRows` reads each task row once and no longer ignores an error while reading, `New` closes the database handle when a pragma or migration fails, and branches that could never run were removed. TASK-634 of PLAN-077
 - Removed five frontend components and views that nothing imported (`DiscoveryView`, `AISessionsView`, `TaskQueue`, `AISessionCard`, `ProviderStatus`) with their specs; the five `as any` casts and three `catch (e: any)` are typed, and a docscheck test now rejects `any` in application code. TASK-632, TASK-633 of PLAN-077
