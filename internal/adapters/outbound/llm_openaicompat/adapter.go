@@ -228,14 +228,11 @@ func (u usageBlock) toDomain(model string) domain.Usage {
 }
 
 func (a *Adapter) chat(ctx context.Context, messages []map[string]string) (string, error) {
-	reqBody, err := json.Marshal(chatCompletionRequest{
+	reqBody, _ := json.Marshal(chatCompletionRequest{
 		Model:       a.model,
 		Messages:    messages,
 		Temperature: 0.2,
-	})
-	if err != nil {
-		return "", fmt.Errorf("%s: marshal request: %w", a.name, err)
-	}
+	}) // a request of strings and numbers always encodes
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.baseURL+"/chat/completions", bytes.NewReader(reqBody))
 	if err != nil {
 		return "", fmt.Errorf("%s: build request: %w", a.name, err)

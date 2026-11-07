@@ -227,10 +227,7 @@ func (a *Adapter) runClaude(ctx context.Context, prompt string, onChunk func(str
 	cmd.WaitDelay = 2 * time.Second
 	var stderr bytes.Buffer
 	cmd.Stderr = &limitedWriter{w: &stderr, left: 8192}
-	out, err := cmd.StdoutPipe()
-	if err != nil {
-		return "", fmt.Errorf("%s: %w", a.name, err)
-	}
+	out, _ := cmd.StdoutPipe() // cannot fail: Stdout has not been set
 	if err := cmd.Start(); err != nil {
 		return "", fmt.Errorf("%s: start %s: %w", a.name, a.exe, err)
 	}

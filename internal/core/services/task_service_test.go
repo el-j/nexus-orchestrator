@@ -68,7 +68,7 @@ func TestCancelTask_AllCancellableStatesAndErrors(t *testing.T) {
 
 func TestCancelTask_FailureAtEachStageIsSurfaced(t *testing.T) {
 	// failOnCall makes the Nth UpdateStatusIfCurrent call fail.
-	for call := 1; call <= 4; call++ {
+	for call := 1; call <= 6; call++ { // queued, waiting, no provider, draft, backlog, processing
 		repo := &countingFailRepo{faultyRepo: newFaultyRepo(), failAt: call}
 		orch := newOrchOver(t, repo)
 		seedTask(t, repo.faultyRepo, "x", domain.StatusCompleted)

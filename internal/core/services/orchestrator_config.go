@@ -72,18 +72,10 @@ func (o *OrchestratorService) UpdateRuntimeConfig(ctx context.Context, update do
 	}
 
 	if update.RotateAPIToken {
-		tok, err := generateToken(32)
-		if err != nil {
-			return domain.RuntimeConfig{}, fmt.Errorf("orchestrator: rotate api token: %w", err)
-		}
-		current.APIToken = tok
+		current.APIToken = generateToken()
 	}
 	if update.RotateMCPToken {
-		tok, err := generateToken(32)
-		if err != nil {
-			return domain.RuntimeConfig{}, fmt.Errorf("orchestrator: rotate mcp token: %w", err)
-		}
-		current.MCPToken = tok
+		current.MCPToken = generateToken()
 	}
 	if update.APIToken != nil {
 		current.APIToken = *update.APIToken
@@ -108,13 +100,10 @@ func (o *OrchestratorService) UpdateRuntimeConfig(ctx context.Context, update do
 	return current, nil
 }
 
-func generateToken(n int) (string, error) {
-	if n <= 0 {
-		return "", fmt.Errorf("token bytes must be > 0")
-	}
-	b := make([]byte, n)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
+// generateToken returns 32 random bytes as URL-safe text. crypto/rand.Read cannot fail: it ends the
+// program when the system has no randomness.
+func generateToken() string {
+	b := make([]byte, 32)
+	_, _ = rand.Read(b)
+	return base64.RawURLEncoding.EncodeToString(b)
 }

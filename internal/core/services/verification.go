@@ -13,12 +13,7 @@ import (
 // writeAndVerifyTaskOutput writes the generated code to disk, runs verification commands if configured,
 // and initiates a self-healing correction loop if verification fails. It returns the final code produced.
 func (o *OrchestratorService) writeAndVerifyTaskOutput(run *runHandle, task domain.Task, code string, llm ports.LLMClient, sessionHistory []domain.Message) string {
-	providerName := "unknown"
-	if llm != nil {
-		providerName = llm.ProviderName()
-	} else if task.ProviderName != "" {
-		providerName = task.ProviderName
-	}
+	providerName := llm.ProviderName() // the engine always passes the provider that answered
 
 	if o.fileWriter != nil && task.TargetFile != "" {
 		if err := o.fileWriter.WriteCodeToFile(task.ProjectPath, task.TargetFile, extractCode(code)); err != nil {

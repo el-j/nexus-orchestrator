@@ -23,10 +23,7 @@ const maxEventBytes = 4 << 20
 // without a finishReason was cut off and is an error. A server that answers with a plain
 // JSON reply instead of a stream is accepted: the reply arrives as one piece.
 func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onChunk func(string)) (string, error) {
-	reqBody, err := a.buildGenerateRequest(messages)
-	if err != nil {
-		return "", fmt.Errorf("gemini: marshal request: %w", err)
-	}
+	reqBody := a.buildGenerateRequest(messages)
 	url := fmt.Sprintf("%s/v1beta/models/%s:streamGenerateContent?alt=sse", a.baseURL, a.model)
 	req, err := a.newRequest(ctx, http.MethodPost, url, bytes.NewReader(reqBody))
 	if err != nil {
