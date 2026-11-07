@@ -57,6 +57,7 @@ def is_main_exit(key):
 
 total = covered = 0
 missed = collections.Counter()
+lines = collections.defaultdict(list)
 for key, (stmts, count) in blocks.items():
     path = key.split(':')[0]
     if excluded(path) or is_main_exit(key):
@@ -66,10 +67,11 @@ for key, (stmts, count) in blocks.items():
         covered += stmts
     else:
         missed[path] += stmts
+        lines[path].append(key.split(':')[1].split(',')[0].split('.')[0])
 pct = 100.0 * covered / total
 print(f"Go merged statement coverage: {pct:.1f}% ({total - covered} of {total} statements uncovered)")
 for path, n in missed.most_common(10):
-    print(f"  {n:4d} uncovered  {path.replace('nexus-orchestrator/', '')}")
+    print(f"  {n:4d} uncovered  {path.replace('nexus-orchestrator/', '')} (from line {', '.join(sorted(set(lines[path]), key=int)[:6])})")
 if pct + 1e-9 < minimum:
     print(f"FAIL: coverage {pct:.1f}% is below the required {minimum:.1f}%")
     sys.exit(1)
