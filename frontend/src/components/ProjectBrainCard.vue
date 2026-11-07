@@ -223,7 +223,7 @@ async function onFilesSelected(e: Event) {
       if (files[i].size > MAX_UPLOAD_BYTES) throw new Error('larger than 1 MiB');
       const count = await ingestContent(props.projectPath, files[i].name, await files[i].text());
       totalSections += count;
-    } catch (err) {
+    } catch {
       errors.push(files[i].name);
     }
   }
