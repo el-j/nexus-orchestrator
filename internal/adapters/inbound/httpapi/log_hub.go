@@ -110,6 +110,8 @@ func (h *LogHub) Unsubscribe(ch chan domain.LogEntry) {
 	}
 }
 
+// detectLevel guesses the level of a plain log line from the markers it carries (ERROR:, [WARN] and so
+// on); anything else is info.
 func detectLevel(msg string) domain.LogLevel {
 	upper := strings.ToUpper(msg)
 	switch {

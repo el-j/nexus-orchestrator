@@ -26,6 +26,7 @@ func usageToolDefs() []toolDef {
 	}
 }
 
+// toolGetUsage serves get_usage: tokens and cost per provider since a given time.
 func (s *Server) toolGetUsage(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		Since string `json:"since"`

@@ -45,6 +45,7 @@ func (o *OrchestratorService) WithBrain(b ports.BrainService) {
 	o.mu.Unlock()
 }
 
+// brainService returns the knowledge service under the lock, because it can be set after start.
 func (o *OrchestratorService) brainService() ports.BrainService {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -229,6 +230,7 @@ func (o *OrchestratorService) pruneTaskMemories(ctx context.Context, b ports.Bra
 	}
 }
 
+// shortID shortens an id to its first eight characters for messages.
 func shortID(id string) string {
 	if len(id) > 8 {
 		return id[:8]
@@ -236,6 +238,7 @@ func shortID(id string) string {
 	return id
 }
 
+// lastLine returns the last non-empty line of a command's output, which is where the reason usually is.
 func lastLine(s string) string {
 	s = strings.TrimSpace(s)
 	if i := strings.LastIndexByte(s, '\n'); i >= 0 {

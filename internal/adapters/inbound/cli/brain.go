@@ -30,6 +30,8 @@ func newBrainCmd(brain ports.BrainService) *cobra.Command {
 	return cmd
 }
 
+// newBrainStatusCmd builds "brain status": how many entries a project holds and when it was last
+// scanned.
 func newBrainStatusCmd(brain ports.BrainService) *cobra.Command {
 	var project string
 	cmd := &cobra.Command{
@@ -50,6 +52,8 @@ func newBrainStatusCmd(brain ports.BrainService) *cobra.Command {
 	return cmd
 }
 
+// newBrainIngestCmd builds "brain ingest": it stores a markdown file or a single entry in the knowledge
+// base.
 func newBrainIngestCmd(brain ports.BrainService) *cobra.Command {
 	var project, file, kind, topic, content string
 	cmd := &cobra.Command{
@@ -93,6 +97,7 @@ func newBrainIngestCmd(brain ports.BrainService) *cobra.Command {
 	return cmd
 }
 
+// newBrainSearchCmd builds "brain search": full-text search over a project's knowledge.
 func newBrainSearchCmd(brain ports.BrainService) *cobra.Command {
 	var project string
 	var query string
@@ -118,6 +123,8 @@ func newBrainSearchCmd(brain ports.BrainService) *cobra.Command {
 	return cmd
 }
 
+// newBrainInitCmd builds "brain init": it registers a project and reads its CLAUDE.md into the
+// knowledge base.
 func newBrainInitCmd(brain ports.BrainService) *cobra.Command {
 	var project string
 	var file string
@@ -140,6 +147,7 @@ func newBrainInitCmd(brain ports.BrainService) *cobra.Command {
 	return cmd
 }
 
+// newBrainListCmd builds "brain list": the stored entries of a project, optionally of one kind.
 func newBrainListCmd(brain ports.BrainService) *cobra.Command {
 	var project string
 	var kind string
@@ -162,6 +170,7 @@ func newBrainListCmd(brain ports.BrainService) *cobra.Command {
 	return cmd
 }
 
+// newBrainDeleteCmd builds "brain delete": it removes one knowledge entry by id.
 func newBrainDeleteCmd(brain ports.BrainService) *cobra.Command {
 	var id string
 	cmd := &cobra.Command{
@@ -180,6 +189,8 @@ func newBrainDeleteCmd(brain ports.BrainService) *cobra.Command {
 	return cmd
 }
 
+// newBrainContextCmd builds "brain context": the knowledge that answers a question, within a token
+// budget.
 func newBrainContextCmd(brain ports.BrainService) *cobra.Command {
 	var project, question string
 	var maxTokens int
@@ -216,6 +227,8 @@ func newBrainContextCmd(brain ports.BrainService) *cobra.Command {
 	return cmd
 }
 
+// newBrainFileMapCmd builds "brain file-map": the project's file map, narrowed to a focus area when one
+// is given.
 func newBrainFileMapCmd(brain ports.BrainService) *cobra.Command {
 	var project string
 	var focus string

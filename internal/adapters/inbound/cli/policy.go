@@ -20,6 +20,8 @@ func newPolicyCmd(orch ports.Orchestrator) *cobra.Command {
 	return cmd
 }
 
+// policyManager returns the policy side of the orchestrator, or an error when this build does not offer
+// it.
 func policyManager(orch ports.Orchestrator) (ports.PolicyManager, error) {
 	pm, ok := orch.(ports.PolicyManager)
 	if !ok {
@@ -28,6 +30,7 @@ func policyManager(orch ports.Orchestrator) (ports.PolicyManager, error) {
 	return pm, nil
 }
 
+// newPolicyShowCmd builds "policy show": the project's policy as JSON.
 func newPolicyShowCmd(orch ports.Orchestrator) *cobra.Command {
 	var project string
 	cmd := &cobra.Command{
@@ -57,6 +60,8 @@ func newPolicyShowCmd(orch ports.Orchestrator) *cobra.Command {
 	return cmd
 }
 
+// newPolicySetCmd builds "policy set": it changes the named policy fields and leaves the others as they
+// are.
 func newPolicySetCmd(orch ports.Orchestrator) *cobra.Command {
 	var project string
 	var threshold float64

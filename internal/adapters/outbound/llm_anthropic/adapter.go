@@ -176,6 +176,7 @@ type anthropicSystemBlock struct {
 	CacheControl *anthropicCacheControl `json:"cache_control,omitempty"`
 }
 
+// systemBlocks wraps the system prompt as a cacheable block; an empty prompt gives none.
 func systemBlocks(system string) []anthropicSystemBlock {
 	if strings.TrimSpace(system) == "" {
 		return nil
@@ -196,6 +197,8 @@ type anthropicRequest struct {
 	Stream    bool                   `json:"stream,omitempty"`
 }
 
+// sendMessages posts one messages request and returns the text of the reply, or the typed error of a
+// failed call.
 func (a *Adapter) sendMessages(ctx context.Context, system string, messages []anthropicMessage) (string, error) {
 	if len(messages) == 0 {
 		return "", fmt.Errorf("anthropic: no user message to send")
@@ -258,6 +261,7 @@ func (a *Adapter) decodeMessage(body io.Reader) (string, error) {
 	return "", fmt.Errorf("anthropic: no text content in response")
 }
 
+// firstNonEmpty returns the first value that is not empty.
 func firstNonEmpty(vals ...string) string {
 	for _, v := range vals {
 		if v != "" {
@@ -283,6 +287,7 @@ func errorDetail(body io.Reader) string {
 	return ": " + e.Error.Message
 }
 
+// newRequest builds an API request with the key and version headers.
 func (a *Adapter) newRequest(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {

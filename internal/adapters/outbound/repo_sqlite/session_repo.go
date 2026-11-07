@@ -104,6 +104,7 @@ func (s *SessionRepo) AppendMessage(ctx context.Context, projectPath string, msg
 	return tx.Commit()
 }
 
+// scanSession reads one chat session row.
 func scanSession(s scanner) (domain.Session, error) {
 	var sess domain.Session
 	var msgsJSON string

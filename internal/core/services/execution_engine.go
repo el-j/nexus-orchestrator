@@ -41,6 +41,7 @@ var statusEventMap = map[domain.TaskStatus]ports.EventType{
 	domain.StatusBacklog:    ports.EventTaskBacklog,
 }
 
+// statusEventType returns the event that announces a task status.
 func statusEventType(s domain.TaskStatus) ports.EventType {
 	return statusEventMap[s]
 }
@@ -57,6 +58,7 @@ func (o *OrchestratorService) emit(taskID string, status domain.TaskStatus) {
 	})
 }
 
+// processNext takes the oldest queued task and runs it; it reports false when nothing was queued.
 func (o *OrchestratorService) processNext() bool {
 	task, err := o.repo.ClaimNextQueued(o.dbCtx())
 	if err != nil {

@@ -89,6 +89,7 @@ func (s *ActivityService) GetTimeline(ctx context.Context, since time.Time, limi
 	return s.activityRepo.ListActivities(ctx, domain.ActivityFilter{Since: since, Limit: limit})
 }
 
+// pollLoop runs poll on a timer until the service stops.
 func (s *ActivityService) pollLoop() {
 	defer s.wg.Done()
 	ticker := time.NewTicker(s.pollEvery)
@@ -107,6 +108,7 @@ func (s *ActivityService) pollLoop() {
 	}
 }
 
+// purgeLoop deletes old activity events on a timer until the service stops.
 func (s *ActivityService) purgeLoop() {
 	defer s.wg.Done()
 	ticker := time.NewTicker(s.purgeEvery)
@@ -128,6 +130,7 @@ func (s *ActivityService) purgeLoop() {
 	}
 }
 
+// poll reads new activity from every reader and stores it.
 func (s *ActivityService) poll() {
 	ctx := context.Background()
 	since := time.Now().Add(-activityRetentionWindow)

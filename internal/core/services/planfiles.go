@@ -175,7 +175,10 @@ func parsePlanFile(rel, text, kind string) (pf PlanFile, gotKind string, ok bool
 	return pf, kind, true
 }
 
+// isPlanDir reports whether a folder name is one of the plan folder names.
 func isPlanDir(n string) bool { n = strings.ToLower(n); return n == "plans" || n == "plan" }
+
+// isTaskDir reports whether a folder name is one of the task folder names.
 func isTaskDir(n string) bool { n = strings.ToLower(n); return n == "tasks" || n == "task" }
 
 // normalizePlanFolders turns configured folders into clean project-relative slash paths.
@@ -327,6 +330,7 @@ func discoverMarkdown(project string) []string {
 	return out
 }
 
+// planOrder is the number at the end of a plan id, for sorting plans in numeric order.
 func planOrder(id string) int {
 	if m := planNumEnd.FindStringSubmatch(id); m != nil {
 		n, _ := strconv.Atoi(m[1])
@@ -431,6 +435,7 @@ func linkPlanFiles(plans, tasks []PlanFile) PlanScan {
 	return PlanScan{Plans: nodes, Orphans: orphans, Folders: dirs}
 }
 
+// taskHasFile reports whether a task file with the id exists.
 func taskHasFile(tasks []PlanFile, id string) bool {
 	for _, t := range tasks {
 		if strings.EqualFold(t.ID, id) {

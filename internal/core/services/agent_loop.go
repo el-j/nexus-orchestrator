@@ -61,6 +61,8 @@ type agentCall struct {
 	Summary string `json:"summary"`
 }
 
+// agentSystemPrompt tells the model how to act: which tools exist, how to call them and when it is
+// done.
 func agentSystemPrompt(task domain.Task, canVerify bool) string {
 	var sb strings.Builder
 	sb.WriteString("You are a software engineering agent working inside the project directory. ")
@@ -94,6 +96,7 @@ func parseToolCalls(reply string) (calls []agentCall, problems []string) {
 	return calls, problems
 }
 
+// truncateObservation cuts a tool's output to the size the model is shown.
 func truncateObservation(s string) string {
 	if len(s) <= maxObservationBytes {
 		return s
@@ -101,6 +104,8 @@ func truncateObservation(s string) string {
 	return s[:maxObservationBytes] + fmt.Sprintf("\n[... truncated, %d more bytes]", len(s)-maxObservationBytes)
 }
 
+// agentTurnLimit is how many turns a task's agent loop may take: the task's own limit within the hard
+// maximum, else the default.
 func agentTurnLimit(task domain.Task) int {
 	switch {
 	case task.MaxAgentTurns <= 0:
@@ -129,6 +134,7 @@ func (a *agentRun) noteWrite(path string) {
 	}
 }
 
+// canVerify reports whether the task has a verification command and something to run it with.
 func (a *agentRun) canVerify() bool {
 	return strings.TrimSpace(a.task.VerificationCommand) != "" && a.o.commandRunner != nil
 }
