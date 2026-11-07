@@ -41,7 +41,7 @@ reaches it. TASK-578 (progress rendering in three MCP clients) stays with the ow
 | TASK-634 | Go coverage to 100 %: storage and watcher            | testing     | done   |
 | TASK-635 | Go coverage to 100 %: inbound adapters and bootstrap | testing     | done   |
 | TASK-636 | Go coverage to 100 %: core services                  | testing     | done   |
-| TASK-637 | Go coverage to 100 %: scanners and LLM adapters      | testing     | todo   |
+| TASK-637 | Go coverage to 100 %: scanners and LLM adapters      | testing     | done   |
 | TASK-638 | Document every Go function, enforce it               | docs        | todo   |
 | TASK-639 | Split the oversized functions                        | refactor    | todo   |
 | TASK-640 | Split the boss files                                 | refactor    | todo   |

@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"errors"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -40,5 +41,15 @@ func TestBrainIngest_DefaultsTheKindAndReportsEveryFailure(t *testing.T) {
 				t.Errorf("err = %v, want it to contain %q", err, tc.want)
 			}
 		})
+	}
+}
+
+func TestConnectCmd_NeedsAHomeDirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the home directory comes from USERPROFILE there")
+	}
+	t.Setenv("HOME", "")
+	if _, err := execute(&mockOrchestrator{}, &mockBrainService{}, "connect"); err == nil || !strings.Contains(err.Error(), "home directory") {
+		t.Errorf("err = %v", err)
 	}
 }
