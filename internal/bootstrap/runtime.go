@@ -111,6 +111,9 @@ type Runtime struct {
 	failed chan error
 }
 
+// newWatcher creates the workspace watcher; tests replace it to make creation fail.
+var newWatcher = fs_watcher.New
+
 // Start opens the database, wires every service and starts the REST API, the
 // MCP server and the background scans. The servers run until ctx is cancelled or
 // Close is called. The caller must Close the returned Runtime. Log output is
@@ -133,7 +136,7 @@ func Start(ctx context.Context, cfg Config, logHub *httpapi.LogHub) (*Runtime, e
 		log.Printf("startup: repair task rows: %v", err)
 	}
 
-	rt := &Runtime{Config: cfg, repo: repo, failed: make(chan error, 2)}
+	rt := &Runtime{Config: cfg, repo: repo, failed: make(chan error, 1)}
 	runCtx, cancel := context.WithCancel(ctx)
 	rt.cancel = cancel
 
@@ -161,7 +164,7 @@ func Start(ctx context.Context, cfg Config, logHub *httpapi.LogHub) (*Runtime, e
 	rt.Brain = brain
 
 	// Real-time workspace change invalidation.
-	if w, err := fs_watcher.New(fs_watcher.WithBrain(rt.Brain)); err != nil {
+	if w, err := newWatcher(fs_watcher.WithBrain(rt.Brain)); err != nil {
 		log.Printf("startup: create fs watcher: %v", err)
 	} else {
 		rt.Watcher = w

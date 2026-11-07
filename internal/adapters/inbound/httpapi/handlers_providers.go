@@ -78,19 +78,10 @@ func (s *Server) handleProviderModels(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, models)
 }
 
-// maskAPIKey returns a masked representation of an API key:
-// if longer than 4 characters, the last 4 are preserved; otherwise "****".
-func maskAPIKey(key string) string {
-	if key == "" {
-		return domain.MaskedSecretPrefix
-	}
-	return domain.MaskSecret(key)
-}
-
 // maskedProviderConfig returns a copy of cfg with the APIKey field masked.
 func maskedProviderConfig(cfg domain.ProviderConfig) domain.ProviderConfig {
 	if cfg.APIKey != "" {
-		cfg.APIKey = maskAPIKey(cfg.APIKey)
+		cfg.APIKey = domain.MaskSecret(cfg.APIKey)
 	}
 	return cfg
 }
