@@ -55,13 +55,9 @@
             class="text-xs bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-slate-300 placeholder-slate-600 focus:outline-none focus:border-violet-500/40 w-40"
           />
           <button
-            v-for="opt in [
-              { v: '', l: 'All' },
-              { v: 'active', l: 'Active' },
-              { v: 'unreachable', l: 'Unreachable' },
-            ]"
+            v-for="opt in providerStatusOptions"
             :key="'pf-' + opt.v"
-            @click="providerStatusFilter = opt.v as any"
+            @click="providerStatusFilter = opt.v"
             :class="[
               'text-[10px] px-2 py-1 rounded-full border transition-colors font-medium',
               providerStatusFilter === opt.v
@@ -306,7 +302,13 @@ const sortedProviders = computed(() => {
 });
 
 const providerSearch = ref('');
-const providerStatusFilter = ref<'' | 'active' | 'unreachable'>('');
+type ProviderStatusFilter = '' | 'active' | 'unreachable';
+const providerStatusOptions: { v: ProviderStatusFilter; l: string }[] = [
+  { v: '', l: 'All' },
+  { v: 'active', l: 'Active' },
+  { v: 'unreachable', l: 'Unreachable' },
+];
+const providerStatusFilter = ref<ProviderStatusFilter>('');
 const filteredProviders = computed(() => {
   let list = sortedProviders.value;
   if (providerStatusFilter.value === 'active') list = list.filter((p) => p.active);

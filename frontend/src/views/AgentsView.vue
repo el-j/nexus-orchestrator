@@ -73,14 +73,9 @@
       />
       <template v-if="activeTab === 'sessions'">
         <button
-          v-for="opt in [
-            { v: '', l: 'All' },
-            { v: 'active', l: 'Active' },
-            { v: 'idle', l: 'Idle' },
-            { v: 'disconnected', l: 'Off' },
-          ]"
+          v-for="opt in sessionStatusOptions"
           :key="'ss-' + opt.v"
-          @click="sessionStatusFilter = opt.v as any"
+          @click="sessionStatusFilter = opt.v"
           :class="[
             'text-[10px] px-2 py-1 rounded-full border transition-colors font-medium',
             sessionStatusFilter === opt.v
@@ -304,7 +299,14 @@ const sortOptions = [
 
 // --- Filter ---
 const searchQuery = ref('');
-const sessionStatusFilter = ref<'' | 'active' | 'idle' | 'disconnected'>('');
+type SessionStatusFilter = '' | 'active' | 'idle' | 'disconnected';
+const sessionStatusOptions: { v: SessionStatusFilter; l: string }[] = [
+  { v: '', l: 'All' },
+  { v: 'active', l: 'Active' },
+  { v: 'idle', l: 'Idle' },
+  { v: 'disconnected', l: 'Off' },
+];
+const sessionStatusFilter = ref<SessionStatusFilter>('');
 
 // --- Tabs ---
 const tabs = [

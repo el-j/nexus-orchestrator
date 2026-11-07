@@ -49,7 +49,6 @@ describe('ProvidersView', () => {
     const wrapper = shallowMount(ProvidersView, {
       global: {
         stubs: {
-          ProviderStatus: true,
           DiscoveredProvidersPanel: true,
           ProviderConfigForm: true,
           RefreshIndicator: true,
@@ -63,7 +62,6 @@ describe('ProvidersView', () => {
     const wrapper = shallowMount(ProvidersView, {
       global: {
         stubs: {
-          ProviderStatus: true,
           DiscoveredProvidersPanel: true,
           ProviderConfigForm: true,
           RefreshIndicator: true,
@@ -77,7 +75,6 @@ describe('ProvidersView', () => {
     const wrapper = shallowMount(ProvidersView, {
       global: {
         stubs: {
-          ProviderStatus: true,
           DiscoveredProvidersPanel: true,
           ProviderConfigForm: true,
           RefreshIndicator: true,
@@ -95,7 +92,6 @@ describe('ProvidersView', () => {
     const wrapper = shallowMount(ProvidersView, {
       global: {
         stubs: {
-          ProviderStatus: true,
           DiscoveredProvidersPanel: true,
           ProviderConfigForm: true,
           RefreshIndicator: true,
@@ -113,7 +109,6 @@ describe('ProvidersView', () => {
     const wrapper = shallowMount(ProvidersView, {
       global: {
         stubs: {
-          ProviderStatus: true,
           DiscoveredProvidersPanel: true,
           ProviderConfigForm: true,
           RefreshIndicator: true,
@@ -130,7 +125,6 @@ describe('ProvidersView', () => {
     const wrapper = shallowMount(ProvidersView, {
       global: {
         stubs: {
-          ProviderStatus: true,
           DiscoveredProvidersPanel: true,
           ProviderConfigForm: true,
           RefreshIndicator: true,
@@ -144,7 +138,6 @@ describe('ProvidersView', () => {
     const wrapper = shallowMount(ProvidersView, {
       global: {
         stubs: {
-          ProviderStatus: true,
           DiscoveredProvidersPanel: true,
           ProviderConfigForm: true,
           RefreshIndicator: true,
@@ -159,7 +152,6 @@ describe('ProvidersView', () => {
     const wrapper = shallowMount(ProvidersView, {
       global: {
         stubs: {
-          ProviderStatus: true,
           DiscoveredProvidersPanel: false,
           ProviderConfigForm: true,
           RefreshIndicator: true,
