@@ -41,11 +41,6 @@ vi.mock('../composables/useDiscovery', () => ({
 }));
 vi.mock('../types/wails', () => h.api);
 
-const Status = {
-  name: 'ProviderStatus',
-  props: ['providers', 'refresh', 'hideDiscovered'],
-  template: '<div class="status" />',
-};
 const Panel = {
   name: 'DiscoveredProvidersPanel',
   props: ['providers', 'loading', 'scanning'],
@@ -118,7 +113,6 @@ async function mountView(
   const w = mount(ProvidersView, {
     global: {
       stubs: {
-        ProviderStatus: Status,
         DiscoveredProvidersPanel: Panel,
         ProviderConfigForm: Form,
         AppConfirmDialog: Dialog,
@@ -220,7 +214,6 @@ describe('ProvidersView — AI coding tools', () => {
     const w = mount(ProvidersView, {
       global: {
         stubs: {
-          ProviderStatus: Status,
           DiscoveredProvidersPanel: Panel,
           ProviderConfigForm: Form,
           AppConfirmDialog: Dialog,
@@ -309,7 +302,6 @@ describe('ProvidersView — configuration CRUD', () => {
     const w = mount(ProvidersView, {
       global: {
         stubs: {
-          ProviderStatus: Status,
           DiscoveredProvidersPanel: Panel,
           ProviderConfigForm: Form,
           AppConfirmDialog: Dialog,
@@ -399,6 +391,20 @@ describe('ProvidersView — promote and deep links create, not update (regressio
     await form.props('onSave')({ name: 'Ollama', kind: 'ollama' });
     expect(h.api.addProviderConfig).toHaveBeenCalledTimes(1);
     expect(h.api.updateProviderConfig).not.toHaveBeenCalled();
+  });
+
+  it('does not send the empty id and timestamps of the pre-filled form (the daemon cannot parse "")', async () => {
+    const w = await mountView();
+    w.findComponent(Panel).vm.$emit('promote', { id: 'd1', name: 'Ollama', kind: 'ollama' });
+    await flushPromises();
+    await w.findComponent(Form).props('onSave')({
+      id: '',
+      name: 'Ollama',
+      kind: 'ollama',
+      createdAt: '',
+      updatedAt: '',
+    });
+    expect(h.api.addProviderConfig).toHaveBeenCalledWith({ name: 'Ollama', kind: 'ollama' });
   });
 
   it('defaults an unknown discovered kind to openaicompat and a missing URL to empty', async () => {

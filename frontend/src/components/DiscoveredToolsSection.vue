@@ -17,14 +17,9 @@
         class="text-xs bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-slate-300 placeholder-slate-600 focus:outline-none focus:border-violet-500/40 w-40"
       />
       <button
-        v-for="opt in [
-          { v: '', l: 'All' },
-          { v: 'running', l: 'Running' },
-          { v: 'installed', l: 'Installed' },
-          { v: 'detected', l: 'Detected' },
-        ]"
+        v-for="opt in toolStatusOptions"
         :key="'tf-' + opt.v"
-        @click="toolStatusFilter = opt.v as any"
+        @click="toolStatusFilter = opt.v"
         :class="[
           'text-[10px] px-2 py-1 rounded-full border transition-colors font-medium',
           toolStatusFilter === opt.v
@@ -45,9 +40,7 @@
       <div v-for="[kind, kindAgents] in groupedAgents" :key="kind">
         <!-- Group header -->
         <div class="flex items-center gap-2 mb-2">
-          <span class="text-xs font-semibold text-slate-400">{{
-            agentLabel({ kind } as any)
-          }}</span>
+          <span class="text-xs font-semibold text-slate-400">{{ kindLabel(kind) }}</span>
           <span class="text-[10px] text-slate-600">({{ kindAgents.length }})</span>
           <div class="flex-1 h-px bg-white/5 ml-1"></div>
         </div>
@@ -102,7 +95,14 @@ import { resolveServerUrl } from '../composables/useServerUrl';
 const props = defineProps<{ sortMode: 'active' | 'name' }>();
 
 const toolSearch = ref('');
-const toolStatusFilter = ref<'' | 'running' | 'installed' | 'detected'>('');
+type ToolStatusFilter = '' | 'running' | 'installed' | 'detected';
+const toolStatusOptions: { v: ToolStatusFilter; l: string }[] = [
+  { v: '', l: 'All' },
+  { v: 'running', l: 'Running' },
+  { v: 'installed', l: 'Installed' },
+  { v: 'detected', l: 'Detected' },
+];
+const toolStatusFilter = ref<ToolStatusFilter>('');
 
 const sortedAgents = computed(() => {
   const list = [...agents.value];
@@ -167,15 +167,22 @@ async function loadAgents() {
   }
 }
 
+const KIND_LABELS: Record<string, string> = {
+  copilot: 'GitHub Copilot',
+  continue: 'Continue',
+  'claude-cli': 'Claude CLI',
+  cline: 'Cline',
+  cursor: 'Cursor',
+};
+
+/** Display name of an agent kind; an unknown kind is shown as it is. */
+function kindLabel(kind: string): string {
+  return KIND_LABELS[kind] ?? kind;
+}
+
+/** Display name of one agent: the known label of its kind, else its own name, else its kind. */
 function agentLabel(a: DiscoveredAgent): string {
-  const labels: Record<string, string> = {
-    copilot: 'GitHub Copilot',
-    continue: 'Continue',
-    'claude-cli': 'Claude CLI',
-    cline: 'Cline',
-    cursor: 'Cursor',
-  };
-  return labels[a.kind] ?? a.name ?? a.kind;
+  return KIND_LABELS[a.kind] ?? a.name ?? a.kind;
 }
 
 function agentStatusClass(a: DiscoveredAgent): string {

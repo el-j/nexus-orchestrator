@@ -48,6 +48,8 @@ func NewNetworkProbeReaderWithURLs(lmStudioURL, ollamaURL, antigravityURL string
 	return newWithURLs(lmStudioURL, ollamaURL, antigravityURL)
 }
 
+// newWithURLs builds a reader for the given endpoints; the exported constructor passes the default
+// local ports, tests pass test servers.
 func newWithURLs(lmStudioURL, ollamaURL, antigravityURL string) *NetworkProbeReader {
 	return &NetworkProbeReader{
 		lmStudioURL:    lmStudioURL,
@@ -73,18 +75,15 @@ func (r *NetworkProbeReader) ReadActivities(ctx context.Context, since time.Time
 
 	go func() {
 		defer wg.Done()
-		acts, _ := r.probeOpenAIModels(ctx, r.lmStudioURL, "lm-studio")
-		slots[0].acts = acts
+		slots[0].acts = r.probeOpenAIModels(ctx, r.lmStudioURL, "lm-studio")
 	}()
 	go func() {
 		defer wg.Done()
-		acts, _ := r.probeOllamaPS(ctx, r.ollamaURL)
-		slots[1].acts = acts
+		slots[1].acts = r.probeOllamaPS(ctx, r.ollamaURL)
 	}()
 	go func() {
 		defer wg.Done()
-		acts, _ := r.probeOpenAIModels(ctx, r.antigravityURL, "antigravity")
-		slots[2].acts = acts
+		slots[2].acts = r.probeOpenAIModels(ctx, r.antigravityURL, "antigravity")
 	}()
 
 	wg.Wait()
@@ -124,26 +123,26 @@ func normalizeID(s string) string {
 }
 
 // probeOpenAIModels calls GET <baseURL>/models and returns one AIActivity per
-// model ID. Returns nil, nil on any network or parse failure.
-func (r *NetworkProbeReader) probeOpenAIModels(ctx context.Context, baseURL, providerName string) ([]domain.AIActivity, error) {
+// model ID. Probing is best effort: any network or parse failure yields no activities.
+func (r *NetworkProbeReader) probeOpenAIModels(ctx context.Context, baseURL, providerName string) []domain.AIActivity {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/models", nil)
 	if err != nil {
-		return nil, nil //nolint:nilerr
+		return nil
 	}
 
 	resp, err := r.httpClient.Do(req)
 	if err != nil {
-		return nil, nil //nolint:nilerr
+		return nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, nil
+		return nil
 	}
 
 	var parsed openAIModelsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
-		return nil, nil //nolint:nilerr
+		return nil
 	}
 
 	now := time.Now()
@@ -159,30 +158,30 @@ func (r *NetworkProbeReader) probeOpenAIModels(ctx context.Context, baseURL, pro
 			Metadata:     map[string]string{"provider": providerName, "url": baseURL},
 		})
 	}
-	return activities, nil
+	return activities
 }
 
 // probeOllamaPS calls GET <baseURL>/api/ps and returns one AIActivity per
-// running model. Returns nil, nil on any network or parse failure.
-func (r *NetworkProbeReader) probeOllamaPS(ctx context.Context, baseURL string) ([]domain.AIActivity, error) {
+// running model. Probing is best effort: any network or parse failure yields no activities.
+func (r *NetworkProbeReader) probeOllamaPS(ctx context.Context, baseURL string) []domain.AIActivity {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/api/ps", nil)
 	if err != nil {
-		return nil, nil //nolint:nilerr
+		return nil
 	}
 
 	resp, err := r.httpClient.Do(req)
 	if err != nil {
-		return nil, nil //nolint:nilerr
+		return nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, nil
+		return nil
 	}
 
 	var parsed ollamaPSResponse
 	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
-		return nil, nil //nolint:nilerr
+		return nil
 	}
 
 	now := time.Now()
@@ -202,5 +201,5 @@ func (r *NetworkProbeReader) probeOllamaPS(ctx context.Context, baseURL string) 
 			Metadata:     map[string]string{"provider": "ollama", "url": baseURL},
 		})
 	}
-	return activities, nil
+	return activities
 }

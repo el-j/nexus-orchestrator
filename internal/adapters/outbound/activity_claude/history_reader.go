@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -67,15 +68,12 @@ func (r *ClaudeHistoryReader) ReadActivities(ctx context.Context, since time.Tim
 	}
 	defer f.Close()
 
-	if _, err := f.Seek(r.lastPos, io.SeekStart); err != nil {
-		return nil, fmt.Errorf("activity_claude: seek history: %w", err)
-	}
-
 	sinceMs := since.UnixMilli()
 	var activities []domain.AIActivity
 
 	pos := r.lastPos
-	reader := bufio.NewReader(f)
+	// Reading from an explicit offset needs no Seek, so there is no seek failure to handle.
+	reader := bufio.NewReader(io.NewSectionReader(f, r.lastPos, math.MaxInt64-r.lastPos))
 
 	for {
 		if ctx.Err() != nil {

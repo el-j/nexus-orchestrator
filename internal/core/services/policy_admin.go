@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/google/uuid"
+
 	"nexus-orchestrator/internal/core/domain"
 )
 
@@ -40,32 +42,24 @@ func (o *OrchestratorService) SetProjectPolicy(_ context.Context, projectPath st
 	if err := p.Validate(); err != nil {
 		return err
 	}
-	data, err := json.MarshalIndent(p, "", "  ")
-	if err != nil {
-		return fmt.Errorf("policy: encode: %w", err)
-	}
-	data = append(data, '\n')
-	dest := filepath.Join(projectPath, filepath.FromSlash(PolicyFile))
-	if err := os.MkdirAll(filepath.Dir(dest), 0o750); err != nil {
+	data, _ := json.MarshalIndent(p, "", "  ") // a struct of strings, numbers and slices always encodes
+	return writePolicyFile(filepath.Join(projectPath, filepath.FromSlash(PolicyFile)), append(data, '\n'))
+}
+
+// writePolicyFile puts data at dest, creating .nexus when needed. The file is written beside dest
+// and moved into place, so a reader never sees half a policy and a symbolic link at dest is replaced,
+// never followed.
+func writePolicyFile(dest string, data []byte) error {
+	dir := filepath.Dir(dest)
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("policy: %w", err)
 	}
-	tmp, err := os.CreateTemp(filepath.Dir(dest), ".policy-*.tmp")
-	if err != nil {
+	tmp := filepath.Join(dir, ".policy-"+uuid.NewString()+".tmp")
+	if err := os.WriteFile(tmp, data, 0o644); err != nil {
 		return fmt.Errorf("policy: %w", err)
 	}
-	defer func() { _ = os.Remove(tmp.Name()) }()
-	if _, err := tmp.Write(data); err != nil {
-		_ = tmp.Close()
-		return fmt.Errorf("policy: %w", err)
-	}
-	if err := tmp.Chmod(0o644); err != nil {
-		_ = tmp.Close()
-		return fmt.Errorf("policy: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("policy: %w", err)
-	}
-	if err := os.Rename(tmp.Name(), dest); err != nil {
+	if err := os.Rename(tmp, dest); err != nil {
+		_ = os.Remove(tmp)
 		return fmt.Errorf("policy: %w", err)
 	}
 	return nil

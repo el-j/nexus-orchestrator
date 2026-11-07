@@ -72,7 +72,7 @@ endif
 
 .DEFAULT_GOAL := help
 
-.PHONY: check-node web web-auto help start start-bg stop dogfood status connect init-project build build-gui build-gui-windows-amd64 build-all test vet lint clean help \
+.PHONY: bench check-node web web-auto help start start-bg stop dogfood status connect init-project build build-gui build-gui-windows-amd64 build-all test vet lint clean help \
         build-linux-amd64 build-linux-arm64 \
         build-darwin-amd64 build-darwin-arm64 \
         build-windows-amd64 \
@@ -397,6 +397,10 @@ test-cover:
 # Local-only (never in CI: too many workflow minutes). See docs/mutation-testing.md.
 mutation:
 	./scripts/mutation.sh
+
+# Local performance check against scripts/bench-baseline.txt (`./scripts/bench.sh --record` rewrites it).
+bench:
+	./scripts/bench.sh
 
 vet:
 	go vet ./...

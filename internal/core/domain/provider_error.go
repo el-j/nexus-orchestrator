@@ -110,6 +110,8 @@ func ClassifyHTTP(provider string, status int, retryAfter, body string, now time
 	return pe
 }
 
+// looksLikeQuota reports whether an error body talks about a quota, credit or billing limit rather than
+// a short rate limit.
 func looksLikeQuota(body string) bool {
 	b := strings.ToLower(body)
 	return strings.Contains(b, "quota") || strings.Contains(b, "resource_exhausted") ||
