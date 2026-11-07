@@ -33,6 +33,10 @@ const (
 // httpClient bounds every daemon call; the default client would wait forever.
 var httpClient = &http.Client{Timeout: 30 * time.Second}
 
+// getwd names the working directory; tests replace it to make that fail.
+var getwd = os.Getwd
+
+// main runs the submit command and exits with its status.
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, 3*time.Second))
 }
@@ -118,7 +122,7 @@ func run(args []string, stdout, stderr io.Writer, pollEvery time.Duration) int {
 func BuildRequestBody(taskFilePath, projectPath, targetFile, contextFilesStr, verify string, turns int) (map[string]interface{}, error) {
 	if projectPath == "" {
 		var err error
-		projectPath, err = os.Getwd()
+		projectPath, err = getwd()
 		if err != nil {
 			return nil, fmt.Errorf("get cwd: %w", err)
 		}
@@ -269,12 +273,14 @@ func waitForCompletion(ctx context.Context, stdout, stderr io.Writer, addr, task
 	}
 }
 
+// setAuthHeader adds the bearer token from NEXUS_API_TOKEN when it is set.
 func setAuthHeader(req *http.Request) {
 	if tok := strings.TrimSpace(os.Getenv("NEXUS_API_TOKEN")); tok != "" {
 		req.Header.Set("Authorization", "Bearer "+tok)
 	}
 }
 
+// getEnv returns an environment variable or the fallback when it is empty.
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v

@@ -151,6 +151,8 @@ type claudeEvent struct {
 	ModelUsage map[string]json.RawMessage `json:"modelUsage"`
 }
 
+// apply folds one stream-json event into the outcome: text deltas, the allowance reading, and the final
+// result with tokens and cost.
 func (o *claudeOutcome) apply(ev claudeEvent, text *strings.Builder, onChunk func(string)) {
 	switch ev.Type {
 	case "system":
@@ -206,6 +208,7 @@ func (o claudeOutcome) failure(provider string, now time.Time) error {
 	return fmt.Errorf("%s: %s", provider, firstNonEmpty(o.result, "the client reported an error"))
 }
 
+// firstNonEmpty returns the first value that is not empty.
 func firstNonEmpty(vals ...string) string {
 	for _, v := range vals {
 		if v != "" {
@@ -227,10 +230,7 @@ func (a *Adapter) runClaude(ctx context.Context, prompt string, onChunk func(str
 	cmd.WaitDelay = 2 * time.Second
 	var stderr bytes.Buffer
 	cmd.Stderr = &limitedWriter{w: &stderr, left: 8192}
-	out, err := cmd.StdoutPipe()
-	if err != nil {
-		return "", fmt.Errorf("%s: %w", a.name, err)
-	}
+	out, _ := cmd.StdoutPipe() // cannot fail: Stdout has not been set
 	if err := cmd.Start(); err != nil {
 		return "", fmt.Errorf("%s: start %s: %w", a.name, a.exe, err)
 	}

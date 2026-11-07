@@ -81,6 +81,14 @@ func TestDocsFolderHoldsNoOrphanedHTMLPages(t *testing.T) {
 	}
 }
 
+// The styles and scripts of the site live in docs/src; the stylesheet and script of the old static site
+// (docs/assets) were nothing but dead weight, 2 400 lines nobody loaded.
+func TestDocsFolderHoldsNoOldStaticAssets(t *testing.T) {
+	if _, err := os.Stat(filepath.Join(root, "docs", "assets")); err == nil {
+		t.Error("docs/assets is the old static site's stylesheet and script; the site is built from docs/src")
+	}
+}
+
 // releaseFacts extracts, from the release workflow, the names it can publish.
 type releaseFacts struct {
 	oses, arches map[string]bool
@@ -175,8 +183,8 @@ func TestReleaseWorkflowEmbedsFullUIInCLIDaemonAndEnforcesCoverageGate(t *testin
 	if !strings.Contains(buildSection, "internal/adapters/inbound/webui/dist") {
 		t.Error("publish.yml build-cli job must copy built frontend into internal/adapters/inbound/webui/dist before building nexus-daemon")
 	}
-	if !strings.Contains(wf, "MIN_COVERAGE=96 ./scripts/go-coverage.sh") {
-		t.Error("publish.yml must enforce MIN_COVERAGE=96 to match ci.yml")
+	if !strings.Contains(wf, "MIN_COVERAGE=100 ./scripts/go-coverage.sh") {
+		t.Error("publish.yml must enforce MIN_COVERAGE=100 to match ci.yml")
 	}
 
 	ci := read(t, ".github/workflows/ci.yml")

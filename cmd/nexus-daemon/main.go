@@ -23,6 +23,7 @@ var (
 	buildDate = "unknown"
 )
 
+// main runs the daemon and exits with its status.
 func main() {
 	os.Exit(runMain())
 }

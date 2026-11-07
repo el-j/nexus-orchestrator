@@ -337,6 +337,14 @@ const detectedOS = ref('Detecting...');
 const detectedKey = ref('');
 
 // For beta: the latest prerelease tag fetched from the GitHub API at runtime.
+/** The part of the User-Agent Client Hints API this page reads (not yet in the DOM typings). */
+interface NavigatorWithUAData extends Navigator {
+  userAgentData?: {
+    architecture?: string;
+    getHighEntropyValues?: (hints: string[]) => Promise<{ architecture?: string }>;
+  };
+}
+
 const latestTag = ref<string | null>(null);
 const tagLoading = ref(channel === 'beta');
 const tagError = ref(false);
@@ -349,14 +357,14 @@ onMounted(async () => {
   if (/Mac/i.test(platform)) {
     let isARM = false;
     try {
-      const uad = (navigator as any).userAgentData;
+      const uad = (navigator as NavigatorWithUAData).userAgentData;
       if (uad?.getHighEntropyValues) {
         const hints = await uad.getHighEntropyValues(['architecture']);
         if (/arm/i.test(hints.architecture || '')) isARM = true;
       } else if (uad?.architecture) {
         if (/arm/i.test(uad.architecture)) isARM = true;
       }
-    } catch (_) {
+    } catch {
       /* ignore */
     }
     if (!isARM && /ARM64|arm64/i.test(ua)) isARM = true;
@@ -373,7 +381,7 @@ onMounted(async () => {
             if (/apple\s+m\d|apple\s+gpu/i.test(renderer)) isARM = true;
           }
         }
-      } catch (_) {
+      } catch {
         /* ignore */
       }
     }
@@ -400,7 +408,7 @@ onMounted(async () => {
         const pre = releases.find((r) => r.prerelease);
         latestTag.value = pre?.tag_name ?? null;
       }
-    } catch (_) {
+    } catch {
       tagError.value = true;
     } finally {
       tagLoading.value = false;

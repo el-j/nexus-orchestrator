@@ -1,5 +1,7 @@
 # Audit of v0.10.0
 
+> **Status: superseded** by [the audit of 2026-10-31](audit-2026-10-31.md). The figures and verdicts below were true on the date measured and are kept as history; the current state and the open work are in that audit and PLAN-077.
+
 Measured on `develop` right after the v0.10.0 release (2026-10-15). Every number below was produced by
 running the command named next to it; what could not be measured says so. The definition of done is
 the one in the request: 100 % functional, no design issues, 100 % test coverage, no gaps, stubs or

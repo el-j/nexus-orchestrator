@@ -102,6 +102,8 @@ func cutUTF8(s string, maxBytes int) string {
 	return s[:maxBytes]
 }
 
+// summarizeMarkdownHeuristics adds what the markdown contains (frontmatter, checklist, headings,
+// numbered steps) to the summary of a plan.
 func summarizeMarkdownHeuristics(raw, summary string) string {
 	features := markdownFeatures(raw)
 	if len(features) == 0 {
@@ -111,6 +113,7 @@ func summarizeMarkdownHeuristics(raw, summary string) string {
 	return cutUTF8(prefix+summary, 200)
 }
 
+// markdownFeatures names the plan-like parts a markdown text has.
 func markdownFeatures(raw string) []string {
 	text := strings.ReplaceAll(raw, "\r\n", "\n")
 	features := make([]string, 0, 3)
@@ -126,6 +129,7 @@ func markdownFeatures(raw string) []string {
 	return features
 }
 
+// hasYAMLFrontmatter reports whether the text starts with a closed YAML frontmatter block.
 func hasYAMLFrontmatter(text string) bool {
 	if !strings.HasPrefix(text, "---\n") {
 		return false
@@ -134,6 +138,7 @@ func hasYAMLFrontmatter(text string) bool {
 	return strings.Contains(rest, "\n---\n")
 }
 
+// checklistCount counts the "- [ ]" and "- [x]" items.
 func checklistCount(text string) int {
 	count := 0
 	for _, line := range strings.Split(text, "\n") {
@@ -145,6 +150,7 @@ func checklistCount(text string) int {
 	return count
 }
 
+// headingCount counts headings of the first three levels.
 func headingCount(text string) int {
 	count := 0
 	for _, line := range strings.Split(text, "\n") {
@@ -156,6 +162,7 @@ func headingCount(text string) int {
 	return count
 }
 
+// numberedListCount counts the lines that start a numbered list item.
 func numberedListCount(text string) int {
 	count := 0
 	for _, line := range strings.Split(text, "\n") {
@@ -178,6 +185,8 @@ func numberedListCount(text string) int {
 	return count
 }
 
+// looksLikePlanMarkdown reports whether the first 2 KiB of the file read like a plan: a frontmatter block,
+// a checklist, many headings or a numbered list, or a heading such as "# Plan", "# Roadmap" or "# Backlog".
 func looksLikePlanMarkdown(path string) bool {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -191,29 +200,21 @@ func looksLikePlanMarkdown(path string) bool {
 		return true
 	}
 	for _, line := range strings.Split(sample, "\n") {
-		trimmed := strings.TrimSpace(strings.ToUpper(line))
-		if strings.HasPrefix(trimmed, "# PLAN") ||
-			strings.HasPrefix(trimmed, "## PLAN") ||
-			strings.HasPrefix(trimmed, "# TASK") ||
-			strings.HasPrefix(trimmed, "## TASK") ||
-			strings.HasPrefix(trimmed, "# ROADMAP") ||
-			strings.HasPrefix(trimmed, "## ROADMAP") ||
-			strings.HasPrefix(trimmed, "# TODO") ||
-			strings.HasPrefix(trimmed, "## TODO") ||
-			strings.HasPrefix(trimmed, "# WORKFLOW") ||
-			strings.HasPrefix(trimmed, "## WORKFLOW") ||
-			strings.HasPrefix(trimmed, "# SPRINT") ||
-			strings.HasPrefix(trimmed, "## SPRINT") ||
-			strings.HasPrefix(trimmed, "# EPIC") ||
-			strings.HasPrefix(trimmed, "## EPIC") ||
-			strings.HasPrefix(trimmed, "# MILESTONE") ||
-			strings.HasPrefix(trimmed, "## MILESTONE") ||
-			strings.HasPrefix(trimmed, "# BACKLOG") ||
-			strings.HasPrefix(trimmed, "## BACKLOG") ||
-			strings.HasPrefix(trimmed, "# OBJECTIVES") ||
-			strings.HasPrefix(trimmed, "## OBJECTIVES") ||
-			strings.HasPrefix(trimmed, "# IMPLEMENTATION") ||
-			strings.HasPrefix(trimmed, "## IMPLEMENTATION") {
+		if hasPlanHeading(strings.TrimSpace(strings.ToUpper(line))) {
+			return true
+		}
+	}
+	return false
+}
+
+// planHeadingWords are the words after "# " or "## " that mark a document as a plan.
+var planHeadingWords = []string{"PLAN", "TASK", "ROADMAP", "TODO", "WORKFLOW", "SPRINT", "EPIC", "MILESTONE", "BACKLOG", "OBJECTIVES", "IMPLEMENTATION"}
+
+// hasPlanHeading reports whether an upper-cased, trimmed line is a level 1 or 2 heading that starts with
+// one of planHeadingWords.
+func hasPlanHeading(line string) bool {
+	for _, w := range planHeadingWords {
+		if strings.HasPrefix(line, "# "+w) || strings.HasPrefix(line, "## "+w) {
 			return true
 		}
 	}

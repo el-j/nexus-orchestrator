@@ -117,9 +117,16 @@ func WithOnChange(fn func(projectPath, filePath string)) Option {
 	}
 }
 
+// newFSWatcher and absPath are replaced by tests: the first fails when the system is out of file
+// watches, the second only when the working directory is gone.
+var (
+	newFSWatcher = fsnotify.NewWatcher
+	absPath      = filepath.Abs
+)
+
 // New creates and starts a new filesystem watcher.
 func New(opts ...Option) (*Watcher, error) {
-	fsw, err := fsnotify.NewWatcher()
+	fsw, err := newFSWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("fs_watcher: new watcher: %w", err)
 	}
@@ -144,7 +151,7 @@ func New(opts ...Option) (*Watcher, error) {
 
 // Watch recursively registers a project directory and its eligible subdirectories.
 func (w *Watcher) Watch(projectPath string) error {
-	absPath, err := filepath.Abs(projectPath)
+	project, err := absPath(projectPath)
 	if err != nil {
 		return fmt.Errorf("fs_watcher: abs path: %w", err)
 	}
@@ -157,11 +164,13 @@ func (w *Watcher) Watch(projectPath string) error {
 
 	var found []string
 	tooMany := false
-	err = filepath.WalkDir(absPath, func(path string, d fs.DirEntry, walkErr error) error {
+	// The callback only ever returns the skip signals WalkDir handles itself, so it has no error to report
+	// (an unreadable directory is simply not watched).
+	_ = filepath.WalkDir(project, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil || !d.IsDir() {
 			return nil
 		}
-		if IgnoredDirs[d.Name()] && path != absPath {
+		if IgnoredDirs[d.Name()] && path != project {
 			return filepath.SkipDir
 		}
 		if len(found) >= MaxWatchedDirs {
@@ -171,19 +180,16 @@ func (w *Watcher) Watch(projectPath string) error {
 		found = append(found, path)
 		return nil
 	})
-	if err != nil {
-		return fmt.Errorf("fs_watcher: scan %s: %w", absPath, err)
-	}
 	if tooMany {
-		return fmt.Errorf("fs_watcher: %s has too many directories to watch (more than %d)", absPath, MaxWatchedDirs)
+		return fmt.Errorf("fs_watcher: %s has too many directories to watch (more than %d)", project, MaxWatchedDirs)
 	}
 
-	w.projects[absPath] = true
+	w.projects[project] = true
 	for _, path := range found {
 		if addErr := w.watcher.Add(path); addErr != nil {
 			log.Printf("fs_watcher: add dir %s: %v", path, addErr)
 		} else {
-			w.dirs[path] = absPath
+			w.dirs[path] = project
 		}
 	}
 	return nil
@@ -191,7 +197,7 @@ func (w *Watcher) Watch(projectPath string) error {
 
 // Unwatch removes a project directory and all its subdirectories from the watcher.
 func (w *Watcher) Unwatch(projectPath string) error {
-	absPath, err := filepath.Abs(projectPath)
+	project, err := absPath(projectPath)
 	if err != nil {
 		return fmt.Errorf("fs_watcher: abs path: %w", err)
 	}
@@ -199,9 +205,9 @@ func (w *Watcher) Unwatch(projectPath string) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	delete(w.projects, absPath)
+	delete(w.projects, project)
 	for dir, proj := range w.dirs {
-		if proj == absPath || isWithin(absPath, dir) {
+		if proj == project || isWithin(project, dir) {
 			_ = w.watcher.Remove(dir)
 			delete(w.dirs, dir)
 		}
@@ -230,6 +236,7 @@ func (w *Watcher) Close() error {
 	return err
 }
 
+// eventLoop reads file-system events and errors until the watcher is closed.
 func (w *Watcher) eventLoop() {
 	defer w.wg.Done()
 
@@ -251,6 +258,7 @@ func (w *Watcher) eventLoop() {
 	}
 }
 
+// handleEvent turns a write or create event of a watched file into a debounced change notification.
 func (w *Watcher) handleEvent(event fsnotify.Event) {
 	if event.Op&(fsnotify.Write|fsnotify.Create) == 0 {
 		return
@@ -298,6 +306,8 @@ func (w *Watcher) handleEvent(event fsnotify.Event) {
 	})
 }
 
+// findProjectForPath returns the project a changed file belongs to: the project of its directory, or of
+// the nearest watched parent.
 func (w *Watcher) findProjectForPath(path string) string {
 	dir := filepath.Dir(path)
 	if proj, ok := w.dirs[dir]; ok {
@@ -319,6 +329,8 @@ func isWithin(root, path string) bool {
 	return path == root || strings.HasPrefix(path, root+string(filepath.Separator))
 }
 
+// triggerChange runs when the debounce timer of a file expires and tells the handler, unless the
+// watcher has been stopped meanwhile.
 func (w *Watcher) triggerChange(projectPath, filePath string) {
 	w.mu.Lock()
 	delete(w.timers, filePath)

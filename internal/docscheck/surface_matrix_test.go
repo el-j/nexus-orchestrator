@@ -1,6 +1,9 @@
 package docscheck
 
 import (
+	"io/fs"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -15,12 +18,18 @@ type cell struct{ needle, reason string }
 func has(needle string) cell  { return cell{needle: needle} }
 func without(why string) cell { return cell{reason: why} }
 
+// restSource is the text of the REST server: its handler setup and the route table.
+func restSource(t *testing.T) string {
+	t.Helper()
+	return read(t, "internal/adapters/inbound/httpapi/server.go") + read(t, "internal/adapters/inbound/httpapi/routes.go")
+}
+
 // surfaces maps a column name to the source text its needles are searched in.
 func surfaceSources(t *testing.T) map[string]string {
 	t.Helper()
 	cli := read(t, "internal/adapters/inbound/cli/root.go") + read(t, "internal/adapters/inbound/cli/brain.go")
 	return map[string]string{
-		"rest":      read(t, "internal/adapters/inbound/httpapi/server.go"),
+		"rest":      restSource(t),
 		"mcp":       read(t, "docs/src/data/mcpTools.ts"),
 		"cli":       cli + read(t, "cmd/nexus-submit/main.go"),
 		"wails":     read(t, "app.go"),
@@ -159,10 +168,49 @@ var routeDecl = regexp.MustCompile(`r\.(Get|Post|Put|Delete)\("(/api/[^"]+)"`)
 // The REST reference must document every registered route.
 func TestAPIReferenceDocumentsEveryRoute(t *testing.T) {
 	doc := read(t, "docs/api-reference.md")
-	for _, m := range routeDecl.FindAllStringSubmatch(read(t, "internal/adapters/inbound/httpapi/server.go"), -1) {
+	for _, m := range routeDecl.FindAllStringSubmatch(restSource(t), -1) {
 		verb, path := strings.ToUpper(m[1]), m[2]
 		if !strings.Contains(doc, path) {
 			t.Errorf("docs/api-reference.md does not mention %s %s", verb, path)
+		}
+	}
+}
+
+// A registered REST route that no end-to-end test mentions is a route nobody has seen work against the real
+// daemon. The match is by line: the route with each {param} read as anything, so both
+// "/api/tasks/"+id+"/claim" and a literal path count.
+func TestEveryRESTRouteIsMentionedByAnE2ETest(t *testing.T) {
+	var sources []string
+	for _, dir := range []string{"internal/e2e", "frontend/e2e"} {
+		err := filepath.WalkDir(filepath.Join(root, dir), func(path string, d fs.DirEntry, err error) error {
+			if err == nil && !d.IsDir() {
+				b, rerr := os.ReadFile(path)
+				sources = append(sources, string(b))
+				return rerr
+			}
+			return err
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	lines := strings.Split(strings.Join(sources, "\n"), "\n")
+	routeAny := regexp.MustCompile(`r\.(?:Get|Post|Put|Delete|Handle)\("(/[^"]*)"`)
+	param := regexp.MustCompile(`\{[^}]+\}`)
+	for _, m := range routeAny.FindAllStringSubmatch(restSource(t), -1) {
+		route := m[1]
+		pattern := strings.ReplaceAll(regexp.QuoteMeta(param.ReplaceAllString(route, "\x00")), "\x00", ".+")
+		pattern = strings.ReplaceAll(pattern, "\\*", ".*")
+		re := regexp.MustCompile(pattern)
+		found := false
+		for _, l := range lines {
+			if re.MatchString(l) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("no e2e test mentions %s", route)
 		}
 	}
 }

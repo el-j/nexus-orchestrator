@@ -13,13 +13,15 @@
     "test:e2e:report": "playwright show-report",
     "typecheck": "vue-tsc --noEmit -p tsconfig.app.json",
     "test:mutation": "stryker run",
-    "check:docs": "node ../scripts/check-tsdoc.mjs src"
+    "check:docs": "node ../scripts/check-tsdoc.mjs src",
+    "lint": "eslint ."
   },
   "dependencies": {
     "vue": "^3.5.43",
     "vue-router": "^5.4.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.64.0",
     "@stryker-mutator/core": "^10.0.0",
     "@stryker-mutator/vitest-runner": "^10.0.0",
@@ -28,9 +30,13 @@
     "@vitejs/plugin-vue": "^6.0.10",
     "@vitest/coverage-v8": "^5.0.3",
     "@vue/test-utils": "^2.5.1",
+    "eslint": "^9.39.5",
+    "eslint-plugin-vue": "^10.12.0",
+    "globals": "^17.14.0",
     "jsdom": "^30.1.2",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.1",
     "vite": "^8.3.4",
     "vitest": "^5.0.3",
     "vue-tsc": "^3.3.13"

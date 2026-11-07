@@ -23,6 +23,7 @@ import (
 // `AGY_ERROR: {"status":"RESOURCE_EXHAUSTED","error_code":429,"short_error":"... Resets in 43h54m17s."}`
 // on stderr, from which the failure is typed and the reset time read.
 
+// isAgy reports whether the command is the Antigravity client.
 func isAgy(exe string) bool {
 	return strings.TrimSuffix(strings.ToLower(filepath.Base(exe)), ".exe") == "agy"
 }

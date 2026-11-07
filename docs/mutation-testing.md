@@ -11,16 +11,16 @@ and would consume workflow minutes. Do not add it to `.github/workflows`.
 ## Running it
 
 ```sh
-make mutation                                  # Go core + every TypeScript package
+make mutation                                  # every Go package with logic + every TypeScript package
 scripts/mutation.sh go                         # Go only
 scripts/mutation.sh go internal/adapters/outbound/fs_writer   # chosen Go packages
-scripts/mutation.sh ts                         # frontend, vscode-extension, github-action
+scripts/mutation.sh ts                         # frontend, docs, vscode-extension, github-action
 ```
 
-| Language   | Tool                                                | Configuration                                                                                                                                         | Gate                                                           |
-| ---------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| Go         | [gremlins](https://github.com/go-gremlins/gremlins) | `scripts/mutation.sh` (`--integration`, `--timeout-coefficient ${MUTATION_TIMEOUT_COEFF:-3}`; defaults: `domain`, `services`, `fs_writer`, `llm_cli`) | `MUTATION_MIN_EFFICACY`, default 70 % killed of killed + lived |
-| TypeScript | [StrykerJS](https://stryker-mutator.io)             | `stryker.config.json` in each package                                                                                                                 | its `thresholds.break`                                         |
+| Language   | Tool                                                | Configuration                                                                                                                     | Gate                                                           |
+| ---------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Go         | [gremlins](https://github.com/go-gremlins/gremlins) | `scripts/mutation.sh` (`--integration`, `--timeout-coefficient ${MUTATION_TIMEOUT_COEFF:-3}`; defaults: every package with logic) | `MUTATION_MIN_EFFICACY`, default 70 % killed of killed + lived |
+| TypeScript | [StrykerJS](https://stryker-mutator.io)             | `stryker.config.json` in each package                                                                                             | its `thresholds.break`                                         |
 
 Install gremlins once with `go install github.com/go-gremlins/gremlins/cmd/gremlins@latest`.
 
@@ -46,3 +46,22 @@ spurious timeout mutants.
 
 Run it on the package you are changing before opening a pull request that touches core logic, and
 treat a lived mutant in new code as a review comment on your own change.
+
+## Measured results
+
+Measured with `--integration --timeout-coefficient 10` on 2026-11-07. A full run of all packages takes
+hours, so the table holds what has been measured; run the rest with the commands above and add the
+number here.
+
+| Package                | Killed | Lived | Efficacy | Notes                                                                                                                                                                                                                      |
+| ---------------------- | -----: | ----: | -------: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `internal/core/domain` |     81 |     3 |   96.4 % | Was 85.4 % (13 lived); `boundaries_test.go` tests every limit on both sides. The 3 left are equivalent: the `i+1` of a rule number in an error message, and a `key != ""` guard whose empty case finds nothing either way. |
+
+gremlins also reports 26 mutants as "not covered" in `domain`; its coverage run looks at the package's own
+tests, while the lines are exercised by the integration run, so treat that count as noise.
+
+**Docs site (StrykerJS), measured 2026-11-07:** over all of `src` the score was 43.3 %, but 90 % of the
+mutants sat in four files that are only data (`architecture.ts`, `downloads.ts`, `mcpTools.ts`,
+`mcpIntegration.ts`: page text and tables whose changes a unit test cannot meaningfully "kill"; the
+docscheck drift tests compare them with the daemon). They are excluded; the logic that remains (router,
+markdown rendering, guides, scroll) scores 94.3 %, and the break threshold is 90.

@@ -115,6 +115,7 @@ func (p *ProviderConfigRepo) DeleteProviderConfig(ctx context.Context, id string
 	return nil
 }
 
+// scanProviderConfig reads one provider configuration row.
 func scanProviderConfig(s scanner) (domain.ProviderConfig, error) {
 	var cfg domain.ProviderConfig
 	var kindStr string

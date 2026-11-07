@@ -128,7 +128,7 @@ jobs:
         run: CGO_ENABLED=1 CGO_CFLAGS="-DSQLITE_ENABLE_FTS5" CGO_LDFLAGS="-lm" go test -race -count=1 ./...
 
       - name: Go coverage gate (merged, ratchet)
-        run: MIN_COVERAGE=96 ./scripts/go-coverage.sh
+        run: MIN_COVERAGE=100 ./scripts/go-coverage.sh
 
   build:
     name: Build
@@ -175,6 +175,10 @@ jobs:
         working-directory: frontend
         run: npm run typecheck
 
+      - name: Lint frontend
+        working-directory: frontend
+        run: npm run lint
+
       - name: Exported declarations are documented
         working-directory: frontend
         run: npm run check:docs
@@ -208,6 +212,10 @@ jobs:
       - name: Install dependencies
         working-directory: docs
         run: npm ci
+
+      - name: Lint docs site
+        working-directory: docs
+        run: npm run lint
 
       - name: Exported declarations and components are documented
         working-directory: docs
