@@ -29,120 +29,16 @@ func (s *Server) handleToolCall(w http.ResponseWriter, r *http.Request, req rpcR
 		return
 	}
 
-	var (
-		result callToolResult
-		err    error
-	)
-
-	switch p.Name {
-	// Task tools
-	case "submit_task":
-		result, err = s.toolSubmitTask(p.Arguments)
-	case "get_task":
-		result, err = s.toolGetTask(p.Arguments)
-	case "get_queue":
-		result, err = s.toolGetQueue(p.Arguments)
-	case "get_all_tasks":
-		result, err = s.toolGetAllTasks(p.Arguments)
-	case "wait_for_task":
-		var progress progressFunc
-		progress, w = startProgress(w, r, p.Meta)
-		result, err = s.toolWaitForTask(r.Context(), p.Arguments, progress)
-	case "cancel_task":
-		result, err = s.toolCancelTask(p.Arguments)
-	case "create_draft":
-		result, err = s.toolCreateDraft(p.Arguments)
-	case "get_backlog":
-		result, err = s.toolGetBacklog(p.Arguments)
-	case "promote_task":
-		result, err = s.toolPromoteTask(p.Arguments)
-	case "update_task":
-		result, err = s.toolUpdateTask(p.Arguments)
-
-	// Provider tools
-	case "get_providers":
-		result, err = s.toolGetProviders()
-	case "health":
-		result, err = s.toolHealth()
-	case "discover_providers":
-		result, err = s.toolDiscoverProviders(r.Context())
-	case "promote_provider":
-		result, err = s.toolPromoteProvider(r.Context(), p.Arguments)
-	case "list_provider_configs":
-		result, err = s.toolListProviderConfigs(r.Context())
-	case "add_provider_config":
-		result, err = s.toolAddProviderConfig(r.Context(), p.Arguments)
-	case "update_provider_config":
-		result, err = s.toolUpdateProviderConfig(r.Context(), p.Arguments)
-	case "remove_provider_config":
-		result, err = s.toolRemoveProviderConfig(r.Context(), p.Arguments)
-
-	// Session & Agent tools
-	case "register_session":
-		result, err = s.toolRegisterSession(r.Context(), p.Arguments)
-	case "get_ai_sessions":
-		result, err = s.toolGetAISessions(r.Context())
-	case "claim_task":
-		result, err = s.toolClaimTask(r.Context(), p.Arguments)
-	case "update_task_status":
-		result, err = s.toolUpdateTaskStatus(r.Context(), p.Arguments)
-	case "heartbeat_task":
-		result, err = s.toolHeartbeatTask(r.Context(), p.Arguments)
-	case "terminate_ai_session":
-		result, err = s.toolTerminateAISession(r.Context(), p.Arguments)
-	case "deregister_ai_session":
-		result, err = s.toolDeregisterAISession(r.Context(), p.Arguments)
-	case "heartbeat_ai_session":
-		result, err = s.toolHeartbeatAISession(r.Context(), p.Arguments)
-	case "purge_disconnected_sessions":
-		result, err = s.toolPurgeDisconnectedSessions(r.Context())
-	case "get_discovered_agents":
-		result, err = s.toolGetDiscoveredAgents(r.Context())
-	case "get_discovered_plans":
-		result, err = s.toolGetDiscoveredPlans(r.Context(), p.Arguments)
-	case "delegate_to_nexus":
-		result, err = s.toolDelegateToNexus(r.Context(), p.Arguments)
-
-	// Routing preview
-	case "get_routing":
-		result, err = s.toolGetRouting(r.Context(), p.Arguments)
-
-	// Usage ledger
-	case "get_usage":
-		result, err = s.toolGetUsage(r.Context(), p.Arguments)
-
-	// Howto tools
-	case "howto":
-		result, err = s.toolHowto()
-	case "howto_brief":
-		result, err = s.toolHowtoBrief()
-
-	// Brain & Knowledge tools
-	case "get_onboarding_context":
-		result, err = s.toolGetOnboardingContext(r.Context(), p.Arguments)
-	case "get_project_context":
-		result, err = s.toolGetProjectContext(r.Context(), p.Arguments)
-	case "get_focused_context":
-		result, err = s.toolGetFocusedContext(r.Context(), p.Arguments)
-	case "search_knowledge":
-		result, err = s.toolSearchKnowledge(r.Context(), p.Arguments)
-	case "get_brain_status":
-		result, err = s.toolGetBrainStatus(r.Context(), p.Arguments)
-	case "ingest_knowledge":
-		result, err = s.toolIngestKnowledge(r.Context(), p.Arguments)
-	case "init_project":
-		result, err = s.toolInitProject(r.Context(), p.Arguments)
-	case "list_knowledge":
-		result, err = s.toolListKnowledge(r.Context(), p.Arguments)
-	case "delete_knowledge":
-		result, err = s.toolDeleteKnowledge(r.Context(), p.Arguments)
-	case "get_file_map":
-		result, err = s.toolGetFileMap(r.Context(), p.Arguments)
-
-	default:
+	handler, ok := toolHandlers[p.Name]
+	if !ok {
 		writeError(w, req.ID, codeMethodNotFound, fmt.Sprintf("unknown tool: %s", p.Name))
 		return
 	}
+	call := toolCall{ctx: r.Context(), args: p.Arguments}
+	if p.Name == "wait_for_task" {
+		call.progress, w = startProgress(w, r, p.Meta)
+	}
+	result, err := handler(s, call)
 
 	if err != nil {
 		var me *mcpError
