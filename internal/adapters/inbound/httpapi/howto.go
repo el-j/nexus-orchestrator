@@ -116,122 +116,137 @@ func buildHowToDoc(baseURL string) howToDoc {
 			Dashboard: baseURL + "/ui",
 			Discovery: baseURL + "/.well-known/nexus.json",
 		},
-		AIWorkflows: howToWorkflows{
-			AsWorker: []string{
-				"POST /api/ai-sessions  — register your session with name, role, and model",
-				"GET /api/tasks  — list queued tasks available to claim",
-				"POST /api/tasks/{id}/claim  — claim a task (prevents duplicate work by other agents)",
-				"PUT /api/tasks/{id}/status  — update progress: body {status, result, sessionId}",
-				"  status values: in_progress | completed | failed",
-				"POST /api/ai-sessions/{id}/heartbeat  — keep your session alive (TTL: 5 min)",
-				"DELETE /api/ai-sessions/{id}  — deregister when your session ends",
-			},
-			AsPlanner: []string{
-				"POST /api/tasks/draft  — create a backlog draft (title, description, projectPath)",
-				"GET /api/tasks/backlog  — review all draft tasks",
-				"POST /api/tasks/{id}/promote  — move a draft into the active queue",
-				"PUT /api/tasks/{id}  — update task title, description, or priority",
-				"GET /api/tasks/all  — list every task including drafts and cancelled",
-			},
-			AsOrchestrator: []string{
-				"POST /api/tasks  — submit a task directly to the active queue",
-				"GET /api/tasks  — monitor the queue (filter by status in query params)",
-				"GET /api/tasks/{id}  — inspect a single task",
-				"DELETE /api/tasks/{id}  — cancel a task",
-				"GET /api/providers  — check which LLM backends are currently active",
-				"POST /api/providers/discovered/scan  — trigger a fresh provider discovery scan",
-				"GET /api/events  — subscribe to SSE stream for real-time task + log events",
-				"GET /api/ai-sessions  — list all registered AI agents",
-			},
+		AIWorkflows: howToWorkflowSteps(),
+		Endpoints:   howToEndpointList(),
+		Examples:    howToExampleList(baseURL),
+	}
+}
+
+// howToWorkflowSteps is the step list for each role an agent can take.
+func howToWorkflowSteps() howToWorkflows {
+	return howToWorkflows{
+		AsWorker: []string{
+			"POST /api/ai-sessions  — register your session with name, role, and model",
+			"GET /api/tasks  — list queued tasks available to claim",
+			"POST /api/tasks/{id}/claim  — claim a task (prevents duplicate work by other agents)",
+			"PUT /api/tasks/{id}/status  — update progress: body {status, result, sessionId}",
+			"  status values: in_progress | completed | failed",
+			"POST /api/ai-sessions/{id}/heartbeat  — keep your session alive (TTL: 5 min)",
+			"DELETE /api/ai-sessions/{id}  — deregister when your session ends",
 		},
-		Endpoints: []howToEndpoint{
-			// Tasks
-			{"POST", "/api/tasks", "Submit a task directly to the active queue"},
-			{"GET", "/api/tasks", "List active queue tasks (queued, in_progress, completed)"},
-			{"GET", "/api/tasks/all", "List every task including drafts and cancelled"},
-			{"GET", "/api/tasks/{id}", "Get a single task by ID"},
-			{"DELETE", "/api/tasks/{id}", "Cancel a task"},
-			{"PUT", "/api/tasks/{id}", "Update task title, description, or priority"},
-			{"POST", "/api/tasks/{id}/promote", "Promote a backlog draft into the active queue"},
-			{"POST", "/api/tasks/{id}/claim", "Claim a task (AI worker marks it as taken)"},
-			{"PUT", "/api/tasks/{id}/status", "Update task status with optional result payload"},
-			{"POST", "/api/tasks/draft", "Create a backlog draft task"},
-			{"GET", "/api/tasks/backlog", "List all backlog drafts"},
-			// Brain (Project Context Intelligence)
-			{"POST", "/api/brain/ingest", "Ingest a markdown file (inside the project) into a project's knowledge base"},
-			{"POST", "/api/brain/ingest-content", "Ingest markdown sent in the request body (for UIs without file paths)"},
-			{"GET", "/api/brain/status", "Get the knowledge repository status for a project"},
-			{"POST", "/api/brain/context", "Get macro context for a project bounded by maxTokens"},
-			{"POST", "/api/brain/focused-context", "Get specific context for a project based on a question"},
-			{"GET", "/api/brain/search", "Search the knowledge base full-text index"},
-			{"POST", "/api/brain/init", "Auto-ingest CLAUDE.md and initialize a project's knowledge base"},
-			{"GET", "/api/brain/knowledge", "List all knowledge entries for a project (filter by kind)"},
-			{"DELETE", "/api/brain/knowledge/{id}", "Delete a knowledge entry by ID"},
-			{"GET", "/api/brain/file-map", "Get file path map for a project"},
-			// Providers
-			{"GET", "/api/providers", "List active LLM providers"},
-			{"POST", "/api/providers", "Register a new provider"},
-			{"DELETE", "/api/providers/{name}", "Remove a provider"},
-			{"GET", "/api/providers/{name}/models", "List models available from a provider"},
-			{"GET", "/api/providers/discovered", "List providers found by the system scanner"},
-			{"POST", "/api/providers/discovered/scan", "Trigger a fresh provider discovery scan"},
-			{"POST", "/api/providers/config", "Persist a provider configuration (with API-key masking)"},
-			{"GET", "/api/providers/config", "List persisted provider configurations"},
-			{"PUT", "/api/providers/config/{id}", "Update a persisted provider configuration"},
-			{"DELETE", "/api/providers/config/{id}", "Remove a persisted provider configuration"},
-			// AI Sessions
-			{"POST", "/api/ai-sessions", "Register an AI session (name, role, model)"},
-			{"GET", "/api/ai-sessions", "List all registered AI sessions"},
-			{"DELETE", "/api/ai-sessions", "Purge all disconnected sessions"},
-			{"DELETE", "/api/ai-sessions/{id}", "Deregister a specific AI session"},
-			{"POST", "/api/ai-sessions/{id}/heartbeat", "Renew session TTL (call at least every 5 min)"},
-			{"GET", "/api/ai-sessions/{id}/tasks", "List tasks claimed by a specific session"},
-			// System
-			{"GET", "/api/health", "Health check — returns {status:ok}"},
-			{"GET", "/api/events", "SSE stream — real-time task lifecycle and log events"},
-			{"GET", "/api/howto", "This document — machine-readable integration guide"},
-			{"GET", "/.well-known/nexus.json", "Service discovery beacon — identity, capabilities, endpoints"},
+		AsPlanner: []string{
+			"POST /api/tasks/draft  — create a backlog draft (title, description, projectPath)",
+			"GET /api/tasks/backlog  — review all draft tasks",
+			"POST /api/tasks/{id}/promote  — move a draft into the active queue",
+			"PUT /api/tasks/{id}  — update task title, description, or priority",
+			"GET /api/tasks/all  — list every task including drafts and cancelled",
 		},
-		Examples: []howToExample{
-			{
-				Description: "Submit a coding task",
-				Request: fmt.Sprintf(
-					`curl -s -X POST %s/api/tasks \`+"\n"+
-						`  -H 'Content-Type: application/json' \`+"\n"+
-						`  -d '{"title":"Refactor auth module","description":"Extract JWT logic into a separate package","projectPath":"/my/project"}'`,
-					baseURL),
-			},
-			{
-				Description: "Register as an AI worker agent",
-				Request: fmt.Sprintf(
-					`curl -s -X POST %s/api/ai-sessions \`+"\n"+
-						`  -H 'Content-Type: application/json' \`+"\n"+
-						`  -d '{"name":"ClaudeWorker","role":"worker","model":"claude-opus-4-5"}'`,
-					baseURL),
-			},
-			{
-				Description: "Claim and begin working on the first queued task",
-				Request: fmt.Sprintf(
-					"# Step 1: find a queued task\n"+
-						`curl -s '%s/api/tasks?status=queued' | jq '.[0].id'`+"\n\n"+
-						"# Step 2: claim it\n"+
-						`curl -s -X POST %s/api/tasks/TASK_ID/claim \`+"\n"+
-						`  -H 'Content-Type: application/json' \`+"\n"+
-						`  -d '{"sessionId":"YOUR_SESSION_ID"}'`,
-					baseURL, baseURL),
-			},
-			{
-				Description: "Report task completion with a result",
-				Request: fmt.Sprintf(
-					`curl -s -X PUT %s/api/tasks/TASK_ID/status \`+"\n"+
-						`  -H 'Content-Type: application/json' \`+"\n"+
-						`  -d '{"status":"completed","result":"Refactored — new package: internal/auth/jwt","sessionId":"YOUR_SESSION_ID"}'`,
-					baseURL),
-			},
-			{
-				Description: "Subscribe to real-time task and log events",
-				Request:     fmt.Sprintf("curl -N -H 'Accept: text/event-stream' %s/api/events", baseURL),
-			},
+		AsOrchestrator: []string{
+			"POST /api/tasks  — submit a task directly to the active queue",
+			"GET /api/tasks  — monitor the queue (filter by status in query params)",
+			"GET /api/tasks/{id}  — inspect a single task",
+			"DELETE /api/tasks/{id}  — cancel a task",
+			"GET /api/providers  — check which LLM backends are currently active",
+			"POST /api/providers/discovered/scan  — trigger a fresh provider discovery scan",
+			"GET /api/events  — subscribe to SSE stream for real-time task + log events",
+			"GET /api/ai-sessions  — list all registered AI agents",
+		},
+	}
+}
+
+// howToEndpointList is the table of REST endpoints with one line each.
+func howToEndpointList() []howToEndpoint {
+	return []howToEndpoint{
+		// Tasks
+		{"POST", "/api/tasks", "Submit a task directly to the active queue"},
+		{"GET", "/api/tasks", "List active queue tasks (queued, in_progress, completed)"},
+		{"GET", "/api/tasks/all", "List every task including drafts and cancelled"},
+		{"GET", "/api/tasks/{id}", "Get a single task by ID"},
+		{"DELETE", "/api/tasks/{id}", "Cancel a task"},
+		{"PUT", "/api/tasks/{id}", "Update task title, description, or priority"},
+		{"POST", "/api/tasks/{id}/promote", "Promote a backlog draft into the active queue"},
+		{"POST", "/api/tasks/{id}/claim", "Claim a task (AI worker marks it as taken)"},
+		{"PUT", "/api/tasks/{id}/status", "Update task status with optional result payload"},
+		{"POST", "/api/tasks/draft", "Create a backlog draft task"},
+		{"GET", "/api/tasks/backlog", "List all backlog drafts"},
+		// Brain (Project Context Intelligence)
+		{"POST", "/api/brain/ingest", "Ingest a markdown file (inside the project) into a project's knowledge base"},
+		{"POST", "/api/brain/ingest-content", "Ingest markdown sent in the request body (for UIs without file paths)"},
+		{"GET", "/api/brain/status", "Get the knowledge repository status for a project"},
+		{"POST", "/api/brain/context", "Get macro context for a project bounded by maxTokens"},
+		{"POST", "/api/brain/focused-context", "Get specific context for a project based on a question"},
+		{"GET", "/api/brain/search", "Search the knowledge base full-text index"},
+		{"POST", "/api/brain/init", "Auto-ingest CLAUDE.md and initialize a project's knowledge base"},
+		{"GET", "/api/brain/knowledge", "List all knowledge entries for a project (filter by kind)"},
+		{"DELETE", "/api/brain/knowledge/{id}", "Delete a knowledge entry by ID"},
+		{"GET", "/api/brain/file-map", "Get file path map for a project"},
+		// Providers
+		{"GET", "/api/providers", "List active LLM providers"},
+		{"POST", "/api/providers", "Register a new provider"},
+		{"DELETE", "/api/providers/{name}", "Remove a provider"},
+		{"GET", "/api/providers/{name}/models", "List models available from a provider"},
+		{"GET", "/api/providers/discovered", "List providers found by the system scanner"},
+		{"POST", "/api/providers/discovered/scan", "Trigger a fresh provider discovery scan"},
+		{"POST", "/api/providers/config", "Persist a provider configuration (with API-key masking)"},
+		{"GET", "/api/providers/config", "List persisted provider configurations"},
+		{"PUT", "/api/providers/config/{id}", "Update a persisted provider configuration"},
+		{"DELETE", "/api/providers/config/{id}", "Remove a persisted provider configuration"},
+		// AI Sessions
+		{"POST", "/api/ai-sessions", "Register an AI session (name, role, model)"},
+		{"GET", "/api/ai-sessions", "List all registered AI sessions"},
+		{"DELETE", "/api/ai-sessions", "Purge all disconnected sessions"},
+		{"DELETE", "/api/ai-sessions/{id}", "Deregister a specific AI session"},
+		{"POST", "/api/ai-sessions/{id}/heartbeat", "Renew session TTL (call at least every 5 min)"},
+		{"GET", "/api/ai-sessions/{id}/tasks", "List tasks claimed by a specific session"},
+		// System
+		{"GET", "/api/health", "Health check — returns {status:ok}"},
+		{"GET", "/api/events", "SSE stream — real-time task lifecycle and log events"},
+		{"GET", "/api/howto", "This document — machine-readable integration guide"},
+		{"GET", "/.well-known/nexus.json", "Service discovery beacon — identity, capabilities, endpoints"},
+	}
+}
+
+// howToExampleList is the curl examples; they use the live base URL of the request.
+func howToExampleList(baseURL string) []howToExample {
+	return []howToExample{
+		{
+			Description: "Submit a coding task",
+			Request: fmt.Sprintf(
+				`curl -s -X POST %s/api/tasks \`+"\n"+
+					`  -H 'Content-Type: application/json' \`+"\n"+
+					`  -d '{"title":"Refactor auth module","description":"Extract JWT logic into a separate package","projectPath":"/my/project"}'`,
+				baseURL),
+		},
+		{
+			Description: "Register as an AI worker agent",
+			Request: fmt.Sprintf(
+				`curl -s -X POST %s/api/ai-sessions \`+"\n"+
+					`  -H 'Content-Type: application/json' \`+"\n"+
+					`  -d '{"name":"ClaudeWorker","role":"worker","model":"claude-opus-4-5"}'`,
+				baseURL),
+		},
+		{
+			Description: "Claim and begin working on the first queued task",
+			Request: fmt.Sprintf(
+				"# Step 1: find a queued task\n"+
+					`curl -s '%s/api/tasks?status=queued' | jq '.[0].id'`+"\n\n"+
+					"# Step 2: claim it\n"+
+					`curl -s -X POST %s/api/tasks/TASK_ID/claim \`+"\n"+
+					`  -H 'Content-Type: application/json' \`+"\n"+
+					`  -d '{"sessionId":"YOUR_SESSION_ID"}'`,
+				baseURL, baseURL),
+		},
+		{
+			Description: "Report task completion with a result",
+			Request: fmt.Sprintf(
+				`curl -s -X PUT %s/api/tasks/TASK_ID/status \`+"\n"+
+					`  -H 'Content-Type: application/json' \`+"\n"+
+					`  -d '{"status":"completed","result":"Refactored — new package: internal/auth/jwt","sessionId":"YOUR_SESSION_ID"}'`,
+				baseURL),
+		},
+		{
+			Description: "Subscribe to real-time task and log events",
+			Request:     fmt.Sprintf("curl -N -H 'Accept: text/event-stream' %s/api/events", baseURL),
 		},
 	}
 }
