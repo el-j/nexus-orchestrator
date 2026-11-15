@@ -4,7 +4,7 @@
   "\u0000vite/preload-helper.js": [],
   "../../../../../../favicon.svg": [],
   "api-reference.md?raw": [
-    "/nexus-orchestrator/beta/assets/ApiReferenceView-DT_tDN7J.js",
+    "/nexus-orchestrator/beta/assets/ApiReferenceView-C1iGleTH.js",
     "/nexus-orchestrator/beta/assets/ApiReferenceView-d74tgpJF.css"
   ],
   "delegating-subscriptions.md?raw": [],
@@ -43,31 +43,31 @@
   "src/components/CodeBlock.vue": [],
   "src/components/CodeBlock.vue?vue&type=script&setup=true&lang.ts": [],
   "src/components/MarkdownArticle.vue": [
-    "/nexus-orchestrator/beta/assets/GuideView-B7TqVuUh.js",
+    "/nexus-orchestrator/beta/assets/GuideView-Csooj8Ow.js",
     "/nexus-orchestrator/beta/assets/GuideView-mAvDHKUW.css"
   ],
   "src/components/MarkdownArticle.vue?vue&type=script&setup=true&lang.ts": [
-    "/nexus-orchestrator/beta/assets/GuideView-B7TqVuUh.js",
+    "/nexus-orchestrator/beta/assets/GuideView-Csooj8Ow.js",
     "/nexus-orchestrator/beta/assets/GuideView-mAvDHKUW.css"
   ],
   "src/components/MarkdownArticle.vue?vue&type=style&index=0&scoped=81e56477&lang.css": [
-    "/nexus-orchestrator/beta/assets/GuideView-B7TqVuUh.js",
+    "/nexus-orchestrator/beta/assets/GuideView-Csooj8Ow.js",
     "/nexus-orchestrator/beta/assets/GuideView-mAvDHKUW.css"
   ],
   "src/components/TerminalDemo.vue": [],
   "src/components/TerminalDemo.vue?vue&type=script&setup=true&lang.ts": [],
   "src/data/architecture.ts": [
-    "/nexus-orchestrator/beta/assets/ArchitectureView-BzUIT2Kn.js"
+    "/nexus-orchestrator/beta/assets/ArchitectureView-BisHY_7c.js"
   ],
   "src/data/downloads.ts": [
-    "/nexus-orchestrator/beta/assets/DownloadsView-DoVCv5vp.js"
+    "/nexus-orchestrator/beta/assets/DownloadsView-BGo0uvzr.js"
   ],
   "src/data/guides.ts": [],
   "src/data/mcpIntegration.ts": [
-    "/nexus-orchestrator/beta/assets/McpIntegrationView-DVKwGxq3.js"
+    "/nexus-orchestrator/beta/assets/McpIntegrationView-DrVrkBAb.js"
   ],
   "src/data/mcpTools.ts": [
-    "/nexus-orchestrator/beta/assets/McpIntegrationView-DVKwGxq3.js"
+    "/nexus-orchestrator/beta/assets/McpIntegrationView-DrVrkBAb.js"
   ],
   "src/main.ts": [],
   "src/router/index.ts": [],
@@ -86,56 +86,56 @@
     "/nexus-orchestrator/beta/assets/scroll-DdeK3J_A.js"
   ],
   "src/views/ApiReferenceView.vue": [
-    "/nexus-orchestrator/beta/assets/ApiReferenceView-DT_tDN7J.js",
+    "/nexus-orchestrator/beta/assets/ApiReferenceView-C1iGleTH.js",
     "/nexus-orchestrator/beta/assets/ApiReferenceView-d74tgpJF.css"
   ],
   "src/views/ApiReferenceView.vue?vue&type=script&setup=true&lang.ts": [
-    "/nexus-orchestrator/beta/assets/ApiReferenceView-DT_tDN7J.js",
+    "/nexus-orchestrator/beta/assets/ApiReferenceView-C1iGleTH.js",
     "/nexus-orchestrator/beta/assets/ApiReferenceView-d74tgpJF.css"
   ],
   "src/views/ApiReferenceView.vue?vue&type=style&index=0&scoped=c0bc2868&lang.css": [
-    "/nexus-orchestrator/beta/assets/ApiReferenceView-DT_tDN7J.js",
+    "/nexus-orchestrator/beta/assets/ApiReferenceView-C1iGleTH.js",
     "/nexus-orchestrator/beta/assets/ApiReferenceView-d74tgpJF.css"
   ],
   "src/views/ArchitectureView.vue": [
-    "/nexus-orchestrator/beta/assets/ArchitectureView-BzUIT2Kn.js"
+    "/nexus-orchestrator/beta/assets/ArchitectureView-BisHY_7c.js"
   ],
   "src/views/ArchitectureView.vue?vue&type=script&setup=true&lang.ts": [
-    "/nexus-orchestrator/beta/assets/ArchitectureView-BzUIT2Kn.js"
+    "/nexus-orchestrator/beta/assets/ArchitectureView-BisHY_7c.js"
   ],
   "src/views/DownloadsView.vue": [
-    "/nexus-orchestrator/beta/assets/DownloadsView-DoVCv5vp.js"
+    "/nexus-orchestrator/beta/assets/DownloadsView-BGo0uvzr.js"
   ],
   "src/views/DownloadsView.vue?vue&type=script&setup=true&lang.ts": [
-    "/nexus-orchestrator/beta/assets/DownloadsView-DoVCv5vp.js"
+    "/nexus-orchestrator/beta/assets/DownloadsView-BGo0uvzr.js"
   ],
   "src/views/GettingStartedView.vue": [
-    "/nexus-orchestrator/beta/assets/GettingStartedView-3d51fsL9.js"
+    "/nexus-orchestrator/beta/assets/GettingStartedView-sbEyRQnF.js"
   ],
   "src/views/GettingStartedView.vue?vue&type=script&setup=true&lang.ts": [
-    "/nexus-orchestrator/beta/assets/GettingStartedView-3d51fsL9.js"
+    "/nexus-orchestrator/beta/assets/GettingStartedView-sbEyRQnF.js"
   ],
   "src/views/GuideView.vue": [
-    "/nexus-orchestrator/beta/assets/GuideView-B7TqVuUh.js",
+    "/nexus-orchestrator/beta/assets/GuideView-Csooj8Ow.js",
     "/nexus-orchestrator/beta/assets/GuideView-mAvDHKUW.css"
   ],
   "src/views/GuideView.vue?vue&type=script&setup=true&lang.ts": [
-    "/nexus-orchestrator/beta/assets/GuideView-B7TqVuUh.js",
+    "/nexus-orchestrator/beta/assets/GuideView-Csooj8Ow.js",
     "/nexus-orchestrator/beta/assets/GuideView-mAvDHKUW.css"
   ],
   "src/views/GuidesView.vue": [
-    "/nexus-orchestrator/beta/assets/GuidesView-D0PtpJg5.js"
+    "/nexus-orchestrator/beta/assets/GuidesView-6VRcpHnn.js"
   ],
   "src/views/GuidesView.vue?vue&type=script&setup=true&lang.ts": [
-    "/nexus-orchestrator/beta/assets/GuidesView-D0PtpJg5.js"
+    "/nexus-orchestrator/beta/assets/GuidesView-6VRcpHnn.js"
   ],
   "src/views/HomeView.vue": [],
   "src/views/HomeView.vue?vue&type=script&setup=true&lang.ts": [],
   "src/views/McpIntegrationView.vue": [
-    "/nexus-orchestrator/beta/assets/McpIntegrationView-DVKwGxq3.js"
+    "/nexus-orchestrator/beta/assets/McpIntegrationView-DrVrkBAb.js"
   ],
   "src/views/McpIntegrationView.vue?vue&type=script&setup=true&lang.ts": [
-    "/nexus-orchestrator/beta/assets/McpIntegrationView-DVKwGxq3.js"
+    "/nexus-orchestrator/beta/assets/McpIntegrationView-DrVrkBAb.js"
   ],
   "streaming.md?raw": [],
   "subscription-bridges.md?raw": [],
