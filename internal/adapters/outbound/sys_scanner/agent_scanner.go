@@ -99,6 +99,8 @@ func mergeAgents(found [][]domain.DiscoveredAgent, now time.Time) []domain.Disco
 	return out
 }
 
+// probeClaudeConfig reports Claude Code (settings in ~/.claude) and the Claude desktop app (its application
+// support folder) when their configuration exists in the user's home.
 func (s *Scanner) probeClaudeConfig(ctx context.Context) []domain.DiscoveredAgent {
 	var results []domain.DiscoveredAgent
 	home := userHome()
@@ -152,6 +154,7 @@ var vscodeExtMap = map[string]struct {
 	"github.copilot":                {domain.AgentKindCopilot, "GitHub Copilot"},
 }
 
+// probeVSCodeExtensionsDir reports the agent extensions installed in one VS Code extensions directory.
 func probeVSCodeExtensionsDir(_ context.Context, extDir string) []domain.DiscoveredAgent {
 	entries, err := os.ReadDir(extDir)
 	if err != nil {
@@ -181,6 +184,7 @@ func probeVSCodeExtensionsDir(_ context.Context, extDir string) []domain.Discove
 	return results
 }
 
+// probeVSCodeExtensions looks for agent extensions in the user's VS Code extensions directory.
 func (s *Scanner) probeVSCodeExtensions(ctx context.Context) []domain.DiscoveredAgent {
 	home := userHome()
 	if home == "" {
@@ -189,6 +193,8 @@ func (s *Scanner) probeVSCodeExtensions(ctx context.Context) []domain.Discovered
 	return probeVSCodeExtensionsDir(ctx, filepath.Join(home, ".vscode", "extensions"))
 }
 
+// probeMCPPortList sends an MCP initialize request to each local port and reports those that answer as
+// MCP servers.
 func probeMCPPortList(ctx context.Context, ports []int) []domain.DiscoveredAgent {
 	initReq := `{"jsonrpc":"2.0","method":"initialize","id":1,"params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"nexus-probe","version":"1"}}}`
 	var results []domain.DiscoveredAgent
@@ -236,11 +242,13 @@ func probeMCPPortList(ctx context.Context, ports []int) []domain.DiscoveredAgent
 	return results
 }
 
+// probeMCPPorts probes the usual local MCP ports.
 func (s *Scanner) probeMCPPorts(ctx context.Context) []domain.DiscoveredAgent {
 	mcpPorts := []int{3000, 3001, 3100, 5100, 6006, 7007, 8008, 9009}
 	return probeMCPPortList(ctx, mcpPorts)
 }
 
+// probeProcessFlags finds running processes started with an MCP flag; it does nothing on Windows.
 func (s *Scanner) probeProcessFlags(ctx context.Context) []domain.DiscoveredAgent {
 	if goos == "windows" {
 		return nil
@@ -274,6 +282,7 @@ func (s *Scanner) probeProcessFlags(ctx context.Context) []domain.DiscoveredAgen
 	return results
 }
 
+// probeAgentProcesses finds running agent programs by their process names.
 func (s *Scanner) probeAgentProcesses(ctx context.Context) []domain.DiscoveredAgent {
 	type patternDef struct {
 		pattern string

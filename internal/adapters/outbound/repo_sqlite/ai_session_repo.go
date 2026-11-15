@@ -201,6 +201,7 @@ func (a *AISessionRepo) PurgeDisconnected(ctx context.Context, olderThan time.Du
 	return int(n), nil
 }
 
+// scanAISession reads one AI session row.
 func scanAISession(s scanner) (domain.AISession, error) {
 	var sess domain.AISession
 	var sourceStr, statusStr string

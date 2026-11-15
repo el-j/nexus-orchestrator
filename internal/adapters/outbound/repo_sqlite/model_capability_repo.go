@@ -110,6 +110,7 @@ func (m *ModelCapabilityRepo) Delete(ctx context.Context, modelID string) error 
 	return nil
 }
 
+// scanModelCapability reads one model capability row.
 func scanModelCapability(s scanner) (domain.ModelCapabilityProfile, error) {
 	var p domain.ModelCapabilityProfile
 	var builtInInt int

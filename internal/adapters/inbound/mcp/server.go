@@ -171,6 +171,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.mux.ServeHTTP(w, r)
 }
 
+// isAllowedOrigin reports whether a browser Origin may call the server: a listed origin, or a listed
+// one with any port.
 func (s *Server) isAllowedOrigin(origin string) bool {
 	if s.allowedOrigins[origin] {
 		return true
@@ -184,6 +186,8 @@ func (s *Server) isAllowedOrigin(origin string) bool {
 	return false
 }
 
+// writeCORSHeaders answers the CORS preflight and echoes the Origin back only when isAllowedOrigin
+// accepts it.
 func (s *Server) writeCORSHeaders(w http.ResponseWriter, r *http.Request) {
 	origin := r.Header.Get("Origin")
 	if origin != "" && s.isAllowedOrigin(origin) {
@@ -220,6 +224,8 @@ func (s *Server) authorized(ctx context.Context, path, authHeader string) bool {
 	return subtle.ConstantTimeCompare([]byte(token), []byte(expected)) == 1
 }
 
+// effectiveAuthToken is the token a request must carry: the one the server was started with, else the
+// one stored in the settings, else none (open).
 func (s *Server) effectiveAuthToken(ctx context.Context) string {
 	if strings.TrimSpace(s.authToken) != "" {
 		return strings.TrimSpace(s.authToken)
@@ -286,11 +292,14 @@ func StartMCPServer(ctx context.Context, orch ports.Orchestrator, brain ports.Br
 
 // ----- HTTP handlers -----
 
+// handleHealth answers the unauthenticated liveness probe.
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
+// handleRPC is the streamable-HTTP entry: it checks origin and token, decodes one JSON-RPC message and
+// dispatches it by method.
 func (s *Server) handleRPC(w http.ResponseWriter, r *http.Request) {
 	// Streamable HTTP: POST for messages, GET returns 405 (no standalone SSE stream).
 	if r.Method == http.MethodGet {
@@ -342,6 +351,8 @@ func (s *Server) processRPC(w http.ResponseWriter, r *http.Request, req rpcReque
 	}
 }
 
+// handleInitialize answers the MCP handshake with the protocol version, the tools capability and the
+// server info.
 func (s *Server) handleInitialize(w http.ResponseWriter, req rpcRequest) {
 	result := initializeResult{
 		ProtocolVersion: "2024-11-05",
@@ -364,6 +375,7 @@ func (s *Server) handleInitialize(w http.ResponseWriter, req rpcRequest) {
 
 // ----- Helpers -----
 
+// writeError writes a JSON-RPC error response for the request id.
 func writeError(w http.ResponseWriter, id json.RawMessage, code int, msg string) {
 	resp := rpcResponse{
 		JSONRPC: "2.0",
@@ -380,4 +392,5 @@ type mcpError struct {
 	msg  string
 }
 
+// Error returns the message of the tool error that is shown to the client.
 func (e *mcpError) Error() string { return e.msg }

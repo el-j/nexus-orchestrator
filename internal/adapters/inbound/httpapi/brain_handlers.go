@@ -16,6 +16,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// handleIngestKnowledge stores one knowledge entry (learning, decision or file note) in a project's
+// brain.
 func (s *Server) handleIngestKnowledge(w http.ResponseWriter, r *http.Request) {
 	if s.brain == nil {
 		writeJSONError(w, "brain service not configured", http.StatusServiceUnavailable)
@@ -108,6 +110,8 @@ func (s *Server) handleIngestContent(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]int{"ingestedSections": count})
 }
 
+// handleGetBrainStatus answers GET /api/brain/status: the entry count and last scan of a project's
+// knowledge.
 func (s *Server) handleGetBrainStatus(w http.ResponseWriter, r *http.Request) {
 	if s.brain == nil {
 		writeJSONError(w, "brain service not configured", http.StatusServiceUnavailable)
@@ -129,6 +133,7 @@ func (s *Server) handleGetBrainStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, status)
 }
 
+// handleGetProjectContext answers the project-context request: the token-budgeted summary of a project.
 func (s *Server) handleGetProjectContext(w http.ResponseWriter, r *http.Request) {
 	if s.brain == nil {
 		writeJSONError(w, "brain service not configured", http.StatusServiceUnavailable)
@@ -158,6 +163,7 @@ func (s *Server) handleGetProjectContext(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// handleGetFocusedContext answers the focused-context request: the knowledge relevant to one question.
 func (s *Server) handleGetFocusedContext(w http.ResponseWriter, r *http.Request) {
 	if s.brain == nil {
 		writeJSONError(w, "brain service not configured", http.StatusServiceUnavailable)
@@ -187,6 +193,7 @@ func (s *Server) handleGetFocusedContext(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// handleSearchKnowledge runs a full-text search over a project's knowledge.
 func (s *Server) handleSearchKnowledge(w http.ResponseWriter, r *http.Request) {
 	if s.brain == nil {
 		writeJSONError(w, "brain service not configured", http.StatusServiceUnavailable)
@@ -218,6 +225,7 @@ func (s *Server) handleSearchKnowledge(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{"results": results})
 }
 
+// handleInitProject registers a project and reads its CLAUDE.md into the brain.
 func (s *Server) handleInitProject(w http.ResponseWriter, r *http.Request) {
 	if s.brain == nil {
 		writeJSONError(w, "brain service not configured", http.StatusServiceUnavailable)
@@ -246,6 +254,7 @@ func (s *Server) handleInitProject(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, status)
 }
 
+// handleListKnowledge lists the stored entries of a project, optionally of one kind.
 func (s *Server) handleListKnowledge(w http.ResponseWriter, r *http.Request) {
 	if s.brain == nil {
 		writeJSONError(w, "brain service not configured", http.StatusServiceUnavailable)
@@ -271,6 +280,7 @@ func (s *Server) handleListKnowledge(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, entries)
 }
 
+// handleDeleteKnowledge removes one knowledge entry by id.
 func (s *Server) handleDeleteKnowledge(w http.ResponseWriter, r *http.Request) {
 	if s.brain == nil {
 		writeJSONError(w, "brain service not configured", http.StatusServiceUnavailable)
@@ -292,6 +302,7 @@ func (s *Server) handleDeleteKnowledge(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleGetFileMap returns the project's file map, narrowed to a focus area when one is given.
 func (s *Server) handleGetFileMap(w http.ResponseWriter, r *http.Request) {
 	if s.brain == nil {
 		writeJSONError(w, "brain service not configured", http.StatusServiceUnavailable)
@@ -317,6 +328,7 @@ func (s *Server) handleGetFileMap(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string][]string{"filePaths": filePaths})
 }
 
+// handleGetOnboardingContext returns the short summary an agent reads before it touches a project.
 func (s *Server) handleGetOnboardingContext(w http.ResponseWriter, r *http.Request) {
 	if s.brain == nil {
 		writeJSONError(w, "brain service not configured", http.StatusServiceUnavailable)

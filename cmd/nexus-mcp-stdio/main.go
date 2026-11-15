@@ -24,6 +24,7 @@ import (
 	"time"
 )
 
+// main runs the stdio proxy and exits with its status.
 func main() {
 	os.Exit(run(os.Stdin, os.Stdout, os.Stderr, os.Getenv))
 }

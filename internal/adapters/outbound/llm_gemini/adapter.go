@@ -238,6 +238,8 @@ type geminiGenerateRequest struct {
 	SystemInstruction *geminiSystemInstruction `json:"systemInstruction,omitempty"`
 }
 
+// buildGenerateRequest turns the chat messages into a Gemini request: system messages become the system
+// instruction, the rest the conversation.
 func (a *Adapter) buildGenerateRequest(messages []domain.Message) []byte {
 	var systemParts []geminiPart
 	var contents []geminiContent
@@ -276,6 +278,7 @@ func (a *Adapter) buildGenerateRequest(messages []domain.Message) []byte {
 	return body
 }
 
+// newRequest builds an API request with the key header.
 func (a *Adapter) newRequest(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {

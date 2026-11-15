@@ -236,6 +236,7 @@ func (w *Watcher) Close() error {
 	return err
 }
 
+// eventLoop reads file-system events and errors until the watcher is closed.
 func (w *Watcher) eventLoop() {
 	defer w.wg.Done()
 
@@ -257,6 +258,7 @@ func (w *Watcher) eventLoop() {
 	}
 }
 
+// handleEvent turns a write or create event of a watched file into a debounced change notification.
 func (w *Watcher) handleEvent(event fsnotify.Event) {
 	if event.Op&(fsnotify.Write|fsnotify.Create) == 0 {
 		return
@@ -304,6 +306,8 @@ func (w *Watcher) handleEvent(event fsnotify.Event) {
 	})
 }
 
+// findProjectForPath returns the project a changed file belongs to: the project of its directory, or of
+// the nearest watched parent.
 func (w *Watcher) findProjectForPath(path string) string {
 	dir := filepath.Dir(path)
 	if proj, ok := w.dirs[dir]; ok {
@@ -325,6 +329,8 @@ func isWithin(root, path string) bool {
 	return path == root || strings.HasPrefix(path, root+string(filepath.Separator))
 }
 
+// triggerChange runs when the debounce timer of a file expires and tells the handler, unless the
+// watcher has been stopped meanwhile.
 func (w *Watcher) triggerChange(projectPath, filePath string) {
 	w.mu.Lock()
 	delete(w.timers, filePath)

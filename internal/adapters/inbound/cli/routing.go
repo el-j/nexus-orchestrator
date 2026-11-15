@@ -53,6 +53,7 @@ func newRoutingCmd(orch ports.Orchestrator) *cobra.Command {
 	return cmd
 }
 
+// orDash shows an empty value as a dash in the routing table.
 func orDash(s string) string {
 	if s == "" {
 		return "-"
@@ -60,6 +61,7 @@ func orDash(s string) string {
 	return s
 }
 
+// rungLabel shows a ladder rung as a one-based number, or a dash when the model is not on the ladder.
 func rungLabel(r int) string {
 	if r < 0 {
 		return "-"

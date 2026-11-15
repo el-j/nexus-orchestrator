@@ -8,6 +8,8 @@ import (
 	"nexus-orchestrator/internal/core/domain"
 )
 
+// toolGetProjectContext serves the get_project_context tool: the token-budgeted project summary for an
+// agent.
 func (s *Server) toolGetProjectContext(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -40,6 +42,8 @@ func (s *Server) toolGetProjectContext(ctx context.Context, args json.RawMessage
 	return textResult(string(b)), nil
 }
 
+// toolGetFocusedContext serves the get_focused_context tool: the knowledge that answers one question,
+// within a token budget.
 func (s *Server) toolGetFocusedContext(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -74,6 +78,7 @@ func (s *Server) toolGetFocusedContext(ctx context.Context, args json.RawMessage
 	return textResult(string(b)), nil
 }
 
+// toolSearchKnowledge serves the search_knowledge tool: full-text search over the project's knowledge.
 func (s *Server) toolSearchKnowledge(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -98,6 +103,8 @@ func (s *Server) toolSearchKnowledge(ctx context.Context, args json.RawMessage) 
 	return textResult(string(b)), nil
 }
 
+// toolGetBrainStatus serves the get_brain_status tool: how many knowledge entries the project holds and
+// when it was last scanned.
 func (s *Server) toolGetBrainStatus(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -116,6 +123,8 @@ func (s *Server) toolGetBrainStatus(ctx context.Context, args json.RawMessage) (
 	return textResult(string(b)), nil
 }
 
+// toolIngestKnowledge serves the ingest_knowledge tool: it stores a learning, decision or file note in
+// the project brain.
 func (s *Server) toolIngestKnowledge(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -155,6 +164,8 @@ func (s *Server) toolIngestKnowledge(ctx context.Context, args json.RawMessage) 
 	return textResult(string(b)), nil
 }
 
+// toolInitProject serves the init_project tool: it registers a project and reads its CLAUDE.md into the
+// brain.
 func (s *Server) toolInitProject(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath  string `json:"projectPath"`
@@ -174,6 +185,8 @@ func (s *Server) toolInitProject(ctx context.Context, args json.RawMessage) (cal
 	return textResult(string(b)), nil
 }
 
+// toolListKnowledge serves the list_knowledge tool: the stored entries of a project, optionally of one
+// kind.
 func (s *Server) toolListKnowledge(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -193,6 +206,7 @@ func (s *Server) toolListKnowledge(ctx context.Context, args json.RawMessage) (c
 	return textResult(string(b)), nil
 }
 
+// toolDeleteKnowledge serves the delete_knowledge tool: it removes one knowledge entry by id.
 func (s *Server) toolDeleteKnowledge(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ID string `json:"id"`
@@ -209,6 +223,8 @@ func (s *Server) toolDeleteKnowledge(ctx context.Context, args json.RawMessage) 
 	return textResult(`{"deleted":true}`), nil
 }
 
+// toolGetFileMap serves the get_file_map tool: the project's file map, narrowed to a focus area when
+// one is given.
 func (s *Server) toolGetFileMap(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -228,6 +244,8 @@ func (s *Server) toolGetFileMap(ctx context.Context, args json.RawMessage) (call
 	return textResult(string(b)), nil
 }
 
+// toolGetOnboardingContext serves the get_onboarding_context tool: the short summary an agent reads
+// before touching a project.
 func (s *Server) toolGetOnboardingContext(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -251,6 +269,8 @@ func (s *Server) toolGetOnboardingContext(ctx context.Context, args json.RawMess
 
 // ----- Brain Schema Definitions -----
 
+// brainToolDefs lists the knowledge tools (onboarding, focused context, search, ingest, list, delete,
+// file map, status) for tools/list.
 func brainToolDefs() []toolDef {
 	return []toolDef{
 		{

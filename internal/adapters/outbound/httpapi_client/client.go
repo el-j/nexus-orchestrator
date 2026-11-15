@@ -51,6 +51,7 @@ func NewClientWithHTTP(baseURL string, httpClient *http.Client) *Client {
 	return c
 }
 
+// newRequest builds a request to the daemon and adds the bearer token when one is set.
 func (r *Client) newRequest(ctx context.Context, method, path string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, r.baseURL+path, body)
 	if err != nil {
@@ -134,6 +135,7 @@ func query(key, value string) string {
 	return "?" + url.Values{key: {value}}.Encode()
 }
 
+// esc escapes a value for use as one URL path segment.
 func esc(s string) string { return url.PathEscape(s) }
 
 type submitTaskResponse struct {

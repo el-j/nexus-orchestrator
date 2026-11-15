@@ -90,6 +90,7 @@ func maxBodySize(next http.Handler) http.Handler {
 	})
 }
 
+// securityHeaders sets the headers that keep the dashboard from being framed or sniffed.
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Frame-Options", "DENY")
@@ -116,6 +117,8 @@ func corsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// tokenAuthMiddleware requires the bearer token when one is set in the environment or the settings;
+// without one the API is open on the loopback.
 func (s *Server) tokenAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := os.Getenv("NEXUS_API_TOKEN")
@@ -401,6 +404,7 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 	}
 }
 
+// handleHealth answers the liveness probe with the service name.
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{
 		"status":  "ok",

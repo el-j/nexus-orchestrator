@@ -20,6 +20,7 @@ import (
 
 var copilotLeanFlags = []string{"-s", "--no-ask-user", "--no-color"}
 
+// isCopilot reports whether the command is the GitHub Copilot client.
 func isCopilot(exe string) bool {
 	return strings.TrimSuffix(strings.ToLower(filepath.Base(exe)), ".exe") == "copilot"
 }
@@ -44,6 +45,7 @@ func withCopilotFlags(args []string, model string) []string {
 	return out
 }
 
+// hasModelFlag reports whether the arguments already choose a model.
 func hasModelFlag(args []string) bool {
 	for _, a := range args {
 		if a == "--model" || strings.HasPrefix(a, "--model=") {

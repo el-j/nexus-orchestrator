@@ -28,6 +28,8 @@ func NewKnowledgeRepo(r *Repository) *KnowledgeRepo {
 	return &KnowledgeRepo{db: r.db}
 }
 
+// migrateKnowledge creates the knowledge table, its full-text index and the triggers that keep the two
+// in step.
 func migrateKnowledge(db *sql.DB) error {
 	_, err := db.ExecContext(context.Background(), `
 		CREATE TABLE IF NOT EXISTS project_knowledge (

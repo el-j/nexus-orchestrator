@@ -90,6 +90,7 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 	return reply.String(), nil
 }
 
+// firstNonEmpty returns the first value that is not empty.
 func firstNonEmpty(vals ...string) string {
 	for _, v := range vals {
 		if v != "" {
