@@ -135,77 +135,43 @@ func scanDir(dir, home string, seen map[string]bool) ([]domain.DiscoveredPlanFil
 		results = append(results, pf)
 	}
 
-	// Handle glob subdirs: .claude/tasks/*.md and .cursor/rules/*.mdc
-
-	// .claude/tasks/*.md
-	tasksDir := filepath.Join(dir, "tasks")
-	if filepath.Base(dir) == ".claude" {
-		taskEntries, err := os.ReadDir(tasksDir)
-		if err == nil {
-			for _, e := range taskEntries {
-				if e.IsDir() {
-					continue
-				}
-				if strings.HasSuffix(e.Name(), ".md") {
-					fullPath := filepath.Join(tasksDir, e.Name())
-					if seen[fullPath] {
-						continue
-					}
-					seen[fullPath] = true
-					pf, err := buildPlanFile(fullPath, domain.PlanFileKindClaudeTask, "md", home)
-					if err == nil {
-						results = append(results, pf)
-					}
-				}
-			}
-		}
+	// Files that are recognised by their folder and suffix: .claude/tasks/*.md, .cursor/rules/*.mdc and
+	// .github/agents/*.agent.md.
+	base := filepath.Base(dir)
+	if base == ".claude" {
+		results = appendBySuffix(results, filepath.Join(dir, "tasks"), ".md", domain.PlanFileKindClaudeTask, home, seen)
 	}
-
-	// .cursor/rules/*.mdc
-	rulesDir := filepath.Join(dir, "rules")
-	if filepath.Base(dir) == ".cursor" {
-		ruleEntries, err := os.ReadDir(rulesDir)
-		if err == nil {
-			for _, e := range ruleEntries {
-				if e.IsDir() {
-					continue
-				}
-				if strings.HasSuffix(e.Name(), ".mdc") {
-					fullPath := filepath.Join(rulesDir, e.Name())
-					if seen[fullPath] {
-						continue
-					}
-					seen[fullPath] = true
-					pf, err := buildPlanFile(fullPath, domain.PlanFileKindCursor, "md", home)
-					if err == nil {
-						results = append(results, pf)
-					}
-				}
-			}
-		}
+	if base == ".cursor" {
+		results = appendBySuffix(results, filepath.Join(dir, "rules"), ".mdc", domain.PlanFileKindCursor, home, seen)
 	}
-
-	// .github/agents/*.agent.md
-	if filepath.Base(dir) == "agents" && filepath.Base(filepath.Dir(dir)) == ".github" {
-		for _, e := range entries {
-			if e.IsDir() {
-				continue
-			}
-			if strings.HasSuffix(e.Name(), ".agent.md") {
-				fullPath := filepath.Join(dir, e.Name())
-				if seen[fullPath] {
-					continue
-				}
-				seen[fullPath] = true
-				pf, err := buildPlanFile(fullPath, domain.PlanFileKindClaude, "md", home)
-				if err == nil {
-					results = append(results, pf)
-				}
-			}
-		}
+	if base == "agents" && filepath.Base(filepath.Dir(dir)) == ".github" {
+		results = appendBySuffix(results, dir, ".agent.md", domain.PlanFileKindClaude, home, seen)
 	}
 
 	return results, nil
+}
+
+// appendBySuffix adds the plan files of dir whose name ends in suffix, skipping paths already seen and
+// files that cannot be read. A folder that cannot be read adds nothing.
+func appendBySuffix(results []domain.DiscoveredPlanFile, dir, suffix string, kind domain.PlanFileKind, home string, seen map[string]bool) []domain.DiscoveredPlanFile {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return results
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), suffix) {
+			continue
+		}
+		fullPath := filepath.Join(dir, e.Name())
+		if seen[fullPath] {
+			continue
+		}
+		seen[fullPath] = true
+		if pf, err := buildPlanFile(fullPath, kind, "md", home); err == nil {
+			results = append(results, pf)
+		}
+	}
+	return results
 }
 
 // classifyFile returns the Kind and Format for a given file, or empty strings if not recognised.

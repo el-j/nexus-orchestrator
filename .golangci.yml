@@ -24,6 +24,9 @@ linters:
     - misspell
     - gosec
     - noctx
+    # Size of a function: long or branching ones are split, not allowed to grow back (TASK-639).
+    - funlen
+    - gocyclo
 
   settings:
     errcheck:
@@ -68,6 +71,14 @@ linters:
         # unused-parameter: cobra RunE callbacks must match the func(cmd, args) signature
         - name: unused-parameter
           disabled: true
+
+    funlen:
+      lines: 100
+      statements: 60
+      ignore-comments: true
+
+    gocyclo:
+      min-complexity: 25
 
     gosec:
       excludes:
@@ -138,7 +149,17 @@ linters:
         linters:
           - unparam
           - gosec
+          - funlen
+          - gocyclo
+      - path: "_test\\.go"
+        linters:
           - noctx
+      # The tool catalogues are declarative data (name, description, JSON schema), one entry per tool;
+      # their length is the number of tools, not branching.
+      - path: "internal/adapters/inbound/mcp/.*\\.go"
+        text: "Function '[a-zA-Z]*ToolDefs'"
+        linters:
+          - funlen
       # Test HTTP handlers legitimately ignore json.Encoder.Encode errors
       - path: "_test\\.go"
         linters:

@@ -43,7 +43,7 @@ reaches it. TASK-578 (progress rendering in three MCP clients) stays with the ow
 | TASK-636 | Go coverage to 100 %: core services                  | testing     | done   |
 | TASK-637 | Go coverage to 100 %: scanners and LLM adapters      | testing     | done   |
 | TASK-638 | Document every Go function, enforce it               | docs        | done   |
-| TASK-639 | Split the oversized functions                        | refactor    | todo   |
+| TASK-639 | Split the oversized functions                        | refactor    | done   |
 | TASK-640 | Split the boss files                                 | refactor    | todo   |
 | TASK-641 | e2e for the 16 untouched REST routes                 | testing     | todo   |
 | TASK-642 | e2e for the CLI-driver path and the browser views    | testing     | todo   |

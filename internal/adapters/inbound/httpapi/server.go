@@ -174,101 +174,12 @@ func (s *Server) Handler() http.Handler {
 	r.Use(maxBodySize)
 	r.Use(securityHeaders)
 
-	// The root goes to the full UI when this binary has it, else to the built-in dashboard,
-	// which stays available at /ui either way.
-	home := "/ui"
-	if s.ui != nil {
-		home = "/app/"
-		r.Get("/app", func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/app/", http.StatusFound) })
-		r.Handle("/app/*", s.ui)
-	}
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, home, http.StatusFound)
-	})
-	r.Get("/ui", s.handleUI)
-
-	// Task endpoints — literal segments must be registered before wildcard {id}
-	r.Post("/api/tasks", s.handleCreateTask)
-	r.Get("/api/tasks", s.handleListTasks)
-	r.Get("/api/tasks/all", s.handleGetAllTasks)
-	r.Post("/api/tasks/draft", s.handleCreateDraft)
-	r.Get("/api/tasks/backlog", s.handleGetBacklog)
-	r.Get("/api/tasks/{id}", s.handleGetTask)
-	r.Delete("/api/tasks/{id}", s.handleCancelTask)
-	r.Post("/api/tasks/{id}/promote", s.handlePromoteTask)
-	r.Put("/api/tasks/{id}", s.handleUpdateTask)
-
-	// Provider + health
-	r.Get("/api/providers", s.handleProviders)
-	r.Post("/api/providers", s.handleRegisterProvider)
-
-	// Provider discovery — literal segments registered before wildcard {name}
-	r.Get("/api/providers/discovered", s.handleGetDiscoveredProviders)
-	r.Post("/api/providers/discovered/scan", s.handleTriggerScan)
-	r.Post("/api/providers/promote/{id}", s.handlePromoteProvider)
-
-	r.Delete("/api/providers/{name}", s.handleRemoveProvider)
-	r.Get("/api/providers/{name}/models", s.handleProviderModels)
-
-	// Provider config CRUD (persistent, with API-key masking in responses)
-	r.Post("/api/providers/config", s.handleAddProviderConfig)
-	r.Get("/api/providers/config", s.handleListProviderConfigs)
-	r.Put("/api/providers/config/{id}", s.handleUpdateProviderConfig)
-	r.Delete("/api/providers/config/{id}", s.handleRemoveProviderConfig)
-
-	// AI session endpoints — literal segment before wildcard {id}
-	r.Post("/api/ai-sessions", s.handleRegisterAISession)
-	r.Get("/api/ai-sessions", s.handleListAISessions)
-	r.Delete("/api/ai-sessions", s.handlePurgeDisconnectedSessions)
-	r.Get("/api/ai-sessions/discovered", s.handleGetDiscoveredAgents)
-	r.Delete("/api/ai-sessions/{id}", s.handleDeregisterAISession)
-	r.Post("/api/ai-sessions/{id}/heartbeat", s.handleHeartbeatAISession)
-	r.Post("/api/ai-sessions/{id}/terminate", s.handleTerminateAISession)
-	r.Get("/api/ai-sessions/{id}/tasks", s.handleGetSessionTasks)
-	r.Post("/api/ai-sessions/{id}/delegate", s.handleDelegateToNexus)
-
-	// Task claim + external status update
-	r.Post("/api/tasks/{id}/claim", s.handleClaimTask)
-	r.Put("/api/tasks/{id}/status", s.handleUpdateTaskStatus)
-	r.Post("/api/tasks/{id}/heartbeat", s.handleHeartbeatTask)
-
-	r.Get("/api/health", s.handleHealth)
-	r.Get("/api/logs", s.handleGetLogs)
-	// Runtime config
-	r.Get("/api/config", s.handleGetConfig)
-	r.Put("/api/config", s.handlePutConfig)
-
-	// GET /api/events — SSE stream for task lifecycle and log events
-	r.Get("/api/events", s.handleEvents)
-	// Activity observatory endpoints
-	r.Get("/api/usage", s.handleUsage)
-	r.Get("/api/routing", s.handleRouting)
-	r.Get("/api/policy", s.handleGetPolicy)
-	r.Put("/api/policy", s.handlePutPolicy)
-	r.Get("/api/activities", s.handleListActivities)
-	r.Get("/api/activities/timeline", s.handleActivityTimeline)
-
-	// Plan file discovery endpoints
-	r.Get("/api/plans/discovered", s.handleGetDiscoveredPlanFiles)
-	r.Post("/api/plans/discovered/scan", s.handleScanPlanFiles)
-
-	// Discovery + how-to
-	r.Get("/api/howto", s.handleHowto)
-	r.Get("/.well-known/nexus.json", s.handleWellKnownNexus)
-
-	// Brain
-	r.Post("/api/brain/ingest", s.handleIngestKnowledge)
-	r.Post("/api/brain/ingest-content", s.handleIngestContent)
-	r.Post("/api/brain/knowledge", s.handleUpsertKnowledge)
-	r.Get("/api/brain/status", s.handleGetBrainStatus)
-	r.Post("/api/brain/context", s.handleGetProjectContext)
-	r.Post("/api/brain/focused-context", s.handleGetFocusedContext)
-	r.Get("/api/brain/search", s.handleSearchKnowledge)
-	r.Post("/api/brain/init", s.handleInitProject)
-	r.Get("/api/brain/knowledge", s.handleListKnowledge)
-	r.Delete("/api/brain/knowledge/{id}", s.handleDeleteKnowledge)
-	r.Get("/api/brain/file-map", s.handleGetFileMap)
-	r.Get("/api/brain/onboarding", s.handleGetOnboardingContext)
+	s.routeUI(r)
+	s.routeTasks(r)
+	s.routeProviders(r)
+	s.routeSessions(r)
+	s.routeSystem(r)
+	s.routeBrain(r)
 
 	return r
 }
