@@ -1,6 +1,7 @@
 package fs_writer_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -147,5 +148,13 @@ func TestWriteCodeToFile_FailsOnASymlinkLoop(t *testing.T) {
 	}
 	if err := fs_writer.New().WriteCodeToFile(root, "a/x.go", "x"); err == nil {
 		t.Fatal("expected an error for a symlink loop")
+	}
+}
+
+func TestWriteCodeToFile_FailsWhenTheProjectPathCannotBeMadeAbsolute(t *testing.T) {
+	defer fs_writer.SetAbsPath(func(string) (string, error) { return "", errors.New("no working directory") })()
+	err := fs_writer.New().WriteCodeToFile("relative-project", "a.go", "package a")
+	if err == nil || !strings.Contains(err.Error(), "abs project path") {
+		t.Errorf("err = %v", err)
 	}
 }

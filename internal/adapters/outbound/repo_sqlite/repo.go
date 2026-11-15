@@ -24,9 +24,12 @@ type Repository struct {
 	db *sql.DB
 }
 
+// openDatabase opens the database handle; tests replace it to make opening fail.
+var openDatabase = sql.Open
+
 // New opens (or creates) a SQLite database at the given path and runs migrations.
 func New(dbPath string) (*Repository, error) {
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := openDatabase("sqlite3", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: open: %w", err)
 	}
@@ -36,12 +39,14 @@ func New(dbPath string) (*Repository, error) {
 		"PRAGMA foreign_keys=ON",
 	} {
 		if _, err := db.ExecContext(context.Background(), pragma); err != nil {
+			_ = db.Close()
 			return nil, fmt.Errorf("sqlite: %s: %w", pragma, err)
 		}
 	}
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 	if err := migrate(db); err != nil {
+		_ = db.Close()
 		return nil, err
 	}
 	return &Repository{db: db}, nil
