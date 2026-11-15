@@ -186,12 +186,15 @@ func (o *OrchestratorService) unsafeToSignal(ctx context.Context, pid int) strin
 	return "it is not a running agent process discovered by Nexus"
 }
 
+// findProcess looks a process up; tests replace it (os.FindProcess only fails on Windows).
+var findProcess = os.FindProcess
+
 // signalProcess interrupts (or, with force, kills) a single process.
 func (o *OrchestratorService) signalProcess(pid int, force bool) error {
 	if o.signalFn != nil {
 		return o.signalFn(pid, force)
 	}
-	proc, err := os.FindProcess(pid)
+	proc, err := findProcess(pid)
 	if err != nil {
 		return err
 	}

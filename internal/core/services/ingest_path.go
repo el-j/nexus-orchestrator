@@ -69,10 +69,7 @@ func resolveIngestPath(projectPath, filePath string) (string, error) {
 	}
 
 	info, err := os.Stat(real)
-	if err != nil {
-		return "", fmt.Errorf("brain_service: ingest from file: %w", err)
-	}
-	if !info.Mode().IsRegular() {
+	if err != nil || !info.Mode().IsRegular() { // real was just resolved, so a Stat error means something odd stands there
 		return "", fmt.Errorf("%w: %s is not a regular file", domain.ErrPathNotAllowed, filepath.Base(real))
 	}
 	if info.Size() > MaxIngestBytes {

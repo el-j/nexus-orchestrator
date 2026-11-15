@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -54,3 +55,45 @@ func (o *OrchestratorService) GetClientForTest(name string) (ports.LLMClient, bo
 
 // PollNow runs one poll of the activity readers, so tests need not wait for the ticker.
 func (s *ActivityService) PollNow() { s.poll() }
+
+// HoldReleased, RecordOutcome and SetFindProcess expose internals to the external tests.
+func (o *OrchestratorService) HoldReleased(ctx context.Context, t domain.Task) bool {
+	return o.holdReleased(ctx, t)
+}
+
+// RecordOutcome stores the memory of a finished task the way the engine does after a run.
+func (o *OrchestratorService) RecordOutcome(taskID string, status domain.TaskStatus) {
+	o.recordOutcome(taskID, status)
+}
+
+// SetFindProcess replaces the process lookup and returns a function that restores it.
+func SetFindProcess(f func(int) (*os.Process, error)) (restore func()) {
+	old := findProcess
+	findProcess = f
+	return func() { findProcess = old }
+}
+
+// HoldUntilReset, NoteProviderError and SetWaitGrace let tests hold a task for a cooldown without
+// running a whole task through a failing provider.
+func (o *OrchestratorService) HoldUntilReset(task domain.Task, chain []ports.LLMClient) bool {
+	return o.holdUntilReset(task, chain)
+}
+
+// NoteProviderError records a failure of llm the way the engine does (a quota error starts a cooldown).
+func (o *OrchestratorService) NoteProviderError(llm ports.LLMClient, err error) {
+	o.noteProviderError(llm, err)
+}
+
+// SetWaitGrace replaces the extra second added to a reset time and returns a function that restores it.
+func SetWaitGrace(d time.Duration) (restore func()) {
+	old := waitGrace
+	waitGrace = d
+	return func() { waitGrace = old }
+}
+
+// SetMaxPlanWalkEntries lowers the search limit of a whole project and returns a function that restores it.
+func SetMaxPlanWalkEntries(n int) (restore func()) {
+	old := maxPlanWalkEntries
+	maxPlanWalkEntries = n
+	return func() { maxPlanWalkEntries = old }
+}
