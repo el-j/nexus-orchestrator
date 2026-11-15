@@ -3,7 +3,8 @@ id: TASK-631
 planId: PLAN-076
 title: 'Bound the task history the UIs fetch (limit/paging for /api/tasks/all)'
 role: backend
-status: todo
+status: closed
+closedReason: 'moved into TASK-645 of PLAN-077'
 createdAt: 2026-10-31
 ---
 
