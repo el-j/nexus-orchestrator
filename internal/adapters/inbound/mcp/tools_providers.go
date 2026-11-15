@@ -16,11 +16,7 @@ func (s *Server) toolGetProviders() (callToolResult, error) {
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_providers: %w", err)
 	}
-	b, err := json.Marshal(providers)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: get_providers: marshal: %w", err)
-	}
-	return textResult(string(b)), nil
+	return jsonResult("get_providers", providers)
 }
 
 func (s *Server) toolHealth() (callToolResult, error) {
@@ -33,11 +29,7 @@ func (s *Server) toolDiscoverProviders(ctx context.Context) (callToolResult, err
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: discover_providers: %w", err)
 	}
-	b, err := json.Marshal(providers)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: discover_providers: marshal: %w", err)
-	}
-	return textResult(string(b)), nil
+	return jsonResult("discover_providers", providers)
 }
 
 func (s *Server) toolPromoteProvider(ctx context.Context, args json.RawMessage) (callToolResult, error) {

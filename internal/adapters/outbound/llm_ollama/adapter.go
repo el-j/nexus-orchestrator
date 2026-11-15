@@ -135,14 +135,11 @@ type ollamaChatRequest struct {
 
 // GenerateCode sends a chat completion request to Ollama and returns the generated text.
 func (a *Adapter) GenerateCode(ctx context.Context, prompt string) (string, error) {
-	reqBody, err := json.Marshal(generateRequest{
+	reqBody, _ := json.Marshal(generateRequest{
 		Model:  a.model,
 		Prompt: prompt,
 		Stream: false,
-	})
-	if err != nil {
-		return "", fmt.Errorf("ollama: marshal request: %w", err)
-	}
+	}) // a request of strings and numbers always encodes
 
 	resp, err := a.do(ctx, a.httpClient, http.MethodPost, "/api/generate", reqBody)
 	if err != nil {
@@ -196,10 +193,7 @@ func (a *Adapter) ContextLimit(ctx context.Context) int {
 // "qwen2.context_length", "gemma3.context_length", ...), so the architecture
 // from "general.architecture" is tried first, then any "*.context_length" key.
 func (a *Adapter) fetchContextLimit(ctx context.Context) int {
-	body, err := json.Marshal(map[string]string{"name": a.model})
-	if err != nil {
-		return 0
-	}
+	body, _ := json.Marshal(map[string]string{"name": a.model})
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := a.do(ctx, client, http.MethodPost, "/api/show", body)
 	if err != nil {
@@ -262,14 +256,11 @@ func messagesToMaps(msgs []domain.Message) []map[string]string {
 // Chat sends a multi-turn conversation history to Ollama using the /api/chat
 // endpoint and returns the assistant reply.
 func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, error) {
-	reqBody, err := json.Marshal(ollamaChatRequest{
+	reqBody, _ := json.Marshal(ollamaChatRequest{
 		Model:    a.model,
 		Messages: messagesToMaps(messages),
 		Stream:   false,
-	})
-	if err != nil {
-		return "", fmt.Errorf("ollama: marshal chat request: %w", err)
-	}
+	}) // a request of strings and numbers always encodes
 
 	resp, err := a.do(ctx, a.httpClient, http.MethodPost, "/api/chat", reqBody)
 	if err != nil {

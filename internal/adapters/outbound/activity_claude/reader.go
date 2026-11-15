@@ -86,12 +86,8 @@ func (r *ClaudeJSONLReader) ReadActivities(ctx context.Context, since time.Time)
 			return nil
 		}
 
-		info, infoErr := d.Info()
-		if infoErr != nil {
-			return nil
-		}
-		// Skip files with no changes since the cutoff.
-		if info.ModTime().Before(since) {
+		// Skip files with no changes since the cutoff. A file whose info cannot be read is tried anyway.
+		if info, infoErr := d.Info(); infoErr == nil && info.ModTime().Before(since) {
 			return nil
 		}
 

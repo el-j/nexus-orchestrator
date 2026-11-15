@@ -37,34 +37,45 @@ func (s *Scanner) ScanAgents(ctx context.Context) ([]domain.DiscoveredAgent, err
 		}()
 	}
 
-	merged := map[string]domain.DiscoveredAgent{}
+	found := make([][]domain.DiscoveredAgent, 0, len(probes))
 	for range probes {
-		agents := <-ch
+		found = append(found, <-ch)
+	}
+	return mergeAgents(found, time.Now()), nil
+}
+
+// mergeAgents joins what the probes found into one list without duplicates: an agent seen by several
+// probes keeps everything any of them learned (it is running if one saw it running), a newly seen
+// agent is stamped with now, and each sub-agent is added to the SubAgentIDs of its parent.
+func mergeAgents(found [][]domain.DiscoveredAgent, now time.Time) []domain.DiscoveredAgent {
+	merged := map[string]domain.DiscoveredAgent{}
+	for _, agents := range found {
 		for _, a := range agents {
-			if existing, ok := merged[a.ID]; ok {
-				if a.IsRunning {
-					existing.IsRunning = true
-				}
-				if a.MCPEndpoint != "" {
-					existing.MCPEndpoint = a.MCPEndpoint
-				}
-				if a.ConfigPath != "" {
-					existing.ConfigPath = a.ConfigPath
-				}
-				if a.CLIPath != "" {
-					existing.CLIPath = a.CLIPath
-				}
-				if a.PID > 0 {
-					existing.PID = a.PID
-				}
-				if a.ProcessName != "" {
-					existing.ProcessName = a.ProcessName
-				}
-				merged[a.ID] = existing
-			} else {
-				a.LastSeen = time.Now()
+			existing, ok := merged[a.ID]
+			if !ok {
+				a.LastSeen = now
 				merged[a.ID] = a
+				continue
 			}
+			if a.IsRunning {
+				existing.IsRunning = true
+			}
+			if a.MCPEndpoint != "" {
+				existing.MCPEndpoint = a.MCPEndpoint
+			}
+			if a.ConfigPath != "" {
+				existing.ConfigPath = a.ConfigPath
+			}
+			if a.CLIPath != "" {
+				existing.CLIPath = a.CLIPath
+			}
+			if a.PID > 0 {
+				existing.PID = a.PID
+			}
+			if a.ProcessName != "" {
+				existing.ProcessName = a.ProcessName
+			}
+			merged[a.ID] = existing
 		}
 	}
 
@@ -85,7 +96,7 @@ func (s *Scanner) ScanAgents(ctx context.Context) ([]domain.DiscoveredAgent, err
 	for _, a := range merged {
 		out = append(out, a)
 	}
-	return out, nil
+	return out
 }
 
 func (s *Scanner) probeClaudeConfig(ctx context.Context) []domain.DiscoveredAgent {

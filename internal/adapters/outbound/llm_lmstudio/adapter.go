@@ -221,14 +221,11 @@ func (u usageBlock) toDomain(model string) domain.Usage {
 // GenerateCode sends a chat completion request to LM Studio and returns the
 // generated text.
 func (a *Adapter) GenerateCode(ctx context.Context, prompt string) (string, error) {
-	reqBody, err := json.Marshal(chatCompletionRequest{
+	reqBody, _ := json.Marshal(chatCompletionRequest{
 		Model:       a.activeModelOrDefault(ctx),
 		Messages:    []map[string]string{{"role": "user", "content": prompt}},
 		Temperature: 0.2,
-	})
-	if err != nil {
-		return "", fmt.Errorf("lmstudio: marshal request: %w", err)
-	}
+	}) // a request of strings and numbers always encodes
 
 	resp, err := a.do(ctx, http.MethodPost, a.baseURL+"/chat/completions", reqBody)
 	if err != nil {
@@ -272,14 +269,11 @@ func messagesToMaps(msgs []domain.Message) []map[string]string {
 // Chat sends a multi-turn conversation history to LM Studio and returns the
 // assistant reply. This is the preferred method for session-isolated generation.
 func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, error) {
-	reqBody, err := json.Marshal(chatCompletionRequest{
+	reqBody, _ := json.Marshal(chatCompletionRequest{
 		Model:       a.activeModelOrDefault(ctx),
 		Messages:    messagesToMaps(messages),
 		Temperature: 0.2,
-	})
-	if err != nil {
-		return "", fmt.Errorf("lmstudio: marshal chat request: %w", err)
-	}
+	}) // a request of strings and numbers always encodes
 
 	resp, err := a.do(ctx, http.MethodPost, a.baseURL+"/chat/completions", reqBody)
 	if err != nil {

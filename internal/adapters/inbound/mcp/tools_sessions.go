@@ -41,11 +41,7 @@ func (s *Server) toolGetAISessions(ctx context.Context) (callToolResult, error) 
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_ai_sessions: %w", err)
 	}
-	b, err := json.Marshal(sessions)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: get_ai_sessions: marshal: %w", err)
-	}
-	return textResult(string(b)), nil
+	return jsonResult("get_ai_sessions", sessions)
 }
 
 func (s *Server) toolClaimTask(ctx context.Context, args json.RawMessage) (callToolResult, error) {

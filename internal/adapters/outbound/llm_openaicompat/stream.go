@@ -22,16 +22,13 @@ const maxEventBytes = 4 << 20
 // ends without [DONE] or a finish reason was cut off and is an error. A server that ignores
 // "stream" and answers with a plain JSON completion is accepted: the reply arrives as one piece.
 func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onChunk func(string)) (string, error) {
-	reqBody, err := json.Marshal(chatCompletionRequest{
+	reqBody, _ := json.Marshal(chatCompletionRequest{
 		Model:         a.model,
 		Messages:      messagesToMaps(messages),
 		Temperature:   0.2,
 		Stream:        true,
 		StreamOptions: &streamOptions{IncludeUsage: true},
-	})
-	if err != nil {
-		return "", fmt.Errorf("%s: marshal request: %w", a.name, err)
-	}
+	}) // a request of strings and numbers always encodes
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.baseURL+"/chat/completions", bytes.NewReader(reqBody))
 	if err != nil {
 		return "", fmt.Errorf("%s: build request: %w", a.name, err)

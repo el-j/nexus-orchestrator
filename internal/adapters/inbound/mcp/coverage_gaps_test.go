@@ -173,3 +173,27 @@ func TestStartMCPServer_ClosesConnectionsThatOutliveTheGracePeriod(t *testing.T)
 		t.Fatal("the server waited for the silent connection instead of closing it after the grace period")
 	}
 }
+
+func TestJSONResult_ReportsAValueJSONCannotWrite(t *testing.T) {
+	if _, err := mcp.JSONResult("get_things", unencodable); err == nil || !strings.Contains(err.Error(), "get_things") {
+		t.Errorf("err = %v", err)
+	}
+	if res, err := mcp.JSONResult("get_things", map[string]int{"a": 1}); err != nil || len(res.Content) != 1 {
+		t.Errorf("res=%+v err=%v", res, err)
+	}
+}
+
+func TestIngestKnowledgeTool_DefaultsTheKindAndReportsAStoreFailure(t *testing.T) {
+	ok := httptest.NewServer(mcp.NewMcpServer(&mockOrch{}, &mockBrainForMCP{ingestResult: domain.ProjectKnowledge{ID: "k"}}))
+	defer ok.Close()
+	r := callTool(t, ok, 1, "ingest_knowledge", map[string]any{"projectPath": "/p", "topic": "t", "content": "c"})
+	if r.Error != nil {
+		t.Errorf("a single entry without a kind is a learning: %+v", r.Error)
+	}
+	bad := httptest.NewServer(mcp.NewMcpServer(&mockOrch{}, &mockBrainForMCP{ingestErr: errors.New("disk full")}))
+	defer bad.Close()
+	r = callTool(t, bad, 2, "ingest_knowledge", map[string]any{"projectPath": "/p", "topic": "t", "content": "c"})
+	if r.Error == nil || !strings.Contains(r.Error.Message, "disk full") {
+		t.Errorf("got %+v", r)
+	}
+}

@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -168,5 +170,14 @@ func TestWaitForCompletion_LogsWaitingUntilAndCompletes(t *testing.T) {
 	}
 	if !bytes.Contains(stdout.Bytes(), []byte("waiting until 2026-10-20T15:00:00Z")) {
 		t.Errorf("stdout should include waiting until timestamp, got: %s", stdout.String())
+	}
+}
+
+func TestBuildRequestBody_ReportsAWorkingDirectoryThatCannotBeRead(t *testing.T) {
+	old := getwd
+	getwd = func() (string, error) { return "", errors.New("gone") }
+	defer func() { getwd = old }()
+	if _, err := BuildRequestBody("task.md", "", "", "", "", 0); err == nil || !strings.Contains(err.Error(), "get cwd") {
+		t.Errorf("err = %v", err)
 	}
 }

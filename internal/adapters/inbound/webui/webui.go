@@ -19,10 +19,7 @@ var dist embed.FS
 // Embedded returns the handler for the frontend built into this binary, serving it under prefix
 // (for example "/app/"), or nil when the binary was built without the frontend.
 func Embedded(prefix string) http.Handler {
-	sub, err := fs.Sub(dist, "dist")
-	if err != nil {
-		return nil
-	}
+	sub, _ := fs.Sub(dist, "dist") // "dist" is a valid folder name, so Sub cannot fail
 	return New(sub, prefix)
 }
 
