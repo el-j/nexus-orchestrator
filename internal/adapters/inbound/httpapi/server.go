@@ -286,6 +286,12 @@ func StartServer(ctx context.Context, orch ports.Orchestrator, brain ports.Brain
 	if len(logHub) > 0 && logHub[0] != nil {
 		s.WithLogHub(logHub[0])
 	}
+	return runHTTP(ctx, addr, s.Handler(), shutdownGrace)
+}
+
+// runHTTP serves handler on addr until ctx is cancelled, then gives in-flight requests grace to
+// finish before closing the rest.
+func runHTTP(ctx context.Context, addr string, handler http.Handler, grace time.Duration) error {
 	// Cancelled when shutdown starts so long-lived /api/events streams end
 	// promptly (http.Server.Shutdown does not cancel request contexts itself).
 	baseCtx, cancelBase := context.WithCancel(context.Background())
@@ -293,16 +299,18 @@ func StartServer(ctx context.Context, orch ports.Orchestrator, brain ports.Brain
 	srv := &http.Server{
 		Addr:         addr,
 		BaseContext:  func(net.Listener) context.Context { return baseCtx },
-		Handler:      s.Handler(),
+		Handler:      handler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 0, // no write timeout — required for long-lived SSE connections
 		IdleTimeout:  60 * time.Second,
 	}
 
+	drained := make(chan struct{})
 	go func() {
+		defer close(drained)
 		<-ctx.Done()
 		cancelBase()
-		shutCtx, cancel := context.WithTimeout(context.Background(), shutdownGrace)
+		shutCtx, cancel := context.WithTimeout(context.Background(), grace)
 		defer cancel()
 		if err := srv.Shutdown(shutCtx); err != nil {
 			log.Printf("httpapi: shutdown grace period elapsed, closing remaining connections: %v", err)
@@ -311,9 +319,10 @@ func StartServer(ctx context.Context, orch ports.Orchestrator, brain ports.Brain
 	}()
 
 	log.Printf("httpapi: listening on %s", addr)
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return err
+	if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+		return err // the address could not be served; nothing is shutting down
 	}
+	<-drained // ListenAndServe returns as soon as Shutdown starts: wait until the in-flight requests are done
 	return nil
 }
 
@@ -360,38 +369,9 @@ func StartServerWith(ctx context.Context, orch ports.Orchestrator, brain ports.B
 	if actSvc != nil {
 		s.WithActivityService(actSvc)
 	}
-	// Cancelled when shutdown starts so long-lived /api/events streams end
-	// promptly (http.Server.Shutdown does not cancel request contexts itself).
-	baseCtx, cancelBase := context.WithCancel(context.Background())
-	defer cancelBase()
-	srv := &http.Server{
-		Addr:         addr,
-		BaseContext:  func(net.Listener) context.Context { return baseCtx },
-		Handler:      s.Handler(),
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 0, // no write timeout — required for long-lived SSE connections
-		IdleTimeout:  60 * time.Second,
-	}
-
 	// Start periodic background plan discovery scans.
 	StartPlanScanWorker(ctx, orch, 5*time.Minute)
-
-	go func() {
-		<-ctx.Done()
-		cancelBase()
-		shutCtx, cancel := context.WithTimeout(context.Background(), shutdownGrace)
-		defer cancel()
-		if err := srv.Shutdown(shutCtx); err != nil {
-			log.Printf("httpapi: shutdown grace period elapsed, closing remaining connections: %v", err)
-			_ = srv.Close()
-		}
-	}()
-
-	log.Printf("httpapi: listening on %s", addr)
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return err
-	}
-	return nil
+	return runHTTP(ctx, addr, s.Handler(), shutdownGrace)
 }
 
 // writeJSONError sets Content-Type to application/json, writes the HTTP status

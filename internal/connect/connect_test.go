@@ -3,6 +3,7 @@ package connect_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -269,4 +270,48 @@ func TestConnect_ReportsProblemsWithoutGivingUp(t *testing.T) {
 	if err := connect.Run(e.opts); err == nil || !strings.Contains(e.out.String(), "failed") {
 		t.Errorf("err=%v\n%s", err, e.out)
 	}
+}
+
+func TestTilde_KeepsAPathOutsideTheHomeDirectoryAsItIs(t *testing.T) {
+	if got := connect.Tilde("/home/u", "/home/u/.cursor/mcp.json"); got != "~/.cursor/mcp.json" {
+		t.Errorf("inside the home directory: %q", got)
+	}
+	if got := connect.Tilde("/home/u", "/etc/mcp.json"); got != "/etc/mcp.json" {
+		t.Errorf("outside the home directory: %q", got)
+	}
+}
+
+// A config that cannot be written or moved into place is reported with the agent's name, and nothing is left behind.
+func TestConnect_ReportsAConfigThatCannotBeWrittenOrMovedIntoPlace(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root can write anywhere")
+	}
+	t.Run("the new file cannot be written", func(t *testing.T) {
+		e := newEnv(t)
+		e.opts.Write = true
+		cursor := filepath.Join(e.home, ".cursor") // present without a config: nothing to back up
+		if err := os.MkdirAll(cursor, 0o500); err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = os.Chmod(cursor, 0o700) }()
+		if err := connect.Run(e.opts); err == nil {
+			t.Errorf("an unwritable config folder must be an error:\n%s", e.out)
+		}
+	})
+	t.Run("the finished file cannot be moved into place", func(t *testing.T) {
+		e := newEnv(t)
+		e.opts.Write = true
+		p := filepath.Join(e.home, ".cursor", "mcp.json")
+		write(t, p, "{}")
+		defer connect.SetRename(func(string, string) error { return errors.New("cross-device link") })()
+		if err := connect.Run(e.opts); err == nil || !strings.Contains(err.Error(), "cross-device link") {
+			t.Errorf("err = %v", err)
+		}
+		if _, err := os.Stat(p + ".nexus-tmp"); err == nil {
+			t.Error("the temporary file was left behind")
+		}
+		if b, _ := os.ReadFile(p); string(b) != "{}" {
+			t.Errorf("the original config must be untouched: %q", b)
+		}
+	})
 }

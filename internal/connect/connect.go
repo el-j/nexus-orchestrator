@@ -98,6 +98,9 @@ func antigravityPath(home string) string {
 	return ""
 }
 
+// rename moves the finished file into place; tests replace it to make that fail.
+var rename = os.Rename
+
 // existing returns file when the file or its directory exists (the agent is installed), else "".
 func existing(file, dir string) string {
 	for _, p := range []string{file, dir} {
@@ -159,23 +162,17 @@ func jsonAgent(o Options, name, path string, entry func() (map[string]any, strin
 	}
 	servers["nexus"] = want
 	doc["mcpServers"] = servers
-	out, err := json.MarshalIndent(doc, "", "  ")
-	if err != nil {
-		return fmt.Errorf("%s: %w", shown, err)
-	}
+	out, _ := json.MarshalIndent(doc, "", "  ") // doc holds only values decoded from JSON and strings: it always encodes
 	if len(raw) > 0 {
 		if err := os.WriteFile(path+".nexus-backup", raw, 0o600); err != nil {
 			return fmt.Errorf("%s: backup: %w", shown, err)
 		}
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-		return fmt.Errorf("%s: %w", shown, err)
-	}
 	tmp := path + ".nexus-tmp"
 	if err := os.WriteFile(tmp, append(out, '\n'), 0o600); err != nil {
 		return fmt.Errorf("%s: %w", shown, err)
 	}
-	if err := os.Rename(tmp, path); err != nil {
+	if err := rename(tmp, path); err != nil {
 		_ = os.Remove(tmp)
 		return fmt.Errorf("%s: %w", shown, err)
 	}
