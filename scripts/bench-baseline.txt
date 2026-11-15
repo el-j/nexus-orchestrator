@@ -1,0 +1,3 @@
+BenchmarkFindForModel 25506
+BenchmarkGetAll 8298307
+BenchmarkSearchFTS 996282
