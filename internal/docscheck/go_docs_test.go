@@ -5,6 +5,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -71,5 +72,45 @@ func TestEveryGoFunctionHasADocComment(t *testing.T) {
 	missing := undocumentedFuncs(t, "../..")
 	if len(missing) > 0 {
 		t.Fatalf("%d functions have no doc comment:\n%s", len(missing), strings.Join(missing, "\n"))
+	}
+}
+
+// auditDocs lists every audit or assessment document of the repository.
+func auditDocs(t *testing.T) []string {
+	t.Helper()
+	var out []string
+	for _, pattern := range []string{"docs/*audit*.md", "docs/archive/*.md", ".claude/AUDIT*.md"} {
+		matches, err := filepath.Glob(filepath.Join(root, pattern))
+		if err != nil {
+			t.Fatal(err)
+		}
+		out = append(out, matches...)
+	}
+	return out
+}
+
+// TestEveryAuditSaysWhetherItIsCurrent keeps old audits from being read as the present state: each one
+// starts with a "Status:" line within its first ten lines, and any that is superseded links the audit
+// that replaced it.
+func TestEveryAuditSaysWhetherItIsCurrent(t *testing.T) {
+	docs := auditDocs(t)
+	if len(docs) < 6 {
+		t.Fatalf("found only %d audit documents: %v", len(docs), docs)
+	}
+	for _, doc := range docs {
+		raw, err := os.ReadFile(doc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		head := strings.Join(strings.SplitN(string(raw), "\n", 11)[:min(10, strings.Count(string(raw), "\n")+1)], "\n")
+		i := strings.Index(head, "Status:")
+		if i < 0 {
+			t.Errorf("%s has no \"Status:\" line in its first ten lines", doc)
+			continue
+		}
+		status := head[i:]
+		if strings.Contains(status, "superseded") && !strings.Contains(status, "audit-2026-10-31") {
+			t.Errorf("%s is superseded but does not link the audit that replaced it", doc)
+		}
 	}
 }

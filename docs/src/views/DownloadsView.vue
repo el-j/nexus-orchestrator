@@ -364,7 +364,7 @@ onMounted(async () => {
       } else if (uad?.architecture) {
         if (/arm/i.test(uad.architecture)) isARM = true;
       }
-    } catch (_) {
+    } catch {
       /* ignore */
     }
     if (!isARM && /ARM64|arm64/i.test(ua)) isARM = true;
@@ -381,7 +381,7 @@ onMounted(async () => {
             if (/apple\s+m\d|apple\s+gpu/i.test(renderer)) isARM = true;
           }
         }
-      } catch (_) {
+      } catch {
         /* ignore */
       }
     }
@@ -408,7 +408,7 @@ onMounted(async () => {
         const pre = releases.find((r) => r.prerelease);
         latestTag.value = pre?.tag_name ?? null;
       }
-    } catch (_) {
+    } catch {
       tagError.value = true;
     } finally {
       tagLoading.value = false;

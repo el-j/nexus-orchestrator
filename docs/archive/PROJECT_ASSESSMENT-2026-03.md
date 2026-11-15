@@ -1,5 +1,7 @@
 # Strategic Assessment: Nexus Orchestrator & Autonomous AI Workflow Blueprint
 
+> **Status: superseded** by [the audit of 2026-10-31](../audit-2026-10-31.md). The figures and verdicts below were true on the date measured and are kept as history; the current state and the open work are in that audit and PLAN-077.
+
 ---
 
 ## Executive Summary & Honest Assessment of Nexus Orchestrator
