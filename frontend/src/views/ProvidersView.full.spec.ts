@@ -41,11 +41,6 @@ vi.mock('../composables/useDiscovery', () => ({
 }));
 vi.mock('../types/wails', () => h.api);
 
-const Status = {
-  name: 'ProviderStatus',
-  props: ['providers', 'refresh', 'hideDiscovered'],
-  template: '<div class="status" />',
-};
 const Panel = {
   name: 'DiscoveredProvidersPanel',
   props: ['providers', 'loading', 'scanning'],
@@ -118,7 +113,6 @@ async function mountView(
   const w = mount(ProvidersView, {
     global: {
       stubs: {
-        ProviderStatus: Status,
         DiscoveredProvidersPanel: Panel,
         ProviderConfigForm: Form,
         AppConfirmDialog: Dialog,
@@ -220,7 +214,6 @@ describe('ProvidersView — AI coding tools', () => {
     const w = mount(ProvidersView, {
       global: {
         stubs: {
-          ProviderStatus: Status,
           DiscoveredProvidersPanel: Panel,
           ProviderConfigForm: Form,
           AppConfirmDialog: Dialog,
@@ -309,7 +302,6 @@ describe('ProvidersView — configuration CRUD', () => {
     const w = mount(ProvidersView, {
       global: {
         stubs: {
-          ProviderStatus: Status,
           DiscoveredProvidersPanel: Panel,
           ProviderConfigForm: Form,
           AppConfirmDialog: Dialog,
