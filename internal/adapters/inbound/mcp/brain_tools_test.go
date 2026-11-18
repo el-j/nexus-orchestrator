@@ -285,6 +285,36 @@ func TestMCP_SearchKnowledge_OK(t *testing.T) {
 	}
 }
 
+func TestMCP_SearchKnowledge_CrossProject_OK(t *testing.T) {
+	brain := &mockBrainForMCP{
+		searchResults: []domain.ContextSection{
+			{ProjectPath: "/repo1", Kind: domain.KnowledgeLearning, Topic: "pitfall", Content: "avoid global state", Tokens: 5},
+		},
+	}
+	srv := newBrainToolServer(t, brain)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      106,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "search_knowledge",
+			"arguments": map[string]any{
+				"projectPath": "*",
+				"query":       "global state",
+			},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var payload []domain.ContextSection
+	decodeToolText(t, r.Result, &payload)
+	if len(payload) != 1 || payload[0].ProjectPath != "/repo1" {
+		t.Fatalf("expected 1 result with ProjectPath /repo1, got %+v", payload)
+	}
+}
+
 func TestMCP_InitProject_OK(t *testing.T) {
 	brain := &mockBrainForMCP{
 		initStatus: domain.BrainStatus{

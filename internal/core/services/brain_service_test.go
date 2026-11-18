@@ -73,10 +73,23 @@ func (m *mockKnowledgeRepo) GetByProjectAndKind(ctx context.Context, projectPath
 }
 
 func (m *mockKnowledgeRepo) SearchFTS(ctx context.Context, projectPath, query string, maxResults int) ([]domain.ProjectKnowledge, error) {
-	// Dummy FTS: return all for simplicity in these unit tests, up to maxResults
+	// Dummy FTS: return all matching projectPath (or all when projectPath is "*" or empty) up to maxResults
 	var res []domain.ProjectKnowledge
 	for _, e := range m.entries {
-		if e.ProjectPath == projectPath {
+		if projectPath == "*" || projectPath == "" || projectPath == "all" || e.ProjectPath == projectPath {
+			res = append(res, e)
+			if len(res) == maxResults {
+				break
+			}
+		}
+	}
+	return res, nil
+}
+
+func (m *mockKnowledgeRepo) SearchVector(ctx context.Context, projectPath string, target []float32, maxResults int) ([]domain.ProjectKnowledge, error) {
+	var res []domain.ProjectKnowledge
+	for _, e := range m.entries {
+		if (projectPath == "*" || projectPath == "" || projectPath == "all" || e.ProjectPath == projectPath) && len(e.Embedding) > 0 {
 			res = append(res, e)
 			if len(res) == maxResults {
 				break

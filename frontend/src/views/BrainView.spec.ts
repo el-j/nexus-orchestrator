@@ -217,15 +217,37 @@ describe('BrainView — search tab', () => {
     expect(last().search).toHaveBeenCalledWith('auth');
   });
 
+  it('searches across all projects when the all projects checkbox is checked', async () => {
+    const w = await mountView();
+    const input = w.find('input[placeholder="Search knowledge…"]');
+    await input.setValue('auth');
+    const checkbox = w.find('input[type="checkbox"]');
+    await checkbox.setValue(true);
+    await w
+      .findAll('button')
+      .filter((b) => b.text() === 'Search')[1]
+      .trigger('click');
+    expect(last().search).toHaveBeenCalledWith('auth', 10, '*');
+  });
+
   it('shows results, or an empty hint', async () => {
     const w = await mountView();
     expect(w.text()).toContain('No results');
     (last().searchResults as { value: unknown }).value = [
-      { kind: 'learning', topic: 'Retries', content: 'use backoff', tokens: 12 },
+      {
+        kind: 'learning',
+        topic: 'Retries',
+        content: 'use backoff',
+        tokens: 12,
+        projectPath: '/some/repo',
+      },
+      { kind: 'architecture', topic: 'Design', content: 'layered', tokens: 8 },
     ];
     await flushPromises();
     expect(w.text()).toContain('Retries');
     expect(w.text()).toContain('use backoff');
+    expect(w.text()).toContain('/some/repo');
+    expect(w.text()).toContain('Design');
     expect(w.text()).toContain('12t');
     expect(w.text()).not.toContain('No results');
   });

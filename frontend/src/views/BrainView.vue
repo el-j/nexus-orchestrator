@@ -89,7 +89,7 @@
     <div class="flex-1 overflow-y-auto p-4 space-y-3">
       <!-- Search tab -->
       <template v-if="activeTab === 'search'">
-        <div class="flex gap-2">
+        <div class="flex gap-2 items-center">
           <input
             v-model="searchQuery"
             type="text"
@@ -97,6 +97,16 @@
             class="flex-1 text-xs bg-white/5 border border-white/10 rounded px-3 py-2 text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50"
             @keydown.enter="handleSearch"
           />
+          <label
+            class="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer select-none"
+          >
+            <input
+              type="checkbox"
+              v-model="searchAllProjects"
+              class="rounded bg-white/5 border-white/10 text-violet-500 focus:ring-0"
+            />
+            <span>All projects</span>
+          </label>
           <button
             @click="handleSearch"
             :disabled="loading || !searchQuery"
@@ -116,10 +126,17 @@
           :key="i"
           class="rounded border border-white/5 bg-white/[0.02] p-3"
         >
-          <div class="flex items-center gap-2 mb-1">
+          <div class="flex items-center gap-2 mb-1 flex-wrap">
             <span class="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300">{{
               r.kind
             }}</span>
+            <span
+              v-if="r.projectPath"
+              class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 font-mono truncate max-w-[200px]"
+              :title="r.projectPath"
+            >
+              {{ r.projectPath }}
+            </span>
             <span class="text-xs font-semibold text-white">{{ r.topic }}</span>
             <span class="ml-auto text-[10px] text-slate-600 font-mono">{{ r.tokens }}t</span>
           </div>
@@ -244,6 +261,7 @@ import { currentProject } from '../composables/useProjectState';
 const projectPath = ref('');
 const activeTab = ref<'search' | 'entries' | 'ingest' | 'filemap'>('search');
 const searchQuery = ref('');
+const searchAllProjects = ref(false);
 const kindFilter = ref('');
 const ingesting = ref(false);
 const ingestProgress = ref('');
@@ -291,7 +309,11 @@ async function handleInit() {
 
 async function handleSearch() {
   if (!searchQuery.value) return;
-  await brain.value.search(searchQuery.value);
+  if (searchAllProjects.value) {
+    await brain.value.search(searchQuery.value, 10, '*');
+  } else {
+    await brain.value.search(searchQuery.value);
+  }
 }
 
 async function handleListEntries() {

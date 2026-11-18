@@ -92,6 +92,8 @@ describe('useBrain', () => {
     expect(api.searchKnowledge).toHaveBeenCalledWith('/p', 'auth', 10);
     await b.search('auth', 3);
     expect(api.searchKnowledge).toHaveBeenLastCalledWith('/p', 'auth', 3);
+    await b.search('auth', 5, '*');
+    expect(api.searchKnowledge).toHaveBeenLastCalledWith('*', 'auth', 5);
     expect(b.searchResults.value).toEqual([{ heading: 'h' }]);
   });
 

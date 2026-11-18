@@ -59,8 +59,13 @@ func (s *Server) toolGetFocusedContext(ctx context.Context, args json.RawMessage
 		maxT = 400
 	}
 
+	target := p.ProjectPath
+	if target == "" {
+		target = "*"
+	}
+
 	q := domain.ContextQuery{
-		ProjectPath: p.ProjectPath,
+		ProjectPath: target,
 		Question:    p.Question,
 		MaxTokens:   maxT,
 	}
@@ -95,7 +100,11 @@ func (s *Server) toolSearchKnowledge(ctx context.Context, args json.RawMessage) 
 	if s.brain == nil {
 		return callToolResult{}, fmt.Errorf("brain service not configured")
 	}
-	results, err := s.brain.SearchKnowledge(ctx, p.ProjectPath, p.Query, limit)
+	target := p.ProjectPath
+	if target == "" {
+		target = "*"
+	}
+	results, err := s.brain.SearchKnowledge(ctx, target, p.Query, limit)
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: search_knowledge: %w", err)
 	}
@@ -303,7 +312,7 @@ func brainToolDefs() []toolDef {
 			InputSchema: inputSchema{
 				Type: "object",
 				Properties: map[string]property{
-					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+					"projectPath": {Type: "string", Description: "Absolute path to the project root, or '*' / empty to search across all projects"},
 					"question":    {Type: "string", Description: "Semantic search query to match against knowledge"},
 					"maxTokens":   {Type: "number", Description: "Maximum tokens to return (default: 400)"},
 				},
@@ -312,11 +321,11 @@ func brainToolDefs() []toolDef {
 		},
 		{
 			Name:        "search_knowledge",
-			Description: "Perform full-text search across the project's knowledge base.",
+			Description: "Perform full-text search across the project's knowledge base or across all projects.",
 			InputSchema: inputSchema{
 				Type: "object",
 				Properties: map[string]property{
-					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+					"projectPath": {Type: "string", Description: "Absolute path to the project root, or '*' / empty to search across all projects"},
 					"query":       {Type: "string", Description: "The FTS query"},
 					"limit":       {Type: "number", Description: "Max results to return"},
 				},

@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"unicode/utf8"
 
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
@@ -22,11 +21,17 @@ var _ ports.BrainService = (*BrainServiceImpl)(nil)
 type BrainServiceImpl struct {
 	repo     ports.ProjectKnowledgeRepository
 	taskRepo ports.TaskRepository
+	embedder ports.EmbeddingProvider
 }
 
 // NewBrainService returns a BrainServiceImpl using the given repositories.
 func NewBrainService(repo ports.ProjectKnowledgeRepository, taskRepo ports.TaskRepository) *BrainServiceImpl {
 	return &BrainServiceImpl{repo: repo, taskRepo: taskRepo}
+}
+
+// SetEmbeddingProvider configures an optional vector embedding provider for hybrid search.
+func (b *BrainServiceImpl) SetEmbeddingProvider(embedder ports.EmbeddingProvider) {
+	b.embedder = embedder
 }
 
 // estimateStringTokens approximates token count using GPT-family heuristics (~4 chars/token).
@@ -36,27 +41,6 @@ func estimateStringTokens(text string) int {
 		return 1
 	}
 	return n
-}
-
-// cutUTF8 returns the longest prefix of s that is at most maxBytes long and does
-// not end in the middle of a multi-byte character.
-func cutUTF8(s string, maxBytes int) string {
-	if len(s) <= maxBytes {
-		return s
-	}
-	for maxBytes > 0 && !utf8.RuneStart(s[maxBytes]) {
-		maxBytes--
-	}
-	return s[:maxBytes]
-}
-
-// truncateUTF8 shortens s to at most maxBytes (rune-safe) and appends "..." when
-// anything was removed.
-func truncateUTF8(s string, maxBytes int) string {
-	if len(s) <= maxBytes {
-		return s
-	}
-	return cutUTF8(s, maxBytes) + "..."
 }
 
 // kindPriority defines the assembly order for GetContext.
@@ -114,10 +98,11 @@ func (b *BrainServiceImpl) GetContext(ctx context.Context, q domain.ContextQuery
 				break
 			}
 			resp.Sections = append(resp.Sections, domain.ContextSection{
-				Kind:    e.Kind,
-				Topic:   e.Topic,
-				Content: e.Content,
-				Tokens:  e.TokenCount,
+				ProjectPath: e.ProjectPath,
+				Kind:        e.Kind,
+				Topic:       e.Topic,
+				Content:     e.Content,
+				Tokens:      e.TokenCount,
 			})
 			resp.TokensUsed += e.TokenCount
 			if kind == domain.KnowledgeFileMap {
@@ -136,12 +121,25 @@ func (b *BrainServiceImpl) GetFocusedContext(ctx context.Context, q domain.Conte
 	if q.MaxTokens == 0 {
 		q.MaxTokens = 400
 	}
-	entries, err := b.repo.SearchFTS(ctx, filepath.Clean(q.ProjectPath), q.Question, 20)
+	cleanPath := q.ProjectPath
+	if cleanPath != "" && cleanPath != "*" && cleanPath != "all" {
+		cleanPath = filepath.Clean(cleanPath)
+	} else {
+		cleanPath = "*"
+	}
+	entries, err := b.repo.SearchFTS(ctx, cleanPath, q.Question, 20)
 	if err != nil {
 		return domain.ContextResponse{}, fmt.Errorf("brain_service: focused context: %w", err)
 	}
+	if b.embedder != nil {
+		if emb, err := b.embedder.Embed(ctx, q.Question); err == nil && len(emb) > 0 {
+			if vec, err := b.repo.SearchVector(ctx, cleanPath, emb, 20); err == nil && len(vec) > 0 {
+				entries = FuseRRF(entries, vec, 20)
+			}
+		}
+	}
 	resp := domain.ContextResponse{
-		ProjectPath: filepath.Clean(q.ProjectPath),
+		ProjectPath: cleanPath,
 		TokenBudget: q.MaxTokens,
 		Sections:    []domain.ContextSection{},
 	}
@@ -151,10 +149,11 @@ func (b *BrainServiceImpl) GetFocusedContext(ctx context.Context, q domain.Conte
 			break
 		}
 		resp.Sections = append(resp.Sections, domain.ContextSection{
-			Kind:    e.Kind,
-			Topic:   e.Topic,
-			Content: e.Content,
-			Tokens:  e.TokenCount,
+			ProjectPath: e.ProjectPath,
+			Kind:        e.Kind,
+			Topic:       e.Topic,
+			Content:     e.Content,
+			Tokens:      e.TokenCount,
 		})
 		resp.TokensUsed += e.TokenCount
 	}
@@ -167,30 +166,42 @@ func (b *BrainServiceImpl) SearchKnowledge(ctx context.Context, projectPath, que
 	if maxTokens > 0 && maxTokens <= 20 {
 		// Caller passed an item count limit (e.g. limit=5 or limit=10), not a token budget.
 		itemLimit = maxTokens
-		maxTokens = 400
+		maxTokens = 0
 	} else if maxTokens <= 0 {
 		maxTokens = 400
 	}
+	cleanPath := projectPath
+	if cleanPath != "" && cleanPath != "*" && cleanPath != "all" {
+		cleanPath = filepath.Clean(cleanPath)
+	}
 	// itemLimit is at most 20 (see above), so a fixed fetch of 20 always covers it.
 	const fetchCount = 20
-	entries, err := b.repo.SearchFTS(ctx, filepath.Clean(projectPath), query, fetchCount)
+	entries, err := b.repo.SearchFTS(ctx, cleanPath, query, fetchCount)
 	if err != nil {
 		return nil, fmt.Errorf("brain_service: search knowledge: %w", err)
 	}
-	var sections []domain.ContextSection
+	if b.embedder != nil {
+		if emb, err := b.embedder.Embed(ctx, query); err == nil && len(emb) > 0 {
+			if vec, err := b.repo.SearchVector(ctx, cleanPath, emb, fetchCount); err == nil && len(vec) > 0 {
+				entries = FuseRRF(entries, vec, fetchCount)
+			}
+		}
+	}
+	sections := []domain.ContextSection{}
 	used := 0
 	for _, e := range entries {
 		if itemLimit > 0 && len(sections) >= itemLimit {
 			break
 		}
-		if used+e.TokenCount > maxTokens {
+		if itemLimit == 0 && used+e.TokenCount > maxTokens && len(sections) > 0 {
 			break
 		}
 		sections = append(sections, domain.ContextSection{
-			Kind:    e.Kind,
-			Topic:   e.Topic,
-			Content: e.Content,
-			Tokens:  e.TokenCount,
+			ProjectPath: e.ProjectPath,
+			Kind:        e.Kind,
+			Topic:       e.Topic,
+			Content:     e.Content,
+			Tokens:      e.TokenCount,
 		})
 		used += e.TokenCount
 	}
@@ -214,19 +225,9 @@ func (b *BrainServiceImpl) GetFileMap(ctx context.Context, projectPath, focusAre
 	return files, nil
 }
 
-// instructionFiles are the files in which the agents that work on a project keep their
-// instructions. The first of a group that exists is ingested, so a project that has both
-// CLAUDE.md and .claude/CLAUDE.md is not read twice.
-var instructionFiles = [][]string{
-	{"CLAUDE.md", filepath.Join(".claude", "CLAUDE.md")},
-	{"AGENTS.md"},
-	{"GEMINI.md"},
-	{filepath.Join(".github", "copilot-instructions.md")},
-}
-
-// InitProject ingests the project's agent instructions. With an explicit claudeMDPath only that
-// file is read; with none, the project's CLAUDE.md, AGENTS.md, GEMINI.md and Copilot
-// instructions are found by themselves, whichever agent works on the project.
+// InitProject ingests the project's agent instructions and documentation. With an explicit claudeMDPath only that
+// file is read; with none, the project's CLAUDE.md, AGENTS.md, GEMINI.md, Copilot
+// instructions, README.md, and docs directory are found by themselves.
 func (b *BrainServiceImpl) InitProject(ctx context.Context, projectPath, claudeMDPath string) (domain.BrainStatus, error) {
 	var paths []string
 	if claudeMDPath != "" {
@@ -240,6 +241,13 @@ func (b *BrainServiceImpl) InitProject(ctx context.Context, projectPath, claudeM
 				}
 			}
 		}
+		for _, readme := range []string{"README.md", "readme.md"} {
+			if _, err := os.Stat(filepath.Join(projectPath, readme)); err == nil {
+				paths = append(paths, filepath.Join(projectPath, readme))
+				break
+			}
+		}
+		paths = append(paths, findDocFiles(projectPath)...)
 	}
 	for _, path := range paths {
 		if _, err := b.IngestFromFile(ctx, projectPath, path); err != nil {

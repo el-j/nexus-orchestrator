@@ -97,16 +97,21 @@ func newBrainIngestCmd(brain ports.BrainService) *cobra.Command {
 	return cmd
 }
 
-// newBrainSearchCmd builds "brain search": full-text search over a project's knowledge.
+// newBrainSearchCmd builds "brain search": full-text search over a project's knowledge or across all projects.
 func newBrainSearchCmd(brain ports.BrainService) *cobra.Command {
 	var project string
 	var query string
 	var limit int
+	var all bool
 	cmd := &cobra.Command{
 		Use:   "search",
-		Short: "Search the knowledge base for a specific project",
+		Short: "Search the knowledge base for a specific project or across all projects",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			results, err := brain.SearchKnowledge(context.Background(), project, query, limit)
+			target := project
+			if all || target == "" {
+				target = "*"
+			}
+			results, err := brain.SearchKnowledge(context.Background(), target, query, limit)
 			if err != nil {
 				return fmt.Errorf("cli: brain search: %w", err)
 			}
@@ -115,10 +120,10 @@ func newBrainSearchCmd(brain ports.BrainService) *cobra.Command {
 			return enc.Encode(results)
 		},
 	}
-	cmd.Flags().StringVar(&project, "project", "", "Project path (required)")
+	cmd.Flags().StringVar(&project, "project", "", "Project path (empty or '*' searches all projects)")
 	cmd.Flags().StringVar(&query, "query", "", "Search query (required)")
 	cmd.Flags().IntVar(&limit, "limit", 5, "Maximum number of results to return")
-	_ = cmd.MarkFlagRequired("project")
+	cmd.Flags().BoolVar(&all, "all", false, "Search across all projects")
 	_ = cmd.MarkFlagRequired("query")
 	return cmd
 }

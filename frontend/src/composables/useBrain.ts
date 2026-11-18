@@ -108,11 +108,12 @@ export function useBrain(projectPath: string) {
     }
   }
 
-  async function search(query: string, limit = 10) {
+  async function search(query: string, limit = 10, targetProjectPath?: string) {
     loading.value = true;
     error.value = null;
     try {
-      searchResults.value = await searchKnowledge(projectPath, query, limit);
+      const p = targetProjectPath !== undefined ? targetProjectPath : projectPath;
+      searchResults.value = await searchKnowledge(p, query, limit);
     } catch (e) {
       error.value = e instanceof Error ? e.message : String(e);
     } finally {
