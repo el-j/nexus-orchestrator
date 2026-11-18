@@ -1,6 +1,6 @@
 # nexusOrchestrator
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/el-j/nexus-orchestrator?include_prereleases&label=release)](https://github.com/el-j/nexus-orchestrator/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/el-j/nexus-orchestrator)](https://goreportcard.com/report/github.com/el-j/nexus-orchestrator)
 
@@ -161,4 +161,4 @@ Nexus is developed with itself: `make dogfood` starts the daemon and loads this 
 
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0) — see the [LICENSE](LICENSE) file for details.
