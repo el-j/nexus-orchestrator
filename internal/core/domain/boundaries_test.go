@@ -215,18 +215,21 @@ func TestMaskSecretBoundary(t *testing.T) {
 // The usage window: empty is a day, a number of days or a Go duration counts back, nothing else.
 func TestParseSinceForms(t *testing.T) {
 	now := time.Date(2026, 1, 10, 12, 0, 0, 0, time.UTC)
-	for in, want := range map[string]time.Time{
-		"":     now.Add(-24 * time.Hour),
-		"1d":   now.Add(-24 * time.Hour),
-		"7d":   now.Add(-7 * 24 * time.Hour),
-		"90m":  now.Add(-90 * time.Minute),
-		"all":  {},
-		"ALL":  {},
-		" 2h ": now.Add(-2 * time.Hour),
+	for _, tc := range []struct {
+		in   string
+		want time.Time
+	}{
+		{"", now.Add(-24 * time.Hour)},
+		{"1d", now.Add(-24 * time.Hour)},
+		{"7d", now.Add(-7 * 24 * time.Hour)},
+		{"90m", now.Add(-90 * time.Minute)},
+		{"all", time.Time{}},
+		{"ALL", time.Time{}},
+		{" 2h ", now.Add(-2 * time.Hour)},
 	} {
-		got, err := domain.ParseSince(in, now)
-		if err != nil || !got.Equal(want) {
-			t.Errorf("ParseSince(%q) = %v, %v; want %v", in, got, err, want)
+		got, err := domain.ParseSince(tc.in, now)
+		if err != nil || !got.Equal(tc.want) {
+			t.Errorf("ParseSince(%q) = %v, %v; want %v", tc.in, got, err, tc.want)
 		}
 	}
 	for _, bad := range []string{"0d", "-1d", "0h", "-3h", "soon"} {

@@ -1,7 +1,7 @@
 ---
 id: PLAN-077
 title: 'Definition of done: close every gap the 2026-10-31 audit found'
-status: active
+status: completed
 createdAt: 2026-10-31
 tasks:
   [

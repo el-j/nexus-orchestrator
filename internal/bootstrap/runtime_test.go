@@ -304,3 +304,24 @@ func TestStart_RepairsTaskRowsWrittenByAnotherTool(t *testing.T) {
 		t.Errorf("row after start: status %q, updated_at %s; want a daemon status and an integer time", status, kind)
 	}
 }
+
+func TestRuntime_WithEmbeddingEnv(t *testing.T) {
+	t.Setenv("NEXUS_EMBEDDING_URL", "http://localhost:11434")
+	t.Setenv("NEXUS_EMBEDDING_MODEL", "nomic-embed-text")
+	ctx := context.Background()
+	dir := t.TempDir()
+	cfg := bootstrap.Config{
+		DBPath:       filepath.Join(dir, "nexus.db"),
+		ListenAddr:   "127.0.0.1:0",
+		MCPAddr:      "127.0.0.1:0",
+		ScanInterval: 10 * time.Minute,
+	}
+	rt, err := bootstrap.Start(ctx, cfg, nil)
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	defer rt.Close()
+	if rt.Brain == nil {
+		t.Fatal("expected Brain to be wired")
+	}
+}

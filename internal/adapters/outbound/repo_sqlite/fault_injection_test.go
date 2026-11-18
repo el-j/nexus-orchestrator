@@ -116,6 +116,10 @@ func TestListQueries_ReportRowsTheyCannotScanAndFailuresMidway(t *testing.T) {
 			_, err := repo_sqlite.NewKnowledgeRepo(r).GetByProject(ctx, "/p")
 			return err
 		}},
+		"knowledge search vector": {"project_knowledge", badRow{"project_path": "'/p'", "embedding": "X'01020304'"}, func(r *repo_sqlite.Repository) error {
+			_, err := repo_sqlite.NewKnowledgeRepo(r).SearchVector(ctx, "/p", []float32{1.0}, 5)
+			return err
+		}},
 		"model capabilities": {"model_capabilities", nil, func(r *repo_sqlite.Repository) error {
 			_, err := repo_sqlite.NewModelCapabilityRepo(r).GetAll(ctx)
 			return err

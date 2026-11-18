@@ -293,35 +293,41 @@ func TestHandleGetAllTasks_PagesTheHistory(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer resp.Body.Close()
 		var out []domain.Task
 		_ = json.NewDecoder(resp.Body).Decode(&out)
 		return resp, out
 	}
 
 	resp, page := get("?limit=5&offset=3")
+	_ = resp.Body.Close()
 	if len(page) != 5 || page[0].ID != "t03" || page[4].ID != "t07" {
 		t.Errorf("page = %v", page)
 	}
 	if resp.Header.Get("X-Total-Count") != "12" {
 		t.Errorf("X-Total-Count = %q, want 12", resp.Header.Get("X-Total-Count"))
 	}
-	if _, page = get("?limit=5&offset=10"); len(page) != 2 {
+	if resp, page = get("?limit=5&offset=10"); len(page) != 2 {
 		t.Errorf("the last page holds the 2 that are left, got %d", len(page))
 	}
-	if _, page = get("?offset=99"); len(page) != 0 {
+	_ = resp.Body.Close()
+	if resp, page = get("?offset=99"); len(page) != 0 {
 		t.Errorf("an offset past the end is an empty page, got %d", len(page))
 	}
-	if _, page = get(""); len(page) != 12 {
+	_ = resp.Body.Close()
+	if resp, page = get(""); len(page) != 12 {
 		t.Errorf("without limit all 12 (under the default) come back, got %d", len(page))
 	}
-	if _, page = get("?limit=999999"); len(page) != 12 {
+	_ = resp.Body.Close()
+	if resp, page = get("?limit=999999"); len(page) != 12 {
 		t.Errorf("a limit above the cap is capped, not refused: got %d", len(page))
 	}
+	_ = resp.Body.Close()
 	for _, bad := range []string{"?limit=0", "?limit=-1", "?limit=x", "?offset=-1", "?offset=y"} {
-		if resp, _ = get(bad); resp.StatusCode != http.StatusBadRequest {
+		resp, _ = get(bad)
+		if resp.StatusCode != http.StatusBadRequest {
 			t.Errorf("%s: HTTP %d, want 400", bad, resp.StatusCode)
 		}
+		_ = resp.Body.Close()
 	}
 }
 

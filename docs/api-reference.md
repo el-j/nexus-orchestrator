@@ -583,19 +583,25 @@ Aggregates the top-level macro context for LLM system prompts.
 GET /api/brain/search?projectPath=/path/to/project&q=auth&limit=5
 ```
 
-Performs BM25 search against the SQLite FTS5 index.
+Performs natural-language tokenized BM25 search against the SQLite FTS5 index, combined with optional vector cosine similarity via Reciprocal Rank Fusion (RRF) when embeddings are enabled (`NEXUS_EMBEDDING_URL`). Set `projectPath="*"` to search across all registered projects in the brain.
 
 **Response:** `200 OK`
 
 ```json
 {
   "results": [
-    { "kind": "architecture", "topic": "Authentication Provider", "content": "...", "tokens": 85 }
+    {
+      "kind": "architecture",
+      "topic": "Authentication Provider",
+      "content": "...",
+      "tokens": 85,
+      "projectPath": "/path/to/project"
+    }
   ]
 }
 ```
 
-`limit` is the maximum number of results (default 5).
+`limit` is the maximum number of results (default 5). If `projectPath` is `*`, results span all indexed projects and each section includes its originating `projectPath`.
 
 ---
 
@@ -605,7 +611,7 @@ Performs BM25 search against the SQLite FTS5 index.
 POST /api/brain/focused-context
 ```
 
-Get focused context for a project based on a specific question. Returns context sections most relevant to the question, bounded by a token budget.
+Get focused context for a project (or across all projects when `projectPath` is `"*"`) based on a specific question. Returns context sections most relevant to the question, bounded by a token budget.
 
 **Request Body:**
 

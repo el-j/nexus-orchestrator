@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Cross-project and natural-language RAG upgrade (PLAN-078):
+  - Tokenized natural-language FTS5 BM25 search (`buildFTSQuery`) supporting multi-term queries, stop-word removal, and punctuation stripping. (TASK-647)
+  - Cross-project knowledge search across all registered repos using `*` or empty path in MCP (`search_knowledge`, `get_focused_context`), CLI (`nexus-cli brain search --all`), REST, and Web UI. (TASK-648)
+  - Automatic ingestion of `README.md` and documentation files under `docs/**/*.md` during `InitProject` with nested directory traversal and exclusion of archive and hidden folders. (TASK-649)
+  - Optional hybrid vector search combining BM25 lexical ranks with cosine-similarity vector embeddings using Reciprocal Rank Fusion (RRF), with graceful degradation when no embedding provider is running. (TASK-650)
+  - End-to-end verification, doc comments, and complete test suites preserving 100% statement coverage. (TASK-651)
 - `docs/audit-2026-10-31.md`: a measured check of the project against the definition of done (coverage, documentation, mutation, e2e, boss files, dead code, performance) and PLAN-077 with TASK-632 to TASK-646 to close every gap.
 - Antigravity CLI driver (`agy`): the prompt goes on stdin with `--model` from the provider's model, `agy models` fills the model list, and a quota, rate-limit, auth or overload failure is typed from agy's `AGY_ERROR` line, with the reset time read from "Resets in 43h54m", so routing cools the provider until then. `agy` is a known CLI, is found by discovery and promoted as its plain path (its `-p` wants the prompt as a value). Opt-in real test: `go test -tags realagy`. TASK-599
 - VS Code extension shows the limits: the status bar counts `WAITING` tasks (`W`), says when every provider is cooling down, and its tooltip lists the cooling providers (until when, why), plans that are nearly used up and the tokens of the last 24 hours (`getUsage`); the queue view lists `WAITING` tasks with when they resume; the provider pickers mark a provider at a limit. The editor model bridge (`vscode.lm`) now reports token usage (the model's own count, or four characters per token) so editor models appear in the usage ledger and under budgets. TASK-623 of PLAN-075

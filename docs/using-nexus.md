@@ -47,12 +47,13 @@ Reload the window afterwards.
 make init-project PROJECT=/absolute/path/to/your/repo
 ```
 
-This reads the project's `CLAUDE.md` (or `.claude/CLAUDE.md`), `AGENTS.md`, `GEMINI.md` and Copilot instructions and stores each `## Section` as
+This reads the project's `CLAUDE.md` (or `.claude/CLAUDE.md`), `AGENTS.md`, `GEMINI.md`, Copilot instructions, `README.md` and documentation files under `docs/**/*.md` (skipping `archive/`, `testdata/` and hidden folders), and stores each `## Section` as
 knowledge, classified as architecture, file map, convention, learning or glossary. Notes:
 
 - Sections with fewer than 20 characters of body are skipped, so a very short `CLAUDE.md` can
   produce `entryCount: 0`. Check with `nexus-cli brain status --project <path>`.
-- Add what the agents keep forgetting to that file, then re-run the command. Further knowledge can
+- Search within a project or across all registered projects using `nexus-cli brain search --all <query>` or the Web UI "All projects" toggle. Natural-language questions use tokenized FTS5 BM25 search, seamlessly enhanced with vector embeddings and Reciprocal Rank Fusion (RRF) when `NEXUS_EMBEDDING_URL` is configured.
+- Add what the agents keep forgetting to instruction or documentation files, then re-run `make init-project`. Further knowledge can
   be added by an agent through the `ingest_knowledge` tool.
 
 `make init-project` also writes `.nexus/policy.json` (default verification command, file-size limit,
