@@ -2,6 +2,7 @@
   "name": "nexus-orchestrator-action",
   "version": "0.10.0",
   "private": true,
+  "license": "AGPL-3.0",
   "description": "GitHub Action runner for nexus-orchestrator",
   "type": "commonjs",
   "main": "dist/index.js",

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Moved repository license from MIT to the GNU Affero General Public License v3.0 (AGPL-3.0) to enforce copyleft and source availability across network-hosted deployments.
+
 ### Added
 
 - Cross-project and natural-language RAG upgrade (PLAN-078):
