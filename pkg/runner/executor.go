@@ -47,12 +47,56 @@ func truncateObservation(s string) string {
 }
 
 // FormatCorrectionPrompt constructs a self-healing prompt containing the prior failure and instructions.
+// It leverages AST declaration extraction and targeted compiler diagnostics to minimize token overhead.
 func FormatCorrectionPrompt(instruction, targetFile, latestOutput, verificationCmd, verificationOutput string) string {
+	code := ExtractCode(latestOutput)
+	diags := ParseDiagnostics(verificationOutput)
+
+	// Look for a diagnostic matching targetFile
+	var match *Diagnostic
+	cleanTarget := filepath.Base(filepath.ToSlash(targetFile))
+	for i := range diags {
+		diagFile := filepath.Base(filepath.ToSlash(diags[i].File))
+		if cleanTarget == "" || diagFile == cleanTarget || strings.HasSuffix(targetFile, diags[i].File) {
+			match = &diags[i]
+			break
+		}
+	}
+
+	if match != nil && match.Line > 0 {
+		if sym, declCode, ok := ExtractASTDeclaration(code, match.Line); ok {
+			symDesc := ""
+			if sym != "" {
+				symDesc = fmt.Sprintf(" (in %s)", sym)
+			}
+			return fmt.Sprintf(
+				"Original task instruction:\n%s\n\n"+
+					"Target file %s failed verification at line %d%s:\nError: %s\n\n"+
+					"Failing declaration:\n```go\n%s\n```\n\n"+
+					"Compiler diagnostic:\n%s\n\n"+
+					"Please fix the error and output the entire corrected file content.",
+				instruction, targetFile, match.Line, symDesc, match.Message, declCode, truncateObservation(verificationOutput),
+			)
+		}
+
+		// Fallback to focused line snippet if AST is unavailable
+		snippet, start, end := ExtractFocusedSnippet(code, match.Line, 10)
+		return fmt.Sprintf(
+			"Original task instruction:\n%s\n\n"+
+				"Target file %s failed verification at line %d:\nError: %s\n\n"+
+				"Context lines %d-%d:\n```go\n%s\n```\n\n"+
+				"Compiler diagnostic:\n%s\n\n"+
+				"Please fix the error and output the entire corrected file content.",
+			instruction, targetFile, match.Line, match.Message, start, end, snippet, truncateObservation(verificationOutput),
+		)
+	}
+
+	// Default fallback to full output when no specific line is parsed
 	return fmt.Sprintf(
 		"Original task instruction:\n%s\n\nYour latest output for %s:\n%s\n\n"+
 			"It failed verification with command %q:\n\n%s\n\n"+
 			"Please fix the errors and output the entire corrected file content.",
-		instruction, targetFile, ExtractCode(latestOutput), verificationCmd, truncateObservation(verificationOutput),
+		instruction, targetFile, code, verificationCmd, truncateObservation(verificationOutput),
 	)
 }
 
