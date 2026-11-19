@@ -288,3 +288,37 @@ func TestServer_Streaming_NonFlusher_And_EmptyModel(t *testing.T) {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
 }
+
+func TestServer_HistoryBudget_HeaderAndQueryParam(t *testing.T) {
+	c := &fakeClient{name: "MockLLM", model: "mock-1", alive: true, chatReply: "ok"}
+	disc := services.NewDiscoveryService(c)
+	gw := NewGateway(Config{DefaultRole: "coder"}, disc)
+	server := NewServer(Config{DefaultRole: "coder"}, gw)
+
+	reqPayload := ChatCompletionRequest{
+		Model: "coder",
+		Messages: []ChatMessage{
+			{Role: "user", Content: "turn 1: instruction"},
+			{Role: "assistant", Content: "turn 1: result"},
+			{Role: "user", Content: "turn 2: recent question"},
+		},
+	}
+	body, _ := json.Marshal(reqPayload)
+
+	// 1. With X-Nexus-History-Budget header
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))
+	req.Header.Set("X-Nexus-History-Budget", "25")
+	w := httptest.NewRecorder()
+	server.Handler().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	// 2. With history_budget query parameter
+	req2 := httptest.NewRequest(http.MethodPost, "/v1/chat/completions?history_budget=25", bytes.NewReader(body))
+	w2 := httptest.NewRecorder()
+	server.Handler().ServeHTTP(w2, req2)
+	if w2.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w2.Code)
+	}
+}
