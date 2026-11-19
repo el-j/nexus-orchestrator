@@ -434,3 +434,42 @@ func TestGateway_AllCooling_And_LadderUnmatched(t *testing.T) {
 		t.Fatalf("expected 'no candidate provider available' for stream, got %v", err)
 	}
 }
+
+func TestApplyPolicyBudget(t *testing.T) {
+	msgs := []domain.Message{
+		{Role: domain.RoleUser, Content: "turn 1: instruction " + strings.Repeat("detail ", 15)},
+		{Role: domain.RoleAssistant, Content: "turn 1: result " + strings.Repeat("code ", 15)},
+		{Role: domain.RoleUser, Content: "turn 2: recent question"},
+		{Role: domain.RoleAssistant, Content: "turn 2: recent answer"},
+	}
+
+	// 1. No budget configured -> returns original messages unchanged
+	if got := ApplyPolicyBudget(msgs, "", 0); len(got) != 4 {
+		t.Fatalf("expected unchanged messages, got %d", len(got))
+	}
+
+	// 2. Client budget provided -> trims according to budget
+	got := ApplyPolicyBudget(msgs, "", 70)
+	if len(got) < 2 {
+		t.Fatalf("expected trimmed messages, got %d", len(got))
+	}
+	if !strings.Contains(got[0].Content, "[Previous Context Summary:") {
+		t.Fatalf("expected summary in first message, got: %s", got[0].Content)
+	}
+
+	// 3. Project policy with HistoryBudget
+	tmpDir := t.TempDir()
+	policyDir := filepath.Join(tmpDir, ".nexus")
+	if err := os.MkdirAll(policyDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	policyJSON := `{"historyBudget": 70}`
+	if err := os.WriteFile(filepath.Join(policyDir, "policy.json"), []byte(policyJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	gotPolicy := ApplyPolicyBudget(msgs, tmpDir, 0)
+	if len(gotPolicy) < 2 || !strings.Contains(gotPolicy[0].Content, "[Previous Context Summary:") {
+		t.Fatalf("expected policy budget to trim and consolidate history, got %+v", gotPolicy)
+	}
+}

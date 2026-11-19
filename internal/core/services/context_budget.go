@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bufio"
 	"fmt"
 	"sort"
 	"strings"
@@ -121,8 +122,17 @@ func shortenBlock(block string, keepTokens int) string {
 	return withNote(header, "shortened: the rest of the file is left out") + "\n" + body[:cut] + "\n"
 }
 
-// trimHistoryTokens keeps the newest messages that fit in budget tokens, starting with a user turn.
+// trimHistoryTokens is an internal alias for TrimHistoryTokens.
 func trimHistoryTokens(msgs []domain.Message, budget int) []domain.Message {
+	return TrimHistoryTokens(msgs, budget)
+}
+
+// TrimHistoryTokens keeps the newest messages that fit in budget tokens, starting with a user turn.
+// When older messages are pruned to satisfy the budget, it distills them into a rolling memory block.
+func TrimHistoryTokens(msgs []domain.Message, budget int) []domain.Message {
+	if len(msgs) == 0 || budget <= 0 {
+		return nil
+	}
 	used, start := 0, len(msgs)
 	for i := len(msgs) - 1; i >= 0; i-- {
 		t := tokensOf(msgs[i].Content) + 4
@@ -134,7 +144,106 @@ func trimHistoryTokens(msgs []domain.Message, budget int) []domain.Message {
 	}
 	kept := msgs[start:]
 	for len(kept) > 0 && kept[0].Role != domain.RoleUser {
+		used -= tokensOf(kept[0].Content) + 4
 		kept = kept[1:]
 	}
-	return kept
+	if start == 0 {
+		return kept
+	}
+
+	pruned := msgs[:start]
+	summary := distillPrunedHistory(pruned)
+	if summary == "" {
+		return kept
+	}
+	summaryBlock := "[Previous Context Summary: " + summary + "]"
+	summaryTokens := tokensOf(summaryBlock) + 2
+
+	if len(kept) > 0 {
+		if used+summaryTokens <= budget {
+			cloned := make([]domain.Message, len(kept))
+			copy(cloned, kept)
+			cloned[0].Content = summaryBlock + "\n\n" + cloned[0].Content
+			return cloned
+		}
+		// Try pruning an older user-assistant pair if multiple pairs exist to fit the rolling memory
+		temp := kept
+		tempUsed := used
+		for len(temp) > 2 && tempUsed+summaryTokens > budget {
+			tempUsed -= tokensOf(temp[0].Content) + 4
+			temp = temp[1:]
+			for len(temp) > 0 && temp[0].Role != domain.RoleUser {
+				tempUsed -= tokensOf(temp[0].Content) + 4
+				temp = temp[1:]
+			}
+		}
+		if len(temp) > 0 && temp[0].Role == domain.RoleUser && tempUsed+summaryTokens <= budget {
+			cloned := make([]domain.Message, len(temp))
+			copy(cloned, temp)
+			cloned[0].Content = summaryBlock + "\n\n" + cloned[0].Content
+			return cloned
+		}
+		return kept
+	}
+
+	if summaryTokens <= budget {
+		return []domain.Message{
+			{
+				Role:    domain.RoleUser,
+				Content: summaryBlock,
+			},
+		}
+	}
+	return nil
+}
+
+// distillPrunedHistory condenses pruned messages into a rolling memory string.
+func distillPrunedHistory(pruned []domain.Message) string {
+	var parts []string
+	for _, m := range pruned {
+		text := strings.TrimSpace(m.Content)
+		if text == "" {
+			continue
+		}
+		if strings.HasPrefix(text, "[Previous Context Summary: ") {
+			end := strings.Index(text, "]")
+			if end > len("[Previous Context Summary: ") {
+				prev := text[len("[Previous Context Summary: "):end]
+				parts = append(parts, prev)
+				text = strings.TrimSpace(text[end+1:])
+			}
+		}
+		if text == "" {
+			continue
+		}
+		snippet := firstNonEmptyLine(text, 60)
+		switch m.Role {
+		case domain.RoleUser:
+			parts = append(parts, "User: "+snippet)
+		case domain.RoleAssistant:
+			parts = append(parts, "Assistant: "+snippet)
+		}
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	if len(parts) > 4 {
+		parts = parts[len(parts)-4:]
+	}
+	return strings.Join(parts, "; ")
+}
+
+// firstNonEmptyLine returns the first non-empty line truncated to maxLen characters.
+func firstNonEmptyLine(s string, maxLen int) string {
+	scanner := bufio.NewScanner(strings.NewReader(s))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line != "" {
+			if len(line) > maxLen {
+				return line[:maxLen] + "..."
+			}
+			return line
+		}
+	}
+	return ""
 }

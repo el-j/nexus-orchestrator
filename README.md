@@ -87,12 +87,14 @@ or, after the blocked attempt, open **System Settings → Privacy & Security**, 
 
 Download `nexus-orchestrator-<os>-<arch>.tar.gz` (`.zip` on Windows) from [Releases](https://github.com/el-j/nexus-orchestrator/releases), or `curl -sSfL https://raw.githubusercontent.com/el-j/nexus-orchestrator/main/scripts/install.sh | sh`. The archive contains:
 
-| Binary            | Purpose                                                            |
-| ----------------- | ------------------------------------------------------------------ |
-| `nexus-daemon`    | Headless daemon: REST API, MCP server, light dashboard (`/ui`)     |
-| `nexus-cli`       | CLI client: queue, drafts, brain, `connect`                        |
-| `nexus-submit`    | One-shot task submission from a task file                          |
-| `nexus-mcp-stdio` | stdio-to-HTTP bridge for agents that start MCP servers as commands |
+| Binary         | Purpose                                                             |
+| -------------- | ------------------------------------------------------------------- |
+| `nexus-daemon` | Headless daemon: REST API, MCP server, light dashboard (`/ui`)      |
+| `nexus-cli`    | Unified CLI client: queue, drafts, brain, runner gates, `connect`   |
+| `nexus-brain`  | Standalone RAG CLI and dedicated Knowledge MCP server (SQLite FTS5) |
+| `nexus-router` | Standalone LLM Gateway & OpenAI-compatible proxy (`:8080`)          |
+| `nexus-runner` | Standalone task verification gates & self-healing execution loops   |
+| `nexus-submit` | One-shot task submission from a task file                           |
 
 ```sh
 ./nexus-daemon     # database in ~/.nexus/nexus.db
@@ -100,6 +102,16 @@ Download `nexus-orchestrator-<os>-<arch>.tar.gz` (`.zip` on Windows) from [Relea
 ```
 
 The full web UI is embedded by `make start`/`make web` (Node >= 22) and is part of the desktop app.
+
+### Modular Standalone CLIs & Microservices
+
+Nexus can be used either as an integrated system or as decoupled standalone micro-CLIs in pipelines and agent workflows:
+
+- **`nexus-brain`**: Standalone semantic indexing and retrieval engine using SQLite FTS5 BM25 search. Can run in local standalone mode (`--db <path>`) or remote mode (`--addr <url>`), and serves as a dedicated MCP server for IDEs via `nexus-brain serve-mcp`.
+- **`nexus-router`**: Standalone model gateway and OpenAI-compatible HTTP reverse proxy (`nexus-router serve --port 8080`) supporting multi-provider fallback ladders, cooldown management, and direct prompt routing.
+- **`nexus-runner`**: Standalone policy engine and verification gate (`nexus-runner verify`, `nexus-runner inspect`) with automated self-healing execution loops (`nexus-runner execute`) that extract LLM code patches and re-test.
+
+See [docs/standalone-clis.md](docs/standalone-clis.md) for full usage and pipeline examples.
 
 ### VS Code / Antigravity extension
 

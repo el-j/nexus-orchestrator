@@ -36,6 +36,20 @@ type Violation struct {
 	Limit int `json:"limit,omitempty"`
 }
 
+// Diagnostic represents a structured compiler or test error.
+type Diagnostic struct {
+	// File is the relative or base filename of the diagnostic.
+	File string `json:"file"`
+	// Line is the line number where the error occurred (1-indexed).
+	Line int `json:"line"`
+	// Column is the column number if available.
+	Column int `json:"column,omitempty"`
+	// Message is the compiler or test error description.
+	Message string `json:"message"`
+	// Symbol is the function, method, or type identifier if identified.
+	Symbol string `json:"symbol,omitempty"`
+}
+
 // VerificationResult contains the outcome of invariant and command verification.
 type VerificationResult struct {
 	// Passed indicates whether all invariants and verification commands succeeded.

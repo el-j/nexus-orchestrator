@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -82,6 +83,18 @@ func (s *Server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 	if len(req.Messages) == 0 {
 		s.writeError(w, http.StatusBadRequest, "messages array cannot be empty", "invalid_request_error")
 		return
+	}
+
+	if req.HistoryBudget <= 0 {
+		if h := r.Header.Get("X-Nexus-History-Budget"); h != "" {
+			if b, err := strconv.Atoi(strings.TrimSpace(h)); err == nil && b > 0 {
+				req.HistoryBudget = b
+			}
+		} else if q := r.URL.Query().Get("history_budget"); q != "" {
+			if b, err := strconv.Atoi(strings.TrimSpace(q)); err == nil && b > 0 {
+				req.HistoryBudget = b
+			}
+		}
 	}
 
 	if req.Stream {

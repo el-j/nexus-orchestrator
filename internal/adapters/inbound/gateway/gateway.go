@@ -143,6 +143,20 @@ func partitionCooling(ordered []ports.LLMClient, discovery *services.DiscoverySe
 	return append(ready, cooling...)
 }
 
+// ApplyPolicyBudget trims inbound messages according to project policy or client-specified budget.
+func ApplyPolicyBudget(msgs []domain.Message, projectPath string, clientBudget int) []domain.Message {
+	budget := clientBudget
+	if budget <= 0 && projectPath != "" {
+		if policy, ok, _ := services.LoadProjectPolicy(projectPath); ok && policy.HistoryBudget > 0 {
+			budget = policy.HistoryBudget
+		}
+	}
+	if budget > 0 {
+		return services.TrimHistoryTokens(msgs, budget)
+	}
+	return msgs
+}
+
 // ExecuteChat sends messages to the best available provider with automatic failover.
 func (g *Gateway) ExecuteChat(ctx context.Context, req ChatCompletionRequest, projectPath string) (*ChatCompletionResponse, error) {
 	chain, _, err := g.ResolveChain(ctx, req.Model, projectPath)
@@ -150,7 +164,7 @@ func (g *Gateway) ExecuteChat(ctx context.Context, req ChatCompletionRequest, pr
 		return nil, err
 	}
 
-	domainMsgs := toDomainMessages(req.Messages)
+	domainMsgs := ApplyPolicyBudget(toDomainMessages(req.Messages), projectPath, req.HistoryBudget)
 	var lastErr error
 	now := time.Now()
 
@@ -209,7 +223,7 @@ func (g *Gateway) StreamChat(ctx context.Context, req ChatCompletionRequest, pro
 		return nil, err
 	}
 
-	domainMsgs := toDomainMessages(req.Messages)
+	domainMsgs := ApplyPolicyBudget(toDomainMessages(req.Messages), projectPath, req.HistoryBudget)
 	var lastErr error
 	now := time.Now()
 

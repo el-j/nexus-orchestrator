@@ -41,9 +41,23 @@
         class="mt-10 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4"
       >
         <p class="text-xs text-slate-600">
-          Built with Go 🔷 + Wails · MIT License · © {{ year }} nexus-orchestrator contributors
+          Built with Go 🔷 + Wails ·
+          <a
+            href="https://github.com/el-j/nexus-orchestrator/blob/main/LICENSE"
+            target="_blank"
+            rel="noopener"
+            class="text-slate-500 hover:text-violet-400 transition-colors underline decoration-slate-700 underline-offset-2"
+          >
+            AGPL-3.0 License
+          </a>
+          · © {{ year }} nexus-orchestrator contributors
         </p>
-        <a href="https://github.com/el-j/nexus-orchestrator">
+        <a
+          href="https://github.com/el-j/nexus-orchestrator"
+          target="_blank"
+          rel="noopener"
+          class="text-xs text-slate-500 hover:text-white transition-colors flex items-center gap-1.5"
+        >
           <UiIcon name="github" /> View on GitHub
         </a>
       </div>
@@ -93,6 +107,10 @@ const footerCols: FooterCol[] = [
       { label: 'GitHub', href: 'https://github.com/el-j/nexus-orchestrator' },
       { label: 'Issues', href: 'https://github.com/el-j/nexus-orchestrator/issues' },
       { label: 'Releases', href: 'https://github.com/el-j/nexus-orchestrator/releases' },
+      {
+        label: 'License (AGPL-3.0)',
+        href: 'https://github.com/el-j/nexus-orchestrator/blob/main/LICENSE',
+      },
     ],
   },
 ];

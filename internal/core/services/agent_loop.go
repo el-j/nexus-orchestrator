@@ -61,9 +61,9 @@ type agentCall struct {
 	Summary string `json:"summary"`
 }
 
-// agentSystemPrompt tells the model how to act: which tools exist, how to call them and when it is
-// done.
-func agentSystemPrompt(task domain.Task, canVerify bool) string {
+// agentSystemPrompt tells the model how to act: which tools exist, how to call them and when it is done.
+// It is strictly static and byte-identical across tasks to maximize prompt caching on frontier models.
+func agentSystemPrompt(canVerify bool) string {
 	var sb strings.Builder
 	sb.WriteString("You are a software engineering agent working inside the project directory. ")
 	sb.WriteString("Act by replying with fenced blocks, each holding one JSON tool call:\n\n")
@@ -76,9 +76,6 @@ func agentSystemPrompt(task domain.Task, canVerify bool) string {
 	sb.WriteString("finish {summary} when the work is complete. ")
 	sb.WriteString("Paths are relative to the project root. You receive the results of your calls in the next message. ")
 	sb.WriteString("Read before you edit, write complete files, and call finish only when done.")
-	if task.TargetFile != "" {
-		sb.WriteString("\nPrimary target file: " + task.TargetFile)
-	}
 	return sb.String()
 }
 
@@ -216,9 +213,13 @@ func (a *agentRun) execute(run *runHandle, c agentCall) (obs string, done bool) 
 // the other execution paths (the task was consumed).
 func (o *OrchestratorService) runAgentLoop(run *runHandle, task domain.Task, chain []ports.LLMClient, prompt string, policy domain.ProjectPolicy) bool {
 	a := &agentRun{o: o, task: task, policy: policy, run: run, chain: chain}
+	userPrompt := prompt
+	if task.TargetFile != "" {
+		userPrompt = userPrompt + "\n\nPrimary target file: " + task.TargetFile
+	}
 	a.msgs = []domain.Message{
-		{Role: domain.RoleSystem, Content: agentSystemPrompt(task, a.canVerify())},
-		{Role: domain.RoleUser, Content: prompt},
+		{Role: domain.RoleSystem, Content: agentSystemPrompt(a.canVerify())},
+		{Role: domain.RoleUser, Content: userPrompt},
 	}
 	limit := agentTurnLimit(task)
 	for turn := 1; turn <= limit; turn++ {

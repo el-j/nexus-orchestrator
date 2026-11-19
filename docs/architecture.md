@@ -272,13 +272,27 @@ surface must say why, and CI fails otherwise.
 
 ---
 
-## Entry Points
+## Entry Points & Monorepo Packages
 
-| Binary          | Path                       | Purpose                                        |
-| --------------- | -------------------------- | ---------------------------------------------- |
-| Desktop GUI     | `main.go` + `app.go`       | Wails window + embedded HTTP API + MCP         |
-| Headless Daemon | `cmd/nexus-daemon/main.go` | HTTP API on `:63987` + MCP on `:63988`         |
-| CLI Client      | `cmd/nexus-cli/main.go`    | Thin HTTP client → daemon at `127.0.0.1:63987` |
+| Binary / Package | Path                       | Purpose                                         |
+| ---------------- | -------------------------- | ----------------------------------------------- |
+| Desktop GUI      | `main.go` + `app.go`       | Wails window + embedded HTTP API + MCP          |
+| Headless Daemon  | `cmd/nexus-daemon/main.go` | HTTP API on `:63987` + MCP on `:63988`          |
+| Unified CLI      | `cmd/nexus-cli/main.go`    | Full control plane CLI → daemon at `:63987`     |
+| Brain CLI & MCP  | `cmd/nexus-brain/main.go`  | Standalone RAG CLI & dedicated MCP server       |
+| Router Gateway   | `cmd/nexus-router/main.go` | Standalone LLM gateway & OpenAI proxy (`:8080`) |
+| Runner Gate      | `cmd/nexus-runner/main.go` | Standalone verification gate & self-healing     |
+| Task Submitter   | `cmd/nexus-submit/main.go` | Lightweight task submission CLI                 |
+| Runner Library   | `pkg/runner/`              | Reusable policy, verification, and healing lib  |
+
+### Modular Decoupling
+
+The monorepo separates concerns so individual components can run independently or as part of the full orchestrator:
+
+- **`pkg/runner`**: Standalone Go package providing invariant audits (`Inspect`), command verification (`Verify`), code patch extraction (`ExtractCode`), and self-healing correction loops (`ExecuteWithHealing`). Both `cmd/nexus-runner` and `internal/core/services/verification.go` consume this package.
+- **`cmd/nexus-brain`**: Operates either in embedded local mode using SQLite with FTS5 BM25 search or connects to a running daemon via `NEXUS_ADDR`. Can be run as a standalone stdio MCP server for IDEs.
+- **`cmd/nexus-router`**: Acts as an OpenAI-compatible reverse proxy (`/v1/chat/completions`) routing completions across local and cloud providers with fallback ladders and cooldown tracking.
+- **`cmd/nexus-runner`**: Standalone CLI for CI/CD gates and self-healing task execution loops without background daemon dependencies.
 
 ---
 

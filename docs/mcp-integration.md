@@ -74,14 +74,14 @@ Reload the VS Code window after saving the configuration.
 | Tool                   | Description                                                                                                 |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `submit_task`          | Submit a code-generation task with project path, target file, instruction, verification command, etc.       |
-| `get_task`             | Retrieve the status and output of a task by its ID (`id`)                                                   |
+| `get_task`             | Retrieve the status and output of a task by its ID (`id`, supports `compact` and `truncateLogs`)            |
 | `wait_for_task`        | Wait until a task has finished and return it; streams the reply as progress notifications when asked (`id`) |
-| `get_queue`            | List all pending (QUEUED or PROCESSING) tasks                                                               |
-| `get_all_tasks`        | Return every task regardless of status                                                                      |
+| `get_queue`            | List all pending (QUEUED or PROCESSING) tasks (supports `compact` view and `limit`)                         |
+| `get_all_tasks`        | Return every task regardless of status (supports `compact` view and `limit`)                                |
 | `cancel_task`          | Cancel a pending task before it is processed (`id`)                                                         |
 | `update_task`          | Update mutable fields on an existing task (instruction, priority, provider, tags, status)                   |
 | `create_draft`         | Create a draft idea for a project without entering the execution queue                                      |
-| `get_backlog`          | List draft and backlog items for a project, ordered by priority                                             |
+| `get_backlog`          | List draft and backlog items for a project, ordered by priority (supports `compact` view and `limit`)       |
 | `promote_task`         | Promote a draft or backlog task to the execution queue (`id`)                                               |
 | `claim_task`           | Claim a QUEUED task for execution by an external AI session                                                 |
 | `update_task_status`   | Report task completion or failure from the executing AI session                                             |
