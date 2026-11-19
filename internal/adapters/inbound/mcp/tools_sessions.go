@@ -38,11 +38,37 @@ func (s *Server) toolRegisterSession(ctx context.Context, args json.RawMessage) 
 	return textResult(string(b)), nil
 }
 
+// aiSessionSummary gives a compact view of an AI session to save tokens.
+type aiSessionSummary struct {
+	ID        string `json:"id"`
+	AgentName string `json:"agentName"`
+	ModelID   string `json:"modelId,omitempty"`
+	Status    string `json:"status"`
+}
+
 // toolGetAISessions serves get_ai_sessions: the sessions that are registered.
-func (s *Server) toolGetAISessions(ctx context.Context) (callToolResult, error) {
+func (s *Server) toolGetAISessions(ctx context.Context, args json.RawMessage) (callToolResult, error) {
+	var p struct {
+		Compact bool `json:"compact,omitempty"`
+	}
+	if err := decodeOptionalArgs(args, &p); err != nil {
+		return callToolResult{}, err
+	}
 	sessions, err := s.orch.ListAISessions(ctx)
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_ai_sessions: %w", err)
+	}
+	if p.Compact {
+		var list []aiSessionSummary
+		for _, sess := range sessions {
+			list = append(list, aiSessionSummary{
+				ID:        sess.ID,
+				AgentName: sess.AgentName,
+				ModelID:   sess.ModelID,
+				Status:    string(sess.Status),
+			})
+		}
+		return jsonResult("get_ai_sessions", list)
 	}
 	return jsonResult("get_ai_sessions", sessions)
 }
@@ -280,7 +306,12 @@ func sessionToolDefs() []toolDef {
 		{
 			Name:        "get_ai_sessions",
 			Description: "Return the list of all known external AI agent sessions registered with this nexusOrchestrator instance.",
-			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"compact": {Type: "boolean", Description: "When true, returns a lightweight summary of registered sessions to conserve context tokens."},
+				},
+			},
 		},
 		{
 			Name:        "claim_task",

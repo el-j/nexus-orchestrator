@@ -11,6 +11,7 @@ and each measurable with `nexus-cli usage` (tokens per provider, model and role)
 | Context budget      | A task's context files are capped in tokens: the largest are sent as outlines (declarations only), then shortened, each marked as such | `contextBudget`              |
 | History budget      | Old session messages are dropped until the history fits the budget                                                                     | `historyBudget`              |
 | Quota-aware routing | A provider whose plan is nearly used up is tried after the others                                                                      | `quotaThreshold`             |
+| MCP Tool Compaction | MCP listing tools (`get_queue`, `get_all_tasks`, `get_backlog`) offer `compact: true`, omitting bulky results and context arrays       | tool parameter `compact`     |
 
 A starting point for a project that uses a local model, Claude Sonnet and Claude Opus:
 
