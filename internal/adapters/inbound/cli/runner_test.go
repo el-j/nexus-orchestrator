@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -185,6 +186,11 @@ func TestRunnerCLI_Inspect(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(tmpDir, "main.go"), []byte("package main\n"), 0644)
 	_ = os.WriteFile(filepath.Join(tmpDir, "main_test.go"), []byte("package main\n"), 0644)
 
+	// Initialize git repo in tmpDir so GitStatus is deterministically populated
+	initCmd := exec.Command("git", "init")
+	initCmd.Dir = tmpDir
+	_ = initCmd.Run()
+
 	// 1. Inspect text format success
 	cmd := NewRunnerStandaloneCmd(nil, tmpDir)
 	buf := &bytes.Buffer{}
@@ -194,7 +200,7 @@ func TestRunnerCLI_Inspect(t *testing.T) {
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("expected inspect to pass: %v, out: %s", err, buf.String())
 	}
-	if !strings.Contains(buf.String(), "Status:       PASSED") {
+	if !strings.Contains(buf.String(), "Status:       PASSED") || !strings.Contains(buf.String(), "Git Status:") {
 		t.Fatalf("unexpected inspect output: %s", buf.String())
 	}
 
