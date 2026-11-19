@@ -129,6 +129,10 @@ linters:
     # Exclude generated and frontend asset directories from linting
     paths:
       - "frontend/.*"
+      - "docs/.*"
+      - "vscode-extension/.*"
+      - "github-action/.*"
+      - ".*/node_modules/.*"
       - "build/.*"
       - "vendor/.*"
       - ".*\\.pb\\.go"
