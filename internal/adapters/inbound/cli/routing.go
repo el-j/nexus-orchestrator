@@ -8,9 +8,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newRoutingCmd returns the `nexus routing` command: how the daemon would order the providers for a
-// task of a role in a project right now.
+// newRoutingCmd aliases NewRoutingCmd for internal CLI root registration.
 func newRoutingCmd(orch ports.Orchestrator) *cobra.Command {
+	return NewRoutingCmd(orch)
+}
+
+// NewRoutingCmd returns the `nexus routing` command: how the daemon would order the providers for a
+// task of a role in a project right now.
+func NewRoutingCmd(orch ports.Orchestrator) *cobra.Command {
 	var project, role string
 	cmd := &cobra.Command{
 		Use:   "routing",

@@ -3,7 +3,7 @@ id: TASK-653
 planId: PLAN-079
 title: 'Standalone LLM Gateway & OpenAI-compatible proxy (nexus-router)'
 role: gateway
-status: open
+status: done
 createdAt: 2026-11-19
 ---
 
