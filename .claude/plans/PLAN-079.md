@@ -1,7 +1,7 @@
 ---
 id: PLAN-079
 title: 'Monorepo Modularization: Standalone CLIs, Dedicated Micro-Services, and Decoupled Packages'
-status: in_progress
+status: done
 createdAt: 2026-11-19
 tasks: [TASK-652, TASK-653, TASK-654, TASK-655, TASK-656]
 ---
@@ -22,4 +22,4 @@ Decompose Nexus Orchestrator into standalone, reusable CLIs and micro-services w
 | TASK-653 | Standalone LLM Gateway & OpenAI-compatible proxy     | gateway      | done   |
 | TASK-654 | Standalone verification gate & execution engine      | runner       | done   |
 | TASK-655 | Wire control plane and unified CLI to packages       | orchestrator | done   |
-| TASK-656 | Build matrix, documentation, and 100% coverage gates | devops       | open   |
+| TASK-656 | Build matrix, documentation, and 100% coverage gates | devops       | done   |

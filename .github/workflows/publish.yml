@@ -365,7 +365,7 @@ jobs:
           LDFLAGS="-s -w -X 'main.version=${VERSION}' -X 'main.commit=${COMMIT}' -X 'main.buildDate=${BUILDDATE}' ${{ matrix.static_flags }}"
           mkdir -p build
 
-          # nexus-cli and nexus-submit are pure Go HTTP clients with no CGO dependencies.
+          # nexus-cli, nexus-submit, nexus-router, and nexus-runner are pure Go HTTP clients / CLI tools with no CGO dependencies.
           # Building with CGO_ENABLED=0 avoids CGO linker failures when cross-compiling
           # for Linux targets using zig cc (musl).
           CGO_ENABLED=0 go build -trimpath -ldflags "${LDFLAGS}" \
@@ -374,9 +374,18 @@ jobs:
           CGO_ENABLED=0 go build -trimpath -ldflags "${LDFLAGS}" \
             -o build/nexus-submit${{ matrix.bin_ext }} ./cmd/nexus-submit/...
 
-          # nexus-daemon embeds go-sqlite3 which requires CGO.
+          CGO_ENABLED=0 go build -trimpath -ldflags "${LDFLAGS}" \
+            -o build/nexus-router${{ matrix.bin_ext }} ./cmd/nexus-router/...
+
+          CGO_ENABLED=0 go build -trimpath -ldflags "${LDFLAGS}" \
+            -o build/nexus-runner${{ matrix.bin_ext }} ./cmd/nexus-runner/...
+
+          # nexus-daemon and nexus-brain embed go-sqlite3 which requires CGO.
           CGO_ENABLED=1 go build -trimpath -ldflags "${LDFLAGS}" \
             -o build/nexus-daemon${{ matrix.bin_ext }} ./cmd/nexus-daemon/...
+
+          CGO_ENABLED=1 go build -trimpath -ldflags "${LDFLAGS}" \
+            -o build/nexus-brain${{ matrix.bin_ext }} ./cmd/nexus-brain/...
 
       - name: Create archive
         shell: bash
@@ -384,9 +393,9 @@ jobs:
           ARCHIVE_NAME="nexus-orchestrator-${{ matrix.os }}-${{ matrix.arch }}"
           cd build
           if [ "${{ matrix.ext }}" = "zip" ]; then
-            zip "../${ARCHIVE_NAME}.zip" nexus-cli${{ matrix.bin_ext }} nexus-daemon${{ matrix.bin_ext }} nexus-submit${{ matrix.bin_ext }}
+            zip "../${ARCHIVE_NAME}.zip" nexus-cli${{ matrix.bin_ext }} nexus-daemon${{ matrix.bin_ext }} nexus-submit${{ matrix.bin_ext }} nexus-brain${{ matrix.bin_ext }} nexus-router${{ matrix.bin_ext }} nexus-runner${{ matrix.bin_ext }}
           else
-            tar czf "../${ARCHIVE_NAME}.tar.gz" nexus-cli${{ matrix.bin_ext }} nexus-daemon${{ matrix.bin_ext }} nexus-submit${{ matrix.bin_ext }}
+            tar czf "../${ARCHIVE_NAME}.tar.gz" nexus-cli${{ matrix.bin_ext }} nexus-daemon${{ matrix.bin_ext }} nexus-submit${{ matrix.bin_ext }} nexus-brain${{ matrix.bin_ext }} nexus-router${{ matrix.bin_ext }} nexus-runner${{ matrix.bin_ext }}
           fi
 
       - uses: actions/upload-artifact@v6
@@ -675,6 +684,13 @@ jobs:
           out=$(./smoke/nexus-cli${{ matrix.bin_ext }} --version)
           echo "$out"
           echo "$out" | grep -F "${{ needs.version.outputs.tag }}"
+
+      - name: Standalone CLIs report their version
+        shell: bash
+        run: |
+          ./smoke/nexus-brain${{ matrix.bin_ext }} --version | grep -F "${{ needs.version.outputs.tag }}"
+          ./smoke/nexus-router${{ matrix.bin_ext }} --version | grep -F "${{ needs.version.outputs.tag }}"
+          ./smoke/nexus-runner${{ matrix.bin_ext }} --version | grep -F "${{ needs.version.outputs.tag }}"
 
       - name: Daemon boots and serves /api/health
         shell: bash
