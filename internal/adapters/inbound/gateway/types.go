@@ -5,13 +5,14 @@ package gateway
 
 // ChatCompletionRequest is the incoming payload for /v1/chat/completions.
 type ChatCompletionRequest struct {
-	Model       string        `json:"model"`
-	Messages    []ChatMessage `json:"messages"`
-	Stream      bool          `json:"stream,omitempty"`
-	Temperature *float64      `json:"temperature,omitempty"`
-	TopP        *float64      `json:"top_p,omitempty"`
-	MaxTokens   *int          `json:"max_tokens,omitempty"`
-	User        string        `json:"user,omitempty"`
+	Model         string        `json:"model"`
+	Messages      []ChatMessage `json:"messages"`
+	Stream        bool          `json:"stream,omitempty"`
+	Temperature   *float64      `json:"temperature,omitempty"`
+	TopP          *float64      `json:"top_p,omitempty"`
+	MaxTokens     *int          `json:"max_tokens,omitempty"`
+	User          string        `json:"user,omitempty"`
+	HistoryBudget int           `json:"history_budget,omitempty"`
 }
 
 // ChatMessage represents a single turn in a conversation.

@@ -122,9 +122,14 @@ func shortenBlock(block string, keepTokens int) string {
 	return withNote(header, "shortened: the rest of the file is left out") + "\n" + body[:cut] + "\n"
 }
 
-// trimHistoryTokens keeps the newest messages that fit in budget tokens, starting with a user turn.
-// When older messages are pruned to satisfy the budget, it distills them into a rolling memory block.
+// trimHistoryTokens is an internal alias for TrimHistoryTokens.
 func trimHistoryTokens(msgs []domain.Message, budget int) []domain.Message {
+	return TrimHistoryTokens(msgs, budget)
+}
+
+// TrimHistoryTokens keeps the newest messages that fit in budget tokens, starting with a user turn.
+// When older messages are pruned to satisfy the budget, it distills them into a rolling memory block.
+func TrimHistoryTokens(msgs []domain.Message, budget int) []domain.Message {
 	if len(msgs) == 0 || budget <= 0 {
 		return nil
 	}
