@@ -114,6 +114,34 @@ export const examples = [
 }`,
     response: '',
   },
+  {
+    title: 'Compact Task Query (Token-Optimized)',
+    request: `{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "get_task",
+    "arguments": {
+      "id": "abc-123",
+      "compact": true,
+      "truncateLogs": 160
+    }
+  }
+}`,
+    response: `{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\\"id\\":\\"abc-123\\",\\"status\\":\\"COMPLETED\\",\\"targetFile\\":\\"handler.go\\",\\"hasLogs\\":true,\\"logsPreview\\":\\"ok: tests passed\\"}"
+      }
+    ]
+  }
+}`,
+  },
 ];
 
 /** VS Code `mcp.json` entry that points at the local daemon. */

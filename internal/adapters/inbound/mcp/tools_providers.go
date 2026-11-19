@@ -11,11 +11,37 @@ import (
 
 // ----- Provider Handlers -----
 
+// providerSummary gives a compact view of a provider to save tokens.
+type providerSummary struct {
+	Name        string   `json:"name"`
+	Models      []string `json:"models,omitempty"`
+	Active      bool     `json:"active"`
+	ActiveModel string   `json:"activeModel,omitempty"`
+}
+
 // toolGetProviders serves get_providers: the providers the daemon knows and their models.
-func (s *Server) toolGetProviders() (callToolResult, error) {
+func (s *Server) toolGetProviders(args json.RawMessage) (callToolResult, error) {
+	var p struct {
+		Compact bool `json:"compact,omitempty"`
+	}
+	if err := decodeOptionalArgs(args, &p); err != nil {
+		return callToolResult{}, err
+	}
 	providers, err := s.orch.GetProviders()
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_providers: %w", err)
+	}
+	if p.Compact {
+		var list []providerSummary
+		for _, prov := range providers {
+			list = append(list, providerSummary{
+				Name:        prov.Name,
+				Models:      prov.Models,
+				Active:      prov.Active,
+				ActiveModel: prov.ActiveModel,
+			})
+		}
+		return jsonResult("get_providers", list)
 	}
 	return jsonResult("get_providers", providers)
 }
@@ -151,7 +177,12 @@ func providerToolDefs() []toolDef {
 		{
 			Name:        "get_providers",
 			Description: "List available LLM providers and their models.",
-			InputSchema: inputSchema{Type: "object", Properties: map[string]property{}},
+			InputSchema: inputSchema{
+				Type: "object",
+				Properties: map[string]property{
+					"compact": {Type: "boolean", Description: "When true, returns a lightweight summary of provider names and active models to conserve context tokens."},
+				},
+			},
 		},
 		{
 			Name:        "health",

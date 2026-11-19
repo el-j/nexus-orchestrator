@@ -59,7 +59,9 @@ func (s *Server) toolSubmitTask(args json.RawMessage) (callToolResult, error) {
 // toolGetTask serves get_task.
 func (s *Server) toolGetTask(args json.RawMessage) (callToolResult, error) {
 	var p struct {
-		ID string `json:"id"`
+		ID           string `json:"id"`
+		Compact      bool   `json:"compact,omitempty"`
+		TruncateLogs int    `json:"truncateLogs,omitempty"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_task: invalid arguments: %w", err)
@@ -67,6 +69,14 @@ func (s *Server) toolGetTask(args json.RawMessage) (callToolResult, error) {
 	task, err := s.orch.GetTask(p.ID)
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_task: %w", err)
+	}
+	if p.Compact {
+		b, _ := json.Marshal(toTaskSummary(task))
+		return textResult(string(b)), nil
+	}
+	if p.TruncateLogs > 0 && len(task.Logs) > p.TruncateLogs {
+		excess := len(task.Logs) - p.TruncateLogs
+		task.Logs = task.Logs[:p.TruncateLogs] + fmt.Sprintf("... [truncated %d chars for token economy]", excess)
 	}
 	b, err := json.Marshal(task)
 	if err != nil {
@@ -94,6 +104,8 @@ func decodeOptionalArgs(args json.RawMessage, v any) error {
 func (s *Server) toolGetQueue(args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
+		Compact     bool   `json:"compact,omitempty"`
+		Limit       int    `json:"limit,omitempty"`
 	}
 	if err := decodeOptionalArgs(args, &p); err != nil {
 		return callToolResult{}, err
@@ -110,6 +122,12 @@ func (s *Server) toolGetQueue(args json.RawMessage) (callToolResult, error) {
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_queue: %w", err)
 	}
+	if p.Compact {
+		sums := applyTaskLimit(toTaskSummaries(tasks), p.Limit)
+		b, _ := json.Marshal(sums)
+		return textResult(string(b)), nil
+	}
+	tasks = applyTaskLimit(tasks, p.Limit)
 	b, err := json.Marshal(tasks)
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_queue: marshal: %w", err)
@@ -121,6 +139,8 @@ func (s *Server) toolGetQueue(args json.RawMessage) (callToolResult, error) {
 func (s *Server) toolGetAllTasks(args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
+		Compact     bool   `json:"compact,omitempty"`
+		Limit       int    `json:"limit,omitempty"`
 	}
 	if err := decodeOptionalArgs(args, &p); err != nil {
 		return callToolResult{}, err
@@ -137,6 +157,12 @@ func (s *Server) toolGetAllTasks(args json.RawMessage) (callToolResult, error) {
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_all_tasks: %w", err)
 	}
+	if p.Compact {
+		sums := applyTaskLimit(toTaskSummaries(tasks), p.Limit)
+		b, _ := json.Marshal(sums)
+		return textResult(string(b)), nil
+	}
+	tasks = applyTaskLimit(tasks, p.Limit)
 	b, err := json.Marshal(tasks)
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_all_tasks: marshal: %w", err)
@@ -198,6 +224,8 @@ func (s *Server) toolCreateDraft(args json.RawMessage) (callToolResult, error) {
 func (s *Server) toolGetBacklog(args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
+		Compact     bool   `json:"compact,omitempty"`
+		Limit       int    `json:"limit,omitempty"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_backlog: invalid arguments: %w", err)
@@ -206,6 +234,12 @@ func (s *Server) toolGetBacklog(args json.RawMessage) (callToolResult, error) {
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_backlog: %w", err)
 	}
+	if p.Compact {
+		sums := applyTaskLimit(toTaskSummaries(tasks), p.Limit)
+		b, _ := json.Marshal(sums)
+		return textResult(string(b)), nil
+	}
+	tasks = applyTaskLimit(tasks, p.Limit)
 	b, err := json.Marshal(tasks)
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_backlog: marshal: %w", err)
@@ -304,9 +338,13 @@ func taskToolDefs() []toolDef {
 			Name:        "get_task",
 			Description: "Get the current status and output of a task by ID.",
 			InputSchema: inputSchema{
-				Type:       "object",
-				Properties: map[string]property{"id": {Type: "string", Description: "Task ID returned by submit_task."}},
-				Required:   []string{"id"},
+				Type: "object",
+				Properties: map[string]property{
+					"id":           {Type: "string", Description: "Task ID returned by submit_task."},
+					"compact":      {Type: "boolean", Description: "When true, returns a lightweight summary omitting bulky result strings to conserve context tokens."},
+					"truncateLogs": {Type: "integer", Description: "Truncate the logs output to this maximum number of characters."},
+				},
+				Required: []string{"id"},
 			},
 		},
 		{
@@ -316,6 +354,8 @@ func taskToolDefs() []toolDef {
 				Type: "object",
 				Properties: map[string]property{
 					"projectPath": {Type: "string", Description: "Optional absolute path to filter tasks by project."},
+					"compact":     {Type: "boolean", Description: "When true, returns lightweight summaries omitting bulky result strings and context files to conserve context tokens."},
+					"limit":       {Type: "integer", Description: "Maximum number of queued tasks to return."},
 				},
 			},
 		},
@@ -326,6 +366,8 @@ func taskToolDefs() []toolDef {
 				Type: "object",
 				Properties: map[string]property{
 					"projectPath": {Type: "string", Description: "Optional absolute path to filter tasks by project."},
+					"compact":     {Type: "boolean", Description: "When true, returns lightweight summaries omitting bulky result strings and context files to conserve context tokens."},
+					"limit":       {Type: "integer", Description: "Maximum number of tasks to return."},
 				},
 			},
 		},
@@ -364,6 +406,8 @@ func taskToolDefs() []toolDef {
 				Type: "object",
 				Properties: map[string]property{
 					"projectPath": {Type: "string", Description: "Absolute path to the project."},
+					"compact":     {Type: "boolean", Description: "When true, returns lightweight summaries to conserve context tokens."},
+					"limit":       {Type: "integer", Description: "Maximum number of backlog drafts to return."},
 				},
 				Required: []string{"projectPath"},
 			},

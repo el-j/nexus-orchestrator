@@ -39,6 +39,7 @@ type mockOrch struct {
 	triggerScanResult  []domain.DiscoveredProvider
 	triggerScanErr     error
 	promoteProviderErr error
+	aiSessions         []domain.AISession
 }
 
 func (m *mockOrch) SubmitTask(t domain.Task) (string, error) {
@@ -128,7 +129,9 @@ func (m *mockOrch) RegisterAISession(_ context.Context, s domain.AISession) (dom
 	return s, nil
 }
 
-func (m *mockOrch) ListAISessions(_ context.Context) ([]domain.AISession, error) { return nil, nil }
+func (m *mockOrch) ListAISessions(_ context.Context) ([]domain.AISession, error) {
+	return m.aiSessions, nil
+}
 
 func (m *mockOrch) DeregisterAISession(_ context.Context, _ string) error { return nil }
 

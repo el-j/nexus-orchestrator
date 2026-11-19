@@ -15,7 +15,9 @@
       <h1 class="text-4xl sm:text-5xl font-black mb-4">
         Download <span class="gradient-text">nexus-orchestrator</span>
       </h1>
-      <p class="text-xl text-slate-400 mb-6">Get the desktop app or CLI tools for your platform</p>
+      <p class="text-xl text-slate-400 mb-6">
+        Get the desktop app or CLI tools for your platform · Free &amp; Open Source (AGPL-3.0)
+      </p>
 
       <!-- Beta/stable version badge -->
       <div v-if="channel === 'beta'" class="flex items-center justify-center gap-3 mb-4">
