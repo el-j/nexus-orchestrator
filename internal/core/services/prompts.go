@@ -58,6 +58,8 @@ func (o *OrchestratorService) prepareChatPrompt(task domain.Task) (string, []dom
 
 // delegationInstruction returns a formatted prompt instructing an AI agent to
 // operate under nexusOrchestrator coordination.
+// The workflow steps form a static, byte-stable prefix to maximize prompt caching,
+// with dynamic session details placed at the suffix.
 func (o *OrchestratorService) delegationInstruction(session domain.AISession, now time.Time) string {
 	addr := o.daemonAddr
 	return fmt.Sprintf(`You are now operating under nexusOrchestrator coordination.
@@ -66,20 +68,21 @@ YOUR NEW WORKFLOW:
 1. Check the nexus queue:  GET %s/api/tasks
 2. Claim the next QUEUED task:
    POST %s/api/tasks/{id}/claim
-   Body: {"sessionId": "%s"}
-3. Execute the task's instruction for %s.
+   Body: {"sessionId": "<sessionId>"}
+3. Execute the task's instruction.
 4. Report completion:
    PUT %s/api/tasks/{id}/status
-   Body: {"sessionId": "%s", "status": "COMPLETED", "logs": "<summary>"}
+   Body: {"sessionId": "<sessionId>", "status": "COMPLETED", "logs": "<summary>"}
 5. Repeat from step 1.  If queue is empty, wait 30 s and check again.
 
 Do NOT take autonomous actions outside the nexus task queue while this delegation is active.
 
+Session details:
 Nexus session ID: %s
 Project:          %s
 Timestamp:        %s`,
-		addr, addr, session.ID, session.ProjectPath,
-		addr, session.ID,
+		addr, addr,
+		addr,
 		session.ID, session.ProjectPath,
 		now.UTC().Format(time.RFC3339))
 }
