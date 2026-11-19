@@ -20,6 +20,6 @@ Decompose Nexus Orchestrator into standalone, reusable CLIs and micro-services w
 | -------- | ---------------------------------------------------- | ------------ | ------ |
 | TASK-652 | Standalone RAG CLI & dedicated Brain MCP server      | architecture | done   |
 | TASK-653 | Standalone LLM Gateway & OpenAI-compatible proxy     | gateway      | done   |
-| TASK-654 | Standalone verification gate & execution engine      | runner       | open   |
+| TASK-654 | Standalone verification gate & execution engine      | runner       | done   |
 | TASK-655 | Wire control plane and unified CLI to packages       | orchestrator | open   |
 | TASK-656 | Build matrix, documentation, and 100% coverage gates | devops       | open   |

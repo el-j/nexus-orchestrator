@@ -24,6 +24,7 @@ BINARY_DAEMON := nexus-daemon
 BINARY_SUBMIT := nexus-submit
 BINARY_BRAIN  := nexus-brain
 BINARY_ROUTER := nexus-router
+BINARY_RUNNER := nexus-runner
 DIST          := build
 DIST_DESKTOP  := $(DIST)/desktop
 DIST_VSCODE   := $(DIST)/vscode
@@ -96,6 +97,8 @@ build: vet
 		-o $(DIST)/native/$(BINARY_BRAIN) ./cmd/nexus-brain/...
 	CGO_ENABLED=0 go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/native/$(BINARY_ROUTER) ./cmd/nexus-router/...
+	CGO_ENABLED=0 go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/native/$(BINARY_RUNNER) ./cmd/nexus-runner/...
 	CGO_ENABLED=1 go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/native/$(BINARY_DAEMON) ./cmd/nexus-daemon/...
 	@echo "Built → $(DIST)/native/"
