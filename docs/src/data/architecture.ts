@@ -180,6 +180,24 @@ export const inboundAdapters = [
     port: '—',
   },
   {
+    adapter: 'Brain CLI & MCP',
+    pkg: 'nexus-brain',
+    proto: 'Standalone RAG CLI & dedicated stdio MCP server (SQLite FTS5)',
+    port: 'stdio',
+  },
+  {
+    adapter: 'Router Gateway',
+    pkg: 'nexus-router',
+    proto: 'OpenAI-compatible /v1/chat/completions proxy & prompt tool',
+    port: ':8080',
+  },
+  {
+    adapter: 'Runner Gate',
+    pkg: 'nexus-runner',
+    proto: 'Standalone verification gate, inspect audit & healing loops',
+    port: '—',
+  },
+  {
     adapter: 'Origin / Host guard',
     pkg: 'httpguard',
     proto: 'Rejects foreign browser origins and DNS rebinding',
@@ -245,4 +263,38 @@ export const concurrencyPoints = [
   'No goroutines inside core services — goroutine lifecycle is an infrastructure concern owned by inbound adapters',
   'SSE broadcasting uses a separate Hub with its own mutex to avoid lock nesting; a slow subscriber drops events instead of blocking the engine',
   'Every attempt publishes task.restart first, then task.chunk events (at most one per 50 ms), so a client needs one rule: restart clears, chunk appends',
+];
+
+/** The decoupled monorepo packages and entry point binaries. */
+export const monorepoPackages = [
+  {
+    name: 'pkg/runner',
+    type: 'Go Library',
+    desc: 'Self-healing execution loops, invariant audits, code patch extraction, and policy gates',
+  },
+  {
+    name: 'nexus-brain',
+    type: 'CLI & MCP Server',
+    desc: 'Standalone RAG engine with SQLite FTS5 BM25 search, context synthesis, and project init',
+  },
+  {
+    name: 'nexus-router',
+    type: 'Gateway & Proxy',
+    desc: 'Standalone OpenAI-compatible /v1/chat/completions proxy, multi-provider routing & cooldowns',
+  },
+  {
+    name: 'nexus-runner',
+    type: 'Standalone CLI',
+    desc: 'CLI gate for CI/CD pipelines, policy inspection, and self-healing test repair',
+  },
+  {
+    name: 'nexus-cli',
+    type: 'Unified CLI',
+    desc: 'Unified control plane client aggregating task queue, brain, runner, and session commands',
+  },
+  {
+    name: 'nexus-daemon',
+    type: 'Background Service',
+    desc: 'Headless central daemon managing task execution, REST API, embedded UI, and MCP server',
+  },
 ];
