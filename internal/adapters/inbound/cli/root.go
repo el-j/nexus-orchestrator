@@ -33,6 +33,9 @@ func NewRootCmd(orch ports.Orchestrator, brain ports.BrainService) *cobra.Comman
 	root.AddCommand(newUsageCmd(orch))
 	root.AddCommand(newRoutingCmd(orch))
 	root.AddCommand(newPolicyCmd(orch))
+	root.AddCommand(newRunnerVerifyCmd(""))
+	root.AddCommand(newRunnerExecuteCmd(nil, ""))
+	root.AddCommand(newRunnerInspectCmd(""))
 
 	return root
 }
@@ -267,6 +270,11 @@ func newUpdateCmd(orch ports.Orchestrator) *cobra.Command {
 // newProvidersCmd returns the `nexus providers` command which queries the live
 // daemon for the status of each registered LLM backend.
 func newProvidersCmd(orch ports.Orchestrator) *cobra.Command {
+	return NewProvidersCmd(orch)
+}
+
+// NewProvidersCmd returns the `nexus providers` command for listing backend status.
+func NewProvidersCmd(orch ports.Orchestrator) *cobra.Command {
 	return &cobra.Command{
 		Use:   "providers",
 		Short: "Show the status of all registered LLM backends",

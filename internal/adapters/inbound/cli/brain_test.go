@@ -1,6 +1,7 @@
 package cli_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"strings"
@@ -271,4 +272,72 @@ func TestBrainCLI_Context_FocusedQuestion_OK(t *testing.T) {
 	if !strings.Contains(out, "Focused answer") {
 		t.Errorf("expected output to contain focused answer; got: %q", out)
 	}
+}
+
+func TestBrainCLI_Standalone_Search_OK(t *testing.T) {
+	brain := &mockBrainService{
+		searchResult: []domain.ContextSection{
+			{Topic: "Standalone", Content: "Found in standalone"},
+		},
+	}
+	cmd := cli.NewBrainStandaloneCmd(brain)
+	cmd.SetArgs([]string{"search", "--all", "my positional search"})
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(buf.String(), "Found in standalone") {
+		t.Errorf("expected output to contain 'Found in standalone', got: %s", buf.String())
+	}
+}
+
+func TestBrainCLI_Search_EmptyQuery_Fails(t *testing.T) {
+	brain := &mockBrainService{}
+	cmd := cli.NewBrainCmd(brain)
+	cmd.SetArgs([]string{"search"})
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+
+	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "query is required") {
+		t.Fatalf("expected query is required error, got: %v", err)
+	}
+}
+
+func TestBrainCLI_MCP_Stdio_OK(t *testing.T) {
+	brain := &mockBrainService{}
+	cmd := cli.NewBrainCmd(brain)
+	cmd.SetArgs([]string{"mcp", "--stdio"})
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+
+	var in bytes.Buffer
+	in.WriteString(`{"jsonrpc":"2.0","id":1,"method":"ping"}` + "\n")
+	cmd.SetIn(&in)
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out.String(), `"jsonrpc":"2.0"`) {
+		t.Errorf("expected JSON-RPC response, got: %s", out.String())
+	}
+}
+
+func TestBrainCLI_MCP_HTTP_Cancelled_OK(t *testing.T) {
+	brain := &mockBrainService{}
+	cmd := cli.NewBrainCmd(brain)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // pre-cancel context
+	cmd.SetContext(ctx)
+	cmd.SetArgs([]string{"mcp", "--stdio=false", "--port", "64998"})
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+
+	// Starts server and exits on cancelled context
+	_ = cmd.Execute()
 }

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-11-19
+
+### Added
+
+- Monorepo Modularization & Standalone CLIs (PLAN-079 / Milestone 15):
+  - `nexus-brain`: Dedicated RAG CLI and MCP server (`serve-mcp`, `init`, `ingest`, `search`, `context`, `map`, `status`). Operates in standalone local mode with SQLite FTS5 BM25 search or remote daemon mode (`--addr` / `NEXUS_ADDR`). (TASK-652)
+  - `nexus-router`: Standalone LLM Gateway & OpenAI-compatible proxy (`serve --port <port>`, `/v1/chat/completions`) with multi-provider discovery, fallback ladders, rate-limit cooldown management, and prompt execution (`prompt`, `providers`). (TASK-653)
+  - `nexus-runner`: Standalone execution gate and verification engine in `pkg/runner` supporting repository invariant inspections (`inspect`), test verification gates (`verify`), and automated self-healing loops with LLM patch extraction and re-runs (`execute`). (TASK-654)
+  - Unified Control Plane & CLI: `nexus-daemon` service logic decoupled to delegate directly to `pkg/runner`, and root `nexus` CLI wires `nexus brain ...`, `nexus verify`, `nexus execute`, and `nexus inspect` with zero code duplication. (TASK-655)
+  - Build automation & cross-platform packaging: `Makefile` targets (`build-linux-amd64`, `build-linux-arm64`, `build-darwin-amd64`, `build-darwin-arm64`, `build-windows-amd64`) and `.github/workflows/publish.yml` compile all standalone binaries and package them into release archives; `scripts/install.sh` installs all standalone CLIs. (TASK-656)
+  - Documentation site: added comprehensive [standalone-clis.md](docs/standalone-clis.md) guide and updated downloads catalog. (TASK-656)
+
 ## [0.11.0] — 2026-11-19
 
 ### Changed

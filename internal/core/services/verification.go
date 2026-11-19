@@ -6,6 +6,7 @@ import (
 	"log"
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
+	"nexus-orchestrator/pkg/runner"
 	"strings"
 	"time"
 )
@@ -171,42 +172,13 @@ func (h *healer) chooseProvider() (hold bool) {
 	return false
 }
 
-// correctionPrompt builds the self-healing prompt for a failed verification. It
-// restates the original instruction and the model's latest output so that a
-// stateless GenerateCode call (no session history) has everything it needs to
-// produce a corrected file.
+// correctionPrompt builds the self-healing prompt for a failed verification,
+// delegating to runner.FormatCorrectionPrompt.
 func correctionPrompt(task domain.Task, latestOutput, verificationOutput string) string {
-	return fmt.Sprintf(
-		"Original task:\n%s\n\nYour latest output for %s:\n%s\n\n"+
-			"It failed verification using command %q:\n\n%s\n\n"+
-			"Please fix the errors and output the entire corrected file content.",
-		task.Instruction, task.TargetFile, extractCode(latestOutput), task.VerificationCommand, truncateObservation(verificationOutput),
-	)
+	return runner.FormatCorrectionPrompt(task.Instruction, task.TargetFile, latestOutput, task.VerificationCommand, verificationOutput)
 }
 
-// extractCode strips the first markdown code fence from s, returning the raw
-// source within. If no fence is found, s is returned unchanged.
+// extractCode strips the markdown code fence from s, delegating to runner.ExtractCode.
 func extractCode(s string) string {
-	lines := strings.Split(s, "\n")
-	start := -1
-	for i, l := range lines {
-		if strings.HasPrefix(strings.TrimSpace(l), "```") {
-			start = i
-			break
-		}
-	}
-	if start == -1 {
-		return s
-	}
-	end := -1
-	for i := start + 1; i < len(lines); i++ {
-		if strings.TrimSpace(lines[i]) == "```" {
-			end = i
-			break
-		}
-	}
-	if end == -1 {
-		return strings.Join(lines[start+1:], "\n")
-	}
-	return strings.Join(lines[start+1:end], "\n")
+	return runner.ExtractCode(s)
 }

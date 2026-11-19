@@ -139,7 +139,7 @@ func TestWaitForTask_StopsStreamingToAClientThatWentAway(t *testing.T) {
 
 func TestStartMCPServer_ClosesConnectionsThatOutliveTheGracePeriod(t *testing.T) {
 	old := *mcp.ShutdownGrace
-	*mcp.ShutdownGrace = 50 * time.Millisecond
+	*mcp.ShutdownGrace = 1 * time.Millisecond
 	defer func() { *mcp.ShutdownGrace = old }()
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")

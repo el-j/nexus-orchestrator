@@ -4,12 +4,39 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
+	"nexus-orchestrator/internal/adapters/inbound/mcp"
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
 
 	"github.com/spf13/cobra"
 )
+
+// NewBrainCmd returns the `nexus brain` sub-command group for the unified CLI.
+func NewBrainCmd(brain ports.BrainService) *cobra.Command {
+	return newBrainCmd(brain)
+}
+
+// NewBrainStandaloneCmd builds the root command for the standalone nexus-brain binary.
+func NewBrainStandaloneCmd(brain ports.BrainService) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "nexus-brain",
+		Short: "Nexus Brain — Standalone RAG, semantic search, and knowledge management",
+	}
+
+	cmd.AddCommand(newBrainStatusCmd(brain))
+	cmd.AddCommand(newBrainIngestCmd(brain))
+	cmd.AddCommand(newBrainSearchCmd(brain))
+	cmd.AddCommand(newBrainInitCmd(brain))
+	cmd.AddCommand(newBrainListCmd(brain))
+	cmd.AddCommand(newBrainDeleteCmd(brain))
+	cmd.AddCommand(newBrainContextCmd(brain))
+	cmd.AddCommand(newBrainFileMapCmd(brain))
+	cmd.AddCommand(newBrainMcpCmd(brain))
+
+	return cmd
+}
 
 // newBrainCmd returns the `nexus brain` sub-command group.
 func newBrainCmd(brain ports.BrainService) *cobra.Command {
@@ -26,7 +53,32 @@ func newBrainCmd(brain ports.BrainService) *cobra.Command {
 	cmd.AddCommand(newBrainDeleteCmd(brain))
 	cmd.AddCommand(newBrainContextCmd(brain))
 	cmd.AddCommand(newBrainFileMapCmd(brain))
+	cmd.AddCommand(newBrainMcpCmd(brain))
 
+	return cmd
+}
+
+// newBrainMcpCmd builds "brain mcp": runs a dedicated Brain MCP server over stdio or HTTP.
+func newBrainMcpCmd(brain ports.BrainService) *cobra.Command {
+	var (
+		stdio bool
+		port  int
+	)
+	cmd := &cobra.Command{
+		Use:   "mcp",
+		Short: "Run a dedicated Nexus Brain MCP server exposing knowledge tools",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			srv := mcp.NewMcpServer(nil, brain)
+			if stdio || port == 0 {
+				return srv.ServeStdio(cmd.Context(), cmd.InOrStdin(), cmd.OutOrStdout())
+			}
+			addr := fmt.Sprintf("127.0.0.1:%d", port)
+			fmt.Fprintf(cmd.ErrOrStderr(), "nexus-brain: serving MCP on http://%s/mcp\n", addr)
+			return mcp.StartMCPServer(cmd.Context(), nil, brain, addr)
+		},
+	}
+	cmd.Flags().BoolVar(&stdio, "stdio", true, "Serve MCP over stdio (default)")
+	cmd.Flags().IntVar(&port, "port", 0, "Serve MCP over HTTP on the given port (e.g. 63990)")
 	return cmd
 }
 
@@ -107,6 +159,12 @@ func newBrainSearchCmd(brain ports.BrainService) *cobra.Command {
 		Use:   "search",
 		Short: "Search the knowledge base for a specific project or across all projects",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if query == "" && len(args) > 0 {
+				query = strings.Join(args, " ")
+			}
+			if query == "" {
+				return fmt.Errorf("cli: brain search: query is required")
+			}
 			target := project
 			if all || target == "" {
 				target = "*"
@@ -121,10 +179,9 @@ func newBrainSearchCmd(brain ports.BrainService) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&project, "project", "", "Project path (empty or '*' searches all projects)")
-	cmd.Flags().StringVar(&query, "query", "", "Search query (required)")
+	cmd.Flags().StringVar(&query, "query", "", "Search query (or provide as arguments)")
 	cmd.Flags().IntVar(&limit, "limit", 5, "Maximum number of results to return")
 	cmd.Flags().BoolVar(&all, "all", false, "Search across all projects")
-	_ = cmd.MarkFlagRequired("query")
 	return cmd
 }
 
