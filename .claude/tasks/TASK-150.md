@@ -3,7 +3,8 @@ id: TASK-150
 title: Domain — AISession, AISessionStatus, AISessionSource types
 role: architecture
 planId: PLAN-022
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 priority: critical
 estimated_effort: S
@@ -11,12 +12,15 @@ createdAt: 2026-03-12T11:00:00.000Z
 ---
 
 ## Goal
+
 Add the `AISession`, `AISessionStatus`, and `AISessionSource` domain types to `internal/core/domain/` so the rest of the system has a pure, framework-free foundation for tracking external AI agent sessions.
 
 ## Context
+
 nexusOrchestrator already has `domain.Task` (unit of LLM work) and `domain.Session` (per-project conversation history). A third entity is needed: `AISession` represents an external AI agent running somewhere in the developer's environment (VS Code Copilot, Claude Desktop, any MCP client) that nexusOrchestrator has detected or been told about. This is the central new entity for PLAN-022.
 
 The type MUST follow the exact same Go struct conventions as `internal/core/domain/task.go`:
+
 - No framework imports (pure `time` + builtin only)
 - `json:"..."` tags on every exported field (camelCase JSON)
 - `ErrNotFound` sentinel already exists in task.go — reuse it
@@ -25,12 +29,15 @@ The type MUST follow the exact same Go struct conventions as `internal/core/doma
 ## Scope
 
 ### Files to create
+
 - `internal/core/domain/ai_session.go`
 
 ### Tests
+
 - `internal/core/domain/ai_session_test.go` — table-driven tests for `IsTerminal()` and that zero-value struct is valid JSON-serialisable
 
 ## Implementation Steps
+
 1. Create `internal/core/domain/ai_session.go` in `package domain`.
 2. Define `AISessionSource` string type with constants:
    - `SessionSourceMCP = "mcp"` — registered via MCP `register_session` tool
@@ -57,6 +64,7 @@ The type MUST follow the exact same Go struct conventions as `internal/core/doma
    - `TestAISession_JSONRoundTrip` confirming json.Marshal → json.Unmarshal roundtrip produces equal struct
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./internal/core/domain/...` exits 0
@@ -66,6 +74,7 @@ The type MUST follow the exact same Go struct conventions as `internal/core/doma
 - [ ] Zero new imports beyond `time` in the domain package
 
 ## Anti-patterns to Avoid
+
 - NEVER import anything from `internal/adapters/` or framework packages in domain
 - NEVER use `interface{}` or `any` — every field is typed
 - NEVER add business logic to domain types beyond simple state predicates

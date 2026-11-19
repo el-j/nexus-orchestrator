@@ -28,6 +28,7 @@ type mockOrchestrator struct {
 	cancelErr     error
 	providersList []ports.ProviderInfo
 	providersErr  error
+	updateArg     domain.Task
 }
 
 func (m *mockOrchestrator) SubmitTask(_ domain.Task) (string, error) {
@@ -86,8 +87,10 @@ func (m *mockOrchestrator) GetBacklog(_ string) ([]domain.Task, error)        { 
 func (m *mockOrchestrator) PromoteTask(_ string) (ports.PromoteResult, error) {
 	return ports.PromoteResult{Promoted: true}, nil
 }
-func (m *mockOrchestrator) UpdateTask(_ string, _ domain.Task) (domain.Task, error) {
-	return domain.Task{}, nil
+func (m *mockOrchestrator) UpdateTask(id string, t domain.Task) (domain.Task, error) {
+	t.ID = id
+	m.updateArg = t
+	return t, nil
 }
 func (m *mockOrchestrator) RegisterAISession(_ context.Context, s domain.AISession) (domain.AISession, error) {
 	return s, nil
@@ -419,5 +422,22 @@ func TestProviders_Error(t *testing.T) {
 
 	if err := root.Execute(); err == nil {
 		t.Error("expected an error, got nil")
+	}
+}
+
+func TestUpdate_TargetProviderHintAndStatus(t *testing.T) {
+	mock := &mockOrchestrator{}
+	root := cli.NewRootCmd(mock, nil)
+	root.SetArgs([]string{"update", "task-123", "--target", "cmd/main.go", "--provider-hint", "Ollama", "--status", "BACKLOG"})
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+
+	var execErr error
+	_ = captureStdout(t, func() { execErr = root.Execute() })
+	if execErr != nil {
+		t.Fatalf("unexpected error: %v", execErr)
+	}
+	if mock.updateArg.TargetFile != "cmd/main.go" || mock.updateArg.ProviderHint != "Ollama" || mock.updateArg.Status != domain.StatusBacklog {
+		t.Errorf("updateArg = %+v, want target=cmd/main.go providerHint=Ollama status=BACKLOG", mock.updateArg)
 	}
 }

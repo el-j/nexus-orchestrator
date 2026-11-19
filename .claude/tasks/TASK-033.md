@@ -3,7 +3,8 @@ id: TASK-033
 title: cmd/nexus-submit — feed TASK-NNN.md files to daemon via HTTP
 role: devops
 planId: PLAN-003
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-032]
 createdAt: 2026-03-09T15:00:00.000Z
 ---

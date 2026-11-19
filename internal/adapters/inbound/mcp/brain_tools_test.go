@@ -285,6 +285,36 @@ func TestMCP_SearchKnowledge_OK(t *testing.T) {
 	}
 }
 
+func TestMCP_SearchKnowledge_CrossProject_OK(t *testing.T) {
+	brain := &mockBrainForMCP{
+		searchResults: []domain.ContextSection{
+			{ProjectPath: "/repo1", Kind: domain.KnowledgeLearning, Topic: "pitfall", Content: "avoid global state", Tokens: 5},
+		},
+	}
+	srv := newBrainToolServer(t, brain)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      106,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "search_knowledge",
+			"arguments": map[string]any{
+				"projectPath": "*",
+				"query":       "global state",
+			},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var payload []domain.ContextSection
+	decodeToolText(t, r.Result, &payload)
+	if len(payload) != 1 || payload[0].ProjectPath != "/repo1" {
+		t.Fatalf("expected 1 result with ProjectPath /repo1, got %+v", payload)
+	}
+}
+
 func TestMCP_InitProject_OK(t *testing.T) {
 	brain := &mockBrainForMCP{
 		initStatus: domain.BrainStatus{
@@ -592,5 +622,74 @@ func TestMCP_ToolCall_GetOnboardingContext_MissingProjectPath(t *testing.T) {
 	}
 	if r.Error.Code != -32602 {
 		t.Errorf("expected code -32602, got %d", r.Error.Code)
+	}
+}
+
+func TestMCP_IngestKnowledge_StructuredEntry_OK(t *testing.T) {
+	brain := &mockBrainForMCP{
+		ingestResult: domain.ProjectKnowledge{
+			ID:          "k-123",
+			ProjectPath: "/repo",
+			Kind:        domain.KnowledgeLearning,
+			Topic:       "Auth",
+			Content:     "Always verify bearer tokens",
+		},
+	}
+	srv := newBrainToolServer(t, brain)
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      201,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "ingest_knowledge",
+			"arguments": map[string]any{
+				"projectPath": "/repo",
+				"kind":        "learning",
+				"topic":       "Auth",
+				"content":     "Always verify bearer tokens",
+			},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	var got domain.ProjectKnowledge
+	decodeToolText(t, r.Result, &got)
+	if got.ID != "k-123" || got.Kind != domain.KnowledgeLearning || got.Topic != "Auth" {
+		t.Errorf("got %+v, want k-123 learning Auth", got)
+	}
+}
+
+func TestMCP_UpdateTask_TargetFileHintAndStatus(t *testing.T) {
+	orch := &mockOrch{
+		updateResult: domain.Task{
+			ID:           "t-1",
+			TargetFile:   "cmd/main.go",
+			ProviderHint: "Ollama",
+			Status:       domain.StatusBacklog,
+		},
+	}
+	srv := httptest.NewServer(mcp.NewMcpServer(orch, nil))
+	t.Cleanup(srv.Close)
+
+	r := postRPC(t, srv, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      202,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "update_task",
+			"arguments": map[string]any{
+				"id":           "t-1",
+				"targetFile":   "cmd/main.go",
+				"providerHint": "Ollama",
+				"status":       "BACKLOG",
+			},
+		},
+	})
+	if r.Error != nil {
+		t.Fatalf("unexpected error: %+v", r.Error)
+	}
+	if orch.updateArg.TargetFile != "cmd/main.go" || orch.updateArg.ProviderHint != "Ollama" || orch.updateArg.Status != domain.StatusBacklog {
+		t.Errorf("updateArg = %+v, want targetFile=cmd/main.go providerHint=Ollama status=BACKLOG", orch.updateArg)
 	}
 }

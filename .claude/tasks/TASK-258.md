@@ -1,21 +1,25 @@
 ---
 id: TASK-258
-title: "Verify: E2E validation of automatic task tracking"
+title: 'Verify: E2E validation of automatic task tracking'
 role: verify
 planId: PLAN-038
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-257]
 createdAt: 2026-03-13T16:00:00.000Z
 ---
 
 ## Context
+
 Final verification that the full pipeline works end-to-end: register session → submit task → claim task → update status → verify session has routed task IDs.
 
 ## Files to Read
+
 - `scripts/e2e-smoke.sh` (existing E2E patterns)
 - All task files from PLAN-038
 
 ## Implementation Steps
+
 1. Add claim/status flow to `scripts/e2e-smoke.sh`:
    - Register an AI session via POST /api/ai-sessions
    - Submit a task via POST /api/tasks
@@ -33,6 +37,7 @@ Final verification that the full pipeline works end-to-end: register session →
 6. Run extension test coverage
 
 ## Acceptance Criteria
+
 - [ ] E2E smoke test passes with claim/status flow
 - [ ] `go vet ./...` clean
 - [ ] `go test -race` all green

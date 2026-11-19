@@ -1,6 +1,7 @@
 # TASK-315: Domain types — extend DiscoveredAgent + new DiscoveredPlanFile + AISession.ModelID
 
 **Plan:** PLAN-048
+**Status:** done
 **Role:** backend
 **Dependencies:** none
 

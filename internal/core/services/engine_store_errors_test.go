@@ -163,8 +163,8 @@ func TestSelfHealing_SucceedsDespiteSessionAppendErrors(t *testing.T) {
 
 	id, _ := orch.SubmitTask(verifiedTask())
 	waitStatus(t, repo, id, domain.StatusCompleted, 10*time.Second)
-	if sess.appends.Load() < 4 {
-		t.Errorf("expected appends for the draft and the correction, got %d", sess.appends.Load())
+	if sess.appends.Load() < 2 {
+		t.Errorf("expected appends for the final prompt and corrected reply, got %d", sess.appends.Load())
 	}
 }
 

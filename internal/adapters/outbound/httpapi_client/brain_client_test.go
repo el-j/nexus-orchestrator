@@ -294,12 +294,24 @@ func TestBrainClient_GetFileMap_OK(t *testing.T) {
 	}
 }
 
-// TestBrainClient_IngestKnowledge_Unsupported verifies that direct IngestKnowledge returns an error.
-func TestBrainClient_IngestKnowledge_Unsupported(t *testing.T) {
-	c := httpapi_client.NewBrainClient("http://127.0.0.1:9999")
-	_, err := c.IngestKnowledge(context.Background(), domain.ProjectKnowledge{})
-	if err == nil {
-		t.Fatal("expected error from IngestKnowledge, got nil")
+// TestBrainClient_IngestKnowledge_Direct verifies a single entry is posted and the stored entry returned.
+func TestBrainClient_IngestKnowledge_Direct(t *testing.T) {
+	var got domain.ProjectKnowledge
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/brain/knowledge" {
+			http.Error(w, "wrong route", http.StatusNotFound)
+			return
+		}
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		got.ID, got.TokenCount = "id-1", 9
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(got)
+	}))
+	defer srv.Close()
+	c := httpapi_client.NewBrainClient(srv.URL)
+	stored, err := c.IngestKnowledge(context.Background(), domain.ProjectKnowledge{ProjectPath: "/p", Kind: domain.KnowledgeLearning, Topic: "T", Content: "C"})
+	if err != nil || stored.ID != "id-1" || stored.TokenCount != 9 || got.Topic != "T" {
+		t.Errorf("%+v %v (sent %+v)", stored, err, got)
 	}
 }
 
@@ -416,5 +428,33 @@ func TestBrainClient_GetFileMap_Error(t *testing.T) {
 	_, err := c.GetFileMap(context.Background(), "/proj", "")
 	if err == nil {
 		t.Fatal("expected error on 500, got nil")
+	}
+}
+
+func TestBrainClient_IngestContent_OK_And_Error(t *testing.T) {
+	var gotBody map[string]string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/brain/ingest-content" {
+			http.Error(w, "wrong route", http.StatusNotFound)
+			return
+		}
+		assertContentType(t, r)
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		if gotBody["projectPath"] == "/fail" {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]int{"ingestedSections": 4})
+	}))
+	defer srv.Close()
+
+	c := httpapi_client.NewBrainClient(srv.URL)
+	n, err := c.IngestContent(context.Background(), "/proj", "notes.md", "## Heading\nbody")
+	if err != nil || n != 4 || gotBody["name"] != "notes.md" || gotBody["content"] != "## Heading\nbody" {
+		t.Fatalf("IngestContent = %d, %v (body=%+v)", n, err, gotBody)
+	}
+	if _, err := c.IngestContent(context.Background(), "/fail", "n.md", "c"); err == nil {
+		t.Fatal("expected error on 500")
 	}
 }

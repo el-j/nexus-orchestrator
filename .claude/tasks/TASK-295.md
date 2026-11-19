@@ -3,7 +3,8 @@ id: TASK-295
 title: 'Mark TASK-014/021/022 done in orchestrator.json'
 role: orchestration
 planId: PLAN-045
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-14T18:00:00.000Z
 ---

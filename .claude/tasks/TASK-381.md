@@ -1,6 +1,7 @@
 # TASK-381: HTTP API test — NO_PROVIDER cancel pipeline + promote pre-flight
 
 **Plan:** PLAN-055 | **Wave:** 4 | **Status:** done | **Role:** testing
+**Status:** done
 
 ## Goal
 

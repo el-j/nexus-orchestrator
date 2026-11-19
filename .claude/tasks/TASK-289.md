@@ -1,9 +1,9 @@
 # TASK-289 — Go tests for PLAN-044 components
 
 **Plan:** PLAN-044  
-**Status:** TODO  
+**Status:** done  
 **Layer:** Go · tests  
-**Depends on:** TASK-278, TASK-280  
+**Depends on:** TASK-278, TASK-280
 
 ## Objective
 

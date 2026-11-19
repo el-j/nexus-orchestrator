@@ -120,7 +120,8 @@ describe('lmBridge streaming', () => {
     expect(resp.status).toBe(200);
     const e = events(await resp.text());
     expect(e).not.toContain('[DONE]');
-    expect(JSON.parse(e.at(-1)!)).toEqual({ error: { message: 'quota exceeded' } });
+    // The status lets Nexus classify the failure (429 = rate limited) and put the provider on cooldown.
+    expect(JSON.parse(e.at(-1)!)).toEqual({ error: { message: 'quota exceeded', status: 429 } });
   });
 
   it('cancels the model request when the caller disconnects mid-stream', async () => {

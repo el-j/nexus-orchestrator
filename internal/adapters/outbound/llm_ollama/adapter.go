@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"nexus-orchestrator/internal/adapters/outbound/usagebox"
 	"nexus-orchestrator/internal/core/domain"
 )
 
@@ -22,9 +23,10 @@ const DefaultBaseURL = "http://127.0.0.1:11434"
 
 // Adapter implements ports.LLMClient for Ollama's REST API.
 type Adapter struct {
-	baseURL    string
-	model      string
-	httpClient *http.Client
+	baseURL      string
+	model        string
+	httpClient   *http.Client
+	usagebox.Box // the usage of the last call, for ports.UsageReporter
 
 	infoMu       sync.Mutex
 	contextLimit int       // last successfully read value; 0 = unknown
@@ -133,14 +135,11 @@ type ollamaChatRequest struct {
 
 // GenerateCode sends a chat completion request to Ollama and returns the generated text.
 func (a *Adapter) GenerateCode(ctx context.Context, prompt string) (string, error) {
-	reqBody, err := json.Marshal(generateRequest{
+	reqBody, _ := json.Marshal(generateRequest{
 		Model:  a.model,
 		Prompt: prompt,
 		Stream: false,
-	})
-	if err != nil {
-		return "", fmt.Errorf("ollama: marshal request: %w", err)
-	}
+	}) // a request of strings and numbers always encodes
 
 	resp, err := a.do(ctx, a.httpClient, http.MethodPost, "/api/generate", reqBody)
 	if err != nil {
@@ -154,10 +153,12 @@ func (a *Adapter) GenerateCode(ctx context.Context, prompt string) (string, erro
 
 	var result struct {
 		Response string `json:"response"`
+		counts
 	}
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("ollama: decode response: %w", err)
 	}
+	a.Set(result.usage(a.model))
 	if result.Response == "" {
 		return "", fmt.Errorf("ollama: empty response from model %q", a.model)
 	}
@@ -192,10 +193,7 @@ func (a *Adapter) ContextLimit(ctx context.Context) int {
 // "qwen2.context_length", "gemma3.context_length", ...), so the architecture
 // from "general.architecture" is tried first, then any "*.context_length" key.
 func (a *Adapter) fetchContextLimit(ctx context.Context) int {
-	body, err := json.Marshal(map[string]string{"name": a.model})
-	if err != nil {
-		return 0
-	}
+	body, _ := json.Marshal(map[string]string{"name": a.model})
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := a.do(ctx, client, http.MethodPost, "/api/show", body)
 	if err != nil {
@@ -258,14 +256,11 @@ func messagesToMaps(msgs []domain.Message) []map[string]string {
 // Chat sends a multi-turn conversation history to Ollama using the /api/chat
 // endpoint and returns the assistant reply.
 func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, error) {
-	reqBody, err := json.Marshal(ollamaChatRequest{
+	reqBody, _ := json.Marshal(ollamaChatRequest{
 		Model:    a.model,
 		Messages: messagesToMaps(messages),
 		Stream:   false,
-	})
-	if err != nil {
-		return "", fmt.Errorf("ollama: marshal chat request: %w", err)
-	}
+	}) // a request of strings and numbers always encodes
 
 	resp, err := a.do(ctx, a.httpClient, http.MethodPost, "/api/chat", reqBody)
 	if err != nil {
@@ -281,9 +276,22 @@ func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, 
 		Message struct {
 			Content string `json:"content"`
 		} `json:"message"`
+		counts
 	}
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("ollama: decode chat response: %w", err)
 	}
+	a.Set(result.usage(a.model))
 	return result.Message.Content, nil
+}
+
+// counts are the token counts Ollama puts on a finished generate or chat reply.
+type counts struct {
+	PromptEvalCount int `json:"prompt_eval_count"`
+	EvalCount       int `json:"eval_count"`
+}
+
+// usage converts the token counts of a reply to the domain type.
+func (c counts) usage(model string) domain.Usage {
+	return domain.Usage{Model: model, InputTokens: c.PromptEvalCount, OutputTokens: c.EvalCount}
 }

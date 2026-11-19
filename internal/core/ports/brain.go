@@ -25,6 +25,8 @@ type ProjectKnowledgeRepository interface {
 	GetByProjectAndKind(ctx context.Context, projectPath string, kind domain.KnowledgeKind) ([]domain.ProjectKnowledge, error)
 	// SearchFTS performs BM25 full-text search within a project up to maxResults.
 	SearchFTS(ctx context.Context, projectPath, query string, maxResults int) ([]domain.ProjectKnowledge, error)
+	// SearchVector finds entries with embeddings closest to target by cosine similarity.
+	SearchVector(ctx context.Context, projectPath string, target []float32, maxResults int) ([]domain.ProjectKnowledge, error)
 	// GetStatus aggregates entry counts, token sums, and kind breakdown for a project.
 	GetStatus(ctx context.Context, projectPath string) (domain.BrainStatus, error)
 	// DeleteByProject removes all knowledge entries for a project.
@@ -57,4 +59,11 @@ type BrainService interface {
 	// GetOnboardingContext returns a concise, token-budgeted (< 800 tokens by default) Tier 0/1 summary
 	// of the project for agent bootstrap (stack, invariants, test commands, active plan/tasks).
 	GetOnboardingContext(ctx context.Context, projectPath string, maxTokens int) (string, error)
+}
+
+// EmbeddingProvider generates vector embeddings for text.
+// Implementations can query local endpoints (Ollama, LM Studio) or cloud embedding models.
+type EmbeddingProvider interface {
+	// Embed returns a vector embedding for the given text.
+	Embed(ctx context.Context, text string) ([]float32, error)
 }

@@ -1,6 +1,7 @@
 # TASK-357: Add legacy SSE transport (2024-11-05 spec)
 
 **Plan:** PLAN-052 | **Wave:** 2 | **Status:** done
+**Status:** done
 
 ## Description
 

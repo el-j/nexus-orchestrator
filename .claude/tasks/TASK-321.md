@@ -1,6 +1,7 @@
 # TASK-321: Frontend — AIAgentsView sub-agent tree + model badge + workingDir
 
 **Plan:** PLAN-048
+**Status:** done
 **Role:** frontend
 **Dependencies:** TASK-318
 

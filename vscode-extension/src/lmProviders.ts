@@ -19,10 +19,15 @@ export function providerNameFor(vendor: string, modelId: string): string {
   return `${BRIDGE_PROVIDER_PREFIX}${clean(vendor)}-${clean(modelId)}`;
 }
 
+/** Models the editor uses for itself (titles, dictation clean-up); never a sensible coding backend. */
+const HELPER_MODEL = /^copilot-(utility|dictation)/i;
+
 /** The editor's models that may be shared, as provider name → model id. */
 async function sharedModels(vendors: string[]): Promise<Map<string, string>> {
   const all = await vscode.lm.selectChatModels({});
-  const shared = all.filter((m) => vendors.length === 0 || vendors.includes(m.vendor));
+  const shared = all.filter(
+    (m) => !HELPER_MODEL.test(m.id) && (vendors.length === 0 || vendors.includes(m.vendor)),
+  );
   return new Map(shared.map((m) => [providerNameFor(m.vendor, m.id), m.id]));
 }
 

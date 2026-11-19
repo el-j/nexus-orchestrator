@@ -34,6 +34,10 @@ func brainCases() []brainCase {
 			_, err := c.IngestFromFile(ctx, "/p", "/f.md")
 			return err
 		}, 200, `{"ingestedSections":3}`, true},
+		{"IngestKnowledge", func(c *httpapi_client.BrainClient) error {
+			_, err := c.IngestKnowledge(ctx, domain.ProjectKnowledge{ProjectPath: "/p", Kind: domain.KnowledgeLearning, Topic: "t", Content: "c"})
+			return err
+		}, 201, `{"id":"k"}`, true},
 		{"SearchKnowledge", func(c *httpapi_client.BrainClient) error {
 			_, err := c.SearchKnowledge(ctx, "/p", "q", 5)
 			return err
@@ -134,8 +138,5 @@ func TestBrainClient_ResultsAndQueryEncoding(t *testing.T) {
 	}
 	if secs, err := c.SearchKnowledge(ctx, "/p", "a&b", 7); err != nil || len(secs) != 1 || gotQuery["q"][0] != "a&b" || gotQuery["limit"][0] != "7" {
 		t.Errorf("search: %v %v %v", secs, gotQuery, err)
-	}
-	if _, err := c.IngestKnowledge(ctx, domain.ProjectKnowledge{}); err == nil {
-		t.Error("IngestKnowledge is intentionally unsupported over HTTP")
 	}
 }

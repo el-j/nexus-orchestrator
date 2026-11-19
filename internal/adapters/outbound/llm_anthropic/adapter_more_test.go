@@ -14,8 +14,14 @@ import (
 )
 
 type captured struct {
-	Model    string `json:"model"`
-	System   string `json:"system"`
+	Model  string `json:"model"`
+	System []struct {
+		Type         string `json:"type"`
+		Text         string `json:"text"`
+		CacheControl *struct {
+			Type string `json:"type"`
+		} `json:"cache_control"`
+	} `json:"system"`
 	Messages []struct {
 		Role    string `json:"role"`
 		Content string `json:"content"`
@@ -58,8 +64,8 @@ func TestChat_SendsSystemPromptAndAValidTurnSequence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.System != "Be terse.\n\nAnswer in Go." {
-		t.Errorf("system = %q", got.System)
+	if len(got.System) != 1 || got.System[0].Text != "Be terse.\n\nAnswer in Go." || got.System[0].CacheControl == nil || got.System[0].CacheControl.Type != "ephemeral" {
+		t.Errorf("system = %+v, want ephemeral cache_control block", got.System)
 	}
 	roles := ""
 	for _, m := range got.Messages {

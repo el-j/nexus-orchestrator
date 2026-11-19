@@ -75,6 +75,13 @@ func (f *faultyAIRepo) UpdateAISessionStatus(ctx context.Context, id string, st 
 	return f.memAISessionRepo.UpdateAISessionStatus(ctx, id, st, at)
 }
 
+func (f *faultyAIRepo) DeleteAISession(ctx context.Context, id string) error {
+	if err := f.err("Delete"); err != nil {
+		return err
+	}
+	return f.memAISessionRepo.DeleteAISession(ctx, id)
+}
+
 func (f *faultyAIRepo) PurgeDisconnected(ctx context.Context, d time.Duration) (int, error) {
 	if err := f.err("Purge"); err != nil {
 		return 0, err
@@ -414,11 +421,15 @@ func TestGetDiscoveredAgents_ErrorBranchesAndNoRepo(t *testing.T) {
 		t.Errorf("scanner error: %v %v", got, err)
 	}
 
-	// Without a repo the freshly scanned agents are returned directly.
+	// Without a repo the freshly scanned agents are returned directly and cached for the 30s window.
 	orch2, _, _ := newSessionOrch(t)
-	orch2.SetAgentScanner(&stubAgentScanner{agents: []domain.DiscoveredAgent{{ID: "fresh"}}})
+	scanner2 := &stubAgentScanner{agents: []domain.DiscoveredAgent{{ID: "fresh"}}}
+	orch2.SetAgentScanner(scanner2)
 	if got, _ := orch2.GetDiscoveredAgents(bg); len(got) != 1 || got[0].ID != "fresh" {
-		t.Errorf("no repo: %v", got)
+		t.Errorf("no repo first call: %v", got)
+	}
+	if got, _ := orch2.GetDiscoveredAgents(bg); len(got) != 1 || got[0].ID != "fresh" || scanner2.scans != 1 {
+		t.Errorf("no repo second call within 30s must return cached agents without rescanning: got=%v scans=%d", got, scanner2.scans)
 	}
 
 	// Upsert failure is tolerated; List failure is returned.

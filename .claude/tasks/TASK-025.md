@@ -3,7 +3,8 @@ id: TASK-025
 title: Verify — cross-platform build matrix + update README
 role: verify
 planId: PLAN-002
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-024]
 createdAt: 2026-03-09T12:00:00.000Z
 ---
@@ -64,6 +65,7 @@ Note: Wails desktop binary (`main.go`) requires Wails toolchain per platform —
 ### Step 3: Smoke test the daemon end-to-end
 
 After starting the daemon:
+
 ```sh
 ./build/nexus-daemon-darwin-arm64 &
 sleep 1
@@ -88,6 +90,7 @@ kill %1
 ### Step 4: Update README.md
 
 Sections to add or update:
+
 1. **Architecture diagram** — update to include writeback system and new GUI
 2. **Quick Start** — add `wails dev` for GUI development and production `wails build`
 3. **CLI Commands** — add `queue submit` and `sessions get/clear` from TASK-016
@@ -99,6 +102,7 @@ Sections to add or update:
 ### Step 5: Update `.github/copilot-instructions.md`
 
 Sections to update:
+
 - **Configuration** — add `NEXUS_MAX_QUEUE`
 - **Adding a new LLM provider** — note that `GetPending()` must be handled if provider startup affects pending tasks
 - **Key Reference Files** — add `app.go` Wails GUI bindings, `frontend/src/App.tsx`

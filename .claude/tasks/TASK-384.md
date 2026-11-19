@@ -1,6 +1,7 @@
 # TASK-384: VS Code extension — workspace isolation tests
 
 **Plan:** PLAN-055 | **Wave:** 5 | **Status:** done | **Role:** testing
+**Status:** done
 
 ## Goal
 

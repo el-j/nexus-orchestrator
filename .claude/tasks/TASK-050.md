@@ -1,20 +1,23 @@
 ---
 id: TASK-050
-title: "Orchestrator + SQLite: model-aware dispatch + StatusNoProvider + schema migration"
+title: 'Orchestrator + SQLite: model-aware dispatch + StatusNoProvider + schema migration'
 role: backend
 planId: PLAN-005
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-044, TASK-049]
 createdAt: 2026-03-10T06:00:00.000Z
 ---
 
 ## Context
+
 The orchestrator must use `DiscoveryService.FindForModel()` when a task has a `ModelID` set,
-and fall back to `DetectActive()` when it is empty.  When no provider serves the model,
-the task must reach `StatusNoProvider`.  The SQLite schema needs two new columns for
+and fall back to `DetectActive()` when it is empty. When no provider serves the model,
+the task must reach `StatusNoProvider`. The SQLite schema needs two new columns for
 `model_id` and `provider_hint` added to the `tasks` table.
 
 ## Files to Read
+
 - `internal/core/services/orchestrator.go`
 - `internal/adapters/outbound/repo_sqlite/repo.go`
 - `internal/core/domain/task.go` (after TASK-044)
@@ -22,7 +25,9 @@ the task must reach `StatusNoProvider`.  The SQLite schema needs two new columns
 ## Implementation Steps
 
 ### 1. SQLite schema migration (`internal/adapters/outbound/repo_sqlite/repo.go`)
+
 Find the `CREATE TABLE IF NOT EXISTS tasks` statement and add two columns to it:
+
 ```sql
 model_id       TEXT NOT NULL DEFAULT '',
 provider_hint  TEXT NOT NULL DEFAULT '',
@@ -30,6 +35,7 @@ provider_hint  TEXT NOT NULL DEFAULT '',
 
 Also add `ALTER TABLE` migration guards (for databases that already exist without these columns):
 After the table creation, add:
+
 ```go
 for _, col := range []struct{ name, def string }{
     {"model_id", "TEXT NOT NULL DEFAULT ''"},
@@ -43,10 +49,12 @@ for _, col := range []struct{ name, def string }{
 ```
 
 Also update the `Save`, `GetByID`, and scan functions to include `model_id` and `provider_hint`:
+
 - In `Save`: insert `model_id` and `provider_hint` values from task
 - In row scanning: scan `model_id` and `provider_hint` into task fields
 
 ### 2. Orchestrator dispatch (`internal/core/services/orchestrator.go`)
+
 In `processNext()`, replace the current `DetectActive()` call:
 
 ```go
@@ -67,11 +75,12 @@ Remove the old `if llm == nil { re-queue }` block entirely.
 When the model field is empty, `FindForModel("","")` returns the first active provider,
 preserving the existing no-model behavior.
 
-**Note on the `DiscoveryService` field**: 
+**Note on the `DiscoveryService` field**:
 The current type is `*DiscoveryService`. The `FindForModel` method is added to it in TASK-049.
 No interface change needed — the orchestrator uses the concrete type.
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` exits 0
@@ -83,6 +92,7 @@ No interface change needed — the orchestrator uses the concrete type.
 - [ ] Existing orchestrator tests pass without modification
 
 ## Anti-patterns to Avoid
+
 - NEVER use raw string SQL in `Save()` without the new columns — missing columns = data loss
 - NEVER remove the existing `errors.Is(err, domain.ErrNotFound)` check in the session loader
 - NEVER panic on `ALTER TABLE` errors — they mean the column already exists

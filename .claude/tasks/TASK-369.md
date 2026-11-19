@@ -1,6 +1,7 @@
 # TASK-369: Providers view — Add "AI Coding Tools" section with discovered agents
 
 **Plan:** PLAN-054 | **Wave:** 1 | **Status:** done | **Role:** frontend
+**Status:** done
 
 ## Goal
 

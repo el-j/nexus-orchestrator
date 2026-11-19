@@ -1,6 +1,7 @@
 # TASK-379: Fix HistoryView + LiveActivityView — pass projectPath to API
 
 **Plan:** PLAN-055 | **Wave:** 3 | **Status:** done | **Role:** frontend
+**Status:** done
 
 ## Problem
 

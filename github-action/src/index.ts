@@ -35,6 +35,7 @@ function getInputs(): ActionInputs {
     agentRef: core.getInput('agent_ref').trim() || 'main',
     systemPrompt: core.getInput('system_prompt').trim(),
     daemonUrl: core.getInput('daemon_url').trim() || 'http://127.0.0.1:63987',
+    apiToken: core.getInput('api_token'),
     startDaemon: core.getInput('start_daemon').trim() !== 'false',
     nexusVersion: core.getInput('nexus_version').trim() || 'latest',
     // Number(), not parseInt(): "1.5" or "300abc" must be rejected, not truncated.
@@ -50,7 +51,12 @@ function getInputs(): ActionInputs {
 
 /** Registers credentials with the runner so they are masked if they ever reach a log line. */
 function maskSecrets(inputs: ActionInputs): void {
-  for (const secret of [inputs.openaiApiKey, inputs.anthropicApiKey, inputs.githubCopilotToken]) {
+  for (const secret of [
+    inputs.openaiApiKey,
+    inputs.anthropicApiKey,
+    inputs.githubCopilotToken,
+    inputs.apiToken,
+  ]) {
     if (secret.length > 0) core.setSecret(secret);
   }
 }
@@ -163,7 +169,7 @@ async function run(): Promise<void> {
     const instruction = buildInstruction(inputs, systemPrompt);
 
     // 4. Submit task
-    const nexus = new NexusClient(daemonUrl);
+    const nexus = new NexusClient(daemonUrl, inputs.apiToken || undefined);
     const taskReq: TaskRequest = {
       projectPath: inputs.projectPath,
       instruction,

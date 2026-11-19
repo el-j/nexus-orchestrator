@@ -1,7 +1,7 @@
 ---
 id: PLAN-020
 title: Fix GUI provider display + wire Providers view + enable dogfooding
-status: active
+status: completed
 createdAt: 2026-03-11T19:00:00.000Z
 ---
 
@@ -30,11 +30,11 @@ validate end-to-end dogfooding via the VS Code extension.
 
 ## Tasks
 
-| ID       | Role     | Title                                              | Wave |
-|----------|----------|----------------------------------------------------|------|
-| TASK-143 | frontend | Fix ProviderInfo TypeScript type + template refs   | 1    |
-| TASK-144 | frontend | Wire AppSidebar routing + create ProvidersView     | 1    |
-| TASK-145 | devops   | Rebuild Wails GUI + dogfood smoke test             | 2    |
+| ID       | Role     | Title                                            | Wave |
+| -------- | -------- | ------------------------------------------------ | ---- |
+| TASK-143 | frontend | Fix ProviderInfo TypeScript type + template refs | 1    |
+| TASK-144 | frontend | Wire AppSidebar routing + create ProvidersView   | 1    |
+| TASK-145 | devops   | Rebuild Wails GUI + dogfood smoke test           | 2    |
 
 TASK-143 and TASK-144 are fully independent — run in parallel.
 TASK-145 depends on both.

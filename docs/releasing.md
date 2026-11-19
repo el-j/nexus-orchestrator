@@ -41,6 +41,23 @@ pull request branch before merging. Configuration: `release-please-config.json` 
 - The first release is forced to `0.10.0` by `release-as` in `release-please-config.json`; remove that
   line (and `bootstrap-sha`) after it ships.
 
+## Signing the macOS app
+
+Without secrets the desktop app is ad-hoc signed and users clear the quarantine flag themselves
+(`Open Nexus.command` does it). To ship a signed and notarized app, add these repository secrets; the
+**Sign macOS app** step in `publish.yml` switches to Developer ID signing as soon as
+`APPLE_CERTIFICATE` is set:
+
+| Secret                                            | Value                                                                     |
+| ------------------------------------------------- | ------------------------------------------------------------------------- |
+| `APPLE_CERTIFICATE`                               | the Developer ID Application certificate as a `.p12`, base64              |
+| `APPLE_CERTIFICATE_PASSWORD`                      | the password of that `.p12`                                               |
+| `APPLE_DEVELOPER_NAME`                            | the name in the certificate, as in `Developer ID Application: <name>`     |
+| `APPLE_ID`, `APPLE_APP_PASSWORD`, `APPLE_TEAM_ID` | the Apple account, an app-specific password and the team for `notarytool` |
+
+The hardened-runtime entitlements are in `packaging/macos/entitlements.plist`. The app targets
+macOS 13 (`MACOSX_DEPLOYMENT_TARGET`).
+
 ## Rebuilding a release
 
 Run **Publish** manually (Actions → Publish → Run workflow) and enter the tag, for example `v0.10.0`.

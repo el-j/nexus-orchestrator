@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"nexus-orchestrator/internal/adapters/outbound/httperr"
+	"nexus-orchestrator/internal/adapters/outbound/usagebox"
 	"strings"
 	"time"
 
@@ -24,10 +26,11 @@ const (
 // This uses the native Anthropic Messages API (/v1/messages), NOT an
 // OpenAI-compatible endpoint.
 type Adapter struct {
-	baseURL    string
-	apiKey     string
-	model      string
-	httpClient *http.Client
+	baseURL      string
+	apiKey       string
+	model        string
+	httpClient   *http.Client
+	usagebox.Box // the usage of the last call, for ports.UsageReporter
 }
 
 // NewAdapter creates an Anthropic Claude adapter.
@@ -161,28 +164,51 @@ func toAnthropicMessages(msgs []domain.Message) (system string, out []anthropicM
 	return strings.Join(systemParts, "\n\n"), out
 }
 
-// anthropicRequest is the request body for the Anthropic /v1/messages endpoint.
-type anthropicRequest struct {
-	Model     string             `json:"model"`
-	MaxTokens int                `json:"max_tokens"`
-	System    string             `json:"system,omitempty"`
-	Messages  []anthropicMessage `json:"messages"`
-	Stream    bool               `json:"stream,omitempty"`
+// anthropicCacheControl marks a content block for Anthropic ephemeral prompt caching.
+type anthropicCacheControl struct {
+	Type string `json:"type"`
 }
 
+// anthropicSystemBlock is a structured system prompt block supporting cache_control.
+type anthropicSystemBlock struct {
+	Type         string                 `json:"type"`
+	Text         string                 `json:"text"`
+	CacheControl *anthropicCacheControl `json:"cache_control,omitempty"`
+}
+
+// systemBlocks wraps the system prompt as a cacheable block; an empty prompt gives none.
+func systemBlocks(system string) []anthropicSystemBlock {
+	if strings.TrimSpace(system) == "" {
+		return nil
+	}
+	return []anthropicSystemBlock{{
+		Type:         "text",
+		Text:         system,
+		CacheControl: &anthropicCacheControl{Type: "ephemeral"},
+	}}
+}
+
+// anthropicRequest is the request body for the Anthropic /v1/messages endpoint.
+type anthropicRequest struct {
+	Model     string                 `json:"model"`
+	MaxTokens int                    `json:"max_tokens"`
+	System    []anthropicSystemBlock `json:"system,omitempty"`
+	Messages  []anthropicMessage     `json:"messages"`
+	Stream    bool                   `json:"stream,omitempty"`
+}
+
+// sendMessages posts one messages request and returns the text of the reply, or the typed error of a
+// failed call.
 func (a *Adapter) sendMessages(ctx context.Context, system string, messages []anthropicMessage) (string, error) {
 	if len(messages) == 0 {
 		return "", fmt.Errorf("anthropic: no user message to send")
 	}
-	reqBody, err := json.Marshal(anthropicRequest{
+	reqBody, _ := json.Marshal(anthropicRequest{
 		Model:     a.model,
 		MaxTokens: defaultMaxTokens,
-		System:    system,
+		System:    systemBlocks(system),
 		Messages:  messages,
-	})
-	if err != nil {
-		return "", fmt.Errorf("anthropic: marshal request: %w", err)
-	}
+	}) // a request of strings and numbers always encodes
 	req, err := a.newRequest(ctx, http.MethodPost, a.baseURL+"/v1/messages", bytes.NewReader(reqBody))
 	if err != nil {
 		return "", fmt.Errorf("anthropic: build request: %w", err)
@@ -193,32 +219,56 @@ func (a *Adapter) sendMessages(ctx context.Context, system string, messages []an
 		return "", fmt.Errorf("anthropic: request: %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return "", fmt.Errorf("anthropic: rate limited (429)")
+	if err := httperr.FromResponse("anthropic", resp, time.Now()); err != nil {
+		return "", err
 	}
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("anthropic: unexpected status %d%s", resp.StatusCode, errorDetail(resp.Body))
 	}
-	return decodeMessage(resp.Body)
+	return a.decodeMessage(resp.Body)
 }
 
-// decodeMessage reads a non-streaming Messages API reply and returns its first text block.
-func decodeMessage(body io.Reader) (string, error) {
+// decodeMessage reads a non-streaming Messages API reply, records its usage and returns its first
+// text block.
+func (a *Adapter) decodeMessage(body io.Reader) (string, error) {
 	var result struct {
+		Model   string `json:"model"`
 		Content []struct {
 			Type string `json:"type"`
 			Text string `json:"text"`
 		} `json:"content"`
+		Usage struct {
+			InputTokens  int `json:"input_tokens"`
+			OutputTokens int `json:"output_tokens"`
+			CacheCreated int `json:"cache_creation_input_tokens"`
+			CacheRead    int `json:"cache_read_input_tokens"`
+		} `json:"usage"`
 	}
 	if err := json.NewDecoder(io.LimitReader(body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("anthropic: decode response: %w", err)
 	}
+	a.Set(domain.Usage{
+		Model:        firstNonEmpty(result.Model, a.model),
+		InputTokens:  result.Usage.InputTokens,
+		OutputTokens: result.Usage.OutputTokens,
+		CachedTokens: result.Usage.CacheCreated + result.Usage.CacheRead,
+	})
 	for _, block := range result.Content {
 		if block.Type == "text" {
 			return block.Text, nil
 		}
 	}
 	return "", fmt.Errorf("anthropic: no text content in response")
+}
+
+// firstNonEmpty returns the first value that is not empty.
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 // errorDetail extracts ": <message>" from an Anthropic error body
@@ -237,6 +287,7 @@ func errorDetail(body io.Reader) string {
 	return ": " + e.Error.Message
 }
 
+// newRequest builds an API request with the key and version headers.
 func (a *Adapter) newRequest(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {

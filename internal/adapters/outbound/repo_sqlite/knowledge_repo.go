@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -28,6 +27,8 @@ func NewKnowledgeRepo(r *Repository) *KnowledgeRepo {
 	return &KnowledgeRepo{db: r.db}
 }
 
+// migrateKnowledge creates the knowledge table, its full-text index and the triggers that keep the two
+// in step.
 func migrateKnowledge(db *sql.DB) error {
 	_, err := db.ExecContext(context.Background(), `
 		CREATE TABLE IF NOT EXISTS project_knowledge (
@@ -39,6 +40,7 @@ func migrateKnowledge(db *sql.DB) error {
 			source         TEXT    NOT NULL DEFAULT '',
 			token_count    INTEGER NOT NULL DEFAULT 0,
 			relevance_score REAL   NOT NULL DEFAULT 0.5,
+			embedding      BLOB,
 			created_at     INTEGER NOT NULL,
 			updated_at     INTEGER NOT NULL
 		);
@@ -78,6 +80,7 @@ func migrateKnowledge(db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("knowledge_repo: migrate: %w", err)
 	}
+	_, _ = db.ExecContext(context.Background(), `ALTER TABLE project_knowledge ADD COLUMN embedding BLOB`)
 	return nil
 }
 
@@ -87,9 +90,10 @@ func scanKnowledge(row interface {
 }) (domain.ProjectKnowledge, error) {
 	var k domain.ProjectKnowledge
 	var createdMs, updatedMs int64
+	var embBlob []byte
 	if err := row.Scan(
 		&k.ID, &k.ProjectPath, &k.Kind, &k.Topic, &k.Content,
-		&k.Source, &k.TokenCount, &k.RelevanceScore,
+		&k.Source, &k.TokenCount, &k.RelevanceScore, &embBlob,
 		&createdMs, &updatedMs,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -99,6 +103,7 @@ func scanKnowledge(row interface {
 	}
 	k.CreatedAt = time.UnixMilli(createdMs)
 	k.UpdatedAt = time.UnixMilli(updatedMs)
+	k.Embedding = decodeEmbedding(embBlob)
 	return k, nil
 }
 
@@ -113,19 +118,21 @@ func (r *KnowledgeRepo) SaveKnowledge(ctx context.Context, k domain.ProjectKnowl
 		k.CreatedAt = time.Now()
 	}
 	k.UpdatedAt = time.Now()
+	embBlob := encodeEmbedding(k.Embedding)
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO project_knowledge
-			(id, project_path, kind, topic, content, source, token_count, relevance_score, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			(id, project_path, kind, topic, content, source, token_count, relevance_score, embedding, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(project_path, kind, topic) DO UPDATE SET
 			id             = excluded.id,
 			content        = excluded.content,
 			source         = excluded.source,
 			token_count    = excluded.token_count,
 			relevance_score = excluded.relevance_score,
+			embedding      = excluded.embedding,
 			updated_at     = excluded.updated_at`,
 		k.ID, k.ProjectPath, string(k.Kind), k.Topic, k.Content,
-		k.Source, k.TokenCount, k.RelevanceScore,
+		k.Source, k.TokenCount, k.RelevanceScore, embBlob,
 		k.CreatedAt.UnixMilli(), now,
 	)
 	if err != nil {
@@ -137,7 +144,7 @@ func (r *KnowledgeRepo) SaveKnowledge(ctx context.Context, k domain.ProjectKnowl
 // GetByID returns a knowledge entry by its UUID, or domain.ErrNotFound.
 func (r *KnowledgeRepo) GetByID(ctx context.Context, id string) (domain.ProjectKnowledge, error) {
 	row := r.db.QueryRowContext(ctx, `
-		SELECT id, project_path, kind, topic, content, source, token_count, relevance_score, created_at, updated_at
+		SELECT id, project_path, kind, topic, content, source, token_count, relevance_score, embedding, created_at, updated_at
 		FROM project_knowledge WHERE id = ?`, id)
 	return scanKnowledge(row)
 }
@@ -147,12 +154,13 @@ func (r *KnowledgeRepo) UpdateKnowledge(ctx context.Context, k domain.ProjectKno
 	if len(k.Content) > 0 {
 		k.TokenCount = len(k.Content) / 4
 	}
+	embBlob := encodeEmbedding(k.Embedding)
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE project_knowledge
-		SET kind = ?, topic = ?, content = ?, source = ?, token_count = ?, relevance_score = ?, updated_at = ?
+		SET kind = ?, topic = ?, content = ?, source = ?, token_count = ?, relevance_score = ?, embedding = ?, updated_at = ?
 		WHERE id = ?`,
 		string(k.Kind), k.Topic, k.Content, k.Source,
-		k.TokenCount, k.RelevanceScore, time.Now().UnixMilli(), k.ID,
+		k.TokenCount, k.RelevanceScore, embBlob, time.Now().UnixMilli(), k.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("knowledge_repo: update: %w", err)
@@ -176,7 +184,7 @@ func (r *KnowledgeRepo) DeleteKnowledge(ctx context.Context, id string) error {
 // GetByProject returns all knowledge entries for a project, ordered by kind then relevance.
 func (r *KnowledgeRepo) GetByProject(ctx context.Context, projectPath string) ([]domain.ProjectKnowledge, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, project_path, kind, topic, content, source, token_count, relevance_score, created_at, updated_at
+		SELECT id, project_path, kind, topic, content, source, token_count, relevance_score, embedding, created_at, updated_at
 		FROM project_knowledge WHERE project_path = ?
 		ORDER BY kind, relevance_score DESC`,
 		filepath.Clean(projectPath),
@@ -191,7 +199,7 @@ func (r *KnowledgeRepo) GetByProject(ctx context.Context, projectPath string) ([
 // GetByProjectAndKind returns entries filtered by project and kind, ordered by relevance.
 func (r *KnowledgeRepo) GetByProjectAndKind(ctx context.Context, projectPath string, kind domain.KnowledgeKind) ([]domain.ProjectKnowledge, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, project_path, kind, topic, content, source, token_count, relevance_score, created_at, updated_at
+		SELECT id, project_path, kind, topic, content, source, token_count, relevance_score, embedding, created_at, updated_at
 		FROM project_knowledge WHERE project_path = ? AND kind = ?
 		ORDER BY relevance_score DESC`,
 		filepath.Clean(projectPath), string(kind),
@@ -204,21 +212,44 @@ func (r *KnowledgeRepo) GetByProjectAndKind(ctx context.Context, projectPath str
 }
 
 // SearchFTS performs BM25 full-text search within a project up to maxResults.
+// If projectPath is empty or "*", search runs across all projects.
 func (r *KnowledgeRepo) SearchFTS(ctx context.Context, projectPath, query string, maxResults int) ([]domain.ProjectKnowledge, error) {
-	// Sanitize query: wrap in double-quotes for phrase matching and escape internal quotes.
-	// This prevents FTS5 syntax errors from malformed user input.
-	safeQuery := `"` + strings.ReplaceAll(query, `"`, `""`) + `"`
-	rows, err := r.db.QueryContext(ctx, `
+	safeQuery := buildFTSQuery(query)
+	if safeQuery == "" {
+		return []domain.ProjectKnowledge{}, nil
+	}
+	if maxResults <= 0 {
+		maxResults = 20
+	}
+
+	var rows *sql.Rows
+	var err error
+
+	isCrossProject := projectPath == "" || projectPath == "*" || projectPath == "all"
+	if isCrossProject {
+		rows, err = r.db.QueryContext(ctx, `
 		SELECT pk.id, pk.project_path, pk.kind, pk.topic, pk.content, pk.source,
-		       pk.token_count, pk.relevance_score, pk.created_at, pk.updated_at
+		       pk.token_count, pk.relevance_score, pk.embedding, pk.created_at, pk.updated_at
+		FROM project_knowledge pk
+		JOIN project_knowledge_fts fts ON pk.rowid = fts.rowid
+		WHERE project_knowledge_fts MATCH ?
+		ORDER BY bm25(project_knowledge_fts, 5.0, 1.0) ASC
+		LIMIT ?`,
+			safeQuery, maxResults,
+		)
+	} else {
+		rows, err = r.db.QueryContext(ctx, `
+		SELECT pk.id, pk.project_path, pk.kind, pk.topic, pk.content, pk.source,
+		       pk.token_count, pk.relevance_score, pk.embedding, pk.created_at, pk.updated_at
 		FROM project_knowledge pk
 		JOIN project_knowledge_fts fts ON pk.rowid = fts.rowid
 		WHERE project_knowledge_fts MATCH ?
 		  AND pk.project_path = ?
-		ORDER BY bm25(project_knowledge_fts) ASC
+		ORDER BY bm25(project_knowledge_fts, 5.0, 1.0) ASC
 		LIMIT ?`,
-		safeQuery, filepath.Clean(projectPath), maxResults,
-	)
+			safeQuery, filepath.Clean(projectPath), maxResults,
+		)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("knowledge_repo: search fts: %w", err)
 	}

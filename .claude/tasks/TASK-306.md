@@ -3,7 +3,8 @@ id: TASK-306
 title: LLM adapter dedup — export DefaultBaseURL, merge lmstudio Once guards, extract message-conversion helper
 role: backend
 planId: PLAN-047
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-25T00:00:00.000Z
 ---

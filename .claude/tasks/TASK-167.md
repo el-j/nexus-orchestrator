@@ -3,15 +3,18 @@ id: TASK-167
 title: Frontend DiscoveredProvidersPanel and DiscoveryView
 role: frontend
 planId: PLAN-023
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-166]
 createdAt: 2026-03-11T21:00:00.000Z
 ---
 
 ## Context
+
 The GUI needs to show auto-detected AI providers from the system scan. Users see discovered providers as cards with status indicators (reachable=green, installed=amber, running=amber) and can promote reachable ones to active backends with a single click. A "Scan Now" button triggers immediate re-scan.
 
 ## Files to Read
+
 - `frontend/src/types/domain.ts` — existing TypeScript types
 - `frontend/src/composables/useProviders.ts` — existing provider composable pattern
 - `frontend/src/components/ProviderStatus.vue` — existing provider card pattern
@@ -22,18 +25,19 @@ The GUI needs to show auto-detected AI providers from the system scan. Users see
 ## Implementation Steps
 
 1. Add TypeScript types in `frontend/src/types/domain.ts`:
+
    ```typescript
    export interface DiscoveredProvider {
-     id: string
-     name: string
-     kind: string
-     method: 'port' | 'cli' | 'process'
-     status: 'reachable' | 'installed' | 'running'
-     baseUrl?: string
-     cliPath?: string
-     processName?: string
-     models?: string[]
-     lastSeen: string
+     id: string;
+     name: string;
+     kind: string;
+     method: 'port' | 'cli' | 'process';
+     status: 'reachable' | 'installed' | 'running';
+     baseUrl?: string;
+     cliPath?: string;
+     processName?: string;
+     models?: string[];
+     lastSeen: string;
    }
    ```
 
@@ -70,6 +74,7 @@ The GUI needs to show auto-detected AI providers from the system scan. Users see
 6. Add route in Vue router for `/discovery` → `DiscoveryView`.
 
 ## Acceptance Criteria
+
 - [ ] `DiscoveredProvider` TypeScript type matches Go struct
 - [ ] `useDiscovery` composable fetches, scans, promotes, and auto-refreshes
 - [ ] Cards are color-coded by status
@@ -79,6 +84,7 @@ The GUI needs to show auto-detected AI providers from the system scan. Users see
 - [ ] `/discovery` route loads DiscoveryView
 
 ## Anti-patterns to Avoid
+
 - NEVER hardcode API base URL—use the existing pattern from other composables
 - NEVER poll faster than 10s for discovery (it's not real-time critical)
 - NEVER show "Promote" button for providers that aren't API-reachable

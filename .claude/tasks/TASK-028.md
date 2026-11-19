@@ -3,7 +3,8 @@ id: TASK-028
 title: OrchestratorService — invoke WritebackClient on task completion
 role: backend
 planId: PLAN-002
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-027, TASK-013]
 createdAt: 2026-03-09T13:00:00.000Z
 ---
@@ -24,6 +25,7 @@ The WritebackClient is optional — when nil (or using NoopClient), the orchestr
 ## Implementation Steps
 
 1. **Add `writebackClient ports.WritebackClient` field** to `OrchestratorService`:
+
    ```go
    type OrchestratorService struct {
        mu              sync.Mutex
@@ -39,6 +41,7 @@ The WritebackClient is optional — when nil (or using NoopClient), the orchestr
    ```
 
 2. **Update `NewOrchestrator` constructor** to accept `writebackClient ports.WritebackClient` (can be nil):
+
    ```go
    func NewOrchestrator(
        repo ports.TaskRepository,
@@ -48,9 +51,11 @@ The WritebackClient is optional — when nil (or using NoopClient), the orchestr
        writebackClient ports.WritebackClient,
    ) (*OrchestratorService, error) {
    ```
+
    If `writebackClient == nil`, the service skips writeback silently. Use `fs_writeback.NoopClient{}` in tests that don't need writeback.
 
 3. **In `processNext()`, after successful task completion** (just before `return`):
+
    ```go
    // Writeback to source project if this task was submitted via push-to-nexus
    if task.SourceProjectPath != "" && o.writebackClient != nil {
@@ -73,6 +78,7 @@ The WritebackClient is optional — when nil (or using NoopClient), the orchestr
 4. **On task failure** (after `repo.UpdateStatus(task.ID, StatusFailed)`), similarly call WriteBack with `Status: "failed"`. This ensures the source project knows about failures too.
 
 5. **Update all entry points** (`main.go`, `cmd/nexus-daemon/main.go`) to pass the `fs_writeback.New()` adapter:
+
    ```go
    import "nexus-orchestrator/internal/adapters/outbound/fs_writeback"
    // ...

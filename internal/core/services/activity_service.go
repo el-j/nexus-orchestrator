@@ -57,7 +57,9 @@ func NewActivityService(
 
 // SetBroadcaster wires an ActivityBroadcaster for SSE event delivery.
 func (s *ActivityService) SetBroadcaster(b ports.ActivityBroadcaster) {
+	s.mu.Lock()
 	s.broadcaster = b
+	s.mu.Unlock()
 }
 
 // Start launches the background polling and purge goroutines.
@@ -87,6 +89,7 @@ func (s *ActivityService) GetTimeline(ctx context.Context, since time.Time, limi
 	return s.activityRepo.ListActivities(ctx, domain.ActivityFilter{Since: since, Limit: limit})
 }
 
+// pollLoop runs poll on a timer until the service stops.
 func (s *ActivityService) pollLoop() {
 	defer s.wg.Done()
 	ticker := time.NewTicker(s.pollEvery)
@@ -105,6 +108,7 @@ func (s *ActivityService) pollLoop() {
 	}
 }
 
+// purgeLoop deletes old activity events on a timer until the service stops.
 func (s *ActivityService) purgeLoop() {
 	defer s.wg.Done()
 	ticker := time.NewTicker(s.purgeEvery)
@@ -126,6 +130,7 @@ func (s *ActivityService) purgeLoop() {
 	}
 }
 
+// poll reads new activity from every reader and stores it.
 func (s *ActivityService) poll() {
 	ctx := context.Background()
 	since := time.Now().Add(-activityRetentionWindow)
@@ -149,8 +154,11 @@ func (s *ActivityService) poll() {
 				continue
 			}
 			s.bridgeSession(ctx, a)
-			if s.broadcaster != nil {
-				s.broadcaster.BroadcastActivityEvent(a)
+			s.mu.Lock()
+			b := s.broadcaster
+			s.mu.Unlock()
+			if b != nil {
+				b.BroadcastActivityEvent(a)
 			}
 		}
 	}

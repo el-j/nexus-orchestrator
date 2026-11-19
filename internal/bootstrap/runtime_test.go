@@ -108,22 +108,23 @@ func TestStart_WiresServersLoadsPersistedProvidersAndClosesCleanly(t *testing.T)
 		t.Fatalf("services not wired: %+v", rt)
 	}
 
-	deadline := time.Now().Add(10 * time.Second)
-	for {
-		resp, err := http.Get("http://" + cfg.ListenAddr + "/api/health")
-		if err == nil {
-			resp.Body.Close()
-			break
+	// Both servers start in their own goroutines; wait for each instead of assuming the order.
+	for name, url := range map[string]string{
+		"REST API":   "http://" + cfg.ListenAddr + "/api/health",
+		"MCP server": "http://" + cfg.MCPAddr + "/health",
+	} {
+		deadline := time.Now().Add(10 * time.Second)
+		for {
+			resp, err := http.Get(url)
+			if err == nil {
+				resp.Body.Close()
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("%s never came up: %v", name, err)
+			}
+			time.Sleep(20 * time.Millisecond)
 		}
-		if time.Now().After(deadline) {
-			t.Fatal("REST API never came up")
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	if resp, err := http.Get("http://" + cfg.MCPAddr + "/health"); err != nil {
-		t.Errorf("MCP server: %v", err)
-	} else {
-		resp.Body.Close()
 	}
 	providers, _ := rt.Orchestrator.GetProviders()
 	names := map[string]bool{}
@@ -301,5 +302,26 @@ func TestStart_RepairsTaskRowsWrittenByAnotherTool(t *testing.T) {
 	// The repaired task is then handled like any other (here: no provider is reachable).
 	if status == "IN_PROGRESS" || kind != "integer" {
 		t.Errorf("row after start: status %q, updated_at %s; want a daemon status and an integer time", status, kind)
+	}
+}
+
+func TestRuntime_WithEmbeddingEnv(t *testing.T) {
+	t.Setenv("NEXUS_EMBEDDING_URL", "http://localhost:11434")
+	t.Setenv("NEXUS_EMBEDDING_MODEL", "nomic-embed-text")
+	ctx := context.Background()
+	dir := t.TempDir()
+	cfg := bootstrap.Config{
+		DBPath:       filepath.Join(dir, "nexus.db"),
+		ListenAddr:   "127.0.0.1:0",
+		MCPAddr:      "127.0.0.1:0",
+		ScanInterval: 10 * time.Minute,
+	}
+	rt, err := bootstrap.Start(ctx, cfg, nil)
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	defer rt.Close()
+	if rt.Brain == nil {
+		t.Fatal("expected Brain to be wired")
 	}
 }

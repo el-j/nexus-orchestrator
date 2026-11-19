@@ -59,7 +59,7 @@ func (s *Server) toolWaitForTask(ctx context.Context, args json.RawMessage, prog
 		if err != nil {
 			return callToolResult{}, fmt.Errorf("mcp: wait_for_task: %w", err)
 		}
-		if task.Status != domain.StatusQueued && task.Status != domain.StatusProcessing {
+		if task.Status != domain.StatusQueued && task.Status != domain.StatusProcessing && task.Status != domain.StatusWaiting {
 			return waitResult(task, false)
 		}
 	wait:
@@ -171,6 +171,7 @@ func (e *eventWriter) Write(p []byte) (int, error) {
 
 // ----- Schema -----
 
+// waitToolDefs lists wait_for_task for tools/list.
 func waitToolDefs() []toolDef {
 	return []toolDef{{
 		Name: "wait_for_task",

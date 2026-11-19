@@ -25,6 +25,7 @@ import type {
   KnowledgeResult,
   CreateTaskResponse,
   HealthResponse,
+  UsageReport,
 } from './nexusTypes';
 import {
   TaskStatusSchema,
@@ -32,6 +33,7 @@ import {
   AISessionSchema,
   ProviderSchema,
   ProviderConfigSchema,
+  UsageReportSchema,
 } from './nexusSchemas';
 
 export * from './nexusTypes';
@@ -145,6 +147,14 @@ export class NexusClient {
   /** Return all registered LLM providers and their liveness status. */
   async getProviders(): Promise<Provider[]> {
     return this.get('/api/providers', z.array(ProviderSchema));
+  }
+
+  /**
+   * The tokens and cost the models used since `since` (a duration such as "24h"), from the usage
+   * ledger. An older daemon without the ledger answers 404, which is an error here.
+   */
+  async getUsage(since = '24h'): Promise<UsageReport> {
+    return this.get(`/api/usage?since=${encodeURIComponent(since)}`, UsageReportSchema);
   }
 
   /** Register an OpenAI-compatible provider with the running daemon (in memory, not persisted). */

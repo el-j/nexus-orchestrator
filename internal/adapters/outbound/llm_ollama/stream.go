@@ -20,10 +20,7 @@ const maxLineBytes = 4 << 20
 // "done" line was cut off and is an error. A server that ignores "stream" and answers with one
 // JSON object is accepted: the reply arrives as one piece.
 func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onChunk func(string)) (string, error) {
-	reqBody, err := json.Marshal(ollamaChatRequest{Model: a.model, Messages: messagesToMaps(messages), Stream: true})
-	if err != nil {
-		return "", fmt.Errorf("ollama: marshal chat request: %w", err)
-	}
+	reqBody, _ := json.Marshal(ollamaChatRequest{Model: a.model, Messages: messagesToMaps(messages), Stream: true}) // a request of strings and numbers always encodes
 	resp, err := a.do(ctx, a.httpClient, http.MethodPost, "/api/chat", reqBody)
 	if err != nil {
 		return "", fmt.Errorf("ollama: chat request: %w", err)
@@ -60,6 +57,7 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 			} `json:"message"`
 			Done  bool   `json:"done"`
 			Error string `json:"error"`
+			counts
 		}
 		if err := json.Unmarshal(scanner.Bytes(), &ev); err != nil {
 			return reply.String(), fmt.Errorf("ollama: decode stream line: %w", err)
@@ -72,6 +70,7 @@ func (a *Adapter) ChatStream(ctx context.Context, messages []domain.Message, onC
 			onChunk(ev.Message.Content)
 		}
 		if ev.Done {
+			a.Set(ev.usage(a.model))
 			return reply.String(), nil
 		}
 	}

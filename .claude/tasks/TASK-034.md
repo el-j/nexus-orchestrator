@@ -3,7 +3,8 @@ id: TASK-034
 title: Embedded web dashboard at GET /ui with live queue view
 role: devops
 planId: PLAN-003
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-032]
 createdAt: 2026-03-09T15:00:00.000Z
 ---
@@ -22,28 +23,34 @@ This gives immediate visual feedback when dogfooding PLAN-002 tasks through the 
 ## Design Specification
 
 ### Layout
+
 - Dark theme (background: #09090b, surface: #18181b, text: #f4f4f5)
 - Indigo accent: #6366f1
 - Two-column layout on wide screens: stats row (4 cards) → providers (left) + queue table (right)
 - Fully responsive fallback to single column on narrow viewports
 
 ### Stat Cards (top row)
+
 - "Queue Depth" — count of QUEUED tasks
 - "Processing" — count of PROCESSING tasks
 - "Providers Online" — count of active providers
 - "Completed" — total count from history (GET /api/tasks — extended in TASK-015; for now, 0 until that endpoint exists)
 
 ### Provider Cards
+
 One card per provider from `GET /api/providers`:
+
 - Provider name + colour badge (green=active, red=offline)
 - Pulsing dot for active state (CSS animation)
 
 ### Task Queue Table
+
 Columns: Status badge, ID (first 8 chars), Project (last 2 segments), Target File, Submitted (relative time)
 Data from `GET /api/tasks` (QUEUED+PROCESSING only)
 Empty state: "Queue is empty — submit tasks via nexus-submit or POST /api/tasks"
 
 ### Auto-refresh
+
 JavaScript `setInterval` polling `GET /api/tasks` and `GET /api/providers` every 2000ms.
 On SSE availability (TASK-035), fall back to EventSource.
 
@@ -205,6 +212,7 @@ func (s *Server) handleUI(w http.ResponseWriter, _ *http.Request) {
 ## Wiring in server.go
 
 Add these routes to the chi router in `StartServer`:
+
 ```go
 // Dashboard — GET /ui (and / → /ui redirect)
 r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -216,6 +224,7 @@ r.Get("/ui", s.handleUI)
 Note: `StartServer` is currently a plain function (not a method). Refactor to a `Server` struct with `handleUI` as a method, OR keep as a function and add the handler inline. The refactor to a struct is cleaner and enables TASK-035 (SSE) to share state.
 
 Recommended refactor:
+
 ```go
 type Server struct {
     orch ports.Orchestrator

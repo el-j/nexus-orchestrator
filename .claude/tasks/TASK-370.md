@@ -1,6 +1,7 @@
 # TASK-370: Live AI view — Session grouping and conversation thread display
 
 **Plan:** PLAN-054 | **Wave:** 1 | **Status:** done | **Role:** frontend
+**Status:** done
 
 ## Goal
 

@@ -2,7 +2,6 @@ package httpapi_client
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -41,10 +40,12 @@ func (r *BrainClient) GetFocusedContext(ctx context.Context, q domain.ContextQue
 	return out, err
 }
 
-// IngestKnowledge is not available over HTTP: the daemon only exposes bulk
-// ingestion from a file (see IngestFromFile).
-func (r *BrainClient) IngestKnowledge(_ context.Context, _ domain.ProjectKnowledge) (domain.ProjectKnowledge, error) {
-	return domain.ProjectKnowledge{}, fmt.Errorf("brain_client: IngestKnowledge: direct knowledge upsert not supported via HTTP client; use IngestFromFile")
+// IngestKnowledge stores one knowledge entry (POST /api/brain/knowledge) and returns it as stored, with
+// its id and token count.
+func (r *BrainClient) IngestKnowledge(ctx context.Context, k domain.ProjectKnowledge) (domain.ProjectKnowledge, error) {
+	var out domain.ProjectKnowledge
+	err := r.c.send(ctx, call{op: "brain ingest knowledge", method: http.MethodPost, path: "/api/brain/knowledge", body: k, ok: statusCreated}, &out)
+	return out, err
 }
 
 // IngestFromFile asks the daemon to ingest a CLAUDE.md-style file and returns
@@ -55,6 +56,17 @@ func (r *BrainClient) IngestFromFile(ctx context.Context, projectPath, filePath 
 	}
 	body := map[string]string{"projectPath": projectPath, "filePath": filePath}
 	err := r.c.send(ctx, call{op: "brain ingest from file", method: http.MethodPost, path: "/api/brain/ingest", body: body}, &out)
+	return out.IngestedSections, err
+}
+
+// IngestContent asks the daemon to ingest markdown supplied in memory (POST /api/brain/ingest-content)
+// and returns the number of sections stored.
+func (r *BrainClient) IngestContent(ctx context.Context, projectPath, name, content string) (int, error) {
+	var out struct {
+		IngestedSections int `json:"ingestedSections"`
+	}
+	body := map[string]string{"projectPath": projectPath, "name": name, "content": content}
+	err := r.c.send(ctx, call{op: "brain ingest content", method: http.MethodPost, path: "/api/brain/ingest-content", body: body}, &out)
 	return out.IngestedSections, err
 }
 

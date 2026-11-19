@@ -1,6 +1,6 @@
 # nexusOrchestrator
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/el-j/nexus-orchestrator?include_prereleases&label=release)](https://github.com/el-j/nexus-orchestrator/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/el-j/nexus-orchestrator)](https://goreportcard.com/report/github.com/el-j/nexus-orchestrator)
 
@@ -42,7 +42,7 @@ Editing `.claude/orchestrator.json`, plan files or the database by hand is **not
 
 - Full web UI served by the daemon at `http://localhost:63987/app/` (Mission Control, Agents, Providers, Projects with Activity, Plans, History, Backlog and Brain tabs, Settings); a light dashboard stays at `/ui`
 - Desktop app (Wails) for macOS, Windows and Linux
-- REST API on `:63987` with an SSE event stream; MCP server on `:63988` (42 tools) for Claude Code, Claude Desktop, Cursor, Antigravity, VS Code Copilot; `nexus-mcp-stdio` for agents that start MCP servers as commands
+- REST API on `:63987` with an SSE event stream; MCP server on `:63988` (44 tools) for Claude Code, Claude Desktop, Cursor, Antigravity, VS Code Copilot; `nexus-mcp-stdio` for agents that start MCP servers as commands
 - CLI (`nexus-cli`, `nexus-submit`), GitHub Action
 - [VS Code extension](vscode-extension/README.md): task queue, live output, plan view, brain commands, editor models as providers, and it connects the editor's own agent to Nexus (VS Code 1.101+ through its MCP support; Antigravity through its MCP config)
 
@@ -120,7 +120,7 @@ Claude Desktop (`claude_desktop_config.json`):
 { "mcpServers": { "nexusOrchestrator": { "url": "http://localhost:63988/mcp" } } }
 ```
 
-### MCP tools (42)
+### MCP tools (44)
 
 | Group          | Tools                                                                                                                                                                                                                         |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -161,4 +161,4 @@ Nexus is developed with itself: `make dogfood` starts the daemon and loads this 
 
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0) — see the [LICENSE](LICENSE) file for details.

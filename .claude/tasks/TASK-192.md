@@ -1,7 +1,8 @@
 ---
 id: TASK-192
-title: "README v0.9.x refresh: feature matrix, discovery, AI sessions, VS Code ext"
-status: todo
+title: 'README v0.9.x refresh: feature matrix, discovery, AI sessions, VS Code ext'
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 priority: medium
 role: devops
 dependencies: none
@@ -23,6 +24,7 @@ Rewrite the README `Features` section and the `Dogfooding` section to accurately
 ## Scope
 
 ### Files to modify
+
 - `README.md` — Features section, badges, Dogfooding section, Quick Start section headers
 
 ## Implementation
@@ -42,6 +44,7 @@ Rewrite the README `Features` section and the `Dogfooding` section to accurately
 4. **Version badge** — verify it points to the correct releases URL
 
 ## Acceptance Criteria
+
 - [ ] Features section covers all major v0.9.x capabilities (at least 12 bullet points across 6 groups)
 - [ ] No references to PLAN-002 tasks or specific task file names in the main user-facing Dogfooding section
 - [ ] VS Code Extension quick-start is present with a link to `vscode-extension/README.md`

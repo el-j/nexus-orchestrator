@@ -289,6 +289,7 @@ describe('folder children with the daemon', () => {
     ['FAILED', 'error'],
     ['CANCELLED', 'circle-slash'],
     ['TOO_LARGE', 'file-binary'],
+    ['WAITING', 'watch'],
     ['NO_PROVIDER', 'plug'],
     ['DRAFT', 'edit'],
     ['BACKLOG', 'checklist'],

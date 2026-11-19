@@ -287,6 +287,65 @@ func TestKnowledgeRepo_SearchFTS_ProjectIsolation(t *testing.T) {
 	}
 }
 
+func TestKnowledgeRepo_SearchFTS_NaturalLanguageAndCrossProject(t *testing.T) {
+	r := newTestRepo(t)
+	defer r.Close()
+
+	kr := repo_sqlite.NewKnowledgeRepo(r)
+	ctx := context.Background()
+
+	entries := []domain.ProjectKnowledge{
+		{
+			ID:          "nl-1",
+			ProjectPath: "/proj/alpha",
+			Kind:        domain.KnowledgeConvention,
+			Topic:       "Rate Limits & Cooldowns",
+			Content:     "Cooling down providers after 429 quota exhaustion.",
+		},
+		{
+			ID:          "nl-2",
+			ProjectPath: "/proj/beta",
+			Kind:        domain.KnowledgeArchitecture,
+			Topic:       "Database Connection Pooling",
+			Content:     "SQLite connections are pooled in memory.",
+		},
+	}
+	for _, e := range entries {
+		if err := kr.SaveKnowledge(ctx, e); err != nil {
+			t.Fatalf("SaveKnowledge %q: %v", e.ID, err)
+		}
+	}
+
+	results, err := kr.SearchFTS(ctx, "/proj/alpha", "how do we handle rate limits and quota", 5)
+	if err != nil {
+		t.Fatalf("SearchFTS natural language: %v", err)
+	}
+	if len(results) != 1 || results[0].ID != "nl-1" {
+		t.Fatalf("expected nl-1 for rate limits, got %v", results)
+	}
+
+	defLimitRes, err := kr.SearchFTS(ctx, "/proj/alpha", "rate", 0)
+	if err != nil || len(defLimitRes) != 1 {
+		t.Fatalf("expected 1 result with default limit, got %v (err: %v)", defLimitRes, err)
+	}
+
+	allRes, err := kr.SearchFTS(ctx, "*", "connections or cooldowns", 10)
+	if err != nil {
+		t.Fatalf("SearchFTS cross project: %v", err)
+	}
+	if len(allRes) < 2 {
+		t.Fatalf("expected 2 results from both projects, got %d", len(allRes))
+	}
+
+	emptyRes, err := kr.SearchFTS(ctx, "*", "   ???   ", 5)
+	if err != nil {
+		t.Fatalf("SearchFTS empty query: %v", err)
+	}
+	if len(emptyRes) != 0 {
+		t.Fatalf("expected 0 results for empty query, got %d", len(emptyRes))
+	}
+}
+
 func TestKnowledgeRepo_DeleteByProject(t *testing.T) {
 	r := newTestRepo(t)
 	defer r.Close()

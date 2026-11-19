@@ -1,6 +1,7 @@
 # TASK-318: Ports + OrchestratorService + SQLite + HTTP API for plan-file discovery
 
 **Plan:** PLAN-048
+**Status:** done
 **Role:** backend
 **Dependencies:** TASK-315, TASK-316, TASK-317
 

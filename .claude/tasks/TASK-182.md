@@ -3,15 +3,18 @@ id: TASK-182
 title: CLI — backlog and promote subcommands
 role: cli
 planId: PLAN-024
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-176]
 createdAt: 2026-03-11T22:00:00.000Z
 ---
 
 ## Context
+
 The CLI client needs subcommands to interact with the new backlog endpoints on the daemon. Users should be able to create drafts, list backlogs, promote tasks, and update tasks from the terminal.
 
 ## Files to Read
+
 - `internal/adapters/inbound/cli/root.go` — existing Cobra commands
 - `cmd/nexus-cli/main.go` — CLI entry point
 - `internal/adapters/inbound/httpapi/server.go` — new endpoints from TASK-176
@@ -42,6 +45,7 @@ The CLI client needs subcommands to interact with the new backlog endpoints on t
 5. Update `nexus-cli submit` to accept `--provider` and `--priority` flags.
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/...` exits 0
 - [ ] `nexus-cli draft --project=/path --instruction="..."` creates a DRAFT task
@@ -50,5 +54,6 @@ The CLI client needs subcommands to interact with the new backlog endpoints on t
 - [ ] `nexus-cli update <id> --priority=1` updates the task
 
 ## Anti-patterns to Avoid
+
 - NEVER link core services directly — CLI is a remote HTTP client only
 - NEVER skip `fmt.Errorf("cli: operation: %w", err)` error wrapping

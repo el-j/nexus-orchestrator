@@ -233,11 +233,25 @@ describe('HistoryView — filters', () => {
     expect(filterBtn(w, 'All').attributes('aria-pressed')).toBe('true');
   });
 
-  it('summarises every status, including unfinished ones', async () => {
-    const w = await mountView([...data(), task({ status: 'QUEUED' }), task({ status: 'BACKLOG' })]);
+  it('summarises every status, including unfinished ones and TOO_LARGE / NO_PROVIDER', async () => {
+    const w = await mountView([
+      ...data(),
+      task({ status: 'QUEUED' }),
+      task({ status: 'BACKLOG' }),
+      task({ status: 'TOO_LARGE' }),
+      task({ status: 'NO_PROVIDER' }),
+    ]);
     const badges = w.find('.border-b.border-white\\/5.flex-wrap').findAll('button');
     expect(badges.map((b) => b.text().replace(/\s+/g, ' '))).toEqual(
-      expect.arrayContaining(['Queued 1', 'Completed 2', 'Failed 1', 'Cancelled 1', 'Backlog 1']),
+      expect.arrayContaining([
+        'Queued 1',
+        'Completed 2',
+        'Failed 1',
+        'Cancelled 1',
+        'Backlog 1',
+        'Too Large 1',
+        'No Provider 1',
+      ]),
     );
   });
 

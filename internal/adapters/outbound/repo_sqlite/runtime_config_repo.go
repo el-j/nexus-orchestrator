@@ -51,7 +51,7 @@ func (r *RuntimeConfigRepo) GetRuntimeConfig(ctx context.Context) (domain.Runtim
 // SaveRuntimeConfig persists the runtime configuration.
 func (r *RuntimeConfigRepo) SaveRuntimeConfig(ctx context.Context, cfg domain.RuntimeConfig) error {
 	// Persist tokens and queue cap; UpdatedAt is stored separately as milliseconds.
-	b, err := json.Marshal(struct {
+	b := marshal(struct {
 		QueueCap int    `json:"queueCap"`
 		APIToken string `json:"apiToken,omitempty"`
 		MCPToken string `json:"mcpToken,omitempty"`
@@ -60,14 +60,11 @@ func (r *RuntimeConfigRepo) SaveRuntimeConfig(ctx context.Context, cfg domain.Ru
 		APIToken: cfg.APIToken,
 		MCPToken: cfg.MCPToken,
 	})
-	if err != nil {
-		return fmt.Errorf("sqlite: marshal runtime config: %w", err)
-	}
 	updatedAt := cfg.UpdatedAt
 	if updatedAt.IsZero() {
 		updatedAt = time.Now()
 	}
-	_, err = r.db.ExecContext(ctx,
+	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO runtime_config (id, json, updated_at)
 		 VALUES (1, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET

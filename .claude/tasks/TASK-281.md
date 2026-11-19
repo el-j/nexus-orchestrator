@@ -1,9 +1,9 @@
 # TASK-281 — HTTP API: discovered agents + delegate + SSE session tasks
 
 **Plan:** PLAN-044  
-**Status:** TODO  
+**Status:** done  
 **Layer:** Go · inbound (`internal/adapters/inbound/httpapi/`)  
-**Depends on:** TASK-280  
+**Depends on:** TASK-280
 
 ## Objective
 
@@ -14,6 +14,7 @@ Add three new HTTP endpoints. All follow existing server.go patterns (chi router
 ### Route registration in `Handler()` in `server.go`
 
 Add BEFORE the existing `r.Delete("/api/ai-sessions/{id}", ...)` to ensure literal segments take priority:
+
 ```go
 r.Get("/api/ai-sessions/discovered",   s.handleGetDiscoveredAgents)
 r.Post("/api/ai-sessions/{id}/delegate", s.handleDelegateToNexus)
@@ -67,14 +68,26 @@ Check `r.Header.Get("Accept")`. If it contains `text/event-stream`, set SSE head
 ## API Shape
 
 ### `GET /api/ai-sessions/discovered` → 200
+
 ```json
-[{"id":"claude-cli","kind":"claude-cli","name":"Claude CLI","detectionMethod":"fs-config","isRunning":false,"lastSeen":"..."}]
+[
+  {
+    "id": "claude-cli",
+    "kind": "claude-cli",
+    "name": "Claude CLI",
+    "detectionMethod": "fs-config",
+    "isRunning": false,
+    "lastSeen": "..."
+  }
+]
 ```
 
 ### `POST /api/ai-sessions/{id}/delegate` → 200
+
 ```json
-{"instruction":"You are now operating under nexusOrchestrator...","sessionId":"abc123"}
+{ "instruction": "You are now operating under nexusOrchestrator...", "sessionId": "abc123" }
 ```
+
 → 404 if session not found.
 
 ## Acceptance Criteria

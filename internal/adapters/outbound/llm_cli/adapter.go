@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -23,7 +24,7 @@ import (
 // knownCLIs are the executables a provider config may name. A provider config can be written
 // through the REST API and MCP, so it must not be a way to run arbitrary programs; add more
 // with NEXUS_CLI_PROVIDERS (comma-separated executable names).
-var knownCLIs = map[string]bool{"claude": true, "aichat": true, "llm": true, "gemini": true, "codex": true}
+var knownCLIs = map[string]bool{"claude": true, "copilot": true, "agy": true, "aichat": true, "llm": true, "gemini": true, "codex": true}
 
 // runTimeout bounds one invocation; a CLI that never answers must not hold a task forever.
 const runTimeout = 10 * time.Minute
@@ -35,6 +36,12 @@ type Adapter struct {
 	exe     string
 	args    []string
 	model   string
+
+	mu        sync.Mutex // guards the last reading below
+	lastUsage domain.Usage
+	hasUsage  bool
+	lastQuota domain.QuotaReading
+	hasQuota  bool
 }
 
 // NewAdapter builds an adapter for a command line such as "claude -p --model sonnet". The first
@@ -49,11 +56,13 @@ func NewAdapter(name, commandLine, model string) (*Adapter, error) {
 		return nil, fmt.Errorf("cli provider %q: a command is required (for example \"claude -p\")", name)
 	}
 	if !allowed(filepath.Base(fields[0])) {
-		return nil, fmt.Errorf("cli provider %q: %q is not a known AI CLI (claude, aichat, llm, gemini, codex; extend with NEXUS_CLI_PROVIDERS)", name, filepath.Base(fields[0]))
+		return nil, fmt.Errorf("cli provider %q: %q is not a known AI CLI (claude, copilot, agy, aichat, llm, gemini, codex; extend with NEXUS_CLI_PROVIDERS)", name, filepath.Base(fields[0]))
 	}
 	return &Adapter{name: name, command: commandLine, exe: fields[0], args: fields[1:], model: model}, nil
 }
 
+// allowed reports whether a command may be run as a provider: one of the known clients, or one the user
+// named in NEXUS_CLI_PROVIDERS.
 func allowed(exe string) bool {
 	exe = strings.TrimSuffix(strings.ToLower(exe), ".exe")
 	if knownCLIs[exe] {
@@ -113,10 +122,13 @@ func (a *Adapter) ActiveModel() string { return a.model }
 // BaseURL returns the command line this adapter runs.
 func (a *Adapter) BaseURL() string { return a.command }
 
-// ContextLimit is 200000 for claude and 0 (unknown) for other tools.
+// ContextLimit is 200000 for claude, 128000 for copilot, and 0 (unknown) for other tools.
 func (a *Adapter) ContextLimit(context.Context) int {
-	if strings.TrimSuffix(strings.ToLower(filepath.Base(a.exe)), ".exe") == "claude" {
+	switch strings.TrimSuffix(strings.ToLower(filepath.Base(a.exe)), ".exe") {
+	case "claude":
 		return 200000
+	case "copilot":
+		return 128000
 	}
 	return 0
 }
@@ -127,10 +139,15 @@ func (a *Adapter) Ping(context.Context) bool {
 	return err == nil
 }
 
-// GetAvailableModels lists the aliases claude accepts, and "default" for other tools.
-func (a *Adapter) GetAvailableModels(context.Context) ([]string, error) {
-	if a.ContextLimit(context.Background()) > 0 {
+// GetAvailableModels lists the aliases claude or copilot accepts, the ids `agy models` prints, and "default" for other tools.
+func (a *Adapter) GetAvailableModels(ctx context.Context) ([]string, error) {
+	switch strings.TrimSuffix(strings.ToLower(filepath.Base(a.exe)), ".exe") {
+	case "claude":
 		return []string{"sonnet", "opus", "haiku"}, nil
+	case "copilot":
+		return []string{"auto"}, nil // the CLI lists no models non-interactively; "auto" lets Copilot pick
+	case "agy":
+		return agyModels(ctx, a.exe), nil
 	}
 	return []string{"default"}, nil
 }
@@ -168,39 +185,72 @@ func transcript(messages []domain.Message) string {
 	return b.String()
 }
 
+// run runs the command for one request, with the claude stream driver when the command is claude in
+// stream-json mode, and returns what it printed.
 func (a *Adapter) run(ctx context.Context, prompt string, onChunk func(string)) (string, error) {
+	if isClaudeStream(a.exe, a.args) {
+		return a.runClaude(ctx, prompt, onChunk)
+	}
 	ctx, cancel := context.WithTimeout(ctx, runTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, a.exe, a.args...)
+	args := a.args
+	switch {
+	case isCopilot(a.exe):
+		args = withCopilotFlags(args, a.model)
+	case isAgy(a.exe):
+		args = withAgyFlags(args, a.model)
+	}
+	cmd := exec.CommandContext(ctx, a.exe, args...)
 	cmd.Dir = os.TempDir()
 	cmd.Stdin = strings.NewReader(prompt)
 	cmd.WaitDelay = 2 * time.Second // children that keep the pipe open must not hang Wait
 	var stderr bytes.Buffer
 	cmd.Stderr = &limitedWriter{w: &stderr, left: 8192}
-	out, err := cmd.StdoutPipe()
-	if err != nil {
-		return "", fmt.Errorf("%s: %w", a.name, err)
-	}
+	out, _ := cmd.StdoutPipe() // cannot fail: Stdout has not been set
 	if err := cmd.Start(); err != nil {
 		return "", fmt.Errorf("%s: start %s: %w", a.name, a.exe, err)
 	}
 
+	reply, err := pumpReply(out, onChunk)
+	if ctx.Err() != nil { // a cancelled run reports the cancel below, not the broken pipe it caused
+		err = nil
+	}
+	waitErr := cmd.Wait()
+	if ctx.Err() != nil {
+		return reply, fmt.Errorf("%s: %w", a.name, ctx.Err())
+	}
+	if err == nil {
+		err = waitErr
+	}
+	if err != nil {
+		return reply, a.failure(err, strings.TrimSpace(stderr.String()), reply)
+	}
+	if strings.TrimSpace(reply) == "" {
+		return "", fmt.Errorf("%s: the command printed nothing", a.name)
+	}
+	return strings.TrimSpace(reply), nil
+}
+
+// pumpReply copies the tool's output to onChunk as it is written and returns all of it. Pieces end on
+// a character boundary: a multibyte character cut in half by a read belongs to the next piece. It
+// returns what it read together with the first read error other than the end of the output.
+func pumpReply(r io.Reader, onChunk func(string)) (string, error) {
 	var reply strings.Builder
 	var carry []byte
 	buf := make([]byte, 4096)
+	var err error
 	for {
-		n, rerr := out.Read(buf)
+		n, rerr := r.Read(buf)
 		carry = append(carry, buf[:n]...)
-		cut := completePrefix(carry) // whole characters only; keep an incomplete tail for the next read
-		if cut > 0 {
+		if cut := completePrefix(carry); cut > 0 {
 			piece := string(carry[:cut])
 			reply.WriteString(piece)
 			onChunk(piece)
 			carry = append(carry[:0], carry[cut:]...)
 		}
 		if rerr != nil {
-			if !errors.Is(rerr, io.EOF) && ctx.Err() == nil {
+			if !errors.Is(rerr, io.EOF) {
 				err = rerr
 			}
 			break
@@ -210,24 +260,31 @@ func (a *Adapter) run(ctx context.Context, prompt string, onChunk func(string)) 
 		reply.Write(carry)
 		onChunk(string(carry))
 	}
-	waitErr := cmd.Wait()
-	if ctx.Err() != nil {
-		return reply.String(), fmt.Errorf("%s: %w", a.name, ctx.Err())
+	return reply.String(), err
+}
+
+// failure builds the error for a command that failed: its stderr (or, without one, what it printed)
+// says why, and a Copilot or Antigravity failure is typed so routing can react to a quota or a limit.
+func (a *Adapter) failure(err error, stderr, reply string) error {
+	msg := stderr
+	if msg == "" {
+		msg = strings.TrimSpace(reply)
 	}
-	if err == nil {
-		err = waitErr
+	if msg == "" {
+		return fmt.Errorf("%s: %w", a.name, err)
 	}
-	if err != nil {
-		msg := strings.TrimSpace(stderr.String())
-		if msg != "" {
-			return reply.String(), fmt.Errorf("%s: %w: %s", a.name, err, msg)
+	detail := fmt.Sprintf("%v: %s", err, msg)
+	switch {
+	case isCopilot(a.exe):
+		if pe := classifyCLIFailure(a.name, detail); pe != nil {
+			return pe
 		}
-		return reply.String(), fmt.Errorf("%s: %w", a.name, err)
+	case isAgy(a.exe):
+		if pe := classifyAgyFailure(a.name, detail, time.Now()); pe != nil {
+			return pe
+		}
 	}
-	if strings.TrimSpace(reply.String()) == "" {
-		return "", fmt.Errorf("%s: the command printed nothing", a.name)
-	}
-	return strings.TrimSpace(reply.String()), nil
+	return fmt.Errorf("%s: %w: %s", a.name, err, msg)
 }
 
 // completePrefix returns how many leading bytes of b end on a character boundary: a multibyte
@@ -250,6 +307,8 @@ type limitedWriter struct {
 	left int
 }
 
+// Write passes the first bytes to the underlying writer and drops the rest, so a noisy stderr cannot
+// fill memory; it always reports the whole input as written.
 func (l *limitedWriter) Write(p []byte) (int, error) {
 	n := len(p)
 	if l.left > 0 {

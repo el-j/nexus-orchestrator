@@ -27,6 +27,8 @@ type mockBrainService struct {
 	getContextErr       error
 	getFileMapResult    []string
 	getFileMapErr       error
+	ingestKnowledgeErr  error
+	ingested            domain.ProjectKnowledge // the entry the last IngestKnowledge call received
 }
 
 func (m *mockBrainService) GetStatus(_ context.Context, _ string) (domain.BrainStatus, error) {
@@ -62,7 +64,8 @@ func (m *mockBrainService) GetFocusedContext(_ context.Context, _ domain.Context
 }
 
 func (m *mockBrainService) IngestKnowledge(_ context.Context, k domain.ProjectKnowledge) (domain.ProjectKnowledge, error) {
-	return k, nil
+	m.ingested = k
+	return k, m.ingestKnowledgeErr
 }
 
 func (m *mockBrainService) GetFileMap(_ context.Context, _, _ string) ([]string, error) {
@@ -136,6 +139,29 @@ func TestBrainCLI_Search_OK(t *testing.T) {
 	}
 }
 
+// TestBrainCLI_Search_AllProjects_OK verifies that --all runs search across all projects without --project.
+func TestBrainCLI_Search_AllProjects_OK(t *testing.T) {
+	brain := &mockBrainService{
+		searchResult: []domain.ContextSection{
+			{ProjectPath: "/proj/a", Kind: domain.KnowledgeArchitecture, Topic: "Arch Topic", Content: "arch content", Tokens: 10},
+		},
+	}
+	root := cli.NewRootCmd(&mockOrchestrator{}, brain)
+	root.SetArgs([]string{"brain", "search", "--all", "--query", "architecture"})
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+
+	var execErr error
+	out := captureStdout(t, func() { execErr = root.Execute() })
+
+	if execErr != nil {
+		t.Fatalf("unexpected error: %v", execErr)
+	}
+	if !strings.Contains(out, "Arch Topic") {
+		t.Errorf("expected output to contain %q; got: %q", "Arch Topic", out)
+	}
+}
+
 // TestBrainCLI_Init_OK verifies that a successful init prints the project path or "initialized" in output.
 func TestBrainCLI_Init_OK(t *testing.T) {
 	brain := &mockBrainService{
@@ -203,5 +229,46 @@ func TestBrainCLI_Context_OK(t *testing.T) {
 	}
 	if !strings.Contains(out, "Hexagonal") {
 		t.Errorf("expected output to contain %q; got: %q", "Hexagonal", out)
+	}
+}
+
+func TestBrainCLI_Ingest_StructuredEntry_OK(t *testing.T) {
+	brain := &mockBrainService{}
+	root := cli.NewRootCmd(&mockOrchestrator{}, brain)
+	root.SetArgs([]string{"brain", "ingest", "--project", "/proj", "--kind", "learning", "--topic", "Auth", "--content", "Use constant time"})
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+
+	var execErr error
+	out := captureStdout(t, func() { execErr = root.Execute() })
+	if execErr != nil {
+		t.Fatalf("unexpected error: %v", execErr)
+	}
+	if !strings.Contains(out, "Auth") {
+		t.Errorf("expected output to mention topic Auth; got: %q", out)
+	}
+}
+
+func TestBrainCLI_Context_FocusedQuestion_OK(t *testing.T) {
+	brain := &mockBrainService{
+		getContextResult: domain.ContextResponse{
+			ProjectPath: "/proj",
+			Sections: []domain.ContextSection{
+				{Topic: "Auth", Kind: domain.KnowledgeLearning, Content: "Focused answer"},
+			},
+		},
+	}
+	root := cli.NewRootCmd(&mockOrchestrator{}, brain)
+	root.SetArgs([]string{"brain", "context", "--project", "/proj", "--question", "how does auth work?"})
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+
+	var execErr error
+	out := captureStdout(t, func() { execErr = root.Execute() })
+	if execErr != nil {
+		t.Fatalf("unexpected error: %v", execErr)
+	}
+	if !strings.Contains(out, "Focused answer") {
+		t.Errorf("expected output to contain focused answer; got: %q", out)
 	}
 }

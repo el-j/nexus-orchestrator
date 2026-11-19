@@ -6,15 +6,26 @@
 #
 # Each package's tests also exercise code in other packages (-coverpkg), and a
 # block counts as covered when ANY test binary executed it. Excluded from the
-# denominator: internal/testutil (test doubles) and the repository-root main.go
-# (its only uncovered code is the call into the Wails GUI runtime).
+# denominator: internal/testutil (test doubles), node_modules (Go sources of npm packages) and the repository-root main.go
+# (its only uncovered code is the call into the Wails GUI runtime), and the one-line
+# `os.Exit(run(...))` bodies of func main in cmd/*/main.go (everything they call is tested; the
+# binaries themselves are exercised by internal/e2e as separate processes).
 set -euo pipefail
 
 profile="$(mktemp)"
-trap 'rm -f "$profile"' EXIT
-
-CGO_ENABLED=1 CGO_CFLAGS="${CGO_CFLAGS:--DSQLITE_ENABLE_FTS5}" CGO_LDFLAGS="${CGO_LDFLAGS:--lm}" \
-  go test -count=1 -coverpkg=./... -coverprofile="$profile" ./... >/dev/null
+log="$(mktemp)"
+trap 'rm -f "$profile" "$log"' EXIT
+# A failing test must say which one: the output is kept and its failures are printed.
+default_ldflags="-lm"
+if [ "$(uname -s 2>/dev/null)" = "Darwin" ]; then
+  default_ldflags="-lm -Wl,-no_warn_duplicate_libraries"
+fi
+if ! CGO_ENABLED=1 CGO_CFLAGS="${CGO_CFLAGS:--DSQLITE_ENABLE_FTS5}" CGO_LDFLAGS="${CGO_LDFLAGS:-$default_ldflags}" \
+  go test -count=1 -coverpkg=./... -coverprofile="$profile" ./... >"$log" 2>&1; then
+  grep -E '^(--- FAIL|FAIL|panic:)|_test\.go:[0-9]+:' "$log" | head -40 >&2
+  echo "go test failed (see above)" >&2
+  exit 1
+fi
 
 python3 - "$profile" "${MIN_COVERAGE:-0}" <<'PY'
 import re, sys, collections
@@ -27,23 +38,40 @@ for line in open(profile).read().splitlines()[1:]:
     blocks[key] = (stmts, max(prev[1], count))
 
 def excluded(path):
-    return '/internal/testutil/' in path or path.endswith('nexus-orchestrator/main.go')
+    return '/internal/testutil/' in path or '/node_modules/' in path or path.endswith('nexus-orchestrator/main.go')
+
+def is_main_exit(key):
+    """A block that is just os.Exit(...) in func main of a cmd/*/main.go."""
+    path, span = key.split(':')[0], key.split(':')[1]
+    if '/cmd/' not in path or not path.endswith('/main.go'):
+        return False
+    start, end = span.split(',')
+    line = int(start.split('.')[0])
+    if int(end.split('.')[0]) - line > 1:  # the os.Exit line and at most the closing brace
+        return False
+    try:
+        src = open(path.replace('nexus-orchestrator/', '', 1)).read().splitlines()[line - 1]
+    except OSError:
+        return False
+    return src.strip().startswith('os.Exit(')
 
 total = covered = 0
 missed = collections.Counter()
+lines = collections.defaultdict(list)
 for key, (stmts, count) in blocks.items():
     path = key.split(':')[0]
-    if excluded(path):
+    if excluded(path) or is_main_exit(key):
         continue
     total += stmts
     if count > 0:
         covered += stmts
     else:
         missed[path] += stmts
+        lines[path].append(key.split(':')[1].split(',')[0].split('.')[0])
 pct = 100.0 * covered / total
 print(f"Go merged statement coverage: {pct:.1f}% ({total - covered} of {total} statements uncovered)")
 for path, n in missed.most_common(10):
-    print(f"  {n:4d} uncovered  {path.replace('nexus-orchestrator/', '')}")
+    print(f"  {n:4d} uncovered  {path.replace('nexus-orchestrator/', '')} (from line {', '.join(sorted(set(lines[path]), key=int)[:6])})")
 if pct + 1e-9 < minimum:
     print(f"FAIL: coverage {pct:.1f}% is below the required {minimum:.1f}%")
     sys.exit(1)

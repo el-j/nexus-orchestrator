@@ -3,15 +3,18 @@ id: TASK-073
 title: QA verification (full test suite + build + smoke pass)
 role: qa
 planId: PLAN-008
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-071, TASK-072]
 createdAt: 2026-03-10T14:00:00.000Z
 ---
 
 ## Context
+
 Final verification task for PLAN-008. Run full test suite, verify all new tests pass under `-race`, confirm the E2E smoke script is executable and syntactically valid, and validate the new command file is well-formed.
 
 ## Files to Read
+
 - `internal/core/services/integration_test.go`
 - `internal/adapters/inbound/mcp/integration_test.go`
 - `scripts/e2e-smoke.sh`
@@ -28,6 +31,7 @@ Final verification task for PLAN-008. Run full test suite, verify all new tests 
 7. Report summary of all PLAN-008 deliverables.
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` exits 0
@@ -36,5 +40,6 @@ Final verification task for PLAN-008. Run full test suite, verify all new tests 
 - [ ] `.claude/commands/execute-via-nexus.md` is well-formed
 
 ## Anti-patterns to Avoid
+
 - NEVER modify source files in a QA verification task
 - NEVER skip the -race flag

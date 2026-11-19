@@ -95,28 +95,30 @@ describe('useTasks', () => {
     expect(h.getQueue).toHaveBeenCalledTimes(1);
   });
 
-  it('queuedTasks keeps only queued and processing tasks of the selected project', async () => {
+  it('queuedTasks keeps queued, waiting and processing tasks of the selected project', async () => {
     h.getQueue.mockResolvedValue([
       task({ id: '1', status: 'QUEUED', projectPath: '/a' }),
       task({ id: '2', status: 'PROCESSING', projectPath: '/b' }),
       task({ id: '3', status: 'COMPLETED', projectPath: '/a' }),
+      task({ id: '4', status: 'WAITING', projectPath: '/a' }),
     ]);
     const { result } = withSetup(() => useTasks());
     await flush();
-    expect(result.queuedTasks.value.map((t) => t.id)).toEqual(['1', '2']);
+    expect(result.queuedTasks.value.map((t) => t.id)).toEqual(['1', '2', '4']);
     (currentProject as unknown as { value: string | null }).value = '/a';
-    expect(result.queuedTasks.value.map((t) => t.id)).toEqual(['1']);
+    expect(result.queuedTasks.value.map((t) => t.id)).toEqual(['1', '4']);
   });
 
   it('mutations call the API and then refresh', async () => {
     h.createDraft.mockResolvedValue('d1');
+    h.promoteTask.mockResolvedValue({ promoted: false, warning: 'no provider' });
     h.updateTask.mockResolvedValue(task({ id: 'u' }));
     const { result } = withSetup(() => useTasks());
     await flush();
 
     h.getQueue.mockClear();
     expect(await result.createDraft({ instruction: 'x' })).toBe('d1');
-    await result.promoteTask('p');
+    expect(await result.promoteTask('p')).toEqual({ promoted: false, warning: 'no provider' });
     await result.cancelTask('c');
     expect((await result.updateTask('u', { priority: 1 })).id).toBe('u');
     expect(h.createDraft).toHaveBeenCalledWith({ instruction: 'x' });

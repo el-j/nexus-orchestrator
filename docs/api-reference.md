@@ -158,12 +158,12 @@ DELETE /api/tasks/{id}
 
 Cancel a task. Which states can be cancelled:
 
-| Task status                                     | What happens                                                                                                                                                                                 |
-| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `QUEUED`, `DRAFT`, `BACKLOG`, `NO_PROVIDER`     | Moved to `CANCELLED` immediately.                                                                                                                                                            |
-| `PROCESSING` (running in this daemon)           | The in-flight provider request is **aborted**; the task becomes `CANCELLED` a moment later (watch the `task.cancelled` event). It is not retried and does not fall back to another provider. |
-| `PROCESSING` (claimed by an external agent)     | Taken off the board as `CANCELLED`; the external agent cannot be interrupted.                                                                                                                |
-| `COMPLETED`, `FAILED`, `CANCELLED`, `TOO_LARGE` | Not cancellable.                                                                                                                                                                             |
+| Task status                                            | What happens                                                                                                                                                                                 |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `QUEUED`, `WAITING`, `DRAFT`, `BACKLOG`, `NO_PROVIDER` | Moved to `CANCELLED` immediately.                                                                                                                                                            |
+| `PROCESSING` (running in this daemon)                  | The in-flight provider request is **aborted**; the task becomes `CANCELLED` a moment later (watch the `task.cancelled` event). It is not retried and does not fall back to another provider. |
+| `PROCESSING` (claimed by an external agent)            | Taken off the board as `CANCELLED`; the external agent cannot be interrupted.                                                                                                                |
+| `COMPLETED`, `FAILED`, `CANCELLED`, `TOO_LARGE`        | Not cancellable.                                                                                                                                                                             |
 
 When the daemon shuts down, a task that was running goes back to `QUEUED` (it is not marked failed).
 
@@ -190,11 +190,107 @@ Returns all registered LLM providers with their liveness status.
     "models": ["codellama", "deepseek-coder"]
   },
   {
+    "name": "Anthropic",
+    "active": true,
+    "rateLimited": true,
+    "rateLimitedUntil": "2026-10-16T14:00:00Z",
+    "cooldownReason": "Anthropic: rate limited (429)"
+  },
+  {
     "name": "Ollama",
     "active": false
   }
 ]
 ```
+
+`quota` is the plan's own reading of its allowance where the provider's client reports it (today the
+Claude command-line tool): `window` (`five_hour`, `seven_day`), `utilization` (share used, 0 to 1),
+`resetsAt`, `status`. It disappears once its window has reset. Routing tries a provider at or above the
+project policy's `quotaThreshold` (default 0.9) after the others.
+
+`rateLimited` is true while a provider cools down after a rate limit (HTTP 429), an exhausted quota (402,
+or a 429 that says so) or an overload (503, 529). The engine skips it until `rateLimitedUntil`: the time the
+provider gave in `Retry-After`, or a default (60 s rate limit, 30 s overload, 1 h quota). The cooldown is
+per provider and model and is cleared by the next successful call.
+
+---
+
+### Usage ledger
+
+```
+GET /api/usage?since=24h
+```
+
+Tokens and cost the models consumed, added up per provider, model and role. Every successful model call
+whose provider reports its usage (Anthropic, Gemini, OpenAI-compatible, Ollama, and `claude` in
+`stream-json` mode) is one record. `since` is a duration back from now (`90m`, `24h`, `7d`), an RFC 3339
+time, or `all`; the default is 24 hours. Largest consumers come first. `503` when the daemon has no ledger,
+`400` for a bad `since`. The same data is the MCP tool `get_usage` and `nexus-cli usage --since 7d`.
+
+**Response:** `200 OK`
+
+```json
+{
+  "since": "2026-10-15T12:00:00Z",
+  "totals": {
+    "provider": "",
+    "calls": 3,
+    "inputTokens": 350,
+    "outputTokens": 125,
+    "cachedTokens": 30,
+    "costUSD": 0.75
+  },
+  "usage": [
+    {
+      "provider": "Anthropic",
+      "model": "claude-opus-5-5",
+      "role": "architect",
+      "calls": 2,
+      "inputTokens": 300,
+      "outputTokens": 120,
+      "cachedTokens": 30,
+      "costUSD": 0.75
+    }
+  ]
+}
+```
+
+---
+
+### Routing preview
+
+```
+GET /api/routing?projectPath=/abs/project&role=coder
+```
+
+How the daemon would order the candidate providers for a task of `role` in the project right now, without
+running anything (a provider over its daily `budgets` entry is put on cooldown, as the next task would do): the project's model ladder for the role (`ladder` in `.nexus/policy.json`, cheapest
+first), the order after the ladder, the cooldowns after limits and the plan quota readings
+(`quotaThreshold`), each provider with its `rung` (`-1` when the ladder does not list it), `coolingUntil`
+and `utilization`. `400` without `projectPath`, `503` when no provider is available. The same data is the
+MCP tool `get_routing` and `nexus-cli routing --project P --role coder`.
+
+---
+
+### Project policy
+
+```
+GET /api/policy?projectPath=/abs/project
+PUT /api/policy?projectPath=/abs/project
+```
+
+Reads and writes the project's `.nexus/policy.json`: the model `ladder` per role, the daily token `budgets`
+per provider, `quotaThreshold`, `contextBudget`, `historyBudget`, and the rest of the file (`verify`, `rules`,
+`maxFileLines`, `testsFirst`, `remember`, `planFiles`; see [rulebased-workflow.md](rulebased-workflow.md)).
+`GET` answers `{"found": bool, "policy": {...}}` (`found` is false when the project has no file yet).
+`PUT` takes the whole policy as the body, validates it and replaces the file (written atomically; a symbolic
+link at that place is replaced, not followed); unknown fields and invalid values give `400` and leave the
+file as it was. The daemon reads the file on every task, so a change applies to the next one, and a task
+waiting for a budget that was raised starts again. `400` without `projectPath` or when it is not an absolute
+path of a directory, `503` when the backend has no policy management. The policy is not an MCP tool:
+agents read its effect through `get_routing` and `get_usage`. The same data is `nexus-cli policy show --project P`
+and `nexus-cli policy set --project P --budget "Claude=300000" --ladder coder=Ollama/*,Anthropic/claude-sonnet*`,
+and the **Project policy** card of the Providers view.
 
 ---
 
@@ -270,18 +366,21 @@ The first frame is `{"type":"connected"}`.
 
 **Task events** (`{"type": "...", "taskId": "...", "status": "..."}`):
 
-| `type`             | Description                                            |
-| ------------------ | ------------------------------------------------------ |
-| `task.queued`      | Task was added to the queue                            |
-| `task.processing`  | Task is being processed by an LLM                      |
-| `task.completed`   | Task completed successfully                            |
-| `task.failed`      | Task processing failed                                 |
-| `task.cancelled`   | Task was cancelled (also after aborting a running one) |
-| `task.too_large`   | Task exceeded the context window                       |
-| `task.no_provider` | No provider available for the task                     |
-| `task.draft`       | A draft was created                                    |
-| `task.backlog`     | A task was moved to the backlog                        |
-| `task.updated`     | A task's fields were edited                            |
+| `type`             | Description                                                            |
+| ------------------ | ---------------------------------------------------------------------- |
+| `task.queued`      | Task was added to the queue                                            |
+| `task.processing`  | Task is being processed by an LLM                                      |
+| `task.completed`   | Task completed successfully                                            |
+| `task.failed`      | Task processing failed                                                 |
+| `task.cancelled`   | Task was cancelled (also after aborting a running one)                 |
+| `task.too_large`   | Task exceeded the context window                                       |
+| `task.no_provider` | No provider available for the task                                     |
+| `task.waiting`     | Every provider is cooling down: the task waits (`waitUntil`)           |
+| `task.chunk`       | A piece of the reply (`text`) while the model writes it                |
+| `task.restart`     | The attempt starts over (a fallback or a correction): clear the buffer |
+| `task.draft`       | A draft was created                                                    |
+| `task.backlog`     | A task was moved to the backlog                                        |
+| `task.updated`     | A task's fields were edited                                            |
 
 **Other events:**
 
@@ -363,6 +462,34 @@ the desktop app):
 
 **Errors:** `403` when the path is refused (`{"error": "path not allowed: … is outside the project"}`), `404`
 when the file does not exist, `400` when `projectPath` or `filePath` is missing.
+
+---
+
+### Store One Knowledge Entry
+
+```
+POST /api/brain/knowledge
+```
+
+Stores a single knowledge entry sent as JSON, without a file: a lesson learned, a convention, a glossary term.
+
+**Request Body:**
+
+```json
+{
+  "projectPath": "/path/to/project",
+  "kind": "learning",
+  "topic": "Quota",
+  "content": "A 429 puts the provider on cooldown until its reset.",
+  "source": "agent"
+}
+```
+
+`kind` is one of `architecture`, `convention`, `file_map`, `learning`, `glossary`, `task_summary`. `projectPath`,
+`kind`, `topic` and `content` are required. The entry gets an id, a token count and timestamps.
+
+**Response:** `201 Created` with the stored entry. **Errors:** `400` for a missing field or an unknown kind, `413`
+when `content` is larger than 1 MiB.
 
 ---
 
@@ -456,19 +583,25 @@ Aggregates the top-level macro context for LLM system prompts.
 GET /api/brain/search?projectPath=/path/to/project&q=auth&limit=5
 ```
 
-Performs BM25 search against the SQLite FTS5 index.
+Performs natural-language tokenized BM25 search against the SQLite FTS5 index, combined with optional vector cosine similarity via Reciprocal Rank Fusion (RRF) when embeddings are enabled (`NEXUS_EMBEDDING_URL`). Set `projectPath="*"` to search across all registered projects in the brain.
 
 **Response:** `200 OK`
 
 ```json
 {
   "results": [
-    { "kind": "architecture", "topic": "Authentication Provider", "content": "...", "tokens": 85 }
+    {
+      "kind": "architecture",
+      "topic": "Authentication Provider",
+      "content": "...",
+      "tokens": 85,
+      "projectPath": "/path/to/project"
+    }
   ]
 }
 ```
 
-`limit` is the maximum number of results (default 5).
+`limit` is the maximum number of results (default 5). If `projectPath` is `*`, results span all indexed projects and each section includes its originating `projectPath`.
 
 ---
 
@@ -478,7 +611,7 @@ Performs BM25 search against the SQLite FTS5 index.
 POST /api/brain/focused-context
 ```
 
-Get focused context for a project based on a specific question. Returns context sections most relevant to the question, bounded by a token budget.
+Get focused context for a project (or across all projects when `projectPath` is `"*"`) based on a specific question. Returns context sections most relevant to the question, bounded by a token budget.
 
 **Request Body:**
 
@@ -613,13 +746,13 @@ Get file path map for a project, optionally filtered to a focus area.
 
 ### Backlog and planning
 
-| Route                                 | Purpose                                                                 |
-| ------------------------------------- | ----------------------------------------------------------------------- |
-| `GET /api/tasks/all`                  | Every task, drafts and cancelled ones included. Optional `projectPath`. |
-| `POST /api/tasks/draft`               | Create a backlog draft that does not enter the execution queue.         |
-| `GET /api/tasks/backlog?projectPath=` | Drafts and backlog items for a project, by priority.                    |
-| `POST /api/tasks/{id}/promote`        | Move a draft into the active queue.                                     |
-| `PUT /api/tasks/{id}`                 | Update a task's instruction, priority, provider, tags or status.        |
+| Route                                 | Purpose                                                                                                                                                                        |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/tasks/all`                  | Tasks newest first, drafts and cancelled ones included. Optional `projectPath`, `limit` (default 1000, at most 5000) and `offset`; the total is in the `X-Total-Count` header. |
+| `POST /api/tasks/draft`               | Create a backlog draft that does not enter the execution queue.                                                                                                                |
+| `GET /api/tasks/backlog?projectPath=` | Drafts and backlog items for a project, by priority.                                                                                                                           |
+| `POST /api/tasks/{id}/promote`        | Move a draft into the active queue.                                                                                                                                            |
+| `PUT /api/tasks/{id}`                 | Update a task's instruction, priority, provider, tags or status.                                                                                                               |
 
 ### Provider discovery and configuration
 
@@ -757,16 +890,18 @@ timeout the task comes back as it is with `"timedOut": true`.
 | `get_file_map`           | Retrieve cached file path map knowledge document for a project                                                                | `projectPath`                           |
 | `get_onboarding_context` | Token-budgeted (< 800 tokens) onboarding summary for agent bootstrap: stack, invariants, test commands, active plan and tasks | `projectPath`, `maxTokens?`             |
 
-#### Discovery & System (6)
+#### Discovery & System (8)
 
-| Tool                    | Description                                                                       | Parameters     |
-| ----------------------- | --------------------------------------------------------------------------------- | -------------- |
-| `get_discovered_agents` | Return AI agent tools detected on the local system (Claude CLI, Copilot, etc.)    | —              |
-| `delegate_to_nexus`     | Delegate an AI agent session to the nexus task queue                              | `session_id`   |
-| `get_discovered_plans`  | Scan for plan/task/orchestration files in a project directory                     | `projectPath?` |
-| `howto`                 | Return a complete integration guide — all tools, workflow patterns, and endpoints | —              |
-| `howto_brief`           | Ultra-compact integration guide (~200 tokens) for small-context models            | —              |
-| `health`                | Check daemon reachable and operational                                            | —              |
+| Tool                    | Description                                                                       | Parameters             |
+| ----------------------- | --------------------------------------------------------------------------------- | ---------------------- |
+| `get_discovered_agents` | Return AI agent tools detected on the local system (Claude CLI, Copilot, etc.)    | —                      |
+| `delegate_to_nexus`     | Delegate an AI agent session to the nexus task queue                              | `session_id`           |
+| `get_discovered_plans`  | Scan for plan/task/orchestration files in a project directory                     | `projectPath?`         |
+| `howto`                 | Return a complete integration guide — all tools, workflow patterns, and endpoints | —                      |
+| `howto_brief`           | Ultra-compact integration guide (~200 tokens) for small-context models            | —                      |
+| `health`                | Check daemon reachable and operational                                            | —                      |
+| `get_routing`           | How providers would be ordered for a role in a project: ladder, cooldowns, quota  | `projectPath`, `role?` |
+| `get_usage`             | Tokens and cost per provider, model and role from the usage ledger                | `since?`               |
 
 ### Example: Submit Task via MCP
 
@@ -818,7 +953,7 @@ timeout the task comes back as it is with `"timedOut": true`.
   "params": {
     "name": "get_task",
     "arguments": {
-      "taskId": "abc-123"
+      "id": "abc-123"
     }
   }
 }
@@ -833,14 +968,18 @@ QUEUED → PROCESSING → COMPLETED
                     → FAILED
                     → TOO_LARGE (pre-flight)
                     → NO_PROVIDER (no backend)
-QUEUED → CANCELLED (user cancellation)
+                    → WAITING (every provider is cooling down) → QUEUED (at the reset time)
+QUEUED, WAITING → CANCELLED (user cancellation)
 ```
 
 A task moves through these states:
 
 1. **QUEUED**: Submitted and waiting in the queue
 2. **PROCESSING**: Picked up by the worker, LLM call in progress
-3. **Terminal state**: One of COMPLETED, FAILED, TOO_LARGE, NO_PROVIDER, or CANCELLED
+3. **WAITING**: Every candidate provider reported a rate limit or an exhausted quota. The task is held until
+   the earliest reset (`waitUntil`, a second after the time the provider gave) and then queued again by the
+   daemon, also after a restart. It is not a failure and uses up no retry. A `task.waiting` event is published.
+4. **Terminal state**: One of COMPLETED, FAILED, TOO_LARGE, NO_PROVIDER, or CANCELLED
 
 ---
 

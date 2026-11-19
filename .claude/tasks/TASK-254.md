@@ -1,21 +1,25 @@
 ---
 id: TASK-254
-title: "MCP: Add claim_task and update_task_status tools"
+title: 'MCP: Add claim_task and update_task_status tools'
 role: mcp
 planId: PLAN-038
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-253]
 createdAt: 2026-03-13T16:00:00.000Z
 ---
 
 ## Context
+
 External AI agents (Copilot, Claude Desktop) interact with nexusOrchestrator via MCP JSON-RPC 2.0. They currently have no way to claim a queued task or report completion. This task adds two MCP tools that call the new service methods.
 
 ## Files to Read
+
 - `internal/adapters/inbound/mcp/server.go` (existing tool patterns: toolSubmitTask, toolRegisterSession)
 - `internal/core/ports/ports.go` (Orchestrator interface with ClaimTask, UpdateTaskStatus)
 
 ## Implementation Steps
+
 1. Add `claim_task` tool definition to `toolList()`:
    - Parameters: `task_id` (required string), `session_id` (required string)
    - Description: "Claim a queued task for execution by the specified AI session"
@@ -37,6 +41,7 @@ External AI agents (Copilot, Claude Desktop) interact with nexusOrchestrator via
 5. Add tool names to the `switch` dispatch in `handleToolsCall`.
 
 ## Acceptance Criteria
+
 - [ ] `claim_task` tool appears in MCP `tools/list` response
 - [ ] `update_task_status` tool appears in MCP `tools/list` response
 - [ ] `claim_task` returns claimed task JSON on success

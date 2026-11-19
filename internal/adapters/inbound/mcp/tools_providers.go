@@ -11,35 +11,32 @@ import (
 
 // ----- Provider Handlers -----
 
+// toolGetProviders serves get_providers: the providers the daemon knows and their models.
 func (s *Server) toolGetProviders() (callToolResult, error) {
 	providers, err := s.orch.GetProviders()
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_providers: %w", err)
 	}
-	b, err := json.Marshal(providers)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: get_providers: marshal: %w", err)
-	}
-	return textResult(string(b)), nil
+	return jsonResult("get_providers", providers)
 }
 
+// toolHealth serves the health tool: a fixed ok, so a client can check the connection.
 func (s *Server) toolHealth() (callToolResult, error) {
 	b, _ := json.Marshal(map[string]string{"status": "ok"})
 	return textResult(string(b)), nil
 }
 
+// toolDiscoverProviders serves discover_providers: it rescans the machine and returns the result.
 func (s *Server) toolDiscoverProviders(ctx context.Context) (callToolResult, error) {
 	providers, err := s.orch.TriggerScan(ctx)
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: discover_providers: %w", err)
 	}
-	b, err := json.Marshal(providers)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: discover_providers: marshal: %w", err)
-	}
-	return textResult(string(b)), nil
+	return jsonResult("discover_providers", providers)
 }
 
+// toolPromoteProvider serves promote_provider: it turns a discovered provider into a stored
+// configuration.
 func (s *Server) toolPromoteProvider(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ID string `json:"id"`
@@ -57,6 +54,7 @@ func (s *Server) toolPromoteProvider(ctx context.Context, args json.RawMessage) 
 	return textResult(string(b)), nil
 }
 
+// toolListProviderConfigs serves list_provider_configs, with the API keys left out.
 func (s *Server) toolListProviderConfigs(ctx context.Context) (callToolResult, error) {
 	cfgs, err := s.orch.ListProviderConfigs(ctx)
 	if err != nil {
@@ -72,6 +70,7 @@ func (s *Server) toolListProviderConfigs(ctx context.Context) (callToolResult, e
 	return textResult(string(b)), nil
 }
 
+// toolAddProviderConfig serves add_provider_config: it stores a new provider configuration.
 func (s *Server) toolAddProviderConfig(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		Kind    string `json:"kind"`
@@ -95,6 +94,7 @@ func (s *Server) toolAddProviderConfig(ctx context.Context, args json.RawMessage
 	return textResult(string(b)), nil
 }
 
+// toolUpdateProviderConfig serves update_provider_config; an omitted api_key keeps the stored one.
 func (s *Server) toolUpdateProviderConfig(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ID      string  `json:"id"`
@@ -125,6 +125,7 @@ func (s *Server) toolUpdateProviderConfig(ctx context.Context, args json.RawMess
 	return textResult(string(b)), nil
 }
 
+// toolRemoveProviderConfig serves remove_provider_config: it deletes a stored provider configuration.
 func (s *Server) toolRemoveProviderConfig(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ID string `json:"id"`
@@ -144,6 +145,7 @@ func (s *Server) toolRemoveProviderConfig(ctx context.Context, args json.RawMess
 
 // ----- Provider Schema Definitions -----
 
+// providerToolDefs lists the provider tools for tools/list.
 func providerToolDefs() []toolDef {
 	return []toolDef{
 		{

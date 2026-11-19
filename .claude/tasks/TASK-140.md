@@ -3,7 +3,8 @@ id: TASK-140
 title: Add VS Code extension section to DownloadsView.vue
 role: frontend
 planId: PLAN-019
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-11T18:00:00.000Z
 ---
@@ -29,22 +30,28 @@ the `.vsix`.
    - Show the file extension `.vsix` on the button
    - Icon: `🔌` (puzzle piece / extension icon)
    - Include a short description: "Install in VS Code 1.85+ via Extensions sidebar or `code --install-extension`"
-   
+
    Suggested markup (add after the `</section>` closing the CLI+Daemon section):
+
    ```html
    <!-- VS Code Extension Section -->
    <section class="mb-16">
      <div class="flex items-center gap-3 mb-6 reveal">
        <span class="text-2xl">🔌</span>
        <h2 class="text-2xl font-black">VS Code Extension</h2>
-       <span class="px-2 py-0.5 text-xs rounded-full bg-cyan-600/20 border border-cyan-500/30 text-cyan-300">New</span>
+       <span
+         class="px-2 py-0.5 text-xs rounded-full bg-cyan-600/20 border border-cyan-500/30 text-cyan-300"
+         >New</span
+       >
      </div>
      <p class="text-slate-500 mb-8 reveal">
-       Submit tasks, monitor the queue, and switch providers without leaving your editor.
-       Requires VS Code 1.85+ and a running nexus daemon.
+       Submit tasks, monitor the queue, and switch providers without leaving your editor. Requires
+       VS Code 1.85+ and a running nexus daemon.
      </p>
      <div class="max-w-xs reveal">
-       <div class="rounded-xl border border-white/8 bg-[#0d0d14] hover:border-cyan-500/30 p-6 text-center transition-all">
+       <div
+         class="rounded-xl border border-white/8 bg-[#0d0d14] hover:border-cyan-500/30 p-6 text-center transition-all"
+       >
          <div class="text-3xl mb-3">🔌</div>
          <div class="font-bold text-white mb-1">VS Code</div>
          <div class="text-xs text-slate-500 mb-1">1.85+</div>
@@ -59,13 +66,15 @@ the `.vsix`.
        </div>
      </div>
      <p class="text-xs text-slate-600 mt-4 reveal">
-       Or install from the command line: <code class="text-slate-400">code --install-extension nexus-orchestrator-vscode.vsix</code>
+       Or install from the command line:
+       <code class="text-slate-400">code --install-extension nexus-orchestrator-vscode.vsix</code>
      </p>
    </section>
    ```
 
 2. **Add a fourth entry to the `packages` array** (the "What's Included" section) in the
    `<script setup>` block:
+
    ```ts
    {
      icon: '🔌',
@@ -79,17 +88,19 @@ the `.vsix`.
      ],
    },
    ```
+
    Append this after the existing `CLI (nexus-cli)` entry in `packages`.
 
 3. **Add `vsixURL` constant** in the `<script setup>` block (near `const baseURL`):
+
    ```ts
-   const vsixURL = `${baseURL}/nexus-orchestrator-vscode.vsix`
+   const vsixURL = `${baseURL}/nexus-orchestrator-vscode.vsix`;
    ```
 
 4. **Update the "What's Included" grid** from `lg:grid-cols-3` to `lg:grid-cols-4`
    to accommodate the new fourth card:
    Change: `class="grid grid-cols-1 lg:grid-cols-3 gap-4"`
-   To:     `class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"`
+   To: `class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"`
 
 ## Acceptance Criteria
 

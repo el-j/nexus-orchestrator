@@ -1,6 +1,7 @@
 # TASK-371: Task History — Add pipeline status summary bar
 
 **Plan:** PLAN-054 | **Wave:** 1 | **Status:** done | **Role:** frontend
+**Status:** done
 
 ## Goal
 

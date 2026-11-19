@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -12,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// handleCreateTask queues a task for the workers.
 func (s *Server) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 	var req domain.Task
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -45,6 +47,7 @@ func computeTaskDurations(tasks []domain.Task) {
 	}
 }
 
+// handleListTasks lists the tasks that are waiting or running, for one project or all.
 func (s *Server) handleListTasks(w http.ResponseWriter, r *http.Request) {
 	var (
 		tasks []domain.Task
@@ -69,7 +72,40 @@ func (s *Server) handleListTasks(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, tasks)
 }
 
+// DefaultTaskPage is how many tasks GET /api/tasks/all returns when no limit is given, and MaxTaskPage the
+// most a caller may ask for: the history grows without end and one response must not.
+const (
+	DefaultTaskPage = 1000
+	MaxTaskPage     = 5000
+)
+
+// pageParams reads limit and offset from the query. A limit above MaxTaskPage is lowered to it; a limit
+// below 1, an offset below 0 or a value that is not a number is an error.
+func pageParams(r *http.Request) (limit, offset int, err error) {
+	limit = DefaultTaskPage
+	q := r.URL.Query()
+	if v := q.Get("limit"); v != "" {
+		if limit, err = strconv.Atoi(v); err != nil || limit < 1 {
+			return 0, 0, errors.New("limit must be a whole number of at least 1")
+		}
+		limit = min(limit, MaxTaskPage)
+	}
+	if v := q.Get("offset"); v != "" {
+		if offset, err = strconv.Atoi(v); err != nil || offset < 0 {
+			return 0, 0, errors.New("offset must be a whole number of at least 0")
+		}
+	}
+	return limit, offset, nil
+}
+
+// handleGetAllTasks lists tasks, finished ones included, newest first, for one project or all. The list
+// is paged (limit, offset; see pageParams) and the total is in the X-Total-Count header.
 func (s *Server) handleGetAllTasks(w http.ResponseWriter, r *http.Request) {
+	limit, offset, perr := pageParams(r)
+	if perr != nil {
+		writeJSONError(w, perr.Error(), http.StatusBadRequest)
+		return
+	}
 	var (
 		tasks []domain.Task
 		err   error
@@ -85,6 +121,9 @@ func (s *Server) handleGetAllTasks(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("X-Total-Count", strconv.Itoa(len(tasks)))
+	tasks = tasks[min(offset, len(tasks)):]
+	tasks = tasks[:min(limit, len(tasks))]
 	if tasks == nil {
 		tasks = []domain.Task{}
 	}
@@ -92,6 +131,7 @@ func (s *Server) handleGetAllTasks(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, tasks)
 }
 
+// handleGetTask returns one task; 404 when it does not exist.
 func (s *Server) handleGetTask(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	task, err := s.orch.GetTask(id)
@@ -108,6 +148,7 @@ func (s *Server) handleGetTask(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, task)
 }
 
+// handleCancelTask cancels a task that has not finished.
 func (s *Server) handleCancelTask(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := s.orch.CancelTask(id); err != nil {
@@ -126,6 +167,7 @@ func (s *Server) handleCancelTask(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleCreateDraft stores a task in the backlog without running it.
 func (s *Server) handleCreateDraft(w http.ResponseWriter, r *http.Request) {
 	var task domain.Task
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
@@ -140,6 +182,7 @@ func (s *Server) handleCreateDraft(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, map[string]string{"id": id, "status": "DRAFT"})
 }
 
+// handleGetBacklog lists the drafts of a project.
 func (s *Server) handleGetBacklog(w http.ResponseWriter, r *http.Request) {
 	projectPath := r.URL.Query().Get("project")
 	tasks, err := s.orch.GetBacklog(projectPath)
@@ -155,6 +198,7 @@ func (s *Server) handleGetBacklog(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, tasks)
 }
 
+// handlePromoteTask moves a draft into the queue.
 func (s *Server) handlePromoteTask(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	result, err := s.orch.PromoteTask(id)
@@ -173,6 +217,7 @@ func (s *Server) handlePromoteTask(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, result)
 }
 
+// handleUpdateTask edits a task that has not started.
 func (s *Server) handleUpdateTask(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var updates domain.Task
@@ -193,6 +238,7 @@ func (s *Server) handleUpdateTask(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, updated)
 }
 
+// handleClaimTask lets a session take a queued task to work on itself.
 func (s *Server) handleClaimTask(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var body struct {
@@ -224,6 +270,7 @@ func (s *Server) handleClaimTask(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, task)
 }
 
+// handleUpdateTaskStatus lets the claiming session report progress, a result or a failure.
 func (s *Server) handleUpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var body struct {
@@ -261,6 +308,7 @@ func (s *Server) handleUpdateTaskStatus(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, task)
 }
 
+// handleHeartbeatTask keeps a claimed task from being released as stale.
 func (s *Server) handleHeartbeatTask(w http.ResponseWriter, r *http.Request) {
 	taskID := chi.URLParam(r, "id")
 	// "sessionId" is canonical (as for /claim and /status); "session_id" is
@@ -299,6 +347,7 @@ func (s *Server) handleHeartbeatTask(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleGetSessionTasks lists the tasks a session has claimed.
 func (s *Server) handleGetSessionTasks(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	// We use GetAllTasks and filter by AISessionID since there's no direct port method on Orchestrator

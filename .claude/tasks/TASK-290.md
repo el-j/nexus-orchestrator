@@ -1,9 +1,9 @@
 # TASK-290 — TS tests for AgentDetector + delegation command
 
 **Plan:** PLAN-044  
-**Status:** TODO  
+**Status:** done  
 **Layer:** TypeScript · tests (vitest)  
-**Depends on:** TASK-282, TASK-284  
+**Depends on:** TASK-282, TASK-284
 
 ## Objective
 
@@ -52,7 +52,7 @@ it('registers Claude CLI when ~/.claude/settings.json exists with apiKey', async
 
   await detector.detectAll();
   expect(client.registerSession).toHaveBeenCalledWith(
-    expect.objectContaining({ agentName: 'Claude CLI' })
+    expect.objectContaining({ agentName: 'Claude CLI' }),
   );
 });
 ```
@@ -62,7 +62,9 @@ it('registers Claude CLI when ~/.claude/settings.json exists with apiKey', async
 ```typescript
 it('deregisters session when agent disappears between ticks', async () => {
   // Tick 1: Cline present → registerSession called
-  vi.mocked(vscode.extensions.getExtension).mockReturnValueOnce({ id: 'saoudrizwan.claude-dev' } as any);
+  vi.mocked(vscode.extensions.getExtension).mockReturnValueOnce({
+    id: 'saoudrizwan.claude-dev',
+  } as any);
   await detector.detectAll();
   const sessionId = 'sess-cline';
   // Manually set internal map (or trigger via mocked registerSession return)
@@ -79,7 +81,9 @@ it('deregisters session when agent disappears between ticks', async () => {
 
 ```typescript
 it('handles registerSession network failure silently', async () => {
-  vi.mocked(vscode.extensions.getExtension).mockReturnValue({ id: 'saoudrizwan.claude-dev' } as any);
+  vi.mocked(vscode.extensions.getExtension).mockReturnValue({
+    id: 'saoudrizwan.claude-dev',
+  } as any);
   vi.mocked(client.registerSession).mockRejectedValue(new Error('ECONNREFUSED'));
 
   await expect(detector.detectAll()).resolves.not.toThrow();
@@ -92,14 +96,23 @@ it('handles registerSession network failure silently', async () => {
 
 ```typescript
 it('opens Copilot Chat for GitHub Copilot session', async () => {
-  const session: AISession = { id: 's1', agentName: 'GitHub Copilot', source: 'vscode', status: 'active', lastActivity: '' };
-  vi.mocked(client.delegateSession).mockResolvedValue({ instruction: 'You are now...', sessionId: 's1' });
+  const session: AISession = {
+    id: 's1',
+    agentName: 'GitHub Copilot',
+    source: 'vscode',
+    status: 'active',
+    lastActivity: '',
+  };
+  vi.mocked(client.delegateSession).mockResolvedValue({
+    instruction: 'You are now...',
+    sessionId: 's1',
+  });
 
   await delegateToNexusCommand(client, session);
 
   expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
     'workbench.action.chat.open',
-    expect.objectContaining({ query: expect.stringContaining('nexusOrchestrator') })
+    expect.objectContaining({ query: expect.stringContaining('nexusOrchestrator') }),
   );
 });
 ```
@@ -108,15 +121,24 @@ it('opens Copilot Chat for GitHub Copilot session', async () => {
 
 ```typescript
 it('writes .nexus-delegate.md for Cline session', async () => {
-  const session: AISession = { id: 's2', agentName: 'Cline', source: 'vscode-discovered', status: 'active',
-    projectPath: '/home/user/myproject', lastActivity: '' };
-  vi.mocked(client.delegateSession).mockResolvedValue({ instruction: 'You are now...', sessionId: 's2' });
+  const session: AISession = {
+    id: 's2',
+    agentName: 'Cline',
+    source: 'vscode-discovered',
+    status: 'active',
+    projectPath: '/home/user/myproject',
+    lastActivity: '',
+  };
+  vi.mocked(client.delegateSession).mockResolvedValue({
+    instruction: 'You are now...',
+    sessionId: 's2',
+  });
 
   await delegateToNexusCommand(client, session);
 
   expect(vscode.workspace.fs.writeFile).toHaveBeenCalledWith(
     expect.objectContaining({ fsPath: expect.stringContaining('.nexus-delegate.md') }),
-    expect.any(Uint8Array)
+    expect.any(Uint8Array),
   );
 });
 ```
@@ -126,7 +148,13 @@ it('writes .nexus-delegate.md for Cline session', async () => {
 ```typescript
 it('shows error notification when delegateSession fails', async () => {
   vi.mocked(client.delegateSession).mockRejectedValue(new Error('session not found'));
-  await delegateToNexusCommand(client, { id: 's3', agentName: 'Cline', source: 'vscode', status: 'active', lastActivity: '' });
+  await delegateToNexusCommand(client, {
+    id: 's3',
+    agentName: 'Cline',
+    source: 'vscode',
+    status: 'active',
+    lastActivity: '',
+  });
   expect(vscode.window.showErrorMessage).toHaveBeenCalled();
 });
 ```

@@ -1,5 +1,7 @@
 # Agent-workflow audit (2026-10-14)
 
+> **Status: superseded** by [the audit of 2026-10-31](audit-2026-10-31.md). The figures and verdicts below were true on the date measured and are kept as history; the current state and the open work are in that audit and PLAN-077. Its MCP tool counts and its "not yet" verdicts in particular are out of date.
+
 Question: can nexusOrchestrator today be the single place where any agent and any model gets
 project knowledge, plans, history and quality control, across projects, without re-aligning
 agents every time? Every statement below was checked against the code or by running it; the
@@ -50,7 +52,7 @@ the state before this change.
 ## What is proven to work
 
 - Full Go suite, frontend (782 tests), docs (104) and the 11 e2e tests pass; Go merged coverage
-  97.9% locally; 41 MCP tools exposed (counted via `tools/list` on the running daemon).
+  97.9% locally; 41 MCP tools exposed at the time (counted via `tools/list` on the running daemon; 44 since v0.10.0).
 - Self-healing and agentic editing against a fake provider, with path confinement for writes.
 - One daemon, one database, many projects, restart-safe.
 

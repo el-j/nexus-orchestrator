@@ -3,7 +3,8 @@ id: TASK-311
 title: Split orchestrator.go god object into task_service.go, provider_service.go, session_service.go, execution_engine.go
 role: architecture
 planId: PLAN-047
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-301]
 createdAt: 2026-03-25T00:00:00.000Z
 ---

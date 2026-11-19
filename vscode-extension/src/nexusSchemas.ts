@@ -8,6 +8,7 @@ import { z } from 'zod';
 
 export const TaskStatusSchema = z.enum([
   'QUEUED',
+  'WAITING',
   'PROCESSING',
   'COMPLETED',
   'FAILED',
@@ -41,6 +42,7 @@ export const TaskSchema = z
     claimedBy: z.string().optional(),
     claimedAt: z.string().optional(),
     retryCount: z.number().optional(),
+    waitUntil: z.string().optional(),
   })
   .passthrough();
 
@@ -72,6 +74,17 @@ export const ProviderSchema = z
     details: z.string().optional(),
     error: z.string().optional(),
     contextLimit: z.number().optional(),
+    rateLimited: z.boolean().optional(),
+    rateLimitedUntil: z.string().optional(),
+    cooldownReason: z.string().optional(),
+    quota: z
+      .object({
+        window: z.string(),
+        status: z.string(),
+        utilization: z.number(),
+        resetsAt: z.string().optional(),
+      })
+      .optional(),
   })
   .passthrough();
 
@@ -84,5 +97,35 @@ export const ProviderConfigSchema = z
     baseURL: z.string().optional(),
     model: z.string().optional(),
     enabled: z.boolean(),
+  })
+  .passthrough();
+
+/** Runtime shape of the usage report (`GET /api/usage`); a shape other than this is an error. */
+export const UsageReportSchema = z
+  .object({
+    since: z.string().optional().default(''),
+    totals: z
+      .object({
+        calls: z.number(),
+        inputTokens: z.number(),
+        outputTokens: z.number(),
+        costUSD: z.number().optional(),
+      })
+      .passthrough(),
+    usage: z
+      .array(
+        z
+          .object({
+            provider: z.string(),
+            model: z.string().optional().default(''),
+            role: z.string().optional().default(''),
+            calls: z.number(),
+            inputTokens: z.number(),
+            outputTokens: z.number(),
+          })
+          .passthrough(),
+      )
+      .nullish()
+      .transform((v) => v ?? []),
   })
   .passthrough();

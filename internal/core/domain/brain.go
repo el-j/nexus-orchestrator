@@ -32,8 +32,18 @@ type ProjectKnowledge struct {
 	Source         string        `json:"source,omitempty"`
 	TokenCount     int           `json:"tokenCount"`
 	RelevanceScore float64       `json:"relevanceScore"` // 0.0–1.0, default 0.5
+	Embedding      []float32     `json:"embedding,omitempty"`
 	CreatedAt      time.Time     `json:"createdAt"`
 	UpdatedAt      time.Time     `json:"updatedAt"`
+}
+
+// IsValid reports whether k is one of the knowledge kinds the brain stores.
+func (k KnowledgeKind) IsValid() bool {
+	switch k {
+	case KnowledgeArchitecture, KnowledgeConvention, KnowledgeFileMap, KnowledgeLearning, KnowledgeGlossary, KnowledgeTaskSummary:
+		return true
+	}
+	return false
 }
 
 // ContextQuery is the input to BrainService context assembly methods.
@@ -47,10 +57,11 @@ type ContextQuery struct {
 
 // ContextSection is a single slice of context assembled from a knowledge entry.
 type ContextSection struct {
-	Kind    KnowledgeKind `json:"kind"`
-	Topic   string        `json:"topic"`
-	Content string        `json:"content"`
-	Tokens  int           `json:"tokens"`
+	ProjectPath string        `json:"projectPath,omitempty"`
+	Kind        KnowledgeKind `json:"kind"`
+	Topic       string        `json:"topic"`
+	Content     string        `json:"content"`
+	Tokens      int           `json:"tokens"`
 }
 
 // ContextResponse is the token-budget-constrained context returned to an agent.

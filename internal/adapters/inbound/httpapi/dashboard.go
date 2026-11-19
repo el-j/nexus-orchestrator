@@ -3,7 +3,6 @@ package httpapi
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"fmt"
 	"html/template"
 	"net/http"
 )
@@ -12,20 +11,17 @@ var dashboardTmpl = template.Must(template.New("dashboard").Parse(dashboardTempl
 
 type dashboardData struct{ Nonce string }
 
-func generateNonce() (string, error) {
+// generateNonce makes the random value that lets the dashboard's inline script pass the content
+// security policy once.
+func generateNonce() string {
 	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		return "", fmt.Errorf("httpapi: generate nonce: %w", err)
-	}
-	return base64.StdEncoding.EncodeToString(b), nil
+	_, _ = rand.Read(b) // crypto/rand.Read never returns an error: it ends the program if the system has no randomness
+	return base64.StdEncoding.EncodeToString(b)
 }
 
+// handleUI serves the dashboard page with a fresh nonce in its security headers.
 func (s *Server) handleUI(w http.ResponseWriter, _ *http.Request) {
-	nonce, err := generateNonce()
-	if err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
+	nonce := generateNonce()
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Frame-Options", "DENY")
@@ -118,6 +114,7 @@ const dashboardTemplateHTML = `<!DOCTYPE html>
     .badge-cancelled  { background: #27272a; color: #a1a1aa }
     .badge-toolarge   { background: #451a03; color: #fdba74 }
     .badge-noprovider { background: #2d1561; color: #c4b5fd }
+    .badge-waiting    { background: #083344; color: #67e8f9 }
     .mono { font-family: monospace; font-size: 0.75rem; color: var(--muted) }
     .empty { padding: 2rem; text-align: center; color: var(--muted); font-size: 0.85rem }
     #refresh-ts { font-size:0.7rem; color:var(--muted); margin-left:auto }
@@ -253,7 +250,7 @@ function badge(s) {
   const map = {
     QUEUED:'badge-queued', PROCESSING:'badge-processing', COMPLETED:'badge-completed',
     FAILED:'badge-failed', CANCELLED:'badge-cancelled',
-    TOO_LARGE:'badge-toolarge', NO_PROVIDER:'badge-noprovider'
+    TOO_LARGE:'badge-toolarge', NO_PROVIDER:'badge-noprovider', WAITING:'badge-waiting'
   }
   return '<span class="badge '+(map[s]||'badge-queued')+'">'+esc(s)+'</span>'
 }

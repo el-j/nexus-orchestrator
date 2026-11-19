@@ -13,6 +13,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
@@ -50,6 +51,7 @@ func NewClientWithHTTP(baseURL string, httpClient *http.Client) *Client {
 	return c
 }
 
+// newRequest builds a request to the daemon and adds the bearer token when one is set.
 func (r *Client) newRequest(ctx context.Context, method, path string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, r.baseURL+path, body)
 	if err != nil {
@@ -133,6 +135,7 @@ func query(key, value string) string {
 	return "?" + url.Values{key: {value}}.Encode()
 }
 
+// esc escapes a value for use as one URL path segment.
 func esc(s string) string { return url.PathEscape(s) }
 
 type submitTaskResponse struct {
@@ -270,6 +273,49 @@ func (r *Client) GetProviders() ([]ports.ProviderInfo, error) {
 	var out []ports.ProviderInfo
 	err := r.send(context.Background(), call{op: "get providers", method: http.MethodGet, path: "/api/providers"}, &out)
 	return out, err
+}
+
+// GetUsage reads the usage ledger from the daemon: tokens and cost per provider, model and role for the
+// calls made at or after since (the zero time means everything).
+func (r *Client) GetUsage(ctx context.Context, since time.Time) ([]domain.UsageSummary, error) {
+	window := "all"
+	if !since.IsZero() {
+		window = since.UTC().Format(time.RFC3339)
+	}
+	var out struct {
+		Usage []domain.UsageSummary `json:"usage"`
+	}
+	err := r.send(ctx, call{op: "get usage", method: http.MethodGet, path: "/api/usage?since=" + url.QueryEscape(window)}, &out)
+	return out.Usage, err
+}
+
+// PreviewRouting asks the daemon how it would order the providers for a task of role in the project.
+func (r *Client) PreviewRouting(ctx context.Context, projectPath, role string) (domain.RoutingPreview, error) {
+	var out domain.RoutingPreview
+	q := url.Values{"projectPath": {projectPath}}
+	if role != "" {
+		q.Set("role", role)
+	}
+	err := r.send(ctx, call{op: "preview routing", method: http.MethodGet, path: "/api/routing?" + q.Encode()}, &out)
+	return out, err
+}
+
+// GetProjectPolicy reads the project's .nexus/policy.json from the daemon; the bool is false when the
+// project has none.
+func (r *Client) GetProjectPolicy(ctx context.Context, projectPath string) (domain.ProjectPolicy, bool, error) {
+	var out struct {
+		Found  bool                 `json:"found"`
+		Policy domain.ProjectPolicy `json:"policy"`
+	}
+	path := "/api/policy?" + url.Values{"projectPath": {projectPath}}.Encode()
+	err := r.send(ctx, call{op: "get policy", method: http.MethodGet, path: path}, &out)
+	return out.Policy, out.Found, err
+}
+
+// SetProjectPolicy asks the daemon to validate and write the project's .nexus/policy.json.
+func (r *Client) SetProjectPolicy(ctx context.Context, projectPath string, p domain.ProjectPolicy) error {
+	path := "/api/policy?" + url.Values{"projectPath": {projectPath}}.Encode()
+	return r.send(ctx, call{op: "set policy", method: http.MethodPut, path: path, body: p}, nil)
 }
 
 // RegisterCloudProvider registers an adapter for cfg at runtime.

@@ -92,6 +92,24 @@ func TestChatStream_ErrorEventMidStream(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "quota exceeded") {
 		t.Errorf("err = %v", err)
 	}
+	if pe, ok := domain.AsProviderError(err); !ok || pe.Kind != domain.ErrKindQuotaExhausted {
+		t.Errorf("mid-stream quota error must be a typed ProviderError (ErrKindQuotaExhausted): %v", err)
+	}
+
+	rateBody := delta("part") + "data: {\"error\":{\"message\":\"rate limit reached\"}}\n\n"
+	_, _, err = collect(NewAdapter("p", sseServer(t, http.StatusOK, rateBody, nil).URL, "", "m"))
+	if pe, ok := domain.AsProviderError(err); !ok || pe.Kind != domain.ErrKindRateLimited {
+		t.Errorf("mid-stream rate-limit error must be ErrKindRateLimited: %v", err)
+	}
+
+	plainBody := delta("part") + "data: {\"error\":{\"message\":\"upstream crashed\"}}\n\n"
+	_, _, err = collect(NewAdapter("p", sseServer(t, http.StatusOK, plainBody, nil).URL, "", "m"))
+	if err == nil || !strings.Contains(err.Error(), "upstream crashed") {
+		t.Errorf("plain stream error = %v", err)
+	}
+	if _, ok := domain.AsProviderError(err); ok {
+		t.Errorf("generic stream error must not be a limit error: %v", err)
+	}
 }
 
 func TestChatStream_MalformedEventIsAnError(t *testing.T) {

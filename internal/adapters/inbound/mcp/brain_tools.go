@@ -8,6 +8,8 @@ import (
 	"nexus-orchestrator/internal/core/domain"
 )
 
+// toolGetProjectContext serves the get_project_context tool: the token-budgeted project summary for an
+// agent.
 func (s *Server) toolGetProjectContext(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -40,6 +42,8 @@ func (s *Server) toolGetProjectContext(ctx context.Context, args json.RawMessage
 	return textResult(string(b)), nil
 }
 
+// toolGetFocusedContext serves the get_focused_context tool: the knowledge that answers one question,
+// within a token budget.
 func (s *Server) toolGetFocusedContext(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -55,8 +59,13 @@ func (s *Server) toolGetFocusedContext(ctx context.Context, args json.RawMessage
 		maxT = 400
 	}
 
+	target := p.ProjectPath
+	if target == "" {
+		target = "*"
+	}
+
 	q := domain.ContextQuery{
-		ProjectPath: p.ProjectPath,
+		ProjectPath: target,
 		Question:    p.Question,
 		MaxTokens:   maxT,
 	}
@@ -74,6 +83,7 @@ func (s *Server) toolGetFocusedContext(ctx context.Context, args json.RawMessage
 	return textResult(string(b)), nil
 }
 
+// toolSearchKnowledge serves the search_knowledge tool: full-text search over the project's knowledge.
 func (s *Server) toolSearchKnowledge(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -90,7 +100,11 @@ func (s *Server) toolSearchKnowledge(ctx context.Context, args json.RawMessage) 
 	if s.brain == nil {
 		return callToolResult{}, fmt.Errorf("brain service not configured")
 	}
-	results, err := s.brain.SearchKnowledge(ctx, p.ProjectPath, p.Query, limit)
+	target := p.ProjectPath
+	if target == "" {
+		target = "*"
+	}
+	results, err := s.brain.SearchKnowledge(ctx, target, p.Query, limit)
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: search_knowledge: %w", err)
 	}
@@ -98,6 +112,8 @@ func (s *Server) toolSearchKnowledge(ctx context.Context, args json.RawMessage) 
 	return textResult(string(b)), nil
 }
 
+// toolGetBrainStatus serves the get_brain_status tool: how many knowledge entries the project holds and
+// when it was last scanned.
 func (s *Server) toolGetBrainStatus(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -116,16 +132,38 @@ func (s *Server) toolGetBrainStatus(ctx context.Context, args json.RawMessage) (
 	return textResult(string(b)), nil
 }
 
+// toolIngestKnowledge serves the ingest_knowledge tool: it stores a learning, decision or file note in
+// the project brain.
 func (s *Server) toolIngestKnowledge(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
 		FilePath    string `json:"filePath"`
+		Kind        string `json:"kind"`
+		Topic       string `json:"topic"`
+		Content     string `json:"content"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: ingest_knowledge: invalid args: %w", err)
 	}
 	if s.brain == nil {
 		return callToolResult{}, fmt.Errorf("brain service not configured")
+	}
+	if p.FilePath == "" && (p.Content != "" || p.Topic != "") {
+		kind := domain.KnowledgeKind(p.Kind)
+		if kind == "" {
+			kind = domain.KnowledgeLearning
+		}
+		entry, err := s.brain.IngestKnowledge(ctx, domain.ProjectKnowledge{
+			ProjectPath: p.ProjectPath,
+			Kind:        kind,
+			Topic:       p.Topic,
+			Content:     p.Content,
+		})
+		if err != nil {
+			return callToolResult{}, fmt.Errorf("mcp: ingest_knowledge: %w", err)
+		}
+		b, _ := json.Marshal(entry)
+		return textResult(string(b)), nil
 	}
 	count, err := s.brain.IngestFromFile(ctx, p.ProjectPath, p.FilePath)
 	if err != nil {
@@ -135,6 +173,8 @@ func (s *Server) toolIngestKnowledge(ctx context.Context, args json.RawMessage) 
 	return textResult(string(b)), nil
 }
 
+// toolInitProject serves the init_project tool: it registers a project and reads its CLAUDE.md into the
+// brain.
 func (s *Server) toolInitProject(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath  string `json:"projectPath"`
@@ -154,6 +194,8 @@ func (s *Server) toolInitProject(ctx context.Context, args json.RawMessage) (cal
 	return textResult(string(b)), nil
 }
 
+// toolListKnowledge serves the list_knowledge tool: the stored entries of a project, optionally of one
+// kind.
 func (s *Server) toolListKnowledge(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -173,6 +215,7 @@ func (s *Server) toolListKnowledge(ctx context.Context, args json.RawMessage) (c
 	return textResult(string(b)), nil
 }
 
+// toolDeleteKnowledge serves the delete_knowledge tool: it removes one knowledge entry by id.
 func (s *Server) toolDeleteKnowledge(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ID string `json:"id"`
@@ -189,6 +232,8 @@ func (s *Server) toolDeleteKnowledge(ctx context.Context, args json.RawMessage) 
 	return textResult(`{"deleted":true}`), nil
 }
 
+// toolGetFileMap serves the get_file_map tool: the project's file map, narrowed to a focus area when
+// one is given.
 func (s *Server) toolGetFileMap(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -208,6 +253,8 @@ func (s *Server) toolGetFileMap(ctx context.Context, args json.RawMessage) (call
 	return textResult(string(b)), nil
 }
 
+// toolGetOnboardingContext serves the get_onboarding_context tool: the short summary an agent reads
+// before touching a project.
 func (s *Server) toolGetOnboardingContext(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -231,6 +278,8 @@ func (s *Server) toolGetOnboardingContext(ctx context.Context, args json.RawMess
 
 // ----- Brain Schema Definitions -----
 
+// brainToolDefs lists the knowledge tools (onboarding, focused context, search, ingest, list, delete,
+// file map, status) for tools/list.
 func brainToolDefs() []toolDef {
 	return []toolDef{
 		{
@@ -263,7 +312,7 @@ func brainToolDefs() []toolDef {
 			InputSchema: inputSchema{
 				Type: "object",
 				Properties: map[string]property{
-					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+					"projectPath": {Type: "string", Description: "Absolute path to the project root, or '*' / empty to search across all projects"},
 					"question":    {Type: "string", Description: "Semantic search query to match against knowledge"},
 					"maxTokens":   {Type: "number", Description: "Maximum tokens to return (default: 400)"},
 				},
@@ -272,11 +321,11 @@ func brainToolDefs() []toolDef {
 		},
 		{
 			Name:        "search_knowledge",
-			Description: "Perform full-text search across the project's knowledge base.",
+			Description: "Perform full-text search across the project's knowledge base or across all projects.",
 			InputSchema: inputSchema{
 				Type: "object",
 				Properties: map[string]property{
-					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
+					"projectPath": {Type: "string", Description: "Absolute path to the project root, or '*' / empty to search across all projects"},
 					"query":       {Type: "string", Description: "The FTS query"},
 					"limit":       {Type: "number", Description: "Max results to return"},
 				},
@@ -296,14 +345,17 @@ func brainToolDefs() []toolDef {
 		},
 		{
 			Name:        "ingest_knowledge",
-			Description: "Parse and ingest a markdown file (often CLAUDE.md) into the project knowledge repository.",
+			Description: "Ingest either a markdown file (filePath) or a single structured knowledge entry (kind, topic, content) into the project knowledge repository.",
 			InputSchema: inputSchema{
 				Type: "object",
 				Properties: map[string]property{
 					"projectPath": {Type: "string", Description: "Absolute path to the project root"},
-					"filePath":    {Type: "string", Description: "Path to the markdown file to ingest"},
+					"filePath":    {Type: "string", Description: "Path to the markdown file to ingest (when ingesting a file)"},
+					"kind":        {Type: "string", Description: "Knowledge kind: architecture, convention, learning, glossary, decision, file_map (when ingesting a single entry)"},
+					"topic":       {Type: "string", Description: "Topic title for a single knowledge entry"},
+					"content":     {Type: "string", Description: "Markdown content for a single knowledge entry"},
 				},
-				Required: []string{"projectPath", "filePath"},
+				Required: []string{"projectPath"},
 			},
 		},
 		{

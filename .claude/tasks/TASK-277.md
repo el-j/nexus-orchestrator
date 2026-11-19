@@ -1,9 +1,9 @@
 # TASK-277 — Ports: `AgentScanner` interface + Orchestrator extensions
 
 **Plan:** PLAN-044  
-**Status:** TODO  
+**Status:** done  
 **Layer:** Go · ports (`internal/core/ports/`)  
-**Depends on:** TASK-276  
+**Depends on:** TASK-276
 
 ## Objective
 
@@ -14,6 +14,7 @@ Add the `AgentScanner` outbound port and two new methods to the `Orchestrator` i
 ### `internal/core/ports/ports.go`
 
 Add new outbound port:
+
 ```go
 // AgentScanner scans the local system for running AI agent tools.
 // Distinct from SystemScanner which probes LLM server endpoints.
@@ -23,6 +24,7 @@ type AgentScanner interface {
 ```
 
 Add to `Orchestrator` interface:
+
 ```go
 // GetDiscoveredAgents returns agents detected by the last AgentScanner run,
 // triggering an on-demand scan if the cache is older than 30 seconds.

@@ -3,7 +3,8 @@ id: TASK-017
 title: Frontend scaffold — Vue 3 + PrimeVue 4 + Tailwind CSS 4 + Vite
 role: devops
 planId: PLAN-002
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-015]
 createdAt: 2026-03-09T14:00:00.000Z
 ---
@@ -21,6 +22,7 @@ createdAt: 2026-03-09T14:00:00.000Z
 ## Implementation Steps
 
 1. **Update `wails.json`**:
+
    ```json
    {
      "name": "nexusOrchestrator",
@@ -34,6 +36,7 @@ createdAt: 2026-03-09T14:00:00.000Z
    ```
 
 2. **Create `frontend/package.json`**:
+
    ```json
    {
      "name": "nexus-orchestrator-frontend",
@@ -70,28 +73,29 @@ createdAt: 2026-03-09T14:00:00.000Z
    ```
 
 3. **Create `frontend/vite.config.ts`**:
+
    ```typescript
-   import { defineConfig } from 'vite'
-   import vue from '@vitejs/plugin-vue'
-   import tailwindcss from '@tailwindcss/vite'
+   import { defineConfig } from 'vite';
+   import vue from '@vitejs/plugin-vue';
+   import tailwindcss from '@tailwindcss/vite';
 
    export default defineConfig({
      plugins: [vue(), tailwindcss()],
      build: { outDir: 'dist' },
-   })
+   });
    ```
 
 4. **Create `frontend/tsconfig.json`**:
+
    ```json
    {
      "files": [],
-     "references": [
-       { "path": "./tsconfig.app.json" }
-     ]
+     "references": [{ "path": "./tsconfig.app.json" }]
    }
    ```
 
 5. **Create `frontend/tsconfig.app.json`**:
+
    ```json
    {
      "extends": "@vue/tsconfig/tsconfig.dom.json",
@@ -111,6 +115,7 @@ createdAt: 2026-03-09T14:00:00.000Z
    ```
 
 6. **Create `frontend/index.html`** (Vite entry point, note: `frontend/dist/index.html` is the BUILD OUTPUT — this file is the source):
+
    ```html
    <!doctype html>
    <html lang="en" class="dark">
@@ -126,34 +131,36 @@ createdAt: 2026-03-09T14:00:00.000Z
      </body>
    </html>
    ```
+
    Note: This `index.html` lives at `frontend/index.html` (Vite project root), NOT in `frontend/dist/`.
 
 7. **Create `frontend/src/main.ts`**:
+
    ```typescript
-   import { createApp } from 'vue'
-   import { createPinia } from 'pinia'
-   import { createRouter, createWebHashHistory } from 'vue-router'
-   import PrimeVue from 'primevue/config'
-   import Aura from '@primevue/themes/aura'
-   import ToastService from 'primevue/toastservice'
-   import { VueQueryPlugin } from '@tanstack/vue-query'
-   import App from './App.vue'
-   import './index.css'
+   import { createApp } from 'vue';
+   import { createPinia } from 'pinia';
+   import { createRouter, createWebHashHistory } from 'vue-router';
+   import PrimeVue from 'primevue/config';
+   import Aura from '@primevue/themes/aura';
+   import ToastService from 'primevue/toastservice';
+   import { VueQueryPlugin } from '@tanstack/vue-query';
+   import App from './App.vue';
+   import './index.css';
 
    const router = createRouter({
      history: createWebHashHistory(),
      routes: [
        { path: '/', redirect: '/dashboard' },
        { path: '/dashboard', component: () => import('./pages/Dashboard.vue') },
-       { path: '/queue',     component: () => import('./pages/TaskQueue.vue') },
-       { path: '/history',   component: () => import('./pages/TaskHistory.vue') },
-       { path: '/settings',  component: () => import('./pages/Settings.vue') },
+       { path: '/queue', component: () => import('./pages/TaskQueue.vue') },
+       { path: '/history', component: () => import('./pages/TaskHistory.vue') },
+       { path: '/settings', component: () => import('./pages/Settings.vue') },
      ],
-   })
+   });
 
-   const app = createApp(App)
-   app.use(createPinia())
-   app.use(router)
+   const app = createApp(App);
+   app.use(createPinia());
+   app.use(router);
    app.use(PrimeVue, {
      theme: {
        preset: Aura,
@@ -162,19 +169,20 @@ createdAt: 2026-03-09T14:00:00.000Z
          cssLayer: { name: 'primevue', order: 'tailwind-base, primevue' },
        },
      },
-   })
-   app.use(ToastService)
+   });
+   app.use(ToastService);
    app.use(VueQueryPlugin, {
      queryClientConfig: {
        defaultOptions: { queries: { refetchInterval: 3000, staleTime: 1000 } },
      },
-   })
-   app.mount('#app')
+   });
+   app.mount('#app');
    ```
 
 8. **Create `frontend/src/index.css`** (Tailwind CSS 4 — CSS-first, NO tailwind.config.js):
+
    ```css
-   @import "tailwindcss";
+   @import 'tailwindcss';
 
    @layer tailwind-base, primevue;
 
@@ -194,24 +202,26 @@ createdAt: 2026-03-09T14:00:00.000Z
      color: var(--p-surface-0, #ffffff);
    }
    ```
+
    Key: `@layer tailwind-base, primevue` tells Tailwind to put PrimeVue styles after Tailwind base — this is the PrimeVue 4 + Tailwind 4 integration pattern.
 
 9. **Create `frontend/src/App.vue`** (shell with sidebar navigation using PrimeVue + Vue Router):
+
    ```vue
    <script setup lang="ts">
-   import { useRouter, useRoute } from 'vue-router'
-   import Toast from 'primevue/toast'
-   import { LayoutDashboard, ListTodo, History, Settings } from 'lucide-vue-next'
+   import { useRouter, useRoute } from 'vue-router';
+   import Toast from 'primevue/toast';
+   import { LayoutDashboard, ListTodo, History, Settings } from 'lucide-vue-next';
 
-   const router = useRouter()
-   const route = useRoute()
+   const router = useRouter();
+   const route = useRoute();
 
    const navItems = [
      { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-     { to: '/queue',     icon: ListTodo,        label: 'Queue' },
-     { to: '/history',   icon: History,         label: 'History' },
-     { to: '/settings',  icon: Settings,        label: 'Settings' },
-   ]
+     { to: '/queue', icon: ListTodo, label: 'Queue' },
+     { to: '/history', icon: History, label: 'History' },
+     { to: '/settings', icon: Settings, label: 'Settings' },
+   ];
    </script>
 
    <template>
@@ -226,9 +236,11 @@ createdAt: 2026-03-09T14:00:00.000Z
              v-for="item in navItems"
              :key="item.to"
              class="w-full flex items-center gap-2 px-3 py-2 rounded text-sm transition-colors"
-             :class="route.path === item.to
-               ? 'bg-nexus text-white'
-               : 'text-surface-400 hover:text-surface-100 hover:bg-surface-800'"
+             :class="
+               route.path === item.to
+                 ? 'bg-nexus text-white'
+                 : 'text-surface-400 hover:text-surface-100 hover:bg-surface-800'
+             "
              @click="router.push(item.to)"
            >
              <component :is="item.icon" :size="16" />
@@ -249,93 +261,100 @@ createdAt: 2026-03-09T14:00:00.000Z
    ```
 
 10. **Create `frontend/src/types/domain.ts`** — shared TypeScript interfaces:
+
     ```typescript
     export interface Task {
-      id: string
-      projectPath: string
-      prompt: string
-      status: 'queued' | 'processing' | 'completed' | 'failed'
-      createdAt: string
-      updatedAt: string
-      retryCount: number
-      sourceProjectPath?: string
-      sourceTaskId?: string
-      sourcePlanId?: string
+      id: string;
+      projectPath: string;
+      prompt: string;
+      status: 'queued' | 'processing' | 'completed' | 'failed';
+      createdAt: string;
+      updatedAt: string;
+      retryCount: number;
+      sourceProjectPath?: string;
+      sourceTaskId?: string;
+      sourcePlanId?: string;
     }
 
     export interface Message {
-      role: 'user' | 'assistant'
-      content: string
+      role: 'user' | 'assistant';
+      content: string;
     }
 
     export interface Provider {
-      name: string
-      baseURL: string
-      available: boolean
-      models: string[]
+      name: string;
+      baseURL: string;
+      available: boolean;
+      models: string[];
     }
 
     export interface Stats {
-      queueDepth: number
-      activeTask: string
-      providerCount: number
+      queueDepth: number;
+      activeTask: string;
+      providerCount: number;
     }
     ```
 
 11. **Create `frontend/src/composables/useNexus.ts`** — thin wrapper around Wails Go bindings:
+
     ```typescript
     import {
-      SubmitTask, GetTask, GetQueue, GetAllTasks,
-      GetProviders, CancelTask, GetSession, ClearSession, GetStats
-    } from '../wailsjs/go/main/App'
-    import type { Task, Message, Provider, Stats } from '../types/domain'
+      SubmitTask,
+      GetTask,
+      GetQueue,
+      GetAllTasks,
+      GetProviders,
+      CancelTask,
+      GetSession,
+      ClearSession,
+      GetStats,
+    } from '../wailsjs/go/main/App';
+    import type { Task, Message, Provider, Stats } from '../types/domain';
 
     export function useNexus() {
       return {
         submitTask: (projectPath: string, prompt: string) =>
           SubmitTask(projectPath, prompt) as Promise<string>,
-        getTask: (id: string) =>
-          GetTask(id) as Promise<Task>,
-        getQueue: () =>
-          GetQueue() as Promise<Task[]>,
-        getAllTasks: (status: string) =>
-          GetAllTasks(status) as Promise<Task[]>,
-        getProviders: () =>
-          GetProviders() as Promise<Provider[]>,
-        cancelTask: (id: string) =>
-          CancelTask(id) as Promise<void>,
-        getSession: (projectPath: string) =>
-          GetSession(projectPath) as Promise<Message[]>,
-        clearSession: (projectPath: string) =>
-          ClearSession(projectPath) as Promise<void>,
-        getStats: () =>
-          GetStats() as Promise<Stats>,
-      }
+        getTask: (id: string) => GetTask(id) as Promise<Task>,
+        getQueue: () => GetQueue() as Promise<Task[]>,
+        getAllTasks: (status: string) => GetAllTasks(status) as Promise<Task[]>,
+        getProviders: () => GetProviders() as Promise<Provider[]>,
+        cancelTask: (id: string) => CancelTask(id) as Promise<void>,
+        getSession: (projectPath: string) => GetSession(projectPath) as Promise<Message[]>,
+        clearSession: (projectPath: string) => ClearSession(projectPath) as Promise<void>,
+        getStats: () => GetStats() as Promise<Stats>,
+      };
     }
     ```
 
 12. **Create `frontend/src/wailsjs/go/main/App.d.ts`** (TypeScript declarations for Go bindings — must match `app.go` methods after TASK-018):
+
     ```typescript
-    export function SubmitTask(projectPath: string, prompt: string): Promise<string>
-    export function GetTask(id: string): Promise<import('../../../types/domain').Task>
-    export function GetQueue(): Promise<import('../../../types/domain').Task[]>
-    export function GetAllTasks(status: string): Promise<import('../../../types/domain').Task[]>
-    export function GetProviders(): Promise<import('../../../types/domain').Provider[]>
-    export function CancelTask(id: string): Promise<void>
-    export function GetSession(projectPath: string): Promise<import('../../../types/domain').Message[]>
-    export function ClearSession(projectPath: string): Promise<void>
-    export function GetStats(): Promise<import('../../../types/domain').Stats>
+    export function SubmitTask(projectPath: string, prompt: string): Promise<string>;
+    export function GetTask(id: string): Promise<import('../../../types/domain').Task>;
+    export function GetQueue(): Promise<import('../../../types/domain').Task[]>;
+    export function GetAllTasks(status: string): Promise<import('../../../types/domain').Task[]>;
+    export function GetProviders(): Promise<import('../../../types/domain').Provider[]>;
+    export function CancelTask(id: string): Promise<void>;
+    export function GetSession(
+      projectPath: string,
+    ): Promise<import('../../../types/domain').Message[]>;
+    export function ClearSession(projectPath: string): Promise<void>;
+    export function GetStats(): Promise<import('../../../types/domain').Stats>;
     ```
 
 13. **Create `frontend/src/wailsjs/runtime.d.ts`**:
     ```typescript
-    export declare function EventsOn(eventName: string, callback: (...data: unknown[]) => void): () => void
-    export declare function EventsOff(...eventNames: string[]): void
-    export declare function EventsEmit(eventName: string, ...data: unknown[]): void
-    export declare function WindowMinimise(): void
-    export declare function WindowMaximise(): void
-    export declare function WindowClose(): void
-    export declare function WindowSetTitle(title: string): void
+    export declare function EventsOn(
+      eventName: string,
+      callback: (...data: unknown[]) => void,
+    ): () => void;
+    export declare function EventsOff(...eventNames: string[]): void;
+    export declare function EventsEmit(eventName: string, ...data: unknown[]): void;
+    export declare function WindowMinimise(): void;
+    export declare function WindowMaximise(): void;
+    export declare function WindowClose(): void;
+    export declare function WindowSetTitle(title: string): void;
     ```
 
 ## Acceptance Criteria

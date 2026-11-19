@@ -3,15 +3,18 @@ id: TASK-171
 title: QA integration tests for discovery and tray pipeline
 role: qa
 planId: PLAN-023
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-170]
 createdAt: 2026-03-11T21:00:00.000Z
 ---
 
 ## Context
+
 All components of PLAN-023 are wired. We need integration tests to validate the full pipeline: system scanner → OrchestratorService → HTTP API → SSE events, plus unit tests for the scanner's probe logic and the log hub.
 
 ## Files to Read
+
 - `internal/core/services/orchestrator_test.go` — existing test patterns
 - `internal/adapters/outbound/sys_scanner/scanner.go` — scanner implementation
 - `internal/adapters/inbound/httpapi/server.go` — HTTP endpoints
@@ -52,6 +55,7 @@ All components of PLAN-023 are wired. We need integration tests to validate the 
    - Test `promote_provider` with invalid ID returns error
 
 ## Acceptance Criteria
+
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` passes with all new tests
 - [ ] Scanner tests complete within 15s
 - [ ] No data races detected under `-race`
@@ -59,6 +63,7 @@ All components of PLAN-023 are wired. We need integration tests to validate the 
 - [ ] Mock `SystemScanner` used in service tests (no real network calls in unit tests)
 
 ## Anti-patterns to Avoid
+
 - NEVER use real network calls in unit tests — mock the SystemScanner port
 - NEVER skip `-race` flag — concurrency bugs must be caught
 - NEVER write tests that depend on specific AI tools being installed on the CI machine

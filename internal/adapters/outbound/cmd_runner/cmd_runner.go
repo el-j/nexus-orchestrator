@@ -42,14 +42,20 @@ func New(opts ...Option) *Runner {
 	return r
 }
 
+// shellFor names the shell that runs a command line on the given operating system, and the flag
+// that makes it run the next argument.
+func shellFor(goos string) (shell, flag string) {
+	if goos == "windows" {
+		return "cmd.exe", "/c"
+	}
+	return "sh", "-c"
+}
+
 // Run executes the command in the specified directory.
 // It returns the combined stdout and stderr output, and an error if the process exited with non-zero status.
 func (r *Runner) Run(ctx context.Context, dir string, command string) (string, error) {
 	if strings.TrimSpace(command) == "" {
 		return "", nil
-	}
-	if ctx == nil {
-		ctx = context.Background()
 	}
 	if _, ok := ctx.Deadline(); !ok && r.defaultTimeout > 0 {
 		var cancel context.CancelFunc
@@ -57,12 +63,8 @@ func (r *Runner) Run(ctx context.Context, dir string, command string) (string, e
 		defer cancel()
 	}
 
-	var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		cmd = exec.CommandContext(ctx, "cmd.exe", "/c", command)
-	} else {
-		cmd = exec.CommandContext(ctx, "sh", "-c", command)
-	}
+	shell, flag := shellFor(runtime.GOOS)
+	cmd := exec.CommandContext(ctx, shell, flag, command)
 
 	if dir != "" {
 		cmd.Dir = dir

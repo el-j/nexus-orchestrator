@@ -3,7 +3,8 @@ id: TASK-018
 title: Wails binding — extend app.go with GetAllTasks / GetSession / ClearSession / GetStats
 role: backend
 planId: PLAN-002
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-015]
 createdAt: 2026-03-09T12:00:00.000Z
 ---
@@ -27,6 +28,7 @@ There is a duplicate `internal/adapters/inbound/wailsbind/bind.go` that is never
 1. **Verify `wailsbind/bind.go` is unused**: search for any import of `nexus-orchestrator/internal/adapters/inbound/wailsbind` in all Go files. If confirmed unused, delete the file.
 
 2. **Add `sessionRepo ports.SessionRepository` field** to the `App` struct in `app.go`:
+
    ```go
    type App struct {
        ctx         context.Context
@@ -35,9 +37,11 @@ There is a duplicate `internal/adapters/inbound/wailsbind/bind.go` that is never
        taskRepo    ports.TaskRepository
    }
    ```
+
    Update `NewApp(orch, sessionRepo, taskRepo)` constructor accordingly. Wire it in `main.go`.
 
 3. **Add `GetAllTasks(status string) []domain.Task`**:
+
    ```go
    func (a *App) GetAllTasks(status string) []domain.Task {
        tasks, err := a.taskRepo.GetAll(status)
@@ -50,6 +54,7 @@ There is a duplicate `internal/adapters/inbound/wailsbind/bind.go` that is never
    ```
 
 4. **Add `GetSession(projectPath string) []domain.Message`**:
+
    ```go
    func (a *App) GetSession(projectPath string) []domain.Message {
        sess, err := a.sessionRepo.GetOrCreate(filepath.Clean(projectPath))
@@ -60,9 +65,11 @@ There is a duplicate `internal/adapters/inbound/wailsbind/bind.go` that is never
        return sess.Messages
    }
    ```
+
    Returns empty slice (not nil) when no messages exist — important for JSON serialisation to `[]` not `null`.
 
 5. **Add `ClearSession(projectPath string) error`**:
+
    ```go
    func (a *App) ClearSession(projectPath string) error {
        if err := a.sessionRepo.Delete(filepath.Clean(projectPath)); err != nil {
@@ -71,9 +78,11 @@ There is a duplicate `internal/adapters/inbound/wailsbind/bind.go` that is never
        return nil
    }
    ```
+
    Uses the `Delete` method added to `SessionRepository` port in TASK-015.
 
 6. **Define `StatsResponse` type** (in `app.go` or a new `internal/core/domain/stats.go`):
+
    ```go
    type StatsResponse struct {
        QueueDepth    int    `json:"queueDepth"`
@@ -83,6 +92,7 @@ There is a duplicate `internal/adapters/inbound/wailsbind/bind.go` that is never
    ```
 
 7. **Add `GetStats() StatsResponse`**:
+
    ```go
    func (a *App) GetStats() StatsResponse {
        queue := a.orch.GetQueue()
@@ -93,21 +103,24 @@ There is a duplicate `internal/adapters/inbound/wailsbind/bind.go` that is never
        }
    }
    ```
+
    Note: If `ports.Orchestrator` does not expose `GetProviders()`, add it or use a separate `DiscoveryService` field on `App`.
 
 8. **Update `main.go`** to pass the new dependencies to `NewApp(...)`.
 
 9. **Update `frontend/src/wailsjs/go/main/App.d.ts`** (Vue 3 project TypeScript declarations — uses typed imports from `domain.ts` rather than `any`):
    ```typescript
-   export function SubmitTask(projectPath: string, prompt: string): Promise<string>
-   export function GetTask(id: string): Promise<import('../../../types/domain').Task>
-   export function GetQueue(): Promise<import('../../../types/domain').Task[]>
-   export function GetAllTasks(status: string): Promise<import('../../../types/domain').Task[]>
-   export function GetProviders(): Promise<import('../../../types/domain').Provider[]>
-   export function CancelTask(id: string): Promise<void>
-   export function GetSession(projectPath: string): Promise<import('../../../types/domain').Message[]>
-   export function ClearSession(projectPath: string): Promise<void>
-   export function GetStats(): Promise<import('../../../types/domain').Stats>
+   export function SubmitTask(projectPath: string, prompt: string): Promise<string>;
+   export function GetTask(id: string): Promise<import('../../../types/domain').Task>;
+   export function GetQueue(): Promise<import('../../../types/domain').Task[]>;
+   export function GetAllTasks(status: string): Promise<import('../../../types/domain').Task[]>;
+   export function GetProviders(): Promise<import('../../../types/domain').Provider[]>;
+   export function CancelTask(id: string): Promise<void>;
+   export function GetSession(
+     projectPath: string,
+   ): Promise<import('../../../types/domain').Message[]>;
+   export function ClearSession(projectPath: string): Promise<void>;
+   export function GetStats(): Promise<import('../../../types/domain').Stats>;
    ```
    Note: The actual hand-written declaration file is created in TASK-017 step 12. This step exists to confirm the Go method signatures are in sync with the Vue 3 frontend types in `src/types/domain.ts`.
 

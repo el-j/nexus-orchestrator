@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -306,5 +308,30 @@ func TestAnthropic_Chat_NoTextContentBlock(t *testing.T) {
 	_, err := a.Chat(context.Background(), []domain.Message{{Role: domain.RoleUser, Content: "hi"}})
 	if err == nil {
 		t.Fatal("expected error when response has no text content block")
+	}
+}
+
+func TestAnthropic_ChatStream_RealContract(t *testing.T) {
+	key := os.Getenv("NEXUS_TEST_ANTHROPIC_KEY")
+	if key == "" {
+		t.Skip("set NEXUS_TEST_ANTHROPIC_KEY to run real Anthropic streaming contract check")
+	}
+	model := os.Getenv("NEXUS_TEST_ANTHROPIC_MODEL")
+	if model == "" {
+		model = "claude-haiku-4-5"
+	}
+	a := NewAdapter(key, model)
+	var chunks []string
+	out, err := a.ChatStream(context.Background(), []domain.Message{{Role: domain.RoleUser, Content: "Reply with the single word pong."}}, func(s string) {
+		chunks = append(chunks, s)
+	})
+	if err != nil {
+		t.Fatalf("real Anthropic ChatStream failed: %v", err)
+	}
+	if strings.TrimSpace(out) == "" || len(chunks) == 0 {
+		t.Errorf("out=%q chunks=%v", out, chunks)
+	}
+	if usage, ok := a.LastUsage(); !ok || usage.InputTokens <= 0 || usage.OutputTokens <= 0 {
+		t.Errorf("usage = %+v (ok=%v), want positive input/output tokens", usage, ok)
 	}
 }

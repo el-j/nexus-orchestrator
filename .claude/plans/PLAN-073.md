@@ -1,7 +1,7 @@
 ---
 id: PLAN-073
 title: 'Real-world readiness: release pipeline, desktop app, subscription delegation'
-status: active
+status: completed
 createdAt: 2026-10-15
 tasks:
   [

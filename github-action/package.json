@@ -1,7 +1,8 @@
 {
   "name": "nexus-orchestrator-action",
-  "version": "1.0.0",
+  "version": "0.10.0",
   "private": true,
+  "license": "AGPL-3.0",
   "description": "GitHub Action runner for nexus-orchestrator",
   "type": "commonjs",
   "main": "dist/index.js",
@@ -66,5 +67,8 @@
         "branches": 100
       }
     }
+  },
+  "overrides": {
+    "undici": "6.29.1"
   }
 }

@@ -6,7 +6,7 @@
  * Where files are searched, in this order (the first file with an id wins):
  *  1. the folders the project configured (plans and tasks, whatever the files are called),
  *  2. .claude/{plans,tasks} and .nexus/{plans,tasks},
- *  3. unless discover is off: any markdown file whose name is PLAN-n or TASK-n, whose folder is
+ *  3. unless discover is off, every markdown file whose name is PLAN-n or TASK-n, whose folder is
  *     called plans/plan or tasks/task, or whose front matter says `type: plan` or `type: task`.
  *
  * A task belongs to the plan it names (planId / plan), else to the plan that lists it in its

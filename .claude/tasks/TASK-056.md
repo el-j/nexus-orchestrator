@@ -2,12 +2,13 @@
 
 **Plan:** PLAN-006  
 **Role:** api (dashboard HTML)  
-**Status:** todo  
+**Status:** done  
 **Dependencies:** TASK-055
 
 ## Goal
 
 Upgrade the embedded dashboard in `httpapi/dashboard.go` to give users full control over:
+
 1. **Provider panel** — shows `activeModel` tag, expandable model pills, add-provider modal, per-provider remove button
 2. **Task submission form** — ModelID dropdown (populated from all providers' models), ProviderHint dropdown (from provider names)
 3. **Badge coverage** — new `NO_PROVIDER` and `TOO_LARGE` badges
@@ -24,6 +25,7 @@ Upgrade the embedded dashboard in `httpapi/dashboard.go` to give users full cont
 ### A. Provider panel — enriched cards
 
 Each provider card shows:
+
 - Colour dot (green/red)
 - Provider name + kind badge
 - Active model tag (e.g. `[llama3.2]`) when online
@@ -35,6 +37,7 @@ Below the provider list: **"+ Add Provider"** button → opens `#add-provider-di
 ### B. Add-Provider modal (`#add-provider-dialog`)
 
 Fields:
+
 - Name (text, required)
 - Kind (select: lmstudio / ollama / openaicompat / anthropic)
 - Base URL (text, shown when kind ≠ anthropic)
@@ -46,6 +49,7 @@ On submit: `POST /api/providers` with JSON body → on success reload providers,
 ### C. Task submission form (collapsible panel)
 
 Below stats, a **"Submit Task"** expandable panel with:
+
 - Project Path (text)
 - Target File (text)
 - Instruction (textarea, 4 rows)
@@ -60,16 +64,27 @@ On submit: `POST /api/tasks` with full JSON body → shows success toast with ta
 
 ```js
 const map = {
-  QUEUED:'badge-queued', PROCESSING:'badge-processing', COMPLETED:'badge-completed',
-  FAILED:'badge-failed', CANCELLED:'badge-cancelled',
-  TOO_LARGE:'badge-toolarge', NO_PROVIDER:'badge-noprovider'
-}
+  QUEUED: 'badge-queued',
+  PROCESSING: 'badge-processing',
+  COMPLETED: 'badge-completed',
+  FAILED: 'badge-failed',
+  CANCELLED: 'badge-cancelled',
+  TOO_LARGE: 'badge-toolarge',
+  NO_PROVIDER: 'badge-noprovider',
+};
 ```
 
 CSS for new badges:
+
 ```css
-.badge-toolarge   { background: #451a03; color: #fdba74 }
-.badge-noprovider { background: #2d1561; color: #c4b5fd }
+.badge-toolarge {
+  background: #451a03;
+  color: #fdba74;
+}
+.badge-noprovider {
+  background: #2d1561;
+  color: #c4b5fd;
+}
 ```
 
 ### E. Task table — add ModelID column

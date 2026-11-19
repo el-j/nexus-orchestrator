@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -309,4 +310,62 @@ func TestNewAppAndWindowOptions(t *testing.T) {
 		t.Errorf("binding/asset server: %+v", opts)
 	}
 	_ = io.Discard
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestAttachOrStart_AttachesToHealthyDaemonOrStartsEmbeddedRuntime(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	origClient := probeClient
+	defer func() { probeClient = origClient }()
+
+	// 1. When a healthy Nexus daemon responds on ListenAddr, attachOrStart uses httpapi_client
+	// instead of opening a second database or starting embedded servers.
+	probeClient = &http.Client{
+		Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			if r.URL.Path == "/api/health" {
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(strings.NewReader(`{"status":"ok"}`)),
+					Header:     make(http.Header),
+				}, nil
+			}
+			return nil, errors.New("unexpected path")
+		}),
+	}
+	nonExistentDB := filepath.Join(t.TempDir(), "missing-dir", "sub", "never-opened.db")
+	app, cleanup, err := attachOrStart(context.Background(), bootstrap.Config{
+		DBPath:     nonExistentDB,
+		ListenAddr: "127.0.0.1:63987",
+		MCPAddr:    "127.0.0.1:63988",
+	}, nil)
+	if err != nil {
+		t.Fatalf("attachOrStart with healthy daemon failed: %v", err)
+	}
+	defer cleanup()
+	if app.GetServerAddr() != "http://127.0.0.1:63987" || app.brainSvc == nil || app.activitySvc == nil {
+		t.Errorf("attached app = %+v, want http://127.0.0.1:63987 with brain and activity clients", app)
+	}
+
+	// 2. When no daemon is reachable (or a non-Nexus service responds without status ok),
+	// attachOrStart boots the embedded runtime.
+	probeClient = &http.Client{
+		Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+			return nil, errors.New("connection refused")
+		}),
+	}
+	app2, cleanup2, err := attachOrStart(context.Background(), bootstrap.Config{
+		DBPath:     filepath.Join(t.TempDir(), "embedded.db"),
+		ListenAddr: "127.0.0.1:0",
+		MCPAddr:    "127.0.0.1:0",
+	}, nil)
+	if err != nil {
+		t.Fatalf("attachOrStart embedded failed: %v", err)
+	}
+	defer cleanup2()
+	if app2.brainSvc == nil || app2.activitySvc == nil {
+		t.Errorf("embedded app must wire brain and activity services: %+v", app2)
+	}
 }

@@ -1,22 +1,26 @@
 ---
 id: TASK-251
-title: "Architecture: Domain model + port contract for task-session binding"
+title: 'Architecture: Domain model + port contract for task-session binding'
 role: architecture
 planId: PLAN-038
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-13T16:00:00.000Z
 ---
 
 ## Context
+
 Tasks currently have no reference to the AI session that claimed or is executing them. The `Orchestrator` port has no methods for external agents to claim tasks or report status. This task adds the domain-level field and the port contract methods that all subsequent tasks depend on.
 
 ## Files to Read
+
 - `internal/core/domain/task.go`
 - `internal/core/domain/ai_session.go`
 - `internal/core/ports/ports.go`
 
 ## Implementation Steps
+
 1. Add `AISessionID string` field to `domain.Task` struct with JSON tag `"aiSessionId,omitempty"`.
 2. Add `ClaimTask(ctx context.Context, taskID string, sessionID string) (domain.Task, error)` to the `Orchestrator` interface in `ports.go`.
 3. Add `UpdateTaskStatus(ctx context.Context, taskID string, sessionID string, status domain.TaskStatus, logs string) (domain.Task, error)` to the `Orchestrator` interface.
@@ -24,6 +28,7 @@ Tasks currently have no reference to the AI session that claimed or is executing
 5. Add `AppendRoutedTaskID(ctx context.Context, sessionID string, taskID string) error` to the `AISessionRepository` interface in `ports.go`.
 
 ## Acceptance Criteria
+
 - [ ] `domain.Task` has `AISessionID` field
 - [ ] `Orchestrator` interface has `ClaimTask` and `UpdateTaskStatus` methods
 - [ ] `TaskRepository` interface has `GetTasksBySessionID` method

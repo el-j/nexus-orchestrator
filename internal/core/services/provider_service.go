@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -91,6 +93,8 @@ func (o *OrchestratorService) TriggerScan(ctx context.Context) ([]domain.Discove
 	o.scanMu.Unlock()
 
 	o.discovery.InvalidateHealthCache()
+	// Refill the cache in the background, so the next request does not pay for every probe.
+	go o.discovery.ListProviders()
 
 	// Tell connected UIs so they refresh now instead of at their next poll.
 	o.mu.Lock()
@@ -129,8 +133,18 @@ func (o *OrchestratorService) PromoteProvider(ctx context.Context, discoveredID 
 	baseURL := found.BaseURL
 	if found.Kind == domain.ProviderKindCLI && found.CLIPath != "" {
 		// A command-line AI tool has a path, not a URL; "-p" is the non-interactive print mode
-		// of claude, the tool this kind is for.
+		// of claude. Claude gets stream-json (live text, token usage and the plan's own quota
+		// reading). Agy (Antigravity) takes its prompt on stdin and needs no flag. Copilot takes the prompt on stdin without -p (its -p wants the text as a
+		// value) and gets -s (answer only) and --no-ask-user (see llm_cli).
 		baseURL = found.CLIPath + " -p"
+		switch strings.TrimSuffix(strings.ToLower(filepath.Base(found.CLIPath)), ".exe") {
+		case "claude":
+			baseURL += " --output-format stream-json"
+		case "copilot":
+			baseURL = found.CLIPath + " -s --no-ask-user"
+		case "agy":
+			baseURL = found.CLIPath // the prompt goes on stdin; agy's -p wants the text as its value
+		}
 	} else if found.Status != domain.DiscoveryStatusReachable {
 		return fmt.Errorf("orchestrator: promote provider: provider %q is not reachable (status: %s)", found.Name, found.Status)
 	}

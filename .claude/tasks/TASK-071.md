@@ -3,15 +3,18 @@ id: TASK-071
 title: Process-level E2E smoke test script (build+run daemon)
 role: verify
 planId: PLAN-008
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-068, TASK-069, TASK-070]
 createdAt: 2026-03-10T14:00:00.000Z
 ---
 
 ## Context
+
 The old `scripts/dogfood-plan002.sh` is PLAN-002-specific and stale. We need a **generic, reusable** E2E smoke test script that builds the daemon binary, starts it as a real process, exercises the HTTP API + MCP endpoint, and verifies results. This script can be run by CI or developers to prove the system works as a real binary, not just in-process httptest.
 
 ## Files to Read
+
 - `scripts/dogfood-plan002.sh` (existing script to replace)
 - `cmd/nexus-daemon/main.go` (daemon entry point)
 - `internal/adapters/inbound/httpapi/server.go` (HTTP endpoints)
@@ -40,6 +43,7 @@ The old `scripts/dogfood-plan002.sh` is PLAN-002-specific and stale. We need a *
 6. Use env vars: `NEXUS_HTTP_PORT` (default 163987), `NEXUS_MCP_PORT` (default 163988) for port override.
 
 ## Acceptance Criteria
+
 - [ ] `scripts/e2e-smoke.sh` exists and is executable (`chmod +x`)
 - [ ] Script builds daemon, starts it, runs at least 9 tests, stops daemon, cleans up
 - [ ] Script exits 0 when all tests pass (with or without a running LLM provider)
@@ -49,6 +53,7 @@ The old `scripts/dogfood-plan002.sh` is PLAN-002-specific and stale. We need a *
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0
 
 ## Anti-patterns to Avoid
+
 - NEVER hardcode absolute paths — use `$PROJECT_ROOT` or `$(dirname "$0")/..`
 - NEVER leave daemon processes running on failure — always `trap` cleanup
 - NEVER test features that require a live LLM (set expectations accordingly: task may go NO_PROVIDER)

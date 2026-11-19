@@ -3,7 +3,8 @@ id: TASK-143
 title: Fix ProviderInfo TypeScript type and ProviderStatus template
 role: frontend
 planId: PLAN-020
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-11T19:00:00.000Z
 ---
@@ -31,22 +32,22 @@ Change `ProviderInfo` field names from PascalCase to camelCase:
 ```typescript
 // BEFORE
 export interface ProviderInfo {
-  Name: string
-  Active: boolean
-  ActiveModel: string
-  Models: string[]
-  baseURL?: string
-  error?: string
+  Name: string;
+  Active: boolean;
+  ActiveModel: string;
+  Models: string[];
+  baseURL?: string;
+  error?: string;
 }
 
 // AFTER
 export interface ProviderInfo {
-  name: string
-  active: boolean
-  activeModel: string
-  models: string[]
-  baseURL?: string
-  error?: string
+  name: string;
+  active: boolean;
+  activeModel: string;
+  models: string[];
+  baseURL?: string;
+  error?: string;
 }
 ```
 
@@ -55,15 +56,15 @@ export interface ProviderInfo {
 Update every template reference to use the corrected camelCase names.
 There are exactly 6 occurrences:
 
-| Old reference           | New reference          |
-|-------------------------|------------------------|
-| `:key="p.Name"`         | `:key="p.name"`        |
-| `p.Active` (class)      | `p.active`             |
-| `p.Active` (span class) | `p.active`             |
-| `{{ p.Name }}`          | `{{ p.name }}`         |
+| Old reference               | New reference               |
+| --------------------------- | --------------------------- |
+| `:key="p.Name"`             | `:key="p.name"`             |
+| `p.Active` (class)          | `p.active`                  |
+| `p.Active` (span class)     | `p.active`                  |
+| `{{ p.Name }}`              | `{{ p.name }}`              |
 | `p.Active && p.ActiveModel` | `p.active && p.activeModel` |
-| `{{ p.ActiveModel }}`   | `{{ p.activeModel }}`  |
-| `!p.Active && p.error`  | `!p.active && p.error` |
+| `{{ p.ActiveModel }}`       | `{{ p.activeModel }}`       |
+| `!p.Active && p.error`      | `!p.active && p.error`      |
 
 ### 3. Verify `useProviders.ts`
 

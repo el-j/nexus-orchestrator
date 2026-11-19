@@ -3,7 +3,8 @@ id: TASK-313
 title: Split mcp/server.go into server.go (protocol) + tools.go (schemas + handlers)
 role: architecture
 planId: PLAN-047
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-305, TASK-310]
 createdAt: 2026-03-25T00:00:00.000Z
 ---

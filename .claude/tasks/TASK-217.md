@@ -3,15 +3,18 @@ id: TASK-217
 title: Fix silent error handling in frontend composables
 role: backend
 planId: PLAN-030
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-213]
 createdAt: 2025-07-25T00:00:00.000Z
 ---
 
 ## Context
+
 Multiple frontend composables have empty `catch {}` blocks that silently swallow errors from daemon communication, making debugging impossible: `useProviders.ts`, `useLogs.ts`, `useDiscovery.ts`. Additionally, `ProviderStatus.vue` calls `refresh()` without `await`, and `BacklogList.vue` catches promotion errors without showing toast notifications.
 
 ## Files to Read
+
 - `frontend/src/composables/useProviders.ts` — lines ~14-15 (silent catch)
 - `frontend/src/composables/useLogs.ts` — lines ~28-35 (silent malformed log catch)
 - `frontend/src/composables/useDiscovery.ts` — lines ~15-16, ~30-32 (silent catches)
@@ -19,6 +22,7 @@ Multiple frontend composables have empty `catch {}` blocks that silently swallow
 - `frontend/src/components/BacklogList.vue` — lines ~69-78 (no error toast on promote)
 
 ## Implementation Steps
+
 1. In `useProviders.ts`: replace `catch { /* silent fail */ }` with `catch (e) { console.warn('Failed to refresh providers:', e) }` and optionally expose an `error` ref
 2. In `useLogs.ts`: replace `catch { /* ignore malformed */ }` with `catch (e) { console.debug('Log parse fail:', event.data, e) }` — differentiate malformed data from network errors
 3. In `useDiscovery.ts`: add `console.warn` in both `refresh()` and `scanNow()` catch blocks
@@ -27,6 +31,7 @@ Multiple frontend composables have empty `catch {}` blocks that silently swallow
 6. In `WorkspaceScanner.ts` (VSCode ext): add `console.error` for file I/O failures instead of swallowing silently
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` exits 0
@@ -35,6 +40,7 @@ Multiple frontend composables have empty `catch {}` blocks that silently swallow
 - [ ] PrimeVue toast shows when promotion fails
 
 ## Anti-patterns to Avoid
+
 - NEVER use empty catch blocks — at minimum log the error
 - NEVER use `console.log` for errors — use `console.warn` or `console.error`
 - NEVER swallow network errors — they indicate daemon connectivity issues

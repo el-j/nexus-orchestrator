@@ -59,6 +59,12 @@ func WithDisableBackgroundWorkers() Option {
 	return func(s *OrchestratorService) { s.disableWorkers = true }
 }
 
+// WithUsageRepo sets the usage ledger: after every successful model call that reported its token
+// usage, one record is stored (see GetUsage).
+func WithUsageRepo(r ports.UsageRepository) Option {
+	return func(o *OrchestratorService) { o.usageRepo = r }
+}
+
 // WithPlanFileRepo sets the repository used to persist discovered plan files.
 func WithPlanFileRepo(r ports.DiscoveredPlanFileRepo) Option {
 	return func(o *OrchestratorService) { o.planFileRepo = r }
@@ -79,6 +85,10 @@ type runHandle struct {
 	ctx           context.Context
 	cancel        context.CancelFunc
 	userCancelled atomic.Bool // true when CancelTask (not shutdown) caused the abort
+	// chain is the ordered candidate providers of the task and ladder the model ladder that applies
+	// (nil without one); a failed verification steps up the ladder (see stepUp).
+	chain  []ports.LLMClient
+	ladder []string
 }
 
 // OrchestratorService implements ports.Orchestrator and drives the worker loop.
@@ -110,9 +120,13 @@ type OrchestratorService struct {
 	agentRepo          discoveredAgentStore
 	planFileRepo       ports.DiscoveredPlanFileRepo
 	commandRunner      ports.CommandRunner
-	brain              ports.BrainService // optional: project briefing for prompts and task memory
+	usageRepo          ports.UsageRepository // optional: the usage ledger
+	brain              ports.BrainService    // optional: project briefing for prompts and task memory
 	lastAgentScan      time.Time
+	lastScannedAgents  []domain.DiscoveredAgent
 	lastAgentScanMu    sync.Mutex
+	waitTimerMu        sync.Mutex
+	waitTimers         map[string]*time.Timer          // pending resume timers by task ID
 	signalFn           func(pid int, force bool) error // test seam; nil = real os signals
 	baseCtx            context.Context                 // cancelled by Stop: aborts every in-flight generation
 	baseCancel         context.CancelFunc
@@ -187,6 +201,12 @@ func (o *OrchestratorService) Stop() {
 		o.mu.Lock()
 		o.stopped = true
 		o.mu.Unlock()
+		o.waitTimerMu.Lock()
+		for _, tm := range o.waitTimers {
+			tm.Stop()
+		}
+		o.waitTimers = nil
+		o.waitTimerMu.Unlock()
 		// Abort in-flight generations first: without this Stop would wait out a
 		// provider request that can legitimately run for minutes.
 		o.baseCancel()

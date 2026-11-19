@@ -1,6 +1,7 @@
 # TASK-317: sys_scanner sub-agent enrichment from ~/.claude/projects JSONL
 
 **Plan:** PLAN-048
+**Status:** done
 **Role:** backend
 **Dependencies:** TASK-315
 

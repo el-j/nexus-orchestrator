@@ -190,4 +190,56 @@ describe('NexusClient', () => {
       await assertion;
     });
   });
+
+  describe('api token and waiting tasks', () => {
+    const task = (status: string, extra: Record<string, unknown> = {}) => ({
+      statusCode: 200,
+      result: {
+        id: 'w',
+        status,
+        logs: '',
+        projectPath: '',
+        targetFile: '',
+        instruction: '',
+        ...extra,
+      },
+      headers: {},
+    });
+
+    it('sends the API token as a bearer header when one is given, and none otherwise', () => {
+      const lastOptions = () =>
+        (HttpClient as unknown as { lastOptions: Record<string, unknown> }).lastOptions;
+      new NexusClient('http://127.0.0.1:63987', 'secret');
+      expect(lastOptions()).toMatchObject({ headers: { Authorization: 'Bearer secret' } });
+      new NexusClient('http://127.0.0.1:63987');
+      expect(lastOptions()).not.toHaveProperty('headers');
+    });
+
+    it('says when a WAITING task resumes, and names it in the timeout error', async () => {
+      const info = jest.spyOn(require('@actions/core'), 'info').mockImplementation(() => undefined);
+      mockGetJson.mockResolvedValue(task('WAITING', { waitUntil: '2026-06-01T12:00:00Z' }));
+      jest.useFakeTimers();
+      const waitPromise = client.waitForTask('w', 100);
+      const assertion = expect(waitPromise).rejects.toThrow(
+        'last status: WAITING, resumes 2026-06-01T12:00:00Z',
+      );
+      await jest.advanceTimersByTimeAsync(6_000);
+      jest.useRealTimers();
+      await assertion;
+      expect(info).toHaveBeenCalledWith(
+        expect.stringContaining('waiting until 2026-06-01T12:00:00Z'),
+      );
+      info.mockRestore();
+    });
+
+    it('keeps the plain timeout text for a task that does not wait', async () => {
+      mockGetJson.mockResolvedValue(task('NO_PROVIDER'));
+      jest.useFakeTimers();
+      const waitPromise = client.waitForTask('w', 100);
+      const assertion = expect(waitPromise).rejects.toThrow('(last status: NO_PROVIDER)');
+      await jest.advanceTimersByTimeAsync(6_000);
+      jest.useRealTimers();
+      await assertion;
+    });
+  });
 });

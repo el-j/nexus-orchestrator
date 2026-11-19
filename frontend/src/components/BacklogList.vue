@@ -127,7 +127,10 @@ async function onPromote(id: string) {
   if (promoting.value) return;
   promoting.value = id;
   try {
-    await promoteTask(id);
+    const res = await promoteTask(id);
+    if (res?.warning) {
+      toast.add({ severity: 'warn', summary: 'Not Promoted', detail: res.warning, life: 5000 });
+    }
     emit('promoted', id);
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Promote Failed', detail: String(e), life: 5000 });

@@ -5,10 +5,16 @@
 
 class HttpClient {
   constructor(_userAgent, _handlers, _requestOptions) {
-    // intentionally empty — tests override prototype methods via jest.fn()
+    // Tests override prototype methods via jest.fn(); the options of the latest client are kept
+    // so a test can check what a wrapper configured (headers, retries).
+    HttpClient.lastOptions = _requestOptions;
   }
-  postJson(_url, _obj) { return Promise.resolve({ statusCode: 0, result: null, headers: {} }); }
-  getJson(_url) { return Promise.resolve({ statusCode: 0, result: null, headers: {} }); }
+  postJson(_url, _obj) {
+    return Promise.resolve({ statusCode: 0, result: null, headers: {} });
+  }
+  getJson(_url) {
+    return Promise.resolve({ statusCode: 0, result: null, headers: {} });
+  }
 }
 
 const HttpCodes = {

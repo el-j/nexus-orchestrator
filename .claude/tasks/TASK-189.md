@@ -1,7 +1,8 @@
 ---
 id: TASK-189
-title: "Orchestrator hardening: startup recovery, path normalization, queue cap, retry limit"
-status: todo
+title: 'Orchestrator hardening: startup recovery, path normalization, queue cap, retry limit'
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 priority: high
 role: backend
 dependencies: none
@@ -25,10 +26,12 @@ Harden `OrchestratorService` with four production-safety features: re-queue task
 ## Scope
 
 ### Files to modify
+
 - `internal/core/domain/task.go` — add `RetryCount int` field
 - `internal/core/services/orchestrator.go` — add startup recovery, path normalization, queue cap check, retry logic (max 3 retries before StatusFailed)
 
 ### Files to create
+
 - `internal/core/services/orchestrator_hardening_test.go` — unit tests for each new behavior
 
 ## Implementation
@@ -39,6 +42,7 @@ Harden `OrchestratorService` with four production-safety features: re-queue task
 4. **Retry limit** — In `runWorker()`, on LLM error: if `task.RetryCount < MaxRetries (3)`, increment `RetryCount`, set status back to `StatusQueued`, re-signal `workCh`. On 3rd failure, set `StatusFailed`.
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` passes
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./internal/core/services/...` passes
 - [ ] A task whose status is `PROCESSING` at startup is re-queued on the next `NewOrchestrator()` call (test proves it)

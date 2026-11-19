@@ -3,7 +3,8 @@ id: TASK-023
 title: System tray — show/hide window + quick stats + task notifications
 role: devops
 planId: PLAN-002
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-019, TASK-020]
 createdAt: 2026-03-09T12:00:00.000Z
 ---
@@ -24,6 +25,7 @@ createdAt: 2026-03-09T12:00:00.000Z
 1. **Choose tray library**: Use `github.com/fyne-io/systray` (already common with Wails) or Wails built-in menu system via `github.com/wailsapp/wails/v2/pkg/menu`. Prefer Wails native menus to avoid CGO complications.
 
 2. **Implement `tray.go`** using Wails `*menu.Menu`:
+
    ```go
    package tray
 

@@ -1,17 +1,20 @@
 ---
 id: TASK-043
-title: "QA: tests for token estimation, pre-flight guard, and adapter ContextLimit()"
+title: 'QA: tests for token estimation, pre-flight guard, and adapter ContextLimit()'
 role: qa
 planId: PLAN-004
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-039, TASK-040, TASK-041, TASK-042]
 createdAt: 2026-03-10T00:00:00.000Z
 ---
 
 ## Context
-The context-window guard is a critical safety mechanism.  It must be exhaustively tested: correct token estimation, correct abort behaviour (StatusTooLarge), bypass behaviour when limit=0, and session-history accumulation still works after the guard passes.
+
+The context-window guard is a critical safety mechanism. It must be exhaustively tested: correct token estimation, correct abort behaviour (StatusTooLarge), bypass behaviour when limit=0, and session-history accumulation still works after the guard passes.
 
 ## Files to Read
+
 - `internal/core/services/orchestrator_test.go` (existing stubs: memRepo, noopWriter, mockLLMClient, chatTrackingLLM)
 - `internal/core/services/discovery_test.go` (mockLLMClient definition)
 - `internal/core/services/orchestrator.go` (estimateTokens, processNext)
@@ -19,7 +22,9 @@ The context-window guard is a critical safety mechanism.  It must be exhaustivel
 ## Implementation Steps
 
 ### 1. Extend `mockLLMClient` in `discovery_test.go`
+
 Add a `contextLimit` field and implement `ContextLimit()`:
+
 ```go
 type mockLLMClient struct {
     alive        bool
@@ -30,9 +35,11 @@ type mockLLMClient struct {
 }
 func (m *mockLLMClient) ContextLimit() int { return m.contextLimit }
 ```
+
 This is a non-breaking extension — existing tests construct `mockLLMClient{alive: true, name: "mock", code: "..."}` and the zero-value `contextLimit: 0` means "no limit enforced", so all existing tests continue to pass.
 
 ### 2. Add table-driven unit test for `estimateTokens` (in `orchestrator_test.go`)
+
 ```go
 func TestEstimateTokens(t *testing.T) {
     cases := []struct {
@@ -55,7 +62,8 @@ func TestEstimateTokens(t *testing.T) {
     }
 }
 ```
-**NOTE**: Export `EstimateTokens` from the `services` package (rename `estimateTokens` → `EstimateTokens`) so the `_test` package can call it.  Or keep it unexported and use the `package services` test variant — choose whichever the existing tests already use.
+
+**NOTE**: Export `EstimateTokens` from the `services` package (rename `estimateTokens` → `EstimateTokens`) so the `_test` package can call it. Or keep it unexported and use the `package services` test variant — choose whichever the existing tests already use.
 
 Actually — since tests are in `package services_test` (external test package), you must either:  
 a. Export `EstimateTokens` (preferred — it's a useful utility), OR  
@@ -64,6 +72,7 @@ b. Write tests for the observable side-effect (StatusTooLarge) only.
 Use approach **b** (black-box via orchestrator) to avoid changing the public API unnecessarily.
 
 ### 3. Add `TestOrchestrator_PreFlight_TooLarge` test
+
 ```go
 func TestOrchestrator_PreFlight_TooLarge(t *testing.T) {
     repo := newMemRepo()
@@ -99,7 +108,9 @@ func TestOrchestrator_PreFlight_TooLarge(t *testing.T) {
 ```
 
 ### 4. Add `TestOrchestrator_PreFlight_NoLimitSkipsCheck` test
+
 When `ContextLimit()` returns 0, the task should process normally:
+
 ```go
 func TestOrchestrator_PreFlight_NoLimitSkipsCheck(t *testing.T) {
     repo := newMemRepo()
@@ -114,7 +125,9 @@ func TestOrchestrator_PreFlight_NoLimitSkipsCheck(t *testing.T) {
 ```
 
 ### 5. Add `TestOrchestrator_PreFlight_WithinLimit_Completes` test
+
 When estimated tokens ≤ limit - 512, normal completion should occur:
+
 ```go
 func TestOrchestrator_PreFlight_WithinLimit_Completes(t *testing.T) {
     repo := newMemRepo()
@@ -129,6 +142,7 @@ func TestOrchestrator_PreFlight_WithinLimit_Completes(t *testing.T) {
 ```
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./internal/core/services/...` exits 0
 - [ ] `TestOrchestrator_PreFlight_TooLarge` passes (StatusTooLarge reached, Logs contain "context too large")
@@ -137,6 +151,7 @@ func TestOrchestrator_PreFlight_WithinLimit_Completes(t *testing.T) {
 - [ ] All pre-existing tests continue to pass (no regressions)
 
 ## Anti-patterns to Avoid
+
 - NEVER use `time.Sleep` longer than necessary — poll with 200ms intervals, timeout at 10s
 - NEVER share `mock` state without `sync.Mutex` — the `contextLimit` field read from the worker goroutine must be safe (it is okay if it is read-only after construction, but verify)
 - NEVER add tests that depend on timing — use the waitCompleted helper pattern

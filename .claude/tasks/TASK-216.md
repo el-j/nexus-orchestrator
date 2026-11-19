@@ -3,20 +3,24 @@ id: TASK-216
 title: Decompose processNext god method
 role: backend
 planId: PLAN-030
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-208, TASK-209]
 createdAt: 2025-07-25T00:00:00.000Z
 ---
 
 ## Context
+
 `processNext()` in `orchestrator.go` is ~177 lines handling provider selection, token estimation, session loading, chat vs fallback, retries, file writing, and status updates. This god method violates single responsibility and makes debugging difficult. It should be decomposed into focused helper methods.
 
 ## Files to Read
+
 - `internal/core/services/orchestrator.go` — lines ~888-1065 (`processNext` method)
 - `internal/core/services/orchestrator.go` — line ~1140 (`estimateTokens` helper)
 - `internal/core/services/orchestrator_test.go` — existing test coverage for processNext behavior
 
 ## Implementation Steps
+
 1. Extract `selectProviderForTask(task) (ProviderInfo, error)` — provider selection + context limit + token estimation logic
 2. Extract `buildChatContext(task, session) ([]domain.Message, error)` — session loading, context file reading, message construction, token budget trimming
 3. Extract `executeGeneration(ctx, task, provider, messages) (string, error)` — chat vs fallback dispatch, retry loop
@@ -27,6 +31,7 @@ createdAt: 2025-07-25T00:00:00.000Z
 8. Run existing tests to verify zero regressions
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` exits 0
@@ -35,6 +40,7 @@ createdAt: 2025-07-25T00:00:00.000Z
 - [ ] Zero behavior changes — same test results before and after
 
 ## Anti-patterns to Avoid
+
 - NEVER change behavior during a refactor — extract only
 - NEVER export helper methods that are implementation details
 - NEVER import adapters from core services (hexagonal dependency rule)

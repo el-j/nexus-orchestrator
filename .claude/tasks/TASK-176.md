@@ -3,15 +3,18 @@ id: TASK-176
 title: HTTP API — backlog CRUD, promote, and update endpoints
 role: api
 planId: PLAN-024
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-175]
 createdAt: 2026-03-11T22:00:00.000Z
 ---
 
 ## Context
+
 The GUI and CLI need HTTP endpoints to create drafts, list per-project backlogs, promote items, and update task fields. These consume the new Orchestrator port methods.
 
 ## Files to Read
+
 - `internal/adapters/inbound/httpapi/server.go` — existing chi router, task handlers
 - `internal/core/ports/ports.go` — updated Orchestrator interface
 - `internal/core/domain/task.go` — new statuses and fields
@@ -19,6 +22,7 @@ The GUI and CLI need HTTP endpoints to create drafts, list per-project backlogs,
 ## Implementation Steps
 
 1. Add routes to the chi router:
+
    ```go
    r.Post("/api/tasks/draft", s.handleCreateDraft)
    r.Get("/api/tasks/backlog/{projectPath}", s.handleGetBacklog)
@@ -52,6 +56,7 @@ The GUI and CLI need HTTP endpoints to create drafts, list per-project backlogs,
 6. Extend SSE event types to include `task_promoted` events.
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` exits 0
@@ -62,6 +67,7 @@ The GUI and CLI need HTTP endpoints to create drafts, list per-project backlogs,
 - [ ] Existing `POST /api/tasks` is unchanged (additive only)
 
 ## Anti-patterns to Avoid
+
 - NEVER import adapters from core services (hexagonal dependency rule)
 - NEVER skip `fmt.Errorf("httpapi: operation: %w", err)` error wrapping
 - NEVER break existing API endpoints — only add new ones

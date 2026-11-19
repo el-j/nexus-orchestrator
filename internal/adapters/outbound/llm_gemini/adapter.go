@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"nexus-orchestrator/internal/adapters/outbound/httperr"
+	"nexus-orchestrator/internal/adapters/outbound/usagebox"
 	"strings"
 	"time"
 
@@ -22,10 +24,11 @@ const (
 
 // Adapter implements ports.LLMClient for the Google Gemini REST API.
 type Adapter struct {
-	baseURL    string
-	apiKey     string
-	model      string
-	httpClient *http.Client
+	baseURL      string
+	apiKey       string
+	model        string
+	httpClient   *http.Client
+	usagebox.Box // the usage of the last call, for ports.UsageReporter
 }
 
 // NewAdapter creates a new Google Gemini LLM adapter.
@@ -140,10 +143,7 @@ func (a *Adapter) GenerateCode(ctx context.Context, prompt string) (string, erro
 
 // Chat sends a multi-turn conversation to the Gemini generateContent endpoint.
 func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, error) {
-	reqBody, err := a.buildGenerateRequest(messages)
-	if err != nil {
-		return "", fmt.Errorf("gemini: marshal request: %w", err)
-	}
+	reqBody := a.buildGenerateRequest(messages)
 
 	url := fmt.Sprintf("%s/v1beta/models/%s:generateContent", a.baseURL, a.model)
 	req, err := a.newRequest(ctx, http.MethodPost, url, bytes.NewReader(reqBody))
@@ -158,15 +158,15 @@ func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, 
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return "", fmt.Errorf("gemini: rate limited (429)")
+	if err := httperr.FromResponse("gemini", resp, time.Now()); err != nil {
+		return "", err
 	}
 	if resp.StatusCode != http.StatusOK {
 		respBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		return "", fmt.Errorf("gemini: unexpected status %d: %s", resp.StatusCode, string(respBytes))
 	}
 
-	return decodeCandidate(resp.Body)
+	return a.decodeCandidate(resp.Body)
 }
 
 // geminiCandidates is a generateContent reply, whole or one streamed chunk of it.
@@ -183,14 +183,33 @@ type geminiCandidates struct {
 	Error *struct {
 		Message string `json:"message"`
 	} `json:"error"`
+	UsageMetadata *struct {
+		PromptTokens int `json:"promptTokenCount"`
+		OutputTokens int `json:"candidatesTokenCount"`
+		CachedTokens int `json:"cachedContentTokenCount"`
+	} `json:"usageMetadata"`
+	ModelVersion string `json:"modelVersion"`
 }
 
-// decodeCandidate reads a non-streaming generateContent reply and returns its text.
-func decodeCandidate(body io.Reader) (string, error) {
+// usage returns what the reply says it consumed, with the configured model when it names none.
+func (g geminiCandidates) usage(model string) domain.Usage {
+	u := domain.Usage{Model: model}
+	if g.ModelVersion != "" {
+		u.Model = g.ModelVersion
+	}
+	if g.UsageMetadata != nil {
+		u.InputTokens, u.OutputTokens, u.CachedTokens = g.UsageMetadata.PromptTokens, g.UsageMetadata.OutputTokens, g.UsageMetadata.CachedTokens
+	}
+	return u
+}
+
+// decodeCandidate reads a non-streaming generateContent reply, records its usage and returns its text.
+func (a *Adapter) decodeCandidate(body io.Reader) (string, error) {
 	var result geminiCandidates
 	if err := json.NewDecoder(io.LimitReader(body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("gemini: decode response: %w", err)
 	}
+	a.Set(result.usage(a.model))
 	if len(result.Candidates) == 0 || len(result.Candidates[0].Content.Parts) == 0 {
 		return "", fmt.Errorf("gemini: empty candidate response")
 	}
@@ -219,7 +238,9 @@ type geminiGenerateRequest struct {
 	SystemInstruction *geminiSystemInstruction `json:"systemInstruction,omitempty"`
 }
 
-func (a *Adapter) buildGenerateRequest(messages []domain.Message) ([]byte, error) {
+// buildGenerateRequest turns the chat messages into a Gemini request: system messages become the system
+// instruction, the rest the conversation.
+func (a *Adapter) buildGenerateRequest(messages []domain.Message) []byte {
 	var systemParts []geminiPart
 	var contents []geminiContent
 
@@ -253,9 +274,11 @@ func (a *Adapter) buildGenerateRequest(messages []domain.Message) ([]byte, error
 		req.SystemInstruction = &geminiSystemInstruction{Parts: systemParts}
 	}
 
-	return json.Marshal(req)
+	body, _ := json.Marshal(req) // a request of strings always encodes
+	return body
 }
 
+// newRequest builds an API request with the key header.
 func (a *Adapter) newRequest(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {

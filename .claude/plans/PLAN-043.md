@@ -1,6 +1,6 @@
 # PLAN-043 — Task Visibility & Extension Refresh
 
-**Status**: active  
+**Status**: completed  
 **Created**: 2026-03-14
 
 ## Problem Statement
@@ -12,17 +12,17 @@ installed VSIX cannot reach the daemon.
 
 Beyond the port issue, three UX gaps were identified:
 
-| # | Symptom | Root cause |
-|---|---------|-----------|
-| 1 | Task Queue view is empty even when tasks exist | `GET /api/tasks` only returns QUEUED + PROCESSING; completed tasks vanish silently |
-| 2 | Task Queue shows empty list when daemon is offline, with no indicator | `getChildren()` silently returns `[]` on fetch error |
-| 3 | WorkspaceOrchView shows `.claude/orchestrator.json` tasks only, never live daemon tasks | The view reads local files; it does not query the daemon |
-| 4 | Old VSIX hardcoded to port 9999 | Built before 9999→63987 port migration |
+| #   | Symptom                                                                                 | Root cause                                                                         |
+| --- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 1   | Task Queue view is empty even when tasks exist                                          | `GET /api/tasks` only returns QUEUED + PROCESSING; completed tasks vanish silently |
+| 2   | Task Queue shows empty list when daemon is offline, with no indicator                   | `getChildren()` silently returns `[]` on fetch error                               |
+| 3   | WorkspaceOrchView shows `.claude/orchestrator.json` tasks only, never live daemon tasks | The view reads local files; it does not query the daemon                           |
+| 4   | Old VSIX hardcoded to port 9999                                                         | Built before 9999→63987 port migration                                             |
 
 ## Port Reference (NEXUS T9 keypad: 63987)
 
 | Service    | Port  | Mnemonic |
-|------------|-------|----------|
+| ---------- | ----- | -------- |
 | HTTP API   | 63987 | NEXUS    |
 | MCP server | 63988 | NEXUS+1  |
 | Vite dev   | 63989 | NEXUS+2  |
@@ -66,9 +66,9 @@ Beyond the port issue, three UX gaps were identified:
 
 ## Task Breakdown
 
-| Task     | Title                                       | Role        |
-|----------|---------------------------------------------|-------------|
-| TASK-272 | TaskQueueProvider: all tasks + offline node | frontend    |
-| TASK-273 | WorkspaceOrchView: live daemon tasks        | frontend    |
-| TASK-274 | Rebuild VSIX + install                      | build       |
-| TASK-275 | Start daemon + end-to-end validation        | qa          |
+| Task     | Title                                       | Role     |
+| -------- | ------------------------------------------- | -------- |
+| TASK-272 | TaskQueueProvider: all tasks + offline node | frontend |
+| TASK-273 | WorkspaceOrchView: live daemon tasks        | frontend |
+| TASK-274 | Rebuild VSIX + install                      | build    |
+| TASK-275 | Start daemon + end-to-end validation        | qa       |

@@ -32,7 +32,7 @@ Project MCP server `nexus` is declared in `.mcp.json` (http://localhost:63988/mc
 ## Rules (enforced where noted)
 
 - Write the failing test first, then the code. Black-box behaviour goes in `internal/e2e` or `frontend/e2e`.
-- Small files: at most 500 lines (`scripts/check-file-size.sh`, CI). Split instead of growing.
+- Small files: at most 500 lines, tests 800 (`scripts/check-file-size.sh`, CI). Split instead of growing.
 - Document everything exported: Go doc comments (revive `exported`), TSDoc and a description comment on every Vue component (`npm run check:docs`).
 - Do not widen an interface without updating the surface matrix, the API reference and the changelog.
 - Mutation testing is local only (`make mutation`); never add it to a workflow.

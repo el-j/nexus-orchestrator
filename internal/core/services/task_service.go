@@ -57,18 +57,18 @@ func (o *OrchestratorService) GetTask(id string) (domain.Task, error) {
 	return t, nil
 }
 
-// GetQueue returns all pending (QUEUED or PROCESSING) tasks across every project.
+// GetQueue returns all pending (QUEUED, PROCESSING or WAITING) tasks across every project.
 // Use GetQueueForProject for external-agent or per-project views.
 func (o *OrchestratorService) GetQueue() ([]domain.Task, error) {
 	return o.repo.GetPending(o.dbCtx())
 }
 
-// GetQueueForProject returns QUEUED and PROCESSING tasks for a single project.
+// GetQueueForProject returns QUEUED, PROCESSING and WAITING tasks for a single project.
 // projectPath is normalised with filepath.Clean before the query.
 func (o *OrchestratorService) GetQueueForProject(projectPath string) ([]domain.Task, error) {
 	return o.repo.GetByProjectPathAndStatus(o.dbCtx(),
 		filepath.Clean(projectPath),
-		domain.StatusQueued, domain.StatusProcessing,
+		domain.StatusQueued, domain.StatusProcessing, domain.StatusWaiting,
 	)
 }
 
@@ -87,6 +87,15 @@ func (o *OrchestratorService) GetTasksForProject(projectPath string) ([]domain.T
 func (o *OrchestratorService) CancelTask(id string) error {
 	// First try QUEUED → CANCELLED
 	ok, err := o.repo.UpdateStatusIfCurrent(o.dbCtx(), id, domain.StatusQueued, domain.StatusCancelled)
+	if err != nil {
+		return fmt.Errorf("orchestrator: cancel task: %w", err)
+	}
+	if ok {
+		o.emit(id, domain.StatusCancelled)
+		return nil
+	}
+	// A task waiting for a quota reset can be cancelled like a queued one.
+	ok, err = o.repo.UpdateStatusIfCurrent(o.dbCtx(), id, domain.StatusWaiting, domain.StatusCancelled)
 	if err != nil {
 		return fmt.Errorf("orchestrator: cancel task: %w", err)
 	}
@@ -310,8 +319,12 @@ func (o *OrchestratorService) ClaimTask(ctx context.Context, taskID string, sess
 			sess.ProjectPath, task.ProjectPath)
 	}
 
-	// Atomically transition QUEUED → PROCESSING.
+	// Atomically transition QUEUED → PROCESSING. A task the engine could not place on any provider
+	// (NO_PROVIDER) may also be taken by an agent: with no model to run it, the agent is the way to do it.
 	ok, err := repo.UpdateStatusIfCurrent(ctx, taskID, domain.StatusQueued, domain.StatusProcessing)
+	if err == nil && !ok {
+		ok, err = repo.UpdateStatusIfCurrent(ctx, taskID, domain.StatusNoProvider, domain.StatusProcessing)
+	}
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("orchestrator: claim task: %w", err)
 	}
@@ -381,21 +394,17 @@ func (o *OrchestratorService) UpdateTaskStatus(ctx context.Context, taskID strin
 	task.Status = status
 	task.Logs = logs
 
-	evtType := ports.EventTaskFailed
-	if status == domain.StatusCompleted {
-		evtType = ports.EventTaskCompleted
-	}
-	o.dispatch(ports.TaskEvent{
-		Type:   evtType,
-		TaskID: taskID,
-		Status: status,
-	})
+	o.emit(taskID, status)
 	return task, nil
 }
 
 // HeartbeatTask keeps a PROCESSING task alive, preventing the watchdog from failing it.
 func (o *OrchestratorService) HeartbeatTask(ctx context.Context, taskID string, sessionID string) error {
-	task, err := o.repo.GetByID(ctx, taskID)
+	o.mu.Lock()
+	repo := o.repo
+	o.mu.Unlock()
+
+	task, err := repo.GetByID(ctx, taskID)
 	if err != nil {
 		return fmt.Errorf("heartbeat task: %w", err)
 	}
@@ -406,7 +415,7 @@ func (o *OrchestratorService) HeartbeatTask(ctx context.Context, taskID string, 
 		return fmt.Errorf("heartbeat task: not claimed by session %s", sessionID)
 	}
 	// UpdateStatusIfCurrent touches UpdatedAt
-	ok, err := o.repo.UpdateStatusIfCurrent(ctx, task.ID, domain.StatusProcessing, domain.StatusProcessing)
+	ok, err := repo.UpdateStatusIfCurrent(ctx, task.ID, domain.StatusProcessing, domain.StatusProcessing)
 	if err != nil {
 		return fmt.Errorf("heartbeat task: update status: %w", err)
 	}

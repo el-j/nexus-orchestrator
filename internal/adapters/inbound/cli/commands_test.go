@@ -2,12 +2,15 @@ package cli_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"nexus-orchestrator/internal/adapters/inbound/cli"
 	"nexus-orchestrator/internal/core/domain"
@@ -254,5 +257,173 @@ func TestConnectCmd_ReportsWithoutWritingAndWritesOnRequest(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(cfg); !strings.Contains(string(b), "http://127.0.0.1:1/mcp") {
 		t.Errorf("the endpoint from NEXUS_MCP_URL must be used: %s", b)
+	}
+}
+
+type usageScripted struct {
+	scriptedOrch
+	sums  []domain.UsageSummary
+	err   error
+	since time.Time
+}
+
+func (u *usageScripted) GetUsage(_ context.Context, since time.Time) ([]domain.UsageSummary, error) {
+	u.since = since
+	return u.sums, u.err
+}
+
+func TestUsageCmd(t *testing.T) {
+	orch := &usageScripted{sums: []domain.UsageSummary{
+		{Provider: "Anthropic", Model: "opus", Role: "architect", Calls: 2, InputTokens: 300, OutputTokens: 120, CachedTokens: 30, CostUSD: 0.75},
+		{Provider: "Ollama", Model: "qwen", Calls: 1, InputTokens: 50, OutputTokens: 5},
+	}}
+	out, err := execute(orch, nil, "usage", "--since", "7d")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Provider", "Anthropic", "opus", "architect", "300", "0.7500", "Total", "350", "125"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q:\n%s", want, out)
+		}
+	}
+	if d := time.Since(orch.since); d < 7*24*time.Hour-time.Minute || d > 7*24*time.Hour+time.Minute {
+		t.Errorf("since = %v", orch.since)
+	}
+
+	orch.sums = nil
+	if out, _ := execute(orch, nil, "usage"); !strings.Contains(out, "No usage recorded") {
+		t.Errorf("empty ledger: %q", out)
+	}
+	if _, err := execute(orch, nil, "usage", "--since", "yesterday"); err == nil || !strings.Contains(err.Error(), "invalid since") {
+		t.Errorf("bad window: %v", err)
+	}
+	orch.err = errors.New("ledger down")
+	if _, err := execute(orch, nil, "usage"); err == nil || !strings.Contains(err.Error(), "ledger down") {
+		t.Errorf("ledger error: %v", err)
+	}
+	if _, err := execute(&scriptedOrch{}, nil, "usage"); err == nil || !strings.Contains(err.Error(), "not available") {
+		t.Errorf("no ledger: %v", err)
+	}
+}
+
+type routingScripted struct {
+	scriptedOrch
+	preview       domain.RoutingPreview
+	err           error
+	project, role string
+}
+
+func (r *routingScripted) PreviewRouting(_ context.Context, project, role string) (domain.RoutingPreview, error) {
+	r.project, r.role = project, role
+	return r.preview, r.err
+}
+
+func TestRoutingCmd(t *testing.T) {
+	hot := 0.93
+	ready := 0.4
+	orch := &routingScripted{preview: domain.RoutingPreview{
+		Role: "coder", Ladder: []string{"Ollama/*", "Anthropic/*"}, QuotaThreshold: 0.9,
+		Order: []domain.RoutingEntry{
+			{Position: 1, Provider: "Ollama", Model: "qwen", Rung: 0, CoolingUntil: time.Now().Add(time.Hour), CooldownReason: "Ollama: rate limited (429)"},
+			{Position: 2, Provider: "Anthropic", Model: "claude-sonnet", Rung: 1, Utilization: &ready},
+			{Position: 3, Provider: "Gemini", Model: "gemini-x", Rung: -1, Utilization: &hot},
+			{Position: 4, Provider: "LM Studio", Rung: -1},
+		}}}
+	out, err := execute(orch, nil, "routing", "--project", "/p", "--role", "coder")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Role: coder", "Ladder (cheapest first)", "cooling down until", "rate limited (429)", "ready, plan 40% used", "plan 93% used: tried after the others", "LM Studio", "ready"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q:\n%s", want, out)
+		}
+	}
+	if orch.project != "/p" || orch.role != "coder" {
+		t.Errorf("arguments: %q %q", orch.project, orch.role)
+	}
+
+	orch.preview = domain.RoutingPreview{QuotaThreshold: 0.9}
+	if out, _ := execute(orch, nil, "routing", "--project", "/p"); !strings.Contains(out, "Ladder: none") || !strings.Contains(out, "Role: -") {
+		t.Errorf("no ladder: %s", out)
+	}
+	if _, err := execute(orch, nil, "routing"); err == nil {
+		t.Error("--project is required")
+	}
+	orch.err = errors.New("no provider")
+	if _, err := execute(orch, nil, "routing", "--project", "/p"); err == nil || !strings.Contains(err.Error(), "no provider") {
+		t.Errorf("backend error: %v", err)
+	}
+	if _, err := execute(&scriptedOrch{}, nil, "routing", "--project", "/p"); err == nil || !strings.Contains(err.Error(), "not available") {
+		t.Errorf("no previewer: %v", err)
+	}
+}
+
+// The claude branch runs `claude mcp get/add`; here a stand-in `claude` on the PATH answers, and a stand-in
+// nexus-mcp-stdio on the PATH is what the Antigravity entry points at.
+func TestConnectCmd_ClaudeCodeAndTheStdioProxyFromThePath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell stand-ins")
+	}
+	bin := t.TempDir()
+	calls := filepath.Join(bin, "calls")
+	script := "#!/bin/sh\necho \"$@\" >> " + calls + "\nif [ \"$2\" = get ]; then exit 1; fi\nexit 0\n"
+	for _, name := range []string{"claude", "nexus-mcp-stdio"} {
+		if err := os.WriteFile(filepath.Join(bin, name), []byte(script), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("PATH", bin)
+	t.Setenv("NEXUS_MCP_URL", "")
+
+	run := func(args ...string) (string, error) {
+		var out bytes.Buffer
+		root := cli.NewRootCmd(&mockOrchestrator{}, &mockBrainService{})
+		root.SetOut(&out)
+		root.SetErr(&out)
+		root.SetArgs(append([]string{"connect"}, args...))
+		err := root.Execute()
+		return out.String(), err
+	}
+	if out, err := run("--agent", "claude"); err != nil || !strings.Contains(out, "not connected") {
+		t.Errorf("dry run: %v\n%s", err, out)
+	}
+	if out, err := run("--agent", "claude", "--write"); err != nil || !strings.Contains(out, "connected") {
+		t.Errorf("write: %v\n%s", err, out)
+	}
+	got, _ := os.ReadFile(calls)
+	if !strings.Contains(string(got), "mcp get nexus") || !strings.Contains(string(got), "mcp add") || !strings.Contains(string(got), "http://127.0.0.1:63988/mcp") {
+		t.Errorf("claude was asked: %q", got)
+	}
+	// Antigravity's entry points at the stdio proxy found on the PATH.
+	if err := os.MkdirAll(filepath.Join(home, ".gemini", "config"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".gemini", "config", "mcp_config.json"), []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := run("--agent", "antigravity", "--write"); err != nil {
+		t.Errorf("antigravity: %v\n%s", err, out)
+	}
+	if b, _ := os.ReadFile(filepath.Join(home, ".gemini", "config", "mcp_config.json")); !strings.Contains(string(b), filepath.Join(bin, "nexus-mcp-stdio")) {
+		t.Errorf("the stdio proxy from the PATH is used: %s", b)
+	}
+}
+
+func TestConnectCmd_NoHomeDirectoryIsAnError(t *testing.T) {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" || runtime.GOOS == "plan9" {
+		t.Skip("os.UserHomeDir falls back to the passwd entry here")
+	}
+	t.Setenv("HOME", "")
+	var out bytes.Buffer
+	root := cli.NewRootCmd(&mockOrchestrator{}, &mockBrainService{})
+	root.SetOut(&out)
+	root.SetErr(&out)
+	root.SilenceUsage, root.SilenceErrors = true, true
+	root.SetArgs([]string{"connect"})
+	if err := root.Execute(); err == nil || !strings.Contains(err.Error(), "home directory") {
+		t.Errorf("err = %v", err)
 	}
 }

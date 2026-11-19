@@ -3,15 +3,18 @@ id: TASK-184
 title: Fix make build-all zig 0.15.x musl cross-compilation
 role: devops
 planId: PLAN-025
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-12T10:00:00.000Z
 ---
 
 ## Context
+
 `make build-all` is failing with zig 0.15.2 because the musl linker cannot resolve `__errno_location`, `getaddrinfo`, `pthread_*`, and other glibc/musl symbols. This is a known zig 0.15.x breaking change. The fix is to add `-tags netgo,osusergo` (pure-Go DNS/user without libc) and `-extldflags='-static'` (static musl link) to all Linux cross-compilation targets in the Makefile.
 
 ## Files to Read
+
 - `Makefile` — all build targets, especially `build-linux-amd64`, `build-linux-arm64`, `build-windows-amd64`, `build-darwin-amd64`
 
 ## Implementation Steps
@@ -19,6 +22,7 @@ createdAt: 2026-03-12T10:00:00.000Z
 1. **Test baseline failure**: Run `make build-linux-amd64` — confirm current error.
 
 2. **Fix `BUILD_FLAGS` or add a `LINUX_BUILD_FLAGS`** variable at the top of the Makefile:
+
    ```makefile
    # For zig cc musl cross-compilation: pure-Go net/user avoids musl libc symbol issues
    LINUX_BUILD_FLAGS := -trimpath -tags netgo,osusergo
@@ -26,6 +30,7 @@ createdAt: 2026-03-12T10:00:00.000Z
    ```
 
 3. **Update `build-linux-amd64`** to use `LINUX_BUILD_FLAGS` and `LINUX_LDFLAGS`:
+
    ```makefile
    build-linux-amd64:
        @mkdir -p $(DIST)/linux_amd64
@@ -52,6 +57,7 @@ createdAt: 2026-03-12T10:00:00.000Z
 6. **Darwin amd64 from arm64**: On Apple Silicon building for x86_64 darwin, CGO cross-compilation requires the x86_64 macOS SDK (not available without Rosetta/Xcode). Add a comment documenting this limitation and use `CGO_ENABLED=0` with a fallback for darwin-amd64 cross-compilation, OR conditionally skip if cross-arch darwin build tools are not available. If `CGO_ENABLED=0` is used, sqlite3 won't work — so document this correctly. Best approach: print a warning and skip `build-darwin-amd64` if `GOOS != $(UNAME_S_lower)`.
 
    Alternative that works: use `-tags netgo,osusergo` with the macOS clang and `-arch x86_64`:
+
    ```makefile
    build-darwin-amd64:
        @mkdir -p $(DIST)/darwin_amd64
@@ -67,6 +73,7 @@ createdAt: 2026-03-12T10:00:00.000Z
 8. **Run tests**: `CGO_ENABLED=1 go test -race -count=1 ./...` to confirm no test regressions.
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0 (native)
 - [ ] `make build-linux-amd64` exits 0 with zig 0.15.x
@@ -75,6 +82,7 @@ createdAt: 2026-03-12T10:00:00.000Z
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` exits 0
 
 ## Anti-patterns to Avoid
+
 - NEVER remove CGO_ENABLED=1 from the native build — sqlite3 requires it
 - NEVER add global `-extldflags='-static'` to native darwin build — it will break dynamic framework linking
 - NEVER use CGO_ENABLED=0 silently — document any targets that fall back to pure Go

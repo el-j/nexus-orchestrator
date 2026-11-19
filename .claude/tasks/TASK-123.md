@@ -3,7 +3,8 @@ id: TASK-123
 title: Add macOS first-run instructions to getting-started.md
 role: docs
 planId: PLAN-017
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-11T01:00:00.000Z
 ---
@@ -24,5 +25,6 @@ In `docs/getting-started.md`, add a section after the initial download/install s
 3. Brief explanation: this is normal for open-source apps not (yet) notarized by Apple
 
 ## Definition of Done
+
 - getting-started.md contains macOS Gatekeeper workaround
 - Instructions are clear and accurate

@@ -1,9 +1,9 @@
 # TASK-287 — Frontend: Per-agent task timeline
 
 **Plan:** PLAN-044  
-**Status:** TODO  
+**Status:** done  
 **Layer:** Vue · frontend  
-**Depends on:** TASK-286  
+**Depends on:** TASK-286
 
 ## Objective
 

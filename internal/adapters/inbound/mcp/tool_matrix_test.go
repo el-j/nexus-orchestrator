@@ -48,6 +48,8 @@ func argValue(name, typ, itemType string) any {
 		return "ollama"
 	case "source":
 		return "mcp"
+	case "since":
+		return "24h"
 	case "base_url", "baseUrl":
 		return "http://127.0.0.1:1"
 	}
@@ -220,7 +222,7 @@ func allOrchOps() map[string]bool {
 		"ListProviderConfigs", "GetDiscoveredProviders", "TriggerScan", "PromoteProvider", "RegisterAISession",
 		"ListAISessions", "DeregisterAISession", "HeartbeatAISession", "HeartbeatTask", "ClaimTask", "UpdateTaskStatus",
 		"PurgeDisconnectedSessions", "GetDiscoveredAgents", "DelegateToNexus", "TerminateAISession",
-		"GetDiscoveredPlanFiles", "GetRuntimeConfig", "UpdateRuntimeConfig"}
+		"GetDiscoveredPlanFiles", "GetRuntimeConfig", "UpdateRuntimeConfig", "GetUsage", "PreviewRouting"}
 	m := map[string]bool{}
 	for _, o := range ops {
 		m[o] = true

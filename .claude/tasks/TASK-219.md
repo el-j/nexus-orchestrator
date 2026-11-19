@@ -3,21 +3,25 @@ id: TASK-219
 title: Add provider_config_repo + Wails binding tests
 role: qa
 planId: PLAN-030
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2025-07-25T00:00:00.000Z
 ---
 
 ## Context
+
 Two significant test gaps: (1) `provider_config_repo.go` has zero test coverage despite handling CRUD for provider configurations including UUID generation, upsert logic, and delete operations. (2) The Wails binding layer (`app.go`) has zero tests despite being the JavaScript-to-Go gateway for the desktop GUI.
 
 ## Files to Read
+
 - `internal/adapters/outbound/repo_sqlite/provider_config_repo.go` — full implementation
 - `internal/adapters/outbound/repo_sqlite/repo_test.go` — test patterns used by task repo
 - `internal/adapters/outbound/repo_sqlite/ai_session_repo_test.go` — test patterns used by AI session repo
 - `app.go` — Wails App struct, all bound methods
 
 ## Implementation Steps
+
 1. Create `internal/adapters/outbound/repo_sqlite/provider_config_repo_test.go`:
    - Test `SaveProviderConfig` — new config with auto-generated UUID, update existing config
    - Test `ListProviderConfigs` — empty list, multiple configs, ordering
@@ -35,6 +39,7 @@ Two significant test gaps: (1) `provider_config_repo.go` has zero test coverage 
 3. Verify all methods in App struct are tested at least once
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` exits 0
@@ -43,6 +48,7 @@ Two significant test gaps: (1) `provider_config_repo.go` has zero test coverage 
 - [ ] All tests pass with `-race` flag
 
 ## Anti-patterns to Avoid
+
 - NEVER test against a real database — use in-memory SQLite (`:memory:`)
 - NEVER skip error path testing
 - NEVER import core services in adapter tests — mock via interfaces

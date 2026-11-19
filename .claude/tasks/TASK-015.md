@@ -3,7 +3,8 @@ id: TASK-015
 title: HTTP API — task history endpoint + session management endpoints
 role: api
 planId: PLAN-002
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-09T12:00:00.000Z
 ---
@@ -22,6 +23,7 @@ The HTTP API currently only supports CRUD for active/queued tasks (`POST /api/ta
 ## Implementation Steps
 
 1. **Extend `TaskRepository` port** in `internal/core/ports/ports.go`:
+
    ```go
    // GetAll returns tasks filtered by optional status. Empty string = all tasks.
    GetAll(status string) ([]domain.Task, error)
@@ -36,30 +38,36 @@ The HTTP API currently only supports CRUD for active/queued tasks (`POST /api/ta
    - Reuse the existing task row scanning logic to avoid duplication.
 
 3. **Add `GET /api/tasks` route** (list all tasks, optional `?status=completed|failed|queued|processing`):
+
    ```
    GET /api/tasks?status=completed
    → 200 []domain.Task JSON array
    GET /api/tasks  (no filter)
    → 200 all tasks, newest first
    ```
+
    Register on the chi router: `r.Get("/api/tasks", s.handleListTasks)`.
-   
+
    Note: The existing `POST /api/tasks` uses a non-parameterized path — adding `GET /api/tasks` is additive and does not conflict.
 
 4. **Add session routes**:
+
    ```
    GET  /api/sessions/{projectPath}   → 200 []domain.Message JSON   (404 if no session)
    DELETE /api/sessions/{projectPath} → 204 No Content             (idempotent)
    ```
+
    `projectPath` is URL-encoded in the path: decode with `url.QueryUnescape(chi.URLParam(r, "projectPath"))` then `filepath.Clean`.
-   
+
    - `GET`: call `sessionRepo.GetOrCreate(projectPath)`, return `session.Messages` (empty array if no history).
    - `DELETE`: call `sessionRepo.Delete(projectPath)` — add this method to the `SessionRepository` port and implement in `repo_sqlite/session_repo.go`.
 
 5. **Add `Delete(projectPath string) error` to `SessionRepository` port** in `ports.go`:
+
    ```go
    Delete(projectPath string) error
    ```
+
    Implement as `DELETE FROM sessions WHERE project_path = ?`.
 
 6. **Update `Server` struct** to accept `sessionRepo ports.SessionRepository` as a dependency (it currently only holds `orch ports.Orchestrator`). Expose via `NewServer(orch, sessionRepo)`.

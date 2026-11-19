@@ -3,15 +3,18 @@ id: TASK-166
 title: HTTP API endpoints for provider discovery
 role: api
 planId: PLAN-023
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-164]
 createdAt: 2026-03-11T21:00:00.000Z
 ---
 
 ## Context
+
 The GUI and CLI need HTTP endpoints to query discovered providers, trigger a system scan, and promote a discovered provider to active status. These endpoints consume the `Orchestrator` port methods added in TASK-160 and implemented in TASK-164.
 
 ## Files to Read
+
 - `internal/adapters/inbound/httpapi/server.go` — existing chi router, provider endpoints
 - `internal/core/ports/ports.go` — `Orchestrator` interface with new methods
 - `internal/core/domain/provider.go` — `DiscoveredProvider` type
@@ -19,6 +22,7 @@ The GUI and CLI need HTTP endpoints to query discovered providers, trigger a sys
 ## Implementation Steps
 
 1. In `internal/adapters/inbound/httpapi/server.go`, add 3 new routes under the existing provider section:
+
    ```go
    r.Get("/api/providers/discovered", s.handleGetDiscoveredProviders)
    r.Post("/api/providers/discovered/scan", s.handleTriggerScan)
@@ -45,6 +49,7 @@ The GUI and CLI need HTTP endpoints to query discovered providers, trigger a sys
 5. Extend the SSE hub to emit a `provider_discovered` event when `TriggerScan` completes (fire after successful scan) with payload `{type: "provider_discovered", count: N}`.
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` exits 0
@@ -54,6 +59,7 @@ The GUI and CLI need HTTP endpoints to query discovered providers, trigger a sys
 - [ ] SSE event `provider_discovered` fires after scan
 
 ## Anti-patterns to Avoid
+
 - NEVER import adapters from core services (hexagonal dependency rule)
 - NEVER skip `fmt.Errorf("package: operation: %w", err)` error wrapping
 - NEVER expose internal error details in API responses — wrap with user-facing messages

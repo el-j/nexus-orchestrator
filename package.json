@@ -1,6 +1,7 @@
 {
   "name": "nexus-orchestrator-root",
   "private": true,
+  "license": "AGPL-3.0",
   "description": "Root workspace – pre-commit tooling only (not a publishable package)",
   "scripts": {
     "prepare": "husky",

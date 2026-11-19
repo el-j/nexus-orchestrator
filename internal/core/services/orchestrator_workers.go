@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// signalWorker wakes a worker without blocking when one is already awake.
 func (o *OrchestratorService) signalWorker() {
 	select {
 	case o.workCh <- struct{}{}:
@@ -15,6 +16,7 @@ func (o *OrchestratorService) signalWorker() {
 	}
 }
 
+// validateQueueAdmission refuses a new task when the service has stopped or the queue is full.
 func (o *OrchestratorService) validateQueueAdmission(task domain.Task) error {
 	o.mu.Lock()
 	stopped := o.stopped
@@ -192,6 +194,8 @@ func (o *OrchestratorService) runSessionCleanup() {
 	}
 }
 
+// runTaskWatchdog is the worker that, on a timer until the service stops, resumes waiting tasks whose limit
+// has reset and fails tasks that have been PROCESSING for five minutes without a run in this process.
 func (o *OrchestratorService) runTaskWatchdog() {
 	defer o.workerWg.Done()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -211,6 +215,9 @@ func (o *OrchestratorService) runTaskWatchdog() {
 		case <-o.stopCh:
 			return
 		case <-ticker.C:
+			if _, err := o.ResumeWaitingTasks(ctx, time.Now()); err != nil {
+				log.Printf("orchestrator: task watchdog: %v", err)
+			}
 			// 5 minutes timeout for processing tasks
 			tasks, err := o.repo.GetStaleProcessing(ctx, 5*time.Minute)
 			if err != nil {
@@ -218,6 +225,12 @@ func (o *OrchestratorService) runTaskWatchdog() {
 				continue
 			}
 			for _, t := range tasks {
+				o.runMu.Lock()
+				_, inProcess := o.running[t.ID]
+				o.runMu.Unlock()
+				if inProcess {
+					continue
+				}
 				log.Printf("orchestrator: task watchdog: task %s stuck in PROCESSING, failing", t.ID)
 				t.Status = domain.StatusFailed
 				t.Logs += "\n\n[System] Task timed out while PROCESSING. Marked as FAILED by watchdog."
@@ -225,6 +238,7 @@ func (o *OrchestratorService) runTaskWatchdog() {
 					log.Printf("orchestrator: task watchdog: update task %s fail: %v", t.ID, err)
 					continue
 				}
+				_ = o.repo.UpdateLogs(o.dbCtx(), t.ID, t.Logs)
 				// emit already publishes the task.failed event (under the lock that
 				// guards o.broadcaster); broadcasting again would duplicate it.
 				o.emit(t.ID, domain.StatusFailed)

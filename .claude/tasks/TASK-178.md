@@ -3,15 +3,18 @@ id: TASK-178
 title: Wails bindings — backlog lifecycle methods
 role: backend
 planId: PLAN-024
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-175]
 createdAt: 2026-03-11T22:00:00.000Z
 ---
 
 ## Context
+
 The desktop GUI communicates with the orchestrator via Wails bindings in `app.go`. The new backlog lifecycle methods need corresponding exported methods so Vue can call them.
 
 ## Files to Read
+
 - `app.go` — existing Wails bindings
 - `internal/core/ports/ports.go` — updated Orchestrator interface
 - `internal/core/domain/task.go` — Task struct with new fields
@@ -41,11 +44,13 @@ The desktop GUI communicates with the orchestrator via Wails bindings in `app.go
 2. Ensure all methods are exported (capitalized) so Wails auto-generates JS bindings.
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0
 - [ ] 4 new methods on App struct
 - [ ] Methods proxy to orchestrator port without adding business logic
 
 ## Anti-patterns to Avoid
+
 - NEVER add business logic in app.go — it's a thin proxy
 - NEVER import adapters from app.go (only ports and domain)

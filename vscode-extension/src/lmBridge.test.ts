@@ -160,7 +160,30 @@ describe('lmBridge', () => {
     state.models[0]!.sendRequest.mockRejectedValue(Object.assign(new Error(message), { code }));
     const resp = await chat({ model: 'gpt-4o', messages: [{ role: 'user', content: 'x' }] });
     expect(resp.status).toBe(status);
-    expect(((await resp.json()) as { error: { message: string } }).error.message).toBe(message);
+    expect(
+      ((await resp.json()) as { error: { message: string; status: number } }).error,
+    ).toMatchObject({
+      message,
+      status,
+    });
+  });
+
+  it('sends the mapped HTTP status inside a mid-stream SSE error event', async () => {
+    state.models[0]!.sendRequest.mockImplementation(async () => ({
+      text: (async function* () {
+        yield 'part';
+        throw Object.assign(new Error('monthly quota exceeded'), { code: 'Blocked' });
+      })(),
+    }));
+    const resp = await chat({
+      model: 'gpt-4o',
+      stream: true,
+      messages: [{ role: 'user', content: 'x' }],
+    });
+    expect(resp.status).toBe(200);
+    const text = await resp.text();
+    expect(text).toContain('"status":429');
+    expect(text).toContain('monthly quota exceeded');
   });
 
   it('copes with a failure that is not an Error', async () => {

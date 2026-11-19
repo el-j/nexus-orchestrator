@@ -3,7 +3,8 @@ id: TASK-304
 title: Fix repo_sqlite swallowed errors — tags JSON, PurgeDisconnected RowsAffected, discovered_agent LastSeen
 role: backend
 planId: PLAN-047
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-25T00:00:00.000Z
 ---

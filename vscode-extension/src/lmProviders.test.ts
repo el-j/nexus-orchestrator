@@ -54,6 +54,18 @@ describe('lmProviders', () => {
     expect(names).toEqual(['vscode-antigravity-gemini-3']);
   });
 
+  it('does not share the editor-internal helper models (utility, dictation cleanup)', async () => {
+    models.list = [
+      { id: 'gpt-4o', vendor: 'copilot' },
+      { id: 'copilot-utility', vendor: 'copilot' },
+      { id: 'copilot-utility-small', vendor: 'copilot' },
+      { id: 'copilot-dictation-cleanup-nano', vendor: 'copilot' },
+    ];
+    const c = fakeClient([]);
+    const names = await syncLmProviders(c as unknown as NexusClient, bridge, []);
+    expect(names).toEqual(['vscode-copilot-gpt-4o']);
+  });
+
   it('removes stale bridge providers and never touches others', async () => {
     const c = fakeClient([{ name: 'vscode-copilot-old' }, { name: 'LM Studio' }]);
     await syncLmProviders(c as unknown as NexusClient, bridge, []);

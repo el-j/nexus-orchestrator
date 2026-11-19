@@ -3,7 +3,7 @@ id: TASK-577
 planId: PLAN-073
 title: 'Real streaming from the Claude CLI'
 role: polish
-status: todo
+status: done
 createdAt: 2026-10-15
 ---
 

@@ -3,12 +3,28 @@
 // (63987 REST, 63988 MCP). Stays in the foreground until Playwright stops it.
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 const daemonBin = resolve(process.env.NEXUS_DAEMON_BIN ?? '../build/bin/nexus-daemon-e2e');
 const work = mkdtempSync(join(tmpdir(), 'nexus-pw-'));
+
+// A stand-in for the Antigravity client on the daemon's PATH, so the Providers view has a command-line
+// tool to discover and promote (it answers `agy models` and replies with a Go function named in the
+// prompt like the fake Ollama does).
+const bin = join(work, 'bin');
+mkdirSync(bin);
+const agy = join(bin, 'agy');
+writeFileSync(
+  agy,
+  `#!/bin/sh
+if [ "$1" = models ]; then printf 'agy-fast\tFast\n'; exit 0; fi
+name=$(sed -n 's/.*FUNC_\\([A-Za-z]*\\).*/\\1/p' | head -n 1)
+printf '\`\`\`go\\npackage main\\n\\nfunc %s() {}\\n\`\`\`\\n' "\${name:-Generated}"
+`,
+);
+chmodSync(agy, 0o755);
 
 function reply(prompt) {
   const name = /FUNC_([A-Za-z]+)/.exec(prompt)?.[1] ?? 'Generated';
@@ -42,6 +58,7 @@ const daemon = spawn(daemonBin, [], {
   env: {
     ...process.env,
     HOME: work,
+    PATH: `${bin}:${process.env.PATH}`,
     USERPROFILE: work,
     NEXUS_DB_PATH: join(work, 'nexus.db'),
     NEXUS_LISTEN_ADDR: '127.0.0.1:63987',

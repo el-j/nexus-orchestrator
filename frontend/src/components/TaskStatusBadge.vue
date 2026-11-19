@@ -31,6 +31,8 @@ const colorClass = computed(() => {
       return 'bg-blue-500/15 text-blue-400 border border-blue-500/20';
     case 'QUEUED':
       return 'bg-violet-500/15 text-violet-400 border border-violet-500/20';
+    case 'WAITING':
+      return 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/20';
     case 'FAILED':
       return 'bg-red-500/15 text-red-400 border border-red-500/20';
     case 'CANCELLED':

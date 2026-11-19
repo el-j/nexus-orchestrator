@@ -1,6 +1,7 @@
 # TASK-383: Frontend Vitest — view component tests (HistoryView, LiveActivityView, ProvidersView)
 
 **Plan:** PLAN-055 | **Wave:** 5 | **Status:** done | **Role:** testing
+**Status:** done
 
 ## Goal
 

@@ -10,6 +10,8 @@ import (
 
 // ----- Session & Agent Handlers -----
 
+// toolRegisterSession serves register_session: an agent announces itself so Nexus can show and
+// orchestrate it.
 func (s *Server) toolRegisterSession(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		AgentName   string `json:"agent_name"`
@@ -36,18 +38,16 @@ func (s *Server) toolRegisterSession(ctx context.Context, args json.RawMessage) 
 	return textResult(string(b)), nil
 }
 
+// toolGetAISessions serves get_ai_sessions: the sessions that are registered.
 func (s *Server) toolGetAISessions(ctx context.Context) (callToolResult, error) {
 	sessions, err := s.orch.ListAISessions(ctx)
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_ai_sessions: %w", err)
 	}
-	b, err := json.Marshal(sessions)
-	if err != nil {
-		return callToolResult{}, fmt.Errorf("mcp: get_ai_sessions: marshal: %w", err)
-	}
-	return textResult(string(b)), nil
+	return jsonResult("get_ai_sessions", sessions)
 }
 
+// toolClaimTask serves claim_task: a session takes a queued task to work on itself.
 func (s *Server) toolClaimTask(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		TaskID    string `json:"task_id"`
@@ -67,6 +67,8 @@ func (s *Server) toolClaimTask(ctx context.Context, args json.RawMessage) (callT
 	return textResult(string(b)), nil
 }
 
+// toolUpdateTaskStatus serves update_task_status: the claiming session reports progress, a result or a
+// failure.
 func (s *Server) toolUpdateTaskStatus(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		TaskID    string `json:"task_id"`
@@ -91,6 +93,7 @@ func (s *Server) toolUpdateTaskStatus(ctx context.Context, args json.RawMessage)
 	return textResult(string(b)), nil
 }
 
+// toolHeartbeatTask serves heartbeat_task: it keeps a claimed task from being released as stale.
 func (s *Server) toolHeartbeatTask(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		TaskID    string `json:"task_id"`
@@ -109,6 +112,8 @@ func (s *Server) toolHeartbeatTask(ctx context.Context, args json.RawMessage) (c
 	return textResult(string(b)), nil
 }
 
+// toolTerminateAISession serves terminate_ai_session: it ends a registered session, with force when the
+// process does not stop.
 func (s *Server) toolTerminateAISession(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		SessionID string `json:"session_id"`
@@ -127,6 +132,7 @@ func (s *Server) toolTerminateAISession(ctx context.Context, args json.RawMessag
 	return textResult(string(b)), nil
 }
 
+// toolDeregisterAISession serves deregister_ai_session: the agent says it is done.
 func (s *Server) toolDeregisterAISession(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		SessionID string `json:"session_id"`
@@ -144,6 +150,8 @@ func (s *Server) toolDeregisterAISession(ctx context.Context, args json.RawMessa
 	return textResult(string(b)), nil
 }
 
+// toolHeartbeatAISession serves heartbeat_ai_session: it keeps a session from being marked
+// disconnected.
 func (s *Server) toolHeartbeatAISession(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		SessionID string `json:"session_id"`
@@ -161,6 +169,8 @@ func (s *Server) toolHeartbeatAISession(ctx context.Context, args json.RawMessag
 	return textResult(string(b)), nil
 }
 
+// toolPurgeDisconnectedSessions serves purge_disconnected_sessions: it removes the sessions that
+// stopped answering.
 func (s *Server) toolPurgeDisconnectedSessions(ctx context.Context) (callToolResult, error) {
 	n, err := s.orch.PurgeDisconnectedSessions(ctx)
 	if err != nil {
@@ -170,6 +180,7 @@ func (s *Server) toolPurgeDisconnectedSessions(ctx context.Context) (callToolRes
 	return textResult(string(b)), nil
 }
 
+// toolGetDiscoveredAgents serves get_discovered_agents: the agents found on this machine.
 func (s *Server) toolGetDiscoveredAgents(ctx context.Context) (callToolResult, error) {
 	agents, err := s.orch.GetDiscoveredAgents(ctx)
 	if err != nil {
@@ -179,6 +190,7 @@ func (s *Server) toolGetDiscoveredAgents(ctx context.Context) (callToolResult, e
 	return textResult(string(b)), nil
 }
 
+// toolGetDiscoveredPlans serves get_discovered_plans: the plan files found in a project.
 func (s *Server) toolGetDiscoveredPlans(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -228,6 +240,7 @@ func (s *Server) toolGetDiscoveredPlans(ctx context.Context, args json.RawMessag
 	return textResult(string(data)), nil
 }
 
+// toolDelegateToNexus serves delegate_to_nexus: a session hands its open work to the orchestrator.
 func (s *Server) toolDelegateToNexus(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		SessionID string `json:"session_id"`
@@ -248,6 +261,7 @@ func (s *Server) toolDelegateToNexus(ctx context.Context, args json.RawMessage) 
 
 // ----- Session & Agent Schema Definitions -----
 
+// sessionToolDefs lists the session, claim and heartbeat tools for tools/list.
 func sessionToolDefs() []toolDef {
 	return []toolDef{
 		{

@@ -62,6 +62,7 @@ func Read(r io.Reader, maxLine int, fn func(Event) error) error {
 	return stopToNil(dispatch())
 }
 
+// stopToNil turns the sentinel a handler returns to stop reading into a normal end.
 func stopToNil(err error) error {
 	if errors.Is(err, ErrStop) {
 		return nil

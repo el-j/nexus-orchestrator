@@ -5,9 +5,16 @@ import SettingsView from './SettingsView.vue';
 const h = vi.hoisted(() => ({
   get: vi.fn(),
   update: vi.fn(),
+  getToken: vi.fn(() => ''),
+  setToken: vi.fn(),
   base: { value: 'http://127.0.0.1:63987' },
 }));
-vi.mock('../types/wails', () => ({ getRuntimeConfig: h.get, updateRuntimeConfig: h.update }));
+vi.mock('../types/wails', () => ({
+  getRuntimeConfig: h.get,
+  updateRuntimeConfig: h.update,
+  getApiToken: h.getToken,
+  setApiToken: h.setToken,
+}));
 vi.mock('../composables/useServerUrl', () => ({
   resolveServerUrl: () => Promise.resolve(h.base.value),
 }));
@@ -42,6 +49,8 @@ beforeEach(() => {
   vi.useFakeTimers();
   h.get.mockReset().mockResolvedValue(cfg());
   h.update.mockReset().mockResolvedValue(cfg());
+  h.getToken.mockReset().mockReturnValue('');
+  h.setToken.mockReset();
   h.base.value = 'http://127.0.0.1:63987';
   fetchMock
     .mockReset()
@@ -109,6 +118,29 @@ describe('SettingsView — config', () => {
   it('shows the queue cap, defaulting to 50 before it loads', async () => {
     h.get.mockResolvedValue(cfg({ queueCap: 7 }));
     expect((await mountView()).text()).toContain('7');
+  });
+
+  it('saves an updated queueCap via updateRuntimeConfig and handles save errors', async () => {
+    h.get.mockResolvedValue(cfg({ queueCap: 50 }));
+    h.update.mockResolvedValueOnce(cfg({ queueCap: 120 }));
+    const w = await mountView();
+    const input = w.find('[data-testid="queue-cap-input"]');
+    expect(input.exists()).toBe(true);
+    await input.setValue('120');
+    await btn(w, 'Save').trigger('click');
+    await flush();
+    expect(h.update).toHaveBeenCalledWith({ queueCap: 120 });
+
+    h.update.mockRejectedValueOnce(new Error('invalid cap'));
+    await input.setValue('200');
+    await btn(w, 'Save').trigger('click');
+    await flush();
+    expect(w.text()).toContain('invalid cap');
+
+    h.update.mockRejectedValueOnce('weird');
+    await btn(w, 'Save').trigger('click');
+    await flush();
+    expect(w.text()).toContain('Failed to update queue cap');
   });
 
   it('shows Protected vs No auth per token', async () => {
@@ -327,5 +359,21 @@ describe('SettingsView — tokens', () => {
     const w = await mountView();
     await btn(w, 'Rotate').trigger('click');
     expect(w.text()).toContain('Working…');
+  });
+
+  it('persists the API token via setApiToken on rotate, disable, and manual browser token entry', async () => {
+    h.update.mockResolvedValueOnce(cfg({ apiToken: 'secret-api-99', apiTokenEnabled: true }));
+    const w = await mountView();
+    await btn(w, 'Generate Token').trigger('click');
+    await flush();
+    expect(h.setToken).toHaveBeenCalledWith('secret-api-99');
+
+    // Manual browser token input
+    const tokenInput = w.find('[data-testid="browser-api-token-input"]');
+    expect(tokenInput.exists()).toBe(true);
+    await tokenInput.setValue('pasted-token');
+    await w.find('[data-testid="browser-api-token-save"]').trigger('click');
+    await flush();
+    expect(h.setToken).toHaveBeenCalledWith('pasted-token');
   });
 });

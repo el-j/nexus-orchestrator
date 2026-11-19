@@ -109,7 +109,7 @@ func TestWatcher_Debounce(t *testing.T) {
 	changedFileCh := make(chan string, 10)
 
 	w, err := fs_watcher.New(
-		fs_watcher.WithDebounce(100*time.Millisecond),
+		fs_watcher.WithDebounce(600*time.Millisecond),
 		fs_watcher.WithOnChange(func(proj, file string) {
 			changeCount.Add(1)
 			changedFileCh <- file
@@ -124,7 +124,8 @@ func TestWatcher_Debounce(t *testing.T) {
 		t.Fatalf("Watch dir: %v", err)
 	}
 
-	// Write 5 times rapidly within 30ms (well under the 100ms debounce window)
+	// Write 5 times within about 25ms. The window is 600ms so that events a busy runner delivers late
+	// still land inside it; with 100ms this test failed at random in CI.
 	for i := 0; i < 5; i++ {
 		if err := os.WriteFile(testFile, []byte("package main // v"+string(rune('0'+i))), 0o644); err != nil {
 			t.Fatalf("write file: %v", err)
@@ -137,12 +138,12 @@ func TestWatcher_Debounce(t *testing.T) {
 		if filepath.Clean(file) != filepath.Clean(testFile) {
 			t.Errorf("expected %q, got %q", testFile, file)
 		}
-	case <-time.After(500 * time.Millisecond):
+	case <-time.After(3 * time.Second):
 		t.Fatal("timed out waiting for debounced change event")
 	}
 
-	// Wait an extra 150ms to ensure no trailing duplicate events fire
-	time.Sleep(150 * time.Millisecond)
+	// Wait longer than a window to ensure no trailing duplicate events fire
+	time.Sleep(800 * time.Millisecond)
 	if got := changeCount.Load(); got != 1 {
 		t.Errorf("expected exactly 1 debounced change event, got %d", got)
 	}

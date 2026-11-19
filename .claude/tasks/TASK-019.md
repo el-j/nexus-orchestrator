@@ -3,7 +3,8 @@ id: TASK-019
 title: GUI — Dashboard view + Provider status cards (Vue 3 + PrimeVue 4)
 role: devops
 planId: PLAN-002
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-017, TASK-018]
 createdAt: 2026-03-09T14:00:00.000Z
 ---
@@ -27,36 +28,53 @@ The Dashboard is the default landing page of the Wails 2 GUI. It shows: live que
    - Three sections: stat cards row, recent-tasks panel (left 60%), provider cards (right 40%).
 
 2. **Stat cards** using PrimeVue `Card` or plain Tailwind divs:
+
    ```vue
    <script setup lang="ts">
-   import { computed } from 'vue'
-   import { useQuery } from '@tanstack/vue-query'
-   import { useNexus } from '../composables/useNexus'
-   import Card from 'primevue/card'
-   import Tag from 'primevue/tag'
-   import ProgressSpinner from 'primevue/progressspinner'
-   import { Cpu, ListTodo, Zap } from 'lucide-vue-next'
-   import type { Task, Provider, Stats } from '../types/domain'
+   import { computed } from 'vue';
+   import { useQuery } from '@tanstack/vue-query';
+   import { useNexus } from '../composables/useNexus';
+   import Card from 'primevue/card';
+   import Tag from 'primevue/tag';
+   import ProgressSpinner from 'primevue/progressspinner';
+   import { Cpu, ListTodo, Zap } from 'lucide-vue-next';
+   import type { Task, Provider, Stats } from '../types/domain';
 
-   const nexus = useNexus()
+   const nexus = useNexus();
 
-   const { data: stats } = useQuery({ queryKey: ['stats'], queryFn: nexus.getStats, refetchInterval: 3000 })
-   const { data: providers, isLoading: loadingProviders } = useQuery({ queryKey: ['providers'], queryFn: nexus.getProviders, refetchInterval: 5000 })
-   const { data: completed } = useQuery({ queryKey: ['history', 'completed'], queryFn: () => nexus.getAllTasks('completed'), refetchInterval: 5000 })
-   const { data: failed } = useQuery({ queryKey: ['history', 'failed'], queryFn: () => nexus.getAllTasks('failed'), refetchInterval: 5000 })
+   const { data: stats } = useQuery({
+     queryKey: ['stats'],
+     queryFn: nexus.getStats,
+     refetchInterval: 3000,
+   });
+   const { data: providers, isLoading: loadingProviders } = useQuery({
+     queryKey: ['providers'],
+     queryFn: nexus.getProviders,
+     refetchInterval: 5000,
+   });
+   const { data: completed } = useQuery({
+     queryKey: ['history', 'completed'],
+     queryFn: () => nexus.getAllTasks('completed'),
+     refetchInterval: 5000,
+   });
+   const { data: failed } = useQuery({
+     queryKey: ['history', 'failed'],
+     queryFn: () => nexus.getAllTasks('failed'),
+     refetchInterval: 5000,
+   });
 
    const recentTasks = computed(() => {
-     const all = [...(completed.value ?? []), ...(failed.value ?? [])]
-     return all.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 10)
-   })
+     const all = [...(completed.value ?? []), ...(failed.value ?? [])];
+     return all.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 10);
+   });
 
-   const onlineProviders = computed(() => (providers.value ?? []).filter(p => p.available))
+   const onlineProviders = computed(() => (providers.value ?? []).filter((p) => p.available));
    </script>
    ```
 
 3. **Stats row** — 3 `Card` components in a `grid grid-cols-3 gap-4`:
    - "Queue Depth": `stats?.queueDepth ?? 0` with `ListTodo` icon, severity `info` Tag
-   - "Active Task": `stats?.activeTask || 'Idle'` with `Zap` icon  
+   - "Active Task": `stats?.activeTask || 'Idle'` with `Zap` icon
    - "Providers Online": `onlineProviders.length / (providers?.length ?? 1)` with `Cpu` icon
 
 4. **Recent tasks table** using PrimeVue `DataTable` + `Column`:
@@ -74,10 +92,20 @@ The Dashboard is the default landing page of the Wails 2 GUI. It shows: live que
 6. **Create `frontend/src/components/StatusTag.vue`** — reusable PrimeVue `Tag` wrapper:
    ```vue
    <script setup lang="ts">
-   import Tag from 'primevue/tag'
-   const props = defineProps<{ status: 'queued' | 'processing' | 'completed' | 'failed' }>()
-   const severityMap = { queued: 'info', processing: 'warn', completed: 'success', failed: 'danger' } as const
-   const labelMap = { queued: 'Queued', processing: 'Processing', completed: 'Done', failed: 'Failed' }
+   import Tag from 'primevue/tag';
+   const props = defineProps<{ status: 'queued' | 'processing' | 'completed' | 'failed' }>();
+   const severityMap = {
+     queued: 'info',
+     processing: 'warn',
+     completed: 'success',
+     failed: 'danger',
+   } as const;
+   const labelMap = {
+     queued: 'Queued',
+     processing: 'Processing',
+     completed: 'Done',
+     failed: 'Failed',
+   };
    </script>
    <template>
      <Tag :severity="severityMap[status]" :value="labelMap[status]" />

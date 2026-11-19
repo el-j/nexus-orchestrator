@@ -1,6 +1,7 @@
 # TASK-359: Security — Origin validation & CORS headers
 
 **Plan:** PLAN-052 | **Wave:** 4 | **Status:** done
+**Status:** done
 
 ## Description
 

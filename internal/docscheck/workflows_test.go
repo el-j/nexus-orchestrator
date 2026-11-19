@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -23,5 +24,25 @@ func TestWorkflowsOnlyRunScriptsThatExist(t *testing.T) {
 				t.Errorf("%s runs %s, which does not exist", filepath.Base(f), m[1])
 			}
 		}
+	}
+}
+
+// The macOS signing step passes an entitlements file to codesign. It used to sit under build/,
+// which is not tracked, so the first release with a Developer ID certificate would have failed
+// at that step. Every file named after --entitlements must be in the repository.
+func TestSigningEntitlementsFileIsTracked(t *testing.T) {
+	re := regexp.MustCompile(`--entitlements\s+(\S+)`)
+	found := false
+	for _, m := range re.FindAllStringSubmatch(read(t, ".github/workflows/publish.yml"), -1) {
+		found = true
+		if _, err := os.Stat(filepath.Join(root, m[1])); err != nil {
+			t.Errorf("publish.yml signs with %s, which is not in the repository", m[1])
+		}
+		if strings.HasPrefix(m[1], "build/") {
+			t.Errorf("%s is under build/, which is ignored by git", m[1])
+		}
+	}
+	if !found {
+		t.Skip("no signing step passes entitlements")
 	}
 }

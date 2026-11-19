@@ -1,6 +1,9 @@
 package docscheck
 
 import (
+	"io/fs"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -15,12 +18,18 @@ type cell struct{ needle, reason string }
 func has(needle string) cell  { return cell{needle: needle} }
 func without(why string) cell { return cell{reason: why} }
 
+// restSource is the text of the REST server: its handler setup and the route table.
+func restSource(t *testing.T) string {
+	t.Helper()
+	return read(t, "internal/adapters/inbound/httpapi/server.go") + read(t, "internal/adapters/inbound/httpapi/routes.go")
+}
+
 // surfaces maps a column name to the source text its needles are searched in.
 func surfaceSources(t *testing.T) map[string]string {
 	t.Helper()
 	cli := read(t, "internal/adapters/inbound/cli/root.go") + read(t, "internal/adapters/inbound/cli/brain.go")
 	return map[string]string{
-		"rest":      read(t, "internal/adapters/inbound/httpapi/server.go"),
+		"rest":      restSource(t),
 		"mcp":       read(t, "docs/src/data/mcpTools.ts"),
 		"cli":       cli + read(t, "cmd/nexus-submit/main.go"),
 		"wails":     read(t, "app.go"),
@@ -54,6 +63,20 @@ var matrix = []row{
 		without("a local setup step for the machine"), has("newConnectCmd"),
 		without("a local setup step; the CLI does it"), without("the UI shows the queue and agents, it does not edit other tools' config files"),
 		has("nexus.connectAgent")},
+	{"usage ledger (tokens and cost per provider, model, role)", has(`"/api/usage"`), has("'get_usage'"), has("newUsageCmd"),
+		without("served over HTTP by the same daemon; the desktop UI reads the ledger through the REST client"),
+		has("getUsage"),
+		has("getUsage")},
+	{"routing preview (provider order for a role)", has(`"/api/routing"`), has("'get_routing'"), has("newRoutingCmd"),
+		without("served over HTTP by the same daemon; the desktop UI reaches it through the REST client"),
+		without("the Mission Control provider cards show each provider's cooldown and quota from /api/providers; the full order is for agents (MCP) and the CLI"),
+		without("the extension shows provider state in its status bar; the preview is for agents and the CLI")},
+	{"project policy (ladder, budgets, quota threshold, token caps)", has(`"/api/policy"`),
+		without("budgets and ladders are the owner's decision; agents read their effect through get_routing and get_usage, they do not change them"),
+		has("newPolicyCmd"),
+		without("served over HTTP by the same daemon; the desktop UI reaches it through the REST client"),
+		has("getPolicy"),
+		without("the extension shows provider state in its status bar; the policy is edited in the app, the CLI or REST")},
 	{"list the queue", has(`Get("/api/tasks"`), has("'get_queue'"), has(`"list"`), has("GetQueue("), has("getQueue"), has("/api/tasks")},
 	{"list every task", has(`"/api/tasks/all"`), has("'get_all_tasks'"), noCLI, has("GetAllTasks("), has("getAllTasks"), has("/api/tasks/all")},
 	{"cancel a task", has(`Delete("/api/tasks/{id}"`), has("'cancel_task'"), has("cancel <task-id>"), has("CancelTask("), has("cancelTask"), has("cancelTask")},
@@ -145,10 +168,49 @@ var routeDecl = regexp.MustCompile(`r\.(Get|Post|Put|Delete)\("(/api/[^"]+)"`)
 // The REST reference must document every registered route.
 func TestAPIReferenceDocumentsEveryRoute(t *testing.T) {
 	doc := read(t, "docs/api-reference.md")
-	for _, m := range routeDecl.FindAllStringSubmatch(read(t, "internal/adapters/inbound/httpapi/server.go"), -1) {
+	for _, m := range routeDecl.FindAllStringSubmatch(restSource(t), -1) {
 		verb, path := strings.ToUpper(m[1]), m[2]
 		if !strings.Contains(doc, path) {
 			t.Errorf("docs/api-reference.md does not mention %s %s", verb, path)
+		}
+	}
+}
+
+// A registered REST route that no end-to-end test mentions is a route nobody has seen work against the real
+// daemon. The match is by line: the route with each {param} read as anything, so both
+// "/api/tasks/"+id+"/claim" and a literal path count.
+func TestEveryRESTRouteIsMentionedByAnE2ETest(t *testing.T) {
+	var sources []string
+	for _, dir := range []string{"internal/e2e", "frontend/e2e"} {
+		err := filepath.WalkDir(filepath.Join(root, dir), func(path string, d fs.DirEntry, err error) error {
+			if err == nil && !d.IsDir() {
+				b, rerr := os.ReadFile(path)
+				sources = append(sources, string(b))
+				return rerr
+			}
+			return err
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	lines := strings.Split(strings.Join(sources, "\n"), "\n")
+	routeAny := regexp.MustCompile(`r\.(?:Get|Post|Put|Delete|Handle)\("(/[^"]*)"`)
+	param := regexp.MustCompile(`\{[^}]+\}`)
+	for _, m := range routeAny.FindAllStringSubmatch(restSource(t), -1) {
+		route := m[1]
+		pattern := strings.ReplaceAll(regexp.QuoteMeta(param.ReplaceAllString(route, "\x00")), "\x00", ".+")
+		pattern = strings.ReplaceAll(pattern, "\\*", ".*")
+		re := regexp.MustCompile(pattern)
+		found := false
+		for _, l := range lines {
+			if re.MatchString(l) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("no e2e test mentions %s", route)
 		}
 	}
 }

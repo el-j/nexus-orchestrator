@@ -21,6 +21,7 @@
 
 BINARY_CLI    := nexus-cli
 BINARY_DAEMON := nexus-daemon
+BINARY_SUBMIT := nexus-submit
 DIST          := build
 DIST_DESKTOP  := $(DIST)/desktop
 DIST_VSCODE   := $(DIST)/vscode
@@ -64,10 +65,14 @@ export CGO_CFLAGS := $(FTS5_CFLAGS)
 
 # Detect host OS for zig target triple selection
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
+ifeq ($(UNAME_S),Darwin)
+export CGO_LDFLAGS := -Wl,-no_warn_duplicate_libraries
+export MACOSX_DEPLOYMENT_TARGET := 13.0
+endif
 
 .DEFAULT_GOAL := help
 
-.PHONY: check-node web web-auto help start start-bg stop dogfood status connect init-project build build-gui build-gui-windows-amd64 build-all test vet lint clean help \
+.PHONY: bench check-node web web-auto help start start-bg stop dogfood status connect init-project build build-gui build-gui-windows-amd64 build-all test vet lint clean help \
         build-linux-amd64 build-linux-arm64 \
         build-darwin-amd64 build-darwin-arm64 \
         build-windows-amd64 \
@@ -77,12 +82,14 @@ UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
         nice nice-go nice-frontend
 
 # ---------------------------------------------------------------------------
-# Default: native build (CLI + daemon)
+# Default: native build (CLI + submit + daemon)
 # ---------------------------------------------------------------------------
 build: vet
 	@mkdir -p $(DIST)/native
-	CGO_ENABLED=1 go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+	CGO_ENABLED=0 go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/native/$(BINARY_CLI) ./cmd/nexus-cli/...
+	CGO_ENABLED=0 go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/native/$(BINARY_SUBMIT) ./cmd/nexus-submit/...
 	CGO_ENABLED=1 go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/native/$(BINARY_DAEMON) ./cmd/nexus-daemon/...
 	@echo "Built → $(DIST)/native/"
@@ -104,10 +111,11 @@ start: web-auto build
 	@if [ -f $(WEBUI_DIR)/index.html ]; then echo "full UI      → $(NEXUS_API)/app/   (light dashboard: $(NEXUS_API)/ui)"; else echo "dashboard    → $(NEXUS_API)/ui   (the full UI needs Node >= 22: nvm use; make start)"; fi
 	NEXUS_DB_PATH=$(NEXUS_HOME)/nexus.db $(DIST)/native/$(BINARY_DAEMON)
 
-# Same daemon, detached: log to $(NEXUS_HOME)/daemon.log, pid in $(NEXUS_HOME)/daemon.pid.
+# Same daemon, detached: log to $(NEXUS_HOME)/daemon.log (moved to daemon.log.1 above 10 MB), pid in $(NEXUS_HOME)/daemon.pid.
 start-bg: web-auto build
 	@mkdir -p $(NEXUS_HOME)
 	@if curl -fsS $(NEXUS_API)/api/health >/dev/null 2>&1; then echo "daemon already running at $(NEXUS_API)"; exit 0; fi; \
+	if [ -f $(NEXUS_HOME)/daemon.log ] && [ "$$(wc -c < $(NEXUS_HOME)/daemon.log)" -gt 10485760 ]; then mv -f $(NEXUS_HOME)/daemon.log $(NEXUS_HOME)/daemon.log.1; fi; \
 	NEXUS_DB_PATH=$(NEXUS_HOME)/nexus.db nohup $(DIST)/native/$(BINARY_DAEMON) >> $(NEXUS_HOME)/daemon.log 2>&1 & echo $$! > $(NEXUS_HOME)/daemon.pid; \
 	for i in $$(seq 1 30); do curl -fsS $(NEXUS_API)/api/health >/dev/null 2>&1 && { echo "daemon started (pid $$(cat $(NEXUS_HOME)/daemon.pid)), log $(NEXUS_HOME)/daemon.log"; exit 0; }; sleep 1; done; \
 	echo "daemon did not become healthy; see $(NEXUS_HOME)/daemon.log"; exit 1
@@ -294,12 +302,12 @@ build-all: build-linux-amd64 build-linux-arm64 build-darwin-amd64 build-darwin-a
 
 build-linux-amd64:
 	@mkdir -p $(DIST)/linux_amd64
-	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
-		CGO_CFLAGS="$(ZIG_CFLAGS)" \
-		CC="zig cc -target x86_64-linux-musl" \
-		CXX="zig c++ -target x86_64-linux-musl" \
-		go build $(LINUX_BUILD_FLAGS) -ldflags "$(LINUX_LDFLAGS)" \
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/linux_amd64/$(BINARY_CLI) ./cmd/nexus-cli/...
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/linux_amd64/$(BINARY_SUBMIT) ./cmd/nexus-submit/...
 	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
 		CGO_CFLAGS="$(ZIG_CFLAGS)" \
 		CC="zig cc -target x86_64-linux-musl" \
@@ -310,12 +318,12 @@ build-linux-amd64:
 
 build-linux-arm64:
 	@mkdir -p $(DIST)/linux_arm64
-	CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
-		CGO_CFLAGS="$(ZIG_CFLAGS)" \
-		CC="zig cc -target aarch64-linux-musl" \
-		CXX="zig c++ -target aarch64-linux-musl" \
-		go build $(LINUX_BUILD_FLAGS) -ldflags "$(LINUX_LDFLAGS)" \
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/linux_arm64/$(BINARY_CLI) ./cmd/nexus-cli/...
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/linux_arm64/$(BINARY_SUBMIT) ./cmd/nexus-submit/...
 	CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
 		CGO_CFLAGS="$(ZIG_CFLAGS)" \
 		CC="zig cc -target aarch64-linux-musl" \
@@ -328,12 +336,12 @@ build-darwin-amd64:
 	@mkdir -p $(DIST)/darwin_amd64
 	# macOS cross-arch: pass -arch x86_64 to the native clang via CGO_CFLAGS/CGO_LDFLAGS.
 	# Requires Xcode Command Line Tools (xcrun sdk present). Skips gracefully if SDK absent.
-	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
-		CGO_CFLAGS="-arch x86_64 $(FTS5_CFLAGS)" \
-		CGO_LDFLAGS="-arch x86_64" \
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
-		-o $(DIST)/darwin_amd64/$(BINARY_CLI) ./cmd/nexus-cli/... || \
-		(echo "NOTE: build-darwin-amd64 requires Xcode SDK with x86_64 support — skipped."; exit 0)
+		-o $(DIST)/darwin_amd64/$(BINARY_CLI) ./cmd/nexus-cli/...
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/darwin_amd64/$(BINARY_SUBMIT) ./cmd/nexus-submit/...
 	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
 		CGO_CFLAGS="-arch x86_64 $(FTS5_CFLAGS)" \
 		CGO_LDFLAGS="-arch x86_64" \
@@ -344,9 +352,12 @@ build-darwin-amd64:
 
 build-darwin-arm64:
 	@mkdir -p $(DIST)/darwin_arm64
-	CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/darwin_arm64/$(BINARY_CLI) ./cmd/nexus-cli/...
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/darwin_arm64/$(BINARY_SUBMIT) ./cmd/nexus-submit/...
 	CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/darwin_arm64/$(BINARY_DAEMON) ./cmd/nexus-daemon/...
@@ -355,12 +366,12 @@ build-darwin-arm64:
 build-windows-amd64:
 	@mkdir -p $(DIST)/windows_amd64
 	# NOTE: for the GUI binary (main.go), use LDFLAGS_WIN_GUI (-H windowsgui) to suppress the console window.
-	CGO_ENABLED=1 GOOS=windows GOARCH=amd64 \
-		CGO_CFLAGS="$(ZIG_CFLAGS)" \
-		CC="zig cc -target x86_64-windows-gnu" \
-		CXX="zig c++ -target x86_64-windows-gnu" \
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/windows_amd64/$(BINARY_CLI).exe ./cmd/nexus-cli/...
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/windows_amd64/$(BINARY_SUBMIT).exe ./cmd/nexus-submit/...
 	CGO_ENABLED=1 GOOS=windows GOARCH=amd64 \
 		CGO_CFLAGS="$(ZIG_CFLAGS)" \
 		CC="zig cc -target x86_64-windows-gnu" \
@@ -386,6 +397,10 @@ test-cover:
 # Local-only (never in CI: too many workflow minutes). See docs/mutation-testing.md.
 mutation:
 	./scripts/mutation.sh
+
+# Local performance check against scripts/bench-baseline.txt (`./scripts/bench.sh --record` rewrites it).
+bench:
+	./scripts/bench.sh
 
 vet:
 	go vet ./...

@@ -60,7 +60,13 @@ func TestChatStream_DeliversTextDeltasAndAsksForAStream(t *testing.T) {
 	if err != nil || out != "Hello" || strings.Join(pieces, "|") != "Hel|lo" {
 		t.Fatalf("out=%q pieces=%v err=%v", out, pieces, err)
 	}
-	if seen["stream"] != true || seen["system"] != "be brief" {
+	sysBlocks, _ := seen["system"].([]any)
+	sysBlock, _ := map[string]any(nil), false
+	if len(sysBlocks) == 1 {
+		sysBlock, _ = sysBlocks[0].(map[string]any)
+	}
+	cc, _ := sysBlock["cache_control"].(map[string]any)
+	if seen["stream"] != true || sysBlock["text"] != "be brief" || cc["type"] != "ephemeral" {
 		t.Errorf("request: %v", seen)
 	}
 }

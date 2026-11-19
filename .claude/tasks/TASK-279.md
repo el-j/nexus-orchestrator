@@ -1,9 +1,9 @@
 # TASK-279 — SQLite: additive migrations for PLAN-044
 
 **Plan:** PLAN-044  
-**Status:** TODO  
+**Status:** done  
 **Layer:** Go · outbound (`internal/adapters/outbound/repo_sqlite/`)  
-**Depends on:** TASK-276  
+**Depends on:** TASK-276
 
 ## Objective
 
@@ -14,6 +14,7 @@ Extend the SQLite schema with additive migrations and a new `DiscoveredAgentRepo
 ### `internal/adapters/outbound/repo_sqlite/repo.go`
 
 1. Add new `CREATE TABLE IF NOT EXISTS discovered_agents` block alongside existing table creates:
+
 ```sql
 CREATE TABLE IF NOT EXISTS discovered_agents (
     id               TEXT PRIMARY KEY,
@@ -32,6 +33,7 @@ CREATE TABLE IF NOT EXISTS discovered_agents (
 2. Add index: `CREATE INDEX IF NOT EXISTS idx_discovered_agents_kind ON discovered_agents(kind);`
 
 3. Add four entries to the additive column migration loop (ai_sessions):
+
 ```go
 {"delegated_to_nexus",  "INTEGER NOT NULL DEFAULT 0"},
 {"delegation_timestamp","DATETIME"},

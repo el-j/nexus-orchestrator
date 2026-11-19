@@ -526,6 +526,16 @@ describe('index: defaults for blank inputs', () => {
     expect(mockInstallDaemon).toHaveBeenCalledWith('latest');
     expect(mockResolveAgents).toHaveBeenCalledWith(expect.anything(), 'main');
     const { NexusClient } = require('../src/submit.js') as { NexusClient: jest.Mock };
-    expect(NexusClient).toHaveBeenCalledWith('http://127.0.0.1:63987');
+    expect(NexusClient).toHaveBeenCalledWith('http://127.0.0.1:63987', undefined);
+  });
+
+  it('hands the api_token to the client for a daemon that needs it, and masks it', async () => {
+    setInputs({ start_daemon: 'false', api_token: 'tok-123' });
+    mockSubmitTask.mockResolvedValue({ task_id: 't1', status: 'QUEUED' });
+    mockWaitForTask.mockResolvedValue({ id: 't1', status: 'COMPLETED', logs: '' });
+    const core = await runIndex();
+    const { NexusClient } = require('../src/submit.js') as { NexusClient: jest.Mock };
+    expect(NexusClient).toHaveBeenCalledWith(expect.any(String), 'tok-123');
+    expect(core._secrets).toContain('tok-123');
   });
 });

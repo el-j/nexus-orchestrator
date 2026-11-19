@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"nexus-orchestrator/internal/adapters/outbound/usagebox"
 	"nexus-orchestrator/internal/core/domain"
 )
 
@@ -21,9 +22,10 @@ const DefaultBaseURL = "http://127.0.0.1:1234/v1"
 
 // Adapter implements ports.LLMClient for LM Studio's OpenAI-compatible REST API.
 type Adapter struct {
-	baseURL    string
-	nativeBase string // LM Studio-native base URL (without /v1 suffix)
-	httpClient *http.Client
+	baseURL      string
+	nativeBase   string // LM Studio-native base URL (without /v1 suffix)
+	httpClient   *http.Client
+	usagebox.Box // the usage of the last call, for ports.UsageReporter
 
 	infoMu       sync.Mutex
 	contextLimit int       // last read value; 0 = unknown
@@ -198,19 +200,33 @@ type chatCompletionRequest struct {
 	Messages    []map[string]string `json:"messages"`
 	Temperature float64             `json:"temperature"`
 	Stream      bool                `json:"stream,omitempty"`
+	// StreamOptions asks a streaming server to send the token usage in a last chunk.
+	StreamOptions *streamOptions `json:"stream_options,omitempty"`
+}
+
+type streamOptions struct {
+	IncludeUsage bool `json:"include_usage"`
+}
+
+// usageBlock is the usage object of a completion or of the last chunk of a stream.
+type usageBlock struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+}
+
+// toDomain converts the usage block of a reply to the domain type.
+func (u usageBlock) toDomain(model string) domain.Usage {
+	return domain.Usage{Model: model, InputTokens: u.PromptTokens, OutputTokens: u.CompletionTokens}
 }
 
 // GenerateCode sends a chat completion request to LM Studio and returns the
 // generated text.
 func (a *Adapter) GenerateCode(ctx context.Context, prompt string) (string, error) {
-	reqBody, err := json.Marshal(chatCompletionRequest{
+	reqBody, _ := json.Marshal(chatCompletionRequest{
 		Model:       a.activeModelOrDefault(ctx),
 		Messages:    []map[string]string{{"role": "user", "content": prompt}},
 		Temperature: 0.2,
-	})
-	if err != nil {
-		return "", fmt.Errorf("lmstudio: marshal request: %w", err)
-	}
+	}) // a request of strings and numbers always encodes
 
 	resp, err := a.do(ctx, http.MethodPost, a.baseURL+"/chat/completions", reqBody)
 	if err != nil {
@@ -223,15 +239,18 @@ func (a *Adapter) GenerateCode(ctx context.Context, prompt string) (string, erro
 	}
 
 	var result struct {
+		Model   string `json:"model"`
 		Choices []struct {
 			Message struct {
 				Content string `json:"content"`
 			} `json:"message"`
 		} `json:"choices"`
+		Usage usageBlock `json:"usage"`
 	}
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("lmstudio: decode response: %w", err)
 	}
+	a.Set(result.Usage.toDomain(result.Model))
 	if len(result.Choices) == 0 {
 		return "", fmt.Errorf("lmstudio: no choices in response")
 	}
@@ -251,14 +270,11 @@ func messagesToMaps(msgs []domain.Message) []map[string]string {
 // Chat sends a multi-turn conversation history to LM Studio and returns the
 // assistant reply. This is the preferred method for session-isolated generation.
 func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, error) {
-	reqBody, err := json.Marshal(chatCompletionRequest{
+	reqBody, _ := json.Marshal(chatCompletionRequest{
 		Model:       a.activeModelOrDefault(ctx),
 		Messages:    messagesToMaps(messages),
 		Temperature: 0.2,
-	})
-	if err != nil {
-		return "", fmt.Errorf("lmstudio: marshal chat request: %w", err)
-	}
+	}) // a request of strings and numbers always encodes
 
 	resp, err := a.do(ctx, http.MethodPost, a.baseURL+"/chat/completions", reqBody)
 	if err != nil {
@@ -270,21 +286,24 @@ func (a *Adapter) Chat(ctx context.Context, messages []domain.Message) (string, 
 		return "", fmt.Errorf("lmstudio: chat: unexpected status %d", resp.StatusCode)
 	}
 
-	return decodeChat(resp.Body)
+	return a.decodeChat(resp.Body)
 }
 
-// decodeChat reads a non-streaming chat completion and returns the first choice's text.
-func decodeChat(body io.Reader) (string, error) {
+// decodeChat reads a non-streaming chat completion, records its usage and returns the first choice's text.
+func (a *Adapter) decodeChat(body io.Reader) (string, error) {
 	var result struct {
+		Model   string `json:"model"`
 		Choices []struct {
 			Message struct {
 				Content string `json:"content"`
 			} `json:"message"`
 		} `json:"choices"`
+		Usage usageBlock `json:"usage"`
 	}
 	if err := json.NewDecoder(io.LimitReader(body, 10<<20)).Decode(&result); err != nil {
 		return "", fmt.Errorf("lmstudio: decode chat response: %w", err)
 	}
+	a.Set(result.Usage.toDomain(result.Model))
 	if len(result.Choices) == 0 {
 		return "", fmt.Errorf("lmstudio: no choices in chat response")
 	}

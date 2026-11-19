@@ -1,17 +1,20 @@
 ---
 id: TASK-064
-title: "Type safety: typed MessageRole + TaskEvent.Type enum + domain String() methods"
+title: 'Type safety: typed MessageRole + TaskEvent.Type enum + domain String() methods'
 role: architecture
 planId: PLAN-007
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-10T10:00:00.000Z
 ---
 
 ## Context
+
 `Message.Role` is an untyped `string` in the domain. `TaskEvent.Type` is also an untyped `string` with ad-hoc formatting. `TaskStatus` and `ProviderKind` lack `String()` methods. This hurts type safety, debuggability, and maintainability.
 
 ## Files to Read
+
 - `internal/core/domain/session.go`
 - `internal/core/domain/task.go`
 - `internal/core/domain/provider.go`
@@ -19,6 +22,7 @@ createdAt: 2026-03-10T10:00:00.000Z
 - `internal/core/services/orchestrator.go`
 
 ## Implementation Steps
+
 1. In `domain/session.go`, add `type MessageRole string` with constants `RoleUser MessageRole = "user"` and `RoleAssistant MessageRole = "assistant"`. Change `Message.Role` field type from `string` to `MessageRole`.
 2. In `ports/ports.go`, add `type EventType string` with constants `EventTaskQueued EventType = "task.queued"`, `EventTaskProcessing`, `EventTaskCompleted`, `EventTaskFailed`, `EventTaskCancelled`, `EventTaskTooLarge`, `EventTaskNoProvider`. Change `TaskEvent.Type` from `string` to `EventType`.
 3. Add `String()` methods on `TaskStatus` and `ProviderKind` that return `string(t)`.
@@ -26,6 +30,7 @@ createdAt: 2026-03-10T10:00:00.000Z
 5. Fix all callsites in tests and adapters that use raw string literals for roles/events.
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` exits 0
@@ -34,6 +39,7 @@ createdAt: 2026-03-10T10:00:00.000Z
 - [ ] `TaskStatus("QUEUED").String()` returns `"QUEUED"`
 
 ## Anti-patterns to Avoid
+
 - NEVER import adapters from core services (hexagonal dependency rule)
 - NEVER use goroutines inside `internal/core/services/`
 - NEVER skip `fmt.Errorf("package: operation: %w", err)` error wrapping

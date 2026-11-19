@@ -1,17 +1,20 @@
 ---
 id: TASK-077
-title: "Tests: command-aware routing + validation"
+title: 'Tests: command-aware routing + validation'
 role: qa
 planId: PLAN-009
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-075, TASK-076]
 createdAt: 2026-03-10T15:00:00.000Z
 ---
 
 ## Context
+
 Comprehensive tests are needed for the new command-aware routing feature: domain type validation, orchestrator service logic (ErrNoPlan enforcement), HTTP API passthrough, and MCP tool parameter handling.
 
 ## Files to Read
+
 - `internal/core/domain/task.go`
 - `internal/core/services/orchestrator.go`
 - `internal/core/services/orchestrator_test.go`
@@ -22,6 +25,7 @@ Comprehensive tests are needed for the new command-aware routing feature: domain
 - `internal/adapters/outbound/repo_sqlite/repo_test.go`
 
 ## Implementation Steps
+
 1. In `internal/core/services/orchestrator_test.go`, add:
    - `TestSubmitTask_CommandPlan_Succeeds` — submit with CommandPlan, verify accepted
    - `TestSubmitTask_CommandExecute_NoPlan_ReturnsErrNoPlan` — submit with CommandExecute and no prior plan tasks, verify wraps `domain.ErrNoPlan`
@@ -36,6 +40,7 @@ Comprehensive tests are needed for the new command-aware routing feature: domain
 4. Run full test suite: `CGO_ENABLED=1 go test -race -count=1 ./...`
 
 ## Acceptance Criteria
+
 - [ ] `go vet ./...` exits 0
 - [ ] `CGO_ENABLED=1 go build ./cmd/nexus-cli/... ./cmd/nexus-daemon/...` exits 0
 - [ ] `CGO_ENABLED=1 go test -race -count=1 ./...` exits 0 with all new tests passing
@@ -44,6 +49,7 @@ Comprehensive tests are needed for the new command-aware routing feature: domain
 - [ ] Default command behavior (empty → auto) is tested
 
 ## Anti-patterns to Avoid
+
 - NEVER import adapters from core services (hexagonal dependency rule)
 - NEVER use goroutines inside `internal/core/services/`
 - NEVER skip `fmt.Errorf("package: operation: %w", err)` error wrapping

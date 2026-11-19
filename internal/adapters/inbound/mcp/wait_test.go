@@ -31,6 +31,8 @@ type waitOrch struct {
 	once       sync.Once
 	subscribed chan struct{} // closed on the first subscription
 	subOnce    sync.Once
+	firstRead  chan struct{} // closed when the handler has read the task once
+	readOnce   sync.Once
 }
 
 func newWaitOrch(status domain.TaskStatus) *waitOrch {
@@ -40,13 +42,16 @@ func newWaitOrch(status domain.TaskStatus) *waitOrch {
 		events:     make(chan ports.TaskEvent, 16),
 		cancelled:  make(chan struct{}),
 		subscribed: make(chan struct{}),
+		firstRead:  make(chan struct{}),
 	}
 }
 
 func (w *waitOrch) GetTask(string) (domain.Task, error) {
 	w.mu.Lock()
-	defer w.mu.Unlock()
-	return w.task, w.getErr
+	task, err := w.task, w.getErr
+	w.mu.Unlock()
+	w.readOnce.Do(func() { close(w.firstRead) })
+	return task, err
 }
 
 func (w *waitOrch) set(status domain.TaskStatus, logs string) {
@@ -136,7 +141,7 @@ func TestWaitForTask_StreamsProgressWhenAskedAndEndsWithTheResult(t *testing.T) 
 	defer srv.Close()
 
 	go func() {
-		<-o.subscribed // the handler listens before the first read, so nothing below can be missed
+		<-o.firstRead // the handler has subscribed and seen the task still running; a task already done would end the wait before any event
 		o.events <- ports.TaskEvent{Type: ports.EventTaskRestart, TaskID: "t1"}
 		o.events <- ports.TaskEvent{Type: ports.EventTaskChunk, TaskID: "other", Text: "NOT MINE", Seq: 1}
 		o.events <- ports.TaskEvent{Type: ports.EventTaskChunk, TaskID: "t1", Text: "Hel", Seq: 1}
@@ -328,5 +333,21 @@ func TestWaitForTask_TheTimeoutIsClamped(t *testing.T) {
 		if taskFrom(t, msgs[0])["status"] != "COMPLETED" {
 			t.Errorf("timeoutSeconds=%d: %v", secs, msgs[0])
 		}
+	}
+}
+
+// A WAITING task is not finished: every provider is cooling down and the task is queued again at the
+// reset. wait_for_task must keep waiting through it, not hand the caller a task that has not run.
+func TestWaitForTask_KeepsWaitingWhileTheTaskWaitsForAQuotaReset(t *testing.T) {
+	old := *mcp.WaitPollInterval
+	*mcp.WaitPollInterval = 10 * time.Millisecond
+	defer func() { *mcp.WaitPollInterval = old }()
+
+	o := newWaitOrch(domain.StatusWaiting)
+	time.AfterFunc(60*time.Millisecond, func() { o.set(domain.StatusQueued, "") })
+	time.AfterFunc(120*time.Millisecond, func() { o.set(domain.StatusCompleted, "after the reset") })
+	msgs, _ := callWait(t, mcp.NewMcpServer(noEvents{o}, nil), map[string]any{"id": "t1"}, nil, "")
+	if task := taskFrom(t, msgs[0]); task["status"] != "COMPLETED" || task["logs"] != "after the reset" {
+		t.Errorf("it returned early: %v", task)
 	}
 }

@@ -3,6 +3,7 @@ export type TaskStatus =
   | 'DRAFT'
   | 'BACKLOG'
   | 'QUEUED'
+  | 'WAITING'
   | 'PROCESSING'
   | 'COMPLETED'
   | 'FAILED'
@@ -27,6 +28,8 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   retryCount?: number;
+  /** When a WAITING task is queued again (ISO 8601): every provider is cooling down until then. */
+  waitUntil?: string;
   logs: string;
   providerName?: string;
   /** The provider Nexus ran the task on; absent when an agent set the status or it has not run. */
@@ -66,13 +69,90 @@ export interface ProviderInfo {
   timeoutSec?: number;
   lastChecked?: string;
   consecutiveFails?: number;
+  /** True while the provider cools down after a rate limit, an exhausted quota or an overload. */
+  rateLimited?: boolean;
+  /** When a cooling-down provider is tried again (ISO 8601). */
+  rateLimitedUntil?: string;
+  /** Why the provider cools down, for example "anthropic: rate limited (429)". */
+  cooldownReason?: string;
+  /** The plan's own reading of its allowance, where the provider's client reports it. */
+  quota?: {
+    window: string;
+    status: string;
+    utilization: number;
+    resetsAt?: string;
+  };
+}
+
+/** Tokens and cost the models consumed, added up for one provider, model and role. */
+export interface UsageSummary {
+  provider: string;
+  model?: string;
+  role?: string;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  cachedTokens?: number;
+  costUSD?: number;
+}
+
+/** The usage ledger answer of `GET /api/usage`. */
+export interface UsageReport {
+  /** Start of the window (ISO 8601). */
+  since: string;
+  totals: UsageSummary;
+  usage: UsageSummary[];
+}
+
+/** One candidate provider of a task, in the order routing would try it. */
+export interface RoutingEntry {
+  position: number;
+  provider: string;
+  model?: string;
+  rung: number;
+  coolingUntil?: string;
+  cooldownReason?: string;
+  utilization?: number;
+}
+
+/** What routing would do for a role in a project right now (`GET /api/routing`). */
+export interface RoutingPreview {
+  role?: string;
+  ladder?: string[];
+  quotaThreshold: number;
+  order: RoutingEntry[];
+}
+
+/** A project's `.nexus/policy.json`: routing, token and rule settings (`GET/PUT /api/policy`). */
+export interface ProjectPolicy {
+  version?: number;
+  verify?: string;
+  maxFileLines?: number;
+  testsFirst?: boolean;
+  remember?: boolean;
+  rules?: string[];
+  /** Share (0 to 1) of a plan's allowance at which routing prefers the other providers. */
+  quotaThreshold?: number;
+  /** Models a role may use, cheapest first, as `provider/model` patterns. */
+  ladder?: Record<string, string[]>;
+  contextBudget?: number;
+  historyBudget?: number;
+  /** Daily token budget per provider name. */
+  budgets?: Record<string, { dailyTokens: number }>;
+  planFiles?: { plans?: string[]; tasks?: string[] };
+}
+
+/** The answer of `GET /api/policy`: the policy and whether the project has a policy file. */
+export interface PolicyReply {
+  found: boolean;
+  policy: ProjectPolicy;
 }
 
 /** A saved provider configuration. */
 export interface ProviderConfig {
   id: string;
   name: string;
-  kind: 'lmstudio' | 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'openaicompat';
+  kind: 'lmstudio' | 'ollama' | 'openai' | 'anthropic' | 'gemini' | 'openaicompat' | 'cli';
   baseUrl: string;
   apiKey: string;
   model: string;
@@ -150,7 +230,13 @@ export interface DiscoveredAgent {
 
 /** Which convention a discovered plan file follows. */
 export type PlanFileKind =
-  'nexus' | 'claude-task' | 'markdown' | 'cursor' | 'mcp-config' | 'crewai' | 'claude';
+  | 'nexus'
+  | 'claude-task'
+  | 'markdown'
+  | 'cursor'
+  | 'mcp-config'
+  | 'crewai'
+  | 'claude';
 
 /** A plan file found on disk. */
 export interface DiscoveredPlanFile {
@@ -224,6 +310,7 @@ export interface ContextSection {
   kind: string;
   content: string;
   tokens: number;
+  projectPath?: string;
   source?: string;
   tokenCount?: number;
   relevanceScore?: number;

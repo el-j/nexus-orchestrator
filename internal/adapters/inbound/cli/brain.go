@@ -30,6 +30,8 @@ func newBrainCmd(brain ports.BrainService) *cobra.Command {
 	return cmd
 }
 
+// newBrainStatusCmd builds "brain status": how many entries a project holds and when it was last
+// scanned.
 func newBrainStatusCmd(brain ports.BrainService) *cobra.Command {
 	var project string
 	cmd := &cobra.Command{
@@ -50,13 +52,34 @@ func newBrainStatusCmd(brain ports.BrainService) *cobra.Command {
 	return cmd
 }
 
+// newBrainIngestCmd builds "brain ingest": it stores a markdown file or a single entry in the knowledge
+// base.
 func newBrainIngestCmd(brain ports.BrainService) *cobra.Command {
-	var project string
-	var file string
+	var project, file, kind, topic, content string
 	cmd := &cobra.Command{
 		Use:   "ingest",
-		Short: "Ingest a markdown file (CLAUDE.md) into the project knowledge repository",
+		Short: "Ingest a markdown file or a single knowledge entry into the project knowledge repository",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if file == "" && content != "" {
+				k := domain.KnowledgeKind(kind)
+				if k == "" {
+					k = domain.KnowledgeLearning
+				}
+				entry, err := brain.IngestKnowledge(context.Background(), domain.ProjectKnowledge{
+					ProjectPath: project,
+					Kind:        k,
+					Topic:       topic,
+					Content:     content,
+				})
+				if err != nil {
+					return fmt.Errorf("cli: brain ingest: %w", err)
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "Ingested knowledge entry %q (%s) into project %s\n", entry.Topic, entry.Kind, project)
+				return nil
+			}
+			if file == "" {
+				return fmt.Errorf("cli: brain ingest: --file or --content is required")
+			}
 			count, err := brain.IngestFromFile(context.Background(), project, file)
 			if err != nil {
 				return fmt.Errorf("cli: brain ingest: %w", err)
@@ -66,21 +89,29 @@ func newBrainIngestCmd(brain ports.BrainService) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&project, "project", "", "Project path (required)")
-	cmd.Flags().StringVar(&file, "file", "", "Markdown file path to ingest (required)")
+	cmd.Flags().StringVar(&file, "file", "", "Markdown file path to ingest")
+	cmd.Flags().StringVar(&kind, "kind", "", "Knowledge kind (for single entry ingest)")
+	cmd.Flags().StringVar(&topic, "topic", "", "Topic title (for single entry ingest)")
+	cmd.Flags().StringVar(&content, "content", "", "Markdown content (for single entry ingest)")
 	_ = cmd.MarkFlagRequired("project")
-	_ = cmd.MarkFlagRequired("file")
 	return cmd
 }
 
+// newBrainSearchCmd builds "brain search": full-text search over a project's knowledge or across all projects.
 func newBrainSearchCmd(brain ports.BrainService) *cobra.Command {
 	var project string
 	var query string
 	var limit int
+	var all bool
 	cmd := &cobra.Command{
 		Use:   "search",
-		Short: "Search the knowledge base for a specific project",
+		Short: "Search the knowledge base for a specific project or across all projects",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			results, err := brain.SearchKnowledge(context.Background(), project, query, limit)
+			target := project
+			if all || target == "" {
+				target = "*"
+			}
+			results, err := brain.SearchKnowledge(context.Background(), target, query, limit)
 			if err != nil {
 				return fmt.Errorf("cli: brain search: %w", err)
 			}
@@ -89,14 +120,16 @@ func newBrainSearchCmd(brain ports.BrainService) *cobra.Command {
 			return enc.Encode(results)
 		},
 	}
-	cmd.Flags().StringVar(&project, "project", "", "Project path (required)")
+	cmd.Flags().StringVar(&project, "project", "", "Project path (empty or '*' searches all projects)")
 	cmd.Flags().StringVar(&query, "query", "", "Search query (required)")
 	cmd.Flags().IntVar(&limit, "limit", 5, "Maximum number of results to return")
-	_ = cmd.MarkFlagRequired("project")
+	cmd.Flags().BoolVar(&all, "all", false, "Search across all projects")
 	_ = cmd.MarkFlagRequired("query")
 	return cmd
 }
 
+// newBrainInitCmd builds "brain init": it registers a project and reads its CLAUDE.md into the
+// knowledge base.
 func newBrainInitCmd(brain ports.BrainService) *cobra.Command {
 	var project string
 	var file string
@@ -119,6 +152,7 @@ func newBrainInitCmd(brain ports.BrainService) *cobra.Command {
 	return cmd
 }
 
+// newBrainListCmd builds "brain list": the stored entries of a project, optionally of one kind.
 func newBrainListCmd(brain ports.BrainService) *cobra.Command {
 	var project string
 	var kind string
@@ -141,6 +175,7 @@ func newBrainListCmd(brain ports.BrainService) *cobra.Command {
 	return cmd
 }
 
+// newBrainDeleteCmd builds "brain delete": it removes one knowledge entry by id.
 func newBrainDeleteCmd(brain ports.BrainService) *cobra.Command {
 	var id string
 	cmd := &cobra.Command{
@@ -159,17 +194,29 @@ func newBrainDeleteCmd(brain ports.BrainService) *cobra.Command {
 	return cmd
 }
 
+// newBrainContextCmd builds "brain context": the knowledge that answers a question, within a token
+// budget.
 func newBrainContextCmd(brain ports.BrainService) *cobra.Command {
-	var project string
+	var project, question string
 	var maxTokens int
 	cmd := &cobra.Command{
 		Use:   "context",
 		Short: "Assemble a token-budget-constrained context response for a project",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			resp, err := brain.GetContext(context.Background(), domain.ContextQuery{
+			q := domain.ContextQuery{
 				ProjectPath: project,
+				Question:    question,
 				MaxTokens:   maxTokens,
-			})
+			}
+			var (
+				resp domain.ContextResponse
+				err  error
+			)
+			if question != "" {
+				resp, err = brain.GetFocusedContext(context.Background(), q)
+			} else {
+				resp, err = brain.GetContext(context.Background(), q)
+			}
 			if err != nil {
 				return fmt.Errorf("cli: brain context: %w", err)
 			}
@@ -179,11 +226,14 @@ func newBrainContextCmd(brain ports.BrainService) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&project, "project", "", "Project path (required)")
+	cmd.Flags().StringVarP(&question, "question", "q", "", "Focused question to rank knowledge entries by relevance (optional)")
 	cmd.Flags().IntVar(&maxTokens, "max-tokens", 800, "Maximum tokens to include in context")
 	_ = cmd.MarkFlagRequired("project")
 	return cmd
 }
 
+// newBrainFileMapCmd builds "brain file-map": the project's file map, narrowed to a focus area when one
+// is given.
 func newBrainFileMapCmd(brain ports.BrainService) *cobra.Command {
 	var project string
 	var focus string

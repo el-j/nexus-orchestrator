@@ -9,6 +9,7 @@ import (
 
 // ----- Task Handlers -----
 
+// toolSubmitTask serves submit_task: it queues a code-generation task.
 func (s *Server) toolSubmitTask(args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath         string   `json:"projectPath"`
@@ -55,6 +56,7 @@ func (s *Server) toolSubmitTask(args json.RawMessage) (callToolResult, error) {
 	return textResult(string(b)), nil
 }
 
+// toolGetTask serves get_task.
 func (s *Server) toolGetTask(args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ID string `json:"id"`
@@ -88,6 +90,7 @@ func decodeOptionalArgs(args json.RawMessage, v any) error {
 	return nil
 }
 
+// toolGetQueue serves get_queue: the tasks that are waiting or running.
 func (s *Server) toolGetQueue(args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -114,6 +117,7 @@ func (s *Server) toolGetQueue(args json.RawMessage) (callToolResult, error) {
 	return textResult(string(b)), nil
 }
 
+// toolGetAllTasks serves get_all_tasks: every task of a project, or of all projects.
 func (s *Server) toolGetAllTasks(args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -140,6 +144,7 @@ func (s *Server) toolGetAllTasks(args json.RawMessage) (callToolResult, error) {
 	return textResult(string(b)), nil
 }
 
+// toolCancelTask serves cancel_task.
 func (s *Server) toolCancelTask(args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ID string `json:"id"`
@@ -154,6 +159,7 @@ func (s *Server) toolCancelTask(args json.RawMessage) (callToolResult, error) {
 	return textResult(string(b)), nil
 }
 
+// toolCreateDraft serves create_draft: a task that is kept in the backlog and not run yet.
 func (s *Server) toolCreateDraft(args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath  string   `json:"projectPath"`
@@ -188,6 +194,7 @@ func (s *Server) toolCreateDraft(args json.RawMessage) (callToolResult, error) {
 	return textResult(string(b)), nil
 }
 
+// toolGetBacklog serves get_backlog: the drafts of a project.
 func (s *Server) toolGetBacklog(args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ProjectPath string `json:"projectPath"`
@@ -206,6 +213,7 @@ func (s *Server) toolGetBacklog(args json.RawMessage) (callToolResult, error) {
 	return textResult(string(b)), nil
 }
 
+// toolPromoteTask serves promote_task: a draft moves into the queue.
 func (s *Server) toolPromoteTask(args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ID string `json:"id"`
@@ -225,13 +233,17 @@ func (s *Server) toolPromoteTask(args json.RawMessage) (callToolResult, error) {
 	return textResult(string(b)), nil
 }
 
+// toolUpdateTask serves update_task: it edits a task that has not started.
 func (s *Server) toolUpdateTask(args json.RawMessage) (callToolResult, error) {
 	var p struct {
 		ID           string   `json:"id"`
 		Instruction  string   `json:"instruction"`
+		TargetFile   string   `json:"targetFile"`
 		Priority     int      `json:"priority"`
 		ProviderName string   `json:"providerName"`
+		ProviderHint string   `json:"providerHint"`
 		ModelID      string   `json:"modelId"`
+		Status       string   `json:"status"`
 		Tags         []string `json:"tags"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
@@ -239,9 +251,12 @@ func (s *Server) toolUpdateTask(args json.RawMessage) (callToolResult, error) {
 	}
 	updates := domain.Task{
 		Instruction:  p.Instruction,
+		TargetFile:   p.TargetFile,
 		Priority:     p.Priority,
 		ProviderName: p.ProviderName,
+		ProviderHint: p.ProviderHint,
 		ModelID:      p.ModelID,
+		Status:       domain.TaskStatus(p.Status),
 		Tags:         p.Tags,
 	}
 	updated, err := s.orch.UpdateTask(p.ID, updates)
@@ -257,6 +272,7 @@ func (s *Server) toolUpdateTask(args json.RawMessage) (callToolResult, error) {
 
 // ----- Task Schema Definitions -----
 
+// taskToolDefs lists the task tools for tools/list.
 func taskToolDefs() []toolDef {
 	return []toolDef{
 		{
@@ -365,15 +381,18 @@ func taskToolDefs() []toolDef {
 		},
 		{
 			Name:        "update_task",
-			Description: "Update mutable fields on an existing task (instruction, priority, provider, tags, status).",
+			Description: "Update mutable fields on an existing task (instruction, targetFile, priority, provider, providerHint, tags, status).",
 			InputSchema: inputSchema{
 				Type: "object",
 				Properties: map[string]property{
 					"id":           {Type: "string", Description: "Task ID to update."},
 					"instruction":  {Type: "string", Description: "Updated instruction."},
+					"targetFile":   {Type: "string", Description: "Updated target file."},
 					"priority":     {Type: "integer", Description: "Updated priority."},
 					"providerName": {Type: "string", Description: "Updated provider name."},
+					"providerHint": {Type: "string", Description: "Updated provider hint."},
 					"modelId":      {Type: "string", Description: "Updated model ID."},
+					"status":       {Type: "string", Description: "Updated status (DRAFT or BACKLOG)."},
 					"tags":         {Type: "array", Description: "Updated tags.", Items: &propertyItems{Type: "string"}},
 				},
 				Required: []string{"id"},

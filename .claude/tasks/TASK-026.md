@@ -3,7 +3,8 @@ id: TASK-026
 title: Domain — add source writeback fields to Task
 role: architecture
 planId: PLAN-002
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-09T13:00:00.000Z
 ---
@@ -23,6 +24,7 @@ Without these fields, the orchestrator cannot know where to write results back w
 ## Implementation Steps
 
 1. **Add three optional fields to `domain.Task`** in `internal/core/domain/task.go`:
+
    ```go
    type Task struct {
        ID          string
@@ -39,6 +41,7 @@ Without these fields, the orchestrator cannot know where to write results back w
        SourcePlanID      string `json:"sourcePlanId,omitempty"`
    }
    ```
+
    All three fields are optional (zero value = empty string = "not a writeback task").
 
 2. **Update SQLite schema** in `repo_sqlite/repo.go`:

@@ -74,6 +74,19 @@ describe('BacklogList', () => {
     expect(w.emitted('promoted')?.[0]).toEqual(['b1']);
   });
 
+  it('shows a warning toast when promote returns promoted: false with a warning', async () => {
+    promoteTask.mockResolvedValueOnce({ promoted: false, warning: 'all providers cooling down' });
+    const w = mountList([item()]);
+    await w.findAll('button')[0].trigger('click');
+    await flushPromises();
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        severity: 'warn',
+        detail: 'all providers cooling down',
+      }),
+    );
+  });
+
   it('dismisses a task and emits "dismissed"', async () => {
     const w = mountList([item()]);
     await w.findAll('button')[1].trigger('click');

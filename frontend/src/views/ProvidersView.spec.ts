@@ -23,6 +23,7 @@ vi.mock('../types/wails', () => ({
   addProviderConfig: vi.fn(),
   removeProviderConfig: vi.fn(),
   updateProviderConfig: vi.fn(),
+  getRouting: vi.fn().mockResolvedValue({ quotaThreshold: 0.9, order: [] }),
 }));
 
 // Mock useServerUrl
@@ -48,7 +49,6 @@ describe('ProvidersView', () => {
     const wrapper = shallowMount(ProvidersView, {
       global: {
         stubs: {
-          ProviderStatus: true,
           DiscoveredProvidersPanel: true,
           ProviderConfigForm: true,
           RefreshIndicator: true,
@@ -62,7 +62,6 @@ describe('ProvidersView', () => {
     const wrapper = shallowMount(ProvidersView, {
       global: {
         stubs: {
-          ProviderStatus: true,
           DiscoveredProvidersPanel: true,
           ProviderConfigForm: true,
           RefreshIndicator: true,
@@ -76,7 +75,6 @@ describe('ProvidersView', () => {
     const wrapper = shallowMount(ProvidersView, {
       global: {
         stubs: {
-          ProviderStatus: true,
           DiscoveredProvidersPanel: true,
           ProviderConfigForm: true,
           RefreshIndicator: true,
@@ -94,7 +92,6 @@ describe('ProvidersView', () => {
     const wrapper = shallowMount(ProvidersView, {
       global: {
         stubs: {
-          ProviderStatus: true,
           DiscoveredProvidersPanel: true,
           ProviderConfigForm: true,
           RefreshIndicator: true,
@@ -112,7 +109,6 @@ describe('ProvidersView', () => {
     const wrapper = shallowMount(ProvidersView, {
       global: {
         stubs: {
-          ProviderStatus: true,
           DiscoveredProvidersPanel: true,
           ProviderConfigForm: true,
           RefreshIndicator: true,
@@ -129,7 +125,6 @@ describe('ProvidersView', () => {
     const wrapper = shallowMount(ProvidersView, {
       global: {
         stubs: {
-          ProviderStatus: true,
           DiscoveredProvidersPanel: true,
           ProviderConfigForm: true,
           RefreshIndicator: true,
@@ -143,7 +138,6 @@ describe('ProvidersView', () => {
     const wrapper = shallowMount(ProvidersView, {
       global: {
         stubs: {
-          ProviderStatus: true,
           DiscoveredProvidersPanel: true,
           ProviderConfigForm: true,
           RefreshIndicator: true,
@@ -152,5 +146,86 @@ describe('ProvidersView', () => {
     });
     const refreshBtn = wrapper.findAll('button').find((b) => b.text().includes('Refresh'));
     expect(refreshBtn).toBeDefined();
+  });
+
+  it('pre-fills the command line when promoting a discovered CLI provider', async () => {
+    const wrapper = shallowMount(ProvidersView, {
+      global: {
+        stubs: {
+          DiscoveredProvidersPanel: false,
+          ProviderConfigForm: true,
+          RefreshIndicator: true,
+        },
+      },
+    });
+    await flushPromises();
+    const panel = wrapper.findComponent({ name: 'DiscoveredProvidersPanel' });
+    panel.vm.$emit('promote', {
+      id: 'cli-claude',
+      name: 'Claude CLI',
+      kind: 'cli',
+      method: 'cli',
+      status: 'installed',
+      cliPath: '/usr/local/bin/claude',
+      lastSeen: new Date().toISOString(),
+    });
+    await flushPromises();
+    const form = wrapper.findComponent({ name: 'ProviderConfigForm' });
+    expect(form.exists()).toBe(true);
+    expect(form.props('modelValue')).toMatchObject({
+      name: 'Claude CLI',
+      kind: 'cli',
+      baseUrl: '/usr/local/bin/claude -p --output-format stream-json',
+    });
+
+    panel.vm.$emit('promote', {
+      id: 'cli-copilot',
+      name: 'Copilot CLI',
+      kind: 'cli',
+      method: 'cli',
+      status: 'installed',
+      cliPath: '/usr/local/bin/copilot.exe',
+      lastSeen: new Date().toISOString(),
+    });
+    await flushPromises();
+    expect(wrapper.findComponent({ name: 'ProviderConfigForm' }).props('modelValue')).toMatchObject(
+      {
+        name: 'Copilot CLI',
+        kind: 'cli',
+        baseUrl: '/usr/local/bin/copilot.exe -s --no-ask-user',
+      },
+    );
+
+    panel.vm.$emit('promote', {
+      id: 'cli-agy',
+      name: 'Google Antigravity CLI',
+      kind: 'cli',
+      method: 'cli',
+      status: 'installed',
+      cliPath: '/opt/homebrew/bin/agy',
+      lastSeen: new Date().toISOString(),
+    });
+    await flushPromises();
+    expect(wrapper.findComponent({ name: 'ProviderConfigForm' }).props('modelValue')).toMatchObject(
+      { name: 'Google Antigravity CLI', kind: 'cli', baseUrl: '/opt/homebrew/bin/agy' },
+    );
+
+    panel.vm.$emit('promote', {
+      id: 'cli-aichat',
+      name: 'aichat',
+      kind: 'cli',
+      method: 'cli',
+      status: 'installed',
+      cliPath: '/usr/local/bin/aichat',
+      lastSeen: new Date().toISOString(),
+    });
+    await flushPromises();
+    expect(wrapper.findComponent({ name: 'ProviderConfigForm' }).props('modelValue')).toMatchObject(
+      {
+        name: 'aichat',
+        kind: 'cli',
+        baseUrl: '/usr/local/bin/aichat -p',
+      },
+    );
   });
 });

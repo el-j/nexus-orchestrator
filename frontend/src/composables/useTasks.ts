@@ -6,6 +6,7 @@ import {
   promoteTask as wailsPromoteTask,
   updateTask as wailsUpdateTask,
   cancelTask as wailsCancelTask,
+  type PromoteResult,
 } from '../types/wails';
 import { currentProject } from './useProjectState';
 import { useGlobalSSE } from './useGlobalSSE';
@@ -30,7 +31,7 @@ export function useTasks() {
   const queuedTasks = computed(() =>
     tasks.value.filter(
       (t) =>
-        (t.status === 'QUEUED' || t.status === 'PROCESSING') &&
+        (t.status === 'QUEUED' || t.status === 'WAITING' || t.status === 'PROCESSING') &&
         (currentProject.value === null || t.projectPath === currentProject.value),
     ),
   );
@@ -50,9 +51,10 @@ export function useTasks() {
     return id;
   }
 
-  async function promoteTask(id: string): Promise<void> {
-    await wailsPromoteTask(id);
+  async function promoteTask(id: string): Promise<PromoteResult> {
+    const res = await wailsPromoteTask(id);
     await refresh();
+    return res;
   }
 
   async function cancelTask(id: string): Promise<void> {

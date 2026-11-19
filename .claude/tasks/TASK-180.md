@@ -3,15 +3,18 @@ id: TASK-180
 title: Frontend — BacklogView, BacklogList, ProjectSelector components
 role: frontend
 planId: PLAN-024
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-179]
 createdAt: 2026-03-11T22:00:00.000Z
 ---
 
 ## Context
+
 Users need a dedicated backlog view per project to manage their idea pipeline. A project selector in the sidebar filters all views. Backlog items can be promoted to queue, edited, or deleted.
 
 ## Files to Read
+
 - `frontend/src/components/AppSidebar.vue` — nav items
 - `frontend/src/components/TaskQueue.vue` — list component pattern
 - `frontend/src/components/TaskDetailDrawer.vue` — detail panel pattern
@@ -58,6 +61,7 @@ Users need a dedicated backlog view per project to manage their idea pipeline. A
 7. Add route `/backlog` → `BacklogView` in Vue router.
 
 ## Acceptance Criteria
+
 - [ ] ProjectSelector dropdown shows unique project paths from all tasks
 - [ ] Selecting a project filters all views (TaskQueue, Backlog, etc.)
 - [ ] BacklogList shows DRAFT+BACKLOG items with priority ordering
@@ -66,6 +70,7 @@ Users need a dedicated backlog view per project to manage their idea pipeline. A
 - [ ] `/backlog` route loads BacklogView
 
 ## Anti-patterns to Avoid
+
 - NEVER derive project list from anything other than task data (no separate registration)
 - NEVER implement drag-and-drop in v1 — priority numbers control ordering
 - NEVER duplicate provider/model fetching — reuse `useProviders()`

@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"unicode/utf8"
 
 	"nexus-orchestrator/internal/core/domain"
 	"nexus-orchestrator/internal/core/ports"
@@ -22,11 +21,17 @@ var _ ports.BrainService = (*BrainServiceImpl)(nil)
 type BrainServiceImpl struct {
 	repo     ports.ProjectKnowledgeRepository
 	taskRepo ports.TaskRepository
+	embedder ports.EmbeddingProvider
 }
 
 // NewBrainService returns a BrainServiceImpl using the given repositories.
 func NewBrainService(repo ports.ProjectKnowledgeRepository, taskRepo ports.TaskRepository) *BrainServiceImpl {
 	return &BrainServiceImpl{repo: repo, taskRepo: taskRepo}
+}
+
+// SetEmbeddingProvider configures an optional vector embedding provider for hybrid search.
+func (b *BrainServiceImpl) SetEmbeddingProvider(embedder ports.EmbeddingProvider) {
+	b.embedder = embedder
 }
 
 // estimateStringTokens approximates token count using GPT-family heuristics (~4 chars/token).
@@ -36,27 +41,6 @@ func estimateStringTokens(text string) int {
 		return 1
 	}
 	return n
-}
-
-// cutUTF8 returns the longest prefix of s that is at most maxBytes long and does
-// not end in the middle of a multi-byte character.
-func cutUTF8(s string, maxBytes int) string {
-	if len(s) <= maxBytes {
-		return s
-	}
-	for maxBytes > 0 && !utf8.RuneStart(s[maxBytes]) {
-		maxBytes--
-	}
-	return s[:maxBytes]
-}
-
-// truncateUTF8 shortens s to at most maxBytes (rune-safe) and appends "..." when
-// anything was removed.
-func truncateUTF8(s string, maxBytes int) string {
-	if len(s) <= maxBytes {
-		return s
-	}
-	return cutUTF8(s, maxBytes) + "..."
 }
 
 // kindPriority defines the assembly order for GetContext.
@@ -114,10 +98,11 @@ func (b *BrainServiceImpl) GetContext(ctx context.Context, q domain.ContextQuery
 				break
 			}
 			resp.Sections = append(resp.Sections, domain.ContextSection{
-				Kind:    e.Kind,
-				Topic:   e.Topic,
-				Content: e.Content,
-				Tokens:  e.TokenCount,
+				ProjectPath: e.ProjectPath,
+				Kind:        e.Kind,
+				Topic:       e.Topic,
+				Content:     e.Content,
+				Tokens:      e.TokenCount,
 			})
 			resp.TokensUsed += e.TokenCount
 			if kind == domain.KnowledgeFileMap {
@@ -136,12 +121,25 @@ func (b *BrainServiceImpl) GetFocusedContext(ctx context.Context, q domain.Conte
 	if q.MaxTokens == 0 {
 		q.MaxTokens = 400
 	}
-	entries, err := b.repo.SearchFTS(ctx, filepath.Clean(q.ProjectPath), q.Question, 20)
+	cleanPath := q.ProjectPath
+	if cleanPath != "" && cleanPath != "*" && cleanPath != "all" {
+		cleanPath = filepath.Clean(cleanPath)
+	} else {
+		cleanPath = "*"
+	}
+	entries, err := b.repo.SearchFTS(ctx, cleanPath, q.Question, 20)
 	if err != nil {
 		return domain.ContextResponse{}, fmt.Errorf("brain_service: focused context: %w", err)
 	}
+	if b.embedder != nil {
+		if emb, err := b.embedder.Embed(ctx, q.Question); err == nil && len(emb) > 0 {
+			if vec, err := b.repo.SearchVector(ctx, cleanPath, emb, 20); err == nil && len(vec) > 0 {
+				entries = FuseRRF(entries, vec, 20)
+			}
+		}
+	}
 	resp := domain.ContextResponse{
-		ProjectPath: filepath.Clean(q.ProjectPath),
+		ProjectPath: cleanPath,
 		TokenBudget: q.MaxTokens,
 		Sections:    []domain.ContextSection{},
 	}
@@ -151,10 +149,11 @@ func (b *BrainServiceImpl) GetFocusedContext(ctx context.Context, q domain.Conte
 			break
 		}
 		resp.Sections = append(resp.Sections, domain.ContextSection{
-			Kind:    e.Kind,
-			Topic:   e.Topic,
-			Content: e.Content,
-			Tokens:  e.TokenCount,
+			ProjectPath: e.ProjectPath,
+			Kind:        e.Kind,
+			Topic:       e.Topic,
+			Content:     e.Content,
+			Tokens:      e.TokenCount,
 		})
 		resp.TokensUsed += e.TokenCount
 	}
@@ -167,30 +166,42 @@ func (b *BrainServiceImpl) SearchKnowledge(ctx context.Context, projectPath, que
 	if maxTokens > 0 && maxTokens <= 20 {
 		// Caller passed an item count limit (e.g. limit=5 or limit=10), not a token budget.
 		itemLimit = maxTokens
-		maxTokens = 400
+		maxTokens = 0
 	} else if maxTokens <= 0 {
 		maxTokens = 400
 	}
+	cleanPath := projectPath
+	if cleanPath != "" && cleanPath != "*" && cleanPath != "all" {
+		cleanPath = filepath.Clean(cleanPath)
+	}
 	// itemLimit is at most 20 (see above), so a fixed fetch of 20 always covers it.
 	const fetchCount = 20
-	entries, err := b.repo.SearchFTS(ctx, filepath.Clean(projectPath), query, fetchCount)
+	entries, err := b.repo.SearchFTS(ctx, cleanPath, query, fetchCount)
 	if err != nil {
 		return nil, fmt.Errorf("brain_service: search knowledge: %w", err)
 	}
-	var sections []domain.ContextSection
+	if b.embedder != nil {
+		if emb, err := b.embedder.Embed(ctx, query); err == nil && len(emb) > 0 {
+			if vec, err := b.repo.SearchVector(ctx, cleanPath, emb, fetchCount); err == nil && len(vec) > 0 {
+				entries = FuseRRF(entries, vec, fetchCount)
+			}
+		}
+	}
+	sections := []domain.ContextSection{}
 	used := 0
 	for _, e := range entries {
 		if itemLimit > 0 && len(sections) >= itemLimit {
 			break
 		}
-		if used+e.TokenCount > maxTokens {
+		if itemLimit == 0 && used+e.TokenCount > maxTokens && len(sections) > 0 {
 			break
 		}
 		sections = append(sections, domain.ContextSection{
-			Kind:    e.Kind,
-			Topic:   e.Topic,
-			Content: e.Content,
-			Tokens:  e.TokenCount,
+			ProjectPath: e.ProjectPath,
+			Kind:        e.Kind,
+			Topic:       e.Topic,
+			Content:     e.Content,
+			Tokens:      e.TokenCount,
 		})
 		used += e.TokenCount
 	}
@@ -214,19 +225,9 @@ func (b *BrainServiceImpl) GetFileMap(ctx context.Context, projectPath, focusAre
 	return files, nil
 }
 
-// instructionFiles are the files in which the agents that work on a project keep their
-// instructions. The first of a group that exists is ingested, so a project that has both
-// CLAUDE.md and .claude/CLAUDE.md is not read twice.
-var instructionFiles = [][]string{
-	{"CLAUDE.md", filepath.Join(".claude", "CLAUDE.md")},
-	{"AGENTS.md"},
-	{"GEMINI.md"},
-	{filepath.Join(".github", "copilot-instructions.md")},
-}
-
-// InitProject ingests the project's agent instructions. With an explicit claudeMDPath only that
-// file is read; with none, the project's CLAUDE.md, AGENTS.md, GEMINI.md and Copilot
-// instructions are found by themselves, whichever agent works on the project.
+// InitProject ingests the project's agent instructions and documentation. With an explicit claudeMDPath only that
+// file is read; with none, the project's CLAUDE.md, AGENTS.md, GEMINI.md, Copilot
+// instructions, README.md, and docs directory are found by themselves.
 func (b *BrainServiceImpl) InitProject(ctx context.Context, projectPath, claudeMDPath string) (domain.BrainStatus, error) {
 	var paths []string
 	if claudeMDPath != "" {
@@ -240,6 +241,13 @@ func (b *BrainServiceImpl) InitProject(ctx context.Context, projectPath, claudeM
 				}
 			}
 		}
+		for _, readme := range []string{"README.md", "readme.md"} {
+			if _, err := os.Stat(filepath.Join(projectPath, readme)); err == nil {
+				paths = append(paths, filepath.Join(projectPath, readme))
+				break
+			}
+		}
+		paths = append(paths, findDocFiles(projectPath)...)
 	}
 	for _, path := range paths {
 		if _, err := b.IngestFromFile(ctx, projectPath, path); err != nil {
@@ -287,45 +295,76 @@ func (b *BrainServiceImpl) GetProjectBrief(ctx context.Context, projectPath stri
 	return b.buildOnboarding(ctx, projectPath, maxTokens, false)
 }
 
+// buildOnboarding writes the onboarding text of a project within a token budget; withRules adds the
+// project's policy.
 func (b *BrainServiceImpl) buildOnboarding(ctx context.Context, projectPath string, maxTokens int, withRules bool) (string, error) {
 	if maxTokens <= 0 {
 		maxTokens = 800
 	}
 	clean := filepath.Clean(projectPath)
-	projectName := filepath.Base(clean)
 
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "# Project Onboarding: %s\n\n", projectName)
+	fmt.Fprintf(&sb, "# Project Onboarding: %s\n\n", filepath.Base(clean))
 	fmt.Fprintf(&sb, "**Path:** `%s`\n", clean)
-
-	// 1. Stack detection
-	var stackParts []string
-	if _, err := os.Stat(filepath.Join(clean, "go.mod")); err == nil {
-		stackParts = append(stackParts, "Go")
-	}
-	if _, err := os.Stat(filepath.Join(clean, "package.json")); err == nil {
-		stackParts = append(stackParts, "TypeScript/JavaScript (Node)")
-	}
-	if _, err := os.Stat(filepath.Join(clean, "Cargo.toml")); err == nil {
-		stackParts = append(stackParts, "Rust")
-	}
-	if _, err := os.Stat(filepath.Join(clean, "pyproject.toml")); err == nil {
-		stackParts = append(stackParts, "Python")
-	} else if _, err := os.Stat(filepath.Join(clean, "requirements.txt")); err == nil {
-		stackParts = append(stackParts, "Python")
-	}
-
+	stackParts := detectStack(clean)
 	stackStr := "Generic"
 	if len(stackParts) > 0 {
 		stackStr = strings.Join(stackParts, ", ")
 	}
 	fmt.Fprintf(&sb, "**Stack:** %s\n\n", stackStr)
 
-	// 2. Active Development State
+	b.writeDevelopmentState(&sb, ctx, clean, withRules)
+
+	// Project rules go before everything that can be truncated: a fresh session
+	// must learn them even on a tight budget.
+	policy, hasPolicy, policyErr := LoadProjectPolicy(clean)
+	switch {
+	case policyErr != nil:
+		fmt.Fprintf(&sb, "## Workflow rules\n- The project's policy file is invalid and no rules are applied until it is fixed: %v\n\n", policyErr)
+	case hasPolicy && withRules:
+		sb.WriteString(renderPolicy(policy))
+		sb.WriteString("\n")
+	}
+
+	b.writeKnowledgeSections(&sb, ctx, clean)
+
+	// A policy states the real verification command; guessing would contradict it.
+	if !hasPolicy {
+		writeVerificationCommands(&sb, stackStr)
+	}
+	return b.fitOnboarding(sb.String(), maxTokens), nil
+}
+
+// stackMarkers are the files that show a project's language, in the order they are reported.
+var stackMarkers = []struct {
+	label string
+	files []string
+}{
+	{"Go", []string{"go.mod"}},
+	{"TypeScript/JavaScript (Node)", []string{"package.json"}},
+	{"Rust", []string{"Cargo.toml"}},
+	{"Python", []string{"pyproject.toml", "requirements.txt"}},
+}
+
+// detectStack names the languages of the project from the files in its root.
+func detectStack(root string) []string {
+	var parts []string
+	for _, m := range stackMarkers {
+		for _, f := range m.files {
+			if _, err := os.Stat(filepath.Join(root, f)); err == nil {
+				parts = append(parts, m.label)
+				break
+			}
+		}
+	}
+	return parts
+}
+
+// writeDevelopmentState writes the active plan, the plan files found and, with the rules, the task counts.
+func (b *BrainServiceImpl) writeDevelopmentState(sb *strings.Builder, ctx context.Context, clean string, withRules bool) {
 	sb.WriteString("## Active Development State\n")
 	activePlan := "None"
-	orchestratorPath := filepath.Join(clean, ".claude", "orchestrator.json")
-	if data, err := os.ReadFile(orchestratorPath); err == nil {
+	if data, err := os.ReadFile(filepath.Join(clean, ".claude", "orchestrator.json")); err == nil {
 		var orchConfig struct {
 			ActivePlanID string `json:"activePlanId"`
 		}
@@ -345,101 +384,87 @@ func (b *BrainServiceImpl) buildOnboarding(ctx context.Context, projectPath stri
 			activePlan = p.ID + " — " + p.Title
 		}
 	}
-	fmt.Fprintf(&sb, "- **Active Plan:** %s\n", activePlan)
+	fmt.Fprintf(sb, "- **Active Plan:** %s\n", activePlan)
 	if summary := taskFileSummary(taskFiles); summary != "" {
-		fmt.Fprintf(&sb, "- **Plan files:** %s, read from %s\n", summary, strings.Join(scan.Folders, ", "))
+		fmt.Fprintf(sb, "- **Plan files:** %s, read from %s\n", summary, strings.Join(scan.Folders, ", "))
 	}
-
-	if b.taskRepo != nil {
+	if b.taskRepo != nil && withRules {
 		tasks, _ := b.taskRepo.GetByProjectPath(ctx, clean)
-		var queued, processing, completed, failed int
-		var activeTaskDesc string
-		for _, t := range tasks {
-			switch t.Status {
-			case domain.StatusQueued:
-				queued++
-			case domain.StatusProcessing:
-				processing++
-				if activeTaskDesc == "" {
-					activeTaskDesc = fmt.Sprintf("%s (%s)", t.ID, t.Instruction)
-				}
-			case domain.StatusCompleted:
-				completed++
-			case domain.StatusFailed:
-				failed++
-			}
-		}
-		fmt.Fprintf(&sb, "- **Tasks:** %d queued, %d processing, %d completed, %d failed\n",
-			queued, processing, completed, failed)
-		if activeTaskDesc != "" {
-			fmt.Fprintf(&sb, "- **Current Task:** %s\n", activeTaskDesc)
-		}
+		writeTaskCounts(sb, tasks)
 	}
 	sb.WriteString("\n")
+}
 
-	// 2b. Project rules go before everything that can be truncated: a fresh session
-	// must learn them even on a tight budget.
-	policy, hasPolicy, policyErr := LoadProjectPolicy(clean)
-	switch {
-	case policyErr != nil:
-		fmt.Fprintf(&sb, "## Workflow rules\n- The project's policy file is invalid and no rules are applied until it is fixed: %v\n\n", policyErr)
-	case hasPolicy && withRules:
-		sb.WriteString(renderPolicy(policy))
-		sb.WriteString("\n")
+// writeTaskCounts writes how many tasks are in each state and the first one that is being processed.
+func writeTaskCounts(sb *strings.Builder, tasks []domain.Task) {
+	var queued, processing, completed, failed int
+	var activeTaskDesc string
+	for _, t := range tasks {
+		switch t.Status {
+		case domain.StatusQueued:
+			queued++
+		case domain.StatusProcessing:
+			processing++
+			if activeTaskDesc == "" {
+				activeTaskDesc = fmt.Sprintf("%s (%s)", t.ID, t.Instruction)
+			}
+		case domain.StatusCompleted:
+			completed++
+		case domain.StatusFailed:
+			failed++
+		}
 	}
+	fmt.Fprintf(sb, "- **Tasks:** %d queued, %d processing, %d completed, %d failed\n",
+		queued, processing, completed, failed)
+	if activeTaskDesc != "" {
+		fmt.Fprintf(sb, "- **Current Task:** %s\n", activeTaskDesc)
+	}
+}
 
-	// 3. Architecture & Invariants
+// writeKnowledgeSections writes the architecture entries and up to five conventions of the project.
+func (b *BrainServiceImpl) writeKnowledgeSections(sb *strings.Builder, ctx context.Context, clean string) {
 	archEntries, _ := b.repo.GetByProjectAndKind(ctx, clean, domain.KnowledgeArchitecture)
 	if len(archEntries) > 0 {
 		sb.WriteString("## Architectural Overview\n")
 		for _, a := range archEntries {
-			content := truncateUTF8(strings.TrimSpace(a.Content), 300)
-			fmt.Fprintf(&sb, "### %s\n%s\n\n", a.Topic, content)
+			fmt.Fprintf(sb, "### %s\n%s\n\n", a.Topic, truncateUTF8(strings.TrimSpace(a.Content), 300))
 		}
 	}
-
-	// 4. Key Conventions & Rules
 	convEntries, _ := b.repo.GetByProjectAndKind(ctx, clean, domain.KnowledgeConvention)
 	if len(convEntries) > 0 {
 		sb.WriteString("## Key Conventions & Constraints\n")
-		count := 0
-		for _, c := range convEntries {
-			content := truncateUTF8(strings.TrimSpace(c.Content), 250)
-			fmt.Fprintf(&sb, "- **%s:** %s\n", c.Topic, content)
-			count++
-			if count >= 5 {
+		for i, c := range convEntries {
+			if i >= 5 {
 				break
 			}
+			fmt.Fprintf(sb, "- **%s:** %s\n", c.Topic, truncateUTF8(strings.TrimSpace(c.Content), 250))
 		}
 		sb.WriteString("\n")
 	}
+}
 
-	// 5. Mandatory Verification Commands (a policy states the real one; guessing would contradict it)
-	if hasPolicy {
-		return b.fitOnboarding(sb.String(), maxTokens), nil
-	}
+// writeVerificationCommands writes the usual test commands of the stack, for a project without a policy.
+func writeVerificationCommands(sb *strings.Builder, stackStr string) {
 	sb.WriteString("## Verification Commands\n")
-	var verifCommands []string
+	var cmds []string
 	if strings.Contains(stackStr, "Go") {
-		verifCommands = append(verifCommands, "CGO_ENABLED=1 CGO_CFLAGS=\"-DSQLITE_ENABLE_FTS5\" go test -race -count=1 ./...")
+		cmds = append(cmds, "CGO_ENABLED=1 CGO_CFLAGS=\"-DSQLITE_ENABLE_FTS5\" go test -race -count=1 ./...")
 	}
 	if strings.Contains(stackStr, "TypeScript") || strings.Contains(stackStr, "Node") {
-		verifCommands = append(verifCommands, "npm test")
+		cmds = append(cmds, "npm test")
 	}
 	if strings.Contains(stackStr, "Rust") {
-		verifCommands = append(verifCommands, "cargo test")
+		cmds = append(cmds, "cargo test")
 	}
 	if strings.Contains(stackStr, "Python") {
-		verifCommands = append(verifCommands, "pytest")
+		cmds = append(cmds, "pytest")
 	}
-	if len(verifCommands) == 0 {
-		verifCommands = append(verifCommands, "Run project-specific test suite before committing.")
+	if len(cmds) == 0 {
+		cmds = append(cmds, "Run project-specific test suite before committing.")
 	}
-	for _, cmd := range verifCommands {
-		fmt.Fprintf(&sb, "- `%s`\n", cmd)
+	for _, cmd := range cmds {
+		fmt.Fprintf(sb, "- `%s`\n", cmd)
 	}
-
-	return b.fitOnboarding(sb.String(), maxTokens), nil
 }
 
 // fitOnboarding cuts text to the token budget, marking the cut.

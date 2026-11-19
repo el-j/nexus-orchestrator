@@ -1,6 +1,7 @@
 # TASK-382: Frontend Vitest — composable unit tests
 
 **Plan:** PLAN-055 | **Wave:** 5 | **Status:** done | **Role:** testing
+**Status:** done
 
 ## Goal
 

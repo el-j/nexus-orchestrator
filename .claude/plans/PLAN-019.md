@@ -1,7 +1,7 @@
 ---
 id: PLAN-019
 title: VSIX release pipeline + docs site mention
-status: active
+status: completed
 createdAt: 2026-03-11T18:00:00.000Z
 ---
 
@@ -14,6 +14,7 @@ site (downloads page + home page feature list).
 ## Context
 
 PLAN-018 delivered a complete VS Code extension at `vscode-extension/`. However:
+
 - `vscode-extension/package.json` is missing `publisher` field and `@vscode/vsce` devDependency,
   so `vsce package` cannot run.
 - `publish.yml` has no job to build the VSIX or upload it as a release artifact.
@@ -24,14 +25,14 @@ PLAN-018 delivered a complete VS Code extension at `vscode-extension/`. However:
 
 ## Tasks
 
-| ID       | Role     | Title                                           | Deps |
-|----------|----------|-------------------------------------------------|------|
-| TASK-137 | devops   | Prepare vscode-extension for vsce packaging     | —    |
-| TASK-138 | devops   | Add VSIX build job to publish.yml               | —    |
-| TASK-139 | devops   | Add vscode-extension CI check to ci.yml         | —    |
-| TASK-140 | frontend | Add VS Code extension section to DownloadsView  | —    |
-| TASK-141 | frontend | Add VS Code Extension to HomeView features      | —    |
-| TASK-142 | docs     | Update docs/index.md with VS Code extension     | —    |
+| ID       | Role     | Title                                          | Deps |
+| -------- | -------- | ---------------------------------------------- | ---- |
+| TASK-137 | devops   | Prepare vscode-extension for vsce packaging    | —    |
+| TASK-138 | devops   | Add VSIX build job to publish.yml              | —    |
+| TASK-139 | devops   | Add vscode-extension CI check to ci.yml        | —    |
+| TASK-140 | frontend | Add VS Code extension section to DownloadsView | —    |
+| TASK-141 | frontend | Add VS Code Extension to HomeView features     | —    |
+| TASK-142 | docs     | Update docs/index.md with VS Code extension    | —    |
 
 All six tasks are independent — execute in a single parallel wave.
 

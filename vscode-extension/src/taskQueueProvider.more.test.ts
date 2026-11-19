@@ -59,6 +59,7 @@ describe('TaskItem', () => {
     ['FAILED', '❌', 'error'],
     ['CANCELLED', '⛔', 'circle-slash'],
     ['TOO_LARGE', '📏', 'file-binary'],
+    ['WAITING', '⏳', 'watch'],
     ['NO_PROVIDER', '🔌', 'plug'],
     ['DRAFT', '📝', 'edit'],
     ['BACKLOG', '📋', 'checklist'],

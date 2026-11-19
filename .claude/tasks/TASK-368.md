@@ -1,6 +1,7 @@
 # TASK-368: Plans view — Project Brain header card + group task files by parent plan
 
 **Plan:** PLAN-054 | **Wave:** 2 | **Status:** done | **Role:** frontend
+**Status:** done
 
 ## Goal
 

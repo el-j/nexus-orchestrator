@@ -2,6 +2,8 @@ import { configDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    // Cold module transforms on a busy machine or CI runner can pass 5 s; a slow test is not a failing one.
+    testTimeout: 20000,
     environment: 'node',
     globals: true,
     // host-test runs inside a real VS Code host (npm run test:host), not under vitest.

@@ -3,7 +3,8 @@ id: TASK-016
 title: CLI — queue submit command + sessions subcommand
 role: cli
 planId: PLAN-002
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-015]
 createdAt: 2026-03-09T12:00:00.000Z
 ---
@@ -21,6 +22,7 @@ The CLI (`cmd/nexus-cli`) is a remote HTTP client that talks to the nexusOrchest
 ## Implementation Steps
 
 1. **Add `queue submit` command**:
+
    ```
    nexus-cli queue submit --project <projectPath> [--model <model>] <prompt text...>
    ```
@@ -29,8 +31,9 @@ The CLI (`cmd/nexus-cli`) is a remote HTTP client that talks to the nexusOrchest
    - Makes `POST /api/tasks` with body `{"projectPath": "<path>", "prompt": "<text>"}`
    - On success: prints `Submitted task <id>`
    - On error: prints to stderr, exits 1
-   
+
    Implementation in `root.go`:
+
    ```go
    var submitCmd = &cobra.Command{
        Use:   "submit [prompt...]",
@@ -49,7 +52,7 @@ The CLI (`cmd/nexus-cli`) is a remote HTTP client that talks to the nexusOrchest
    nexus-cli sessions get <projectPath>        → GET /api/sessions/<encoded-path>
    nexus-cli sessions clear <projectPath>      → DELETE /api/sessions/<encoded-path>
    ```
-   
+
    - `sessions get <path>`: prints each message as `[role] content` on separate lines
    - `sessions clear <path>`: prints `Session cleared for <path>` on success
    - `projectPath` must be URL-encoded when placed in the URL path: use `url.PathEscape(projectPath)`

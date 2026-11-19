@@ -2,7 +2,7 @@
 id: PLAN-067
 title: 'Deep Context Integration (Frontend & Docs)'
 goal: 'Complete downstream wiring of the Nexus Brain API into the Wails GUI App, frontend Vue Types, and Documentation.'
-status: active
+status: completed
 createdAt: 2026-04-13T13:08:00Z
 ---
 

@@ -33,6 +33,10 @@
           <span class="text-slate-500 text-xs">Updated</span>
           <span class="text-xs text-slate-400">{{ formatDate(task.updatedAt) }}</span>
         </div>
+        <div v-if="task.waitUntil" class="flex justify-between items-center">
+          <span class="text-slate-500 text-xs">Resumes</span>
+          <span class="text-xs text-purple-300 font-mono">{{ formatDate(task.waitUntil) }}</span>
+        </div>
       </div>
 
       <!-- Instruction -->
@@ -101,7 +105,7 @@
           >{{ task.logs }}</pre>
       </div>
 
-      <div v-if="task.status === 'QUEUED'" class="pt-2">
+      <div v-if="task.status === 'QUEUED' || task.status === 'WAITING'" class="pt-2">
         <UiButton
           label="Cancel Task"
           icon="times"

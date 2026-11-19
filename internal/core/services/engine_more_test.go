@@ -26,9 +26,9 @@ func TestSelfHealing_ChatPathUsesHistoryAndPersistsEveryExchange(t *testing.T) {
 	if h := llm.histories[1]; h[0].Content != "earlier" || !strings.Contains(h[len(h)-1].Content, "chat-heal") {
 		t.Errorf("correction chat must carry prior history and a full correction prompt: %+v", h)
 	}
-	// earlier + (user, assistant) for the task + (user, assistant) for the correction.
-	if saved, _ := sess.GetByProjectPath(context.Background(), "/proj"); len(saved.Messages) != 5 {
-		t.Errorf("session has %d messages, want 5", len(saved.Messages))
+	// earlier + (user, assistant) for the final corrected task output.
+	if saved, _ := sess.GetByProjectPath(context.Background(), "/proj"); len(saved.Messages) != 3 {
+		t.Errorf("session has %d messages, want 3", len(saved.Messages))
 	}
 }
 
@@ -336,6 +336,9 @@ func TestPromoteProvider_AnInstalledCLIBecomesAProviderRunningItsPath(t *testing
 	})
 	orch.WithSystemScanner(&mockScanner{results: []domain.DiscoveredProvider{
 		{ID: "cli", Name: "Claude CLI", Kind: domain.ProviderKindCLI, Status: domain.DiscoveryStatusInstalled, CLIPath: "/usr/local/bin/claude"},
+		{ID: "copilot", Name: "GitHub Copilot CLI", Kind: domain.ProviderKindCLI, Status: domain.DiscoveryStatusInstalled, CLIPath: "/usr/local/bin/copilot"},
+		{ID: "agy", Name: "Google Antigravity CLI", Kind: domain.ProviderKindCLI, Status: domain.DiscoveryStatusInstalled, CLIPath: "/opt/homebrew/bin/agy"},
+		{ID: "aichat", Name: "aichat", Kind: domain.ProviderKindCLI, Status: domain.DiscoveryStatusInstalled, CLIPath: "/usr/local/bin/aichat"},
 		{ID: "bare", Name: "Installed but not a CLI kind", Kind: domain.ProviderKindOllama, Status: domain.DiscoveryStatusInstalled, CLIPath: "/usr/bin/ollama"},
 	}})
 	if _, err := orch.TriggerScan(bg); err != nil {
@@ -344,8 +347,17 @@ func TestPromoteProvider_AnInstalledCLIBecomesAProviderRunningItsPath(t *testing
 	if err := orch.PromoteProvider(bg, "cli"); err != nil {
 		t.Fatalf("promote CLI: %v", err)
 	}
-	if got.Kind != domain.ProviderKindCLI || got.BaseURL != "/usr/local/bin/claude -p" {
-		t.Errorf("config = %+v; want the claude path with -p", got)
+	if got.Kind != domain.ProviderKindCLI || got.BaseURL != "/usr/local/bin/claude -p --output-format stream-json" {
+		t.Errorf("config = %+v; want the claude path in print mode with stream-json (usage and quota)", got)
+	}
+	if err := orch.PromoteProvider(bg, "copilot"); err != nil || got.BaseURL != "/usr/local/bin/copilot -s --no-ask-user" {
+		t.Errorf("copilot gets -s --no-ask-user and no -p: %v %+v", err, got)
+	}
+	if err := orch.PromoteProvider(bg, "agy"); err != nil || got.BaseURL != "/opt/homebrew/bin/agy" {
+		t.Errorf("agy takes the prompt on stdin and needs no flag (its -p wants the text as a value): %v %+v", err, got)
+	}
+	if err := orch.PromoteProvider(bg, "aichat"); err != nil || got.BaseURL != "/usr/local/bin/aichat -p" {
+		t.Errorf("another tool keeps plain -p: %v %+v", err, got)
 	}
 	if err := orch.PromoteProvider(bg, "bare"); err == nil {
 		t.Error("only a CLI-kind tool may be promoted from its path")

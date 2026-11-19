@@ -36,10 +36,12 @@ var statusEventMap = map[domain.TaskStatus]ports.EventType{
 	domain.StatusCancelled:  ports.EventTaskCancelled,
 	domain.StatusTooLarge:   ports.EventTaskTooLarge,
 	domain.StatusNoProvider: ports.EventTaskNoProvider,
+	domain.StatusWaiting:    ports.EventTaskWaiting,
 	domain.StatusDraft:      ports.EventTaskDraft,
 	domain.StatusBacklog:    ports.EventTaskBacklog,
 }
 
+// statusEventType returns the event that announces a task status.
 func statusEventType(s domain.TaskStatus) ports.EventType {
 	return statusEventMap[s]
 }
@@ -56,6 +58,7 @@ func (o *OrchestratorService) emit(taskID string, status domain.TaskStatus) {
 	})
 }
 
+// processNext takes the oldest queued task and runs it; it reports false when nothing was queued.
 func (o *OrchestratorService) processNext() bool {
 	task, err := o.repo.ClaimNextQueued(o.dbCtx())
 	if err != nil {
@@ -90,6 +93,8 @@ func (o *OrchestratorService) processNext() bool {
 		o.emit(task.ID, domain.StatusNoProvider)
 		return true
 	}
+	chain, run.ladder = o.routeChain(chain, task)
+	run.chain = chain
 	o.emit(task.ID, domain.StatusProcessing)
 
 	prompt, sessionHistory, err := o.prepareChatPrompt(task)
@@ -204,19 +209,18 @@ func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task doma
 			o.finishInterrupted(task, run)
 			return true
 		}
-		if limit := llm.ContextLimit(run.ctx); limit > 0 {
-			estHistory := make([]domain.Message, len(sessionHistory)+1)
-			copy(estHistory, sessionHistory)
-			estHistory[len(sessionHistory)] = domain.Message{Role: domain.RoleUser, Content: prompt}
-			if estimated := estimateTokens(estHistory); estimated > limit-o.maxResponseTokens {
-				logEntry := fmt.Sprintf(
-					"context too large for %s: ~%d tokens estimated, model limit is %d (headroom %d)",
-					llm.ProviderName(), estimated, limit, o.maxResponseTokens,
-				)
-				log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
-				lastErr = errContextTooLarge
-				continue
-			}
+		if cd, cooling := o.discovery.Cooldown(llm, time.Now()); cooling {
+			logEntry := fmt.Sprintf("%s is cooling down until %s (%s); skipped", llm.ProviderName(), cd.until.Local().Format("15:04:05"), cd.reason)
+			log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
+			o.appendTaskLog(task.ID, logEntry)
+			allTooLarge = false
+			lastErr = errors.New(logEntry)
+			continue
+		}
+		if logEntry, tooLarge := o.contextTooLarge(run.ctx, llm, prompt, sessionHistory); tooLarge {
+			log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
+			lastErr = errContextTooLarge
+			continue
 		}
 		allTooLarge = false
 
@@ -229,6 +233,7 @@ func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task doma
 		if err != nil {
 			lastErr = err
 			tried = append(tried, llm.ProviderName())
+			o.noteProviderError(llm, err)
 			logEntry := fmt.Sprintf("provider %s failed: %v", llm.ProviderName(), err)
 			log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
 			o.appendTaskLog(task.ID, logEntry)
@@ -236,24 +241,17 @@ func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task doma
 		}
 
 		// Success!
+		o.discovery.ClearCooldown(llm)
 		if i > 0 {
 			failoverNote := fmt.Sprintf("[failover: primary provider failed, executed via %s]", llm.ProviderName())
 			log.Printf("orchestrator: task %s: %s", task.ID, failoverNote)
 			o.appendTaskLog(task.ID, failoverNote)
 		}
 
-		if o.sessionRepo != nil {
-			userMsg := domain.Message{Role: domain.RoleUser, Content: prompt, CreatedAt: time.Now()}
-			assistantMsg := domain.Message{Role: domain.RoleAssistant, Content: code, CreatedAt: time.Now()}
-			if err := o.sessionRepo.AppendMessage(o.dbCtx(), task.ProjectPath, userMsg); err != nil {
-				log.Printf("orchestrator: append user message for task %s: %v", task.ID, err)
-			}
-			if err := o.sessionRepo.AppendMessage(o.dbCtx(), task.ProjectPath, assistantMsg); err != nil {
-				log.Printf("orchestrator: append assistant message for task %s: %v", task.ID, err)
-			}
+		finalCode := o.writeAndVerifyTaskOutput(run, task, code, llm, sessionHistory)
+		if finalCode != "" {
+			o.recordExchange(task, prompt, finalCode)
 		}
-
-		o.writeAndVerifyTaskOutput(run, task, code, llm, sessionHistory)
 		return true
 	}
 
@@ -265,18 +263,55 @@ func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task doma
 		o.emit(task.ID, domain.StatusTooLarge)
 		return true
 	}
-
-	if o.requeueForRetry(task) {
+	if o.holdUntilReset(task, chain) || o.requeueForRetry(task) {
 		return true
 	}
+	o.failAllProviders(task, tried, lastErr)
+	return true
+}
 
+// contextTooLarge reports whether the history plus the prompt would not fit the provider's model with
+// room left for the answer, and says so in a log line. A provider that does not state a limit fits all.
+func (o *OrchestratorService) contextTooLarge(ctx context.Context, llm ports.LLMClient, prompt string, history []domain.Message) (string, bool) {
+	limit := llm.ContextLimit(ctx)
+	if limit <= 0 {
+		return "", false
+	}
+	est := make([]domain.Message, len(history)+1)
+	copy(est, history)
+	est[len(history)] = domain.Message{Role: domain.RoleUser, Content: prompt}
+	estimated := estimateTokens(est)
+	if estimated <= limit-o.maxResponseTokens {
+		return "", false
+	}
+	return fmt.Sprintf("context too large for %s: ~%d tokens estimated, model limit is %d (headroom %d)",
+		llm.ProviderName(), estimated, limit, o.maxResponseTokens), true
+}
+
+// recordExchange appends the prompt and the answer to the project's chat session, when there is one.
+func (o *OrchestratorService) recordExchange(task domain.Task, prompt, answer string) {
+	if o.sessionRepo == nil {
+		return
+	}
+	userMsg := domain.Message{Role: domain.RoleUser, Content: prompt, CreatedAt: time.Now()}
+	assistantMsg := domain.Message{Role: domain.RoleAssistant, Content: answer, CreatedAt: time.Now()}
+	if err := o.sessionRepo.AppendMessage(o.dbCtx(), task.ProjectPath, userMsg); err != nil {
+		log.Printf("orchestrator: append user message for task %s: %v", task.ID, err)
+	}
+	if err := o.sessionRepo.AppendMessage(o.dbCtx(), task.ProjectPath, assistantMsg); err != nil {
+		log.Printf("orchestrator: append assistant message for task %s: %v", task.ID, err)
+	}
+}
+
+// failAllProviders fails the task after every provider of its chain failed, naming the ones that were
+// tried and the last error.
+func (o *OrchestratorService) failAllProviders(task domain.Task, tried []string, lastErr error) {
 	failLog := fmt.Sprintf("all candidate providers failed: %s (last error: %v)", strings.Join(tried, ", "), lastErr)
 	_ = o.repo.UpdateLogs(o.dbCtx(), task.ID, failLog)
 	if err := o.repo.UpdateStatus(o.dbCtx(), task.ID, domain.StatusFailed); err != nil {
 		log.Printf("orchestrator: update status for task %s: %v", task.ID, err)
 	}
 	o.emit(task.ID, domain.StatusFailed)
-	return true
 }
 
 // executeGeneration dispatches to Chat (when sessionRepo is set) or GenerateCode,
@@ -307,14 +342,6 @@ func (o *OrchestratorService) executeGeneration(run *runHandle, task domain.Task
 			o.emit(task.ID, domain.StatusFailed)
 			return "", err
 		}
-		// Only persist messages after a successful response.
-		assistantMsg := domain.Message{Role: domain.RoleAssistant, Content: code, CreatedAt: time.Now()}
-		if err := o.sessionRepo.AppendMessage(o.dbCtx(), task.ProjectPath, userMsg); err != nil {
-			log.Printf("orchestrator: append user message for task %s: %v", task.ID, err)
-		}
-		if err := o.sessionRepo.AppendMessage(o.dbCtx(), task.ProjectPath, assistantMsg); err != nil {
-			log.Printf("orchestrator: append assistant message for task %s: %v", task.ID, err)
-		}
 		return code, nil
 	}
 
@@ -339,4 +366,16 @@ func (o *OrchestratorService) executeGeneration(run *runHandle, task domain.Task
 		return "", err
 	}
 	return code, nil
+}
+
+// noteProviderError puts a provider that reported a rate limit, an exhausted quota or an overload on
+// cooldown until the time it gave (or a default), so the next tasks do not try it again first.
+func (o *OrchestratorService) noteProviderError(llm ports.LLMClient, err error) {
+	pe, ok := domain.AsProviderError(err)
+	if !ok {
+		return
+	}
+	if until := pe.CooldownUntil(time.Now()); !until.IsZero() {
+		o.discovery.MarkCooldown(llm, until, pe.Kind, pe.Error())
+	}
 }

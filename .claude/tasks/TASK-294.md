@@ -3,7 +3,8 @@ id: TASK-294
 title: 'VS Code extension VSIX rebuild for PLAN-044 features'
 role: devops
 planId: PLAN-045
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-291, TASK-293]
 createdAt: 2026-03-14T18:00:00.000Z
 ---

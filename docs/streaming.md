@@ -49,3 +49,14 @@ on `task.restart` clear the buffer, on `task.chunk` append `text`.
   precedes its text.
 - The same holds when no session store is configured (the single-prompt path): a provider that
   can stream receives the prompt as one user message and streams its reply.
+
+## Real-service contract checks
+
+Unit tests drive deterministic local SSE servers. Before a release, run the opt-in real-service
+contract checks by supplying credentials or a local endpoint:
+
+```sh
+NEXUS_TEST_ANTHROPIC_KEY=sk-ant-... go test -v -run TestAnthropic_ChatStream_RealContract ./internal/adapters/outbound/llm_anthropic/
+NEXUS_TEST_GEMINI_KEY=AIza...       go test -v -run TestGemini_ChatStream_RealContract ./internal/adapters/outbound/llm_gemini/
+NEXUS_TEST_LMSTUDIO_URL=http://127.0.0.1:1234 go test -v -run TestLMStudio_ChatStream_RealContract ./internal/adapters/outbound/llm_lmstudio/
+```

@@ -35,6 +35,7 @@
             <option value="anthropic">Anthropic</option>
             <option value="gemini">Google Gemini</option>
             <option value="copilot">GitHub Copilot</option>
+            <option value="cli">CLI Tool (Claude / Copilot subscription)</option>
             <option value="openaicompat">Custom (OpenAI-compatible)</option>
           </select>
         </div>
@@ -52,13 +53,20 @@
           />
         </div>
 
-        <!-- Base URL -->
+        <!-- Base URL / Command -->
         <div class="flex flex-col gap-1">
-          <label class="text-xs text-slate-400">Base URL <span class="text-red-400">*</span></label>
+          <label class="text-xs text-slate-400"
+            >{{ preset === 'cli' ? 'Command' : 'Base URL' }}
+            <span class="text-red-400">*</span></label
+          >
           <input
             v-model="form.baseUrl"
             type="text"
-            placeholder="http://127.0.0.1:1234/v1"
+            :placeholder="
+              preset === 'cli'
+                ? 'claude -p --output-format stream-json'
+                : 'http://127.0.0.1:1234/v1'
+            "
             required
             class="bg-slate-700 rounded px-3 py-2 text-sm w-full text-white border border-white/10 focus:outline-none focus:border-purple-500 placeholder:text-slate-600 font-mono text-xs"
           />
@@ -146,6 +154,7 @@ const BASE_URL_PRESETS: Record<string, string> = {
   anthropic: 'https://api.anthropic.com',
   gemini: 'https://generativelanguage.googleapis.com',
   copilot: 'https://api.githubcopilot.com',
+  cli: 'claude -p --output-format stream-json',
   openaicompat: '',
 };
 
@@ -206,7 +215,12 @@ async function handleSave() {
     return;
   }
   const baseUrl = form.value.baseUrl?.trim() ?? '';
-  if (baseUrl && !/^https?:\/\//i.test(baseUrl)) {
+  if (preset.value === 'cli') {
+    if (!baseUrl) {
+      error.value = 'Command is required.';
+      return;
+    }
+  } else if (baseUrl && !/^https?:\/\//i.test(baseUrl)) {
     error.value = 'Base URL must start with http:// or https://';
     return;
   }

@@ -3,7 +3,8 @@ id: TASK-109
 title: Update downloads.md desktop section links to nexusOrchestrator-desktop-* names
 role: ui
 planId: PLAN-014
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-108]
 createdAt: 2026-03-10T22:00:00.000Z
 ---
@@ -11,6 +12,7 @@ createdAt: 2026-03-10T22:00:00.000Z
 ## Context
 
 `docs/downloads.md` has two sections:
+
 1. **Desktop App** — links currently point to `nexusOrchestrator-darwin-arm64.tar.gz` etc.
 2. **CLI + Daemon** — links also point to the same `nexusOrchestrator-darwin-arm64.tar.gz` etc.
 
@@ -19,6 +21,7 @@ After TASK-108, desktop archives are renamed to `nexusOrchestrator-desktop-{os}-
 ## Changes Required
 
 In `docs/downloads.md`, update ONLY the Desktop App section `<a>` href attributes:
+
 - `nexusOrchestrator-darwin-arm64.tar.gz` → `nexusOrchestrator-desktop-darwin-arm64.tar.gz`
 - `nexusOrchestrator-darwin-amd64.tar.gz` → `nexusOrchestrator-desktop-darwin-amd64.tar.gz`
 - `nexusOrchestrator-windows-amd64.zip` → `nexusOrchestrator-desktop-windows-amd64.zip`

@@ -1,6 +1,7 @@
 # TASK-385: Black-box E2E Go integration test — full system pipeline
 
 **Plan:** PLAN-055 | **Wave:** 6 | **Status:** done | **Role:** testing
+**Status:** done
 
 ## Goal
 

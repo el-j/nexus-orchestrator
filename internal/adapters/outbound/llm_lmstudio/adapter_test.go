@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
 
 	"nexus-orchestrator/internal/core/domain"
@@ -203,5 +205,23 @@ func TestLMStudio_Chat_ForwardsMessages(t *testing.T) {
 	}
 	if len(captured.Messages) != 3 {
 		t.Errorf("expected 3 messages forwarded, got %d", len(captured.Messages))
+	}
+}
+
+func TestLMStudio_ChatStream_RealContract(t *testing.T) {
+	url := os.Getenv("NEXUS_TEST_LMSTUDIO_URL")
+	if url == "" {
+		t.Skip("set NEXUS_TEST_LMSTUDIO_URL to run real LM Studio streaming contract check")
+	}
+	a := NewLMStudioAdapter(url)
+	var chunks []string
+	out, err := a.ChatStream(context.Background(), []domain.Message{{Role: domain.RoleUser, Content: "Reply with the single word pong."}}, func(s string) {
+		chunks = append(chunks, s)
+	})
+	if err != nil {
+		t.Fatalf("real LM Studio ChatStream failed: %v", err)
+	}
+	if strings.TrimSpace(out) == "" || len(chunks) == 0 {
+		t.Errorf("out=%q chunks=%v", out, chunks)
 	}
 }

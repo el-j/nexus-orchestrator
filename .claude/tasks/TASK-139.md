@@ -3,7 +3,8 @@ id: TASK-139
 title: Add vscode-extension CI check to ci.yml
 role: devops
 planId: PLAN-019
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-11T18:00:00.000Z
 ---
@@ -29,14 +30,14 @@ on every PR that touches `vscode-extension/**`.
    - Steps:
      a. `actions/checkout@v6`
      b. `actions/setup-node@v6` with `node-version: "20"`, `cache: "npm"`,
-        `cache-dependency-path: vscode-extension/package-lock.json`
+     `cache-dependency-path: vscode-extension/package-lock.json`
      c. **Install dependencies** (`working-directory: vscode-extension`): `npm ci`
      d. **Build extension** (`working-directory: vscode-extension`): `npm run build`
      e. **Package VSIX** (`working-directory: vscode-extension`, shell: bash):
-        ```bash
-        npx @vscode/vsce package --no-dependencies
-        ```
-        (This validates the extension can be fully packaged — acts as a smoke test.)
+     ```bash
+     npx @vscode/vsce package --no-dependencies
+     ```
+     (This validates the extension can be fully packaged — acts as a smoke test.)
 
 2. No changes are needed to the `on:` trigger — it already covers all pushes/PRs.
    The job runs unconditionally (no tag-skip condition needed for CI).

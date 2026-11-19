@@ -60,7 +60,7 @@ func (o *OrchestratorService) SubscribeTaskEvents() (<-chan ports.TaskEvent, fun
 // the attempt, then chunk events follow. A client that cannot stream sends its whole reply as
 // one chunk. The returned reply and error are those of the client, so callers treat it like Chat.
 func (o *OrchestratorService) liveChat(ctx context.Context, taskID string, llm ports.LLMClient, history []domain.Message) (string, error) {
-	return o.live(taskID, func(onChunk func(string)) (string, error) {
+	reply, err := o.live(taskID, func(onChunk func(string)) (string, error) {
 		if s, ok := llm.(ports.ChatStreamer); ok {
 			return s.ChatStream(ctx, history, onChunk)
 		}
@@ -68,13 +68,18 @@ func (o *OrchestratorService) liveChat(ctx context.Context, taskID string, llm p
 		onChunk(reply)
 		return reply, err
 	})
+	o.noteQuota(llm)
+	if err == nil {
+		o.recordUsage(taskID, llm)
+	}
+	return reply, err
 }
 
 // liveGenerate is llm.GenerateCode published the same way, for the single-prompt path used
 // when no session store is configured. A client that can stream receives the prompt as one
 // user message; any other goes through GenerateCode and sends its whole reply as one chunk.
 func (o *OrchestratorService) liveGenerate(ctx context.Context, taskID string, llm ports.LLMClient, prompt string) (string, error) {
-	return o.live(taskID, func(onChunk func(string)) (string, error) {
+	reply, err := o.live(taskID, func(onChunk func(string)) (string, error) {
 		if s, ok := llm.(ports.ChatStreamer); ok {
 			return s.ChatStream(ctx, []domain.Message{{Role: domain.RoleUser, Content: prompt}}, onChunk)
 		}
@@ -82,6 +87,11 @@ func (o *OrchestratorService) liveGenerate(ctx context.Context, taskID string, l
 		onChunk(reply)
 		return reply, err
 	})
+	o.noteQuota(llm)
+	if err == nil {
+		o.recordUsage(taskID, llm)
+	}
+	return reply, err
 }
 
 // live opens an attempt with a restart event, runs generate and publishes the pieces it hands to

@@ -382,3 +382,51 @@ func TestRules_PruneToleratesDeleteErrors(t *testing.T) {
 		t.Error("pruning should have tried to delete the oldest entries")
 	}
 }
+
+func TestRules_ProjectBriefIsByteStableAcrossTasksAndInjectsFocusedKnowledge(t *testing.T) {
+	root := projectWith(t, `{"rules":["Follow hexagonal architecture."]}`)
+	know := &mockKnowledgeRepo{
+		entries: []domain.ProjectKnowledge{
+			{
+				ProjectPath:    root,
+				Kind:           domain.KnowledgeLearning,
+				Topic:          "Authentication",
+				Content:        "Always validate Bearer tokens in middleware using subtle.ConstantTimeCompare.",
+				RelevanceScore: 0.9,
+			},
+		},
+	}
+	llm := &scriptLLM{name: "p", alive: true, limit: 100000}
+	e := newEngine(t, &noopWriter{}, nil, nil, llm)
+	brain := services.NewBrainService(know, e.repo)
+	e.orch.WithBrain(brain)
+
+	briefBefore, err := brain.GetProjectBrief(context.Background(), root, 800)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(briefBefore, "- **Tasks:**") {
+		t.Errorf("GetProjectBrief must omit volatile task counters for prompt cache stability:\n%s", briefBefore)
+	}
+	onboard, err := brain.GetOnboardingContext(context.Background(), root, 800)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(onboard, "- **Tasks:**") {
+		t.Errorf("GetOnboardingContext must still include live task counters:\n%s", onboard)
+	}
+
+	id := e.queue(domain.Task{Instruction: "Update Authentication middleware token check", ProjectPath: root, TargetFile: "auth.go"})
+	e.runOne(id, domain.StatusCompleted)
+
+	briefAfter, err := brain.GetProjectBrief(context.Background(), root, 800)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if briefBefore != briefAfter {
+		t.Errorf("GetProjectBrief changed after task completion:\nbefore:\n%s\nafter:\n%s", briefBefore, briefAfter)
+	}
+	if !strings.Contains(llm.prompts[0], "subtle.ConstantTimeCompare") {
+		t.Errorf("prompt must include focused knowledge matching task instruction:\n%s", llm.prompts[0])
+	}
+}

@@ -1,17 +1,20 @@
 ---
 id: TASK-080
-title: "Pages: Architecture + API Reference docs"
+title: 'Pages: Architecture + API Reference docs'
 role: devops
 planId: PLAN-009
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-078]
 createdAt: 2026-03-10T15:00:00.000Z
 ---
 
 ## Context
+
 Two critical documentation pages: the architecture overview explaining the hexagonal design, and a comprehensive API reference for both HTTP REST and MCP endpoints.
 
 ## Files to Read
+
 - `internal/core/ports/ports.go`
 - `internal/adapters/inbound/httpapi/server.go`
 - `internal/adapters/inbound/mcp/server.go`
@@ -21,7 +24,9 @@ Two critical documentation pages: the architecture overview explaining the hexag
 - `.github/copilot-instructions.md`
 
 ## Implementation Steps
+
 1. Create `docs/architecture.md`:
+
    ```yaml
    ---
    layout: default
@@ -29,6 +34,7 @@ Two critical documentation pages: the architecture overview explaining the hexag
    nav_order: 2
    ---
    ```
+
    Content:
    - **Hexagonal Architecture** overview with ASCII diagram showing: `inbound adapters → core services → ports ← outbound adapters`
    - **Domain Layer**: Task, Session, Message, ProviderConfig types
@@ -66,6 +72,7 @@ Two critical documentation pages: the architecture overview explaining the hexag
    - **Environment Variables** table
 
 ## Acceptance Criteria
+
 - [ ] `docs/architecture.md` exists with hexagonal architecture overview
 - [ ] `docs/api-reference.md` exists with all HTTP and MCP endpoints documented
 - [ ] ASCII architecture diagram included
@@ -74,5 +81,6 @@ Two critical documentation pages: the architecture overview explaining the hexag
 - [ ] No Go source files modified
 
 ## Anti-patterns to Avoid
+
 - NEVER modify any Go source files
 - NEVER include inaccurate endpoint paths — check server.go

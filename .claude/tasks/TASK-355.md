@@ -3,7 +3,8 @@ id: TASK-355
 title: Update copilot-instructions.md with .continue MCP config + small-context workflow guide
 role: planning
 planId: PLAN-051
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: [TASK-354]
 createdAt: 2026-03-28T00:00:00Z
 ---

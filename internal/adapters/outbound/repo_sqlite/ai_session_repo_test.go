@@ -23,6 +23,7 @@ func newAISession(id string) domain.AISession {
 		RoutedTaskIDs: []string{"task-1", "task-2"},
 		CreatedAt:     now,
 		UpdatedAt:     now,
+		PID:           4242,
 	}
 }
 
@@ -61,6 +62,9 @@ func TestAISessionRepo_SaveAndGetByID(t *testing.T) {
 	}
 	if got.Status != sess.Status {
 		t.Errorf("Status: got %q, want %q", got.Status, sess.Status)
+	}
+	if got.PID != sess.PID {
+		t.Errorf("PID: got %d, want %d", got.PID, sess.PID)
 	}
 	if !got.LastActivity.Equal(sess.LastActivity) {
 		t.Errorf("LastActivity: got %v, want %v", got.LastActivity, sess.LastActivity)
@@ -431,5 +435,28 @@ func TestAISessionRepo_UpdateAISessionStatus_NotFound(t *testing.T) {
 	}
 	if !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("expected domain.ErrNotFound, got %v", err)
+	}
+}
+
+func TestDiscoveredAgentRepo_PersistsPID(t *testing.T) {
+	r := newTestRepo(t)
+	defer r.Close()
+	dr := repo_sqlite.NewDiscoveredAgentRepo(r)
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Second)
+	if err := dr.UpsertDiscoveredAgent(ctx, domain.DiscoveredAgent{
+		ID:          "claude-cli",
+		Kind:        domain.AgentKindClaudeCLI,
+		Name:        "Claude CLI",
+		ProcessName: "claude",
+		IsRunning:   true,
+		PID:         4242,
+		LastSeen:    now,
+	}); err != nil {
+		t.Fatalf("UpsertDiscoveredAgent: %v", err)
+	}
+	list, err := dr.ListDiscoveredAgents(ctx)
+	if err != nil || len(list) != 1 || list[0].PID != 4242 {
+		t.Fatalf("ListDiscoveredAgents = %+v, %v (want PID=4242)", list, err)
 	}
 }

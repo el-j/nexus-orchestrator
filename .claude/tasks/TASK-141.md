@@ -3,7 +3,8 @@ id: TASK-141
 title: Add VS Code Extension feature to HomeView.vue
 role: frontend
 planId: PLAN-019
-status: todo
+status: closed
+closedReason: 'stale: planned before v0.10.0 and never started; the work is tracked in PLAN-073 and PLAN-074 or was superseded'
 dependencies: []
 createdAt: 2026-03-11T18:00:00.000Z
 ---
@@ -23,11 +24,13 @@ listed. Adding it ensures visitors see the full picture on the home page.
 1. Open `docs/src/views/HomeView.vue` and find the `features` array in `<script setup>`.
 
 2. **Append a ninth feature** to the `features` array after the existing `Desktop GUI` entry:
+
    ```ts
    { icon: '🔌', title: 'VS Code Extension', desc: 'Submit tasks, monitor the queue, and switch providers without leaving your editor. Available as a .vsix for VS Code 1.85+.' },
    ```
 
 3. **Update the stats bar** — change the `Interfaces` stat from `3` to `4`:
+
    ```ts
    { value: '4', label: 'Interfaces (HTTP/MCP/GUI/VSCode)' },
    ```

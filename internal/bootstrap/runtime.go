@@ -15,6 +15,7 @@ import (
 	"nexus-orchestrator/internal/adapters/outbound/activity_continue"
 	"nexus-orchestrator/internal/adapters/outbound/activity_network"
 	"nexus-orchestrator/internal/adapters/outbound/cmd_runner"
+	"nexus-orchestrator/internal/adapters/outbound/embedding_client"
 	"nexus-orchestrator/internal/adapters/outbound/fs_watcher"
 	"nexus-orchestrator/internal/adapters/outbound/fs_writer"
 	"nexus-orchestrator/internal/adapters/outbound/repo_sqlite"
@@ -75,6 +76,7 @@ func DefaultDBPath() string {
 	return shared
 }
 
+// withDefaults fills every empty field of the configuration with its default.
 func (c Config) withDefaults() Config {
 	if c.DBPath == "" {
 		c.DBPath = DefaultDBPath()
@@ -111,6 +113,9 @@ type Runtime struct {
 	failed chan error
 }
 
+// newWatcher creates the workspace watcher; tests replace it to make creation fail.
+var newWatcher = fs_watcher.New
+
 // Start opens the database, wires every service and starts the REST API, the
 // MCP server and the background scans. The servers run until ctx is cancelled or
 // Close is called. The caller must Close the returned Runtime. Log output is
@@ -133,7 +138,7 @@ func Start(ctx context.Context, cfg Config, logHub *httpapi.LogHub) (*Runtime, e
 		log.Printf("startup: repair task rows: %v", err)
 	}
 
-	rt := &Runtime{Config: cfg, repo: repo, failed: make(chan error, 2)}
+	rt := &Runtime{Config: cfg, repo: repo, failed: make(chan error, 1)}
 	runCtx, cancel := context.WithCancel(ctx)
 	rt.cancel = cancel
 
@@ -141,6 +146,7 @@ func Start(ctx context.Context, cfg Config, logHub *httpapi.LogHub) (*Runtime, e
 	discoverySvc := services.NewDiscoveryService(BuildProviders()...)
 	sessionRepo := repo_sqlite.NewSessionRepo(repo)
 	brain := services.NewBrainService(repo_sqlite.NewKnowledgeRepo(repo), repo)
+	configureEmbedding(brain)
 	orch := services.NewOrchestrator(discoverySvc, repo, fs_writer.New(), sessionRepo,
 		services.WithCommandRunner(cmd_runner.New()), services.WithBrain(brain))
 	orch.WithProviderFactory(BuildProviderFromConfig)
@@ -161,7 +167,7 @@ func Start(ctx context.Context, cfg Config, logHub *httpapi.LogHub) (*Runtime, e
 	rt.Brain = brain
 
 	// Real-time workspace change invalidation.
-	if w, err := fs_watcher.New(fs_watcher.WithBrain(rt.Brain)); err != nil {
+	if w, err := newWatcher(fs_watcher.WithBrain(rt.Brain)); err != nil {
 		log.Printf("startup: create fs watcher: %v", err)
 	} else {
 		rt.Watcher = w
@@ -184,6 +190,7 @@ func Start(ctx context.Context, cfg Config, logHub *httpapi.LogHub) (*Runtime, e
 	orch.SetAgentScanner(scanner)
 	orch.SetDiscoveredAgentRepo(repo_sqlite.NewDiscoveredAgentRepo(repo))
 	services.WithPlanFileRepo(repo_sqlite.NewPlanFileRepo(repo))(orch)
+	services.WithUsageRepo(repo_sqlite.NewUsageRepo(repo))(orch) // tokens and cost per call, GET /api/usage
 
 	// Register every persisted, enabled provider.
 	if cfgs, err := providerConfigRepo.ListProviderConfigs(runCtx); err != nil {
@@ -219,6 +226,7 @@ func Start(ctx context.Context, cfg Config, logHub *httpapi.LogHub) (*Runtime, e
 	return rt, nil
 }
 
+// goRun starts fn in a goroutine that Close waits for.
 func (r *Runtime) goRun(fn func()) { r.wg.Go(fn) }
 
 // fail records the first server failure; later ones are dropped.
@@ -323,4 +331,14 @@ func isProjectDir(dir string) bool {
 		}
 	}
 	return false
+}
+
+// configureEmbedding wires an optional embedding provider if NEXUS_EMBEDDING_URL is set.
+func configureEmbedding(brain *services.BrainServiceImpl) {
+	if embedURL := os.Getenv("NEXUS_EMBEDDING_URL"); embedURL != "" {
+		brain.SetEmbeddingProvider(embedding_client.NewClient(embedding_client.Config{
+			BaseURL: embedURL,
+			Model:   os.Getenv("NEXUS_EMBEDDING_MODEL"),
+		}))
+	}
 }
