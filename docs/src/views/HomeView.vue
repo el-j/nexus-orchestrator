@@ -37,7 +37,7 @@
               class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-violet-500/30 bg-violet-500/5 text-sm text-violet-300 mb-6"
             >
               <span class="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse"></span>
-              Open Source · MIT · Go 1.27+
+              Open Source · AGPL-3.0 · Go 1.27+
             </div>
 
             <h1 class="text-4xl sm:text-5xl xl:text-6xl font-black leading-tight mb-6">
@@ -90,7 +90,7 @@
                 ><UiIcon name="check-circle" class="text-emerald-500" /> Local-first</span
               >
               <span class="flex items-center gap-1"
-                ><UiIcon name="check-circle" class="text-emerald-500" /> MIT License</span
+                ><UiIcon name="check-circle" class="text-emerald-500" /> AGPL-3.0 License</span
               >
             </div>
           </div>
@@ -255,7 +255,7 @@
           Ready to orchestrate your <span class="gradient-text">AI workflows?</span>
         </h2>
         <p class="text-slate-500 mb-8 max-w-xl mx-auto">
-          Download the desktop app or run the headless daemon. Open source, MIT licensed, zero
+          Download the desktop app or run the headless daemon. Open source, AGPL-3.0 licensed, zero
           telemetry.
         </p>
         <div class="flex flex-wrap justify-center gap-4">
@@ -347,8 +347,8 @@ const features = [
   },
   {
     icon: '🌐',
-    title: 'REST API + CLI',
-    desc: 'Everything over HTTP with an SSE event stream, plus nexus-cli, nexus-submit and a GitHub Action for CI.',
+    title: 'Standalone CLIs & Microservices',
+    desc: 'Modular binaries: nexus-brain for RAG/MCP, nexus-router for OpenAI-compatible gateway proxy, nexus-runner for verification gates, plus the unified nexus CLI and REST API.',
   },
   {
     icon: '🛡️',

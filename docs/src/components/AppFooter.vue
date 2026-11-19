@@ -41,7 +41,7 @@
         class="mt-10 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4"
       >
         <p class="text-xs text-slate-600">
-          Built with Go 🔷 + Wails · MIT License · © {{ year }} nexus-orchestrator contributors
+          Built with Go 🔷 + Wails · AGPL-3.0 License · © {{ year }} nexus-orchestrator contributors
         </p>
         <a href="https://github.com/el-j/nexus-orchestrator">
           <UiIcon name="github" /> View on GitHub

@@ -332,6 +332,12 @@ const dashboardFeatures = [
 
 const nextSteps = [
   {
+    icon: '⚡',
+    title: 'Standalone CLIs & Microservices',
+    desc: 'Run RAG (nexus-brain), LLM Gateway (nexus-router), and Runner Gates (nexus-runner) independently',
+    to: '/guides/standalone-clis',
+  },
+  {
     icon: '📡',
     title: 'API Reference',
     desc: 'Full HTTP and MCP endpoint docs',

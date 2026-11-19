@@ -58,7 +58,8 @@
           </p>
           <div class="rounded-xl border border-white/8 bg-[#0a0a10] p-4 mt-3">
             <pre class="!border-0 !bg-transparent !p-0 text-xs text-violet-300">
-inbound adapters → core services → ports ← outbound adapters</pre>
+inbound adapters → core services → ports ← outbound adapters</pre
+            >
           </div>
         </section>
 
@@ -265,6 +266,39 @@ inbound adapters → core services → ports ← outbound adapters</pre>
             </div>
           </div>
         </section>
+
+        <!-- Monorepo Packages -->
+        <section id="monorepo" class="reveal">
+          <h2 class="text-2xl font-black mb-4 flex items-center gap-2">
+            <span class="text-violet-400">#</span> Monorepo Packages &amp; Standalone CLIs
+          </h2>
+          <p class="text-slate-400 text-sm mb-6">
+            The monorepo decouples core capabilities into standalone libraries and micro-CLIs that
+            can run independently in CI/CD or together in the orchestrator:
+          </p>
+          <div class="overflow-x-auto rounded-xl border border-white/8">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-[#0d0d14] text-left">
+                  <th class="px-4 py-3 text-slate-400 font-semibold">Package / Binary</th>
+                  <th class="px-4 py-3 text-slate-400 font-semibold">Kind</th>
+                  <th class="px-4 py-3 text-slate-400 font-semibold">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(row, i) in monorepoPackages"
+                  :key="row.name"
+                  :class="i % 2 === 0 ? 'bg-[#0a0a10]' : 'bg-[#0d0d14]'"
+                >
+                  <td class="px-4 py-2.5 font-mono text-violet-300 text-xs">{{ row.name }}</td>
+                  <td class="px-4 py-2.5 font-semibold text-cyan-400 text-xs">{{ row.type }}</td>
+                  <td class="px-4 py-2.5 text-slate-400 text-xs">{{ row.desc }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
       </main>
     </div>
   </div>
@@ -278,6 +312,7 @@ import {
   commandRows,
   concurrencyPoints,
   inboundAdapters,
+  monorepoPackages,
   outboundAdapters,
   ports,
   statusRows,
@@ -292,6 +327,7 @@ const toc = [
   { id: 'ports', label: 'Port Contracts' },
   { id: 'adapters', label: 'Adapters' },
   { id: 'concurrency', label: 'Concurrency Model' },
+  { id: 'monorepo', label: 'Monorepo Packages' },
 ];
 
 const fullDiagram = `┌───────────────────────────────────────────────────────────┐
