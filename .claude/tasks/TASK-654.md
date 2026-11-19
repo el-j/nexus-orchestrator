@@ -3,7 +3,7 @@ id: TASK-654
 planId: PLAN-079
 title: 'Standalone verification gate & execution engine (nexus-runner)'
 role: runner
-status: open
+status: done
 createdAt: 2026-11-19
 ---
 
