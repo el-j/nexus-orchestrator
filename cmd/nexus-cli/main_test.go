@@ -32,7 +32,7 @@ func TestNexusCLI_RootCmdConstruction(t *testing.T) {
 	}
 
 	helpOut := buf.String()
-	subcommands := []string{"tasks", "providers", "brain", "status"}
+	subcommands := []string{"tasks", "providers", "brain", "status", "verify", "execute", "inspect"}
 	for _, sub := range subcommands {
 		if !strings.Contains(helpOut, sub) {
 			t.Errorf("expected help output to mention subcommand %q, got:\n%s", sub, helpOut)
