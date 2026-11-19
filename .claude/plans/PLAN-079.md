@@ -16,10 +16,10 @@ Decompose Nexus Orchestrator into standalone, reusable CLIs and micro-services w
 4. **TASK-655**: Wire control plane (`nexus-daemon`) and unified CLI (`nexus`) to decoupled packages.
 5. **TASK-656**: Build matrix, documentation, and 100% quality gate coverage.
 
-| Task     | Title                                                | Role         | Status      |
-| -------- | ---------------------------------------------------- | ------------ | ----------- |
-| TASK-652 | Standalone RAG CLI & dedicated Brain MCP server      | architecture | done        |
-| TASK-653 | Standalone LLM Gateway & OpenAI-compatible proxy     | gateway      | in_progress |
-| TASK-654 | Standalone verification gate & execution engine      | runner       | open        |
-| TASK-655 | Wire control plane and unified CLI to packages       | orchestrator | open        |
-| TASK-656 | Build matrix, documentation, and 100% coverage gates | devops       | open        |
+| Task     | Title                                                | Role         | Status |
+| -------- | ---------------------------------------------------- | ------------ | ------ |
+| TASK-652 | Standalone RAG CLI & dedicated Brain MCP server      | architecture | done   |
+| TASK-653 | Standalone LLM Gateway & OpenAI-compatible proxy     | gateway      | done   |
+| TASK-654 | Standalone verification gate & execution engine      | runner       | open   |
+| TASK-655 | Wire control plane and unified CLI to packages       | orchestrator | open   |
+| TASK-656 | Build matrix, documentation, and 100% coverage gates | devops       | open   |
