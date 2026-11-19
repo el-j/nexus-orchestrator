@@ -3,7 +3,7 @@ id: TASK-655
 planId: PLAN-079
 title: 'Wire control plane and unified CLI to decoupled packages'
 role: orchestrator
-status: open
+status: done
 createdAt: 2026-11-19
 ---
 
