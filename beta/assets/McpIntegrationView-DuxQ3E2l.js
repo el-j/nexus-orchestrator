@@ -1,4 +1,4 @@
-import{C as e,D as t,E as n,S as r,T as i,_ as a,f as o,g as s,h as c,i as l,l as ee,m as u,o as d,r as f,u as p,v as m,x as h,y as te}from"./app-CC1YH_4m.js";import{t as g}from"./scroll-DdeK3J_A.js";var _=[{id:`what-is-mcp`,label:`What is MCP?`},{id:`connect-command`,label:`Connect Your Agents`},{id:`claude-desktop`,label:`Claude Desktop Setup`},{id:`vscode-setup`,label:`VS Code Setup`},{id:`available-tools`,label:`Available Tools`},{id:`examples`,label:`Usage Examples`},{id:`brain-examples`,label:`Brain Tools`},{id:`protocol`,label:`Protocol Details`},{id:`troubleshooting`,label:`Troubleshooting`},{id:`github-actions`,label:`GitHub Actions`}],v=`# Which agents on this machine can call Nexus? (changes nothing)
+import{C as e,D as t,E as n,S as r,T as i,_ as a,f as o,g as s,h as c,i as l,l as ee,m as u,o as d,r as f,u as p,v as m,x as h,y as te}from"./app-C971tJFW.js";import{t as g}from"./scroll-DdeK3J_A.js";var _=[{id:`what-is-mcp`,label:`What is MCP?`},{id:`connect-command`,label:`Connect Your Agents`},{id:`claude-desktop`,label:`Claude Desktop Setup`},{id:`vscode-setup`,label:`VS Code Setup`},{id:`available-tools`,label:`Available Tools`},{id:`examples`,label:`Usage Examples`},{id:`brain-examples`,label:`Brain Tools`},{id:`protocol`,label:`Protocol Details`},{id:`troubleshooting`,label:`Troubleshooting`},{id:`github-actions`,label:`GitHub Actions`}],v=`# Which agents on this machine can call Nexus? (changes nothing)
 nexus-cli connect
 
 # Connect them: Antigravity, Cursor, Claude Code
@@ -68,7 +68,30 @@ nexus-cli connect --write --agent antigravity`,y=`{
   "params": {
     "name": "health"
   }
-}`,response:``}],x=`{
+}`,response:``},{title:`Compact Task Query (Token-Optimized)`,request:`{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "get_task",
+    "arguments": {
+      "id": "abc-123",
+      "compact": true,
+      "truncateLogs": 160
+    }
+  }
+}`,response:`{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\\"id\\":\\"abc-123\\",\\"status\\":\\"COMPLETED\\",\\"targetFile\\":\\"handler.go\\",\\"hasLogs\\":true,\\"logsPreview\\":\\"ok: tests passed\\"}"
+      }
+    ]
+  }
+}`}],x=`{
   "servers": {
     "Nexus Orchestrator": {
       "type": "http",
