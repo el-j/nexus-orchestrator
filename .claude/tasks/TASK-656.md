@@ -3,7 +3,7 @@ id: TASK-656
 planId: PLAN-079
 title: 'Build matrix, documentation, and 100% coverage gates'
 role: devops
-status: open
+status: done
 createdAt: 2026-11-19
 ---
 

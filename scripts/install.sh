@@ -1,5 +1,5 @@
 #!/bin/sh
-# scripts/install.sh — Install nexus-cli and nexus-daemon binaries, or the macOS desktop app.
+# scripts/install.sh — Install nexus binaries (nexus-cli, nexus-daemon, nexus-brain, nexus-router, nexus-runner), or the macOS desktop app.
 # Usage: curl -sSfL https://raw.githubusercontent.com/el-j/nexus-orchestrator/main/scripts/install.sh | sh
 #   Desktop app (macOS):  ... | sh -s -- --desktop
 #   Newest beta:          ... | sh -s -- --beta        (can be combined with --desktop)
@@ -20,7 +20,7 @@ set -eu
 
 GITHUB_REPO="el-j/nexus-orchestrator"
 BINARIES="nexus-cli nexus-daemon"
-OPTIONAL_BINARIES="nexus-submit"
+OPTIONAL_BINARIES="nexus-submit nexus-brain nexus-router nexus-runner"
 TMPDIR_PREFIX="nexus-install"
 
 # --- helpers ----------------------------------------------------------------

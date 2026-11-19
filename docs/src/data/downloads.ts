@@ -167,4 +167,34 @@ export const packages = [
       'Connects to daemon at <code class="text-slate-300">127.0.0.1:63987</code>',
     ],
   },
+  {
+    icon: '🧠',
+    title: 'Brain RAG (nexus-brain)',
+    items: [
+      'Standalone RAG engine &amp; knowledge CLI',
+      'Built-in MCP server for search &amp; context',
+      'Local SQLite FTS5 index or remote daemon mode',
+      'Workspace file mapping and project init',
+    ],
+  },
+  {
+    icon: '🔀',
+    title: 'Router Gateway (nexus-router)',
+    items: [
+      'Standalone LLM gateway &amp; model router',
+      'OpenAI-compatible <code class="text-slate-300">/v1/chat/completions</code> proxy',
+      'Multi-provider fallback ladder &amp; cooldowns',
+      'Direct streaming with live token metrics',
+    ],
+  },
+  {
+    icon: '🛡️',
+    title: 'Runner Gate (nexus-runner)',
+    items: [
+      'Standalone verification gate &amp; invariant audit',
+      'Self-healing execution loops with auto-correction',
+      'Strict file-size, test-first, and coverage policies',
+      'Clean CI/CD integration without daemon dependencies',
+    ],
+  },
 ];

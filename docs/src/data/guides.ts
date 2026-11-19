@@ -12,6 +12,7 @@ import modelBridge from '../../vscode-model-bridge.md?raw';
 import tokenEconomy from '../../token-economy.md?raw';
 import switchingProviders from '../../switching-providers.md?raw';
 import subscriptionBridges from '../../subscription-bridges.md?raw';
+import standaloneClis from '../../standalone-clis.md?raw';
 
 /** One guide: its page address, its title and summary, and its markdown source. */
 export interface Guide {
@@ -90,6 +91,13 @@ export const guides: Guide[] = [
     title: 'Subscription bridges',
     summary: 'Which of your Claude, Copilot and Antigravity subscriptions Nexus can use, and how.',
     source: subscriptionBridges,
+  },
+  {
+    slug: 'standalone-clis',
+    title: 'Standalone CLIs & microservices',
+    summary:
+      'Run RAG (nexus-brain), LLM Gateway (nexus-router), and Runner Gates (nexus-runner) independently.',
+    source: standaloneClis,
   },
 ];
 

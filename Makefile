@@ -317,12 +317,24 @@ build-linux-amd64:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/linux_amd64/$(BINARY_SUBMIT) ./cmd/nexus-submit/...
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/linux_amd64/$(BINARY_ROUTER) ./cmd/nexus-router/...
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/linux_amd64/$(BINARY_RUNNER) ./cmd/nexus-runner/...
 	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
 		CGO_CFLAGS="$(ZIG_CFLAGS)" \
 		CC="zig cc -target x86_64-linux-musl" \
 		CXX="zig c++ -target x86_64-linux-musl" \
 		go build $(LINUX_BUILD_FLAGS) -ldflags "$(LINUX_LDFLAGS)" \
 		-o $(DIST)/linux_amd64/$(BINARY_DAEMON) ./cmd/nexus-daemon/...
+	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
+		CGO_CFLAGS="$(ZIG_CFLAGS)" \
+		CC="zig cc -target x86_64-linux-musl" \
+		CXX="zig c++ -target x86_64-linux-musl" \
+		go build $(LINUX_BUILD_FLAGS) -ldflags "$(LINUX_LDFLAGS)" \
+		-o $(DIST)/linux_amd64/$(BINARY_BRAIN) ./cmd/nexus-brain/...
 	@echo "Built → $(DIST)/linux_amd64/"
 
 build-linux-arm64:
@@ -333,12 +345,24 @@ build-linux-arm64:
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/linux_arm64/$(BINARY_SUBMIT) ./cmd/nexus-submit/...
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/linux_arm64/$(BINARY_ROUTER) ./cmd/nexus-router/...
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/linux_arm64/$(BINARY_RUNNER) ./cmd/nexus-runner/...
 	CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
 		CGO_CFLAGS="$(ZIG_CFLAGS)" \
 		CC="zig cc -target aarch64-linux-musl" \
 		CXX="zig c++ -target aarch64-linux-musl" \
 		go build $(LINUX_BUILD_FLAGS) -ldflags "$(LINUX_LDFLAGS)" \
 		-o $(DIST)/linux_arm64/$(BINARY_DAEMON) ./cmd/nexus-daemon/...
+	CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
+		CGO_CFLAGS="$(ZIG_CFLAGS)" \
+		CC="zig cc -target aarch64-linux-musl" \
+		CXX="zig c++ -target aarch64-linux-musl" \
+		go build $(LINUX_BUILD_FLAGS) -ldflags "$(LINUX_LDFLAGS)" \
+		-o $(DIST)/linux_arm64/$(BINARY_BRAIN) ./cmd/nexus-brain/...
 	@echo "Built → $(DIST)/linux_arm64/"
 
 build-darwin-amd64:
@@ -351,11 +375,23 @@ build-darwin-amd64:
 	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/darwin_amd64/$(BINARY_SUBMIT) ./cmd/nexus-submit/...
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/darwin_amd64/$(BINARY_ROUTER) ./cmd/nexus-router/...
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/darwin_amd64/$(BINARY_RUNNER) ./cmd/nexus-runner/...
 	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
 		CGO_CFLAGS="-arch x86_64 $(FTS5_CFLAGS)" \
 		CGO_LDFLAGS="-arch x86_64" \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/darwin_amd64/$(BINARY_DAEMON) ./cmd/nexus-daemon/... || \
+		(echo "NOTE: build-darwin-amd64 requires Xcode SDK with x86_64 support — skipped."; exit 0)
+	CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
+		CGO_CFLAGS="-arch x86_64 $(FTS5_CFLAGS)" \
+		CGO_LDFLAGS="-arch x86_64" \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/darwin_amd64/$(BINARY_BRAIN) ./cmd/nexus-brain/... || \
 		(echo "NOTE: build-darwin-amd64 requires Xcode SDK with x86_64 support — skipped."; exit 0)
 	@echo "Built → $(DIST)/darwin_amd64/"
 
@@ -367,9 +403,18 @@ build-darwin-arm64:
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/darwin_arm64/$(BINARY_SUBMIT) ./cmd/nexus-submit/...
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/darwin_arm64/$(BINARY_ROUTER) ./cmd/nexus-router/...
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/darwin_arm64/$(BINARY_RUNNER) ./cmd/nexus-runner/...
 	CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/darwin_arm64/$(BINARY_DAEMON) ./cmd/nexus-daemon/...
+	CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/darwin_arm64/$(BINARY_BRAIN) ./cmd/nexus-brain/...
 	@echo "Built → $(DIST)/darwin_arm64/"
 
 build-windows-amd64:
@@ -381,12 +426,24 @@ build-windows-amd64:
 	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/windows_amd64/$(BINARY_SUBMIT).exe ./cmd/nexus-submit/...
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/windows_amd64/$(BINARY_ROUTER).exe ./cmd/nexus-router/...
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/windows_amd64/$(BINARY_RUNNER).exe ./cmd/nexus-runner/...
 	CGO_ENABLED=1 GOOS=windows GOARCH=amd64 \
 		CGO_CFLAGS="$(ZIG_CFLAGS)" \
 		CC="zig cc -target x86_64-windows-gnu" \
 		CXX="zig c++ -target x86_64-windows-gnu" \
 		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
 		-o $(DIST)/windows_amd64/$(BINARY_DAEMON).exe ./cmd/nexus-daemon/...
+	CGO_ENABLED=1 GOOS=windows GOARCH=amd64 \
+		CGO_CFLAGS="$(ZIG_CFLAGS)" \
+		CC="zig cc -target x86_64-windows-gnu" \
+		CXX="zig c++ -target x86_64-windows-gnu" \
+		go build $(BUILD_FLAGS) -ldflags "$(LDFLAGS)" \
+		-o $(DIST)/windows_amd64/$(BINARY_BRAIN).exe ./cmd/nexus-brain/...
 	@echo "Built → $(DIST)/windows_amd64/"
 
 # ---------------------------------------------------------------------------
