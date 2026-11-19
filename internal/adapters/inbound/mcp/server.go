@@ -333,7 +333,7 @@ func (s *Server) processRPC(w http.ResponseWriter, r *http.Request, req rpcReque
 	case "notifications/initialized":
 		w.WriteHeader(http.StatusNoContent)
 	case "tools/list":
-		resp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"tools": toolList()}}
+		resp := rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"tools": s.tools()}}
 		_ = json.NewEncoder(w).Encode(resp)
 	case "tools/call":
 		s.handleToolCall(w, r, req)
@@ -394,3 +394,12 @@ type mcpError struct {
 
 // Error returns the message of the tool error that is shown to the client.
 func (e *mcpError) Error() string { return e.msg }
+
+// tools returns the catalog of tools exposed by this server instance.
+// When only BrainService is configured (e.g. standalone Brain MCP), it returns only brain tools.
+func (s *Server) tools() []toolDef {
+	if s.orch == nil && s.brain != nil {
+		return brainToolDefs()
+	}
+	return toolList()
+}
