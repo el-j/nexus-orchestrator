@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-11-19
+
 ### Changed
 
 - Moved repository license from MIT to the GNU Affero General Public License v3.0 (AGPL-3.0) to enforce copyleft and source availability across network-hosted deployments.
@@ -442,7 +444,11 @@ This release makes Nexus usable day to day: tasks stream while the model writes,
 - HTTP body size cap prevents memory exhaustion from malformed or malicious API requests
 - SQLite `PRAGMA foreign_keys=ON` prevents referential integrity violations; WAL mode reduces write contention
 
-[Unreleased]: https://github.com/el-j/nexus-orchestrator/compare/v0.9.2...HEAD
+[Unreleased]: https://github.com/el-j/nexus-orchestrator/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/el-j/nexus-orchestrator/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/el-j/nexus-orchestrator/compare/v0.9.4...v0.10.0
+[0.9.4]: https://github.com/el-j/nexus-orchestrator/compare/v0.9.3...v0.9.4
+[0.9.3]: https://github.com/el-j/nexus-orchestrator/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/el-j/nexus-orchestrator/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/el-j/nexus-orchestrator/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/el-j/nexus-orchestrator/compare/v0.8.0...v0.9.0
