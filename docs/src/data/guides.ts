@@ -13,6 +13,7 @@ import tokenEconomy from '../../token-economy.md?raw';
 import switchingProviders from '../../switching-providers.md?raw';
 import subscriptionBridges from '../../subscription-bridges.md?raw';
 import standaloneClis from '../../standalone-clis.md?raw';
+import unifiedOrchestration from '../../unified-orchestration.md?raw';
 
 /** One guide: its page address, its title and summary, and its markdown source. */
 export interface Guide {
@@ -98,6 +99,13 @@ export const guides: Guide[] = [
     summary:
       'Run RAG (nexus-brain), LLM Gateway (nexus-router), and Runner Gates (nexus-runner) independently.',
     source: standaloneClis,
+  },
+  {
+    slug: 'unified-orchestration',
+    title: 'Unified Autonomous Orchestration',
+    summary:
+      'End-to-end pipeline combining dynamic RAG, affinity routing, TDD harness, and continuous learning.',
+    source: unifiedOrchestration,
   },
 ];
 

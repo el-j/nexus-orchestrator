@@ -36,6 +36,7 @@ func NewRootCmd(orch ports.Orchestrator, brain ports.BrainService) *cobra.Comman
 	root.AddCommand(newRunnerVerifyCmd(""))
 	root.AddCommand(newRunnerExecuteCmd(nil, ""))
 	root.AddCommand(newRunnerInspectCmd(""))
+	root.AddCommand(newOrchestrateCmd(orch, brain))
 
 	return root
 }

@@ -19,3 +19,16 @@ func TestKnowledgeKindIsValid(t *testing.T) {
 		}
 	}
 }
+
+func TestModelTierIsValid(t *testing.T) {
+	for _, tier := range []domain.ModelTier{domain.ModelTierFrontier, domain.ModelTierStandard, domain.ModelTierLocal} {
+		if !tier.IsValid() {
+			t.Errorf("%q is a valid model tier", tier)
+		}
+	}
+	for _, tier := range []domain.ModelTier{"", "supercomputer", "unknown", "Frontier"} {
+		if tier.IsValid() {
+			t.Errorf("%q is not a valid model tier", tier)
+		}
+	}
+}

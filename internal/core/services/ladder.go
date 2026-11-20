@@ -41,6 +41,8 @@ func (o *OrchestratorService) routeChain(chain []ports.LLMClient, task domain.Ta
 			return len(ladder)
 		}
 		slices.SortStableFunc(out, func(a, b ports.LLMClient) int { return pos(a) - pos(b) })
+	} else {
+		out = OrderChainByAffinity(out, task, 0)
 	}
 	return o.partitionByQuota(out, policy.QuotaLimit()), ladder
 }
