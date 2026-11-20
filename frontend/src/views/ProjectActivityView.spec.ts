@@ -159,11 +159,58 @@ describe('ProjectActivityView', () => {
     const w = await mountView();
     fetchMock.mockClear();
     await vi.advanceTimersByTimeAsync(30_000);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // 2 polls * 2 endpoints (timeline + ai-sessions) = 4 calls
+    expect(fetchMock).toHaveBeenCalledTimes(4);
     w.unmount();
     fetchMock.mockClear();
     await vi.advanceTimersByTimeAsync(60_000);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('switches timeframes to 7d and all, requesting corresponding since times', async () => {
+    respond([]);
+    const w = await mountView();
+
+    fetchMock.mockClear();
+    await w.get('[data-testid=activity-timeframe-7d]').trigger('click');
+    await flush();
+    const url7d = new URL(fetchMock.mock.calls[0][0]);
+    expect(url7d.searchParams.get('since')).toBe(new Date(NOW - 7 * 24 * 3600_000).toISOString());
+
+    fetchMock.mockClear();
+    await w.get('[data-testid=activity-timeframe-all]').trigger('click');
+    await flush();
+    const urlAll = new URL(fetchMock.mock.calls[0][0]);
+    expect(urlAll.searchParams.get('since')).toBe(new Date(0).toISOString());
+    expect(urlAll.searchParams.get('limit')).toBe('500');
+  });
+
+  it('displays projects with active sessions even when timeline activities are empty', async () => {
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      const u = String(url);
+      if (u.includes('/api/ai-sessions')) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify([
+              {
+                id: 'sess-1',
+                agentName: 'Claude Agent',
+                projectPath: '/work/active-proj',
+                status: 'active',
+                lastActivity: new Date(NOW - 10_000).toISOString(),
+              },
+            ]),
+          ),
+        );
+      }
+      return Promise.resolve(new Response(JSON.stringify([])));
+    });
+
+    const w = await mountView();
+    expect(w.text()).toContain('work/active-proj');
+    expect(w.text()).toContain('Claude Agent');
+    expect(w.find('[data-testid=active-session-badge]').exists()).toBe(true);
+    expect(w.find('[data-testid=no-recent-events]').text()).toContain('No logged events in 24h.');
   });
 
   it('starts no polling when unmounted before the first load finishes', async () => {

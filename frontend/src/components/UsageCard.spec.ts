@@ -97,4 +97,19 @@ describe('UsageCard', () => {
     await flushPromises();
     expect(w.get('[data-testid=usage-totals]').text()).toContain('7 in');
   });
+
+  it('switches timeframes when clicking timeframe buttons', async () => {
+    vi.mocked(wails.getUsage).mockResolvedValue(full);
+    const w = mount(UsageCard);
+    await flushPromises();
+    expect(wails.getUsage).toHaveBeenCalledWith('24h');
+
+    await w.get('[data-testid=usage-timeframe-7d]').trigger('click');
+    await flushPromises();
+    expect(wails.getUsage).toHaveBeenCalledWith('7d');
+
+    await w.get('[data-testid=usage-timeframe-all]').trigger('click');
+    await flushPromises();
+    expect(wails.getUsage).toHaveBeenCalledWith('all');
+  });
 });
