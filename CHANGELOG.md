@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] — 2026-11-20
+
+### Added
+
+- Unified Autonomous Orchestration & Adaptive Harness (Milestone M16):
+  - Dynamic RAG Synthesis & Model-Tier Context Tailoring: contextual pruning and compact constraint headers (`* INVARIANT: `, `* ARCH: `, `* AVOID: `) tailored across `frontier`, `standard`, and `local` model tiers, saving 40-70% prompt tokens without loss of architectural rigor. (#170, #175)
+  - Cost-to-Capability Affinity Routing: task complexity estimation (trivial, standard, high), context headroom pre-flight checks, cost-to-capability scoring, and external AI session affinity matching for Claude Code, Cursor, and Antigravity. (#171, #176)
+  - Autonomous Continuous Project Memory: closed feedback loop that digests completed and failed task outcomes into SQLite FTS5 project knowledge (`convention`, `file_map`, `pitfall`), preventing repeat failures across multi-turn agent sessions. (#172, #177)
+  - Configurable TDD Test Harness & Diagnostics: turn budgets, verification command ladders, strict and permissive quality gates, deterministic agent simulation (`ModelSimulator`, `ScriptedSimulator`), and AST diagnostic filtering for test and linter failures saving up to 80% error payload tokens. (#173, #178)
+  - Unified Pipeline CLI: `nexus orchestrate [spec-file | instruction]` with flags for `--project`, `--model`, `--role`, `--target`, `--verify`, `--max-turns`, and `--json`, uniting all 5 orchestration pillars into one seamless command. (#174, #179)
+  - Documentation: added comprehensive [unified-orchestration.md](docs/unified-orchestration.md) guide and integrated it into the GitHub Pages docs site.
+
+## [0.13.0] — 2026-11-19
+
+### Added
+
+- Token Economy & Prompt Optimization (Milestone M15):
+  - Prefix-stable prompt architecture optimized for Anthropic and OpenAI prompt caching, caching project knowledge and system constraints across multi-turn conversations. (#159, #164)
+  - Semantic history consolidation and rolling context window management enforcing history token budgets in multi-turn sessions. (#158, #163)
+  - History & context budget policy middleware for `nexus-router` `/v1/chat/completions`. (#160, #165)
+  - AST diagnostic extraction and compact unified diffs in self-healing correction loops, reducing compiler/test feedback token footprint by up to 80%. (#161, #166)
+  - Compact mode and field filtering for task and provider listing MCP tools. (#157, #162)
+
 ## [0.12.0] — 2026-11-19
 
 ### Added
