@@ -154,7 +154,8 @@ func TestStartMCPServer_ClosesConnectionsThatOutliveTheGracePeriod(t *testing.T)
 	var conn net.Conn
 	for i := 0; i < 250 && conn == nil; i++ {
 		if c, err := net.Dial("tcp", addr); err == nil {
-			conn = c // a client that connected and has not sent a request yet counts as active
+			conn = c // an in-flight active request that never finishes outlives the grace period
+			_, _ = conn.Write([]byte("GET /sse HTTP/1.1\r\nHost: localhost\r\n"))
 		} else {
 			time.Sleep(20 * time.Millisecond)
 		}

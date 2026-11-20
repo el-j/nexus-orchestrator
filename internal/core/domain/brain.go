@@ -46,13 +46,36 @@ func (k KnowledgeKind) IsValid() bool {
 	return false
 }
 
+// ModelTier classifies the capability and cost profile of an LLM.
+type ModelTier string
+
+const (
+	// ModelTierFrontier identifies high-cost, high-capability models (e.g. Claude Opus/Sonnet, GPT-4o).
+	ModelTierFrontier ModelTier = "frontier"
+	// ModelTierStandard identifies balanced, general-purpose models.
+	ModelTierStandard ModelTier = "standard"
+	// ModelTierLocal identifies budget or local models (e.g. Ollama, LM Studio, small open weights).
+	ModelTierLocal ModelTier = "local"
+)
+
+// IsValid reports whether t is a known ModelTier.
+func (t ModelTier) IsValid() bool {
+	switch t {
+	case ModelTierFrontier, ModelTierStandard, ModelTierLocal:
+		return true
+	}
+	return false
+}
+
 // ContextQuery is the input to BrainService context assembly methods.
 type ContextQuery struct {
-	ProjectPath string `json:"projectPath"`
-	TaskID      string `json:"taskId,omitempty"`
-	Question    string `json:"question,omitempty"`
-	FocusArea   string `json:"focusArea,omitempty"`
-	MaxTokens   int    `json:"maxTokens"`
+	ProjectPath string    `json:"projectPath"`
+	TaskID      string    `json:"taskId,omitempty"`
+	Question    string    `json:"question,omitempty"`
+	FocusArea   string    `json:"focusArea,omitempty"`
+	MaxTokens   int       `json:"maxTokens"`
+	ModelID     string    `json:"modelId,omitempty"`
+	ModelTier   ModelTier `json:"modelTier,omitempty"`
 }
 
 // ContextSection is a single slice of context assembled from a knowledge entry.
@@ -72,6 +95,8 @@ type ContextResponse struct {
 	TokensUsed     int              `json:"tokensUsed"`
 	TokenBudget    int              `json:"tokenBudget"`
 	Truncated      bool             `json:"truncated"`
+	ModelTier      ModelTier        `json:"modelTier,omitempty"`
+	TokensSaved    int              `json:"tokensSaved,omitempty"`
 }
 
 // BrainStatus summarises the initialisation state of the brain for a project.

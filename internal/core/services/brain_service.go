@@ -55,6 +55,9 @@ var kindPriority = []domain.KnowledgeKind{
 
 // GetContext assembles a ContextResponse in priority order within the MaxTokens budget (default 400).
 func (b *BrainServiceImpl) GetContext(ctx context.Context, q domain.ContextQuery) (domain.ContextResponse, error) {
+	if q.ModelID != "" || q.ModelTier != "" {
+		return NewContextSynthesizer(b.repo).Synthesize(ctx, q)
+	}
 	if q.MaxTokens == 0 {
 		q.MaxTokens = 400
 	}
@@ -118,6 +121,9 @@ func (b *BrainServiceImpl) GetContext(ctx context.Context, q domain.ContextQuery
 
 // GetFocusedContext uses BM25 search to assemble context relevant to a specific question.
 func (b *BrainServiceImpl) GetFocusedContext(ctx context.Context, q domain.ContextQuery) (domain.ContextResponse, error) {
+	if q.ModelID != "" || q.ModelTier != "" {
+		return NewContextSynthesizer(b.repo).Synthesize(ctx, q)
+	}
 	if q.MaxTokens == 0 {
 		q.MaxTokens = 400
 	}
