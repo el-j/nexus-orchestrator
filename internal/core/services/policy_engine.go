@@ -178,32 +178,8 @@ func (o *OrchestratorService) recordOutcome(taskID string, status domain.TaskSta
 	if err != nil || !ok || !policy.Remember {
 		return
 	}
-	outcome := "Completed"
-	if status == domain.StatusFailed {
-		outcome = "Failed"
-	}
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "%s: %s", outcome, truncateUTF8(strings.Join(strings.Fields(task.Instruction), " "), 200))
-	if task.TargetFile != "" {
-		fmt.Fprintf(&sb, " | target %s", task.TargetFile)
-	}
-	if task.VerificationCommand != "" {
-		fmt.Fprintf(&sb, " | verified with `%s`", task.VerificationCommand)
-	}
-	if status == domain.StatusFailed && task.Logs != "" {
-		fmt.Fprintf(&sb, " | last log: %s", truncateUTF8(lastLine(task.Logs), 200))
-	}
 	ctx := o.dbCtx()
-	if _, err := b.IngestKnowledge(ctx, domain.ProjectKnowledge{
-		ProjectPath: task.ProjectPath,
-		Kind:        domain.KnowledgeLearning,
-		Topic:       "Task " + shortID(task.ID),
-		Content:     sb.String(),
-		Source:      TaskMemorySource,
-	}); err != nil {
-		log.Printf("orchestrator: remember task %s: %v", task.ID, err)
-		return
-	}
+	DigestTaskOutcome(ctx, b, task, status)
 	o.pruneTaskMemories(ctx, b, task.ProjectPath)
 }
 
