@@ -211,6 +211,26 @@ describe('ProjectActivityView', () => {
     expect(w.text()).toContain('Claude Agent');
     expect(w.find('[data-testid=active-session-badge]').exists()).toBe(true);
     expect(w.find('[data-testid=no-recent-events]').text()).toContain('No logged events in 24h.');
+
+    await w.get('[data-testid=activity-timeframe-7d]').trigger('click');
+    await flush();
+    expect(w.find('[data-testid=no-recent-events]').text()).toContain('No logged events in 7d.');
+
+    await w.get('[data-testid=activity-timeframe-all]').trigger('click');
+    await flush();
+    expect(w.find('[data-testid=no-recent-events]').text()).toContain('No logged events in All.');
+  });
+
+  it('handles ai-sessions failure gracefully by falling back to empty sessions', async () => {
+    fetchMock.mockImplementation((url: RequestInfo | URL) => {
+      const u = String(url);
+      if (u.includes('/api/ai-sessions')) {
+        return Promise.resolve(new Response('server error', { status: 500 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify([act({ projectPath: '/work/proj' })])));
+    });
+    const w = await mountView();
+    expect(w.text()).toContain('work/proj');
   });
 
   it('starts no polling when unmounted before the first load finishes', async () => {

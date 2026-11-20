@@ -275,6 +275,7 @@
 import { ref, shallowRef, computed, onMounted, watch } from 'vue';
 import { useBrain } from '../composables/useBrain';
 import { useProjectFilter } from '../composables/useProjectFilter';
+import { baseName } from '../utils/path';
 import AllProjectsBrainOverview from '../components/AllProjectsBrainOverview.vue';
 
 const { currentProject, projectList, setProject } = useProjectFilter();
@@ -295,10 +296,6 @@ const tabs = [
   { key: 'ingest' as const, label: 'Ingest' },
   { key: 'filemap' as const, label: 'File Map' },
 ];
-
-function baseName(path: string): string {
-  return path.split('/').filter(Boolean).pop() ?? path;
-}
 
 // brain ref is swapped when projectPath changes; computed proxies ensure the
 // template always reads from the current instance's reactive state.

@@ -85,7 +85,7 @@
 
         <div class="flex items-center justify-between pt-2 border-t border-white/5">
           <span class="text-[10px] text-slate-600 font-mono" v-if="statuses[proj]?.lastUpdated">
-            {{ formatTime(statuses[proj]?.lastUpdated) }}
+            {{ timeAgo(statuses[proj]!.lastUpdated) }}
           </span>
           <span v-else></span>
           <button
@@ -104,6 +104,8 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import type { BrainStatus } from '../types/domain';
 import { getBrainStatus } from '../types/wails';
+import { baseName } from '../utils/path';
+import { timeAgo } from '../utils/time';
 
 const props = defineProps<{
   projectList: string[];
@@ -116,26 +118,16 @@ defineEmits<{
 const statuses = ref<Record<string, BrainStatus>>({});
 const loading = ref(false);
 
-function baseName(path: string): string {
-  return path.split('/').filter(Boolean).pop() ?? path;
-}
-
-function formatTime(isoStr?: string): string {
-  if (!isoStr) return '';
-  const d = new Date(isoStr);
-  return isNaN(d.getTime()) ? '' : d.toLocaleTimeString();
-}
-
 const totalEntries = computed(() =>
-  Object.values(statuses.value).reduce((sum, s) => sum + (s?.entryCount ?? 0), 0),
+  Object.values(statuses.value).reduce((sum, s) => sum + s.entryCount, 0),
 );
 
 const totalTokens = computed(() =>
-  Object.values(statuses.value).reduce((sum, s) => sum + (s?.totalTokens ?? 0), 0),
+  Object.values(statuses.value).reduce((sum, s) => sum + s.totalTokens, 0),
 );
 
 const initializedCount = computed(
-  () => Object.values(statuses.value).filter((s) => s?.initialized).length,
+  () => Object.values(statuses.value).filter((s) => s.initialized).length,
 );
 
 async function loadAllStatuses() {

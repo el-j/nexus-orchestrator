@@ -99,17 +99,20 @@ describe('UsageCard', () => {
   });
 
   it('switches timeframes when clicking timeframe buttons', async () => {
-    vi.mocked(wails.getUsage).mockResolvedValue(full);
+    vi.mocked(wails.getUsage).mockResolvedValue({ ...full, usage: [] });
     const w = mount(UsageCard);
     await flushPromises();
     expect(wails.getUsage).toHaveBeenCalledWith('24h');
+    expect(w.text()).toContain('(24h)');
 
     await w.get('[data-testid=usage-timeframe-7d]').trigger('click');
     await flushPromises();
     expect(wails.getUsage).toHaveBeenCalledWith('7d');
+    expect(w.text()).toContain('(7d)');
 
     await w.get('[data-testid=usage-timeframe-all]').trigger('click');
     await flushPromises();
     expect(wails.getUsage).toHaveBeenCalledWith('all');
+    expect(w.text()).toContain('(All)');
   });
 });

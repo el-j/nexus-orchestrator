@@ -89,8 +89,9 @@ const timeframe = ref('24h');
 const { report, loading, error } = useUsage(timeframe);
 
 const timeframeLabel = computed(() => {
-  const found = timeframes.find((t) => t.value === timeframe.value);
-  return found ? found.label : timeframe.value;
+  if (timeframe.value === '7d') return '7d';
+  if (timeframe.value === 'all') return 'All';
+  return '24h';
 });
 
 /** Formats a token count: 1 234 -> 1.2k, 1 500 000 -> 1.5M. */

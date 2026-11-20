@@ -181,6 +181,17 @@ describe('BrainView — project selection', () => {
     expect(h.project.value).toBeNull();
     expect(last().path).toBe('');
   });
+
+  it('selects project via AllProjectsBrainOverview event', async () => {
+    h.projectList.value = ['/work/card-proj'];
+    const w = await mountView();
+    const overview = w.findComponent({ name: 'AllProjectsBrainOverview' });
+    expect(overview.exists()).toBe(true);
+    overview.vm.$emit('selectProject', '/work/card-proj');
+    await flushPromises();
+    expect(last().path).toBe('/work/card-proj');
+    expect(h.project.value).toBe('/work/card-proj');
+  });
 });
 
 describe('BrainView — header', () => {
@@ -336,6 +347,14 @@ describe('BrainView — entries tab', () => {
     const w = await mountView();
     expect(last().listEntries).not.toHaveBeenCalled();
     await tab(w, 'Entries').trigger('click');
+    await flushPromises();
+    expect(last().listEntries).toHaveBeenCalled();
+  });
+
+  it('re-lists entries when project path changes while on the entries tab', async () => {
+    const w = await open();
+    await pathInput(w).setValue('/work/new-proj');
+    await pathInput(w).trigger('blur');
     await flushPromises();
     expect(last().listEntries).toHaveBeenCalled();
   });

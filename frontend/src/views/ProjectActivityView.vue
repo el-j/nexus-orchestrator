@@ -170,8 +170,9 @@ const timeframes = [
 const timeframe = ref('24h');
 
 const timeframeLabel = computed(() => {
-  const found = timeframes.find((t) => t.value === timeframe.value);
-  return found ? found.label : timeframe.value;
+  if (timeframe.value === '7d') return '7d';
+  if (timeframe.value === 'all') return 'All';
+  return '24h';
 });
 
 function openTimeline(projectPath: string) {
@@ -285,7 +286,7 @@ const projects = computed((): ProjectGroup[] => {
     const agents = [...new Set([...actAgents, ...sessAgents])];
 
     const hasActiveSession = data.sessions.some((s) => s.status === 'active');
-    const lastActivity = data.lastTime > 0 ? new Date(data.lastTime).toISOString() : '';
+    const lastActivity = new Date(data.lastTime).toISOString();
 
     groups.push({
       path,
