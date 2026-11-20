@@ -24,6 +24,7 @@ interface Fake {
 const h = vi.hoisted(() => ({
   instances: [] as unknown[],
   project: { value: null as string | null },
+  projectList: { value: [] as string[] },
 }));
 
 vi.mock('../composables/useBrain', async () => {
@@ -56,8 +57,31 @@ vi.mock('../composables/useProjectState', async () => {
   const { ref } = await import('vue');
   const currentProject = ref<string | null>(null);
   h.project = currentProject as unknown as { value: string | null };
-  return { currentProject };
+  const setProject = vi.fn((p: string | null) => {
+    currentProject.value = p;
+  });
+  return { currentProject, setProject };
 });
+vi.mock('../composables/useProjectFilter', async () => {
+  const { ref } = await import('vue');
+  const currentProject = ref<string | null>(null);
+  const projectList = ref<string[]>([]);
+  h.project = currentProject as unknown as { value: string | null };
+  h.projectList = projectList as unknown as { value: string[] };
+  const setProject = vi.fn((p: string | null) => {
+    currentProject.value = p;
+  });
+  return {
+    useProjectFilter: () => ({
+      currentProject,
+      projectList,
+      setProject,
+    }),
+  };
+});
+vi.mock('../types/wails', () => ({
+  getBrainStatus: vi.fn().mockResolvedValue(null),
+}));
 
 const inst = () => h.instances as Fake[];
 const last = () => inst()[inst().length - 1];
@@ -74,6 +98,7 @@ const pathInput = (w: Awaited<ReturnType<typeof mountView>>) =>
 beforeEach(() => {
   h.instances.length = 0;
   h.project.value = null;
+  h.projectList.value = [];
   localStorage.clear();
 });
 
@@ -136,6 +161,36 @@ describe('BrainView — project selection', () => {
     await flushPromises();
     expect(w.find('header').text()).toContain('7');
     expect(w.find('header').text()).toContain((12345).toLocaleString());
+  });
+
+  it('selects project from dropdown and syncs state', async () => {
+    h.projectList.value = ['/work/proj-a', '/work/proj-b'];
+    const w = await mountView();
+    const select = w.find('[data-testid=brain-project-select]');
+    expect(select.exists()).toBe(true);
+
+    await select.setValue('/work/proj-a');
+    await flushPromises();
+    expect(last().path).toBe('/work/proj-a');
+    expect(h.project.value).toBe('/work/proj-a');
+    expect(last().fetchStatus).toHaveBeenCalled();
+
+    // Select "All Projects"
+    await select.setValue('');
+    await flushPromises();
+    expect(h.project.value).toBeNull();
+    expect(last().path).toBe('');
+  });
+
+  it('selects project via AllProjectsBrainOverview event', async () => {
+    h.projectList.value = ['/work/card-proj'];
+    const w = await mountView();
+    const overview = w.findComponent({ name: 'AllProjectsBrainOverview' });
+    expect(overview.exists()).toBe(true);
+    overview.vm.$emit('selectProject', '/work/card-proj');
+    await flushPromises();
+    expect(last().path).toBe('/work/card-proj');
+    expect(h.project.value).toBe('/work/card-proj');
   });
 });
 
@@ -285,6 +340,23 @@ describe('BrainView — entries tab', () => {
     await flushPromises();
     await w.find('button[title="Delete"]').trigger('click');
     expect(last().deleteEntry).toHaveBeenCalledWith('e1');
+  });
+
+  it('automatically lists entries when switching to entries tab with a selected project', async () => {
+    localStorage.setItem('nexus:projectPath', '/work/proj-x');
+    const w = await mountView();
+    expect(last().listEntries).not.toHaveBeenCalled();
+    await tab(w, 'Entries').trigger('click');
+    await flushPromises();
+    expect(last().listEntries).toHaveBeenCalled();
+  });
+
+  it('re-lists entries when project path changes while on the entries tab', async () => {
+    const w = await open();
+    await pathInput(w).setValue('/work/new-proj');
+    await pathInput(w).trigger('blur');
+    await flushPromises();
+    expect(last().listEntries).toHaveBeenCalled();
   });
 });
 

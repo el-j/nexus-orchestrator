@@ -1,11 +1,12 @@
 <!--
   Project Brain: initialise, ingest into, search and browse the selected project's knowledge base.
+  When no project is selected, displays workspace overview across all projects.
 -->
 <template>
   <div class="flex flex-col h-full overflow-hidden">
     <!-- Header -->
     <header
-      class="flex items-center justify-between px-5 py-3 border-b border-white/5 bg-[#0a0a10] shrink-0"
+      class="flex items-center justify-between px-5 py-3 border-b border-white/5 bg-[#0a0a10] shrink-0 flex-wrap gap-2"
     >
       <div>
         <h1 class="text-sm font-bold text-white">Project Brain</h1>
@@ -18,6 +19,18 @@
         </p>
       </div>
       <div class="flex items-center gap-2">
+        <select
+          v-if="projectList.length > 0"
+          v-model="projectPath"
+          @change="onSelectProjectChange"
+          class="text-xs bg-white/5 border border-white/10 rounded px-2 py-1 text-white focus:outline-none focus:border-violet-500/50 max-w-[12rem] truncate"
+          data-testid="brain-project-select"
+        >
+          <option value="">All Projects</option>
+          <option v-for="p in projectList" :key="p" :value="p">
+            {{ baseName(p) }}
+          </option>
+        </select>
         <input
           v-model="projectPath"
           type="text"
@@ -115,12 +128,17 @@
             Search
           </button>
         </div>
-        <div
-          v-if="searchResults.length === 0 && !loading"
-          class="text-xs text-slate-600 text-center py-8"
-        >
-          No results
+
+        <div v-if="searchResults.length === 0 && !loading">
+          <div v-if="searchQuery || projectPath" class="text-xs text-slate-600 text-center py-8">
+            No results
+          </div>
+          <template v-else>
+            <span class="sr-only">No results</span>
+            <AllProjectsBrainOverview :project-list="projectList" @select-project="selectProject" />
+          </template>
         </div>
+
         <div
           v-for="(r, i) in searchResults"
           :key="i"
@@ -256,7 +274,11 @@
 <script setup lang="ts">
 import { ref, shallowRef, computed, onMounted, watch } from 'vue';
 import { useBrain } from '../composables/useBrain';
-import { currentProject } from '../composables/useProjectState';
+import { useProjectFilter } from '../composables/useProjectFilter';
+import { baseName } from '../utils/path';
+import AllProjectsBrainOverview from '../components/AllProjectsBrainOverview.vue';
+
+const { currentProject, projectList, setProject } = useProjectFilter();
 
 const projectPath = ref('');
 const activeTab = ref<'search' | 'entries' | 'ingest' | 'filemap'>('search');
@@ -295,7 +317,28 @@ function onPathChange() {
     localStorage.setItem('nexus:projectPath', projectPath.value);
     brain.value = useBrain(projectPath.value);
     void brain.value.fetchStatus();
+    if (activeTab.value === 'entries') {
+      void handleListEntries();
+    }
   }
+}
+
+function onSelectProjectChange() {
+  if (projectPath.value) {
+    onPathChange();
+    setProject(projectPath.value);
+  } else {
+    projectPath.value = '';
+    localStorage.removeItem('nexus:projectPath');
+    setProject(null);
+    brain.value = useBrain('');
+  }
+}
+
+function selectProject(path: string) {
+  projectPath.value = path;
+  onPathChange();
+  setProject(path);
 }
 
 async function refresh() {
@@ -346,6 +389,12 @@ async function onFilesSelected(e: Event) {
   // Reset input
   if (fileInputRef.value) fileInputRef.value.value = '';
 }
+
+watch(activeTab, (tab) => {
+  if (tab === 'entries' && projectPath.value && entries.value.length === 0) {
+    void handleListEntries();
+  }
+});
 
 // Picking another project in the sidebar switches the brain to it.
 watch(currentProject, (val) => {

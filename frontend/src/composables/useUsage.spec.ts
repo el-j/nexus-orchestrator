@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { defineComponent } from 'vue';
+import { defineComponent, ref, type Ref } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
 import { useUsage } from './useUsage';
 import * as wails from '../types/wails';
@@ -12,7 +12,7 @@ const report = {
   usage: [],
 };
 
-function host(since?: string) {
+function host(since?: Ref<string> | string) {
   let api!: ReturnType<typeof useUsage>;
   const w = mount(
     defineComponent({
@@ -53,6 +53,21 @@ describe('useUsage', () => {
     expect(api().error.value).toBe('HTTP 503');
     await api().refresh();
     expect(api().error.value).toBeNull();
+  });
+
+  it('refreshes when a reactive timeframe ref changes', async () => {
+    const timeframe = ref('24h');
+    host(timeframe);
+    await flushPromises();
+    expect(wails.getUsage).toHaveBeenCalledWith('24h');
+
+    timeframe.value = '7d';
+    await flushPromises();
+    expect(wails.getUsage).toHaveBeenCalledWith('7d');
+
+    timeframe.value = 'all';
+    await flushPromises();
+    expect(wails.getUsage).toHaveBeenCalledWith('all');
   });
 
   it('treats an answer that is not a usage report as an error', async () => {
