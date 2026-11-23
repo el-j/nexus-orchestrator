@@ -320,9 +320,11 @@
     "typecheck": "tsc --noEmit",
     "test:mutation": "stryker run",
     "check:docs": "node ../scripts/check-tsdoc.mjs src",
-    "test:host": "npm run build && node host-test/run.mjs"
+    "test:host": "npm run build && node host-test/run.mjs",
+    "lint": "eslint ."
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@stryker-mutator/core": "^10.0.0",
     "@stryker-mutator/typescript-checker": "^10.0.0",
     "@stryker-mutator/vitest-runner": "^10.0.0",
@@ -332,8 +334,11 @@
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.28.2",
+    "eslint": "^9.39.5",
+    "globals": "^17.14.0",
     "mocha": "^12.0.3",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.74.0",
     "vitest": "^5.0.3"
   },
   "dependencies": {

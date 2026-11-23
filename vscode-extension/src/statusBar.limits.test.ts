@@ -30,23 +30,6 @@ const task = (o: Partial<Task> = {}): Task => ({
   updatedAt: ago(1000),
   ...o,
 });
-const sess = (o: Partial<AISession> = {}): AISession => ({
-  id: 's',
-  agentName: 'a',
-  source: 'mcp',
-  status: 'active',
-  lastActivity: '',
-  ...o,
-});
-const act = (o: Partial<AIActivity> = {}): AIActivity => ({
-  id: 'a',
-  agentName: 'claude',
-  activityType: 'message',
-  summary: '',
-  timestamp: ago(1000),
-  ...o,
-});
-
 interface Data {
   alive?: boolean;
   providers?: Provider[] | Error;

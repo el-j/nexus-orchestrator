@@ -9,10 +9,7 @@ import { z } from 'zod';
 import type {
   AISession,
   Provider,
-  ProviderConfig,
   Task,
-  TaskStatus,
-  CommandType,
   SubmitTaskRequest,
   DiscoveredAgent,
   AIActivity,
@@ -22,19 +19,11 @@ import type {
   ContextSection,
   ProjectKnowledge,
   ContextResponse,
-  KnowledgeResult,
   CreateTaskResponse,
   HealthResponse,
   UsageReport,
 } from './nexusTypes';
-import {
-  TaskStatusSchema,
-  TaskSchema,
-  AISessionSchema,
-  ProviderSchema,
-  ProviderConfigSchema,
-  UsageReportSchema,
-} from './nexusSchemas';
+import { TaskSchema, AISessionSchema, ProviderSchema, UsageReportSchema } from './nexusSchemas';
 
 export * from './nexusTypes';
 

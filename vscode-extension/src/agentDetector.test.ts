@@ -147,7 +147,7 @@ describe('AgentDetector', () => {
     // Retrieve the machineId that was stored during construction so we can
     // build a duplicate externalId and inject it via a second detectAll call.
     // Simpler approach: call detectAll twice and confirm there are no duplicate externalIds.
-    const first = await detector.detectAll();
+    await detector.detectAll();
     const second = await detector.detectAll();
 
     const ids = second.map((a) => a.externalId);

@@ -11,7 +11,7 @@
  */
 
 import * as vscode from 'vscode';
-import { NexusClient, AISession, AIActivity } from './nexusClient';
+import { NexusClient, AIActivity } from './nexusClient';
 import { getActivitySnapshot } from './activityLog';
 import { coolingNote, quotaNote } from './providerLimits';
 
