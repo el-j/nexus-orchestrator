@@ -164,6 +164,11 @@ func TestStartMCPServer_ClosesConnectionsThatOutliveTheGracePeriod(t *testing.T)
 		t.Fatal("the server never accepted a connection")
 	}
 	defer conn.Close()
+	// The server accepts connections in order, so once a later one has been answered the silent one is
+	// known to it and counts as active; cancelling before that would find nothing to close.
+	if resp, err := http.Get("http://" + addr + "/health"); err == nil {
+		_ = resp.Body.Close()
+	}
 	cancel()
 	select {
 	case err := <-done:
