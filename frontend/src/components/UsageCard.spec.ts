@@ -102,17 +102,27 @@ describe('UsageCard', () => {
     vi.mocked(wails.getUsage).mockResolvedValue({ ...full, usage: [] });
     const w = mount(UsageCard);
     await flushPromises();
-    expect(wails.getUsage).toHaveBeenCalledWith('24h');
+    expect(wails.getUsage).toHaveBeenCalledWith('24h', null);
     expect(w.text()).toContain('(24h)');
 
     await w.get('[data-testid=usage-timeframe-7d]').trigger('click');
     await flushPromises();
-    expect(wails.getUsage).toHaveBeenCalledWith('7d');
+    expect(wails.getUsage).toHaveBeenCalledWith('7d', null);
     expect(w.text()).toContain('(7d)');
 
     await w.get('[data-testid=usage-timeframe-all]').trigger('click');
     await flushPromises();
-    expect(wails.getUsage).toHaveBeenCalledWith('all');
+    expect(wails.getUsage).toHaveBeenCalledWith('all', null);
     expect(w.text()).toContain('(All)');
+  });
+
+  it('displays project badge when scoped to a project', async () => {
+    vi.mocked(wails.getUsage).mockResolvedValue(full);
+    const w = mount(UsageCard, {
+      props: { projectPath: '/Users/test/my-project' },
+    });
+    await flushPromises();
+    expect(w.get('[data-testid=usage-project-badge]').text()).toBe('my-project');
+    expect(wails.getUsage).toHaveBeenCalledWith('24h', '/Users/test/my-project');
   });
 });

@@ -219,12 +219,13 @@ per provider and model and is cleared by the next successful call.
 
 ```
 GET /api/usage?since=24h
+GET /api/usage?since=24h&projectPath=/path/to/project
 ```
 
 Tokens and cost the models consumed, added up per provider, model and role. Every successful model call
 whose provider reports its usage (Anthropic, Gemini, OpenAI-compatible, Ollama, and `claude` in
 `stream-json` mode) is one record. `since` is a duration back from now (`90m`, `24h`, `7d`), an RFC 3339
-time, or `all`; the default is 24 hours. Largest consumers come first. `503` when the daemon has no ledger,
+time, or `all`; the default is 24 hours. `projectPath` optionally filters usage to a specific project repository. Largest consumers come first. `503` when the daemon has no ledger,
 `400` for a bad `since`. The same data is the MCP tool `get_usage` and `nexus-cli usage --since 7d`.
 
 **Response:** `200 OK`

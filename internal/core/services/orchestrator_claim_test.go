@@ -249,3 +249,37 @@ func TestUpdateTaskStatus_NotProcessing(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
+
+func TestClaimTask_DraftAndBacklog(t *testing.T) {
+	orch, _, aiRepo := setupClaimTestOrch(t)
+	seedActiveSession(t, aiRepo, "sess-1")
+
+	// 1. Claim a DRAFT task
+	draftID, err := orch.CreateDraft(domain.Task{Instruction: "draft task", ProjectPath: "/tmp"})
+	if err != nil {
+		t.Fatalf("CreateDraft: %v", err)
+	}
+	task, err := orch.ClaimTask(context.Background(), draftID, "sess-1")
+	if err != nil {
+		t.Fatalf("ClaimTask on draft: %v", err)
+	}
+	if task.Status != domain.StatusProcessing {
+		t.Errorf("expected PROCESSING after claiming draft, got %s", task.Status)
+	}
+
+	// 2. Claim a BACKLOG task
+	draft2, err := orch.CreateDraft(domain.Task{Instruction: "backlog task", ProjectPath: "/tmp"})
+	if err != nil {
+		t.Fatalf("CreateDraft: %v", err)
+	}
+	if _, err := orch.UpdateTask(draft2, domain.Task{Status: domain.StatusBacklog}); err != nil {
+		t.Fatalf("UpdateTask to BACKLOG: %v", err)
+	}
+	task2, err := orch.ClaimTask(context.Background(), draft2, "sess-1")
+	if err != nil {
+		t.Fatalf("ClaimTask on backlog: %v", err)
+	}
+	if task2.Status != domain.StatusProcessing {
+		t.Errorf("expected PROCESSING after claiming backlog, got %s", task2.Status)
+	}
+}

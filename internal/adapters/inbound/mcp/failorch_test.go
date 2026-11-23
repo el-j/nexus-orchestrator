@@ -101,6 +101,17 @@ func (f *failOrch) GetUsage(_ context.Context, _ time.Time) ([]domain.UsageSumma
 	return []domain.UsageSummary{{Provider: "p", Calls: 1, InputTokens: 10}}, nil
 }
 
+func (f *failOrch) GetUsageForProject(_ context.Context, _ time.Time, projectPath string) ([]domain.UsageSummary, error) {
+	if err := f.op("GetUsageForProject", projectPath); err != nil {
+		return nil, err
+	}
+	return []domain.UsageSummary{{Provider: "p", ProjectPath: projectPath, Calls: 1, InputTokens: 10}}, nil
+}
+
+func (f *failOrch) RecordUsage(_ context.Context, r domain.UsageRecord) error {
+	return f.op("RecordUsage", r)
+}
+
 func (f *failOrch) CancelTask(id string) error {
 	return f.op("CancelTask", id)
 }

@@ -14,6 +14,7 @@ import (
 // the daemon's usage ledger.
 func newUsageCmd(orch ports.Orchestrator) *cobra.Command {
 	var since string
+	var project string
 	cmd := &cobra.Command{
 		Use:   "usage",
 		Short: "Show the tokens and cost the models consumed, per provider, model and role",
@@ -26,7 +27,12 @@ func newUsageCmd(orch ports.Orchestrator) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("usage: %w", err)
 			}
-			sums, err := q.GetUsage(cmd.Context(), from)
+			var sums []domain.UsageSummary
+			if project != "" {
+				sums, err = q.GetUsageForProject(cmd.Context(), from, project)
+			} else {
+				sums, err = q.GetUsage(cmd.Context(), from)
+			}
 			if err != nil {
 				return fmt.Errorf("usage: %w", err)
 			}
@@ -45,5 +51,6 @@ func newUsageCmd(orch ports.Orchestrator) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&since, "since", "24h", "window: a duration (90m, 24h, 7d), an RFC 3339 time, or all")
+	cmd.Flags().StringVar(&project, "project", "", "filter usage by project path")
 	return cmd
 }

@@ -301,7 +301,9 @@ func TestHarness_Timeout(t *testing.T) {
 	}
 
 	h := harness.NewHarness(cfg, mockExec, sim)
-	report, err := h.Run(context.Background(), "")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	report, err := h.Run(ctx, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

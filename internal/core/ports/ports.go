@@ -65,11 +65,19 @@ type UsageRepository interface {
 	// Summarize adds the calls made at or after since up per provider, model and role,
 	// largest consumers (input plus output tokens) first.
 	Summarize(ctx context.Context, since time.Time) ([]domain.UsageSummary, error)
+	// SummarizeForProject adds the calls made at or after since for a specific project.
+	SummarizeForProject(ctx context.Context, since time.Time, projectPath string) ([]domain.UsageSummary, error)
 }
 
 // UsageQuerier is what the inbound adapters need to read the ledger.
 type UsageQuerier interface {
 	GetUsage(ctx context.Context, since time.Time) ([]domain.UsageSummary, error)
+	GetUsageForProject(ctx context.Context, since time.Time, projectPath string) ([]domain.UsageSummary, error)
+}
+
+// UsageRecorder is what the inbound adapters need to write model call records to the ledger.
+type UsageRecorder interface {
+	RecordUsage(ctx context.Context, r domain.UsageRecord) error
 }
 
 // RoutingPreviewer is what the inbound adapters need to show how routing would order the providers for a

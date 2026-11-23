@@ -85,4 +85,47 @@ func TestUsageRepo_ClosedDatabaseIsAnError(t *testing.T) {
 	if _, err := u.Summarize(context.Background(), time.Time{}); err == nil {
 		t.Error("Summarize on a closed database")
 	}
+	if _, err := u.SummarizeForProject(context.Background(), time.Time{}, "/proj"); err == nil {
+		t.Error("SummarizeForProject on a closed database")
+	}
+}
+
+func TestUsageRepo_SummarizeForProject(t *testing.T) {
+	r := newTestRepo(t)
+	u := repo_sqlite.NewUsageRepo(r)
+	ctx := context.Background()
+	now := time.Now()
+
+	_ = u.Record(ctx, domain.UsageRecord{
+		At:          now,
+		ProjectPath: "/projects/alpha",
+		Provider:    "Claude",
+		Usage:       domain.Usage{InputTokens: 100, OutputTokens: 50},
+	})
+	_ = u.Record(ctx, domain.UsageRecord{
+		At:          now,
+		ProjectPath: "/projects/beta",
+		Provider:    "Claude",
+		Usage:       domain.Usage{InputTokens: 200, OutputTokens: 100},
+	})
+
+	alpha, err := u.SummarizeForProject(ctx, now.Add(-time.Hour), "/projects/alpha")
+	if err != nil || len(alpha) != 1 || alpha[0].InputTokens != 100 {
+		t.Fatalf("alpha usage: %+v %v", alpha, err)
+	}
+
+	beta, err := u.SummarizeForProject(ctx, now.Add(-time.Hour), "/projects/beta")
+	if err != nil || len(beta) != 1 || beta[0].InputTokens != 200 {
+		t.Fatalf("beta usage: %+v %v", beta, err)
+	}
+
+	none, err := u.SummarizeForProject(ctx, now.Add(-time.Hour), "/projects/gamma")
+	if err != nil || len(none) != 0 {
+		t.Fatalf("gamma usage: %+v %v", none, err)
+	}
+
+	all, err := u.SummarizeForProject(ctx, now.Add(-time.Hour), "")
+	if err != nil || len(all) != 1 || all[0].InputTokens != 300 {
+		t.Fatalf("all usage via empty project: %+v %v", all, err)
+	}
 }

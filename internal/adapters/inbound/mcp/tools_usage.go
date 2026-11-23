@@ -19,7 +19,8 @@ func usageToolDefs() []toolDef {
 			InputSchema: inputSchema{
 				Type: "object",
 				Properties: map[string]property{
-					"since": {Type: "string", Description: "Start of the window: a duration back from now (90m, 24h, 7d), an RFC 3339 time, or all. Default 24h."},
+					"since":        {Type: "string", Description: "Start of the window: a duration back from now (90m, 24h, 7d), an RFC 3339 time, or all. Default 24h."},
+					"project_path": {Type: "string", Description: "Optional project repository path to filter usage for a specific project."},
 				},
 			},
 		},
@@ -29,7 +30,8 @@ func usageToolDefs() []toolDef {
 // toolGetUsage serves get_usage: tokens and cost per provider since a given time.
 func (s *Server) toolGetUsage(ctx context.Context, args json.RawMessage) (callToolResult, error) {
 	var p struct {
-		Since string `json:"since"`
+		Since       string `json:"since"`
+		ProjectPath string `json:"project_path"`
 	}
 	if err := decodeOptionalArgs(args, &p); err != nil {
 		return callToolResult{}, err
@@ -42,9 +44,18 @@ func (s *Server) toolGetUsage(ctx context.Context, args json.RawMessage) (callTo
 	if err != nil {
 		return callToolResult{}, &mcpError{code: codeInvalidParams, msg: err.Error()}
 	}
-	sums, err := q.GetUsage(ctx, since)
+	var sums []domain.UsageSummary
+	if p.ProjectPath != "" {
+		sums, err = q.GetUsageForProject(ctx, since, p.ProjectPath)
+	} else {
+		sums, err = q.GetUsage(ctx, since)
+	}
 	if err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: get_usage: %w", err)
 	}
-	return jsonResult("get_usage", map[string]any{"since": since, "totals": domain.UsageTotals(sums), "usage": sums})
+	res := map[string]any{"since": since, "totals": domain.UsageTotals(sums), "usage": sums}
+	if p.ProjectPath != "" {
+		res["projectPath"] = p.ProjectPath
+	}
+	return jsonResult("get_usage", res)
 }

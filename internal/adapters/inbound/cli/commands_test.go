@@ -272,6 +272,11 @@ func (u *usageScripted) GetUsage(_ context.Context, since time.Time) ([]domain.U
 	return u.sums, u.err
 }
 
+func (u *usageScripted) GetUsageForProject(_ context.Context, since time.Time, _ string) ([]domain.UsageSummary, error) {
+	u.since = since
+	return u.sums, u.err
+}
+
 func TestUsageCmd(t *testing.T) {
 	orch := &usageScripted{sums: []domain.UsageSummary{
 		{Provider: "Anthropic", Model: "opus", Role: "architect", Calls: 2, InputTokens: 300, OutputTokens: 120, CachedTokens: 30, CostUSD: 0.75},
@@ -288,6 +293,11 @@ func TestUsageCmd(t *testing.T) {
 	}
 	if d := time.Since(orch.since); d < 7*24*time.Hour-time.Minute || d > 7*24*time.Hour+time.Minute {
 		t.Errorf("since = %v", orch.since)
+	}
+
+	outProj, err := execute(orch, nil, "usage", "--project", "/tmp/demo")
+	if err != nil || !strings.Contains(outProj, "Anthropic") {
+		t.Fatalf("project usage: %s %v", outProj, err)
 	}
 
 	orch.sums = nil

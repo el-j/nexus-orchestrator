@@ -31,4 +31,5 @@ var addedColumns = []addedColumn{
 	{"ai_sessions", "last_message", "TEXT NOT NULL DEFAULT ''"},
 	{"ai_sessions", "pid", "INTEGER NOT NULL DEFAULT 0"},
 	{"discovered_agents", "pid", "INTEGER NOT NULL DEFAULT 0"},
+	{"llm_usage", "project_path", "TEXT NOT NULL DEFAULT ''"},
 }

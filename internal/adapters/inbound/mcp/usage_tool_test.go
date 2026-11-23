@@ -15,14 +15,27 @@ import (
 
 type usageOrch struct {
 	mockOrch
-	sums  []domain.UsageSummary
-	err   error
-	since time.Time
+	sums    []domain.UsageSummary
+	err     error
+	since   time.Time
+	project string
+	rec     domain.UsageRecord
 }
 
 func (u *usageOrch) GetUsage(_ context.Context, since time.Time) ([]domain.UsageSummary, error) {
 	u.since = since
 	return u.sums, u.err
+}
+
+func (u *usageOrch) GetUsageForProject(_ context.Context, since time.Time, projectPath string) ([]domain.UsageSummary, error) {
+	u.since = since
+	u.project = projectPath
+	return u.sums, u.err
+}
+
+func (u *usageOrch) RecordUsage(_ context.Context, r domain.UsageRecord) error {
+	u.rec = r
+	return u.err
 }
 
 func usageServer(t *testing.T, o *usageOrch) *httptest.Server {
@@ -90,5 +103,19 @@ func TestGetUsage_ErrorsAreReported(t *testing.T) {
 	defer plain.Close()
 	if r := callTool(t, plain, 2, "get_usage", nil); r.Error == nil && !strings.Contains(string(r.Result), "not available") {
 		t.Errorf("no ledger: %s", r.Result)
+	}
+}
+
+func TestGetUsage_WithProjectPath(t *testing.T) {
+	o := &usageOrch{sums: []domain.UsageSummary{
+		{Provider: "Claude", Calls: 1, InputTokens: 100, ProjectPath: "/my/project"},
+	}}
+	srv := usageServer(t, o)
+	r := callTool(t, srv, 1, "get_usage", map[string]any{"since": "24h", "project_path": "/my/project"})
+	if r.Error != nil {
+		t.Fatalf("error: %+v", r.Error)
+	}
+	if o.project != "/my/project" {
+		t.Errorf("expected projectPath /my/project, got %q", o.project)
 	}
 }

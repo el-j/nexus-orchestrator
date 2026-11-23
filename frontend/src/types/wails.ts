@@ -167,9 +167,10 @@ export async function getProviders(): Promise<ProviderInfo[]> {
   return request<ProviderInfo[]>('GET', '/api/providers');
 }
 
-/** Reads the usage ledger: tokens and cost per provider, model and role since `since` (24h, 7d, all). */
-export async function getUsage(since = '24h'): Promise<UsageReport> {
-  return request<UsageReport>('GET', `/api/usage?since=${q(since)}`);
+/** Reads the usage ledger: tokens and cost per provider, model and role since `since` (24h, 7d, all), optionally filtered by projectPath. */
+export async function getUsage(since = '24h', projectPath?: string | null): Promise<UsageReport> {
+  const p = projectPath ? `&projectPath=${q(projectPath)}` : '';
+  return request<UsageReport>('GET', `/api/usage?since=${q(since)}${p}`);
 }
 
 /** Previews how routing would order candidate providers for a role in a project right now. */
