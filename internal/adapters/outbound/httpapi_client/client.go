@@ -23,8 +23,11 @@ import (
 // server's message.
 const maxErrorBody = 4 << 10
 
-// Compile-time proof that Client satisfies the orchestrator port.
-var _ ports.Orchestrator = (*Client)(nil)
+// Compile-time proof that Client satisfies the orchestrator and usage querier ports.
+var (
+	_ ports.Orchestrator = (*Client)(nil)
+	_ ports.UsageQuerier = (*Client)(nil)
+)
 
 // Client forwards orchestrator calls to the running nexusOrchestrator HTTP API.
 type Client struct {
@@ -278,14 +281,23 @@ func (r *Client) GetProviders() ([]ports.ProviderInfo, error) {
 // GetUsage reads the usage ledger from the daemon: tokens and cost per provider, model and role for the
 // calls made at or after since (the zero time means everything).
 func (r *Client) GetUsage(ctx context.Context, since time.Time) ([]domain.UsageSummary, error) {
+	return r.GetUsageForProject(ctx, since, "")
+}
+
+// GetUsageForProject reads the usage ledger filtered by projectPath (or all when empty).
+func (r *Client) GetUsageForProject(ctx context.Context, since time.Time, projectPath string) ([]domain.UsageSummary, error) {
 	window := "all"
 	if !since.IsZero() {
 		window = since.UTC().Format(time.RFC3339)
 	}
+	path := "/api/usage?since=" + url.QueryEscape(window)
+	if projectPath != "" {
+		path += "&projectPath=" + url.QueryEscape(projectPath)
+	}
 	var out struct {
 		Usage []domain.UsageSummary `json:"usage"`
 	}
-	err := r.send(ctx, call{op: "get usage", method: http.MethodGet, path: "/api/usage?since=" + url.QueryEscape(window)}, &out)
+	err := r.send(ctx, call{op: "get usage", method: http.MethodGet, path: path}, &out)
 	return out.Usage, err
 }
 

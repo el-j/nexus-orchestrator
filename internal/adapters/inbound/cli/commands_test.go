@@ -295,6 +295,11 @@ func TestUsageCmd(t *testing.T) {
 		t.Errorf("since = %v", orch.since)
 	}
 
+	outProj, err := execute(orch, nil, "usage", "--project", "/tmp/demo")
+	if err != nil || !strings.Contains(outProj, "Anthropic") {
+		t.Fatalf("project usage: %s %v", outProj, err)
+	}
+
 	orch.sums = nil
 	if out, _ := execute(orch, nil, "usage"); !strings.Contains(out, "No usage recorded") {
 		t.Errorf("empty ledger: %q", out)

@@ -129,9 +129,9 @@ func TestClient_GetDiscoveredPlanFiles(t *testing.T) {
 }
 
 func TestClient_GetUsage(t *testing.T) {
-	var gotPath, gotSince string
+	var gotPath, gotSince, gotProj string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotPath, gotSince = r.URL.Path, r.URL.Query().Get("since")
+		gotPath, gotSince, gotProj = r.URL.Path, r.URL.Query().Get("since"), r.URL.Query().Get("projectPath")
 		fmt.Fprint(w, `{"since":"x","totals":{},"usage":[{"provider":"Anthropic","model":"opus","calls":2,"inputTokens":300,"outputTokens":120}]}`)
 	}))
 	defer srv.Close()
@@ -146,6 +146,9 @@ func TestClient_GetUsage(t *testing.T) {
 	}
 	if _, err := c.GetUsage(context.Background(), time.Time{}); err != nil || gotSince != "all" {
 		t.Errorf("zero time asks for everything: since=%q err=%v", gotSince, err)
+	}
+	if _, err := c.GetUsageForProject(context.Background(), since, "/my/proj"); err != nil || gotProj != "/my/proj" {
+		t.Errorf("project query mismatch: proj=%q err=%v", gotProj, err)
 	}
 }
 
