@@ -140,6 +140,6 @@ var schemaMore = []schemaStep{
 		);
 		CREATE INDEX IF NOT EXISTS idx_llm_usage_at ON llm_usage(at);
 		CREATE INDEX IF NOT EXISTS idx_llm_usage_project ON llm_usage(project_path);
-		UPDATE llm_usage SET project_path = (SELECT project_path FROM tasks WHERE tasks.id = llm_usage.task_id) WHERE project_path = '' AND task_id != '';
+		UPDATE llm_usage SET project_path = COALESCE((SELECT project_path FROM tasks WHERE tasks.id = llm_usage.task_id), '') WHERE project_path = '' AND task_id != '';
 	`},
 }
