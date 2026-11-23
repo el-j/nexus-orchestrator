@@ -112,7 +112,7 @@ export class AgentDetector implements vscode.Disposable {
               modelId: agent.modelId,
             });
             this.sessionMap.set(agent.externalId, session.id);
-          } catch (_) {
+          } catch {
             /* silent */
           }
         }
@@ -126,7 +126,7 @@ export class AgentDetector implements vscode.Disposable {
             if ((await this.client.heartbeatSession(sessionId)) === false) {
               this.sessionMap.delete(externalId);
             }
-          } catch (_) {
+          } catch {
             /* silent */
           }
         }
@@ -137,7 +137,7 @@ export class AgentDetector implements vscode.Disposable {
         if (!currentIds.has(externalId)) {
           try {
             await this.client.deregisterSession(sessionId);
-          } catch (_) {
+          } catch {
             /* silent */
           }
           this.sessionMap.delete(externalId);
@@ -145,7 +145,7 @@ export class AgentDetector implements vscode.Disposable {
       }
 
       this._onDidChange.fire();
-    } catch (_) {
+    } catch {
       /* silent */
     } finally {
       this.ticking = false;
@@ -207,7 +207,7 @@ export class AgentDetector implements vscode.Disposable {
           detectionMethod: 'fs-config',
         });
       }
-    } catch (_) {
+    } catch {
       /* not found */
     }
 
@@ -227,7 +227,7 @@ export class AgentDetector implements vscode.Disposable {
           detectionMethod: 'fs-config',
         });
         break;
-      } catch (_) {
+      } catch {
         /* not found */
       }
     }
@@ -258,7 +258,7 @@ export class AgentDetector implements vscode.Disposable {
           }
         }
         break;
-      } catch (_) {
+      } catch {
         /* not found */
       }
     }

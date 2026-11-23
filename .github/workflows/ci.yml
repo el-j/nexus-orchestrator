@@ -256,6 +256,10 @@ jobs:
         working-directory: vscode-extension
         run: npm run typecheck
 
+      - name: Lint vscode-extension
+        working-directory: vscode-extension
+        run: npm run lint
+
       - name: Exported declarations are documented
         working-directory: vscode-extension
         run: npm run check:docs
