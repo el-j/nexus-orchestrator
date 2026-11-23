@@ -272,6 +272,11 @@ func (u *usageScripted) GetUsage(_ context.Context, since time.Time) ([]domain.U
 	return u.sums, u.err
 }
 
+func (u *usageScripted) GetUsageForProject(_ context.Context, since time.Time, _ string) ([]domain.UsageSummary, error) {
+	u.since = since
+	return u.sums, u.err
+}
+
 func TestUsageCmd(t *testing.T) {
 	orch := &usageScripted{sums: []domain.UsageSummary{
 		{Provider: "Anthropic", Model: "opus", Role: "architect", Calls: 2, InputTokens: 300, OutputTokens: 120, CachedTokens: 30, CostUSD: 0.75},

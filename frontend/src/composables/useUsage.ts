@@ -2,9 +2,18 @@ import { ref, isRef, watch, onMounted, onUnmounted, type Ref } from 'vue';
 import type { UsageReport } from '../types/domain';
 import { getUsage } from '../types/wails';
 
-/** Token usage of the last `since` (default 24h) from the daemon's usage ledger, refreshed every minute. */
-export function useUsage(sinceParam: Ref<string> | string = '24h') {
+/** Token usage of the last `since` (default 24h) from the daemon's usage ledger, refreshed every minute, optionally scoped to a project. */
+export function useUsage(
+  sinceParam: Ref<string> | string = '24h',
+  projectParam?: Ref<string | null> | string | null,
+) {
   const sinceRef = isRef(sinceParam) ? sinceParam : ref(sinceParam);
+  const projectRef =
+    projectParam === undefined
+      ? ref<string | null>(null)
+      : isRef(projectParam)
+        ? projectParam
+        : ref(projectParam);
   const report = ref<UsageReport | null>(null);
   const loading = ref(false);
   const error = ref<string | null>(null);
@@ -13,7 +22,7 @@ export function useUsage(sinceParam: Ref<string> | string = '24h') {
 
   async function refresh() {
     try {
-      const r = await getUsage(sinceRef.value);
+      const r = await getUsage(sinceRef.value, projectRef.value);
       // A daemon without the ledger, or a stand-in server, may answer with something else: show an error
       // instead of failing to render.
       if (!r || !r.totals || !Array.isArray(r.usage)) throw new Error('Unexpected usage answer');
@@ -24,7 +33,7 @@ export function useUsage(sinceParam: Ref<string> | string = '24h') {
     }
   }
 
-  watch(sinceRef, async () => {
+  watch([sinceRef, projectRef], async () => {
     loading.value = true;
     await refresh();
     loading.value = false;

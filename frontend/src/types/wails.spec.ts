@@ -558,6 +558,8 @@ describe('getUsage', () => {
     expect(lastCall()).toMatchObject({ path: '/api/usage?since=24h', method: 'GET' });
     await api.getUsage('7d');
     expect(lastCall().path).toBe('/api/usage?since=7d');
+    await api.getUsage('all', '/projects/alpha');
+    expect(lastCall().path).toBe('/api/usage?since=all&projectPath=%2Fprojects%2Falpha');
   });
 
   it('prepends the embedded daemon URL when called inside the Wails desktop WebView', async () => {

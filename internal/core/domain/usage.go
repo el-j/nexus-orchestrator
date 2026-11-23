@@ -41,6 +41,8 @@ type UsageRecord struct {
 	At time.Time `json:"at"`
 	// TaskID is the task the call belonged to; empty for calls outside a task.
 	TaskID string `json:"taskId,omitempty"`
+	// ProjectPath is the project repository path; empty when not tied to a project.
+	ProjectPath string `json:"projectPath,omitempty"`
 	// Provider is the provider's name and Role the task's role (may be empty).
 	Provider string `json:"provider"`
 	Role     string `json:"role,omitempty"`
@@ -53,6 +55,7 @@ type UsageSummary struct {
 	Provider     string  `json:"provider"`
 	Model        string  `json:"model,omitempty"`
 	Role         string  `json:"role,omitempty"`
+	ProjectPath  string  `json:"projectPath,omitempty"`
 	Calls        int     `json:"calls"`
 	InputTokens  int     `json:"inputTokens"`
 	OutputTokens int     `json:"outputTokens"`

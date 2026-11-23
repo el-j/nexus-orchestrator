@@ -30,6 +30,10 @@ func (m *memUsage) Record(_ context.Context, r domain.UsageRecord) error {
 }
 
 func (m *memUsage) Summarize(_ context.Context, _ time.Time) ([]domain.UsageSummary, error) {
+	return m.SummarizeForProject(context.Background(), time.Time{}, "")
+}
+
+func (m *memUsage) SummarizeForProject(_ context.Context, _ time.Time, projectPath string) ([]domain.UsageSummary, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.err != nil {
@@ -37,7 +41,18 @@ func (m *memUsage) Summarize(_ context.Context, _ time.Time) ([]domain.UsageSumm
 	}
 	out := []domain.UsageSummary{}
 	for _, r := range m.recs {
-		out = append(out, domain.UsageSummary{Provider: r.Provider, Model: r.Model, Role: r.Role, Calls: 1, InputTokens: r.InputTokens, OutputTokens: r.OutputTokens, CachedTokens: r.CachedTokens})
+		if projectPath == "" || r.ProjectPath == projectPath {
+			out = append(out, domain.UsageSummary{
+				Provider:     r.Provider,
+				Model:        r.Model,
+				Role:         r.Role,
+				ProjectPath:  r.ProjectPath,
+				Calls:        1,
+				InputTokens:  r.InputTokens,
+				OutputTokens: r.OutputTokens,
+				CachedTokens: r.CachedTokens,
+			})
+		}
 	}
 	return out, nil
 }
@@ -120,5 +135,43 @@ func TestGetUsageWithoutALedgerIsEmpty(t *testing.T) {
 	sums, err := e.orch.GetUsage(context.Background(), time.Time{})
 	if err != nil || sums == nil || len(sums) != 0 {
 		t.Errorf("%+v %v", sums, err)
+	}
+	projSums, err := e.orch.GetUsageForProject(context.Background(), time.Time{}, "/proj")
+	if err != nil || projSums == nil || len(projSums) != 0 {
+		t.Errorf("%+v %v", projSums, err)
+	}
+	if err := e.orch.RecordUsage(context.Background(), domain.UsageRecord{}); err != nil {
+		t.Errorf("RecordUsage without ledger should be nil, got: %v", err)
+	}
+}
+
+func TestGetUsageForProjectAndRecordUsage(t *testing.T) {
+	ledger := &memUsage{}
+	e := newEngine(t, &noopWriter{}, nil, nil, &scriptLLM{name: "P", alive: true})
+	services.WithUsageRepo(ledger)(e.orch)
+
+	err := e.orch.RecordUsage(context.Background(), domain.UsageRecord{
+		ProjectPath: "/projects/a",
+		Provider:    "Claude",
+		Usage:       domain.Usage{InputTokens: 50, OutputTokens: 25},
+	})
+	if err != nil {
+		t.Fatalf("RecordUsage failed: %v", err)
+	}
+
+	_ = e.orch.RecordUsage(context.Background(), domain.UsageRecord{
+		ProjectPath: "/projects/b",
+		Provider:    "Claude",
+		Usage:       domain.Usage{InputTokens: 100, OutputTokens: 75},
+	})
+
+	a, err := e.orch.GetUsageForProject(context.Background(), time.Time{}, "/projects/a")
+	if err != nil || len(a) != 1 || a[0].InputTokens != 50 {
+		t.Fatalf("expected 1 record for /projects/a: %+v, %v", a, err)
+	}
+
+	all, err := e.orch.GetUsageForProject(context.Background(), time.Time{}, "")
+	if err != nil || len(all) != 2 {
+		t.Fatalf("expected all records when projectPath is empty: %+v, %v", all, err)
 	}
 }

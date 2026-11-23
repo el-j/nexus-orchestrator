@@ -9,6 +9,13 @@
     <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
       <div class="flex items-center gap-2">
         <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Token usage</h3>
+        <span
+          v-if="projectLabel"
+          class="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/20 font-mono"
+          data-testid="usage-project-badge"
+        >
+          {{ projectLabel }}
+        </span>
         <div
           class="flex items-center rounded-lg bg-black/40 p-0.5 border border-white/5 text-[10px]"
           data-testid="usage-timeframe-selector"
@@ -78,6 +85,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useUsage } from '../composables/useUsage';
+import { currentProject } from '../composables/useProjectState';
+import { baseName } from '../utils/path';
+
+const props = defineProps<{
+  projectPath?: string | null;
+}>();
 
 const timeframes = [
   { value: '24h', label: '24h' },
@@ -86,7 +99,11 @@ const timeframes = [
 ];
 
 const timeframe = ref('24h');
-const { report, loading, error } = useUsage(timeframe);
+const activeProject = computed(() =>
+  props.projectPath !== undefined ? props.projectPath : currentProject.value,
+);
+const projectLabel = computed(() => (activeProject.value ? baseName(activeProject.value) : ''));
+const { report, loading, error } = useUsage(timeframe, activeProject);
 
 const timeframeLabel = computed(() => {
   if (timeframe.value === '7d') return '7d';

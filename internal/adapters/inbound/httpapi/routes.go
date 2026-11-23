@@ -83,6 +83,7 @@ func (s *Server) routeSystem(r chi.Router) {
 	r.Get("/api/events", s.handleEvents)
 
 	r.Get("/api/usage", s.handleUsage)
+	r.Post("/api/usage", s.handleReportUsage)
 	r.Get("/api/routing", s.handleRouting)
 	r.Get("/api/policy", s.handleGetPolicy)
 	r.Put("/api/policy", s.handlePutPolicy)

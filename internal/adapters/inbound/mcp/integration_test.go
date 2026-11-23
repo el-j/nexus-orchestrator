@@ -39,10 +39,11 @@ func (m *integrationMockLLM) Chat(_ context.Context, _ []domain.Message) (string
 // --- Test stack ---
 
 type mcpTestStack struct {
-	srv    *httptest.Server
-	orch   *services.OrchestratorService
-	repo   *repo_sqlite.Repository
-	tmpDir string
+	srv       *httptest.Server
+	orch      *services.OrchestratorService
+	repo      *repo_sqlite.Repository
+	usageRepo *repo_sqlite.UsageRepo
+	tmpDir    string
 }
 
 func newMCPTestStack(t *testing.T) *mcpTestStack {
@@ -62,10 +63,12 @@ func newMCPTestStack(t *testing.T) *mcpTestStack {
 
 	sessionRepo := repo_sqlite.NewSessionRepo(repo)
 	aiSessionRepo := repo_sqlite.NewAISessionRepo(repo)
+	usageRepo := repo_sqlite.NewUsageRepo(repo)
 	writer := fs_writer.New()
 	discovery := services.NewDiscoveryService(&integrationMockLLM{})
 	orch := services.NewOrchestrator(discovery, repo, writer, sessionRepo)
 	orch.SetAISessionRepo(aiSessionRepo)
+	services.WithUsageRepo(usageRepo)(orch)
 
 	mcpSrv := mcp.NewMcpServer(orch, nil)
 	srv := httptest.NewServer(mcpSrv)
@@ -77,10 +80,11 @@ func newMCPTestStack(t *testing.T) *mcpTestStack {
 	})
 
 	return &mcpTestStack{
-		srv:    srv,
-		orch:   orch,
-		repo:   repo,
-		tmpDir: t.TempDir(),
+		srv:       srv,
+		orch:      orch,
+		repo:      repo,
+		usageRepo: usageRepo,
+		tmpDir:    t.TempDir(),
 	}
 }
 
@@ -338,12 +342,15 @@ func TestMCPIntegration_ClaimAndComplete(t *testing.T) {
 		t.Errorf("after claim: want PROCESSING, got %s", claimedTask.Status)
 	}
 
-	// update_task_status → COMPLETED
+	// update_task_status → COMPLETED with tokens
 	updateR := callTool(t, ts.srv, 2, "update_task_status", map[string]any{
 		"task_id":    task.ID,
 		"session_id": sessID,
 		"status":     "COMPLETED",
 		"logs":       "done",
+		"tokens_in":  120,
+		"tokens_out": 45,
+		"model":      "flash",
 	})
 	if updateR.Error != nil {
 		t.Fatalf("update_task_status error: %s", updateR.Error.Message)
@@ -364,6 +371,12 @@ func TestMCPIntegration_ClaimAndComplete(t *testing.T) {
 	}
 	if saved.Status != domain.StatusCompleted {
 		t.Errorf("DB status: want COMPLETED, got %s", saved.Status)
+	}
+
+	// Verify Usage Record
+	sums, err := ts.orch.GetUsageForProject(context.Background(), time.Time{}, task.ProjectPath)
+	if err != nil || len(sums) != 1 || sums[0].InputTokens != 120 || sums[0].OutputTokens != 45 {
+		t.Fatalf("expected usage recorded for project: %+v, %v", sums, err)
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,14 +16,27 @@ import (
 
 type usageOrchestrator struct {
 	mockOrchestrator
-	sums  []domain.UsageSummary
-	err   error
-	since time.Time
+	sums    []domain.UsageSummary
+	err     error
+	since   time.Time
+	project string
+	rec     domain.UsageRecord
 }
 
 func (u *usageOrchestrator) GetUsage(_ context.Context, since time.Time) ([]domain.UsageSummary, error) {
 	u.since = since
 	return u.sums, u.err
+}
+
+func (u *usageOrchestrator) GetUsageForProject(_ context.Context, since time.Time, projectPath string) ([]domain.UsageSummary, error) {
+	u.since = since
+	u.project = projectPath
+	return u.sums, u.err
+}
+
+func (u *usageOrchestrator) RecordUsage(_ context.Context, r domain.UsageRecord) error {
+	u.rec = r
+	return u.err
 }
 
 func getJSON(t *testing.T, url string) (int, map[string]any) {
@@ -64,6 +78,54 @@ func TestUsageEndpoint(t *testing.T) {
 	}
 	if _, _ = getJSON(t, ts.URL+"/api/usage?since=all"); !o.since.IsZero() {
 		t.Errorf("all = the zero time: %v", o.since)
+	}
+	code, body = getJSON(t, ts.URL+"/api/usage?projectPath=/my/project")
+	if code != http.StatusOK || body["projectPath"] != "/my/project" || o.project != "/my/project" {
+		t.Errorf("projectPath parameter: %d %v, o.project=%q", code, body, o.project)
+	}
+}
+
+func TestReportUsageEndpoint(t *testing.T) {
+	o := &usageOrchestrator{}
+	ts := httptest.NewServer(httpapi.NewServer(o, nil, nil).Handler())
+	defer ts.Close()
+
+	// 1. Valid POST /api/usage
+	body := `{"projectPath":"/my/project","provider":"Antigravity","model":"flash","role":"coder","inputTokens":10,"outputTokens":20,"cachedTokens":5,"costUSD":0.001}`
+	resp, err := http.Post(ts.URL+"/api/usage", "application/json", strings.NewReader(body))
+	if err != nil || resp.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201, got %v %v", resp, err)
+	}
+	if o.rec.Provider != "Antigravity" || o.rec.ProjectPath != "/my/project" || o.rec.InputTokens != 10 {
+		t.Errorf("recorded record: %+v", o.rec)
+	}
+
+	// 2. Missing provider
+	resp, _ = http.Post(ts.URL+"/api/usage", "application/json", strings.NewReader(`{"inputTokens":10}`))
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("expected 400 for missing provider, got %d", resp.StatusCode)
+	}
+
+	// 3. Bad JSON
+	resp, _ = http.Post(ts.URL+"/api/usage", "application/json", strings.NewReader(`not-json`))
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("expected 400 for bad JSON, got %d", resp.StatusCode)
+	}
+
+	// 4. Ledger unavailable
+	plain := httptest.NewServer(httpapi.NewServer(&mockOrchestrator{}, nil, nil).Handler())
+	defer plain.Close()
+	resp, _ = http.Post(plain.URL+"/api/usage", "application/json", strings.NewReader(body))
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Errorf("expected 503 when ledger unavailable, got %d", resp.StatusCode)
+	}
+
+	// 5. Orchestrator error
+	failing := httptest.NewServer(httpapi.NewServer(&usageOrchestrator{err: errors.New("write failed")}, nil, nil).Handler())
+	defer failing.Close()
+	resp, _ = http.Post(failing.URL+"/api/usage", "application/json", strings.NewReader(body))
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("expected 500 when orchestrator fails, got %d", resp.StatusCode)
 	}
 }
 

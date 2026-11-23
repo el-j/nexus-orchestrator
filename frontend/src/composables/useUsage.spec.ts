@@ -12,12 +12,12 @@ const report = {
   usage: [],
 };
 
-function host(since?: Ref<string> | string) {
+function host(since?: Ref<string> | string, project?: Ref<string | null> | string | null) {
   let api!: ReturnType<typeof useUsage>;
   const w = mount(
     defineComponent({
       setup() {
-        api = useUsage(since);
+        api = useUsage(since, project);
         return () => null;
       },
     }),
@@ -35,7 +35,7 @@ describe('useUsage', () => {
   it('loads the report on mount, asks for 24h by default and refreshes every minute', async () => {
     const { w, api } = host();
     await flushPromises();
-    expect(wails.getUsage).toHaveBeenCalledWith('24h');
+    expect(wails.getUsage).toHaveBeenCalledWith('24h', null);
     expect(api().report.value).toEqual(report);
     expect(api().loading.value).toBe(false);
     await vi.advanceTimersByTimeAsync(60_000);
@@ -49,7 +49,7 @@ describe('useUsage', () => {
     vi.mocked(wails.getUsage).mockRejectedValueOnce(new Error('HTTP 503'));
     const { api } = host('7d');
     await flushPromises();
-    expect(wails.getUsage).toHaveBeenCalledWith('7d');
+    expect(wails.getUsage).toHaveBeenCalledWith('7d', null);
     expect(api().error.value).toBe('HTTP 503');
     await api().refresh();
     expect(api().error.value).toBeNull();
@@ -59,15 +59,31 @@ describe('useUsage', () => {
     const timeframe = ref('24h');
     host(timeframe);
     await flushPromises();
-    expect(wails.getUsage).toHaveBeenCalledWith('24h');
+    expect(wails.getUsage).toHaveBeenCalledWith('24h', null);
 
     timeframe.value = '7d';
     await flushPromises();
-    expect(wails.getUsage).toHaveBeenCalledWith('7d');
+    expect(wails.getUsage).toHaveBeenCalledWith('7d', null);
 
     timeframe.value = 'all';
     await flushPromises();
-    expect(wails.getUsage).toHaveBeenCalledWith('all');
+    expect(wails.getUsage).toHaveBeenCalledWith('all', null);
+  });
+
+  it('refreshes when a reactive project ref changes or static project string is passed', async () => {
+    const project = ref<string | null>(null);
+    host('24h', project);
+    await flushPromises();
+    expect(wails.getUsage).toHaveBeenCalledWith('24h', null);
+
+    project.value = '/projects/a';
+    await flushPromises();
+    expect(wails.getUsage).toHaveBeenCalledWith('24h', '/projects/a');
+
+    // Static project string
+    host('7d', '/projects/b');
+    await flushPromises();
+    expect(wails.getUsage).toHaveBeenCalledWith('7d', '/projects/b');
   });
 
   it('treats an answer that is not a usage report as an error', async () => {

@@ -129,6 +129,7 @@ var schemaMore = []schemaStep{
 			id            INTEGER PRIMARY KEY AUTOINCREMENT,
 			at            INTEGER NOT NULL,
 			task_id       TEXT    NOT NULL DEFAULT '',
+			project_path  TEXT    NOT NULL DEFAULT '',
 			provider      TEXT    NOT NULL,
 			model         TEXT    NOT NULL DEFAULT '',
 			role          TEXT    NOT NULL DEFAULT '',
@@ -138,5 +139,7 @@ var schemaMore = []schemaStep{
 			cost_usd      REAL    NOT NULL DEFAULT 0
 		);
 		CREATE INDEX IF NOT EXISTS idx_llm_usage_at ON llm_usage(at);
+		CREATE INDEX IF NOT EXISTS idx_llm_usage_project ON llm_usage(project_path);
+		UPDATE llm_usage SET project_path = (SELECT project_path FROM tasks WHERE tasks.id = llm_usage.task_id) WHERE project_path = '' AND task_id != '';
 	`},
 }
