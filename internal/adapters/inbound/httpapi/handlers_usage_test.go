@@ -96,18 +96,25 @@ func TestReportUsageEndpoint(t *testing.T) {
 	if err != nil || resp.StatusCode != http.StatusCreated {
 		t.Fatalf("expected 201, got %v %v", resp, err)
 	}
+	_ = resp.Body.Close()
 	if o.rec.Provider != "Antigravity" || o.rec.ProjectPath != "/my/project" || o.rec.InputTokens != 10 {
 		t.Errorf("recorded record: %+v", o.rec)
 	}
 
 	// 2. Missing provider
 	resp, _ = http.Post(ts.URL+"/api/usage", "application/json", strings.NewReader(`{"inputTokens":10}`))
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("expected 400 for missing provider, got %d", resp.StatusCode)
 	}
 
 	// 3. Bad JSON
 	resp, _ = http.Post(ts.URL+"/api/usage", "application/json", strings.NewReader(`not-json`))
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("expected 400 for bad JSON, got %d", resp.StatusCode)
 	}
@@ -116,6 +123,9 @@ func TestReportUsageEndpoint(t *testing.T) {
 	plain := httptest.NewServer(httpapi.NewServer(&mockOrchestrator{}, nil, nil).Handler())
 	defer plain.Close()
 	resp, _ = http.Post(plain.URL+"/api/usage", "application/json", strings.NewReader(body))
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
 	if resp.StatusCode != http.StatusServiceUnavailable {
 		t.Errorf("expected 503 when ledger unavailable, got %d", resp.StatusCode)
 	}
@@ -124,6 +134,9 @@ func TestReportUsageEndpoint(t *testing.T) {
 	failing := httptest.NewServer(httpapi.NewServer(&usageOrchestrator{err: errors.New("write failed")}, nil, nil).Handler())
 	defer failing.Close()
 	resp, _ = http.Post(failing.URL+"/api/usage", "application/json", strings.NewReader(body))
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
 	if resp.StatusCode != http.StatusInternalServerError {
 		t.Errorf("expected 500 when orchestrator fails, got %d", resp.StatusCode)
 	}
