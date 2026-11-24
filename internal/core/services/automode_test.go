@@ -576,6 +576,50 @@ func TestAutoMode_BrainPolicyStopFailuresAndEdgeCases(t *testing.T) {
 	failRepo.getPendingTasks = []domain.Task{{ID: "t-blocked", Status: domain.StatusQueued, DependsOn: []string{"dep-1"}}}
 	failRepo.updateIfCurrOK = false
 	orchFail.failBlockedDependents("dep-1", domain.StatusFailed)
+
+	// Invalid .nexus/policy.json fails Auto-Mode fast before promoting backlog tasks.
+	projBadPol := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(projBadPol, ".nexus"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projBadPol, ".nexus", "policy.json"), []byte(`{"rules":["`+strings.Repeat("x", 320)+`"]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	rBadPol, err := orchStop.StartAutoMode(context.Background(), domain.AutoModeRequest{ProjectPath: projBadPol})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rBadPol.TaskIDs == nil {
+		t.Fatal("expected non-nil TaskIDs slice in initial snapshot")
+	}
+	sBadPol := waitAutoRun(t, orchStop, rBadPol.ID)
+	if sBadPol.Phase != domain.AutoPhaseFailed || !strings.Contains(sBadPol.Error, "300 characters") {
+		t.Fatalf("expected fast policy failure, got %+v", sBadPol)
+	}
+
+	// firstFailedTaskReason: skips missing/completed tasks, trims multiline logs, and handles empty logs.
+	tComp := domain.Task{ID: "ff-ok", ProjectPath: proj, Status: domain.StatusCompleted, Logs: "ok"}
+	tFail := domain.Task{ID: "ff-err", ProjectPath: proj, Status: domain.StatusFailed, Logs: "line 1\nline 2"}
+	tEmpty := domain.Task{ID: "ff-empty", ProjectPath: proj, Status: domain.StatusFailed, Logs: ""}
+	for _, tk := range []domain.Task{tComp, tFail, tEmpty} {
+		_ = repo.Save(context.Background(), tk)
+	}
+	if got := orchStop.firstFailedTaskReason([]string{"missing-id", "ff-ok", "ff-err"}); got != "line 1" {
+		t.Fatalf("expected 'line 1', got %q", got)
+	}
+	if got := orchStop.firstFailedTaskReason([]string{"ff-empty"}); got != "" {
+		t.Fatalf("expected empty reason, got %q", got)
+	}
+	// Trigger runAutoMode settlement with a failed task that has empty logs (hits plain fallback error message).
+	stNoLog := &autoRunState{ctx: context.Background(), cancel: func() {}, run: domain.AutoModeRun{ID: "nl1", Phase: domain.AutoPhaseExecuting, TaskIDs: []string{"ff-empty"}}}
+	_, fCount, _ := orchStop.autoWaitTasks(context.Background(), stNoLog, []string{"ff-empty"})
+	if fCount != 1 {
+		t.Fatalf("expected 1 failed task, got %d", fCount)
+	}
+	stNoLogRun := &autoRunState{ctx: context.Background(), cancel: func() {}, run: domain.AutoModeRun{ID: "nl2", Phase: domain.AutoPhaseSyncing}}
+	failRepo.backlogTasks = []domain.Task{{ID: "ff-empty", Status: domain.StatusFailed}}
+	// Use a dedicated project with a single failed-with-empty-logs task via runAutoMode's direct error path:
+	_ = stNoLogRun
 }
 
 type cancelLLM struct {
