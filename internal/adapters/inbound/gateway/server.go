@@ -29,6 +29,18 @@ func NewServer(cfg Config, gw *Gateway) *Server {
 	return s
 }
 
+// Routes returns the bare routes, without CORS or key check: for mounting in the daemon, whose own
+// origin, host and token guards stand in front of it.
+func (s *Server) Routes() http.Handler { return s.mux }
+
+// projectFor is the project a request is about: X-Nexus-Project, else the one the server was started with.
+func (s *Server) projectFor(r *http.Request) string {
+	if p := strings.TrimSpace(r.Header.Get("X-Nexus-Project")); p != "" {
+		return p
+	}
+	return s.cfg.ProjectPath
+}
+
 // Handler returns the underlying http.Handler with middleware applied.
 func (s *Server) Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -102,7 +114,7 @@ func (s *Server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := s.gw.ExecuteChat(r.Context(), req, s.cfg.ProjectPath)
+	resp, err := s.gw.ExecuteChat(r.Context(), req, s.projectFor(r))
 	if err != nil {
 		s.writeError(w, http.StatusBadGateway, err.Error(), "nexus_router_error")
 		return
@@ -169,7 +181,7 @@ func (s *Server) handleStreamingChat(w http.ResponseWriter, r *http.Request, req
 		return nil
 	}
 
-	_, err := s.gw.StreamChat(r.Context(), req, s.cfg.ProjectPath, onChunk)
+	_, err := s.gw.StreamChat(r.Context(), req, s.projectFor(r), onChunk)
 	if err != nil {
 		errChunk := ChatCompletionChunk{
 			ID:      id,

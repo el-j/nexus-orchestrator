@@ -20,6 +20,21 @@ type Config struct {
 	APIKey      string
 	DefaultRole string
 	ProjectPath string
+	// Context supplies the project's memory for a request; nil sends conversations on as they are.
+	Context ContextProvider
+	// Usage receives what each answered call consumed; nil records nothing.
+	Usage UsageRecorder
+}
+
+// ContextProvider returns the knowledge of a project that is relevant to a question, as text for a
+// system message, or "" when there is none.
+type ContextProvider interface {
+	Context(ctx context.Context, projectPath, question string) string
+}
+
+// UsageRecorder takes an entry for the usage ledger.
+type UsageRecorder interface {
+	RecordUsage(ctx context.Context, rec domain.UsageRecord) error
 }
 
 // Gateway routes chat completions and prompt requests across LLM providers
@@ -164,7 +179,7 @@ func (g *Gateway) ExecuteChat(ctx context.Context, req ChatCompletionRequest, pr
 		return nil, err
 	}
 
-	domainMsgs := ApplyPolicyBudget(toDomainMessages(req.Messages), projectPath, req.HistoryBudget)
+	domainMsgs := g.withContext(ctx, ApplyPolicyBudget(toDomainMessages(req.Messages), projectPath, req.HistoryBudget), projectPath)
 	var lastErr error
 	now := time.Now()
 
@@ -198,13 +213,11 @@ func (g *Gateway) ExecuteChat(ctx context.Context, req ChatCompletionRequest, pr
 			},
 		}
 
-		if reporter, ok := client.(ports.UsageReporter); ok {
-			if u, ok := reporter.LastUsage(); ok {
-				resp.Usage = &UsageInfo{
-					PromptTokens:     u.InputTokens,
-					CompletionTokens: u.OutputTokens,
-					TotalTokens:      u.InputTokens + u.OutputTokens,
-				}
+		if u, ok := g.recordUsage(ctx, client, req.Model, projectPath); ok {
+			resp.Usage = &UsageInfo{
+				PromptTokens:     u.InputTokens,
+				CompletionTokens: u.OutputTokens,
+				TotalTokens:      u.InputTokens + u.OutputTokens,
 			}
 		}
 		return resp, nil
@@ -223,7 +236,7 @@ func (g *Gateway) StreamChat(ctx context.Context, req ChatCompletionRequest, pro
 		return nil, err
 	}
 
-	domainMsgs := ApplyPolicyBudget(toDomainMessages(req.Messages), projectPath, req.HistoryBudget)
+	domainMsgs := g.withContext(ctx, ApplyPolicyBudget(toDomainMessages(req.Messages), projectPath, req.HistoryBudget), projectPath)
 	var lastErr error
 	now := time.Now()
 
@@ -265,6 +278,7 @@ func (g *Gateway) StreamChat(ctx context.Context, req ChatCompletionRequest, pro
 		}
 
 		g.discovery.ClearCooldown(client)
+		g.recordUsage(ctx, client, req.Model, projectPath)
 		return &ChatCompletionResponse{
 			ID:      "chatcmpl-" + uuid.NewString(),
 			Object:  "chat.completion",
@@ -380,4 +394,46 @@ func orderProvidersByRole(alive []ports.LLMClient, role string) []ports.LLMClien
 // sameProvider compares two providers by name and active model.
 func sameProvider(a, b ports.LLMClient) bool {
 	return strings.EqualFold(a.ProviderName(), b.ProviderName()) && a.ActiveModel() == b.ActiveModel()
+}
+
+// withContext puts the project's relevant knowledge in front of the conversation as a system message.
+// The question is the last user message. Nothing is added without a project, a provider of context or
+// any text.
+func (g *Gateway) withContext(ctx context.Context, msgs []domain.Message, projectPath string) []domain.Message {
+	if g.cfg.Context == nil || projectPath == "" {
+		return msgs
+	}
+	question := ""
+	for i := len(msgs) - 1; i >= 0; i-- {
+		if msgs[i].Role == domain.RoleUser {
+			question = msgs[i].Content
+			break
+		}
+	}
+	text := g.cfg.Context.Context(ctx, projectPath, question)
+	if text == "" {
+		return msgs
+	}
+	lead := domain.Message{Role: domain.RoleSystem, Content: text, CreatedAt: time.Now()}
+	return append([]domain.Message{lead}, msgs...)
+}
+
+// recordUsage reads what the answering client says it consumed and enters it in the ledger, when there is
+// one. It returns the usage so the caller can report it; ok is false when the client reports none.
+func (g *Gateway) recordUsage(ctx context.Context, client ports.LLMClient, role, projectPath string) (domain.Usage, bool) {
+	reporter, ok := client.(ports.UsageReporter)
+	if !ok {
+		return domain.Usage{}, false
+	}
+	u, ok := reporter.LastUsage()
+	if !ok {
+		return domain.Usage{}, false
+	}
+	if g.cfg.Usage != nil {
+		if u.Model == "" {
+			u.Model = client.ActiveModel()
+		}
+		_ = g.cfg.Usage.RecordUsage(ctx, domain.UsageRecord{At: time.Now(), Provider: client.ProviderName(), Role: role, ProjectPath: projectPath, Usage: u})
+	}
+	return u, true
 }
