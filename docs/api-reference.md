@@ -813,6 +813,32 @@ Serves the embedded web dashboard with real-time task monitoring, task submissio
 
 ---
 
+### OpenAI-compatible endpoint (`/v1`)
+
+The daemon answers the OpenAI API on its REST port, so any tool that lets you set a base URL (Cursor, Cline,
+Continue, Aider, scripts using an OpenAI SDK) can use Nexus as its model endpoint and, through it, your
+subscriptions and local models.
+
+```
+GET  /v1/models
+POST /v1/chat/completions      (stream: true for server-sent events)
+```
+
+- `model` is a role (`coder`, `architect`, `reviewer`, `planner`, `linter`), a provider name or a model id; the
+  daemon routes it through the project's model ladder, cooldowns and quota readings, with failover.
+- **Project memory.** Send `X-Nexus-Project: /path/to/project` and the model is shown that project's onboarding
+  summary (stack, active plan, rules) and the knowledge entries that answer your last message, as a system
+  message in front of the conversation. Without the header nothing is added.
+- **Token.** When `NEXUS_API_TOKEN` is set it guards `/v1` like `/api`: use it as the API key
+  (`Authorization: Bearer <token>`).
+- Each answered call that reports tokens lands in the usage ledger (`GET /api/usage`) under its project.
+
+```sh
+export OPENAI_BASE_URL=http://localhost:63987/v1 OPENAI_API_KEY=$NEXUS_API_TOKEN
+curl -s $OPENAI_BASE_URL/chat/completions -H "X-Nexus-Project: $PWD" -H 'Content-Type: application/json' \
+  -d '{"model":"coder","messages":[{"role":"user","content":"where are the routes registered?"}]}'
+```
+
 ## MCP Server
 
 Base URL: `http://localhost:63988`

@@ -126,6 +126,16 @@ func TestStart_WiresServersLoadsPersistedProvidersAndClosesCleanly(t *testing.T)
 			time.Sleep(20 * time.Millisecond)
 		}
 	}
+	// The OpenAI-compatible gateway is served on the REST port and lists the daemon's models.
+	if resp, err := http.Get("http://" + cfg.ListenAddr + "/v1/models"); err != nil {
+		t.Errorf("GET /v1/models: %v", err)
+	} else {
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), `"coder"`) {
+			t.Errorf("GET /v1/models: HTTP %d %s", resp.StatusCode, body)
+		}
+	}
 	providers, _ := rt.Orchestrator.GetProviders()
 	names := map[string]bool{}
 	for _, p := range providers {
