@@ -7,18 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- The `/v1` endpoint and `nexus-router` accept a message whose content is a list of typed parts (what current OpenAI clients send), not only a string; before, such a request was refused as invalid JSON.
-
-- `nexus orchestrate` waited only three seconds for its task and then reported it half done; it now waits until the task settles (or Ctrl-C), and exits non-zero when the task did not complete, so scripts and CI see failures. `nexus-brain`, `nexus-router`, `nexus-runner` and `nexus orchestrate` have end-to-end tests. TASK-657 of PLAN-080
-
 ### Added
 
+- A failed or cancelled task can be promoted again (`POST /api/tasks/{id}/promote`, `promote_task`) and is routed afresh; the task drawer has a Retry button.
 - The daemon serves an OpenAI-compatible endpoint (`GET /v1/models`, `POST /v1/chat/completions`, streaming included) on its REST port: any tool with a base-URL setting can use Nexus's providers, subscriptions and local models, routed through the model ladder, cooldowns and quota. `X-Nexus-Project` puts that project's memory (onboarding summary and the knowledge that answers the question) in front of the conversation; calls enter the usage ledger; `NEXUS_API_TOKEN` guards it. TASK-658 of PLAN-080
 
 ### Fixed
 
+- A task whose verification keeps failing is no longer shown as "Nexus did not run this task": the log names the provider that ran it and the model.
+- Colour codes from the verification command (for example `cargo fmt --check`) are stripped from the task log and from the correction prompt.
+- When a correction leaves the verification output unchanged, the log says the failure may come from the project (already unformatted or broken files), not from the task.
+- The `/v1` endpoint and `nexus-router` accept a message whose content is a list of typed parts (what current OpenAI clients send), not only a string; before, such a request was refused as invalid JSON.
+- `nexus orchestrate` waited only three seconds for its task and then reported it half done; it now waits until the task settles (or Ctrl-C), and exits non-zero when the task did not complete, so scripts and CI see failures. `nexus-brain`, `nexus-router`, `nexus-runner` and `nexus orchestrate` have end-to-end tests. TASK-657 of PLAN-080
 - ESLint also lints the VS Code extension and the GitHub Action (`npm run lint`, CI steps for both); the MCP shutdown-grace test waits until the server has accepted its silent connection, so the 100 % coverage gate no longer fails one run in a few. TASK-659 and TASK-660 of PLAN-080
 
 ## [0.14.0] — 2026-11-20

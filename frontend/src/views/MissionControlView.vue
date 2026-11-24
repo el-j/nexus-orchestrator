@@ -287,7 +287,12 @@
     <TaskSubmitForm class="shrink-0" @submitted="handleSubmitted" />
 
     <!-- DETAIL DRAWER -->
-    <TaskDetailDrawer v-model="detailOpen" :task="selectedTask" @cancelled="onCancelled" />
+    <TaskDetailDrawer
+      v-model="detailOpen"
+      :task="selectedTask"
+      @cancelled="onCancelled"
+      @retried="onCancelled"
+    />
   </div>
 </template>
 

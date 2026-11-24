@@ -157,7 +157,12 @@
     </div>
 
     <!-- Detail drawer -->
-    <TaskDetailDrawer v-model="detailOpen" :task="selectedTask" @cancelled="refresh" />
+    <TaskDetailDrawer
+      v-model="detailOpen"
+      :task="selectedTask"
+      @cancelled="refresh"
+      @retried="refresh"
+    />
   </div>
 </template>
 

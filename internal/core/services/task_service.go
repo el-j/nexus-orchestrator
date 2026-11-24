@@ -200,13 +200,16 @@ func (o *OrchestratorService) GetBacklog(projectPath string) ([]domain.Task, err
 	return tasks, nil
 }
 
-// PromoteTask transitions a DRAFT or BACKLOG task to QUEUED and enqueues it.
+// PromoteTask transitions a DRAFT, BACKLOG, FAILED or CANCELLED task to QUEUED and enqueues it; a failed
+// task is promoted again to retry it, possibly on another provider.
 func (o *OrchestratorService) PromoteTask(id string) (ports.PromoteResult, error) {
 	task, err := o.repo.GetByID(o.dbCtx(), id)
 	if err != nil {
 		return ports.PromoteResult{}, fmt.Errorf("orchestrator: promote task: %w", err)
 	}
-	if task.Status != domain.StatusDraft && task.Status != domain.StatusBacklog {
+	switch task.Status {
+	case domain.StatusDraft, domain.StatusBacklog, domain.StatusFailed, domain.StatusCancelled:
+	default:
 		return ports.PromoteResult{}, fmt.Errorf("orchestrator: promote task: cannot promote task with status %s", task.Status)
 	}
 	if err := o.validateQueueAdmission(task); err != nil {
