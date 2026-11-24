@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Auto routing no longer starts with the smallest model: current cloud families (fable, gpt-5/6, codex, grok, kimi, gemini 3/4) count as frontier, small and fast models (haiku, flash, mini, nano, lite) lose rank for anything beyond routine work, and a medium task rates a frontier model like a standard one.
+- Without a model ladder, a failed verification is now corrected by the next candidate of the chain instead of by the model that just failed.
+
 ## [0.14.0] — 2026-11-20
 
 ### Added

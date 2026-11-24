@@ -21,6 +21,22 @@ func NewContextSynthesizer(repo ports.ProjectKnowledgeRepository) *ContextSynthe
 	return &ContextSynthesizer{repo: repo}
 }
 
+// currentFrontierFamilies are the families of today's large cloud models that the older keyword list
+// does not know; the names are matched as substrings of the lower-case model id.
+var currentFrontierFamilies = []string{"fable", "gpt-5", "gpt-6", "codex", "grok", "kimi-k", "gemini-3", "gemini-4"}
+
+// isLightweightModel reports whether a lower-case model id names a small, fast model (haiku, flash, mini,
+// nano, lite or a "low" effort variant): good for routine work, not the first choice for real work.
+func isLightweightModel(lower string) bool {
+	for _, tok := range strings.FieldsFunc(lower, func(r rune) bool { return r == '-' || r == '.' || r == '/' || r == ':' || r == '_' }) {
+		switch tok {
+		case "haiku", "flash", "mini", "nano", "lite", "low":
+			return true
+		}
+	}
+	return false
+}
+
 // ResolveModelTier determines the model capability/cost tier from a model identifier or requested tier.
 func ResolveModelTier(modelID string, requestedTier domain.ModelTier) domain.ModelTier {
 	if requestedTier.IsValid() {
@@ -36,6 +52,15 @@ func ResolveModelTier(modelID string, requestedTier domain.ModelTier) domain.Mod
 		"gemini-1.5-pro", "gemini-2.0-flash-thinking", "claude-3-7", "claude-3-5", "claude-3-opus",
 	}
 	for _, kw := range frontierKeywords {
+		if strings.Contains(lower, kw) {
+			return domain.ModelTierFrontier
+		}
+	}
+
+	if isLightweightModel(lower) {
+		return domain.ModelTierStandard
+	}
+	for _, kw := range currentFrontierFamilies {
 		if strings.Contains(lower, kw) {
 			return domain.ModelTierFrontier
 		}

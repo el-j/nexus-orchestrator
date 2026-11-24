@@ -167,8 +167,8 @@ func TestScoreProviderAffinity(t *testing.T) {
 		t.Errorf("expected standard client to score 0.90 for medium complexity, got %f", scoreMedStandard.CapabilityScore)
 	}
 	scoreMedFrontier := services.ScoreProviderAffinity(frontierClient, medProfile)
-	if scoreMedFrontier.CapabilityScore != 0.70 {
-		t.Errorf("expected frontier client to score 0.70 for medium complexity, got %f", scoreMedFrontier.CapabilityScore)
+	if scoreMedFrontier.CapabilityScore != 0.90 {
+		t.Errorf("expected frontier client to score 0.90 for medium complexity, got %f", scoreMedFrontier.CapabilityScore)
 	}
 
 	// Standard tier on high and low complexity
