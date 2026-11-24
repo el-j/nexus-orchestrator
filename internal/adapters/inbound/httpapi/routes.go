@@ -112,3 +112,10 @@ func (s *Server) routeBrain(r chi.Router) {
 	r.Get("/api/brain/file-map", s.handleGetFileMap)
 	r.Get("/api/brain/onboarding", s.handleGetOnboardingContext)
 }
+
+// routeGateway mounts the OpenAI-compatible gateway, when there is one, under /v1.
+func (s *Server) routeGateway(r chi.Router) {
+	if s.gateway != nil {
+		r.Handle("/v1/*", s.gateway)
+	}
+}

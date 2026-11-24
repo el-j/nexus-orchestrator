@@ -197,9 +197,15 @@ func TestStartServerWith_WiresTheActivityServiceTheLogHubAndTheMCPAddress(t *tes
 	go func() {
 		errCh <- httpapi.StartServerWith(ctx, &brokerOrch{mockOrchestrator: &mockOrchestrator{}}, nil, addr, httpapi.Extras{
 			Activity: act, LogHub: httpapi.NewLogHub(), MCPAddr: "127.0.0.1:9",
+			Gateway: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("gw")) }),
 		})
 	}()
 	waitHTTP(t, "http://"+addr+"/api/health")
+	if gw, err := http.Get("http://" + addr + "/v1/models"); err != nil || gw.StatusCode != http.StatusOK {
+		t.Errorf("the gateway passed in Extras is not served under /v1: %v", err)
+	} else {
+		_ = gw.Body.Close()
+	}
 	resp, err := http.Get("http://" + addr + "/api/activities")
 	if err != nil {
 		t.Fatal(err)

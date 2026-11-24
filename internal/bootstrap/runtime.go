@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
+	"nexus-orchestrator/internal/adapters/inbound/gateway"
 	"nexus-orchestrator/internal/adapters/inbound/httpapi"
 	"nexus-orchestrator/internal/adapters/inbound/mcp"
 	"nexus-orchestrator/internal/adapters/outbound/activity_claude"
@@ -211,6 +213,7 @@ func Start(ctx context.Context, cfg Config, logHub *httpapi.LogHub) (*Runtime, e
 			Activity: rt.Activity,
 			LogHub:   logHub,
 			MCPAddr:  cfg.MCPAddr,
+			Gateway:  gatewayHandler(discoverySvc, rt.Brain, orch),
 		}); err != nil {
 			log.Printf("httpapi: %v", err)
 			rt.fail(fmt.Errorf("http api: %w", err))
@@ -341,4 +344,12 @@ func configureEmbedding(brain *services.BrainServiceImpl) {
 			Model:   os.Getenv("NEXUS_EMBEDDING_MODEL"),
 		}))
 	}
+}
+
+// gatewayHandler builds the OpenAI-compatible gateway the REST API serves under /v1: it routes through
+// the daemon's own providers, puts the memory of the project named in X-Nexus-Project in front of the
+// conversation and enters what each call consumed in the usage ledger.
+func gatewayHandler(discovery *services.DiscoveryService, brain ports.BrainService, ledger gateway.UsageRecorder) http.Handler {
+	cfg := gateway.Config{Context: gateway.NewBrainContext(brain), Usage: ledger}
+	return gateway.NewServer(cfg, gateway.NewGateway(cfg, discovery)).Routes()
 }

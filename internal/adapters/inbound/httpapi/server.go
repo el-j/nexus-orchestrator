@@ -33,6 +33,7 @@ type Server struct {
 	activitySvc activityQuerier
 	brain       ports.BrainService
 	guard       *httpguard.Policy
+	gateway     http.Handler // OpenAI-compatible routes served under /v1; nil serves none
 	mcpAddr     string       // listen address of the companion MCP server, advertised in discovery
 	ui          http.Handler // the full frontend, served under /app/ (nil: only the built-in dashboard)
 }
@@ -53,6 +54,12 @@ func (s *Server) WithGuard(g *httpguard.Policy) *Server {
 // answer the whole /app/ subtree (see package webui); nil keeps only the built-in dashboard.
 func (s *Server) WithUI(h http.Handler) *Server {
 	s.ui = h
+	return s
+}
+
+// WithGateway mounts an OpenAI-compatible gateway under /v1, behind the same guards and token as /api.
+func (s *Server) WithGateway(h http.Handler) *Server {
+	s.gateway = h
 	return s
 }
 
@@ -134,9 +141,9 @@ func (s *Server) tokenAuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Only guard /api/* endpoints. UI routes remain public so the app can load.
+		// Only guard /api/* and the gateway under /v1. UI routes remain public so the app can load.
 		path := r.URL.Path
-		if !strings.HasPrefix(path, "/api/") {
+		if !strings.HasPrefix(path, "/api/") && !strings.HasPrefix(path, "/v1/") {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -180,6 +187,7 @@ func (s *Server) Handler() http.Handler {
 	s.routeSessions(r)
 	s.routeSystem(r)
 	s.routeBrain(r)
+	s.routeGateway(r)
 
 	return r
 }
@@ -260,6 +268,7 @@ func StartServerFull(ctx context.Context, orch ports.Orchestrator, brain ports.B
 type Extras struct {
 	Activity activityQuerier // activity timeline service; nil disables /api/activities
 	LogHub   *LogHub         // log capture for /api/logs; nil disables it
+	Gateway  http.Handler    // OpenAI-compatible gateway mounted under /v1; nil disables it
 	MCPAddr  string          // companion MCP server address, advertised by /.well-known/nexus.json
 }
 
@@ -277,6 +286,9 @@ func StartServerWith(ctx context.Context, orch ports.Orchestrator, brain ports.B
 		}
 	}
 	s := NewServer(orch, brain, hub).WithGuard(httpguard.New(addr)).WithUI(webui.Embedded("/app/")).WithMCPAddr(extras.MCPAddr)
+	if extras.Gateway != nil {
+		s.WithGateway(extras.Gateway)
+	}
 	if logHub != nil {
 		s.WithLogHub(logHub)
 	}

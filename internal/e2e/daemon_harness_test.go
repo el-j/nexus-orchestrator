@@ -108,6 +108,8 @@ type fakeOllama struct {
 	mu       sync.Mutex
 	chatTurn int
 	prompts  []string
+	// chats holds, per chat call, every message as "role: content".
+	chats [][]string
 	// reply answers both endpoints; generate and chat override it per endpoint.
 	reply    func(prompt string) string
 	generate func(prompt string) string
@@ -152,10 +154,15 @@ func newFakeOllama(t *testing.T) *fakeOllama {
 		}
 		_ = json.NewDecoder(r.Body).Decode(&req)
 		last := ""
+		var all []string
+		for _, m := range req.Messages {
+			all = append(all, m.Role+": "+m.Content)
+		}
 		if n := len(req.Messages); n > 0 {
 			last = req.Messages[n-1].Content
 		}
 		f.mu.Lock()
+		f.chats = append(f.chats, all)
 		f.chatTurn++
 		turn, fn, reply := f.chatTurn, f.chat, f.reply
 		f.mu.Unlock()
@@ -207,7 +214,8 @@ type daemon struct {
 
 type daemonOpts struct {
 	db, home, httpAddr, mcpAddr string
-	pathDir                     string // put first on the daemon's PATH, so programs in it are found before the real ones
+	env                         []string // extra environment of the daemon
+	pathDir                     string   // put first on the daemon's PATH, so programs in it are found before the real ones
 }
 
 func startDaemon(t *testing.T, llm *fakeOllama, o daemonOpts) *daemon {
@@ -235,6 +243,7 @@ func startDaemon(t *testing.T, llm *fakeOllama, o daemonOpts) *daemon {
 		"NEXUS_LMSTUDIO_URL=http://127.0.0.1:1",
 		"NEXUS_SCAN_INTERVAL=1h",
 	)
+	cmd.Env = append(cmd.Env, o.env...)
 	if o.pathDir != "" {
 		cmd.Env = append(cmd.Env, "PATH="+o.pathDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	}
