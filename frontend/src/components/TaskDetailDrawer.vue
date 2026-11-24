@@ -1,7 +1,8 @@
 <!--
   Right-hand drawer with every field of a task, its logs and a Cancel/Interrupt action.
   Props: task (null renders only the header), modelValue (open state).
-  Emits: update:modelValue(open), cancelled(id) after a successful cancel, close().
+  Emits: update:modelValue(open), cancelled(id) after a successful cancel, retried(id) after a failed or
+  cancelled task was queued again, close().
 -->
 <template>
   <UiDrawer v-model="visible" label="Task details">
@@ -95,14 +96,16 @@
         </p>
         <pre
           class="text-xs text-cyan-300/80 bg-[#0a0a10] border border-white/5 rounded-lg p-3 overflow-auto max-h-64 whitespace-pre-wrap font-mono leading-relaxed"
-          >{{ liveText(task.id) }}</pre>
+          >{{ liveText(task.id) }}</pre
+        >
       </div>
 
       <div v-if="task.logs">
         <p class="text-xs text-slate-500 mb-2 uppercase tracking-wider font-semibold">Output</p>
         <pre
           class="text-xs text-emerald-300/80 bg-[#0a0a10] border border-white/5 rounded-lg p-3 overflow-auto max-h-64 whitespace-pre-wrap font-mono leading-relaxed"
-          >{{ task.logs }}</pre>
+          >{{ task.logs }}</pre
+        >
       </div>
 
       <div v-if="task.status === 'QUEUED' || task.status === 'WAITING'" class="pt-2">
@@ -115,6 +118,21 @@
           :loading="cancelling"
           @click="handleCancel"
         />
+      </div>
+
+      <div
+        v-if="task.status === 'FAILED' || task.status === 'CANCELLED'"
+        class="pt-2 flex flex-col gap-2"
+      >
+        <UiButton
+          label="Retry"
+          icon="sync"
+          size="small"
+          title="Queue this task again"
+          :loading="retrying"
+          @click="handleRetry"
+        />
+        <p v-if="retryError" class="text-xs text-red-400">{{ retryError }}</p>
       </div>
 
       <div v-if="task.status === 'PROCESSING'" class="pt-2 flex flex-col gap-2">
@@ -139,7 +157,7 @@ import { ref, computed } from 'vue';
 import UiDrawer from '../ui/UiDrawer.vue';
 import UiButton from '../ui/UiButton.vue';
 import { useToast } from '../composables/useToast';
-import { cancelTask } from '../types/wails';
+import { cancelTask, promoteTask } from '../types/wails';
 import type { Task } from '../types/domain';
 import TaskStatusBadge from './TaskStatusBadge.vue';
 import { formatDate } from '../utils/time';
@@ -150,6 +168,7 @@ const props = defineProps<{ task: Task | null; modelValue: boolean }>();
 const emit = defineEmits<{
   'update:modelValue': [v: boolean];
   cancelled: [id: string];
+  retried: [id: string];
   close: [];
 }>();
 
@@ -164,6 +183,32 @@ const toast = useToast();
 const { liveText } = useLiveOutput();
 const cancelling = ref(false);
 const cancelError = ref<string | null>(null);
+
+const retrying = ref(false);
+const retryError = ref<string | null>(null);
+
+/** Queues a failed or cancelled task again; the daemon routes it afresh. */
+async function handleRetry() {
+  const id = props.task!.id;
+  retrying.value = true;
+  retryError.value = null;
+  try {
+    const res = await promoteTask(id);
+    toast.add({
+      severity: res.warning ? 'warn' : 'success',
+      summary: 'Task queued again',
+      detail: res.warning,
+      life: 3000,
+    });
+    emit('retried', id);
+    emit('close');
+    visible.value = false;
+  } catch (e) {
+    retryError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    retrying.value = false;
+  }
+}
 
 async function handleCancel() {
   // Both buttons only render while a task is shown, so the task is always present.

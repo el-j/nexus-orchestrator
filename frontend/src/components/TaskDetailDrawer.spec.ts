@@ -3,9 +3,14 @@ import { mount, flushPromises } from '@vue/test-utils';
 import TaskDetailDrawer from './TaskDetailDrawer.vue';
 import type { Task } from '../types/domain';
 
-const api = vi.hoisted(() => ({ cancelTask: vi.fn(), toastAdd: vi.fn(), live: vi.fn() }));
+const api = vi.hoisted(() => ({
+  cancelTask: vi.fn(),
+  promoteTask: vi.fn(),
+  toastAdd: vi.fn(),
+  live: vi.fn(),
+}));
 vi.mock('../composables/useLiveOutput', () => ({ useLiveOutput: () => ({ liveText: api.live }) }));
-vi.mock('../types/wails', () => ({ cancelTask: api.cancelTask }));
+vi.mock('../types/wails', () => ({ cancelTask: api.cancelTask, promoteTask: api.promoteTask }));
 vi.mock('../composables/useToast', () => ({ useToast: () => ({ add: api.toastAdd }) }));
 
 const DrawerStub = {
@@ -40,6 +45,7 @@ const mountDrawer = (t: Task | null) =>
 
 beforeEach(() => {
   api.cancelTask.mockReset();
+  api.promoteTask.mockReset();
   api.toastAdd.mockReset();
   api.live.mockReset().mockReturnValue('');
 });
@@ -165,5 +171,37 @@ describe('TaskDetailDrawer executor', () => {
         .exists(),
     ).toBe(false);
     expect(mountDrawer(null).find('[data-testid="executor"]').exists()).toBe(false);
+  });
+});
+
+describe('TaskDetailDrawer retry', () => {
+  it('offers Retry for a failed or cancelled task only and queues it again', async () => {
+    expect(mountDrawer(task({ status: 'COMPLETED' })).text()).not.toContain('Retry');
+    api.promoteTask.mockResolvedValue({ promoted: true });
+    const w = mountDrawer(task({ status: 'FAILED' }));
+    await w.find('button').trigger('click');
+    await flushPromises();
+    expect(api.promoteTask).toHaveBeenCalledWith('t-1');
+    expect(w.emitted('retried')![0]).toEqual(['t-1']);
+    expect(w.emitted('close')).toHaveLength(1);
+    expect(mountDrawer(task({ status: 'CANCELLED' })).text()).toContain('Retry');
+  });
+
+  it('warns when no provider is online and shows why a retry failed', async () => {
+    api.promoteTask.mockResolvedValueOnce({ promoted: true, warning: 'no provider' });
+    const w = mountDrawer(task({ status: 'FAILED' }));
+    await w.find('button').trigger('click');
+    await flushPromises();
+    expect(api.toastAdd).toHaveBeenCalledWith(expect.objectContaining({ severity: 'warn' }));
+    api.promoteTask.mockRejectedValueOnce(new Error('busy'));
+    const w2 = mountDrawer(task({ status: 'FAILED' }));
+    await w2.find('button').trigger('click');
+    await flushPromises();
+    expect(w2.text()).toContain('busy');
+    api.promoteTask.mockRejectedValueOnce('nope');
+    await w2.find('button').trigger('click');
+    await flushPromises();
+    expect(w2.text()).toContain('nope');
+    expect(w2.emitted('retried')).toBeUndefined();
   });
 });

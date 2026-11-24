@@ -34,6 +34,7 @@ func (o *OrchestratorService) writeAndVerifyTaskOutput(run *runHandle, task doma
 	defer cancel()
 
 	output, runErr := o.commandRunner.Run(ctx, task.ProjectPath, task.VerificationCommand)
+	output = stripTerminalEscapes(output)
 	task.VerificationOutput = output
 	if run.ctx.Err() != nil {
 		o.finishInterrupted(task, run)
@@ -90,6 +91,8 @@ type healer struct {
 	output   string          // the output of the last verification run
 	runErr   error           // the error of the last verification run
 	maxTurns int
+	// unchanged is true when the last correction left the verification output exactly as it was.
+	unchanged bool
 }
 
 // heal runs the correction turns and returns the final output; "" means the task was interrupted, put
@@ -117,7 +120,10 @@ func (h *healer) heal() string {
 			}
 		}
 
+		prev := h.output
 		h.output, h.runErr = o.commandRunner.Run(h.ctx, task.ProjectPath, task.VerificationCommand)
+		h.output = stripTerminalEscapes(h.output)
+		h.unchanged = h.output == prev
 		h.task.VerificationOutput = h.output
 		task = h.task
 		if h.rh.ctx.Err() != nil {
@@ -133,7 +139,11 @@ func (h *healer) heal() string {
 	}
 
 	// Verification failed and correction turns exhausted
-	logEntry := fmt.Sprintf("verification failed after %d correction turns (%s): %v\nOutput:\n%s", h.maxTurns, task.VerificationCommand, h.runErr, h.output)
+	logEntry := fmt.Sprintf("failed via %s: verification failed after %d correction turns (%s, model %q): %v\n", h.current.ProviderName(), h.maxTurns, task.VerificationCommand, h.current.ActiveModel(), h.runErr)
+	if h.unchanged {
+		logEntry += "The verification output did not change after the correction: the failure may come from the project (for example files that were already unformatted or broken), not from this task.\n"
+	}
+	logEntry += "Output:\n" + h.output
 	log.Printf("orchestrator: task %s: %s", task.ID, logEntry)
 	_ = o.repo.Update(o.dbCtx(), task)
 	o.appendTaskLog(task.ID, logEntry)
