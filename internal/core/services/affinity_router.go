@@ -67,7 +67,7 @@ var lowComplexityKeywords = []string{
 // EstimateTaskComplexity determines the reasoning tier required for a task.
 func EstimateTaskComplexity(task domain.Task) TaskComplexity {
 	role := strings.ToLower(task.Role)
-	if role == "architect" || role == "techlead" {
+	if role == "architect" || role == "techlead" || task.Command == domain.CommandPlan {
 		return ComplexityHigh
 	}
 	if role == "linter" {
@@ -112,6 +112,34 @@ func EstimateTaskAffinity(task domain.Task, promptTokens int) TaskAffinityProfil
 		RequiredRole:          role,
 		Complexity:            EstimateTaskComplexity(task),
 	}
+}
+
+// modelEfficiencyAdjustment nudges total affinity within a tier so standard coding work prefers
+// 1x workhorses (sonnet, codex) over heavy premium (opus, o1/o3) and experimental (fable/preview)
+// models, while high-complexity tasks (architecture, planning) promote heavy reasoning models.
+func modelEfficiencyAdjustment(modelLower string, complexity TaskComplexity) float64 {
+	if isLightweightModel(modelLower) {
+		return 0
+	}
+	for _, kw := range []string{"fable", "preview", "experimental"} {
+		if strings.Contains(modelLower, kw) {
+			return -0.05
+		}
+	}
+	for _, kw := range []string{"opus", "o1", "o3", "r1", "thinking", "reasoner", "ultra", "deep"} {
+		if strings.Contains(modelLower, kw) {
+			if complexity == ComplexityHigh {
+				return 0.04
+			}
+			return -0.03
+		}
+	}
+	for _, kw := range []string{"sonnet", "codex"} {
+		if strings.Contains(modelLower, kw) {
+			return 0.03
+		}
+	}
+	return 0
 }
 
 // ScoreProviderAffinity evaluates a candidate client against a task's affinity profile.
@@ -203,7 +231,7 @@ func ScoreProviderAffinity(c ports.LLMClient, profile TaskAffinityProfile) Provi
 		default:
 			wCap, wCost, wHead = 0.50, 0.30, 0.20
 		}
-		totalAffinity = (capabilityScore * wCap) + ((1.0 - costScore) * wCost) + (normHeadroom * wHead)
+		totalAffinity = (capabilityScore * wCap) + ((1.0 - costScore) * wCost) + (normHeadroom * wHead) + modelEfficiencyAdjustment(strings.ToLower(modelID), profile.Complexity)
 	}
 
 	return ProviderAffinityScore{

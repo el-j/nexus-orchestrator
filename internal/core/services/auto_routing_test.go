@@ -55,6 +55,42 @@ func TestAutoRoutingPrefersACapableModelOverAFastOneForRealWork(t *testing.T) {
 	}
 }
 
+// On flat-rate subscriptions, medium coding work prefers 1x coding workhorses (sonnet, codex)
+// over heavy/experimental models (opus, fable) even when fable sorts first alphabetically.
+func TestAutoRoutingPrefersCostEfficientWorkhorsesOverHeavyOrExperimentalModels(t *testing.T) {
+	fable := &mockLLMClient{alive: true, name: "vscode-copilot-claude-fable-5.1", activeModel: "claude-fable-5.1"}
+	opus := &mockLLMClient{alive: true, name: "vscode-copilot-claude-opus-5.5", activeModel: "claude-opus-5.5"}
+	gpt := &mockLLMClient{alive: true, name: "vscode-copilot-gpt-6-sol", activeModel: "gpt-6-sol"}
+	sonnet := &mockLLMClient{alive: true, name: "vscode-copilot-claude-sonnet-5.5", activeModel: "claude-sonnet-5.5"}
+	codex := &mockLLMClient{alive: true, name: "vscode-copilot-gpt-5.3-codex", activeModel: "gpt-5.3-codex"}
+	haiku := &mockLLMClient{alive: true, name: "vscode-copilot-claude-haiku-5.5", activeModel: "claude-haiku-5.5"}
+
+	chain := []ports.LLMClient{fable, opus, gpt, sonnet, codex, haiku}
+	medTask := domain.Task{Instruction: "implement SkinLoader reading .wsz ZIPs", ProjectPath: t.TempDir()}
+	got := services.OrderChainByAffinity(chain, medTask, 0)
+	if got[0] != ports.LLMClient(sonnet) || got[1] != ports.LLMClient(codex) {
+		t.Fatalf("expected sonnet then codex first for medium coding, got %s, %s", got[0].ActiveModel(), got[1].ActiveModel())
+	}
+	if got[2] != ports.LLMClient(gpt) || got[3] != ports.LLMClient(opus) || got[4] != ports.LLMClient(fable) {
+		t.Fatalf("expected gpt -> opus -> fable failover order, got %s -> %s -> %s", got[2].ActiveModel(), got[3].ActiveModel(), got[4].ActiveModel())
+	}
+
+	// Trivial task picks haiku first to save quota.
+	lowTask := domain.Task{Instruction: "fix typo in README", ProjectPath: t.TempDir()}
+	if first := services.OrderChainByAffinity(chain, lowTask, 0)[0]; first != ports.LLMClient(haiku) {
+		t.Fatalf("expected haiku first for trivial task, got %s", first.ActiveModel())
+	}
+
+	// CommandPlan classifies as high complexity and promotes heavy reasoning models (opus) over workhorses.
+	planTask := domain.Task{Command: domain.CommandPlan, Instruction: "plan next sprint", ProjectPath: t.TempDir()}
+	if c := services.EstimateTaskComplexity(planTask); c != services.ComplexityHigh {
+		t.Fatalf("expected CommandPlan complexity high, got %s", c)
+	}
+	if first := services.OrderChainByAffinity(chain, planTask, 0)[0]; first != ports.LLMClient(opus) {
+		t.Fatalf("expected opus first for high-complexity planning, got %s", first.ActiveModel())
+	}
+}
+
 // Without a ladder a failed verification is corrected by the next candidate, not by the same model that
 // just failed; with a single candidate it stays.
 func TestAFailedVerificationAsksTheNextCandidateWhenThereIsNoLadder(t *testing.T) {
