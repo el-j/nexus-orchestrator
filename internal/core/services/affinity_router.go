@@ -165,8 +165,12 @@ func ScoreProviderAffinity(c ports.LLMClient, profile TaskAffinityProfile) Provi
 		case domain.ModelTierLocal:
 			capabilityScore = 0.80
 		default:
-			capabilityScore = 0.70
+			capabilityScore = 0.90
 		}
+	}
+
+	if profile.Complexity != ComplexityLow && isLightweightModel(strings.ToLower(modelID)) {
+		capabilityScore -= 0.35 // a fast model is for routine work, not the first choice for real work
 	}
 
 	roleLower := strings.ToLower(profile.RequiredRole)

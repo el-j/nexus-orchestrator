@@ -48,11 +48,11 @@ func (o *OrchestratorService) routeChain(chain []ports.LLMClient, task domain.Ta
 }
 
 // stepUp returns the provider that should correct a failed verification instead of cur: the nearest
-// rung above cur's that is not cooling down. It returns cur when there is no ladder, cur is not on it
-// or already on its top rung.
+// rung above cur's that is not cooling down. Without a ladder it is the next candidate of the chain
+// (see nextCandidate). It returns cur when cur is not on the ladder or already on its top rung.
 func (o *OrchestratorService) stepUp(run *runHandle, cur ports.LLMClient) ports.LLMClient {
 	if len(run.ladder) == 0 {
-		return cur
+		return o.nextCandidate(run, cur)
 	}
 	here := rungOf(run.ladder, cur)
 	if here < 0 {
@@ -75,4 +75,17 @@ func (o *OrchestratorService) stepUp(run *runHandle, cur ports.LLMClient) ports.
 		return cur
 	}
 	return best
+}
+
+// nextCandidate returns the candidate after cur in the task's chain that is not cooling down, so that a
+// failed verification is not corrected by the very model that just failed; cur when there is none.
+func (o *OrchestratorService) nextCandidate(run *runHandle, cur ports.LLMClient) ports.LLMClient {
+	at := slices.IndexFunc(run.chain, func(c ports.LLMClient) bool { return cooldownKey(c) == cooldownKey(cur) })
+	now := time.Now()
+	for _, c := range run.chain[at+1:] { // cur always comes from the chain; were it not, the whole chain is the candidates
+		if _, cooling := o.discovery.Cooldown(c, now); !cooling {
+			return c
+		}
+	}
+	return cur
 }
