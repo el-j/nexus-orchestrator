@@ -126,7 +126,7 @@ func TestExecuteChatAndStream_RecordUsage(t *testing.T) {
 		t.Fatalf("recorded %d, want 2", len(led.recs))
 	}
 	r := led.recs[0]
-	if r.Provider != "Anthropic" || r.Role != "coder" || r.ProjectPath != "/proj" || r.Usage.InputTokens != 7 {
+	if r.Provider != "Anthropic" || r.Role != "coder" || r.ProjectPath != "/proj" || r.InputTokens != 7 {
 		t.Errorf("record = %+v", r)
 	}
 	// A client that reports nothing records nothing.
@@ -194,7 +194,7 @@ func TestExecuteChat_UsageWithoutModelTakesTheActiveModel(t *testing.T) {
 	c := newRecording("ok")
 	c.usage = &domain.Usage{InputTokens: 1}
 	gw := NewGateway(Config{Usage: led}, services.NewDiscoveryService(c))
-	if _, err := gw.ExecuteChat(context.Background(), userAsk("q"), ""); err != nil || len(led.recs) != 1 || led.recs[0].Usage.Model != "claude" {
+	if _, err := gw.ExecuteChat(context.Background(), userAsk("q"), ""); err != nil || len(led.recs) != 1 || led.recs[0].Model != "claude" {
 		t.Errorf("err %v, records %+v", err, led.recs)
 	}
 }
