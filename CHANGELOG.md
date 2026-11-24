@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `nexus orchestrate` waited only three seconds for its task and then reported it half done; it now waits until the task settles (or Ctrl-C), and exits non-zero when the task did not complete, so scripts and CI see failures. `nexus-brain`, `nexus-router`, `nexus-runner` and `nexus orchestrate` have end-to-end tests. TASK-657 of PLAN-080
+
 ### Added
 
 - The daemon serves an OpenAI-compatible endpoint (`GET /v1/models`, `POST /v1/chat/completions`, streaming included) on its REST port: any tool with a base-URL setting can use Nexus's providers, subscriptions and local models, routed through the model ladder, cooldowns and quota. `X-Nexus-Project` puts that project's memory (onboarding summary and the knowledge that answers the question) in front of the conversation; calls enter the usage ledger; `NEXUS_API_TOKEN` guards it. TASK-658 of PLAN-080

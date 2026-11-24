@@ -16,7 +16,7 @@ binaries have no e2e; two TypeScript packages have no linter.
 
 | Task     | Title                                                | Role         | Status |
 | -------- | ---------------------------------------------------- | ------------ | ------ |
-| TASK-657 | e2e for the standalone binaries and the pipeline CLI | testing      | todo   |
+| TASK-657 | e2e for the standalone binaries and the pipeline CLI | testing      | done   |
 | TASK-658 | The OpenAI-compatible gateway inside the daemon, wit | architecture | done   |
 | TASK-659 | ESLint for the VS Code extension and the GitHub Acti | quality      | done   |
 | TASK-660 | Close TASK-578 and make the MCP shutdown test determ | polish       | done   |

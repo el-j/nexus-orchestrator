@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -236,8 +237,8 @@ func TestOrchestrateCmd_Errors(t *testing.T) {
 	bufFail := new(bytes.Buffer)
 	cmdFail.SetOut(bufFail)
 	cmdFail.SetArgs([]string{"orchestrate", "bad instruction"})
-	if err := cmdFail.Execute(); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	if err := cmdFail.Execute(); err == nil || !strings.Contains(err.Error(), "ended FAILED") {
+		t.Fatalf("a failed task must fail the command, got: %v", err)
 	}
 	if !strings.Contains(bufFail.String(), "Pipeline Finished: status=FAILED") {
 		t.Errorf("expected FAILED status, got: %s", bufFail.String())
@@ -270,5 +271,48 @@ func TestOrchestrateCmd_Errors(t *testing.T) {
 		cmdUnread.SetArgs([]string{"orchestrate", unreadableFile})
 		_ = cmdUnread.Execute()
 		_ = os.Chmod(unreadableFile, 0o600)
+	}
+}
+
+// A task that never settles (a provider that waits for its limit to reset) does not hold the command
+// beyond the user's Ctrl-C: it returns the task as it is and fails.
+func TestOrchestrateCmd_StopsWaitingWhenInterrupted(t *testing.T) {
+	orch := &orchestrateMockOrch{submitID: "w1", tasks: []domain.Task{{ID: "w1", Status: domain.StatusWaiting}}}
+	cmd := cli.NewRootCmd(orch, nil)
+	buf := new(bytes.Buffer)
+	cmd.SetOut(buf)
+	cmd.SetArgs([]string{"orchestrate", "wait forever"})
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+	err := cmd.ExecuteContext(ctx)
+	if err == nil || !strings.Contains(err.Error(), "ended WAITING") {
+		t.Errorf("err = %v, want the WAITING outcome", err)
+	}
+}
+
+// With --json a failed task is still reported in full before the command fails.
+func TestOrchestrateCmd_JSONReportsAFailedTaskAndFails(t *testing.T) {
+	orch := &mockOrchestrator{submitResult: "j1", getTaskResult: domain.Task{ID: "j1", Status: domain.StatusFailed}}
+	cmd := cli.NewRootCmd(orch, nil)
+	buf := new(bytes.Buffer)
+	cmd.SetOut(buf)
+	cmd.SetArgs([]string{"orchestrate", "--json", "x"})
+	if err := cmd.Execute(); err == nil || !strings.Contains(buf.String(), `"FAILED"`) {
+		t.Errorf("err = %v, output %s", err, buf.String())
+	}
+}
+
+type brokenWriter struct{}
+
+func (brokenWriter) Write([]byte) (int, error) { return 0, errors.New("pipe closed") }
+
+// A report that cannot be written is the error, not a silent success.
+func TestOrchestrateCmd_JSONReportsAWriteFailure(t *testing.T) {
+	orch := &mockOrchestrator{submitResult: "j2", getTaskResult: domain.Task{ID: "j2", Status: domain.StatusCompleted}}
+	cmd := cli.NewRootCmd(orch, nil)
+	cmd.SetOut(brokenWriter{})
+	cmd.SetArgs([]string{"orchestrate", "--json", "x"})
+	if err := cmd.Execute(); err == nil || !strings.Contains(err.Error(), "pipe closed") {
+		t.Errorf("err = %v", err)
 	}
 }

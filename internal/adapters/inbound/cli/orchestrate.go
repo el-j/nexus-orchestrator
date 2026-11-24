@@ -111,23 +111,37 @@ func retrieveRAGContext(ctx context.Context, brain ports.BrainService, cleanPath
 	return ragTokensSaved, tier, suggestedFiles
 }
 
-// waitForTaskSettlement polls the orchestrator until the task reaches a terminal state.
-func waitForTaskSettlement(orch ports.Orchestrator, taskID string) domain.Task {
+// settled reports whether a task will not change any more: it finished, failed, was cancelled or has no
+// provider or room. A WAITING task is not settled; it resumes when its provider's limit resets.
+func settled(s domain.TaskStatus) bool {
+	switch s {
+	case domain.StatusCompleted, domain.StatusFailed, domain.StatusCancelled, domain.StatusNoProvider, domain.StatusTooLarge:
+		return true
+	}
+	return false
+}
+
+// waitForTaskSettlement polls the orchestrator until the task is settled, however long a model takes, or
+// until ctx ends (the user pressed Ctrl-C); it then returns the task as it is.
+func waitForTaskSettlement(ctx context.Context, orch ports.Orchestrator, taskID string) domain.Task {
 	finalTask := domain.Task{ID: taskID, Status: domain.StatusQueued}
-	for i := 0; i < 60; i++ {
-		t, err := orch.GetTask(taskID)
-		if err == nil {
+	for {
+		if t, err := orch.GetTask(taskID); err == nil {
 			finalTask = t
-			if t.Status == domain.StatusCompleted || t.Status == domain.StatusFailed ||
-				t.Status == domain.StatusCancelled || t.Status == domain.StatusNoProvider ||
-				t.Status == domain.StatusTooLarge {
-				break
+			if settled(t.Status) {
+				return finalTask
 			}
 		}
-		time.Sleep(50 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			return finalTask
+		case <-time.After(pollInterval):
+		}
 	}
-	return finalTask
 }
+
+// pollInterval is how often the pipeline asks for the task's state.
+const pollInterval = 100 * time.Millisecond
 
 // runOrchestratePipeline executes the cohesive pipeline from RAG to task execution and knowledge ingestion.
 func runOrchestratePipeline(
@@ -174,7 +188,7 @@ func runOrchestratePipeline(
 		fmt.Fprintf(w, "[3/4] Task Dispatched: ID=%s, status=%s\n", taskID, domain.StatusQueued)
 	}
 
-	finalTask := waitForTaskSettlement(orch, taskID)
+	finalTask := waitForTaskSettlement(ctx, orch, taskID)
 
 	learningsCount := 0
 	if brain != nil && (finalTask.Status == domain.StatusCompleted || finalTask.Status == domain.StatusFailed) {
@@ -187,7 +201,7 @@ func runOrchestratePipeline(
 	if !opts.JSON {
 		fmt.Fprintf(w, "[4/4] Knowledge Digested: %d entries ingested into project memory\n", learningsCount)
 		fmt.Fprintf(w, "Pipeline Finished: status=%s, elapsed=%s\n", finalTask.Status, durStr)
-		return nil
+		return outcomeError(finalTask)
 	}
 
 	result := OrchestratePipelineResult{
@@ -202,5 +216,17 @@ func runOrchestratePipeline(
 		LearningsSaved: learningsCount,
 		SuggestedFiles: suggestedFiles,
 	}
-	return json.NewEncoder(w).Encode(result)
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		return err
+	}
+	return outcomeError(finalTask)
+}
+
+// outcomeError is nil for a completed task and an error otherwise, so a script or CI job that runs the
+// pipeline sees the failure in the exit status.
+func outcomeError(t domain.Task) error {
+	if t.Status == domain.StatusCompleted {
+		return nil
+	}
+	return fmt.Errorf("orchestrate: task %s ended %s", t.ID, t.Status)
 }
