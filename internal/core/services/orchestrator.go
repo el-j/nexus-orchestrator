@@ -132,6 +132,8 @@ type OrchestratorService struct {
 	baseCancel         context.CancelFunc
 	runMu              sync.Mutex
 	running            map[string]*runHandle // tasks being executed by this engine, by task ID
+	autoMu             sync.Mutex
+	autoRuns           map[string]*autoRunState // active and recent Project Auto-Mode runs
 	maxRetries         int
 	maxResponseTokens  int
 	cleanupInterval    time.Duration

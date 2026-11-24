@@ -15,6 +15,8 @@ import type {
   ContextResponse,
   ContextSection,
   ProjectKnowledge,
+  AutoModeRequest,
+  AutoModeRun,
 } from './domain';
 import type { DiscoveredProvider } from './domain';
 
@@ -463,4 +465,20 @@ export async function getFileMap(projectPath: string, focusArea = ''): Promise<s
     `/api/brain/file-map?${query}`,
   );
   return data.filePaths ?? [];
+}
+
+/** Starts a Project Auto-Mode run via the daemon REST API. */
+export async function startAutoMode(req: AutoModeRequest): Promise<AutoModeRun> {
+  return request<AutoModeRun>('POST', '/api/auto/start', req);
+}
+
+/** Lists Auto-Mode runs, optionally filtered to one project. */
+export async function listAutoModeRuns(projectPath?: string | null): Promise<AutoModeRun[]> {
+  const qs = projectPath ? `?projectPath=${q(projectPath)}` : '';
+  return (await request<AutoModeRun[] | null>('GET', `/api/auto${qs}`)) ?? [];
+}
+
+/** Stops an active Project Auto-Mode run. */
+export async function stopAutoMode(id: string): Promise<void> {
+  await request('POST', `/api/auto/${q(id)}/stop`);
 }

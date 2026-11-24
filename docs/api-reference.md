@@ -68,6 +68,7 @@ Submit a new code-generation task to the queue.
 | `role`          | No       | Routing tier: `architect`/`techlead` prefer frontier providers, `coder`/`tester`/`linter` prefer local ones |
 | `priority`      | No       | 1 = high, 2 = medium (default), 3 = low                                                                     |
 | `tags`          | No       | Free-form labels                                                                                            |
+| `dependsOn`     | No       | List of task IDs that must reach `COMPLETED` before this task can be claimed                                |
 | `agentic`       | No       | Run as a multi-turn tool loop (see below)                                                                   |
 | `maxAgentTurns` | No       | Upper bound on model turns when `agentic` (default 8, max 25)                                               |
 
@@ -89,13 +90,15 @@ With `"agentic": true` the model no longer answers once and has the answer writt
 `targetFile`. Instead it works over several turns, replying each time with fenced
 ` ```nexus-tool ` blocks holding one JSON call each, and the daemon answers with the results:
 
-| Tool         | Arguments            | Effect                                                                                                |
-| ------------ | -------------------- | ----------------------------------------------------------------------------------------------------- |
-| `read_file`  | `path`               | Returns the file (truncated to 16 KiB)                                                                |
-| `write_file` | `path`, `content`    | Creates or replaces a whole file                                                                      |
-| `edit_file`  | `path`, `old`, `new` | Replaces the single exact occurrence of `old`; refused when `old` is missing or occurs more than once |
-| `verify`     | none                 | Runs the task's `verificationCommand`                                                                 |
-| `finish`     | `summary`            | Ends the task; refused while the verification command still fails                                     |
+| Tool           | Arguments            | Effect                                                                                                |
+| -------------- | -------------------- | ----------------------------------------------------------------------------------------------------- |
+| `read_file`    | `path`               | Returns the file (truncated to 16 KiB)                                                                |
+| `write_file`   | `path`, `content`    | Creates or replaces a whole file                                                                      |
+| `edit_file`    | `path`, `old`, `new` | Replaces the single exact occurrence of `old`; refused when `old` is missing or occurs more than once |
+| `list_dir`     | `path`               | Lists entries in a directory under `projectPath` (empty path for project root)                        |
+| `search_files` | `query`              | Case-insensitive search across filenames and file contents inside `projectPath`                       |
+| `verify`       | none                 | Runs the task's `verificationCommand`                                                                 |
+| `finish`       | `summary`            | Ends the task; refused while the verification command still fails                                     |
 
 Safety: all file access is confined to `projectPath` (absolute paths, `..` and symlinks
 that leave the project are rejected, and the model is told so). There is no tool that runs
@@ -802,6 +805,17 @@ Each takes the agent's `sessionId` (see _AI sessions_ below).
 | `GET /api/plans/discovered?projectPath=`       | Plan files (`PLAN-*.md`, `TASKS.md`, ...) discovered in a project.                   |
 | `POST /api/plans/discovered/scan?projectPath=` | Rescan and return the discovered plan files.                                         |
 | `GET /api/brain/onboarding?projectPath=`       | A compact orientation for an agent joining the project; `maxTokens` limits its size. |
+
+### Project Auto-Mode
+
+Autonomous project loop (`syncing → planning → executing → verifying → repairing → learning → completed | failed | stopped`).
+
+| Route                      | Purpose                                                                                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `POST /api/auto/start`     | Start an Auto-Mode run for `projectPath`. Optional `goal`, `maxTasks`, `maxRepairLoops`, `verificationCommand`, `providerName`, `modelId`. |
+| `GET /api/auto`            | List Auto-Mode runs (newest first). Optional `projectPath` query filter.                                                                   |
+| `GET /api/auto/{id}`       | Fetch live status and progress for a single Auto-Mode run by ID.                                                                           |
+| `POST /api/auto/{id}/stop` | Request cooperative cancellation of an active Auto-Mode run.                                                                               |
 
 ### Dashboard
 

@@ -95,6 +95,18 @@ type PolicyManager interface {
 	SetProjectPolicy(ctx context.Context, projectPath string, p domain.ProjectPolicy) error
 }
 
+// AutoModeManager drives Project Auto-Mode: autonomous end-to-end Brain -> Plan -> Execute -> Verify -> Learn loops.
+type AutoModeManager interface {
+	// StartAutoMode starts an autonomous loop for req.ProjectPath and returns its initial run snapshot.
+	StartAutoMode(ctx context.Context, req domain.AutoModeRequest) (domain.AutoModeRun, error)
+	// GetAutoModeRun returns the current snapshot of the auto-mode run with id.
+	GetAutoModeRun(id string) (domain.AutoModeRun, error)
+	// ListAutoModeRuns returns all runs (newest first), optionally filtered to projectPath when non-empty.
+	ListAutoModeRuns(projectPath string) []domain.AutoModeRun
+	// StopAutoMode cancels an active auto-mode run and its pending tasks.
+	StopAutoMode(id string) error
+}
+
 // TaskRepository is the port for persisting and querying Tasks.
 type TaskRepository interface {
 	Save(ctx context.Context, t domain.Task) error
@@ -123,6 +135,15 @@ type TaskRepository interface {
 type FileWriter interface {
 	WriteCodeToFile(projectPath, targetFile, code string) error
 	ReadContextFiles(projectPath string, files []string) (string, error)
+}
+
+// ProjectExplorer is the optional FileWriter capability of browsing directories and searching files
+// inside a project root. Implementations must keep all paths within projectPath.
+type ProjectExplorer interface {
+	// ListDir returns entry names (directories suffixed with "/") inside relDir under projectPath.
+	ListDir(projectPath, relDir string) ([]string, error)
+	// SearchFiles returns matching file paths or "path:line: text" hits for query under projectPath.
+	SearchFiles(projectPath, query string) ([]string, error)
 }
 
 // CommandRunner is the port for executing verification commands within a project directory.

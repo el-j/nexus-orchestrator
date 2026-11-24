@@ -116,6 +116,9 @@ type Task struct {
 	Priority int `json:"priority,omitempty"`
 	// Tags are free-form labels for organising ideas and backlog items.
 	Tags []string `json:"tags,omitempty"`
+	// DependsOn lists task IDs that must reach COMPLETED before this task may be claimed.
+	// If any dependency reaches FAILED or CANCELLED, this task is marked FAILED.
+	DependsOn []string `json:"dependsOn,omitempty"`
 	// Command classifies the task as planning, execution, or auto-routed.
 	// Empty is treated as CommandAuto.
 	Command    CommandType `json:"command,omitempty"`

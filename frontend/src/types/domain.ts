@@ -345,3 +345,43 @@ export interface ProjectKnowledge {
   createdAt: string;
   updatedAt: string;
 }
+
+/** Current stage of a Project Auto-Mode run. */
+export type AutoPhase =
+  | 'syncing'
+  | 'planning'
+  | 'executing'
+  | 'verifying'
+  | 'repairing'
+  | 'learning'
+  | 'completed'
+  | 'failed'
+  | 'stopped';
+
+/** Request payload to start Project Auto-Mode. */
+export interface AutoModeRequest {
+  projectPath: string;
+  goal?: string;
+  verifyCommand?: string;
+  maxTasks?: number;
+  maxAgentTurns?: number;
+  maxRepairAttempts?: number;
+}
+
+/** Live snapshot of a Project Auto-Mode run. */
+export interface AutoModeRun {
+  id: string;
+  projectPath: string;
+  goal?: string;
+  phase: AutoPhase;
+  taskIds: string[];
+  completedTasks: number;
+  failedTasks: number;
+  repairAttempts?: number;
+  learningsSaved?: number;
+  summary?: string;
+  error?: string;
+  startedAt: string;
+  updatedAt: string;
+  finishedAt?: string;
+}

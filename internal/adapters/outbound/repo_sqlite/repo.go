@@ -52,23 +52,24 @@ func New(dbPath string) (*Repository, error) {
 	return &Repository{db: db}, nil
 }
 
-const taskColumns = `id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id, verification_command, max_correction_turns, verification_output, role, agentic, max_agent_turns, wait_until`
+const taskColumns = `id, project_path, target_file, instruction, context_files, status, created_at, updated_at, logs, model_id, provider_hint, command, provider_name, priority, tags, retry_count, ai_session_id, verification_command, max_correction_turns, verification_output, role, agentic, max_agent_turns, wait_until, depends_on`
 
 // Save inserts a new Task record.
 func (r *Repository) Save(ctx context.Context, t domain.Task) error {
 	t.ProjectPath = filepath.Clean(t.ProjectPath)
 	ctxJSON := marshal(t.ContextFiles)
 	tagsJSON := marshalTags(t.Tags)
+	depsJSON := marshalTags(t.DependsOn)
 	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO tasks (`+taskColumns+`)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		t.ID, t.ProjectPath, t.TargetFile, t.Instruction,
 		string(ctxJSON), string(t.Status),
 		t.CreatedAt.UnixMilli(), t.UpdatedAt.UnixMilli(),
 		t.Logs, t.ModelID, t.ProviderHint, string(t.Command),
 		t.ProviderName, t.Priority, string(tagsJSON), t.RetryCount, t.AISessionID,
 		t.VerificationCommand, t.MaxCorrectionTurns, t.VerificationOutput,
-		t.Role, t.Agentic, t.MaxAgentTurns, waitMillis(t.WaitUntil),
+		t.Role, t.Agentic, t.MaxAgentTurns, waitMillis(t.WaitUntil), string(depsJSON),
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: insert task: %w", err)
@@ -100,7 +101,8 @@ func (r *Repository) GetPending(ctx context.Context) ([]domain.Task, error) {
 	return collectTasks(rows)
 }
 
-// ClaimNextQueued atomically claims the oldest queued task and marks it PROCESSING.
+// ClaimNextQueued atomically claims the oldest queued task whose dependencies are all COMPLETED
+// and marks it PROCESSING.
 func (r *Repository) ClaimNextQueued(ctx context.Context) (domain.Task, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -110,15 +112,26 @@ func (r *Repository) ClaimNextQueued(ctx context.Context) (domain.Task, error) {
 		_ = tx.Rollback()
 	}()
 
-	row := tx.QueryRowContext(ctx,
-		`SELECT `+taskColumns+` FROM tasks WHERE status = 'QUEUED' ORDER BY created_at ASC LIMIT 1`,
+	rows, err := tx.QueryContext(ctx,
+		`SELECT `+taskColumns+` FROM tasks WHERE status = 'QUEUED' ORDER BY created_at ASC`,
 	)
-	task, err := scanTask(row)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return domain.Task{}, fmt.Errorf("sqlite: claim next queued: %w", domain.ErrNotFound)
-		}
 		return domain.Task{}, fmt.Errorf("sqlite: claim next queued: %w", err)
+	}
+	candidates, _ := collectTasks(rows)
+	_ = rows.Close()
+
+	var task domain.Task
+	found := false
+	for _, cand := range candidates {
+		if depsSatisfied(ctx, tx, cand.DependsOn) {
+			task = cand
+			found = true
+			break
+		}
+	}
+	if !found {
+		return domain.Task{}, fmt.Errorf("sqlite: claim next queued: %w", domain.ErrNotFound)
 	}
 
 	res, err := tx.ExecContext(ctx,
@@ -138,6 +151,20 @@ func (r *Repository) ClaimNextQueued(ctx context.Context) (domain.Task, error) {
 	task.Status = domain.StatusProcessing
 	task.UpdatedAt = time.Now()
 	return task, nil
+}
+
+// depsSatisfied reports whether every task ID in deps exists with status COMPLETED.
+func depsSatisfied(ctx context.Context, tx *sql.Tx, deps []string) bool {
+	for _, id := range deps {
+		var status string
+		if err := tx.QueryRowContext(ctx, `SELECT status FROM tasks WHERE id = ?`, id).Scan(&status); err != nil {
+			return false
+		}
+		if normalizeStatus(status) != domain.StatusCompleted {
+			return false
+		}
+	}
+	return true
 }
 
 // UpdateStatus changes the status of a task identified by id.
@@ -250,9 +277,10 @@ func (r *Repository) Update(ctx context.Context, t domain.Task) error {
 			tagsJSON = b
 		}
 	}
+	depsJSON := marshalTags(t.DependsOn)
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE tasks SET instruction=?, target_file=?, provider_name=?, priority=?, tags=?, status=?, retry_count=?, ai_session_id=?, verification_command=?, max_correction_turns=?, verification_output=?, wait_until=?, updated_at=? WHERE id=?`,
-		t.Instruction, t.TargetFile, t.ProviderName, t.Priority, string(tagsJSON), string(t.Status), t.RetryCount, t.AISessionID, t.VerificationCommand, t.MaxCorrectionTurns, t.VerificationOutput, waitMillis(t.WaitUntil), t.UpdatedAt.UnixMilli(), t.ID,
+		`UPDATE tasks SET instruction=?, target_file=?, provider_name=?, priority=?, tags=?, status=?, retry_count=?, ai_session_id=?, verification_command=?, max_correction_turns=?, verification_output=?, wait_until=?, depends_on=?, updated_at=? WHERE id=?`,
+		t.Instruction, t.TargetFile, t.ProviderName, t.Priority, string(tagsJSON), string(t.Status), t.RetryCount, t.AISessionID, t.VerificationCommand, t.MaxCorrectionTurns, t.VerificationOutput, waitMillis(t.WaitUntil), string(depsJSON), t.UpdatedAt.UnixMilli(), t.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: update task: %w", err)
@@ -307,6 +335,7 @@ func scanTask(s scanner) (domain.Task, error) {
 	var command string
 	var ctxJSON string
 	var tagsJSON string
+	var depsJSON string
 	var createdRaw, updatedRaw any
 	var waitRaw any
 
@@ -315,7 +344,7 @@ func scanTask(s scanner) (domain.Task, error) {
 		&ctxJSON, &status, &createdRaw, &updatedRaw, &t.Logs,
 		&t.ModelID, &t.ProviderHint, &command, &t.ProviderName, &t.Priority, &tagsJSON, &t.RetryCount, &t.AISessionID,
 		&t.VerificationCommand, &t.MaxCorrectionTurns, &t.VerificationOutput,
-		&t.Role, &t.Agentic, &t.MaxAgentTurns, &waitRaw,
+		&t.Role, &t.Agentic, &t.MaxAgentTurns, &waitRaw, &depsJSON,
 	); err != nil {
 		return t, fmt.Errorf("sqlite: scan task: %w", err)
 	}
@@ -344,6 +373,11 @@ func scanTask(s scanner) (domain.Task, error) {
 	if tagsJSON != "" && tagsJSON != "[]" {
 		if err := json.Unmarshal([]byte(tagsJSON), &t.Tags); err != nil {
 			log.Printf("repo_sqlite: task %s: unmarshal tags: %v", t.ID, err)
+		}
+	}
+	if depsJSON != "" && depsJSON != "[]" {
+		if err := json.Unmarshal([]byte(depsJSON), &t.DependsOn); err != nil {
+			log.Printf("repo_sqlite: task %s: unmarshal depends_on: %v", t.ID, err)
 		}
 	}
 	return t, nil

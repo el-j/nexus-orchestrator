@@ -20,6 +20,7 @@ var addedColumns = []addedColumn{
 	{"tasks", "agentic", "INTEGER NOT NULL DEFAULT 0"},
 	{"tasks", "max_agent_turns", "INTEGER NOT NULL DEFAULT 0"},
 	{"tasks", "wait_until", "INTEGER NOT NULL DEFAULT 0"},
+	{"tasks", "depends_on", "TEXT NOT NULL DEFAULT '[]'"},
 	{"ai_sessions", "delegated_to_nexus", "INTEGER NOT NULL DEFAULT 0"},
 	{"ai_sessions", "delegation_timestamp", "DATETIME"},
 	{"ai_sessions", "agent_capabilities", "TEXT NOT NULL DEFAULT '[]'"},

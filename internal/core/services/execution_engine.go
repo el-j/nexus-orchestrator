@@ -56,6 +56,42 @@ func (o *OrchestratorService) emit(taskID string, status domain.TaskStatus) {
 		TaskID: taskID,
 		Status: status,
 	})
+	switch status {
+	case domain.StatusCompleted:
+		o.signalWorker()
+	case domain.StatusFailed, domain.StatusCancelled:
+		o.failBlockedDependents(taskID, status)
+	}
+}
+
+// failBlockedDependents marks any QUEUED task that depends on failedID as FAILED so dependency
+// chains never deadlock when an upstream task fails or is cancelled.
+func (o *OrchestratorService) failBlockedDependents(failedID string, depStatus domain.TaskStatus) {
+	pending, err := o.repo.GetPending(o.dbCtx())
+	if err != nil {
+		return
+	}
+	for _, t := range pending {
+		if t.Status != domain.StatusQueued || !containsString(t.DependsOn, failedID) {
+			continue
+		}
+		ok, err := o.repo.UpdateStatusIfCurrent(o.dbCtx(), t.ID, domain.StatusQueued, domain.StatusFailed)
+		if err != nil || !ok {
+			continue
+		}
+		o.appendTaskLog(t.ID, fmt.Sprintf("not started: dependency %s ended with status %s", failedID, depStatus))
+		o.emit(t.ID, domain.StatusFailed)
+	}
+}
+
+// containsString reports whether slice contains target.
+func containsString(slice []string, target string) bool {
+	for _, s := range slice {
+		if s == target {
+			return true
+		}
+	}
+	return false
 }
 
 // processNext takes the oldest queued task and runs it; it reports false when nothing was queued.

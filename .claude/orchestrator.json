@@ -1,11 +1,11 @@
 {
   "version": "2",
-  "updatedAt": "2026-10-20T00:00:00Z",
+  "updatedAt": "2026-11-24T23:15:00Z",
   "counters": {
-    "nextTaskId": 662,
-    "nextPlanId": 81
+    "nextTaskId": 666,
+    "nextPlanId": 82
   },
-  "activePlanId": "PLAN-080",
+  "activePlanId": "PLAN-081",
   "plans": {
     "PLAN-074": {
       "id": "PLAN-074",
