@@ -84,6 +84,12 @@ func TestDaemonServesAnOpenAICompatibleEndpointWithTheProjectMemory(t *testing.T
 		t.Errorf("the call is not in the usage ledger of the project: %+v", usage)
 	}
 
+	// A client that sends the content as a list of typed parts is understood too.
+	parts := map[string]any{"model": "coder", "messages": []map[string]any{{"role": "user", "content": []map[string]string{{"type": "text", "text": "parts question"}}}}}
+	if code, body := d.post("/v1/chat/completions", parts, nil); code != http.StatusOK || !strings.Contains(body, "use the router") {
+		t.Errorf("content as parts: HTTP %d %s", code, body)
+	}
+
 	// Without a project the conversation reaches the model as it was sent.
 	d.post("/v1/chat/completions", chat, nil)
 	llm.mu.Lock()

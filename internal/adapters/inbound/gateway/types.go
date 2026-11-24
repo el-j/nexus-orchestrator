@@ -3,6 +3,12 @@
 // rate-limit handlers, and token budgets.
 package gateway
 
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+)
+
 // ChatCompletionRequest is the incoming payload for /v1/chat/completions.
 type ChatCompletionRequest struct {
 	Model         string        `json:"model"`
@@ -13,6 +19,40 @@ type ChatCompletionRequest struct {
 	MaxTokens     *int          `json:"max_tokens,omitempty"`
 	User          string        `json:"user,omitempty"`
 	HistoryBudget int           `json:"history_budget,omitempty"`
+}
+
+// UnmarshalJSON reads a message whose content is a string, null or a list of typed parts, as OpenAI
+// clients send it; the text parts are joined with newlines and other parts (images) are ignored.
+func (m *ChatMessage) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Role    string          `json:"role"`
+		Content json.RawMessage `json:"content"`
+		Name    string          `json:"name"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	m.Role, m.Name = raw.Role, raw.Name
+	var text string
+	if err := json.Unmarshal(raw.Content, &text); err == nil || len(raw.Content) == 0 || string(raw.Content) == "null" {
+		m.Content = text
+		return nil
+	}
+	var parts []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal(raw.Content, &parts); err != nil {
+		return fmt.Errorf("message content must be a string or a list of parts: %w", err)
+	}
+	var texts []string
+	for _, p := range parts {
+		if p.Type == "text" {
+			texts = append(texts, p.Text)
+		}
+	}
+	m.Content = strings.Join(texts, "\n")
+	return nil
 }
 
 // ChatMessage represents a single turn in a conversation.

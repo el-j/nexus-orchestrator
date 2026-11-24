@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The `/v1` endpoint and `nexus-router` accept a message whose content is a list of typed parts (what current OpenAI clients send), not only a string; before, such a request was refused as invalid JSON.
+
 - `nexus orchestrate` waited only three seconds for its task and then reported it half done; it now waits until the task settles (or Ctrl-C), and exits non-zero when the task did not complete, so scripts and CI see failures. `nexus-brain`, `nexus-router`, `nexus-runner` and `nexus orchestrate` have end-to-end tests. TASK-657 of PLAN-080
 
 ### Added

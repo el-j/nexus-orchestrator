@@ -3,6 +3,7 @@ package gateway
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -196,5 +197,36 @@ func TestExecuteChat_UsageWithoutModelTakesTheActiveModel(t *testing.T) {
 	gw := NewGateway(Config{Usage: led}, services.NewDiscoveryService(c))
 	if _, err := gw.ExecuteChat(context.Background(), userAsk("q"), ""); err != nil || len(led.recs) != 1 || led.recs[0].Model != "claude" {
 		t.Errorf("err %v, records %+v", err, led.recs)
+	}
+}
+
+// OpenAI clients may send a message's content as a list of typed parts instead of a string; the text
+// parts are joined, other parts (images) are ignored, and a plain string still works.
+func TestChatMessage_AcceptsContentAsStringOrParts(t *testing.T) {
+	cases := map[string]string{
+		`{"role":"user","content":"plain"}`:                                                                      "plain",
+		`{"role":"user","content":[{"type":"text","text":"one"},{"type":"text","text":"two"}]}`:                  "one\ntwo",
+		`{"role":"user","content":[{"type":"image_url","image_url":{"url":"x"}},{"type":"text","text":"only"}]}`: "only",
+		`{"role":"user","content":null}`:                                                                         "",
+		`{"role":"assistant","content":""}`:                                                                      "",
+		`{"role":"user","content":[]}`:                                                                           "",
+	}
+	for in, want := range cases {
+		var m ChatMessage
+		if err := json.Unmarshal([]byte(in), &m); err != nil || m.Content != want {
+			t.Errorf("%s -> %q, %v; want %q", in, m.Content, err, want)
+		}
+	}
+	var m ChatMessage
+	if err := json.Unmarshal([]byte(`{"role":"user","content":7}`), &m); err == nil {
+		t.Error("a number is not content")
+	}
+	if err := json.Unmarshal([]byte(`{"role":5}`), &m); err == nil {
+		t.Error("a role that is not a string must fail")
+	}
+	// What the gateway sends back stays a plain string.
+	out, _ := json.Marshal(ChatMessage{Role: "assistant", Content: "hi"})
+	if string(out) != `{"role":"assistant","content":"hi"}` {
+		t.Errorf("marshal = %s", out)
 	}
 }
