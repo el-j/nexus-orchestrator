@@ -66,7 +66,7 @@ func buildBinaries(t *testing.T) {
 		if os.Getenv("CGO_LDFLAGS") == "" {
 			env = append(env, "CGO_LDFLAGS=-lm")
 		}
-		for _, name := range []string{"nexus-daemon", "nexus-cli", "nexus-mcp-stdio", "nexus-submit"} {
+		for _, name := range []string{"nexus-daemon", "nexus-cli", "nexus-mcp-stdio", "nexus-submit", "nexus-brain", "nexus-router", "nexus-runner"} {
 			out := filepath.Join(dir, name+exeSuffix())
 			cmd := exec.Command("go", "build", "-o", out, "./cmd/"+name)
 			cmd.Dir = repoRoot(t)
