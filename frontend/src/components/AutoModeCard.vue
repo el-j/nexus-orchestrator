@@ -21,14 +21,24 @@
           {{ baseName(currentProject) }}
         </span>
       </div>
-      <span
-        v-if="latestRun"
-        data-testid="automode-phase"
-        class="text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wide"
-        :class="phaseBadgeClass(latestRun.phase)"
-      >
-        {{ latestRun.phase }}
-      </span>
+      <div class="flex items-center gap-2 flex-wrap">
+        <span
+          v-if="selectionLabel"
+          data-testid="automode-model"
+          class="text-[10px] px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 font-mono truncate max-w-[320px]"
+          :title="selectionLabel"
+        >
+          {{ selectionLabel }}
+        </span>
+        <span
+          v-if="latestRun"
+          data-testid="automode-phase"
+          class="text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wide"
+          :class="phaseBadgeClass(latestRun.phase)"
+        >
+          {{ latestRun.phase }}
+        </span>
+      </div>
     </div>
 
     <p v-if="!currentProject" class="text-xs text-slate-500" data-testid="automode-no-project">
@@ -108,6 +118,11 @@ let pollTimer: ReturnType<typeof setInterval> | undefined;
 const TERMINAL = new Set<AutoPhase>(['completed', 'failed', 'stopped']);
 const latestRun = computed(() => runs.value[0] ?? null);
 const activeRun = computed(() => runs.value.find((r) => !TERMINAL.has(r.phase)) ?? null);
+const selectionLabel = computed(() => {
+  const run = activeRun.value ?? latestRun.value;
+  if (!run) return '';
+  return [run.providerName, run.modelId].filter(Boolean).join(' · ');
+});
 
 function phaseBadgeClass(phase: AutoPhase): string {
   if (phase === 'completed') return 'bg-emerald-500/20 text-emerald-300';

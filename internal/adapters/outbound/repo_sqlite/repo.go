@@ -279,8 +279,8 @@ func (r *Repository) Update(ctx context.Context, t domain.Task) error {
 	}
 	depsJSON := marshalTags(t.DependsOn)
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE tasks SET instruction=?, target_file=?, provider_name=?, priority=?, tags=?, status=?, retry_count=?, ai_session_id=?, verification_command=?, max_correction_turns=?, verification_output=?, wait_until=?, depends_on=?, updated_at=? WHERE id=?`,
-		t.Instruction, t.TargetFile, t.ProviderName, t.Priority, string(tagsJSON), string(t.Status), t.RetryCount, t.AISessionID, t.VerificationCommand, t.MaxCorrectionTurns, t.VerificationOutput, waitMillis(t.WaitUntil), string(depsJSON), t.UpdatedAt.UnixMilli(), t.ID,
+		`UPDATE tasks SET instruction=?, target_file=?, provider_name=?, model_id=?, priority=?, tags=?, status=?, retry_count=?, ai_session_id=?, verification_command=?, max_correction_turns=?, verification_output=?, wait_until=?, depends_on=?, updated_at=? WHERE id=?`,
+		t.Instruction, t.TargetFile, t.ProviderName, t.ModelID, t.Priority, string(tagsJSON), string(t.Status), t.RetryCount, t.AISessionID, t.VerificationCommand, t.MaxCorrectionTurns, t.VerificationOutput, waitMillis(t.WaitUntil), string(depsJSON), t.UpdatedAt.UnixMilli(), t.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: update task: %w", err)

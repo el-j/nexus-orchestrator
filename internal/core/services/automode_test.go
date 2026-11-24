@@ -256,6 +256,9 @@ func TestAutoMode_GoalDecomposeExecuteVerifyRepairAndLearn(t *testing.T) {
 	if settled.Phase != domain.AutoPhaseCompleted {
 		t.Fatalf("expected completed, got %s (err=%s, summary=%s)", settled.Phase, settled.Error, settled.Summary)
 	}
+	if settled.ProviderName != "AutoMock" || settled.ModelID != "claude-opus-5-5" {
+		t.Fatalf("expected provider/model populated, got provider=%q model=%q", settled.ProviderName, settled.ModelID)
+	}
 	if len(settled.TaskIDs) != 3 || settled.RepairAttempts != 1 {
 		t.Fatalf("expected 3 tasks (2 planned + 1 repair) and 1 repair attempt, got %+v", settled)
 	}
@@ -470,12 +473,12 @@ func TestAutoMode_BrainPolicyStopFailuresAndEdgeCases(t *testing.T) {
 	// decomposeGoal: no providers -> fallback; non-JSON reply -> fallback
 	orchNoProv := NewOrchestrator(NewDiscoveryService(), repo, &autoTestWriter{files: map[string]string{}}, nil)
 	t.Cleanup(orchNoProv.Stop)
-	if steps := orchNoProv.decomposeGoal(context.Background(), domain.AutoModeRequest{ProjectPath: proj, Goal: "solo", MaxTasks: 3}, "", ""); len(steps) != 1 || steps[0].Instruction != "solo" {
+	if steps := orchNoProv.decomposeGoal(context.Background(), nil, domain.AutoModeRequest{ProjectPath: proj, Goal: "solo", MaxTasks: 3}, "", ""); len(steps) != 1 || steps[0].Instruction != "solo" {
 		t.Fatalf("expected fallback step when no provider, got %+v", steps)
 	}
 	orchBadJSON := NewOrchestrator(NewDiscoveryService(&autoTestLLM{replies: []string{"not json at all"}}), repo, &autoTestWriter{files: map[string]string{}}, nil)
 	t.Cleanup(orchBadJSON.Stop)
-	if steps := orchBadJSON.decomposeGoal(context.Background(), domain.AutoModeRequest{ProjectPath: proj, Goal: "solo2", MaxTasks: 3}, "", ""); len(steps) != 1 || steps[0].Instruction != "solo2" {
+	if steps := orchBadJSON.decomposeGoal(context.Background(), nil, domain.AutoModeRequest{ProjectPath: proj, Goal: "solo2", MaxTasks: 3}, "", ""); len(steps) != 1 || steps[0].Instruction != "solo2" {
 		t.Fatalf("expected fallback step on non-JSON, got %+v", steps)
 	}
 
@@ -483,7 +486,7 @@ func TestAutoMode_BrainPolicyStopFailuresAndEdgeCases(t *testing.T) {
 	projCap := t.TempDir()
 	_, _ = orchStop.CreateDraft(domain.Task{ProjectPath: projCap, TargetFile: "d1.go", Instruction: "draft 1"})
 	_, _ = orchStop.CreateDraft(domain.Task{ProjectPath: projCap, TargetFile: "d2.go", Instruction: "draft 2"})
-	capIDs, err := orchStop.autoPlanTasks(context.Background(), domain.AutoModeRequest{ProjectPath: projCap, MaxTasks: 1}, "", "")
+	capIDs, err := orchStop.autoPlanTasks(context.Background(), nil, domain.AutoModeRequest{ProjectPath: projCap, MaxTasks: 1}, "", "")
 	if err != nil || len(capIDs) != 1 {
 		t.Fatalf("expected 1 capped backlog task, got %v err=%v", capIDs, err)
 	}
@@ -504,7 +507,7 @@ func TestAutoMode_BrainPolicyStopFailuresAndEdgeCases(t *testing.T) {
 	failRepo.backlogErr = nil
 	failRepo.backlogTasks = []domain.Task{{ID: "ghost-draft", Status: domain.StatusDraft}}
 	failRepo.getByIDErr = errors.New("getbyid boom")
-	if _, err := orchFail.autoPlanTasks(context.Background(), domain.AutoModeRequest{ProjectPath: proj, MaxTasks: 5}, "", ""); err == nil {
+	if _, err := orchFail.autoPlanTasks(context.Background(), nil, domain.AutoModeRequest{ProjectPath: proj, MaxTasks: 5}, "", ""); err == nil {
 		t.Fatal("expected promote error")
 	}
 	failRepo.backlogTasks = nil
@@ -512,7 +515,7 @@ func TestAutoMode_BrainPolicyStopFailuresAndEdgeCases(t *testing.T) {
 
 	// SubmitTask error in autoPlanTasks and autoVerifyAndRepair
 	failRepo.saveErr = errors.New("save boom")
-	if _, err := orchFail.autoPlanTasks(context.Background(), domain.AutoModeRequest{ProjectPath: proj, Goal: "g", MaxTasks: 2}, "", ""); err == nil {
+	if _, err := orchFail.autoPlanTasks(context.Background(), nil, domain.AutoModeRequest{ProjectPath: proj, Goal: "g", MaxTasks: 2}, "", ""); err == nil {
 		t.Fatal("expected submit error in autoPlanTasks")
 	}
 	stRep := &autoRunState{ctx: context.Background(), cancel: func() {}, run: domain.AutoModeRun{ID: "rep1", Phase: domain.AutoPhaseVerifying}}
@@ -616,10 +619,24 @@ func TestAutoMode_BrainPolicyStopFailuresAndEdgeCases(t *testing.T) {
 	if fCount != 1 {
 		t.Fatalf("expected 1 failed task, got %d", fCount)
 	}
-	stNoLogRun := &autoRunState{ctx: context.Background(), cancel: func() {}, run: domain.AutoModeRun{ID: "nl2", Phase: domain.AutoPhaseSyncing}}
-	failRepo.backlogTasks = []domain.Task{{ID: "ff-empty", Status: domain.StatusFailed}}
-	// Use a dedicated project with a single failed-with-empty-logs task via runAutoMode's direct error path:
-	_ = stNoLogRun
+	// Cover active StatusProcessing provider/model propagation in autoWaitTasks (both via repo and live runHandle).
+	tProc := domain.Task{ID: "ff-proc", ProjectPath: proj, Status: domain.StatusProcessing, ProviderName: "LiveProv", ModelID: "live-model"}
+	_ = repo.Save(context.Background(), tProc)
+	stProc := &autoRunState{ctx: cancelledCtx, cancel: cancelNow, run: domain.AutoModeRun{ID: "proc1", Phase: domain.AutoPhaseExecuting}}
+	_, _, _ = orchStop.autoWaitTasks(cancelledCtx, stProc, []string{"ff-proc"})
+	if snap := stProc.snapshot(); snap.ProviderName != "LiveProv" || snap.ModelID != "live-model" {
+		t.Fatalf("expected active processing provider/model, got %+v", snap)
+	}
+	orchStop.runMu.Lock()
+	orchStop.running["ff-proc"] = &runHandle{chain: []ports.LLMClient{&autoTestLLM{}}}
+	orchStop.runMu.Unlock()
+	_, _, _ = orchStop.autoWaitTasks(cancelledCtx, stProc, []string{"ff-proc"})
+	orchStop.runMu.Lock()
+	delete(orchStop.running, "ff-proc")
+	orchStop.runMu.Unlock()
+	if snap := stProc.snapshot(); snap.ProviderName != "AutoMock" || snap.ModelID != "claude-opus-5-5" {
+		t.Fatalf("expected live runHandle provider/model, got %+v", snap)
+	}
 }
 
 type cancelLLM struct {

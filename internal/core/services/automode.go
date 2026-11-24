@@ -200,7 +200,7 @@ func (o *OrchestratorService) runAutoMode(state *autoRunState, req domain.AutoMo
 		verifyCmd = strings.TrimSpace(policy.Verify)
 	}
 
-	taskIDs, err := o.autoPlanTasks(ctx, req, ragContext, verifyCmd)
+	taskIDs, err := o.autoPlanTasks(ctx, state, req, ragContext, verifyCmd)
 	if ctx.Err() != nil {
 		o.markAutoStopped(state)
 		return
@@ -326,11 +326,25 @@ func (o *OrchestratorService) autoWaitTasks(ctx context.Context, state *autoRunS
 	defer ticker.Stop()
 	for {
 		c, f, pending := 0, 0, 0
+		activeProv, activeModel := "", ""
+		lastProv, lastModel := "", ""
 		for _, id := range taskIDs {
 			t, err := o.GetTask(id)
 			if err != nil {
 				f++
 				continue
+			}
+			prov, model := t.ProviderName, t.ModelID
+			if t.Status == domain.StatusProcessing {
+				if p, m := o.activeTaskProvider(id); p != "" || m != "" {
+					prov, model = p, m
+				}
+			}
+			if prov != "" || model != "" {
+				lastProv, lastModel = prov, model
+				if t.Status == domain.StatusProcessing {
+					activeProv, activeModel = prov, model
+				}
 			}
 			switch t.Status {
 			case domain.StatusCompleted:
@@ -341,9 +355,16 @@ func (o *OrchestratorService) autoWaitTasks(ctx context.Context, state *autoRunS
 				pending++
 			}
 		}
+		if activeProv == "" && activeModel == "" {
+			activeProv, activeModel = lastProv, lastModel
+		}
 		state.update(func(r *domain.AutoModeRun) {
 			r.CompletedTasks = c
 			r.FailedTasks = f
+			if activeProv != "" || activeModel != "" {
+				r.ProviderName = activeProv
+				r.ModelID = activeModel
+			}
 		})
 		if pending == 0 {
 			return c, f, false
