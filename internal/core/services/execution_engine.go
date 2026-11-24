@@ -113,6 +113,12 @@ func (o *OrchestratorService) processNext() bool {
 		return true
 	}
 
+	if !task.Agentic && o.commandRunner != nil && strings.TrimSpace(task.TargetFile) == "" && strings.TrimSpace(task.VerificationCommand) != "" {
+		// Text cannot satisfy a check, and with no target file there is nowhere to write it: the model
+		// works in the project itself.
+		task.Agentic = true
+		o.appendTaskLog(task.ID, "no target file and a check to pass: running as an agent that edits the project")
+	}
 	if task.Agentic {
 		return o.runAgentLoop(run, task, chain, prompt, policy)
 	}

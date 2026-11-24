@@ -138,6 +138,10 @@ func ScoreProviderAffinity(c ports.LLMClient, profile TaskAffinityProfile) Provi
 		costScore = 0.0
 	}
 
+	if isFlatRateProvider(c) {
+		costScore = 0 // a plan with a flat fee costs nothing per call
+	}
+
 	var capabilityScore float64
 	switch profile.Complexity {
 	case ComplexityHigh:

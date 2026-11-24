@@ -60,7 +60,8 @@ func (o *OrchestratorService) applyProjectRules(ctx context.Context, task domain
 	if err != nil {
 		return task, policy, prompt, err
 	}
-	if hasPolicy && strings.TrimSpace(task.VerificationCommand) == "" && policy.Verify != "" {
+	// The project's check is for tasks that change code; a plan task cannot make it pass.
+	if hasPolicy && strings.TrimSpace(task.VerificationCommand) == "" && policy.Verify != "" && task.Command != domain.CommandPlan {
 		task.VerificationCommand = policy.Verify
 	}
 
