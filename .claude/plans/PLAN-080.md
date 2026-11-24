@@ -1,7 +1,7 @@
 ---
 id: PLAN-080
 title: 'Nexus as the model endpoint, brain and orchestrator for every tool'
-status: active
+status: completed
 createdAt: 2026-11-24
 tasks: [TASK-657, TASK-658, TASK-659, TASK-660, TASK-661]
 ---
@@ -20,4 +20,4 @@ binaries have no e2e; two TypeScript packages have no linter.
 | TASK-658 | The OpenAI-compatible gateway inside the daemon, wit | architecture | done   |
 | TASK-659 | ESLint for the VS Code extension and the GitHub Acti | quality      | done   |
 | TASK-660 | Close TASK-578 and make the MCP shutdown test determ | polish       | done   |
-| TASK-661 | A real multi-task plan through the three subscriptio | dogfood      | todo   |
+| TASK-661 | A real multi-task plan through the three subscriptio | dogfood      | done   |
