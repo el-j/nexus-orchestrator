@@ -665,3 +665,36 @@ describe('getPolicy and setPolicy', () => {
     });
   });
 });
+
+describe('Project Auto-Mode API', () => {
+  it('starts, lists, and stops Auto-Mode runs', async () => {
+    const run = {
+      id: 'r1',
+      projectPath: '/work/app',
+      phase: 'syncing',
+      taskIds: [],
+      completedTasks: 0,
+      failedTasks: 0,
+      startedAt: '',
+      updatedAt: '',
+    };
+    fetchMock.mockImplementationOnce(() => reply(201, run));
+    expect(await api.startAutoMode({ projectPath: '/work/app', goal: 'ship' })).toEqual(run);
+    expect(lastCall()).toMatchObject({ method: 'POST', path: '/api/auto/start' });
+
+    fetchMock.mockImplementationOnce(() => reply(200, [run]));
+    expect(await api.listAutoModeRuns('/work/app')).toEqual([run]);
+    expect(lastCall()).toMatchObject({
+      method: 'GET',
+      path: '/api/auto?projectPath=%2Fwork%2Fapp',
+    });
+
+    fetchMock.mockImplementationOnce(() => reply(200, null));
+    expect(await api.listAutoModeRuns()).toEqual([]);
+    expect(lastCall()).toMatchObject({ method: 'GET', path: '/api/auto' });
+
+    fetchMock.mockImplementationOnce(() => reply(200, { id: 'r1', stopped: true }));
+    await api.stopAutoMode('r1');
+    expect(lastCall()).toMatchObject({ method: 'POST', path: '/api/auto/r1/stop' });
+  });
+});

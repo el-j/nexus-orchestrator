@@ -55,6 +55,7 @@ var toolBlock = regexp.MustCompile("(?s)```nexus-tool\\s*\n(.*?)```")
 type agentCall struct {
 	Tool    string `json:"tool"`
 	Path    string `json:"path"`
+	Query   string `json:"query"`
 	Content string `json:"content"`
 	Old     string `json:"old"`
 	New     string `json:"new"`
@@ -63,13 +64,17 @@ type agentCall struct {
 
 // agentSystemPrompt tells the model how to act: which tools exist, how to call them and when it is done.
 // It is strictly static and byte-identical across tasks to maximize prompt caching on frontier models.
-func agentSystemPrompt(canVerify bool) string {
+func agentSystemPrompt(canVerify, canExplore bool) string {
 	var sb strings.Builder
 	sb.WriteString("You are a software engineering agent working inside the project directory. ")
 	sb.WriteString("Act by replying with fenced blocks, each holding one JSON tool call:\n\n")
 	sb.WriteString("```nexus-tool\n{\"tool\":\"read_file\",\"path\":\"relative/path\"}\n```\n\n")
 	sb.WriteString("Tools: read_file {path}; write_file {path, content} (whole file); ")
 	sb.WriteString("edit_file {path, old, new} (replaces the single exact occurrence of old; prefer it for small changes); ")
+	if canExplore {
+		sb.WriteString("list_dir {path} (lists directory entries, empty path for project root); ")
+		sb.WriteString("search_files {query} (searches filenames and file contents); ")
+	}
 	if canVerify {
 		sb.WriteString("verify {} runs the project's verification command; ")
 	}
@@ -190,6 +195,10 @@ func (a *agentRun) execute(run *runHandle, c agentCall) (obs string, done bool) 
 		return fmt.Sprintf("wrote %s (%d bytes)", c.Path, len(c.Content)), false
 	case "edit_file":
 		return a.edit(c), false
+	case "list_dir":
+		return a.listDir(c.Path), false
+	case "search_files":
+		return a.searchFiles(c.Query), false
 	case "verify":
 		if !a.canVerify() {
 			return "verify: this task has no verification command", false
@@ -205,20 +214,56 @@ func (a *agentRun) execute(run *runHandle, c agentCall) (obs string, done bool) 
 		}
 		return "finished: " + c.Summary, true
 	default:
-		return fmt.Sprintf("unknown tool %q (use read_file, write_file, edit_file, verify or finish)", c.Tool), false
+		return fmt.Sprintf("unknown tool %q (use read_file, write_file, edit_file, list_dir, search_files, verify or finish)", c.Tool), false
 	}
+}
+
+// listDir lists entries in relDir when the configured fileWriter supports ProjectExplorer.
+func (a *agentRun) listDir(relDir string) string {
+	exp, ok := a.o.fileWriter.(ports.ProjectExplorer)
+	if !ok {
+		return "list_dir: workspace explorer is not available"
+	}
+	entries, err := exp.ListDir(a.task.ProjectPath, relDir)
+	if err != nil {
+		return "list_dir failed: " + err.Error()
+	}
+	if len(entries) == 0 {
+		return "(empty directory)"
+	}
+	return truncateObservation(strings.Join(entries, "\n"))
+}
+
+// searchFiles searches project files for query when the configured fileWriter supports ProjectExplorer.
+func (a *agentRun) searchFiles(query string) string {
+	if strings.TrimSpace(query) == "" {
+		return "search_files: query is required"
+	}
+	exp, ok := a.o.fileWriter.(ports.ProjectExplorer)
+	if !ok {
+		return "search_files: workspace explorer is not available"
+	}
+	hits, err := exp.SearchFiles(a.task.ProjectPath, query)
+	if err != nil {
+		return "search_files failed: " + err.Error()
+	}
+	if len(hits) == 0 {
+		return "no matches found"
+	}
+	return truncateObservation(strings.Join(hits, "\n"))
 }
 
 // runAgentLoop drives the loop to a terminal task status. It returns true like
 // the other execution paths (the task was consumed).
 func (o *OrchestratorService) runAgentLoop(run *runHandle, task domain.Task, chain []ports.LLMClient, prompt string, policy domain.ProjectPolicy) bool {
 	a := &agentRun{o: o, task: task, policy: policy, run: run, chain: chain}
+	_, canExplore := o.fileWriter.(ports.ProjectExplorer)
 	userPrompt := prompt
 	if task.TargetFile != "" {
 		userPrompt = userPrompt + "\n\nPrimary target file: " + task.TargetFile
 	}
 	a.msgs = []domain.Message{
-		{Role: domain.RoleSystem, Content: agentSystemPrompt(a.canVerify())},
+		{Role: domain.RoleSystem, Content: agentSystemPrompt(a.canVerify(), canExplore)},
 		{Role: domain.RoleUser, Content: userPrompt},
 	}
 	limit := agentTurnLimit(task)

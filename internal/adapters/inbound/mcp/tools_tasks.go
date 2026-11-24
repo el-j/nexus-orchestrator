@@ -25,6 +25,7 @@ func (s *Server) toolSubmitTask(args json.RawMessage) (callToolResult, error) {
 		Role                string   `json:"role"`
 		Priority            int      `json:"priority"`
 		Tags                []string `json:"tags"`
+		DependsOn           []string `json:"dependsOn"`
 		Agentic             bool     `json:"agentic"`
 		MaxAgentTurns       int      `json:"maxAgentTurns"`
 	}
@@ -45,6 +46,7 @@ func (s *Server) toolSubmitTask(args json.RawMessage) (callToolResult, error) {
 		Role:                p.Role,
 		Priority:            p.Priority,
 		Tags:                p.Tags,
+		DependsOn:           p.DependsOn,
 		Agentic:             p.Agentic,
 		MaxAgentTurns:       p.MaxAgentTurns,
 	}
@@ -197,6 +199,7 @@ func (s *Server) toolCreateDraft(args json.RawMessage) (callToolResult, error) {
 		Role         string   `json:"role"`
 		Priority     int      `json:"priority"`
 		Tags         []string `json:"tags"`
+		DependsOn    []string `json:"dependsOn"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
 		return callToolResult{}, fmt.Errorf("mcp: create_draft: invalid arguments: %w", err)
@@ -211,6 +214,7 @@ func (s *Server) toolCreateDraft(args json.RawMessage) (callToolResult, error) {
 		Role:         p.Role,
 		Priority:     p.Priority,
 		Tags:         p.Tags,
+		DependsOn:    p.DependsOn,
 	}
 	id, err := s.orch.CreateDraft(t)
 	if err != nil {

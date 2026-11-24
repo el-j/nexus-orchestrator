@@ -31,6 +31,7 @@
 
     <!-- SCROLLABLE CONTENT -->
     <div class="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+      <AutoModeCard />
       <!-- ACTIVE WORK -->
       <section>
         <div class="flex items-center justify-between mb-3">
@@ -316,6 +317,7 @@ import TaskStatusBadge from '../components/TaskStatusBadge.vue';
 import TaskDetailDrawer from '../components/TaskDetailDrawer.vue';
 import TaskSubmitForm from '../components/TaskSubmitForm.vue';
 import UsageCard from '../components/UsageCard.vue';
+import AutoModeCard from '../components/AutoModeCard.vue';
 import ProviderLimitBadges from '../components/ProviderLimitBadges.vue';
 
 // --- Composables ---

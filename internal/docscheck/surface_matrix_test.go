@@ -108,6 +108,12 @@ var matrix = []row{
 	{"brain: file map", has(`"/api/brain/file-map"`), has("'get_file_map'"), has(`"file-map"`), has("GetFileMap("), has("getFileMap"), noExt},
 	{"activities", has(`"/api/activities"`), without("agents report activity through sessions"), noCLI, has("GetRecentActivities("), without("read via the REST composables"), has("showActivityLog")},
 	{"discovered plans", has(`"/api/plans/discovered"`), has("'get_discovered_plans'"), noCLI, noWails, without("read via the REST composables"), noExt},
+	{"project auto-mode (autonomous Brain -> Plan -> Execute -> Verify -> Learn)", has(`"/api/auto/start"`),
+		without("auto-mode is triggered by operators from REST, CLI or UI; agents participate by claiming or updating tasks"),
+		has("newAutoCmd"),
+		noWails,
+		has("startAutoMode"),
+		noExt},
 }
 
 func TestEverySurfaceCoversEveryCapabilityOrSaysWhy(t *testing.T) {

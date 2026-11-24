@@ -93,6 +93,11 @@ func (s *Server) routeSystem(r chi.Router) {
 	r.Get("/api/plans/discovered", s.handleGetDiscoveredPlanFiles)
 	r.Post("/api/plans/discovered/scan", s.handleScanPlanFiles)
 
+	r.Post("/api/auto/start", s.handleStartAutoMode)
+	r.Get("/api/auto", s.handleListAutoModeRuns)
+	r.Get("/api/auto/{id}", s.handleGetAutoModeRun)
+	r.Post("/api/auto/{id}/stop", s.handleStopAutoMode)
+
 	r.Get("/api/howto", s.handleHowto)
 	r.Get("/.well-known/nexus.json", s.handleWellKnownNexus)
 }

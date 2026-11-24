@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Project Auto-Mode (`PLAN-081`)**: autonomous end-to-end implementation loop (`POST /api/auto/start`, `GET /api/auto`, `GET /api/auto/{id}`, `POST /api/auto/{id}/stop`, `nexus auto start|status|stop`, and Mission Control Auto-Mode card) that syncs project Brain/RAG, decomposes a goal into dependency-ordered agentic tasks (or executes the backlog), runs final project verification with automatic repair attempts, and digests learnings back into project memory.
+- **Task Dependencies (`dependsOn`)**: tasks can declare upstream `dependsOn` task IDs; queued tasks wait until all dependencies complete and cascade-fail cleanly if an upstream dependency fails or is cancelled.
+- **Agent Workspace Discovery (`list_dir`, `search_files`)**: sandboxed `ProjectExplorer` tools wired into the agentic loop so autonomous agents can browse and search repositories without pre-specified target files.
 - A failed or cancelled task can be promoted again (`POST /api/tasks/{id}/promote`, `promote_task`) and is routed afresh; the task drawer has a Retry button.
 - The daemon serves an OpenAI-compatible endpoint (`GET /v1/models`, `POST /v1/chat/completions`, streaming included) on its REST port: any tool with a base-URL setting can use Nexus's providers, subscriptions and local models, routed through the model ladder, cooldowns and quota. `X-Nexus-Project` puts that project's memory (onboarding summary and the knowledge that answers the question) in front of the conversation; calls enter the usage ledger; `NEXUS_API_TOKEN` guards it. TASK-658 of PLAN-080
 

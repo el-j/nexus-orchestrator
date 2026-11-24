@@ -9,19 +9,22 @@ import (
 )
 
 func TestPromptCaching_AgentSystemPromptIsByteIdenticalAcrossTasks(t *testing.T) {
-	prompt1 := agentSystemPrompt(true)
-	prompt2 := agentSystemPrompt(true)
+	prompt1 := agentSystemPrompt(true, true)
+	prompt2 := agentSystemPrompt(true, true)
 
 	if prompt1 != prompt2 {
 		t.Fatalf("agentSystemPrompt must be byte-identical across calls for prompt caching: %q vs %q", prompt1, prompt2)
 	}
 
-	promptNoVerify := agentSystemPrompt(false)
+	promptNoVerify := agentSystemPrompt(false, false)
 	if strings.Contains(promptNoVerify, "verify {}") {
 		t.Fatalf("promptNoVerify should not contain verify tool: %s", promptNoVerify)
 	}
 	if !strings.Contains(prompt1, "verify {}") {
 		t.Fatalf("prompt1 should contain verify tool: %s", prompt1)
+	}
+	if !strings.Contains(prompt1, "list_dir") || !strings.Contains(prompt1, "search_files") {
+		t.Fatalf("prompt1 should contain explorer tools: %s", prompt1)
 	}
 
 	// Ensure system prompt does not contain dynamic task details
