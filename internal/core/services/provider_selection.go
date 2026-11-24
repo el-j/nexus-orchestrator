@@ -40,6 +40,15 @@ func isFrontierProvider(p ports.LLMClient) bool {
 		strings.Contains(name, "claude")
 }
 
+// isFlatRateProvider tests if a provider is a plan with a flat fee (a subscription, the Antigravity CLI,
+// the Copilot bridge): the next call costs nothing extra, so routing does not weigh cost for it.
+func isFlatRateProvider(p ports.LLMClient) bool {
+	name := strings.ToLower(p.ProviderName())
+	return strings.Contains(name, "subscription") ||
+		strings.Contains(name, "(agy)") ||
+		strings.Contains(name, "copilot")
+}
+
 // isLocalProvider tests if a provider matches known local/on-premise LLMs.
 func isLocalProvider(p ports.LLMClient) bool {
 	name := strings.ToLower(p.ProviderName())
