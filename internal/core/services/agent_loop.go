@@ -335,6 +335,7 @@ func (a *agentRun) ask(turn int) (reply string, settled bool) {
 			return "", true
 		}
 		if err == nil {
+			task = o.recordSelectedProvider(task, llm)
 			return out, false
 		}
 		o.appendTaskLog(task.ID, fmt.Sprintf("agent turn %d: provider %s failed: %v", turn, llm.ProviderName(), err))

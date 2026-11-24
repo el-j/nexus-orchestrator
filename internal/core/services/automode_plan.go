@@ -19,7 +19,7 @@ type plannedStep struct {
 }
 
 // autoPlanTasks either decomposes req.Goal into dependency-ordered agentic tasks or promotes backlog items.
-func (o *OrchestratorService) autoPlanTasks(ctx context.Context, req domain.AutoModeRequest, ragContext, verifyCmd string) ([]string, error) {
+func (o *OrchestratorService) autoPlanTasks(ctx context.Context, state *autoRunState, req domain.AutoModeRequest, ragContext, verifyCmd string) ([]string, error) {
 	if strings.TrimSpace(req.Goal) == "" {
 		backlog, err := o.GetBacklog(req.ProjectPath)
 		if err != nil {
@@ -38,7 +38,7 @@ func (o *OrchestratorService) autoPlanTasks(ctx context.Context, req domain.Auto
 		return ids, nil
 	}
 
-	steps := o.decomposeGoal(ctx, req, ragContext, verifyCmd)
+	steps := o.decomposeGoal(ctx, state, req, ragContext, verifyCmd)
 	ids := make([]string, 0, len(steps))
 	for _, st := range steps {
 		var deps []string
@@ -76,7 +76,7 @@ func (o *OrchestratorService) autoPlanTasks(ctx context.Context, req domain.Auto
 
 // decomposeGoal asks the best available provider to break req.Goal into ordered steps,
 // falling back to a single agentic task if decomposition fails or returns non-JSON.
-func (o *OrchestratorService) decomposeGoal(ctx context.Context, req domain.AutoModeRequest, ragContext, verifyCmd string) []plannedStep {
+func (o *OrchestratorService) decomposeGoal(ctx context.Context, state *autoRunState, req domain.AutoModeRequest, ragContext, verifyCmd string) []plannedStep {
 	fallback := []plannedStep{{Instruction: req.Goal, Role: "coder", VerifyCommand: verifyCmd}}
 	planTask := domain.Task{ProjectPath: req.ProjectPath, Instruction: req.Goal, Role: "architect", Command: domain.CommandPlan}
 	chain, err := o.resolveProviderWithFallback(ctx, planTask)
@@ -84,6 +84,12 @@ func (o *OrchestratorService) decomposeGoal(ctx context.Context, req domain.Auto
 		return fallback
 	}
 	chain, _ = o.routeChain(chain, planTask)
+	if state != nil {
+		state.update(func(r *domain.AutoModeRun) {
+			r.ProviderName = chain[0].ProviderName()
+			r.ModelID = chain[0].ActiveModel()
+		})
+	}
 	var prompt strings.Builder
 	prompt.WriteString("Decompose the following project goal into at most ")
 	fmt.Fprintf(&prompt, "%d small, dependency-ordered engineering tasks.\n", req.MaxTasks)

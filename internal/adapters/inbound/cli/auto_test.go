@@ -58,13 +58,13 @@ func TestAutoCmd(t *testing.T) {
 
 	orch := &autoScripted{
 		run:     domain.AutoModeRun{ID: "r1", Phase: domain.AutoPhaseExecuting, TaskIDs: []string{"t1"}},
-		nextRun: domain.AutoModeRun{ID: "r1", Phase: domain.AutoPhaseCompleted, TaskIDs: []string{"t1"}, CompletedTasks: 1, Summary: "all done"},
+		nextRun: domain.AutoModeRun{ID: "r1", Phase: domain.AutoPhaseCompleted, ProviderName: "Copilot", ModelID: "claude-sonnet-5.5", TaskIDs: []string{"t1"}, CompletedTasks: 1, Summary: "all done"},
 		runs:    []domain.AutoModeRun{{ID: "r1", Phase: domain.AutoPhaseCompleted, ProjectPath: "/p", TaskIDs: []string{"t1"}, CompletedTasks: 1}},
 	}
 
 	// Start with --wait
 	out, err := execute(orch, nil, "auto", "start", "implement feature", "--project", ".", "--wait")
-	if err != nil || !strings.Contains(out, "all done") {
+	if err != nil || !strings.Contains(out, "all done") || !strings.Contains(out, "provider=Copilot model=claude-sonnet-5.5") {
 		t.Fatalf("auto start --wait: out=%q err=%v", out, err)
 	}
 

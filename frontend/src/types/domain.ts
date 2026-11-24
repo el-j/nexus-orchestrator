@@ -374,6 +374,8 @@ export interface AutoModeRun {
   projectPath: string;
   goal?: string;
   phase: AutoPhase;
+  providerName?: string;
+  modelId?: string;
   taskIds: string[];
   completedTasks: number;
   failedTasks: number;

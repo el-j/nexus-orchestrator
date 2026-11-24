@@ -48,6 +48,8 @@ type AutoModeRun struct {
 	ProjectPath    string    `json:"projectPath"`
 	Goal           string    `json:"goal,omitempty"`
 	Phase          AutoPhase `json:"phase"`
+	ProviderName   string    `json:"providerName,omitempty"`
+	ModelID        string    `json:"modelId,omitempty"`
 	TaskIDs        []string  `json:"taskIds"`
 	CompletedTasks int       `json:"completedTasks"`
 	FailedTasks    int       `json:"failedTasks"`

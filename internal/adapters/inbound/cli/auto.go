@@ -171,8 +171,15 @@ func printAutoRun(w io.Writer, run domain.AutoModeRun, asJSON bool) error {
 			return err
 		}
 	} else {
-		fmt.Fprintf(w, "Auto-Mode %s [%s] project=%s tasks=%d (done=%d failed=%d)\n",
-			run.ID, run.Phase, run.ProjectPath, len(run.TaskIDs), run.CompletedTasks, run.FailedTasks)
+		extra := ""
+		if run.ProviderName != "" {
+			extra += " provider=" + run.ProviderName
+		}
+		if run.ModelID != "" {
+			extra += " model=" + run.ModelID
+		}
+		fmt.Fprintf(w, "Auto-Mode %s [%s] project=%s%s tasks=%d (done=%d failed=%d)\n",
+			run.ID, run.Phase, run.ProjectPath, extra, len(run.TaskIDs), run.CompletedTasks, run.FailedTasks)
 		if run.Summary != "" {
 			fmt.Fprintln(w, run.Summary)
 		}

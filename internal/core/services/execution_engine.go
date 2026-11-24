@@ -94,6 +94,30 @@ func containsString(slice []string, target string) bool {
 	return false
 }
 
+// activeTaskProvider returns the provider and model currently executing taskID in memory, if any.
+func (o *OrchestratorService) activeTaskProvider(taskID string) (string, string) {
+	o.runMu.Lock()
+	h := o.running[taskID]
+	o.runMu.Unlock()
+	if h == nil || len(h.chain) == 0 {
+		return "", ""
+	}
+	return h.chain[0].ProviderName(), h.chain[0].ActiveModel()
+}
+
+// recordSelectedProvider persists the routed provider and model onto task so
+// Mission Control, Auto-Mode, and CLI show which backend is running it.
+func (o *OrchestratorService) recordSelectedProvider(task domain.Task, llm ports.LLMClient) domain.Task {
+	prov, model := llm.ProviderName(), llm.ActiveModel()
+	if task.ProviderName == prov && task.ModelID == model {
+		return task
+	}
+	task.ProviderName = prov
+	task.ModelID = model
+	_ = o.repo.Update(o.dbCtx(), task)
+	return task
+}
+
 // processNext takes the oldest queued task and runs it; it reports false when nothing was queued.
 func (o *OrchestratorService) processNext() bool {
 	task, err := o.repo.ClaimNextQueued(o.dbCtx())
@@ -283,6 +307,7 @@ func (o *OrchestratorService) executeWithFallbackChain(run *runHandle, task doma
 		}
 
 		// Success!
+		task = o.recordSelectedProvider(task, llm)
 		o.discovery.ClearCooldown(llm)
 		if i > 0 {
 			failoverNote := fmt.Sprintf("[failover: primary provider failed, executed via %s]", llm.ProviderName())

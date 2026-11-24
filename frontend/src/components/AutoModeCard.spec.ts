@@ -59,7 +59,13 @@ describe('AutoModeCard', () => {
 
   it('starts and stops an Auto-Mode run and polls while active', async () => {
     h.project.value = '/work/demo';
-    const running = makeRun({ phase: 'executing', repairAttempts: 1, failedTasks: 1 });
+    const running = makeRun({
+      phase: 'executing',
+      providerName: 'vscode-copilot',
+      modelId: 'claude-sonnet-5.5',
+      repairAttempts: 1,
+      failedTasks: 1,
+    });
     h.startAutoMode.mockResolvedValue(running);
     const w = mount(AutoModeCard);
     await flushPromises();
@@ -70,6 +76,9 @@ describe('AutoModeCard', () => {
 
     expect(h.startAutoMode).toHaveBeenCalledWith({ projectPath: '/work/demo', goal: 'Ship it' });
     expect(w.find('[data-testid="automode-phase"]').text()).toBe('executing');
+    expect(w.find('[data-testid="automode-model"]').text()).toBe(
+      'vscode-copilot · claude-sonnet-5.5',
+    );
     expect(w.text()).toContain('repair #1');
 
     // Polling fires while active
