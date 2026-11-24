@@ -39,11 +39,13 @@ type autoRunState struct {
 }
 
 // snapshot returns a deep-enough copy of the run state safe to return to callers.
+// TaskIDs is always a non-nil slice so JSON marshalling emits [] instead of null.
 func (s *autoRunState) snapshot() domain.AutoModeRun {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	cp := s.run
-	cp.TaskIDs = append([]string(nil), s.run.TaskIDs...)
+	cp.TaskIDs = make([]string, len(s.run.TaskIDs))
+	copy(cp.TaskIDs, s.run.TaskIDs)
 	return cp
 }
 
@@ -185,7 +187,14 @@ func (o *OrchestratorService) runAutoMode(state *autoRunState, req domain.AutoMo
 
 	// Phase 2: Plan (decompose goal or promote existing backlog).
 	state.update(func(r *domain.AutoModeRun) { r.Phase = domain.AutoPhasePlanning })
-	policy, _, _ := LoadProjectPolicy(proj)
+	policy, _, policyErr := LoadProjectPolicy(proj)
+	if policyErr != nil {
+		state.update(func(r *domain.AutoModeRun) {
+			r.Phase = domain.AutoPhaseFailed
+			r.Error = policyErr.Error()
+		})
+		return
+	}
 	verifyCmd := strings.TrimSpace(req.VerifyCommand)
 	if verifyCmd == "" {
 		verifyCmd = strings.TrimSpace(policy.Verify)
@@ -237,6 +246,10 @@ func (o *OrchestratorService) runAutoMode(state *autoRunState, req domain.AutoMo
 	learnings := o.autoDigestLearnings(ctx, state.snapshot().TaskIDs)
 
 	// Settle terminal status.
+	firstFailure := ""
+	if failed > 0 && verifyErr == "" {
+		firstFailure = o.firstFailedTaskReason(state.snapshot().TaskIDs)
+	}
 	state.update(func(r *domain.AutoModeRun) {
 		r.LearningsSaved = learnings
 		if r.FailedTasks > 0 || verifyErr != "" {
@@ -245,6 +258,9 @@ func (o *OrchestratorService) runAutoMode(state *autoRunState, req domain.AutoMo
 				r.Error = verifyErr
 			} else {
 				r.Error = fmt.Sprintf("%d of %d tasks failed", r.FailedTasks, len(r.TaskIDs))
+				if firstFailure != "" {
+					r.Error += " (" + firstFailure + ")"
+				}
 			}
 			r.Summary = fmt.Sprintf("Auto-Mode finished with failures (%d completed, %d failed)", completed, r.FailedTasks)
 			return
@@ -252,6 +268,23 @@ func (o *OrchestratorService) runAutoMode(state *autoRunState, req domain.AutoMo
 		r.Phase = domain.AutoPhaseCompleted
 		r.Summary = fmt.Sprintf("Auto-Mode completed %d task(s) cleanly (%d learnings saved)", len(r.TaskIDs), learnings)
 	})
+}
+
+// firstFailedTaskReason returns a concise single-line excerpt from the first failed task's logs.
+func (o *OrchestratorService) firstFailedTaskReason(taskIDs []string) string {
+	for _, id := range taskIDs {
+		t, err := o.GetTask(id)
+		if err != nil || t.Status == domain.StatusCompleted {
+			continue
+		}
+		if line := strings.TrimSpace(t.Logs); line != "" {
+			if idx := strings.IndexByte(line, '\n'); idx >= 0 {
+				line = strings.TrimSpace(line[:idx])
+			}
+			return line
+		}
+	}
+	return ""
 }
 
 // markAutoStopped sets the run to AutoPhaseStopped unless already terminal.

@@ -62,7 +62,7 @@
             {{ activeRun.goal || 'Executing project backlog' }}
           </p>
           <p class="text-[11px] text-slate-400">
-            Tasks: {{ activeRun.completedTasks }}/{{ activeRun.taskIds.length }} done
+            Tasks: {{ activeRun.completedTasks }}/{{ activeRun.taskIds?.length ?? 0 }} done
             <template v-if="activeRun.failedTasks"> · {{ activeRun.failedTasks }} failed</template>
             <template v-if="activeRun.repairAttempts">
               · repair #{{ activeRun.repairAttempts }}</template

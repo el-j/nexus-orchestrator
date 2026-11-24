@@ -78,10 +78,13 @@ describe('AutoModeCard', () => {
     await flushPromises();
     expect(w.find('[data-testid="automode-summary"]').text()).toBe('All green');
 
-    // Start again and stop
-    h.startAutoMode.mockResolvedValue(makeRun({ id: 'run-2', goal: '', phase: 'planning' }));
+    // Start again with null taskIds (defensive guard against legacy/empty JSON) and stop
+    h.startAutoMode.mockResolvedValue(
+      makeRun({ id: 'run-2', goal: '', phase: 'planning', taskIds: null as unknown as string[] }),
+    );
     await w.find('[data-testid="automode-start-btn"]').trigger('click');
     await flushPromises();
+    expect(w.text()).toContain('Tasks: 1/0 done');
     h.listAutoModeRuns.mockResolvedValue([
       makeRun({ id: 'run-2', phase: 'stopped', summary: 'Stopped' }),
     ]);
