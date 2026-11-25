@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"nexus-orchestrator/internal/core/domain"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -47,6 +48,7 @@ func (o *OrchestratorService) GetRuntimeConfig(ctx context.Context) (domain.Runt
 		if stored.QueueCap > 0 {
 			cfg.QueueCap = stored.QueueCap
 		}
+		cfg.DefaultLadder = stored.DefaultLadder
 		cfg.UpdatedAt = stored.UpdatedAt
 	}
 
@@ -82,6 +84,29 @@ func (o *OrchestratorService) UpdateRuntimeConfig(ctx context.Context, update do
 	}
 	if update.MCPToken != nil {
 		current.MCPToken = *update.MCPToken
+	}
+	if update.DefaultLadder != nil {
+		cleaned := make(map[string][]string)
+		for role, rungs := range *update.DefaultLadder {
+			r := strings.TrimSpace(role)
+			if r == "" {
+				continue
+			}
+			var out []string
+			for _, pat := range rungs {
+				if p := strings.TrimSpace(pat); p != "" {
+					out = append(out, p)
+				}
+			}
+			if len(out) > 0 {
+				cleaned[r] = out
+			}
+		}
+		if len(cleaned) == 0 {
+			current.DefaultLadder = nil
+		} else {
+			current.DefaultLadder = cleaned
+		}
 	}
 
 	current.UpdatedAt = time.Now()

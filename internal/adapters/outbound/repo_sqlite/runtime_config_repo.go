@@ -50,15 +50,17 @@ func (r *RuntimeConfigRepo) GetRuntimeConfig(ctx context.Context) (domain.Runtim
 
 // SaveRuntimeConfig persists the runtime configuration.
 func (r *RuntimeConfigRepo) SaveRuntimeConfig(ctx context.Context, cfg domain.RuntimeConfig) error {
-	// Persist tokens and queue cap; UpdatedAt is stored separately as milliseconds.
+	// Persist tokens, queue cap, and default ladder; UpdatedAt is stored separately as milliseconds.
 	b := marshal(struct {
-		QueueCap int    `json:"queueCap"`
-		APIToken string `json:"apiToken,omitempty"`
-		MCPToken string `json:"mcpToken,omitempty"`
+		QueueCap      int                 `json:"queueCap"`
+		APIToken      string              `json:"apiToken,omitempty"`
+		MCPToken      string              `json:"mcpToken,omitempty"`
+		DefaultLadder map[string][]string `json:"defaultLadder,omitempty"`
 	}{
-		QueueCap: cfg.QueueCap,
-		APIToken: cfg.APIToken,
-		MCPToken: cfg.MCPToken,
+		QueueCap:      cfg.QueueCap,
+		APIToken:      cfg.APIToken,
+		MCPToken:      cfg.MCPToken,
+		DefaultLadder: cfg.DefaultLadder,
 	})
 	updatedAt := cfg.UpdatedAt
 	if updatedAt.IsZero() {

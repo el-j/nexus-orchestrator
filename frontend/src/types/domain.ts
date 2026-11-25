@@ -275,6 +275,7 @@ export interface RuntimeConfig {
   mcpTokenEnabled: boolean;
   apiToken?: string;
   mcpToken?: string;
+  defaultLadder?: Record<string, string[]>;
 }
 
 /** Partial update of the runtime config. */
@@ -284,6 +285,7 @@ export interface RuntimeConfigUpdate {
   mcpToken?: string;
   rotateApiToken?: boolean;
   rotateMcpToken?: boolean;
+  defaultLadder?: Record<string, string[]>;
 }
 
 /** Size and health of the Context Brain. */

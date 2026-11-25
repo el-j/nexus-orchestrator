@@ -67,8 +67,9 @@ describe('PolicyCard', () => {
     await budget[1].findAll('input')[1].setValue(5000);
     await w.find(T('policy-add-ladder')).trigger('click');
     const ladder = w.findAll(T('policy-ladder-row'));
-    await ladder[1].findAll('input')[0].setValue('tester');
-    await ladder[1].findAll('input')[1].setValue('Ollama/*, ');
+    await ladder[1].find(T('ladder-role-input')).setValue('tester');
+    await ladder[1].find(T('ladder-rung-input')).setValue('Ollama/*, ');
+    await ladder[1].find(T('ladder-add-rung')).trigger('click');
     await w.find(T('policy-save')).trigger('click');
     await flushPromises();
 
@@ -94,7 +95,7 @@ describe('PolicyCard', () => {
     await w.find(T('policy-quota')).setValue(0);
     await w.find(T('policy-context')).setValue(0);
     await w.findAll(T('policy-budget-row'))[0].find('button').trigger('click');
-    await w.findAll(T('policy-ladder-row'))[0].find('button').trigger('click');
+    await w.findAll(T('policy-ladder-row'))[0].find(T('ladder-remove-role')).trigger('click');
     await w.find(T('policy-add-budget')).trigger('click'); // a blank row is ignored
     await w.find(T('policy-add-ladder')).trigger('click');
     await w.find(T('policy-save')).trigger('click');

@@ -94,38 +94,13 @@
         </div>
       </div>
 
-      <div class="space-y-1.5">
-        <div class="flex items-center justify-between">
-          <h3 class="text-[11px] font-semibold text-slate-400">
-            Model ladder (cheapest first, comma separated)
-          </h3>
-          <button
-            data-testid="policy-add-ladder"
-            class="text-[10px] text-violet-400"
-            @click="ladderRows.push({ role: '', patterns: '' })"
-          >
-            + Add
-          </button>
-        </div>
-        <div
-          v-for="(row, i) in ladderRows"
-          :key="'l' + i"
-          class="flex items-center gap-2"
-          data-testid="policy-ladder-row"
-        >
-          <input
-            v-model="row.role"
-            placeholder="Role (or default)"
-            class="w-32 px-2 py-1 text-xs font-mono text-white bg-black/30 border border-white/10 rounded-lg"
-          />
-          <input
-            v-model="row.patterns"
-            placeholder="Ollama/*, Anthropic/claude-sonnet*"
-            class="flex-1 px-2 py-1 text-xs font-mono text-white bg-black/30 border border-white/10 rounded-lg"
-          />
-          <button class="text-[10px] text-red-400" @click="ladderRows.splice(i, 1)">Remove</button>
-        </div>
-      </div>
+      <LadderEditor
+        v-model="ladderRows"
+        :suggestions="suggestions"
+        title="Model ladder (priority order, overrides global default)"
+        add-button-test-id="policy-add-ladder"
+        row-test-id="policy-ladder-row"
+      />
 
       <div class="flex items-center gap-3">
         <button
@@ -147,6 +122,16 @@ import { ref, watch } from 'vue';
 import type { ProjectPolicy } from '../types/domain';
 import { getPolicy, setPolicy } from '../types/wails';
 import { currentProject } from '../composables/useProjectState';
+import LadderEditor, { type LadderRoleRow } from './LadderEditor.vue';
+
+withDefaults(
+  defineProps<{
+    suggestions?: string[];
+  }>(),
+  {
+    suggestions: () => [],
+  },
+);
 
 const found = ref(false);
 const error = ref<string | null>(null);
@@ -157,7 +142,7 @@ const quotaPercent = ref(0);
 const contextBudget = ref(0);
 const historyBudget = ref(0);
 const budgetRows = ref<{ name: string; tokens: number }[]>([]);
-const ladderRows = ref<{ role: string; patterns: string }[]>([]);
+const ladderRows = ref<LadderRoleRow[]>([]);
 
 function show(policy: ProjectPolicy) {
   loaded.value = policy;
@@ -170,7 +155,7 @@ function show(policy: ProjectPolicy) {
   }));
   ladderRows.value = Object.entries(policy.ladder ?? {}).map(([role, rungs]) => ({
     role,
-    patterns: rungs.join(', '),
+    rungs: [...rungs],
   }));
 }
 
@@ -204,10 +189,7 @@ function edited(): ProjectPolicy {
   set('budgets', Object.keys(budgets).length > 0 ? budgets : undefined);
   const ladder: NonNullable<ProjectPolicy['ladder']> = {};
   for (const row of ladderRows.value) {
-    const rungs = row.patterns
-      .split(',')
-      .map((p) => p.trim())
-      .filter(Boolean);
+    const rungs = row.rungs.map((p) => p.trim()).filter(Boolean);
     if (row.role.trim() && rungs.length > 0) ladder[row.role.trim()] = rungs;
   }
   set('ladder', Object.keys(ladder).length > 0 ? ladder : undefined);

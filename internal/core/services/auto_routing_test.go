@@ -91,6 +91,64 @@ func TestAutoRoutingPrefersCostEfficientWorkhorsesOverHeavyOrExperimentalModels(
 	}
 }
 
+// Global DefaultLadder in RuntimeConfig applies whenever a project has no per-project ladder,
+// and can be updated, sanitized, or cleared cleanly.
+func TestGlobalDefaultLadderAppliesWhenProjectHasNoLadder(t *testing.T) {
+	p1 := &mockLLMClient{alive: true, name: "vscode-copilot-claude-sonnet-5.5", activeModel: "claude-sonnet-5.5"}
+	p2 := &mockLLMClient{alive: true, name: "Claude (subscription)", activeModel: "haiku"}
+	repo := newMemRepo()
+	rtRepo := &memRuntimeCfgRepo{}
+	orch := services.NewOrchestrator(services.NewDiscoveryService(p1, p2), repo, &recordingWriter{}, nil)
+	orch.WithRuntimeConfigRepo(rtRepo)
+	defer orch.Stop()
+
+	// Set global default ladder putting Claude (subscription) first for coder, with blank role/rung entries sanitized.
+	ladder := map[string][]string{
+		" ":     {"ignored"},
+		"coder": {"  Claude (subscription)/* ", " ", "vscode-copilot-claude-sonnet*"},
+	}
+	updated, err := orch.UpdateRuntimeConfig(context.Background(), domain.RuntimeConfigUpdate{DefaultLadder: &ladder})
+	if err != nil {
+		t.Fatalf("UpdateRuntimeConfig: %v", err)
+	}
+	if len(updated.DefaultLadder) != 1 || len(updated.DefaultLadder["coder"]) != 2 {
+		t.Fatalf("unexpected sanitized defaultLadder: %+v", updated.DefaultLadder)
+	}
+
+	// Project without .nexus/policy.json inherits the global default ladder.
+	preview, err := orch.PreviewRouting(context.Background(), t.TempDir(), "coder")
+	if err != nil {
+		t.Fatalf("PreviewRouting: %v", err)
+	}
+	if len(preview.Order) < 2 || preview.Order[0].Provider != "Claude (subscription)" {
+		t.Fatalf("expected global default ladder to place Claude (subscription) first, got %+v", preview.Order)
+	}
+
+	// Clearing DefaultLadder with an empty map removes it.
+	empty := map[string][]string{}
+	cleared, err := orch.UpdateRuntimeConfig(context.Background(), domain.RuntimeConfigUpdate{DefaultLadder: &empty})
+	if err != nil || cleared.DefaultLadder != nil {
+		t.Fatalf("expected cleared defaultLadder, got %+v err=%v", cleared.DefaultLadder, err)
+	}
+}
+
+type memRuntimeCfgRepo struct {
+	cfg domain.RuntimeConfig
+	set bool
+}
+
+func (m *memRuntimeCfgRepo) GetRuntimeConfig(context.Context) (domain.RuntimeConfig, error) {
+	if !m.set {
+		return domain.RuntimeConfig{}, domain.ErrNotFound
+	}
+	return m.cfg, nil
+}
+func (m *memRuntimeCfgRepo) SaveRuntimeConfig(_ context.Context, cfg domain.RuntimeConfig) error {
+	m.cfg = cfg
+	m.set = true
+	return nil
+}
+
 // Without a ladder a failed verification is corrected by the next candidate, not by the same model that
 // just failed; with a single candidate it stays.
 func TestAFailedVerificationAsksTheNextCandidateWhenThereIsNoLadder(t *testing.T) {
