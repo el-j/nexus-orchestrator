@@ -33,6 +33,11 @@ func (o *OrchestratorService) routeChain(chain []ports.LLMClient, task domain.Ta
 	}
 	out := slices.Clone(chain)
 	ladder := policy.LadderFor(task.Role)
+	if len(ladder) == 0 {
+		if cfg, cfgErr := o.GetRuntimeConfig(o.dbCtx()); cfgErr == nil && len(cfg.DefaultLadder) > 0 {
+			ladder = (domain.ProjectPolicy{Ladder: cfg.DefaultLadder}).LadderFor(task.Role)
+		}
+	}
 	if len(ladder) > 0 {
 		pos := func(c ports.LLMClient) int {
 			if i := rungOf(ladder, c); i >= 0 {

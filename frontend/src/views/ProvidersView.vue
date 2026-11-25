@@ -144,8 +144,11 @@
       <!-- Routing Preview -->
       <RoutingPreviewCard />
 
+      <!-- Global default model ladder -->
+      <DefaultLadderCard :suggestions="ladderSuggestions" />
+
       <!-- Project policy: ladder, budgets, token caps -->
-      <PolicyCard />
+      <PolicyCard :suggestions="ladderSuggestions" />
 
       <DiscoveredToolsSection :sort-mode="sortMode" />
 
@@ -257,6 +260,7 @@ import { useProviders } from '../composables/useProviders';
 import { useDiscovery } from '../composables/useDiscovery';
 import ProviderLimitBadges from '../components/ProviderLimitBadges.vue';
 import RoutingPreviewCard from '../components/RoutingPreviewCard.vue';
+import DefaultLadderCard from '../components/DefaultLadderCard.vue';
 import PolicyCard from '../components/PolicyCard.vue';
 import DiscoveredProvidersPanel from '../components/DiscoveredProvidersPanel.vue';
 import ProviderConfigForm from '../components/ProviderConfigForm.vue';
@@ -288,6 +292,7 @@ async function refresh() {
 }
 
 const activeCount = computed(() => providers.value.filter((p) => p.active).length);
+const ladderSuggestions = computed(() => providers.value.map((p) => `${p.name}/*`));
 
 const sortMode = ref<'active' | 'name'>('active');
 

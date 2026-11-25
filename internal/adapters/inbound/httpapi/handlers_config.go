@@ -17,6 +17,8 @@ type runtimeConfigResponse struct {
 	// Plaintext tokens are returned only in PUT responses when explicitly set or rotated.
 	APIToken string `json:"apiToken,omitempty"`
 	MCPToken string `json:"mcpToken,omitempty"`
+
+	DefaultLadder map[string][]string `json:"defaultLadder,omitempty"`
 }
 
 type putRuntimeConfigRequest struct {
@@ -27,6 +29,8 @@ type putRuntimeConfigRequest struct {
 
 	RotateAPIToken bool `json:"rotateApiToken,omitempty"`
 	RotateMCPToken bool `json:"rotateMcpToken,omitempty"`
+
+	DefaultLadder *map[string][]string `json:"defaultLadder,omitempty"`
 }
 
 // handleGetConfig returns the daemon settings.
@@ -45,6 +49,7 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 		QueueCap:        cfg.QueueCap,
 		APITokenEnabled: cfg.APIToken != "",
 		MCPTokenEnabled: cfg.MCPToken != "",
+		DefaultLadder:   cfg.DefaultLadder,
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
@@ -67,6 +72,7 @@ func (s *Server) handlePutConfig(w http.ResponseWriter, r *http.Request) {
 		MCPToken:       req.MCPToken,
 		RotateAPIToken: req.RotateAPIToken,
 		RotateMCPToken: req.RotateMCPToken,
+		DefaultLadder:  req.DefaultLadder,
 	}
 
 	cfg, err := s.orch.UpdateRuntimeConfig(r.Context(), update)
@@ -79,6 +85,7 @@ func (s *Server) handlePutConfig(w http.ResponseWriter, r *http.Request) {
 		QueueCap:        cfg.QueueCap,
 		APITokenEnabled: cfg.APIToken != "",
 		MCPTokenEnabled: cfg.MCPToken != "",
+		DefaultLadder:   cfg.DefaultLadder,
 	}
 	// Return plaintext tokens only when explicitly set/rotated by this request.
 	if req.RotateAPIToken || req.APIToken != nil {
