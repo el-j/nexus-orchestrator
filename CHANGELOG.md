@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A data race between the worker routing a task and Auto-Mode reading its provider (`runHandle.chain`) made `develop` CI fail under `-race`.
+
 ### Added
 
 - **Project Auto-Mode (`PLAN-081`)**: autonomous end-to-end implementation loop (`POST /api/auto/start`, `GET /api/auto`, `GET /api/auto/{id}`, `POST /api/auto/{id}/stop`, `nexus auto start|status|stop`, and Mission Control Auto-Mode card) that syncs project Brain/RAG, decomposes a goal into dependency-ordered agentic tasks (or executes the backlog), runs final project verification with automatic repair attempts, and digests learnings back into project memory.

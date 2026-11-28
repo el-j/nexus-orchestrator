@@ -99,10 +99,10 @@ func (o *OrchestratorService) activeTaskProvider(taskID string) (string, string)
 	o.runMu.Lock()
 	h := o.running[taskID]
 	o.runMu.Unlock()
-	if h == nil || len(h.chain) == 0 {
+	if h == nil {
 		return "", ""
 	}
-	return h.chain[0].ProviderName(), h.chain[0].ActiveModel()
+	return h.primary()
 }
 
 // recordSelectedProvider persists the routed provider and model onto task so
@@ -153,8 +153,9 @@ func (o *OrchestratorService) processNext() bool {
 		o.emit(task.ID, domain.StatusNoProvider)
 		return true
 	}
-	chain, run.ladder = o.routeChain(chain, task)
-	run.chain = chain
+	var ladder []string
+	chain, ladder = o.routeChain(chain, task)
+	run.setRoute(chain, ladder)
 	o.emit(task.ID, domain.StatusProcessing)
 
 	prompt, sessionHistory, err := o.prepareChatPrompt(task)
