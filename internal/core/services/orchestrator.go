@@ -89,6 +89,25 @@ type runHandle struct {
 	// (nil without one); a failed verification steps up the ladder (see stepUp).
 	chain  []ports.LLMClient
 	ladder []string
+	// routeMu guards chain and ladder: the worker sets them while Auto-Mode reads the chain.
+	routeMu sync.Mutex
+}
+
+// setRoute records the routed chain and ladder of the run.
+func (h *runHandle) setRoute(chain []ports.LLMClient, ladder []string) {
+	h.routeMu.Lock()
+	h.chain, h.ladder = chain, ladder
+	h.routeMu.Unlock()
+}
+
+// primary returns the provider and model first in the chain, empty while the task is not routed yet.
+func (h *runHandle) primary() (string, string) {
+	h.routeMu.Lock()
+	defer h.routeMu.Unlock()
+	if len(h.chain) == 0 {
+		return "", ""
+	}
+	return h.chain[0].ProviderName(), h.chain[0].ActiveModel()
 }
 
 // OrchestratorService implements ports.Orchestrator and drives the worker loop.
